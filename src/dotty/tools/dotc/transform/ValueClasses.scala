@@ -24,8 +24,7 @@ object ValueClasses {
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.is(SuperAccessor) &&
-      !d.is(Macro) &&
-      !d.isCompanionMethod
+      !d.is(Macro)
 
   /** The member that of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =

@@ -482,9 +482,12 @@ object SymDenotations {
      *  - not an accessor
      *  - not a label
      *  - not an anonymous function
+     *  - not a companion method
      */
     final def isRealMethod(implicit ctx: Context) =
-      this.is(Method, butNot = AccessorOrLabel) && !isAnonymousFunction
+      this.is(Method, butNot = AccessorOrLabel) &&
+        !isAnonymousFunction &&
+        !isCompanionMethod
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =
