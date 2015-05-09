@@ -35,6 +35,7 @@ class tests extends CompilerTest {
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val negDir        = testsDir + "neg/"
+  val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
 
   val sourceDir = "./src/"
@@ -136,7 +137,12 @@ class tests extends CompilerTest {
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 
-  @Test def dotty = compileDir(toolsDir, "", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
+  @Test def run_hello = runFile(runDir, "hello")
+  @Test def run_lazyVals = runFile(runDir, "lazyVals")
+
+
+  @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
+
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")

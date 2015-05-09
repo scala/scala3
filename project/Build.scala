@@ -2,6 +2,7 @@ import sbt.Keys._
 import sbt._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
+import scala.reflect.io.Path
 
 object DottyBuild extends Build {
 
@@ -42,15 +43,15 @@ object DottyBuild extends Build {
     // to get Scala 2.11
     resolvers += Resolver.sonatypeRepo("releases"),
 
-    // get reflect and xml onboard
-    libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
-                                "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
-                                "me.d-d" % "scala-compiler" % "2.11.5-20150506-175515-8fc7635b56",
+    // get libraries onboard
+    partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20150506-175515-8fc7635b56",
+                      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+                      "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
+    libraryDependencies ++= partestDeps.value,
+    libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                 "org.scala-lang.modules" %% "scala-partest" % "1.0.5" % "test",
+                                "com.novocode" % "junit-interface" % "0.11" % "test",
                                 "jline" % "jline" % "2.12"),
-
-    // get junit onboard
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
 
     // scalac options
     scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
@@ -67,9 +68,18 @@ object DottyBuild extends Build {
     // otherwise it just executes the tests directly
     lockPartestFile := {
       val partestLockFile = "." + File.separator + "tests" + File.separator + "partest.lock"
-      partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+      try {
+        partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+      } catch {
+        case ex: java.nio.channels.OverlappingFileLockException => // locked already
+      }
     },
-    runPartestRunner <<= runTask(Test, "dotty.partest.DPConsoleRunner", "") dependsOn (test in Test),
+    runPartestRunner <<= Def.taskDyn {
+      val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++ 
+          getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
+      val dottyJars  = "-dottyJars " + jars.length + " " + jars.mkString(" ")
+      runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars)
+    },
 
     // Adjust classpath for running dotty
     mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
@@ -103,7 +113,7 @@ object DottyBuild extends Build {
 
       tuning ::: agentOptions ::: travis_build ::: fullpath
     }
-  ) ++ addCommandAlias("partest", ";lockPartestFile;runPartestRunner")
+  ) ++ addCommandAlias("partest", ";test:compile;lockPartestFile;test:test;runPartestRunner")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
@@ -156,5 +166,17 @@ object DottyBuild extends Build {
 
   lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the file lock on  ./tests/partest.lock")
   lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partests")
+  lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
 
+  def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
+    case Some(home) => 
+      modules.map({ module => 
+        val file = Path(home) / Path("cache") / 
+          Path(module.organization) / Path(module.name) / Path("jars") /
+          Path(module.name + "-" + module.revision + ".jar")
+        if (!file.isFile) throw new RuntimeException("ERROR: sbt getJarPaths: dependency jar not found: " + file)
+        else file.jfile.getAbsolutePath
+      })
+    case None => throw new RuntimeException("ERROR: sbt getJarPaths: ivyHome not defined")
+  }
 }

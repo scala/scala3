@@ -4,26 +4,41 @@
 
 package dotty.partest
 
+import scala.reflect.io.AbstractFile
 import scala.tools.partest._
 import scala.tools.partest.nest._
+import scala.util.matching.Regex
+import tools.nsc.io.{ File => NSCFile }
 import java.io.File
 import java.net.URLClassLoader
 
 /** Runs dotty partest from the Console, discovering test sources in
   * DPConfig.testRoot that have been generated automatically by
-  * DPPrepJUnitRunner. Use `sbt test` to run.
+  * DPPrepJUnitRunner. Use `sbt partest` to run.
   */
 object DPConsoleRunner {
   def main(args: Array[String]): Unit = {
-    new DPConsoleRunner(args mkString (" ")).runPartest
+    // unfortunately sbt runTask passes args as single string
+    val jarFinder = """-dottyJars (\d*) (.*)""".r
+    val (jarList, otherArgs) = args.toList.partition(jarFinder.findFirstIn(_).isDefined)
+    val extraJars = jarList match {
+      case Nil => sys.error("Error: DPConsoleRunner needs \"-dottyJars <jarCount> <jars>*\".")
+      case jarFinder(nr, jarString) :: Nil => 
+        val jars = jarString.split(" ").toList
+        if (jars.length.toString != nr)
+          sys.error("Error: DPConsoleRunner found wrong number of dottyJars: " + jars + ", expected: " + nr + ". Make sure the path doesn't contain any spaces.")
+        else jars
+      case list => sys.error("Error: DPConsoleRunner found several -dottyJars options: " + list)
+    }
+    new DPConsoleRunner(otherArgs mkString (" "), extraJars).runPartest
   }
 }
 
 // console runner has a suite runner which creates a test runner for each test
-class DPConsoleRunner(args: String) extends ConsoleRunner(args) {
+class DPConsoleRunner(args: String, extraJars: List[String]) extends ConsoleRunner(args) {
   override val suiteRunner = new DPSuiteRunner (
     testSourcePath = optSourcePath getOrElse DPConfig.testRoot,
-    fileManager = null, // new FileManager(ClassPath split PathResolver.Environment.javaUserClassPath map (Path(_))), // the script sets up our classpath for us via ant
+    fileManager = new DottyFileManager(extraJars),
     updateCheck = optUpdateCheck,
     failed = optFailed)
 
@@ -31,8 +46,15 @@ class DPConsoleRunner(args: String) extends ConsoleRunner(args) {
   def runPartest = super.run
 }
 
+class DottyFileManager(extraJars: List[String]) extends FileManager(Nil) {
+  lazy val extraJarList = extraJars.map(NSCFile(_))
+  override lazy val libraryUnderTest  = Path(extraJars.find(_.contains("scala-library")).getOrElse(""))
+  override lazy val reflectUnderTest  = Path(extraJars.find(_.contains("scala-reflect")).getOrElse(""))
+  override lazy val compilerUnderTest = Path(extraJars.find(_.contains("dotty")).getOrElse(""))
+}
+
 class DPSuiteRunner(testSourcePath: String, // relative path, like "files", or "pending"
-  fileManager: FileManager,
+  fileManager: DottyFileManager,
   updateCheck: Boolean,
   failed: Boolean,
   javaCmdPath: String = PartestDefaults.javaCmd,
@@ -83,7 +105,7 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
   // but it doesn't seem to be used anywhere
 }
 
-class DPTestRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(testFile, suiteRunner) {
+class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runner(testFile, suiteRunner) {
   // override to provide DottyCompiler
   override def newCompiler = new dotty.partest.DPDirectCompiler(this)
 
@@ -117,7 +139,6 @@ class DPTestRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner
     case class CompSucceeded() extends NegTestState
 
     def nerrIsOk(reason: String) = {
-      import scala.util.matching.Regex
       val nerrFinder = """compilation failed with (\d+) errors""".r
       reason match {
         case nerrFinder(found) => 
@@ -187,4 +208,8 @@ class DPTestRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner
     def description = s"dotc $fsString"
     lazy val result = { pushTranscript(description) ; attemptCompile(fs) }
   }
+
+  // override to add dotty and scala jars to classpath
+  override def extraClasspath = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
+
 }

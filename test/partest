@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# partest error message references partest script to update check files, but
+# doesn't work for dotty because we don't know where tests came from.
+
+if [ $1='--update-check' ];
+then
+  echo """ERROR: Since dotty partest runs on generated files, please update the check
+files in the original location (run tests) or update the expected error count
+(neg tests) in the test file."
+else
+  echo "This script doesn't launch partest, please use sbt partest instead."
+fi

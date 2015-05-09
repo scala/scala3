@@ -5,7 +5,7 @@ import dotty.tools.dotc.{Main, Bench, Driver}
 import dotty.tools.dotc.reporting.Reporter
 import scala.collection.mutable.ListBuffer
 import scala.reflect.io.{ Path, Directory, File => SFile }
-import scala.tools.partest.nest.FileManager
+import scala.tools.partest.nest.{ FileManager, NestUI }
 import java.io.{ RandomAccessFile, File => JFile }
 
 import org.junit.Test
@@ -19,15 +19,19 @@ import org.junit.Test
   * generated sources.
   *
   * Through overriding the partestableXX methods, tests can always be run as
-  * JUnit compiler tests.
+  * JUnit compiler tests. Run tests cannot be run by JUnit, only by partest.
   *
-  * A test can either be a file or a directory. The test is in a parent
-  * directory that determines the kind of test:
+  * A test can either be a file or a directory. Partest will generate a
+  * <test>-<kind>.log file with output of failed tests. Partest reads compiler
+  * flags and the number of errors expected from a neg test from <test>.flags
+  * and <test>.nerr files (also generated). The test is in a parent directory
+  * that determines the kind of test:
   * - pos: checks that compilation succeeds
   * - neg: checks that compilation fails with the given number of errors
-  * (- run: compilation succeeds and running generates the given output.)
-  * For partest, compiler flags and the number of errors expected from a neg
-  * test are read from test.flags and test.nerr files (also generated).
+  * - run: compilation succeeds, partest: test run generates the output in
+  *        <test>.check. Run tests always need to be:
+  *        object Test { def main(args: Array[String]): Unit = ... }
+  *
   */
 abstract class CompilerTest extends DottyTest {
 
@@ -60,8 +64,11 @@ abstract class CompilerTest extends DottyTest {
     CompilerTest.init
 
   /** Always run with JUnit. */
-  def compileLine(cmdLine: String, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit =
+  def compileLine(cmdLine: String, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = {
+    if (generatePartestFiles)
+      NestUI.echoWarning("WARNING: compileLine will always run with JUnit, no partest files generated.")
     compileArgs(cmdLine.split("\n"), xerrors)
+  }
 
   /** Compiles the given code file.
     *
@@ -73,12 +80,15 @@ abstract class CompilerTest extends DottyTest {
     * @param extension the file extension, .scala by default
     * @param defaultOptions more arguments to the compiler
     */
-  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0, extension: String = ".scala")
+  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0, 
+      extension: String = ".scala", runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     if (!generatePartestFiles || !partestableFile(prefix, fileName, extension, args ++ defaultOptions, xerrors)) {
+      if (runTest)
+        NestUI.echoWarning(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
       compileArgs((s"$prefix$fileName$extension" :: args).toArray, xerrors)
     } else {
-      val kind = testKind(xerrors)
+      val kind = testKind(prefix, xerrors, runTest)
       println(s"generating partest files for test file: $prefix$fileName$extension of kind $kind")
 
       val sourceFile = new JFile(prefix + fileName + extension)
@@ -90,11 +100,17 @@ abstract class CompilerTest extends DottyTest {
       }
     }
   }
+  def runFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0, 
+      extension: String = ".scala")(implicit defaultOptions: List[String]): Unit =
+    compileFile(prefix, fileName, args, xerrors, extension, true)
 
   /** Compiles the code files in the given directory together. If args starts
     * with "-deep", all files in subdirectories (and so on) are included. */
-  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = {
+  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, xerrors: Int = 0, runTest: Boolean = false)
+      (implicit defaultOptions: List[String]): Unit = {
     if (!generatePartestFiles || !partestableDir(prefix, dirName, args ++ defaultOptions, xerrors)) {
+      if (runTest)
+        NestUI.echoWarning(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
       val dir = Directory(prefix + dirName)
       val (files, normArgs) = args match {
         case "-deep" :: args1 => (dir.deepFiles, args1)
@@ -107,18 +123,24 @@ abstract class CompilerTest extends DottyTest {
         case "-deep" :: args1 => (flattenDir(prefix, dirName), args1 ++ defaultOptions, "deep")
         case _ => (new JFile(prefix + dirName), args ++ defaultOptions, "shallow")
       }
-      val kind = testKind(xerrors)
+      val kind = testKind(prefix, xerrors, runTest)
       println(s"generating partest files for test directory ($deep): $prefix$dirName of kind $kind")
 
       if (sourceDir.exists) {
         val firstDest = Directory(DPConfig.testRoot + JFile.separator + kind + JFile.separator + dirName)
-        computeDestAndCopyFiles(sourceDir, firstDest, kind, args ++ defaultOptions, xerrors.toString)
-        if (deep == "deep") sourceDir.delete
+        computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString)
+        if (deep == "deep") {
+          sourceDir.listFiles.foreach(_.delete)
+          sourceDir.delete
+        }
       } else {
         throw new java.io.FileNotFoundException(s"Unable to locate test dir $prefix$dirName")
       }
     }
   }
+  def runDir(prefix: String, dirName: String, args: List[String] = Nil, xerrors: Int = 0)
+      (implicit defaultOptions: List[String]): Unit =
+    compileDir(prefix, dirName, args, xerrors, true)
 
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
@@ -161,10 +183,18 @@ abstract class CompilerTest extends DottyTest {
   }
 
   // In particular, don't copy flags from scalac tests
-  private val extensionsToCopy = scala.collection.immutable.HashSet("scala", "java")
+  private val extensionsToCopy = scala.collection.immutable.HashSet("scala", "java", "check")
 
   /** Determines what kind of test to run. */
-  private def testKind(xerrors: Int) = if (xerrors > 0) "neg" else "pos"
+  private def testKind(prefixDir: String, xerrors: Int, runTest: Boolean) = {
+    if (runTest) "run"
+    else if (xerrors > 0) "neg"
+    else if (prefixDir.endsWith("run" + JFile.separator)) {
+      NestUI.echoWarning("WARNING: test is being run as pos test despite being in a run directory. " + 
+        "Use runFile/runDir instead of compileFile/compileDir to do a run test")
+      "pos"
+    } else "pos"
+  }
 
   /** The three possibilities: no generated sources exist yet, the same sources
     * exist already, different sources exist. */
@@ -184,7 +214,7 @@ abstract class CompilerTest extends DottyTest {
     val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f)
 
     getExisting(dest).isDifferent(source, flags, nerr) match {
-      case NotExists => copyFiles(source, dest, partestOutput, flags, nerr)
+      case NotExists => copyFiles(source, dest, partestOutput, flags, nerr, kind)
       case ExistsSame => // nothing else to do
       case ExistsDifferent =>
         val nextDest = dest.parent / (dest match {
@@ -195,8 +225,8 @@ abstract class CompilerTest extends DottyTest {
     }
   }
   
-  /** Copies the test sources and creates flags, nerr and output files. */
-  private def copyFiles(sourceFile: Path, dest: Path, partestOutput: String, flags: List[String], nerr: String) = {
+  /** Copies the test sources. Creates flags, nerr, check and output files. */
+  private def copyFiles(sourceFile: Path, dest: Path, partestOutput: String, flags: List[String], nerr: String, kind: String) = {
     recCopyFiles(sourceFile, dest)
 
     new JFile(partestOutput).mkdirs
@@ -205,17 +235,24 @@ abstract class CompilerTest extends DottyTest {
       dest.changeExtension("flags").createFile(true).writeAll(flags.mkString(" "))
     if (nerr != "0")
       dest.changeExtension("nerr").createFile(true).writeAll(nerr)
+    sourceFile.changeExtension("check").ifFile({ check => 
+      if (kind == "run")
+        FileManager.copyFile(check.jfile, dest.changeExtension("check").jfile)
+      else
+        NestUI.echoWarning(s"WARNING: ignoring $check for test kind $kind")
+    })
+
   }
 
-  /** Recursively copy over files and directories, excluding extensions that
-    * aren't in extensionsToCopy. */
+  /** Recursively copy over source files and directories, excluding extensions
+    * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
     processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
         dest.parent.jfile.mkdirs
         FileManager.copyFile(sourceFile.jfile, dest.jfile)
       } else {
-        println(s"warning: ignoring $sf")
+        NestUI.echoWarning(s"WARNING: ignoring $sf")
       }
     }, { sdir => 
       dest.jfile.mkdirs
