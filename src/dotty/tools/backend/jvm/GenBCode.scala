@@ -116,7 +116,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
       val caseInsensitively = scala.collection.mutable.Map.empty[String, Symbol]
 
-      def run() {
+      def run(): Unit = {
         while (true) {
           val item = q1.poll
           if (item.isPoison) {
@@ -140,7 +140,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
        *  enqueues them in queue-2.
        *
        */
-      def visit(item: Item1) {
+      def visit(item: Item1) = {
         val Item1(arrivalPos, cd, cunit) = item
         val claszSymbol = cd.symbol
 
@@ -218,7 +218,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         /*BackendStats.timed(BackendStats.methodOptTimer)*/(localOpt.methodOptimizations(classNode))
       }
 
-      def run() {
+      def run(): Unit = {
         while (true) {
           val item = q2.poll
           if (item.isPoison) {
@@ -238,7 +238,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         }
       }
 
-      private def addToQ3(item: Item2) {
+      private def addToQ3(item: Item2) = {
 
         def getByteArray(cn: asm.tree.ClassNode): Array[Byte] = {
           val cw = new CClassWriter(extraProc)
@@ -277,7 +277,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    def run(t: Tree) {
+    def run(t: Tree) = {
       this.tree = t
 
       // val bcodeStart = Statistics.startTimer(BackendStats.bcodeTimer)
@@ -321,7 +321,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      *    (c) dequeue one at a time from queue-2, convert it to byte-array,    place in queue-3
      *    (d) serialize to disk by draining queue-3.
      */
-    private def buildAndSendToDisk(needsOutFolder: Boolean) {
+    private def buildAndSendToDisk(needsOutFolder: Boolean) = {
 
       feedPipeline1()
       // val genStart = Statistics.startTimer(BackendStats.bcodeGenStat)
@@ -337,8 +337,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     }
 
     /* Feed pipeline-1: place all ClassDefs on q1, recording their arrival position. */
-    private def feedPipeline1() {
-      def gen(tree: Tree) {
+    private def feedPipeline1() = {
+      def gen(tree: Tree): Unit = {
         tree match {
           case EmptyTree            => ()
           case PackageDef(_, stats) => stats foreach gen
@@ -353,9 +353,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     }
 
     /* Pipeline that writes classfile representations to disk. */
-    private def drainQ3() {
+    private def drainQ3() = {
 
-      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile) {
+      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile): Unit = {
         if (cfr != null){
           val SubItem3(jclassName, jclassBytes) = cfr
           try {

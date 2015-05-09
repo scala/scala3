@@ -406,8 +406,12 @@ object Symbols {
     }
 
     /** Subclass tests and casts */
-    final def isTerm(implicit ctx: Context): Boolean = denot.isTerm
-    final def isType(implicit ctx: Context): Boolean = denot.isType
+    final def isTerm(implicit ctx: Context): Boolean =
+      (if(isDefinedInCurrentRun) lastDenot else denot).isTerm
+    
+    final def isType(implicit ctx: Context): Boolean =
+      (if(isDefinedInCurrentRun) lastDenot else denot).isType
+
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
 
     final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, s"asTerm called on not-a-Term $this" ); asInstanceOf[TermSymbol] }
