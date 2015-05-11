@@ -13,8 +13,6 @@ import dotty.tools.dotc.transform.SymUtils._
  *  @param  typeMap  A function from Type to Type that gets applied to the
  *                   type of every tree node and to all locally defined symbols,
  *                   followed by the substitution [substFrom := substTo].
- *  @param ownerMap  A function that translates owners of top-level local symbols
- *                   defined in the mapped tree.
  *  @param treeMap   A transformer that translates all encountered subtrees in
  *                   prefix traversal orders
  *  @param oldOwners Previous owners. If a top-level local symbol in the mapped tree
