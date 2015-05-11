@@ -50,7 +50,7 @@ trait TypeTestsCasts {
           if (expr.tpe <:< argType)
             Literal(Constant(true)) withPos tree.pos
           else if (argCls.isPrimitiveValueClass)
-            if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls))
+            if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls)) withPos tree.pos
             else transformIsInstanceOf(expr, defn.boxedClass(argCls).typeRef)
           else argType.dealias match {
             case _: SingletonType =>
