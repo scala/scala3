@@ -64,20 +64,30 @@ object DottyBuild extends Build {
     // enable verbose exception messages for JUnit
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
     testOptions in Test += Tests.Cleanup({ () => if (partestLock != null) partestLock.release }),
-    // when this file is locked, running test generates the files for partest
-    // otherwise it just executes the tests directly
+    // When this file is locked, running test generates the files for partest.
+    // Otherwise it just executes the tests directly. So running two separate
+    // sbt instances might result in unexpected behavior if one does partest
+    // and the other test, since the second still sees the locked file and thus
+    // generates partest files instead of running JUnit tests, but doesn't
+    // partest them.
     lockPartestFile := {
       val partestLockFile = "." + File.separator + "tests" + File.separator + "partest.lock"
       try {
         partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+        if (partestLock == null)
+          throw new RuntimeException("ERROR: sbt partest: file is locked already. Bad things happen when trying to mix test/partest in two concurrent sbt instances.")
       } catch {
-        case ex: java.nio.channels.OverlappingFileLockException => // locked already
+        case ex: java.nio.channels.OverlappingFileLockException => // locked already, Tests.Cleanup didn't run
+          if (partestLock != null)
+            partestLock.release
+          throw new RuntimeException("ERROR: sbt partest: file was still locked, please try again or restart sbt.")
       }
     },
     runPartestRunner <<= Def.taskDyn {
       val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++ 
           getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
       val dottyJars  = "-dottyJars " + jars.length + " " + jars.mkString(" ")
+      // Provide the jars required on the classpath of run tests
       runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars)
     },
 

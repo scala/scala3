@@ -31,7 +31,7 @@ import org.junit.Test
   * - run: compilation succeeds, partest: test run generates the output in
   *        <test>.check. Run tests always need to be:
   *        object Test { def main(args: Array[String]): Unit = ... }
-  *
+  *        Classpath jars can be added to partestDeps in the sbt Build.scala.
   */
 abstract class CompilerTest extends DottyTest {
 

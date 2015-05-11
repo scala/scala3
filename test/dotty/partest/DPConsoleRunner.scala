@@ -14,11 +14,13 @@ import java.net.URLClassLoader
 
 /** Runs dotty partest from the Console, discovering test sources in
   * DPConfig.testRoot that have been generated automatically by
-  * DPPrepJUnitRunner. Use `sbt partest` to run.
+  * DPPrepJUnitRunner. Use `sbt partest` to run. If additional jars are
+  * required by some run tests, add them to partestDeps in the sbt Build.scala.
   */
 object DPConsoleRunner {
   def main(args: Array[String]): Unit = {
     // unfortunately sbt runTask passes args as single string
+    // extra jars for run tests are passed with -dottyJars <count> <jar1> <jar2> ...
     val jarFinder = """-dottyJars (\d*) (.*)""".r
     val (jarList, otherArgs) = args.toList.partition(jarFinder.findFirstIn(_).isDefined)
     val extraJars = jarList match {
