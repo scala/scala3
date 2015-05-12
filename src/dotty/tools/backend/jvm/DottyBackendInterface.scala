@@ -307,13 +307,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
   private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
                         (innerClasesStore: bcodeStore.BCInnerClassGen) = {
-    //for ((name, value) <- assocs) { // dotty deviation, does not work
-
-    for (nv <- assocs) {
-      val name = nv._1
-      val value = nv._2
+    for ((name, value) <- assocs)
       emitArgument(av, name.toString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
-    }
     av.visitEnd()
   }
 
