@@ -1,0 +1,50 @@
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> 2 ; 3
+<console>:7: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              2 ;;
+              ^
+res0: Int = 3
+
+scala> { 2 ; 3 }
+<console>:8: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              { 2 ; 3 }
+                ^
+res1: Int = 3
+
+scala> 5 ; 10 ; case object Cow ; 20 ; class Moo { override def toString = "Moooooo" } ; 30 ; def bippy = {
+  1 +
+  2 +
+  3 } ; bippy+88+11
+<console>:7: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              5 ; 10 ; case object Cow ; 20 ; class Moo { override def toString = "Moooooo" } ; 30 ; def bippy = {
+              ^
+<console>:7: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              5 ; 10 ; case object Cow ; 20 ; class Moo { override def toString = "Moooooo" } ; 30 ; def bippy = {
+                  ^
+<console>:7: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              5 ; 10 ; case object Cow ; 20 ; class Moo { override def toString = "Moooooo" } ; 30 ; def bippy = {
+                                         ^
+<console>:7: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+              5 ; 10 ; case object Cow ; 20 ; class Moo { override def toString = "Moooooo" } ; 30 ; def bippy = {
+                                                                                                ^
+defined object Cow
+defined class Moo
+bippy: Int
+res2: Int = 105
+
+scala> 
+
+scala> object Bovine { var x: List[_] = null } ; case class Ruminant(x: Int) ; bippy * bippy * bippy
+defined object Bovine
+defined class Ruminant
+res3: Int = 216
+
+scala> Bovine.x = List(Ruminant(5), Cow, new Moo)
+Bovine.x: List[Any] = List(Ruminant(5), Cow, Moooooo)
+
+scala> Bovine.x
+res4: List[Any] = List(Ruminant(5), Cow, Moooooo)
+
+scala> :quit

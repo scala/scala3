@@ -1,0 +1,26 @@
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> :paste
+// Entering paste mode (ctrl-D to finish)
+
+
+class Dingus
+{
+  private val x = 5
+  def y = Dingus.x * 2
+}
+object Dingus
+{
+  private val x = 55
+}
+
+val x = (new Dingus).y
+
+// Exiting paste mode, now interpreting.
+
+defined class Dingus
+defined object Dingus
+x: Int = 110
+
+scala> :quit

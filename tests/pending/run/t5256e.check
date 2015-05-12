@@ -1,0 +1,6 @@
+class A
+Test.C.A
+AnyRef {
+  def <init>(): C.this.A
+  def foo: Nothing
+}

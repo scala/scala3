@@ -1,0 +1,24 @@
+Bar.type, t=TypeRef, s=type Bar.type
+Bar, t=TypeRef, s=type Bar
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+() => Test.ToS, t=TypeRef, s=trait Function0
+() => Test.ToS, t=TypeRef, s=trait Function0
+$anon, t=TypeRef, s=type $anon
+$anon, t=TypeRef, s=type $anon
+List[AnyRef{type T1}#T1], t=TypeRef, s=class List
+List[Seq[Int]], t=TypeRef, s=class List
+List[Seq[U forSome { type U <: Int }]], t=TypeRef, s=class List
+Bar.type, t=TypeRef, s=type Bar.type
+Bar, t=TypeRef, s=type Bar
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+Test.ToS, t=RefinedType, s=<refinement of Test.ToS>
+() => Test.ToS, t=TypeRef, s=trait Function0
+() => Test.ToS, t=TypeRef, s=trait Function0
+$anon, t=TypeRef, s=type $anon
+$anon, t=TypeRef, s=type $anon
+List[AnyRef{type T1}#T1], t=TypeRef, s=class List
+List[Seq[Int]], t=TypeRef, s=class List
+List[Seq[U forSome { type U <: Int }]], t=TypeRef, s=class List

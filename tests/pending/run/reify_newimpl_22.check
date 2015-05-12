@@ -1,0 +1,25 @@
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe._
+
+scala> import scala.tools.reflect.ToolBox
+import scala.tools.reflect.ToolBox
+
+scala> import scala.tools.reflect.Eval
+import scala.tools.reflect.Eval
+
+scala> {
+  val x = 2
+  val code = reify {
+    x
+  }
+  println(code.eval)
+}
+<console>:15: free term: Ident(TermName("x")) defined by res0  in <console>:14:21
+                val code = reify {
+                                 ^
+2
+
+scala> :quit

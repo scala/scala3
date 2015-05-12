@@ -1,0 +1,5 @@
+warning: there was one deprecation warning; re-run with -deprecation for details
+delayed init
+new foo(1, 2)
+delayed init
+new foo(b = 2, a = 1)

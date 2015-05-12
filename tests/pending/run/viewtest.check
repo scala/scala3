@@ -1,0 +1,12 @@
+SeqViewZ(...)
+ys defined
+mapping 1
+2
+SeqViewMS(...)
+mapping 3
+4
+SeqViewM(...)
+mapping 1
+mapping 2
+mapping 3
+List(2, 3, 4)

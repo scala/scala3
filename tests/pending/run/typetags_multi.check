@@ -1,0 +1,5 @@
+TypeTag[Int]
+TypeTag[Array[Int]]
+TypeTag[Array[Array[Int]]]
+TypeTag[Array[Array[Array[Int]]]]
+TypeTag[Array[Array[Array[Array[Int]]]]]
