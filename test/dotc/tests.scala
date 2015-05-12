@@ -45,7 +45,8 @@ class tests extends CompilerTest {
   val coreDir   = dotcDir + "core/"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
-  @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
+// This directory doesn't exist anymore
+// @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
 
   //@Test def pickle_core = compileDir(dotcDir, "core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
@@ -148,8 +149,8 @@ class tests extends CompilerTest {
   @Test def dotc_config = compileDir(dotcDir, "config")
   @Test def dotc_core = compileDir(dotcDir, "core")("-Yno-double-bindings" :: allowDeepSubtypes)// twice omitted to make tests run faster
 
-
-  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
+// This directory doesn't exist anymore
+//  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
 
   @Test def dotc_transform = compileDir(dotcDir, "transform")// twice omitted to make tests run faster
 
