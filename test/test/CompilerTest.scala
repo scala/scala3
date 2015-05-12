@@ -14,9 +14,9 @@ import org.junit.Test
 /** This class has two modes: it can directly run compiler tests, or it can
   * generate the necessary file structure for partest in the directory
   * DPConfig.testRoot. Both modes are regular JUnit tests. Which mode is used
-  * depends on the existence of the tests/runPartest.flag file which is created
-  * by sbt to trigger partest generation. Sbt can then run partest on the
-  * generated sources.
+  * depends on the existence of the tests/locks/partest-ppid.lock file which is
+  * created by sbt to trigger partest generation. Sbt will then run partest on
+  * the generated sources.
   *
   * Through overriding the partestableXX methods, tests can always be run as
   * JUnit compiler tests. Run tests cannot be run by JUnit, only by partest.
@@ -45,18 +45,20 @@ abstract class CompilerTest extends DottyTest {
   def partestableList(testName: String, files: List[String], args: List[String], xerrors: Int) = true
 
   val generatePartestFiles = {
-    val partestLockFile = "." + JFile.separator + "tests" + JFile.separator + "partest.lock"
-    try {
-      val partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
-      if (partestLock != null) { // file not locked by sbt -> don't generate partest
-        partestLock.release
-        false
-      } else true
-    } catch {
-      // if sbt doesn't fork in Test, the tryLock request will throw instead of
-      // returning null, because locks are per JVM, not per thread
-      case ex: java.nio.channels.OverlappingFileLockException => true
-    }
+    /* Because we fork in test, the JVM in which this JUnit test runs has a
+     * different pid from the one that started the partest. But the forked VM
+     * receives the pid of the parent as system property. If the lock file
+     * exists, the parent is requesting partest generation. This mechanism
+     * allows one sbt instance to run test (JUnit only) and another partest.
+     * We cannot run two instances of partest at the same time, because they're
+     * writing to the same directories. The sbt lock file generation prevents
+     * this.
+     */
+    val pid = System.getProperty("partestParentID")
+    if (pid == null)
+      false
+    else
+      new JFile("." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
   }
 
   // Delete generated files from previous run

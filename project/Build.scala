@@ -17,8 +17,6 @@ object DottyBuild extends Build {
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
-  var partestLock: FileLock = null
-
   val defaults = Defaults.defaultSettings ++ Seq(
     scalaVersion in Global := "2.11.5",
     version in Global := "0.1-SNAPSHOT",
@@ -63,25 +61,18 @@ object DottyBuild extends Build {
 
     // enable verbose exception messages for JUnit
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
-    testOptions in Test += Tests.Cleanup({ () => if (partestLock != null) partestLock.release }),
-    // When this file is locked, running test generates the files for partest.
-    // Otherwise it just executes the tests directly. So running two separate
-    // sbt instances might result in unexpected behavior if one does partest
-    // and the other test, since the second still sees the locked file and thus
-    // generates partest files instead of running JUnit tests, but doesn't
-    // partest them.
+    testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
+
     lockPartestFile := {
-      val partestLockFile = "." + File.separator + "tests" + File.separator + "partest.lock"
-      try {
-        partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
-        if (partestLock == null)
-          throw new RuntimeException("ERROR: sbt partest: file is locked already. Bad things happen when trying to mix test/partest in two concurrent sbt instances.")
-      } catch {
-        case ex: java.nio.channels.OverlappingFileLockException => // locked already, Tests.Cleanup didn't run
-          if (partestLock != null)
-            partestLock.release
-          throw new RuntimeException("ERROR: sbt partest: file was still locked, please try again or restart sbt.")
-      }
+      // When this file is present, running `test` generates the files for
+      // partest. Otherwise it just executes the tests directly.
+      val lockDir = partestLockFile.getParentFile
+      lockDir.mkdirs
+      // Cannot have concurrent partests as they write to the same directory.
+      if (lockDir.list.size > 0)
+        throw new RuntimeException("ERROR: sbt partest: another partest is already running, pid in lock file: " + lockDir.list.toList.mkString(" "))
+      partestLockFile.createNewFile
+      partestLockFile.deleteOnExit
     },
     runPartestRunner <<= Def.taskDyn {
       val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++ 
@@ -99,29 +90,29 @@ object DottyBuild extends Build {
 
     // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
     javaOptions <++= (managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
-       // put the Scala {library, reflect} in the classpath
-       val path = for {
-         file <- attList.map(_.data)
-         path = file.getAbsolutePath
-       } yield "-Xbootclasspath/p:" + path
-       // dotty itself needs to be in the bootclasspath
-       val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
-       // System.err.println("BOOTPATH: " + fullpath)
+      // put the Scala {library, reflect} in the classpath
+      val path = for {
+        file <- attList.map(_.data)
+        path = file.getAbsolutePath
+      } yield "-Xbootclasspath/p:" + path
+      // dotty itself needs to be in the bootclasspath
+      val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
+      // System.err.println("BOOTPATH: " + fullpath)
 
-       val travis_build = // propagate if this is a travis build
-         if (sys.props.isDefinedAt(TRAVIS_BUILD))
-           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}") ::: travisMemLimit
-         else
-           List()
-
-       val tuning =
-         if (sys.props.isDefinedAt("Oshort"))
-           // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
-           List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
+      val travis_build = // propagate if this is a travis build
+        if (sys.props.isDefinedAt(TRAVIS_BUILD))
+          List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}") ::: travisMemLimit
         else
           List()
 
-      tuning ::: agentOptions ::: travis_build ::: fullpath
+      val tuning =
+        if (sys.props.isDefinedAt("Oshort"))
+          // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+          List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
+        else
+          List()
+
+      ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
     }
   ) ++ addCommandAlias("partest", ";test:compile;lockPartestFile;test:test;runPartestRunner")
 
@@ -174,10 +165,14 @@ object DottyBuild extends Build {
   lazy val benchmarks = Project(id = "dotty-bench", settings = benchmarkSettings,
     base = file("bench")) dependsOn(dotty % "compile->test")
 
-  lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the file lock on  ./tests/partest.lock")
-  lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partests")
-  lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
+  // Partest tasks
+  lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
+  val partestLockFile = new File("." + File.separator + "tests" + File.separator + "locks" + File.separator + s"partest-$pid.lock")
+  val pid = java.lang.Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")(0))
 
+  lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partest")
+
+  lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
   def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
     case Some(home) => 
       modules.map({ module => 

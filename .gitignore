@@ -28,4 +28,5 @@ classes/
 
 # Partest
 tests/partest-generated/
+tests/locks/
 /test-classes/
