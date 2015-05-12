@@ -35,6 +35,7 @@ class tests extends CompilerTest {
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val negDir        = testsDir + "neg/"
+  val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
 
   val sourceDir = "./src/"
@@ -44,7 +45,8 @@ class tests extends CompilerTest {
   val coreDir   = dotcDir + "core/"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
-  @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
+// This directory doesn't exist anymore
+// @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
 
   //@Test def pickle_core = compileDir(dotcDir, "core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
@@ -136,14 +138,19 @@ class tests extends CompilerTest {
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 
-  @Test def dotty = compileDir(toolsDir, "", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
+  @Test def run_hello = runFile(runDir, "hello")
+  @Test def run_lazyVals = runFile(runDir, "lazyVals")
+
+
+  @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
+
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
   @Test def dotc_core = compileDir(dotcDir, "core")("-Yno-double-bindings" :: allowDeepSubtypes)// twice omitted to make tests run faster
 
-
-  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
+// This directory doesn't exist anymore
+//  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
 
   @Test def dotc_transform = compileDir(dotcDir, "transform")// twice omitted to make tests run faster
 
