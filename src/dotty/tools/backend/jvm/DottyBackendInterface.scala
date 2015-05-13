@@ -554,7 +554,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def fullName: String = sym.showFullName
     def simpleName: Name = sym.name
     def javaSimpleName: Name = toDenot(sym).name // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: Name = toDenot(sym).fullNameSeparated('/') // addModuleSuffix(fullNameInternal('/'))
+    def javaBinaryName: Name = toDenot(sym).fullNameSeparated("/") // addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
     def rawname: Name = sym.name // todo ????

@@ -6,7 +6,6 @@ import DenotTransformers.SymTransformer
 import Phases.Phase
 import Contexts.Context
 import Flags._
-import SymUtils._
 import SymDenotations.SymDenotation
 import collection.mutable
 import TreeTransforms.MiniPhaseTransform
@@ -19,7 +18,7 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
       ref.copySymDenotation(
-        name = ref.flatName(),
+        name = ref.flatName,
         owner = ref.enclosingPackageClass)
     }
     else ref
