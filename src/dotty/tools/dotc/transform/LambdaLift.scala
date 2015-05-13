@@ -66,7 +66,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     /** A map from local methods and classes to the owners to which they will be lifted as members.
      *  For methods and classes that do not have any dependencies this will be the enclosing package.
      *  symbols with packages as lifted owners will subsequently represented as static
-     *  members of their toplevel class.
+     *  members of their toplevel class, unless their enclosing class was already static.
      */
     private val liftedOwner = new HashMap[Symbol, Symbol]
 
@@ -288,7 +288,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def liftLocals()(implicit ctx: Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) (local.topLevelClass, JavaStatic)
+          if (lOwner is Package)  {
+            val encClass = local.enclosingClass
+            val topClass = local.topLevelClass
+              // member of a static object
+            if (encClass.isStatic && encClass.isProperlyContainedIn(topClass)) {
+               // though the second condition seems weird, it's not true for symbols which are defined in some
+               // weird combinations of super calls.
+              (encClass, EmptyFlags)
+            } else
+              (topClass, JavaStatic)
+          }
           else (lOwner, EmptyFlags)
         local.copySymDenotation(
           owner = newOwner,
