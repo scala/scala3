@@ -36,14 +36,19 @@ class C extends A {
 object Test extends App {
   val b = new B
   val c0 = new C
-  val c = new { override val c = c0 } with C
+  val c = new C {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+override val c = c0
+// END copied early initializers
+}
 
   assert((new b.J).bar eq b)
   assert((new b.K).bar eq b)
   assert((new b.L).bar eq b)
   assert((new c.M).bar eq c)
 
-  def checkOuterFields[C: ClassTag](expected: Int) {
+  def checkOuterFields[C: ClassTag](expected: Int): Unit = {
     val cls = implicitly[ClassTag[C]].runtimeClass
     val outerFields = cls.getDeclaredFields().filter(_.getName.contains("$outer"))
     assert(outerFields.size == expected, outerFields.map(_.getName))

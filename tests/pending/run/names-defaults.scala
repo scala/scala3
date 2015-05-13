@@ -24,7 +24,7 @@ object Test extends App {
 
   // anonymous functions
   {
-    def doMod(f: Int => Unit) { f(20) }
+    def doMod(f: Int => Unit): Unit = { f(20) }
     var var1 = 0
     doMod(var1 = _)
     println(var1)
@@ -224,14 +224,14 @@ object Test extends App {
 
   // implicits + defaults
   {
-    implicit val implInt = 10101
+    implicit val implInt: Int = 10101
     println(test8())
   }
 
   println(test9)
 
   {
-    implicit val implString = "blublu"
+    implicit val implString: String = "blublu"
     println(test9)
   }
 
@@ -265,7 +265,7 @@ object Test extends App {
 
   // #2290
   def spawn(a: Int, b: => Unit) = { () }
-  def t {
+  def t: Unit = {
     spawn(b = { val ttt = 1; ttt }, a = 0)
   }
 
@@ -276,8 +276,8 @@ object Test extends App {
   case class A2390[T](x: Int) { def copy(a: Int)(b: Int = 0) = 0 }
 
   // #2489
-  class A2489 { def foo { def bar(a: Int = 1) = a; bar(); val u = 0 } }
-  class A2489x2 { def foo { val v = 10; def bar(a: Int = 1, b: Int = 2) = a; bar(); val u = 0 } }
+  class A2489 { def foo: Unit = { def bar(a: Int = 1) = a; bar(); val u = 0 } }
+  class A2489x2 { def foo: Unit = { val v = 10; def bar(a: Int = 1, b: Int = 2) = a; bar(); val u = 0 } }
 
   // a bug reported on the mailing lists, related to #2489
   class Test2489 {
@@ -480,13 +480,13 @@ class A2 {
 // using names / defaults in self constructor call.
 // overloading resolution: calling A3("string") picks the second, method with default is always less specific.
 class A3(x: String, y: Int = 10) {
-  def this(a: Object) {
+  def this(a: Object) = {
     this(y = 10, x = a.toString())
     println(x)
   }
 }
 class A4(x: String, y: Int = 11) {
-  def this(b: Double, sep: String) {
+  def this(b: Double, sep: String) = {
     this(sep + b + sep)
     println(y)
   }

@@ -12,7 +12,7 @@ class A extends StackProxy[Int] {
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val a = new A
 
     a push 3

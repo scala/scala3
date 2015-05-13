@@ -6,7 +6,7 @@ import ExecutionContext.Implicits.global
 // WrappedProperties#systemProperties iterated directly over the mutable
 // global system properties map.
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val tries = 1000 // YMMV
     val compiler = Future {
       for(_ <- 1 to tries) new Settings(_ => {})

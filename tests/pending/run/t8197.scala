@@ -3,7 +3,7 @@ class A
 class B
 
 class Foo(val x: A = null) {
-  def this(bla: B*) {
+  def this(bla: B*) = {
     this(new A)
   }
 }

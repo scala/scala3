@@ -2,7 +2,7 @@ import collection._
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val gm: GenMap[Int, Int] = GenMap(0 -> 0, 1 -> 1).par
 
     // ops

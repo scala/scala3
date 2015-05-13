@@ -4,8 +4,8 @@ object Test extends App {
   val n = 1000
   val rng = new scala.util.Random()
   val tasks = List(
-    () => typeOf[List[Int]] <:< typeOf[List[T] forSome { type T }],
-    () => typeOf[List[T] forSome { type T }] <:< typeOf[List[Any]],
+    () => typeOf[List[Int]] <:< typeOf[List[_]],
+    () => typeOf[List[_]] <:< typeOf[List[Any]],
     () => typeOf[Map[Int, Object]] <:< typeOf[Iterable[(Int, String)]],
     () => typeOf[Expr[Any] { val mirror: rootMirror.type }] <:< typeOf[Expr[List[List[List[Int]]]]{ val mirror: rootMirror.type }])
   val perms = tasks.permutations.toList

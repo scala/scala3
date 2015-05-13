@@ -50,8 +50,8 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val imp1 = Numeric.BigDecimalAsIfIntegral
-    implicit val imp2 = Numeric.DoubleAsIfIntegral
+    implicit val imp1: Numeric.BigDecimalAsIfIntegral.type = Numeric.BigDecimalAsIfIntegral
+    implicit val imp2: Numeric.DoubleAsIfIntegral.type = Numeric.DoubleAsIfIntegral
 
     val _grs = List[GR[_]](
       GR(BigDecimal(5.0)),

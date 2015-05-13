@@ -7,7 +7,7 @@ class D
 
 
 object Test extends App {
-  def checkId(cls: Class[_]) {
+  def checkId(cls: Class[_]): Unit = {
     val id = cls.getDeclaredField("serialVersionUID").get(null)
     assert(id == 42, (cls, id))  
   }

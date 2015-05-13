@@ -4,7 +4,7 @@ object Test extends App {
   def mapSucc[Repr, That](s: FilterMonadic[Int, Repr])(implicit cbf: CanBuildFrom[Repr, Int, That]) = s map (_ + 1)
   def flatMapId[T, Repr, That](s: FilterMonadic[T, Repr])(implicit cbf: CanBuildFrom[Repr, T, That]) = s flatMap (Seq(_))
 
-  def testStreamPred(s: Stream[Int])(p: Int => Boolean) {
+  def testStreamPred(s: Stream[Int])(p: Int => Boolean): Unit = {
     val res1 = s withFilter p
     val res2 = s filter p
 
@@ -23,7 +23,7 @@ object Test extends App {
     assert((res1 map identity).toSeq == res2.toSeq)
   }
 
-  def testStream(s: Stream[Int]) {
+  def testStream(s: Stream[Int]): Unit = {
     testStreamPred(s)(_ => false)
     testStreamPred(s)(_ => true)
     testStreamPred(s)(_ % 2 == 0)

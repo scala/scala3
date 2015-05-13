@@ -15,7 +15,7 @@ object Test {
   }
 
   def f1 = {
-    implicit val myHandler = standardHandler
+    implicit val myHandler: Test.Handler[String] = standardHandler
     println(fn(Nil.head))
     println(fn(null.toString))
   }

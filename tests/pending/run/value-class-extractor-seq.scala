@@ -44,7 +44,7 @@ object Bip {
 object Test {
   def f(x: Any) = x match {
     case Bip(a, b, c)      => s"Bip($a, $b, $c)"
-    case Bip(a, b, c @ _*) => s"Bip($a, $b, c @ ${stringOf(c)}: _*)"
+    case Bip(a, b, c : _*) => s"Bip($a, $b, c @ ${stringOf(c)}: _*)"
     case _                 => "" + x.getClass
   }
 

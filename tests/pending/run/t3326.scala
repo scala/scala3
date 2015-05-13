@@ -25,12 +25,12 @@ import scala.math.Ordering
  */
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testCollectionSorted()
     testImmutableSorted()
   }
 
-  def testCollectionSorted() {
+  def testCollectionSorted(): Unit = {
     import collection._
     val order = implicitly[Ordering[Int]].reverse
     var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
@@ -51,7 +51,7 @@ object Test {
     println(m1 + (3 -> "?"))
   }
 
-  def testImmutableSorted() {
+  def testImmutableSorted(): Unit = {
     import collection.immutable._
     val order = implicitly[Ordering[Int]].reverse
     var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)

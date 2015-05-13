@@ -15,7 +15,7 @@ object Test {
     // chi square test
     val groups = 10
     val hits = new Array[Int](groups)
-    def hit(hc: Int) {
+    def hit(hc: Int): Unit = {
       val bucket = math.abs(hc) / (Int.MaxValue / groups)
       hits(bucket) += 1
     }

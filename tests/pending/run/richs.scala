@@ -16,7 +16,7 @@ trait RichTest {
   def run: Unit
 }
 object RichCharTest1 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println('\40'.isWhitespace)
     println('\011'.isWhitespace)
@@ -45,7 +45,7 @@ object RichCharTest1 extends RichTest {
 object RichIntTest extends RichTest {
   private val n = 10
   private val m = -2
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println(length(0 until n))
     println(length(0 to n))
@@ -63,7 +63,7 @@ object RichIntTest extends RichTest {
   }
 }
 object RichStringTest1 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println("s1: " + s1)
     println("s2: " + s2)
@@ -73,7 +73,7 @@ object RichStringTest1 extends RichTest {
   }
 }
 object RichStringTest2 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     Console.print("s1: "); s1.lines foreach println
     Console.print("s2: "); s2.lines foreach println
@@ -83,7 +83,7 @@ object RichStringTest2 extends RichTest {
   }
 }
 object RichStringTest3 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println("s1: " + s1.stripLineEnd)
     println("s2: " + s2.stripLineEnd)
@@ -93,7 +93,7 @@ object RichStringTest3 extends RichTest {
   }
 }
 object RichStringTest4 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println("s1: " + s1.stripMargin)
     println("s2: " + s2.stripMargin)
@@ -103,7 +103,7 @@ object RichStringTest4 extends RichTest {
   }
 }
 object RichStringTest5 extends RichTest {
-  def run {
+  def run: Unit = {
     println("\n" + getObjectName + ":")
     println("s1: " + s3.stripMargin('#'))
     println("s2: " + s3.stripMargin('#'))
@@ -113,7 +113,7 @@ object RichStringTest5 extends RichTest {
   }
 }
 object RichStringTest6 extends RichTest {
-  def run {
+  def run: Unit = {
     println("a:b:c:d".split(':').toList)
     println("a.b.c.d".split('.').toList)
     println("a$b$c$d".split('$').toList)
@@ -125,7 +125,7 @@ object RichStringTest6 extends RichTest {
 }
 /** xxx */
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     RichCharTest1.run
     //RichCharTest2.run
     RichIntTest.run

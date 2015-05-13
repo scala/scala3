@@ -1,8 +1,11 @@
 class Foo(val bar : () => String);
 
-class IP extends {
-  val baz = "bar";
-} with Foo(() => baz);
+class IP extends Foo(() => baz) {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val baz = "bar"
+// END copied early initializers
+};
 
 object Test extends App{
   (new IP).bar();

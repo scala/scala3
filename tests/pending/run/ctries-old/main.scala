@@ -8,7 +8,7 @@
 @deprecated("Suppress warnings", since="2.11")
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     ConcurrentMapSpec.test()
     IteratorSpec.test()
     LNodeSpec.test()
@@ -19,17 +19,17 @@ object Test {
 
 trait Spec {
 
-  implicit def implicitously = scala.language.implicitConversions
-  implicit def reflectively  = scala.language.reflectiveCalls
+  implicit def implicitously: languageFeature.implicitConversions = scala.language.implicitConversions
+  implicit def reflectively : languageFeature.reflectiveCalls = scala.language.reflectiveCalls
 
-  implicit def str2ops(s: String) = new {
-    def in[U](body: =>U) {
+  implicit def str2ops(s: String): AnyRef{def in[U](body: => U): Unit} = new {
+    def in[U](body: =>U): Unit = {
       // just execute body
       body
     }
   }
 
-  implicit def any2ops(a: Any) = new {
+  implicit def any2ops(a: Any): AnyRef{def shouldEqual(other: Any): Unit} = new {
     def shouldEqual(other: Any) = assert(a == other)
   }
 

@@ -29,7 +29,7 @@ object Test  {
     println("Evaluation 1: " + eval1)
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     println("Testing standard cons.")
     testCons(Stream.cons.apply(_, _))
   }

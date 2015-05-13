@@ -2,7 +2,7 @@ import scala.collection.mutable.LinkedList
 import java.util.NoSuchElementException
 
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val ll = LinkedList(1, 2, 3)
     ll.insert(LinkedList(0))
     println(ll)

@@ -4,7 +4,7 @@
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val lst = List(1, 2, 3, 4, 5)
 
     assert(lst.scanLeft(0)(_ + _) == List(0, 1, 3, 6, 10, 15))

@@ -1,7 +1,7 @@
 
 
 object Test {
-  def ser[T](s: Stream[T]) {
+  def ser[T](s: Stream[T]): Unit = {
     val bos = new java.io.ByteArrayOutputStream()
     val oos = new java.io.ObjectOutputStream(bos)
     oos.writeObject(s)
@@ -12,7 +12,7 @@ object Test {
     println(obj.asInstanceOf[Seq[T]].toList)
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     ser(Stream(1, 2, 3))
     ser(Stream(1))
     ser(Stream())

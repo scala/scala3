@@ -3,7 +3,7 @@ import scala.language._
 
 object Test {
   def whatis[T: TypeTag](x: T) = typeOf[T]
-  def sshow(label: String, xs: Traversable[Any]) {
+  def sshow(label: String, xs: Traversable[Any]): Unit = {
     println("==== " + label + " ====\n")
     xs.toList.map("" + _).sorted foreach println
     println("\n")
@@ -13,434 +13,690 @@ object Test {
   type R2_0 = R1_0 { val y: (P) with (P) }
   type R1_1 = (   Any { val y: P }) with (   Any { val y: Q })
   type R2_1 = R1_1 { val y: (P) with (Q) }
-  type R1_2 = (   Any { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_2 = R1_2 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_2 = (   Any { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_2 = R1_2 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_3 = (   Any { val y: P }) with (     A { val y: P })
   type R2_3 = R1_3 { val y: (P) with (P) }
   type R1_4 = (   Any { val y: P }) with (     A { val y: Q })
   type R2_4 = R1_4 { val y: (P) with (Q) }
-  type R1_5 = (   Any { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_5 = R1_5 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_5 = (   Any { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_5 = R1_5 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_6 = (   Any { val y: P }) with (     B { val y: P })
   type R2_6 = R1_6 { val y: (P) with (P) }
   type R1_7 = (   Any { val y: P }) with (     B { val y: Q })
   type R2_7 = R1_7 { val y: (P) with (Q) }
-  type R1_8 = (   Any { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_8 = R1_8 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_8 = (   Any { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_8 = R1_8 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_9 = (   Any { val y: P }) with (     C { val y: P })
   type R2_9 = R1_9 { val y: (P) with (P) }
   type R1_10 = (   Any { val y: P }) with (     C { val y: Q })
   type R2_10 = R1_10 { val y: (P) with (Q) }
-  type R1_11 = (   Any { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_11 = R1_11 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_11 = (   Any { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_11 = R1_11 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_12 = (   Any { val y: Q }) with (   Any { val y: P })
   type R2_12 = R1_12 { val y: (Q) with (P) }
   type R1_13 = (   Any { val y: Q }) with (   Any { val y: Q })
   type R2_13 = R1_13 { val y: (Q) with (Q) }
-  type R1_14 = (   Any { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_14 = R1_14 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_14 = (   Any { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_14 = R1_14 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_15 = (   Any { val y: Q }) with (     A { val y: P })
   type R2_15 = R1_15 { val y: (Q) with (P) }
   type R1_16 = (   Any { val y: Q }) with (     A { val y: Q })
   type R2_16 = R1_16 { val y: (Q) with (Q) }
-  type R1_17 = (   Any { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_17 = R1_17 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_17 = (   Any { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_17 = R1_17 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_18 = (   Any { val y: Q }) with (     B { val y: P })
   type R2_18 = R1_18 { val y: (Q) with (P) }
   type R1_19 = (   Any { val y: Q }) with (     B { val y: Q })
   type R2_19 = R1_19 { val y: (Q) with (Q) }
-  type R1_20 = (   Any { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_20 = R1_20 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_20 = (   Any { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_20 = R1_20 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_21 = (   Any { val y: Q }) with (     C { val y: P })
   type R2_21 = R1_21 { val y: (Q) with (P) }
   type R1_22 = (   Any { val y: Q }) with (     C { val y: Q })
   type R2_22 = R1_22 { val y: (Q) with (Q) }
-  type R1_23 = (   Any { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_23 = R1_23 { val y: (Q) with (R forSome { type R <: P with Q }) }
-  type R1_24 = (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
-  type R2_24 = R1_24 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_25 = (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
-  type R2_25 = R1_25 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_26 = (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_26 = R1_26 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_27 = (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
-  type R2_27 = R1_27 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_28 = (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
-  type R2_28 = R1_28 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_29 = (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_29 = R1_29 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_30 = (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
-  type R2_30 = R1_30 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_31 = (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
-  type R2_31 = R1_31 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_32 = (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_32 = R1_32 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_33 = (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
-  type R2_33 = R1_33 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_34 = (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
-  type R2_34 = R1_34 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_35 = (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_35 = R1_35 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
+  type R1_23 = (   Any { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_23 = R1_23 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_24 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
+  type R2_24 = R1_24 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_25 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
+  type R2_25 = R1_25 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_26 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_26 = R1_26 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_27 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
+  type R2_27 = R1_27 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_28 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
+  type R2_28 = R1_28 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_29 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_29 = R1_29 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_30 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
+  type R2_30 = R1_30 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_31 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
+  type R2_31 = R1_31 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_32 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_32 = R1_32 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_33 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
+  type R2_33 = R1_33 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_34 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
+  type R2_34 = R1_34 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_35 = (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_35 = R1_35 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
   type R1_36 = (     A { val y: P }) with (   Any { val y: P })
   type R2_36 = R1_36 { val y: (P) with (P) }
   type R1_37 = (     A { val y: P }) with (   Any { val y: Q })
   type R2_37 = R1_37 { val y: (P) with (Q) }
-  type R1_38 = (     A { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_38 = R1_38 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_38 = (     A { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_38 = R1_38 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_39 = (     A { val y: P }) with (     A { val y: P })
   type R2_39 = R1_39 { val y: (P) with (P) }
   type R1_40 = (     A { val y: P }) with (     A { val y: Q })
   type R2_40 = R1_40 { val y: (P) with (Q) }
-  type R1_41 = (     A { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_41 = R1_41 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_41 = (     A { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_41 = R1_41 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_42 = (     A { val y: P }) with (     B { val y: P })
   type R2_42 = R1_42 { val y: (P) with (P) }
   type R1_43 = (     A { val y: P }) with (     B { val y: Q })
   type R2_43 = R1_43 { val y: (P) with (Q) }
-  type R1_44 = (     A { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_44 = R1_44 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_44 = (     A { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_44 = R1_44 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_45 = (     A { val y: P }) with (     C { val y: P })
   type R2_45 = R1_45 { val y: (P) with (P) }
   type R1_46 = (     A { val y: P }) with (     C { val y: Q })
   type R2_46 = R1_46 { val y: (P) with (Q) }
-  type R1_47 = (     A { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_47 = R1_47 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_47 = (     A { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_47 = R1_47 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_48 = (     A { val y: Q }) with (   Any { val y: P })
   type R2_48 = R1_48 { val y: (Q) with (P) }
   type R1_49 = (     A { val y: Q }) with (   Any { val y: Q })
   type R2_49 = R1_49 { val y: (Q) with (Q) }
-  type R1_50 = (     A { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_50 = R1_50 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_50 = (     A { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_50 = R1_50 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_51 = (     A { val y: Q }) with (     A { val y: P })
   type R2_51 = R1_51 { val y: (Q) with (P) }
   type R1_52 = (     A { val y: Q }) with (     A { val y: Q })
   type R2_52 = R1_52 { val y: (Q) with (Q) }
-  type R1_53 = (     A { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_53 = R1_53 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_53 = (     A { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_53 = R1_53 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_54 = (     A { val y: Q }) with (     B { val y: P })
   type R2_54 = R1_54 { val y: (Q) with (P) }
   type R1_55 = (     A { val y: Q }) with (     B { val y: Q })
   type R2_55 = R1_55 { val y: (Q) with (Q) }
-  type R1_56 = (     A { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_56 = R1_56 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_56 = (     A { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_56 = R1_56 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_57 = (     A { val y: Q }) with (     C { val y: P })
   type R2_57 = R1_57 { val y: (Q) with (P) }
   type R1_58 = (     A { val y: Q }) with (     C { val y: Q })
   type R2_58 = R1_58 { val y: (Q) with (Q) }
-  type R1_59 = (     A { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_59 = R1_59 { val y: (Q) with (R forSome { type R <: P with Q }) }
-  type R1_60 = (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
-  type R2_60 = R1_60 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_61 = (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
-  type R2_61 = R1_61 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_62 = (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_62 = R1_62 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_63 = (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
-  type R2_63 = R1_63 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_64 = (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
-  type R2_64 = R1_64 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_65 = (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_65 = R1_65 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_66 = (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
-  type R2_66 = R1_66 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_67 = (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
-  type R2_67 = R1_67 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_68 = (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_68 = R1_68 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_69 = (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
-  type R2_69 = R1_69 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_70 = (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
-  type R2_70 = R1_70 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_71 = (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_71 = R1_71 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
+  type R1_59 = (     A { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_59 = R1_59 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_60 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
+  type R2_60 = R1_60 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_61 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
+  type R2_61 = R1_61 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_62 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_62 = R1_62 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_63 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
+  type R2_63 = R1_63 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_64 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
+  type R2_64 = R1_64 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_65 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_65 = R1_65 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_66 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
+  type R2_66 = R1_66 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_67 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
+  type R2_67 = R1_67 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_68 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_68 = R1_68 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_69 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
+  type R2_69 = R1_69 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_70 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
+  type R2_70 = R1_70 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_71 = (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_71 = R1_71 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
   type R1_72 = (     B { val y: P }) with (   Any { val y: P })
   type R2_72 = R1_72 { val y: (P) with (P) }
   type R1_73 = (     B { val y: P }) with (   Any { val y: Q })
   type R2_73 = R1_73 { val y: (P) with (Q) }
-  type R1_74 = (     B { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_74 = R1_74 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_74 = (     B { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_74 = R1_74 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_75 = (     B { val y: P }) with (     A { val y: P })
   type R2_75 = R1_75 { val y: (P) with (P) }
   type R1_76 = (     B { val y: P }) with (     A { val y: Q })
   type R2_76 = R1_76 { val y: (P) with (Q) }
-  type R1_77 = (     B { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_77 = R1_77 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_77 = (     B { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_77 = R1_77 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_78 = (     B { val y: P }) with (     B { val y: P })
   type R2_78 = R1_78 { val y: (P) with (P) }
   type R1_79 = (     B { val y: P }) with (     B { val y: Q })
   type R2_79 = R1_79 { val y: (P) with (Q) }
-  type R1_80 = (     B { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_80 = R1_80 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_80 = (     B { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_80 = R1_80 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_81 = (     B { val y: P }) with (     C { val y: P })
   type R2_81 = R1_81 { val y: (P) with (P) }
   type R1_82 = (     B { val y: P }) with (     C { val y: Q })
   type R2_82 = R1_82 { val y: (P) with (Q) }
-  type R1_83 = (     B { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_83 = R1_83 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_83 = (     B { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_83 = R1_83 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_84 = (     B { val y: Q }) with (   Any { val y: P })
   type R2_84 = R1_84 { val y: (Q) with (P) }
   type R1_85 = (     B { val y: Q }) with (   Any { val y: Q })
   type R2_85 = R1_85 { val y: (Q) with (Q) }
-  type R1_86 = (     B { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_86 = R1_86 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_86 = (     B { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_86 = R1_86 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_87 = (     B { val y: Q }) with (     A { val y: P })
   type R2_87 = R1_87 { val y: (Q) with (P) }
   type R1_88 = (     B { val y: Q }) with (     A { val y: Q })
   type R2_88 = R1_88 { val y: (Q) with (Q) }
-  type R1_89 = (     B { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_89 = R1_89 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_89 = (     B { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_89 = R1_89 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_90 = (     B { val y: Q }) with (     B { val y: P })
   type R2_90 = R1_90 { val y: (Q) with (P) }
   type R1_91 = (     B { val y: Q }) with (     B { val y: Q })
   type R2_91 = R1_91 { val y: (Q) with (Q) }
-  type R1_92 = (     B { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_92 = R1_92 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_92 = (     B { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_92 = R1_92 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_93 = (     B { val y: Q }) with (     C { val y: P })
   type R2_93 = R1_93 { val y: (Q) with (P) }
   type R1_94 = (     B { val y: Q }) with (     C { val y: Q })
   type R2_94 = R1_94 { val y: (Q) with (Q) }
-  type R1_95 = (     B { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_95 = R1_95 { val y: (Q) with (R forSome { type R <: P with Q }) }
-  type R1_96 = (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
-  type R2_96 = R1_96 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_97 = (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
-  type R2_97 = R1_97 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_98 = (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_98 = R1_98 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_99 = (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
-  type R2_99 = R1_99 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_100 = (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
-  type R2_100 = R1_100 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_101 = (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_101 = R1_101 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_102 = (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
-  type R2_102 = R1_102 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_103 = (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
-  type R2_103 = R1_103 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_104 = (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_104 = R1_104 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_105 = (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
-  type R2_105 = R1_105 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_106 = (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
-  type R2_106 = R1_106 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_107 = (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_107 = R1_107 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
+  type R1_95 = (     B { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_95 = R1_95 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_96 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
+  type R2_96 = R1_96 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_97 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
+  type R2_97 = R1_97 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_98 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_98 = R1_98 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_99 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
+  type R2_99 = R1_99 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_100 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
+  type R2_100 = R1_100 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_101 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_101 = R1_101 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_102 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
+  type R2_102 = R1_102 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_103 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
+  type R2_103 = R1_103 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_104 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_104 = R1_104 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_105 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
+  type R2_105 = R1_105 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_106 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
+  type R2_106 = R1_106 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_107 = (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_107 = R1_107 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
   type R1_108 = (     C { val y: P }) with (   Any { val y: P })
   type R2_108 = R1_108 { val y: (P) with (P) }
   type R1_109 = (     C { val y: P }) with (   Any { val y: Q })
   type R2_109 = R1_109 { val y: (P) with (Q) }
-  type R1_110 = (     C { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_110 = R1_110 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_110 = (     C { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_110 = R1_110 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_111 = (     C { val y: P }) with (     A { val y: P })
   type R2_111 = R1_111 { val y: (P) with (P) }
   type R1_112 = (     C { val y: P }) with (     A { val y: Q })
   type R2_112 = R1_112 { val y: (P) with (Q) }
-  type R1_113 = (     C { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_113 = R1_113 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_113 = (     C { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_113 = R1_113 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_114 = (     C { val y: P }) with (     B { val y: P })
   type R2_114 = R1_114 { val y: (P) with (P) }
   type R1_115 = (     C { val y: P }) with (     B { val y: Q })
   type R2_115 = R1_115 { val y: (P) with (Q) }
-  type R1_116 = (     C { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_116 = R1_116 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_116 = (     C { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_116 = R1_116 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_117 = (     C { val y: P }) with (     C { val y: P })
   type R2_117 = R1_117 { val y: (P) with (P) }
   type R1_118 = (     C { val y: P }) with (     C { val y: Q })
   type R2_118 = R1_118 { val y: (P) with (Q) }
-  type R1_119 = (     C { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_119 = R1_119 { val y: (P) with (R forSome { type R <: P with Q }) }
+  type R1_119 = (     C { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_119 = R1_119 { val y: (P) with (P with R forSome { 
+  type R <: P with Q
+}) }
   type R1_120 = (     C { val y: Q }) with (   Any { val y: P })
   type R2_120 = R1_120 { val y: (Q) with (P) }
   type R1_121 = (     C { val y: Q }) with (   Any { val y: Q })
   type R2_121 = R1_121 { val y: (Q) with (Q) }
-  type R1_122 = (     C { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_122 = R1_122 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_122 = (     C { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_122 = R1_122 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_123 = (     C { val y: Q }) with (     A { val y: P })
   type R2_123 = R1_123 { val y: (Q) with (P) }
   type R1_124 = (     C { val y: Q }) with (     A { val y: Q })
   type R2_124 = R1_124 { val y: (Q) with (Q) }
-  type R1_125 = (     C { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_125 = R1_125 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_125 = (     C { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_125 = R1_125 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_126 = (     C { val y: Q }) with (     B { val y: P })
   type R2_126 = R1_126 { val y: (Q) with (P) }
   type R1_127 = (     C { val y: Q }) with (     B { val y: Q })
   type R2_127 = R1_127 { val y: (Q) with (Q) }
-  type R1_128 = (     C { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_128 = R1_128 { val y: (Q) with (R forSome { type R <: P with Q }) }
+  type R1_128 = (     C { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_128 = R1_128 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
   type R1_129 = (     C { val y: Q }) with (     C { val y: P })
   type R2_129 = R1_129 { val y: (Q) with (P) }
   type R1_130 = (     C { val y: Q }) with (     C { val y: Q })
   type R2_130 = R1_130 { val y: (Q) with (Q) }
-  type R1_131 = (     C { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_131 = R1_131 { val y: (Q) with (R forSome { type R <: P with Q }) }
-  type R1_132 = (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
-  type R2_132 = R1_132 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_133 = (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
-  type R2_133 = R1_133 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_134 = (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })
-  type R2_134 = R1_134 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_135 = (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
-  type R2_135 = R1_135 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_136 = (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
-  type R2_136 = R1_136 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_137 = (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })
-  type R2_137 = R1_137 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_138 = (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
-  type R2_138 = R1_138 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_139 = (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
-  type R2_139 = R1_139 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_140 = (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })
-  type R2_140 = R1_140 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
-  type R1_141 = (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
-  type R2_141 = R1_141 { val y: (R forSome { type R <: P with Q }) with (P) }
-  type R1_142 = (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
-  type R2_142 = R1_142 { val y: (R forSome { type R <: P with Q }) with (Q) }
-  type R1_143 = (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })
-  type R2_143 = R1_143 { val y: (R forSome { type R <: P with Q }) with (R forSome { type R <: P with Q }) }
+  type R1_131 = (     C { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_131 = R1_131 { val y: (Q) with (Q with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_132 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })
+  type R2_132 = R1_132 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_133 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })
+  type R2_133 = R1_133 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_134 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_134 = R1_134 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_135 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })
+  type R2_135 = R1_135 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_136 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })
+  type R2_136 = R1_136 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_137 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_137 = R1_137 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_138 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })
+  type R2_138 = R1_138 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_139 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })
+  type R2_139 = R1_139 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_140 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_140 = R1_140 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
+  type R1_141 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })
+  type R2_141 = R1_141 { val y: (R forSome { 
+  type R <: P with Q
+} with P) with (P) }
+  type R1_142 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })
+  type R2_142 = R1_142 { val y: (R forSome { 
+  type R <: P with Q
+} with Q) with (Q) }
+  type R1_143 = (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })
+  type R2_143 = R1_143 { val y: (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) with (R forSome { 
+  type R <: P with Q
+} with R forSome { 
+  type R <: P with Q
+}) }
   def f0 = { val x = ((new ABC): (   Any { val y: P }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f1 = { val x = ((new ABC): (   Any { val y: P }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f2 = { val x = ((new ABC): (   Any { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f2 = { val x = ((new ABC): (   Any { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f3 = { val x = ((new ABC): (   Any { val y: P }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f4 = { val x = ((new ABC): (   Any { val y: P }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f5 = { val x = ((new ABC): (   Any { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f5 = { val x = ((new ABC): (   Any { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f6 = { val x = ((new ABC): (   Any { val y: P }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f7 = { val x = ((new ABC): (   Any { val y: P }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f8 = { val x = ((new ABC): (   Any { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f8 = { val x = ((new ABC): (   Any { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f9 = { val x = ((new ABC): (   Any { val y: P }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f10 = { val x = ((new ABC): (   Any { val y: P }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f11 = { val x = ((new ABC): (   Any { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f11 = { val x = ((new ABC): (   Any { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f12 = { val x = ((new ABC): (   Any { val y: Q }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f13 = { val x = ((new ABC): (   Any { val y: Q }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f14 = { val x = ((new ABC): (   Any { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f14 = { val x = ((new ABC): (   Any { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f15 = { val x = ((new ABC): (   Any { val y: Q }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f16 = { val x = ((new ABC): (   Any { val y: Q }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f17 = { val x = ((new ABC): (   Any { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f17 = { val x = ((new ABC): (   Any { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f18 = { val x = ((new ABC): (   Any { val y: Q }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f19 = { val x = ((new ABC): (   Any { val y: Q }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f20 = { val x = ((new ABC): (   Any { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f20 = { val x = ((new ABC): (   Any { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f21 = { val x = ((new ABC): (   Any { val y: Q }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f22 = { val x = ((new ABC): (   Any { val y: Q }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f23 = { val x = ((new ABC): (   Any { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f24 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f25 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f26 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f27 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f28 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f29 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f30 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f31 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f32 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f33 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f34 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f35 = { val x = ((new ABC): (   Any { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f23 = { val x = ((new ABC): (   Any { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f24 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f25 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f26 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f27 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f28 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f29 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f30 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f31 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f32 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f33 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f34 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f35 = { val x = ((new ABC): (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f36 = { val x = ((new ABC): (     A { val y: P }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f37 = { val x = ((new ABC): (     A { val y: P }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f38 = { val x = ((new ABC): (     A { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f38 = { val x = ((new ABC): (     A { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f39 = { val x = ((new ABC): (     A { val y: P }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f40 = { val x = ((new ABC): (     A { val y: P }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f41 = { val x = ((new ABC): (     A { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f41 = { val x = ((new ABC): (     A { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f42 = { val x = ((new ABC): (     A { val y: P }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f43 = { val x = ((new ABC): (     A { val y: P }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f44 = { val x = ((new ABC): (     A { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f44 = { val x = ((new ABC): (     A { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f45 = { val x = ((new ABC): (     A { val y: P }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f46 = { val x = ((new ABC): (     A { val y: P }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f47 = { val x = ((new ABC): (     A { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f47 = { val x = ((new ABC): (     A { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f48 = { val x = ((new ABC): (     A { val y: Q }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f49 = { val x = ((new ABC): (     A { val y: Q }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f50 = { val x = ((new ABC): (     A { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f50 = { val x = ((new ABC): (     A { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f51 = { val x = ((new ABC): (     A { val y: Q }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f52 = { val x = ((new ABC): (     A { val y: Q }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f53 = { val x = ((new ABC): (     A { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f53 = { val x = ((new ABC): (     A { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f54 = { val x = ((new ABC): (     A { val y: Q }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f55 = { val x = ((new ABC): (     A { val y: Q }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f56 = { val x = ((new ABC): (     A { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f56 = { val x = ((new ABC): (     A { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f57 = { val x = ((new ABC): (     A { val y: Q }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f58 = { val x = ((new ABC): (     A { val y: Q }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f59 = { val x = ((new ABC): (     A { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f60 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f61 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f62 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f63 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f64 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f65 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f66 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f67 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f68 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f69 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f70 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f71 = { val x = ((new ABC): (     A { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f59 = { val x = ((new ABC): (     A { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f60 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f61 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f62 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f63 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f64 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f65 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f66 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f67 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f68 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f69 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f70 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f71 = { val x = ((new ABC): (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f72 = { val x = ((new ABC): (     B { val y: P }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f73 = { val x = ((new ABC): (     B { val y: P }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f74 = { val x = ((new ABC): (     B { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f74 = { val x = ((new ABC): (     B { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f75 = { val x = ((new ABC): (     B { val y: P }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f76 = { val x = ((new ABC): (     B { val y: P }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f77 = { val x = ((new ABC): (     B { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f77 = { val x = ((new ABC): (     B { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f78 = { val x = ((new ABC): (     B { val y: P }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f79 = { val x = ((new ABC): (     B { val y: P }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f80 = { val x = ((new ABC): (     B { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f80 = { val x = ((new ABC): (     B { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f81 = { val x = ((new ABC): (     B { val y: P }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f82 = { val x = ((new ABC): (     B { val y: P }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f83 = { val x = ((new ABC): (     B { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f83 = { val x = ((new ABC): (     B { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f84 = { val x = ((new ABC): (     B { val y: Q }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f85 = { val x = ((new ABC): (     B { val y: Q }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f86 = { val x = ((new ABC): (     B { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f86 = { val x = ((new ABC): (     B { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f87 = { val x = ((new ABC): (     B { val y: Q }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f88 = { val x = ((new ABC): (     B { val y: Q }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f89 = { val x = ((new ABC): (     B { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f89 = { val x = ((new ABC): (     B { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f90 = { val x = ((new ABC): (     B { val y: Q }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f91 = { val x = ((new ABC): (     B { val y: Q }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f92 = { val x = ((new ABC): (     B { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f92 = { val x = ((new ABC): (     B { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f93 = { val x = ((new ABC): (     B { val y: Q }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f94 = { val x = ((new ABC): (     B { val y: Q }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f95 = { val x = ((new ABC): (     B { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f96 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f97 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f98 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f99 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f100 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f101 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f102 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f103 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f104 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f105 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f106 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f107 = { val x = ((new ABC): (     B { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f95 = { val x = ((new ABC): (     B { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f96 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f97 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f98 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f99 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f100 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f101 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f102 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f103 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f104 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f105 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f106 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f107 = { val x = ((new ABC): (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f108 = { val x = ((new ABC): (     C { val y: P }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f109 = { val x = ((new ABC): (     C { val y: P }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f110 = { val x = ((new ABC): (     C { val y: P }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f110 = { val x = ((new ABC): (     C { val y: P }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f111 = { val x = ((new ABC): (     C { val y: P }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f112 = { val x = ((new ABC): (     C { val y: P }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f113 = { val x = ((new ABC): (     C { val y: P }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f113 = { val x = ((new ABC): (     C { val y: P }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f114 = { val x = ((new ABC): (     C { val y: P }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f115 = { val x = ((new ABC): (     C { val y: P }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f116 = { val x = ((new ABC): (     C { val y: P }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f116 = { val x = ((new ABC): (     C { val y: P }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f117 = { val x = ((new ABC): (     C { val y: P }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f118 = { val x = ((new ABC): (     C { val y: P }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f119 = { val x = ((new ABC): (     C { val y: P }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f119 = { val x = ((new ABC): (     C { val y: P }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f120 = { val x = ((new ABC): (     C { val y: Q }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f121 = { val x = ((new ABC): (     C { val y: Q }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f122 = { val x = ((new ABC): (     C { val y: Q }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f122 = { val x = ((new ABC): (     C { val y: Q }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f123 = { val x = ((new ABC): (     C { val y: Q }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f124 = { val x = ((new ABC): (     C { val y: Q }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f125 = { val x = ((new ABC): (     C { val y: Q }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f125 = { val x = ((new ABC): (     C { val y: Q }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f126 = { val x = ((new ABC): (     C { val y: Q }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f127 = { val x = ((new ABC): (     C { val y: Q }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f128 = { val x = ((new ABC): (     C { val y: Q }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f128 = { val x = ((new ABC): (     C { val y: Q }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def f129 = { val x = ((new ABC): (     C { val y: Q }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
   def f130 = { val x = ((new ABC): (     C { val y: Q }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f131 = { val x = ((new ABC): (     C { val y: Q }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f132 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f133 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f134 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (   Any { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f135 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f136 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f137 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     A { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f138 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f139 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f140 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     B { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
-  def f141 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
-  def f142 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
-  def f143 = { val x = ((new ABC): (     C { val y: R forSome { type R <: P with Q } }) with (     C { val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f131 = { val x = ((new ABC): (     C { val y: Q }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f132 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f133 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f134 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (   Any { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f135 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f136 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f137 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     A { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f138 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f139 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f140 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     B { val y: <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
+  def f141 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: P })) ; x.y.reflected -> whatis(x).toString }
+  def f142 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: Q })) ; x.y.reflected -> whatis(x).toString }
+  def f143 = { val x = ((new ABC): (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } }) with (     C { val y: override <stable> <accessor> val y: R forSome { type R <: P with Q } })) ; x.y.reflected -> whatis(x).toString }
   def g0(x: R1_0) = x.y
   def g1(x: R1_1) = x.y
   def g2(x: R1_2) = x.y
@@ -876,7 +1132,7 @@ object Test {
     f143
   )
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     sshow("Direct Calls", fcalls collect { case (false, n) => n })
     sshow("Reflective Calls", fcalls collect { case (true, n) => n })
     // For a good time try printing this - have to fix bugs in

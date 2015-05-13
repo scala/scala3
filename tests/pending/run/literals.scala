@@ -14,7 +14,7 @@ object Test {
     def \u03b1\u03b1(that: GGG) = i + that.i
   }
 
-  def check_success[a](name: String, closure: => a, expected: a) {
+  def check_success[a](name: String, closure: => a, expected: a): Unit = {
     print("test " + name)
     try {
       val actual: a = closure
@@ -31,7 +31,7 @@ object Test {
     println
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     // char
     check_success("'\\u0024' == '$'", '\u0024', '$')
     check_success("'\\u005f' == '_'", '\u005f', '_')

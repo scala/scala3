@@ -8,11 +8,11 @@ import collection._
 // test conversions between collections
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testConversions
   }
 
-  def testConversions {
+  def testConversions: Unit = {
     // seq conversions
     assertSeq(parallel.mutable.ParArray(1, 2, 3))
     assertSeq(parallel.mutable.ParHashMap(1 -> 2, 2 -> 3))
@@ -62,7 +62,7 @@ object Test {
 
   def assertPar[T, P <: Parallel](xs: GenIterable[T]) = assert(xs == xs.par)
 
-  def assertToPar[K, V](xs: GenTraversable[(K, V)]) {
+  def assertToPar[K, V](xs: GenTraversable[(K, V)]): Unit = {
     xs match {
       case _: Seq[_] =>
         assert(xs.toIterable.par == xs)
@@ -80,7 +80,7 @@ object Test {
     assert(xs.par.toMap == xs.toMap)
   }
 
-  def assertToParWoMap[T](xs: GenSeq[T]) {
+  def assertToParWoMap[T](xs: GenSeq[T]): Unit = {
     assert(xs.toIterable.par == xs.toIterable)
     assert(xs.par.toIterable == xs.toIterable)
 

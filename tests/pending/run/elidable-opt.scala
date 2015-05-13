@@ -2,10 +2,10 @@ import annotation._
 import elidable._
 
 trait T {
-  @elidable(FINEST) def f1()
-  @elidable(SEVERE) def f2()
+  @elidable(FINEST) def f1(): Unit
+  @elidable(SEVERE) def f2(): Unit
   @elidable(FINEST) def f3() = assert(false, "Should have been elided.")
-  def f4()
+  def f4(): Unit
 }
 
 class C extends T {

@@ -34,7 +34,12 @@ abstract class NeedsXEarly {
 }
 
 // should pass
-class GoodX extends { val x = 1 } with NeedsXEarly {
+class GoodX extends NeedsXEarly {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = 1
+// END copied early initializers
+
 }
 
 // should throw
@@ -75,17 +80,23 @@ class BadMixin extends LazyFields with XY {
 }
 
 // should print 24
-class GoodMixin extends {
-        override val x = 10
+class GoodMixin extends LazyFields with XY {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+override val x = 10
         override val y = 11
-      } with LazyFields with XY {
+// END copied early initializers
+
   println("[OK]: " + needsSomeEarly)
 }
 
-class TestInterference extends {
-  override val x = 10
+class TestInterference extends A with T with LazyFields {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+override val x = 10
   override val y = 11
-} with A with T with LazyFields {
+// END copied early initializers
+
   println("[OK]: " + needsSomeEarly)
 }
 

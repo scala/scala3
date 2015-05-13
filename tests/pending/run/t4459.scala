@@ -1,7 +1,7 @@
 import collection._
 
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     for (i <- 0 until 2000) {
       foo((0 until 10000).toSeq.par)
     }

@@ -6,7 +6,7 @@ import collection.mutable._
 
 
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val dl = DoubleLinkedList[Int]()
     dl.remove()
 

@@ -7,7 +7,7 @@ import scala.collection.immutable._
 // ticket #3511
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     assert(Stream.from(0).view.force.take(5) == List(0, 1, 2, 3, 4))
 
     val s = Stream.from(0)

@@ -1,6 +1,6 @@
 object Test {
   def coll = new Traversable[String] {
-    override def foreach[U](f:String=>U) { f("1") }
+    override def foreach[U](f:String=>U): Unit = { f("1") }
   }
   val dropped = coll.view drop 1
 

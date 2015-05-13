@@ -6,7 +6,7 @@ import scala.collection.mutable.MutableList
 
 
 class ExtList[T] extends MutableList[T] {
-  def printState {
+  def printState: Unit = {
     println("Length: " + len)
     println("Last elem: " + last0.elem)
     println("First elem: " + first0.elem)
@@ -18,7 +18,7 @@ class ExtList[T] extends MutableList[T] {
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testEmpty
     testAddElement
     testAddFewElements
@@ -26,13 +26,13 @@ object Test {
     testTraversables
   }
 
-  def testEmpty {
+  def testEmpty: Unit = {
     val mlist = new MutableList[Int]
     assert(mlist.isEmpty)
     assert(mlist.get(0) == None)
   }
 
-  def testAddElement {
+  def testAddElement: Unit = {
     val mlist = new MutableList[Int]
     mlist += 17
     assert(mlist.nonEmpty)
@@ -50,7 +50,7 @@ object Test {
     assert(mlist.tail.length == 0)
   }
 
-  def testAddFewElements {
+  def testAddFewElements: Unit = {
     val mlist = new MutableList[Int]
     for (i <- 0 until 2) mlist += i
 //    mlist.printState
@@ -62,7 +62,7 @@ object Test {
     assert(mlist.tail.tail.isEmpty)
   }
 
-  def testAddMoreElements {
+  def testAddMoreElements: Unit = {
     val mlist = new MutableList[Int]
     for (i <- 0 until 10) mlist += i * i
     assert(mlist.nonEmpty)
@@ -93,7 +93,7 @@ object Test {
     assert(mlist.last == 9999)
   }
 
-  def testTraversables {
+  def testTraversables: Unit = {
     val mlist = new MutableList[Int]
     for (i <- 0 until 10) mlist += i * i
     var lst = mlist.drop(5)

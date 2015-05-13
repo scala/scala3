@@ -5,7 +5,7 @@ object Test extends App {
   import scala.collection.{GenTraversableOnce,GenTraversableLike}
   import scala.collection.generic._
 
-  def typed[T](t : => T) {}
+  def typed[T](t : => T): Unit = {}
   def testTraversableLike = {
     class FilterMapImpl[A, Repr](val r: GenTraversableLike[A, Repr]) /* extends AnyVal */ {
       final def filterMap[B, That](f: A => Option[B])(implicit cbf: CanBuildFrom[Repr, B, That]): That =

@@ -9,12 +9,12 @@ object Test {
   def f2[T](x: List[T]) = println(x match {
     case List(_, _)       => "two"
     case List(_, _, _)    => "three"
-    case List(xs @ _*)    => "list: " + xs.length
+    case List(xs : _*)    => "list: " + xs.length
     // bug: the default case is marked unreachable
     // case _                => "not a list"
   })
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     f(List(1, 2))
     f(List('a', 'b', 'c'))
     f(List('a', 'b', 'c', 'd'))

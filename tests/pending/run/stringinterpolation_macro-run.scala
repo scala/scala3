@@ -17,7 +17,7 @@ println(f"${true}%B")
 println(f"${new java.lang.Boolean(false)}%B")
 println(f"${new java.lang.Boolean(true)}%B")
 
-implicit val stringToBoolean = java.lang.Boolean.parseBoolean(_: String)
+implicit val stringToBoolean: String => Boolean = java.lang.Boolean.parseBoolean(_: String)
 println(f"${"true"}%b")
 println(f"${"false"}%b")
 
@@ -55,7 +55,7 @@ println(f"${(120:Byte) : java.lang.Byte}%c")
 println(f"${(120:Short) : java.lang.Short}%c")
 println(f"${120 : java.lang.Integer}%c")
 
-implicit val stringToChar = (x: String) => x(0)
+implicit val stringToChar: String => Char = (x: String) => x(0)
 println(f"${"Scala"}%c")
 
 // 'd' | 'o' | 'x' | 'X' (category: integral)
@@ -82,9 +82,9 @@ locally {
 }
 
 {
-  implicit val strToShort = (s: String) => java.lang.Short.parseShort(s)
+  implicit val strToShort: String => Short = (s: String) => java.lang.Short.parseShort(s)
   println(f"${"120"}%d")
-  implicit val strToInt = (s: String) => 42
+  implicit val strToInt: String => Int = (s: String) => 42
   println(f"${"120"}%d")
 }
 
@@ -109,7 +109,7 @@ println(f"${c}%TD")
 println(f"${c.getTime}%TD")
 println(f"${c.getTime.getTime}%TD")
 
-implicit val strToDate = (x: String) => c
+implicit val strToDate: String => java.util.Calendar = (x: String) => c
 println(f"""${"1234"}%TD""")
 
 

@@ -3,14 +3,16 @@ trait A {
 }
 
 object Test {
-  def f(a: Int) = new {
-    //private val b = a
-    private[this] val b = a // crashes, sorry scalac
-  } with A {
+  def f(a: Int) = new A {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+private[this] val b = a
+// END copied early initializers
+
     def a = b
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     println(f(7).a)
   }
 }

@@ -11,7 +11,7 @@ import scala.collection.mutable.PriorityQueue
 // populate a priority queue a few different ways and make sure they all seem equal
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     // testInsertionsAndEqualities
     // testIntensiveEnqueueDequeue
     // testTails

@@ -35,14 +35,14 @@ trait trt01234567890 { def x = Test.checkCallerImplClassName() }
 }
 
 object Test extends App {
-  def check(c: Class[_]) {
+  def check(c: Class[_]): Unit = {
     checkClassName(c.getName)
   }
-  def checkClassName(name: String) {
+  def checkClassName(name: String): Unit = {
     val defaultMaxClassFileLength = 255
     assert((name + ".class").length <= defaultMaxClassFileLength, name)
   }
-  def checkCallerImplClassName() {
+  def checkCallerImplClassName(): Unit = {
     val name = Thread.currentThread.getStackTrace.apply(2).getClassName
     assert(name.contains("$class"))
     Test.checkClassName(name)

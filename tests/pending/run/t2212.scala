@@ -1,5 +1,5 @@
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     import collection.mutable._
     val x4 = LinkedList[Int](1)
     println(x4)

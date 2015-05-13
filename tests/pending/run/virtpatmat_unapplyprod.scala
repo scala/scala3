@@ -18,6 +18,6 @@ object Test extends App {
 
   FooSeq(1, "a", true, false, true) match {
     case FooSeq(1, "a") => println("nope")
-    case FooSeq(1, "a", x@_* ) => println(x.toList)
+    case FooSeq(1, "a", x:_* ) => println(x.toList)
   }
 }

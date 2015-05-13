@@ -5,7 +5,7 @@
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     import collection._
     val hs = mutable.HashSet[Int]()
     hs ++= 1 to 10

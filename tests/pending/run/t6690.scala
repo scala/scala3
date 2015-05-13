@@ -10,7 +10,7 @@ object Test extends App {
     ml.asInstanceOf[{def first0: mutable.LinkedList[Int]}].first0
 
   val f = mutable.Queue[Int]()
-  def check(desc: String) {
+  def check(desc: String): Unit = {
     assert(f.length == 0, s"$desc: non empty: $f")
     assert(last0(f).isEmpty, s"$desc: last0 leak: ${last0(f)}")
     assert(first0(f).isEmpty, s"$desc: first0 leak: ${last0(f)}")

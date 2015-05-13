@@ -100,7 +100,7 @@ object Test {
     "" + i + "x" + j
   }
 
-  def check_success[A](name: String, closure: => A, expected: A) {
+  def check_success[A](name: String, closure: => A, expected: A): Unit = {
     print("test " + name)
     try {
       val actual: A = closure
@@ -116,7 +116,7 @@ object Test {
     println()
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     check_success("check_from",     check_from,      -1)
     check_success("check_range",    check_range,     11)
     check_success("check_range2",   check_range2,    26)

@@ -87,5 +87,5 @@ object Test {
     println("called " + count + " times")
   }
 
-  def main(args: Array[String]) {}
+  def main(args: Array[String]): Unit = {}
 }

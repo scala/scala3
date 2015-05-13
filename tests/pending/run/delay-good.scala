@@ -44,7 +44,7 @@ class E() extends D() {
 object Test {
   def p(msg: String) = println("\n\n// " + msg)
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val f: A => Unit = _.postConstructionCode
 
     p("new C { }")
@@ -60,17 +60,37 @@ object Test {
     p("new D() { val x = 5 }")
     f(new D() { val x = 5 })
     p("new { val x = 5 } with D()")
-    f(new { val x = 5 } with D())
+    f(new D() {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = 5
+// END copied early initializers
+})
 
     p("new E() { val x = 5 }")
     f(new E() { val x = 5 })
     p("new { val x = 5 } with E()")
-    f(new { val x = 5 } with E())
+    f(new E() {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = 5
+// END copied early initializers
+})
 
     p("new { val x = 5 } with E() { }")
-    f(new { val x = 5 } with E() { })
+    f(new E() {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = 5
+// END copied early initializers
+ })
     p("new { val x = 5 } with E() { 5 }")
-    f(new { val x = 5 } with E() { 5 })
+    f(new E() {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = 5
+// END copied early initializers
+ 5 })
 
     println("")
   }

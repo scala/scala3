@@ -9,7 +9,7 @@ object Test extends App {
   def seqarr(i: Int) = Array[Int]() ++ (0 until i)
   def pararr(i: Int) = seqarr(i).par
 
-  def check[T](i: Int, f: Int => T) {
+  def check[T](i: Int, f: Int => T): Unit = {
     val gseq = seqarr(i).toSeq.groupBy(f)
     val gpar = pararr(i).groupBy(f)
     assert(gseq == gpar, (gseq, gpar))

@@ -16,7 +16,7 @@ object Test extends App {
   })
 
 
-  def test(creator : Creator) {
+  def test(creator : Creator): Unit = {
     println("*** " + creator.hashSetType + " primitives")
     val h1 = creator.create[Int]
     for (i <- 0 until 20) h1 += i

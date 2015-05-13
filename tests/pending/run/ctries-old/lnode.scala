@@ -10,7 +10,7 @@ object LNodeSpec extends Spec {
   val initsz = 1500
   val secondsz = 1750
 
-  def test() {
+  def test(): Unit = {
     "accept elements with the same hash codes" in {
       val ct = new TrieMap[DumbHash, Int]
       for (i <- 0 until initsz) ct.update(new DumbHash(i), i)

@@ -3,7 +3,7 @@ object Test {
   var xs: CharSequence = arr
   val hash = xs.hashCode
 
-  def check(chars: CharSequence) {
+  def check(chars: CharSequence): Unit = {
     println("\n[check '" + chars + "'] len = " + chars.length)
     chars match {
       case x: Predef.ArrayCharSequence  => assert(x.__arrayOfChars eq arr, ((x.__arrayOfChars, arr)))

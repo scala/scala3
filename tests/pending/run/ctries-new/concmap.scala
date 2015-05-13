@@ -9,7 +9,7 @@ object ConcurrentMapSpec extends Spec {
   val initsz = 500
   val secondsz = 750
 
-  def test() {
+  def test(): Unit = {
     "support put" in {
       val ct = new TrieMap[Wrap, Int]
       for (i <- 0 until initsz) assert(ct.put(new Wrap(i), i) == None)
@@ -61,7 +61,7 @@ object ConcurrentMapSpec extends Spec {
       for (i <- 0 until sz) ct.update(new Wrap(i), i)
 
       class Updater(index: Int, offs: Int) extends Thread {
-        override def run() {
+        override def run(): Unit = {
           var repeats = 0
           for (i <- 0 until sz) {
             val j = (offs + i) % sz
@@ -93,7 +93,7 @@ object ConcurrentMapSpec extends Spec {
       val sz = 110000
 
       class Updater(offs: Int) extends Thread {
-        override def run() {
+        override def run(): Unit = {
           for (i <- 0 until sz) {
             val j = (offs + i) % sz
             ct.putIfAbsent(new Wrap(j), j)
@@ -115,7 +115,7 @@ object ConcurrentMapSpec extends Spec {
       for (i <- 0 until sz) ct.update(new Wrap(i), i)
 
       class Remover(offs: Int) extends Thread {
-        override def run() {
+        override def run(): Unit = {
           for (i <- 0 until sz) {
             val j = (offs + i) % sz
             ct.remove(new Wrap(j), j)
@@ -137,7 +137,7 @@ object ConcurrentMapSpec extends Spec {
       for (i <- 0 until sz) ct(new Wrap(i)) = i
 
       class Modifier(index: Int, offs: Int) extends Thread {
-        override def run() {
+        override def run(): Unit = {
           for (j <- 0 until sz) {
             val i = (offs + j) % sz
             var success = false

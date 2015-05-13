@@ -10,7 +10,7 @@ import Test.Spec
 
 object SnapshotSpec extends Spec {
 
-  def test() {
+  def test(): Unit = {
     "support snapshots" in {
       val ctn = new TrieMap
       ctn.snapshot()
@@ -26,7 +26,7 @@ object SnapshotSpec extends Spec {
       val sz = 4000
 
       class Worker(trie: TrieMap[Wrap, Int]) extends Thread {
-        override def run() {
+        override def run(): Unit = {
           for (i <- 0 until sz) {
             assert(trie.remove(new Wrap(i)) == Some(i))
             for (j <- 0 until sz)
@@ -53,7 +53,7 @@ object SnapshotSpec extends Spec {
       }
     }
 
-    def consistentReadOnly(name: String, readonly: Map[Wrap, Int], sz: Int, N: Int) {
+    def consistentReadOnly(name: String, readonly: Map[Wrap, Int], sz: Int, N: Int): Unit = {
       @volatile var e: Exception = null
 
       // reads possible entries once and stores them
@@ -68,7 +68,7 @@ object SnapshotSpec extends Spec {
             case ex: Exception => e = ex
           }
 
-        def check() {
+        def check(): Unit = {
           val initial = mutable.Map[Wrap, Int]()
           for (i <- 0 until sz) trie.get(new Wrap(i)) match {
             case Some(i) => initial.put(new Wrap(i), i)
@@ -100,7 +100,7 @@ object SnapshotSpec extends Spec {
     class Modifier(trie: TrieMap[Wrap, Int], index: Int, rep: Int, sz: Int) extends Thread {
       setName("Modifier %d".format(index))
 
-      override def run() {
+      override def run(): Unit = {
         for (k <- 0 until rep) {
           for (i <- 0 until sz) trie.putIfAbsent(new Wrap(i), i) match {
             case Some(_) => trie.remove(new Wrap(i))
@@ -114,7 +114,7 @@ object SnapshotSpec extends Spec {
     class Remover(trie: TrieMap[Wrap, Int], index: Int, totremovers: Int, sz: Int) extends Thread {
       setName("Remover %d".format(index))
 
-      override def run() {
+      override def run(): Unit = {
         for (i <- 0 until sz) trie.remove(new Wrap((i + sz / totremovers * index) % sz))
       }
     }
@@ -166,7 +166,7 @@ object SnapshotSpec extends Spec {
       threads.foreach(_.join())
     }
 
-    def consistentNonReadOnly(name: String, trie: TrieMap[Wrap, Int], sz: Int, N: Int) {
+    def consistentNonReadOnly(name: String, trie: TrieMap[Wrap, Int], sz: Int, N: Int): Unit = {
       @volatile var e: Exception = null
 
       // reads possible entries once and stores them
@@ -181,7 +181,7 @@ object SnapshotSpec extends Spec {
             case ex: Exception => e = ex
           }
 
-        def check() {
+        def check(): Unit = {
           val initial = mutable.Map[Wrap, Int]()
           for (i <- 0 until sz) trie.get(new Wrap(i)) match {
             case Some(i) => initial.put(new Wrap(i), i)
@@ -247,7 +247,7 @@ object SnapshotSpec extends Spec {
 
       class Snapshooter extends Thread {
         setName("Snapshooter")
-        override def run() {
+        override def run(): Unit = {
           for (k <- 0 until snaptimes) {
             val snap = ct.snapshot()
             for (i <- 0 until sz) snap.remove(new Wrap(i))

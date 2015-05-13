@@ -6,7 +6,7 @@ import scala.collection.mutable.Queue
 
 
 class ExtQueue[T] extends Queue[T] {
-  def printState {
+  def printState: Unit = {
     println("-------------------")
     println("Length: " + len)
     println("First: " + first0)
@@ -17,7 +17,7 @@ class ExtQueue[T] extends Queue[T] {
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testEmpty
     testEnqueue
     testTwoEnqueues
@@ -25,7 +25,7 @@ object Test {
     testMoreEnqueues
   }
 
-  def testEmpty {
+  def testEmpty: Unit = {
     val queue = new Queue[Int]
 
     assert(queue.isEmpty)
@@ -42,7 +42,7 @@ object Test {
     assert(queue.dequeueAll(_ > 500).isEmpty)
   }
 
-  def testEnqueue {
+  def testEnqueue: Unit = {
     val queue = new Queue[Int]
 
     queue.enqueue(10)
@@ -79,7 +79,7 @@ object Test {
     assert(queue.isEmpty && queue.length == 0)
   }
 
-  def testTwoEnqueues {
+  def testTwoEnqueues: Unit = {
     val queue = new ExtQueue[Int]
     queue.enqueue(30)
     queue.enqueue(40)
@@ -98,7 +98,7 @@ object Test {
     assert(queue.isEmpty)
   }
 
-  def testFewEnqueues {
+  def testFewEnqueues: Unit = {
     val queue = new ExtQueue[Int]
     queue.enqueue(10)
     queue.enqueue(20)
@@ -167,7 +167,7 @@ object Test {
     assert(queue.front == 80)
   }
 
-  def testMoreEnqueues {
+  def testMoreEnqueues: Unit = {
     val queue = new ExtQueue[Int]
     for (i <- 0 until 10) queue.enqueue(i * 2)
 

@@ -1,12 +1,12 @@
 object Test extends App {
   t
 
-  def t {
+  def t: Unit = {
     val c1 = C1()(1)
     println(c1.copy()(2))
 
     {
-      implicit val i = 2873
+      implicit val i: Int = 2873
       println(c1.copy())
     }
 
@@ -27,8 +27,8 @@ object Test extends App {
     println(c5.copy(y = 19)(33,"b"))
 
     {
-      implicit val i = 193
-      implicit val s = "c"
+      implicit val i: Int = 193
+      implicit val s: String = "c"
       println(c5.copy())
       println(c5.copy(y = 371))
       println(c5.copy(x = -1)(-2, "lken"))
@@ -38,7 +38,7 @@ object Test extends App {
     println(c6.copy(29)(18)(-12))
 
     {
-      implicit val i = 2892
+      implicit val i: Int = 2892
       println(c6.copy(x = 1)(93))
       println(c6.copy(x = 1)(93)(761))
     }
@@ -47,7 +47,7 @@ object Test extends App {
     println(c7.copy()(22)(33)("elkj"))
 
     {
-      implicit val s = "me"
+      implicit val s: String = "me"
       println(c7.copy()(283)(29872))
       println(c7.copy(37)(298)(899)("ekjr"))
     }
@@ -56,7 +56,7 @@ object Test extends App {
     println(c8.copy(x = 172)(989, 77)()("eliurna"))
 
     {
-      implicit val s = "schtring"
+      implicit val s: String = "schtring"
       println(c8.copy()(82,2111)())
       println(c8.copy(x = -1)(92,29)()("lken"))
     }
@@ -65,7 +65,7 @@ object Test extends App {
     println(c9.copy()(271)()()("ehebab"))
 
     {
-      implicit val s = "enag"
+      implicit val s: String = "enag"
       println(c9.copy()(299))
       println(c9.copy()(299)())
       println(c9.copy()(299)()())
@@ -80,7 +80,7 @@ object Test extends App {
     println(c10.copy(new KA)(new KB)(new KB))
 
     {
-      implicit val k = new KA
+      implicit val k: KA = new KA
       println(c10.copy(new KA)(new KB))
     }
   }

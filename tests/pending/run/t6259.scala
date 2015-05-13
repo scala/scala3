@@ -28,10 +28,12 @@ trait NeedsEarly {
  val x: AnyRef
 }
 
-object Early extends {
-  // Drops to this.getClass and is not ok...
-  val x = { object EarlyOk extends A[String]; EarlyOk }
-} with NeedsEarly
+object Early extends NeedsEarly {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x = { object EarlyOk extends A[String]; EarlyOk }
+// END copied early initializers
+}
 
 
 class DoubleTrouble[X](x: AnyRef)(implicit override val tt: TypeTag[X]) extends A[X]

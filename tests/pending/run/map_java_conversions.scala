@@ -5,7 +5,7 @@
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     import collection.JavaConversions._
 
     test(new java.util.HashMap[String, String])
@@ -13,7 +13,7 @@ object Test {
     testConcMap
   }
 
-  def testConcMap {
+  def testConcMap: Unit = {
     import collection.JavaConversions._
 
     val concMap = new java.util.concurrent.ConcurrentHashMap[String, String]
@@ -27,7 +27,7 @@ object Test {
     assert(cmap.replace("absentKey", "newAbsentValue", ".......") == true)
   }
 
-  def test(m: collection.mutable.Map[String, String]) {
+  def test(m: collection.mutable.Map[String, String]): Unit = {
     m.clear
     assert(m.size == 0)
 

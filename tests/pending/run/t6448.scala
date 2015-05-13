@@ -8,12 +8,12 @@ object Test {
     def apply(i: Int) = synchronized {count += 1; true}
   }
 
-  def testing(label: String)(body: => Any) {
+  def testing(label: String)(body: => Any): Unit = {
     println(s"\n=$label=")
     println(body)
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testing("List.collect")(List(1, 2) collect { case x if f(x) && x < 2 => x})
     testing("List.collectFirst")(List(1, 2) collectFirst { case x if f(x) && x < 2 => x})
     testing("Option.collect")(Some(1) collect { case x if f(x) && x < 2 => x})

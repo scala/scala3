@@ -5,7 +5,7 @@
 import scala.collection.immutable.Queue
 
 object iq {
-  def main {
+  def main: Unit = {
     /* Create an empty queue. */
     val q: Queue[Int] = Queue.empty
 
@@ -105,7 +105,7 @@ object iq {
 }
 
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     iq.main
   }
 }

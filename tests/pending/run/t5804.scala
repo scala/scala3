@@ -5,7 +5,7 @@ import collection.mutable._
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     class CustomHashMap extends HashMap[Int, Int] {
       override def initialSize = 65
 

@@ -67,7 +67,7 @@ object Test {
 object Misc {
   trait Bippy { def bippy = "I'm Bippy!" }
   object o1 {
-    def f1 = { trait A extends Seq[U forSome { type U <: Bippy }] ; abstract class B extends A ; trait C extends B ; (null: C) }
+    def f1 = { trait A extends Seq[U forSome { type U <: Misc.Bippy }] ; abstract class B extends A ; trait C extends B ; (null: C) }
     def f2 = f1.head.bippy
   }
   def g1 = o1.f1 _

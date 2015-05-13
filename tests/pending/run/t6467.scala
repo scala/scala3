@@ -8,7 +8,7 @@ import collection._
 
 object Test extends App {
 
-  def compare(s1: String, s2: String) {
+  def compare(s1: String, s2: String): Unit = {
     assert(s1 == s2, s1 + "\nvs.\n" + s2)
   }
 

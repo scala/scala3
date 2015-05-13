@@ -5,7 +5,7 @@ import collection.immutable._
 
 
 object Test {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val ps = PagedSeq.fromLines(List(
       "line1",
       "line2",

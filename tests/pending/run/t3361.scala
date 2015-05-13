@@ -11,33 +11,33 @@ object Test extends App {
   append_1
   append_2
 
-  def empty {
+  def empty: Unit = {
     val none = DoubleLinkedList()
     require(none.size == 0)
     none.foreach( _ => require(false))
   }
 
-  def builder_1 {
+  def builder_1: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     require(10 == ten.size)
   }
 
-  def builder_2 {
+  def builder_2: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     require((ten.size*(ten.size+1))/2 == ten.reduceLeft(_ + _))
   }
 
-  def chaining_1 {
+  def chaining_1: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     require(ten.reverse == DoubleLinkedList((1 to 10).reverse: _*))
   }
 
-  def chaining_2 {
+  def chaining_2: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     require(ten == ten.reverse.reverse)
   }
 
-  def insert_1 {
+  def insert_1: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     ten.append(DoubleLinkedList(11))
 
@@ -51,7 +51,7 @@ object Test extends App {
     require(ten.last == 11)
   }
 
-  def insert_2 {
+  def insert_2: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     try {
       DoubleLinkedList().insert(ten)
@@ -66,7 +66,7 @@ object Test extends App {
     require(zero.last == 10)
   }
 
-  def append_1 {
+  def append_1: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     val eleven = ten.append(DoubleLinkedList(11))
     // Post-append equality test
@@ -81,7 +81,7 @@ object Test extends App {
     require(ten.last == 11)
   }
 
-  def append_2 {
+  def append_2: Unit = {
     val ten = DoubleLinkedList(1 to 10: _*)
     try {
       DoubleLinkedList().append(ten)

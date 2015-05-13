@@ -5,17 +5,17 @@
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     testConversions()
     testConverters()
   }
 
-  def needPackageConcurrentMap(map: collection.concurrent.Map[Int, Int]) {
+  def needPackageConcurrentMap(map: collection.concurrent.Map[Int, Int]): Unit = {
   }
-  def needJavaConcurrent(map: java.util.concurrent.ConcurrentMap[Int, Int]) {
+  def needJavaConcurrent(map: java.util.concurrent.ConcurrentMap[Int, Int]): Unit = {
   }
 
-  def testConversions() {
+  def testConversions(): Unit = {
     import collection.JavaConversions._
     val skiplist = new java.util.concurrent.ConcurrentSkipListMap[Int, Int]
     val ctrie = new collection.concurrent.TrieMap[Int, Int]
@@ -24,7 +24,7 @@ object Test {
     needJavaConcurrent(ctrie)
   }
 
-  def testConverters() {
+  def testConverters(): Unit = {
     import collection.JavaConverters._
     val skiplist = new java.util.concurrent.ConcurrentSkipListMap[Int, Int]
     val ctrie = new collection.concurrent.TrieMap[Int, Int]
