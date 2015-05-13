@@ -146,25 +146,24 @@ abstract class CompilerTest extends DottyTest {
       (implicit defaultOptions: List[String]): Unit =
     compileDir(prefix, dirName, args, xerrors, true)
 
-  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
-            (implicit defaultOptions: List[String]): Unit =
-    compileFiles(path, args, verbose, true)
-
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
-  def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, isRunTest: Boolean = false)
+  def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
     val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       if (verbose) println(s"testing $path$name")
-      compileFile(path, name, args, 0, "", isRunTest)
+      compileFile(path, name, args, 0, "", runTest)
     }
     for (subdir <- dir.dirs) {
       if (verbose) println(s"testing $subdir")
-      compileDir(path, subdir.jfile.getName, args, 0, isRunTest)
+      compileDir(path, subdir.jfile.getName, args, 0, runTest)
     }
   }
+  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
+      (implicit defaultOptions: List[String]): Unit =
+    compileFiles(path, args, verbose, true)
 
   /** Compiles the given list of code files. */
   def compileList(testName: String, files: List[String], args: List[String] = Nil, xerrors: Int = 0)
