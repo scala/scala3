@@ -88,6 +88,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Xshowobj = StringSetting("-Xshow-object", "object", "Show internal representation of object.", "")
   val showPhases = BooleanSetting("-Xshow-phases", "Print a synopsis of compiler phases.")
   val sourceReader = StringSetting("-Xsource-reader", "classname", "Specify a custom method for reading source files.", "")
+  val XnoValueClasses = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
 
   val XoldPatmat = BooleanSetting("-Xoldpatmat", "Use the pre-2.10 pattern matcher. Otherwise, the 'virtualizing' pattern matcher is used in 2.10.")
   val XnoPatmatAnalysis = BooleanSetting("-Xno-patmat-analysis", "Don't perform exhaustivity/unreachability analysis. Also, ignore @switch annotation.")
