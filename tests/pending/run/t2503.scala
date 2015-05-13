@@ -13,7 +13,7 @@ trait SB[A] extends Buffer[A] {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new ArrayBuffer[Int] with SB[Int]
 }
 

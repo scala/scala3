@@ -1,5 +1,5 @@
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   object Color extends Enumeration {
     val Red, Green, Blue = Value

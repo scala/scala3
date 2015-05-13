@@ -1,7 +1,7 @@
 import scala.util.Random.nextInt
 import scala.sys.error
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def unreachableNormalExit: Int = {
     return 42
     0

@@ -48,7 +48,7 @@ package b {
 }
 import a._
 import _root_.b._
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   {
   val x: Meter = new Meter(1)

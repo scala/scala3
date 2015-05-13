@@ -1,6 +1,6 @@
 import scala.language.implicitConversions
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   trait TARInt
 
   trait Basket[A,B] {

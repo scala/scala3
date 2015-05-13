@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def getClause[T](clauses: List[T]): Option[T] = {
     for (c <- clauses) {
       return Some(c)

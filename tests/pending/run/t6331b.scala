@@ -2,7 +2,7 @@ import scala.tools.partest.Util.trace
 import scala.util.control.Exception.allCatch
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def intercept = allCatch.withApply(_.getClass)
   val t: Boolean = true
   trace(if (t) -0d else 0d)

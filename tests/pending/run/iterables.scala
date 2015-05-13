@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class Test(n: Int) extends Iterable[Int] {
     private var i = 0
     def iterator = new Iterator[Int] {

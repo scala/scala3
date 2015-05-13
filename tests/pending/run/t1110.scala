@@ -10,6 +10,6 @@ class Stuff {
   assert(zoop(10) == 2)
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new Stuff
 }

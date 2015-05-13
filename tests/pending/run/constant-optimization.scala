@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def testBothReachable(): Unit = {
     val i = util.Random.nextInt
     val x = if (i % 2 == 0) null else "good"

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val y = (0: Int) match {
     case 1 => 1
     case 0 | 0 => 0

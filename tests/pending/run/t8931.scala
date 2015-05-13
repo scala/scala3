@@ -5,7 +5,7 @@ trait B extends A
 
 class C extends A with B
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val c = classOf[C]
 
   println(c.getGenericInterfaces.toList)

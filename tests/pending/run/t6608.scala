@@ -5,7 +5,7 @@ class C {
   @inline def foo = yyy
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import universe._
   val access = typeOf[C].decls
     .toList

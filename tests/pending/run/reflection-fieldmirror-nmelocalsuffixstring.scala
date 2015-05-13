@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class A {
     var x: Int = 42
   }

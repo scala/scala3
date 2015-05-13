@@ -48,7 +48,7 @@ class CrashTest3 {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   {
     val c = new CrashTest
     c.CrashTestTable

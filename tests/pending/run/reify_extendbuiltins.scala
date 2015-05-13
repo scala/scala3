@@ -3,7 +3,7 @@ import scala.language.{ implicitConversions, postfixOps }
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   reify {
     def fact(n: Int): BigInt =
       if (n == 0) 1 else fact(n-1) * n

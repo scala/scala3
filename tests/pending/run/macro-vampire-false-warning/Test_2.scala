@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val foo = mkObject("x" -> "2", "y" -> 3)
   println(foo.x)
   println(foo.y)

@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   {
     val x = 42
     def foo() = reify{ val y = x; reify(y) };

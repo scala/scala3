@@ -8,7 +8,7 @@ class Foo(val n: Int) {
   override def toString = "" + n
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val set = new collection.mutable.HashSet[Foo]
 //  val set = new collection.jcl.HashSet[Foo]
 

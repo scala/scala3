@@ -13,7 +13,7 @@ class B extends A {
 
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
  val a = new A
  print("a.x=")
  println(a.x)

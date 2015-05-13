@@ -36,7 +36,7 @@ object O4 {
 }
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def check(desc: String, clazz: Class[_]): Unit = {
     println(s" $desc isMemberClass = ${clazz.isMemberClass}, ${clazz.getEnclosingMethod}")
     println(reflect.runtime.currentMirror.classSymbol(clazz))

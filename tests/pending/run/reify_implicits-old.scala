@@ -3,7 +3,7 @@ import scala.language.{ implicitConversions, reflectiveCalls }
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   reify {
     implicit def arrayWrapper[A : ClassManifest](x: Array[A]) =
       new {

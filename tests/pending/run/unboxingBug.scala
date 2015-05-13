@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(identity('a').toInt)
   println('a'.toInt)
   println(identity('a').asInstanceOf[Int])

@@ -6,7 +6,7 @@ import collection._
 /** Sorted maps should have `filterKeys` and `mapValues` which return sorted maps.
  *  Mapping, filtering, etc. on these views should return sorted maps again.
  */
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   val sortedmap = SortedMap(1 -> false, 2 -> true, 3 -> false, 4 -> true)
   println(sortedmap.filterKeys(_ % 2 == 0): SortedMap[Int, Boolean])

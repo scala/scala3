@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   case class AnnotationInfo(a: String, b: Int) extends Product2[String, Int] {
     def _1 = a
     def _2 = b

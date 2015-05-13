@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val ns = (0 until 20)
   val arr = new Array[Int](10)
 

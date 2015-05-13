@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
 def test[A](name: String, expect: A, actual: => A): Unit = {
     if (expect != actual) throw new AssertionError("test " + name + " failed")

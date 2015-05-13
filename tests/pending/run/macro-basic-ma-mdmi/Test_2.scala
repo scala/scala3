@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import Macros.Shmacros._
   println(foo(2) + Macros.bar(2) * new Macros().quux(4))
 }

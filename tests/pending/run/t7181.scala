@@ -15,7 +15,7 @@ case object ExceptionUncaughtException extends Action
 case class UncaughtException(action: Action) extends RuntimeException
 case class CaughtException(action: Action) extends RuntimeException
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def test(action: Action, expectException: Boolean = false): Unit = {
     var gotException = false
     val result = try

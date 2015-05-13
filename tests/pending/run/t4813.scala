@@ -2,7 +2,7 @@ import collection.mutable._
 import reflect._
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def runTest[T, U](col: T)(clone: T => U)(mod: T => Unit)(implicit ct: ClassTag[T]): Unit = {
      val cloned = clone(col)
      assert(cloned == col, s"cloned should be equal to original. $cloned != $col")

@@ -19,7 +19,7 @@ object Main {
   def main(argv: Array[String]): Unit = {
     class Bip {
       class Foo { override def toString() = "foo" }
-      object Main extends App {
+      object Main extends dotty.runtime.LegacyApp {
         val cbn = new Foo()
       }
       Main.main(Array())
@@ -29,7 +29,7 @@ object Main {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new C(22)
   Main.main(Array())
 }

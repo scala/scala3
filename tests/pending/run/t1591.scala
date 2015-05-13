@@ -8,7 +8,7 @@ abstract class A {
 
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
     val a = new A{}
     println(a.lazyBar.foo)
 }

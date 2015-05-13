@@ -5,7 +5,7 @@ trait M[F] {
   def category1: Category[Tuple2] = null
 }
 abstract class C extends M[Float]
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val ms = classOf[C].getMethods.filter(_.getName.startsWith("category"))
   println(ms.map(_.toGenericString).sorted.mkString("\n"))
 }

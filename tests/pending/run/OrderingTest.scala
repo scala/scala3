@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def test[T](t1 : T, t2 : T)(implicit ord : Ordering[T]) = {
     val cmp = ord.compare(t1, t2);
     val cmp2 = ord.compare(t2, t1);

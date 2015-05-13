@@ -1,4 +1,4 @@
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   case class Queryable2[T]() { def filter(predicate: T => Boolean) = ??? }
   trait CoffeesTable{ def sales : Int }
   val q = Queryable2[CoffeesTable]()

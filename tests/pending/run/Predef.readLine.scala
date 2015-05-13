@@ -1,7 +1,7 @@
 import java.io.StringReader
 import scala.io.StdIn.readLine
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Console.withIn(new StringReader("")) {
     readLine()
     readLine("prompt\n")

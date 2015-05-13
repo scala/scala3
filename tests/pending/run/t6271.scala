@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def filterIssue = {
     val viewed : Iterable[Iterable[Int]] = List(List(0).view).view
     val filtered = viewed flatMap { x => List( x filter (_ > 0) ) }

@@ -1,6 +1,6 @@
 import Function._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   var xyz: (Int, String, Boolean) = _
   xyz = (1, "abc", true)
   Console.println(xyz)

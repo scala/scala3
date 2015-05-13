@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def intSwitch(x: Int) = x match {
     case 0 => "zero"
     case 1 => "one"

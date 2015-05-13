@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println((List.range(1L, 15L) :\ 0L) (_ + _))
   println((List.range(1L, 1000000L) :\ 0L) (_ + _))
   println((List.fill(5)(1) :\ 1) (_ - _))

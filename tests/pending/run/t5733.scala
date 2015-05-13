@@ -16,7 +16,7 @@ class B extends Dynamic {
   def updateDynamic(method:String)(v:String): Unit = { b = v }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert( A.foo == "a" )
   assert( A.bar == "a" )
   A.aaa = "aaa"

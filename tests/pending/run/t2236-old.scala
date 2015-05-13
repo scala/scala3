@@ -1,7 +1,7 @@
 class T[A](implicit val m:Manifest[A])
 class Foo
 class Bar extends T[Foo]
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new Bar
 }
 

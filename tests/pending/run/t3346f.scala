@@ -1,7 +1,7 @@
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   trait Foo[A]
   implicit def fooString: Foo[String] = null
   implicit def value[A](implicit foo: Foo[A]): Int = 5

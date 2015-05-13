@@ -1,7 +1,7 @@
 
 import scala.language.{ higherKinds, existentials }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def get[T](x: T) = { println("get: "+ x); x }
 
   // TESTS

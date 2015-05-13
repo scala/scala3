@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val tree1 = reify(new collection.immutable.HashMap[String, String])
   val tree2 = reify(new collection.mutable.HashMap[String, String])
   def stabilize(s: String) = """#\d+""".r.replaceAllIn(s, "#<id>")

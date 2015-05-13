@@ -4,7 +4,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val code = reify {
     case class C(foo: Int, bar: Int)
   };

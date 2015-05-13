@@ -17,7 +17,7 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{universe => ru}
 import scala.tools.reflect.ToolBox
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val cm = ru.runtimeMirror(getClass.getClassLoader)
   val toolbox = cm.mkToolBox()
   toolbox.eval(toolbox.parse("""{

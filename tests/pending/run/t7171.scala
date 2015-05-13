@@ -10,7 +10,7 @@ trait T {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val t1 = new T {}
   val t2 = new T {}
   val a1 = new t1.A()

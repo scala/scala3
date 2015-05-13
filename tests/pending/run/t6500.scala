@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class Box(val value: Int) extends AnyVal
 
   trait Foo {

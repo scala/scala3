@@ -1,7 +1,7 @@
 import scala.reflect.{ClassTag, classTag}
 
 // ticket #421
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   def transpose[A: ClassTag](xss: Array[Array[A]]) = {
     for (i <- Array.range(0, xss(0).length)) yield

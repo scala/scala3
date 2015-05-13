@@ -1,6 +1,6 @@
 import scala.collection.immutable._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   // test that a HashTrieSet with one leaf element is not created!
   val x = HashSet.empty + 1 + 2

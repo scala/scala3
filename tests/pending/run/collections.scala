@@ -2,7 +2,7 @@ import scala.collection._
 import scala.compat.Platform.currentTime
 import scala.language.postfixOps
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   val printTime = false
 

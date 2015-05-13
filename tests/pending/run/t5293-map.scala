@@ -5,7 +5,7 @@ import scala.collection.JavaConverters._
 
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   def bench(label: String)(body: => Unit): Long = {
     val start = System.nanoTime

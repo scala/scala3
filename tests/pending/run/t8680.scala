@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def pre(n: Int) = (-n to -1).toStream
 
   def cyc(m: Int) = {

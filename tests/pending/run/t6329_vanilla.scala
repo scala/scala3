@@ -1,7 +1,7 @@
 import scala.reflect.classTag
 
 @deprecated("Suppress warnings", since="2.11")
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(classManifest[scala.List[_]])
   println(classTag[scala.List[_]])
   println(classManifest[scala.collection.immutable.List[_]])

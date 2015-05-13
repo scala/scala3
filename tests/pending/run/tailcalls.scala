@@ -193,7 +193,7 @@ object FancyTailCalls {
   val f2 = new FancyTailCalls
 }
 
-object PolyObject extends App {
+object PolyObject extends dotty.runtime.LegacyApp {
   def tramp[A](x: Int): Int =
     if (x > 0)
       tramp[A](x - 1)

@@ -4,6 +4,6 @@ class Base(a: Any)
 //  at Test$.<init>(t1909c.scala)
 class Sub() extends Base({ def bippy = 5; bippy })
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new Sub()
 }

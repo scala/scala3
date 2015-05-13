@@ -22,7 +22,7 @@ class D extends C {
 }
 object M
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println("Testing Symbol.isAbstract...")
   def test[T: TypeTag] = {
     val sym = typeOf[T].typeSymbol

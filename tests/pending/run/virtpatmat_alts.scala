@@ -1,7 +1,7 @@
 /*
  * filter: It would fail on the following input
  */
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   (true, true) match {
     case (true, true) | (false, false) => 1
   }

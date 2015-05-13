@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.reflect.internal.util.StringContextStripMarginOps
   def check(actual: Any, expected: Any) = if (actual != expected) sys.error(s"\nexpected:\n$expected\n\nactual:\n$actual")
 

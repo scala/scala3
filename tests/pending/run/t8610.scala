@@ -7,7 +7,7 @@ case class X(name: String) {
   def u: Unit = ()      // unitarian universalist
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   // poignant demonstration
   Console println X("Bob").x
 }

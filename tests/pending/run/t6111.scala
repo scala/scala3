@@ -17,7 +17,7 @@ object FooHasType {
 // resurrected from neg/t997
 object Foo997 { def unapply(x : String): Option[(String, String)] = Some((x, x)) }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val x = 8
   println(x match {
     case Foo(p) => p // p should be a pair of Int

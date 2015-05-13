@@ -1,3 +1,3 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val v = bakery.Bakery.failure
 }

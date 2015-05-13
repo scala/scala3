@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val a1 = Macros.foo
   val a2 = Predef.identity(Predef.identity(Macros.foo))
   val a3: Int = Macros.foo

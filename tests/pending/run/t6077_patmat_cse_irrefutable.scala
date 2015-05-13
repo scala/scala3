@@ -5,7 +5,7 @@ object LiteralNode {
   def unapply(n: LiteralNode) = Some(n.value)
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   ((new LiteralNode(false)): Any) match {
     case LiteralNode(true)  => println("uh-oh")
     case LiteralNode(false) => println("ok")

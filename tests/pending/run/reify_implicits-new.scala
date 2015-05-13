@@ -4,7 +4,7 @@ import scala.reflect.{ClassTag, classTag}
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   reify {
     implicit def arrayWrapper[A : ClassTag](x: Array[A]) =
       new {

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   case class A(val x: String) extends Throwable
   class B extends Exception { override def toString = "B" }
   def bla = 0

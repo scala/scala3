@@ -58,7 +58,7 @@ package test3 {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   val y1: test1.TOD = new test1.TOD(1000)
   val y2: test2.TOD = test2.Client.newTOD(1000)

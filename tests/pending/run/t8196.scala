@@ -1,6 +1,6 @@
 import scala.reflect.runtime.{ universe => ru }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
  
   trait FormTrait {
 

@@ -14,7 +14,7 @@ object A extends O {
   println(showRaw(code))
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   try {
     val v: A.x.I = A.code.eval
   } catch {

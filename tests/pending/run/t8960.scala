@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def test(o: AnyRef, sp: Boolean = false) = {
     val isSpecialized      = o.getClass.getSuperclass.getName contains "$sp"
     val isDelambdafyMethod = o.getClass.getName contains "$lambda$"

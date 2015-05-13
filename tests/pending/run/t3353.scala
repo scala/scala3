@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   "foo" match {
     case Matcher(result) => println(result)

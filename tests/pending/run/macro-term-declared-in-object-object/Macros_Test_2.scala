@@ -4,7 +4,7 @@ object Macros {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val outer = Macros
   outer.Macros.foo
 }

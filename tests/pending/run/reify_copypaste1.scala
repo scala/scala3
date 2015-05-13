@@ -4,7 +4,7 @@ import scala.reflect.runtime.universe.definitions._
 import scala.reflect.runtime.universe.Flag._
 import scala.tools.reflect.ToolBox
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val stdout = System.out
   val output = new java.io.ByteArrayOutputStream()
   System.setOut(new java.io.PrintStream(output))

@@ -206,7 +206,7 @@ object TestImmutable2 {
   println
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   TestMutable
   TestMutable2
   TestMutable3

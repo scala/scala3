@@ -1,5 +1,5 @@
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.tools.nsc.io._
 
   val dir: VirtualDirectory = new VirtualDirectory("foo", None)

@@ -5,7 +5,7 @@ trait Foo {
 
 class Bar extends Foo
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   classOf[Bar].getDeclaredFields.foreach(f => {
     assert(java.lang.reflect.Modifier.isVolatile(f.getModifiers), f.getName)
   })

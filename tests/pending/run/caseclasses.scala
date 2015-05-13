@@ -15,7 +15,7 @@ object M {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   def Abs(x: Int) = new Abs(x * 2){}
   Abs(2) match {

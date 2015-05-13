@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   implicit class PimpedList[T](val list: List[T]) {
     def query(predicate: ReflectiveClosure[T, Boolean]): List[T] = {
       println(predicate.tree)

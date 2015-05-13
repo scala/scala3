@@ -2,7 +2,7 @@
 //  def foo(x: Int) = macro Impls.foo
 //}
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.reflect.runtime.universe._
   import scala.reflect.runtime.universe.Flag._
   import scala.reflect.runtime.{currentMirror => cm}

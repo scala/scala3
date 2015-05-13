@@ -46,7 +46,7 @@ class Test1 extends OffsetList with Matcher {
   type Matchable = MatchableImpl;
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val test = new Test1;
   val m = new test.MatchableImpl;
   m.chop;

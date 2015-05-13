@@ -7,7 +7,7 @@ object C {
   implicit object MC extends C
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val tb = cm.mkToolBox()
   println(tb.inferImplicitValue(typeOf[C]))
 }

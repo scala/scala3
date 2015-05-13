@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(List(1,2,3) match {
     case Nil => List(0)
 // since the :: extractor's argument must be a ::, there has to be a cast before its unapply is invoked

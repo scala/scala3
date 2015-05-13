@@ -89,7 +89,7 @@ object TestExpressions {
 }
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   TestExpressions.test
 }

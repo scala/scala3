@@ -30,7 +30,7 @@ object WorkingTab extends WorkingEnum {
   val b = Enum("B")
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   testGris()
   testWorking()
 

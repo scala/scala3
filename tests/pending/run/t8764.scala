@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 case class IntOnly(i: Int, j: Int)
 
 println("IntOnly: should return an unboxed int")

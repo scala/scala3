@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   // single line comment in multi line comment
   /*//*/ val x = 1 */*/
   val x = 2

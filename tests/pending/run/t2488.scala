@@ -2,7 +2,7 @@ class C {
   def f(a:Int, b:Int) = 1
   def f() = 2
 }
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val c = new C()
   println(c.f(a = 1,2))
   println(c.f(a = 1, b = 2))

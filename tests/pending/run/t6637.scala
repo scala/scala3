@@ -1,5 +1,5 @@
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   try {
     class A ; class B ; List().head.isInstanceOf[A with B]
   } catch {

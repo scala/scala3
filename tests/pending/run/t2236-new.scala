@@ -3,7 +3,7 @@ import scala.reflect.runtime.universe._
 class T[A](implicit val m:TypeTag[A])
 class Foo
 class Bar extends T[Foo]
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new Bar
 }
 

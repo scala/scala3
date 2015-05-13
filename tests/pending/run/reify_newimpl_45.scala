@@ -4,7 +4,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 import internal._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class C[T >: Null] {
     val code = reify{val x: T = "2".asInstanceOf[T]; println("ima worx: %s".format(x)); x}
     println(freeTypes(code.tree))

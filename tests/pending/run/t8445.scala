@@ -6,6 +6,6 @@ object X {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(X.y.z.getEnclosingClass.getName == "X$$anon$1")
 }

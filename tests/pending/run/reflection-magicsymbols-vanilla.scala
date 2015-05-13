@@ -11,7 +11,7 @@ class A {
   def foo8(x: Singleton) = ???
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.reflect.runtime.universe._
   def test(n: Int): Unit = {
     val sig = typeOf[A] member TermName("foo" + n) info

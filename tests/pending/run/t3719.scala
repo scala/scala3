@@ -12,7 +12,7 @@ object Days extends Enumeration {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def dayElementsShouldBeNamed(): List[String] =
     Days.values.toList.sorted.map(x => x.toString)
 

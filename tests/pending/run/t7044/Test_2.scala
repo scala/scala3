@@ -3,7 +3,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 
 class C
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def test(tpe: Type): Unit = {
     val sym = tpe.typeSymbol
     println(s"autoinitialized ${sym.name}: ${sym.pos.source.file.name} ${sym.pos.source.file.sizeOption.nonEmpty}")

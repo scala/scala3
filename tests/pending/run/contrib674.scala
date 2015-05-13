@@ -1,6 +1,6 @@
 // causes VerifyError with scala-2.5.1
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def bad(): Unit = {
     try {
       1

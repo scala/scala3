@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
  val a = 1
  1 match {
    case 2 => println("FAILED")

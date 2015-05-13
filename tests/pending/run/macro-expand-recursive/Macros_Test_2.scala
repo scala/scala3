@@ -3,6 +3,6 @@ object Macros {
   def fooFoo: Unit = macro Impls.fooFoo
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Macros.fooFoo
 }

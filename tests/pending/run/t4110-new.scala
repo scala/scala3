@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def inferredType[T : TypeTag](v : T) = println(typeOf[T])
 
   trait A

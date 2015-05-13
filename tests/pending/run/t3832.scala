@@ -11,7 +11,7 @@ class t3832 {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new t3832(0)
   new t3832(true)
 }

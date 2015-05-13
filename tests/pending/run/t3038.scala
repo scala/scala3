@@ -62,7 +62,7 @@ class C extends A {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   (new C).run
 }
 

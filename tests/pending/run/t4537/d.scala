@@ -1,6 +1,6 @@
 import a._
 import b._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(Settings.Y)
 }

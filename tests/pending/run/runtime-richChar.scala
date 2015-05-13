@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def testSeq(name: String, expected: Seq[Char], got: Seq[Char]): Unit = {
     if (expected.toList == got.toList)
       println(name + " ok")

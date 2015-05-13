@@ -8,7 +8,7 @@ package scala {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def key(sym: Symbol) = sym + ": " + sym.info
   def test(tpe: Type, receiver: Any, method: String, args: Any*): Unit = {
     def wrap[T](op: => T) =

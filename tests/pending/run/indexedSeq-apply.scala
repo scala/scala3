@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val empty = IndexedSeq()
   assert(empty.isEmpty)
 

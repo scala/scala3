@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.reflect.runtime.universe._
   val sym = typeOf[JavaAnnottee_1].typeSymbol
   sym.info

@@ -29,7 +29,7 @@ object Macros5 {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println("===Macros1===")
   new Macros1.C[Int]().foo(42)
   new Macros1.C[Boolean]().foo(42)

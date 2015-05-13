@@ -6,7 +6,7 @@ case class D(a: A, b: B[_]*)
 
 case class E(c: Class[_])
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def f1(c: C) = c match {
     case C(a, b) => ()
   }

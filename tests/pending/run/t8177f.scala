@@ -14,7 +14,7 @@ class B extends A[Int](null) {
 }
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val methods = classOf[B].getDeclaredMethods.sortBy(_.getName)
   assert(methods.forall(_.toGenericString.startsWith("public int")))
 }

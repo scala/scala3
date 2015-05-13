@@ -9,7 +9,7 @@ class Foo(param1: => Object, param2: => String) {
 	lazy val field2 = try param2 finally println("")
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 	val foo = new Foo(new Object, "abc")
 
 	foo.field1

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import collection.mutable.ListBuffer
 
   def newLB = ListBuffer('a, 'b, 'c, 'd, 'e)

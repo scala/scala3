@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   override def toString = "Test"
 
   assert(s"$this" == "Test")

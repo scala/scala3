@@ -3,7 +3,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.{ToolBox, ToolBoxError}
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val casee = reify {
     case class C(x: Int, y: Int)
     println(C(2, 3))

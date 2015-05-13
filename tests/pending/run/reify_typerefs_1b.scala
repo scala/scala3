@@ -7,7 +7,7 @@ object Expression {
   override def toString = "Expression"
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val code = reify {
     List(Expression, Expression)
   };

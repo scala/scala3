@@ -27,7 +27,7 @@ class Foo{
  }
 }
 
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   val foo = new Foo
   println( foo.foo )
 }

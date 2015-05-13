@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   trait Happy { val status = "happy" }
   trait Sad { val status = "sad" }
 

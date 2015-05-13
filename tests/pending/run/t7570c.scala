@@ -4,7 +4,7 @@ import scala.tools.reflect.{ToolBox, ToolBoxError}
 import definitions._
 import Flag._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val tb = cm.mkToolBox()
   val csym = tb.define(q"""class C { override def toString = "C" }""")
   println((csym, csym.isClass, csym.isModule, csym.isModuleClass))

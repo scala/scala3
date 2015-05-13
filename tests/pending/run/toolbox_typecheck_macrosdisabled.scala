@@ -8,7 +8,7 @@ import internal._
 // have accidentally changed the way type tags reify.  If so, validate
 // that your changes are accurate and update the check file.
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val toolbox = cm.mkToolBox()
   val rupkg = cm.staticModule("scala.reflect.runtime.package")
   val rusym = reificationSupport.selectTerm(rupkg, "universe")

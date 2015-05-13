@@ -5,7 +5,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 final class table extends annotation.StaticAnnotation
 @table class A
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val s = cm.classSymbol(classOf[A])
   println(s.annotations)
 }

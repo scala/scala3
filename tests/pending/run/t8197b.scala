@@ -3,6 +3,6 @@ object O {
   def foo(s: String)(implicit i: DummyImplicit = null) = 1
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(O.foo("") == 1)
 }

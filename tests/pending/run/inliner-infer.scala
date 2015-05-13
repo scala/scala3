@@ -3,7 +3,7 @@
 /** Test that the inliner is not inferring that `xs' is
  *  always Nil, removing the call to isEmpty.
  */
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   @annotation.tailrec
   def walk(xs: MyList): Unit = {

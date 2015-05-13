@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(implicitly[WeakTypeTag[Byte]] eq WeakTypeTag.Byte)
   println(implicitly[WeakTypeTag[Byte]])
   println(implicitly[WeakTypeTag[Short]] eq WeakTypeTag.Short)

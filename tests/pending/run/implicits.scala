@@ -17,7 +17,7 @@ class C(x: String) {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import A.B._
   val c = new C("OK")
   val i = new c.Inner

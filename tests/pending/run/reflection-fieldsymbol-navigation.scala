@@ -4,7 +4,7 @@ class C {
   var x = 2
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val x = typeOf[C].member(TermName("x")).asTerm
   println(x)
   println(x.isVar)

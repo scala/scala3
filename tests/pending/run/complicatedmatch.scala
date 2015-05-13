@@ -6,7 +6,7 @@ object Even{
   def unapply(x : Int) = if (x % 2 == 0) Some(x / 2) else None;
 }
 
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   val LongWord = "supercalifragilisticexpialadocious";
 
   def foo(x : Int, y : String) : Int = (x, y) match {

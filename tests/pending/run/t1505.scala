@@ -8,7 +8,7 @@ object R extends Enumeration {
   val A, B, C = Value
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(Q(0) == Q.withName("A"))
   assert(Q.C == Q.withName("C"))
 

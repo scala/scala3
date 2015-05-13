@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.ToolBox
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val tb = runtimeMirror(getClass.getClassLoader).mkToolBox()
   val tree = tb.parse("""
     import scala.reflect.runtime.{universe => ru}

@@ -5,7 +5,7 @@ import definitions._
 import Flag._
 import internal._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val tb = cm.mkToolBox()
   val msg = internal.reificationSupport.newFreeTerm("msg", "C")
   internal.reificationSupport.setInfo(msg, typeOf[String])

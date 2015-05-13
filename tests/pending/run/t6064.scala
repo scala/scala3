@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(Option(42) contains 42)
   assert(Some(42) contains 42)
   assert(Option(BigInt(42)) contains 42)

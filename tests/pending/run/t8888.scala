@@ -7,6 +7,6 @@ class C {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   new C().resume
 }

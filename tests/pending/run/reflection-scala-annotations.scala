@@ -10,7 +10,7 @@ class S
 @jann(y = Array(1, 2), x = 2)
 class J
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(symbolOf[S].annotations.head.tree)
   println(symbolOf[J].annotations.head.tree)
 }

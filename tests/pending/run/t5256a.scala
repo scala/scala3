@@ -3,7 +3,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 
 class A { def foo = ??? }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val c = cm.classSymbol(classOf[A])
   println(c)
   println(c.fullName)

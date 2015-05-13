@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(ReturnTypeRefinement.foo.x)
 
   case class Foo(i: Int, s: String, b: Boolean)

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   case class C[T, U <: String, O >: Object](x: Int, y: T)(z: U, b: Boolean)(s: O, val l: Int)
 

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   implicit class C(s: String) {
     def nElems = s.length

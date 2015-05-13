@@ -1,5 +1,5 @@
 class Foo(val x: Int) extends AnyVal
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(scala.reflect.classTag[Foo])
 }

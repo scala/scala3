@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   trait MyPF[@specialized(Int) -A] extends (A => Unit) {
     def isDefinedAt(x: A): Boolean

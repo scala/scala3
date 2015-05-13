@@ -1,5 +1,5 @@
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val ms = """This is a long multiline string
   with \u000d\u000a CRLF embedded."""
   assert(ms.lines.size == 3, s"lines.size ${ms.lines.size}")

@@ -50,7 +50,7 @@ package packageful {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   packageless.test
   packageful.Test.test
 }

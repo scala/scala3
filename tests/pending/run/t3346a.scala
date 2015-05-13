@@ -1,6 +1,6 @@
 import scala.language.implicitConversions
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class Rep[T](x : T)
 
   class SomeOps[T](x : Rep[T]) { def foo = 1 }

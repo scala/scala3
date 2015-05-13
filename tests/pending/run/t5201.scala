@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   // First make sure specific types are preserved
   val tmp: Vector[Int] = Vector(Vector(1,2), Vector(3,4)).view.flatten.force
 

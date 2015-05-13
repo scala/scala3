@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val a: Any = {
     class A private () { private def x = 0; A.y };
     object A {

@@ -4,7 +4,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 class C
 object C
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   type T = C
 
   println(showRaw(symbolOf[C].companion, printKinds = true))

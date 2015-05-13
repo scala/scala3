@@ -5,7 +5,7 @@
 
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.collection.concurrent.TrieMap
 
   class Collision(val idx: Int) {

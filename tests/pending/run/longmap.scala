@@ -1,4 +1,4 @@
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   import scala.collection.immutable.LongMap;
 
   val it = LongMap(8L -> 2, 11L -> 3, 1L -> 2, 7L -> 13);

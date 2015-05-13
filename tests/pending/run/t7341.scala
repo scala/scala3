@@ -10,6 +10,6 @@ object Obj {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Obj()
 }

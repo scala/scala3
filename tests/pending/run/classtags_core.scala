@@ -1,6 +1,6 @@
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(implicitly[ClassTag[Byte]] eq ClassTag.Byte)
   println(implicitly[ClassTag[Byte]])
   println(implicitly[ClassTag[Short]] eq ClassTag.Short)

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println((1 to 100000).toList.sortWith(_<_).length)
   println(List(1, 5, 10, 3, 2).toList.sortWith(_<_))
   println(List(1, 5, 10, 3, 2).toList.sortWith(_>_))

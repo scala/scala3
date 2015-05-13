@@ -1,6 +1,6 @@
 import language.higherKinds
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   // Slice of comonad is where this came up
   trait Foo[F[_]] {

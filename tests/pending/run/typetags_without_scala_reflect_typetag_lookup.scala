@@ -16,7 +16,7 @@ object Test extends StoreReporterDirectTest {
   }
 
   def app = """
-    object Test extends App {
+    object Test extends dotty.runtime.LegacyApp {
       // tries to materialize a type tag not having scala-reflect.jar on the classpath
       // even though it's easy to materialize a type tag of Int, this line will fail
       // because materialization involves classes from scala-reflect.jar

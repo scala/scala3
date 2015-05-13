@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.reflect.runtime.universe._
   //
   // x's owner is outer Test scope. Previosly the quasiquote expansion

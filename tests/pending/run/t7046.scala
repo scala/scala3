@@ -5,7 +5,7 @@ sealed class C
 class D extends C
 class E extends C
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val c = cm.staticClass("C")
   println(c.knownDirectSubclasses)
   c.info

@@ -1,4 +1,4 @@
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   def matchesNull[T](mightBeNull: Array[T]): Boolean = mightBeNull match {
     case null => true
     case x => false

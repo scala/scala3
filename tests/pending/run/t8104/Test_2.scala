@@ -5,7 +5,7 @@ object Generic {
   implicit def materializeGeneric[T, Repr]: Generic.Aux[T, Repr] = macro Macros.impl[T]
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   case class C(x: Int, y: Int)
 
   import scala.reflect.runtime.universe._

@@ -5,7 +5,7 @@ object O {
   type LK = K with L
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   local
 
   def local = {

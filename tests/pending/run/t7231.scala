@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
    val bar: Null = null
 
    def foo(x: Array[Int]) = x

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val xs = List.tabulate(4)(List(_))
   val i = xs.map(_.iterator).reduce { (a,b) =>
     a.hasNext

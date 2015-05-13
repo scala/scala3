@@ -5,7 +5,7 @@ object IntList {
   def apply(x: Int, xs: IntList) = new IntList(x, xs)
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   IntList(1, IntList(2, NilIL)) match {
     case IntList(a1, IntList(a2, IntList(a3, y))) => println(a1 + a2 + a3)
     case IntList(x, y) => println(x)

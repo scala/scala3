@@ -18,7 +18,7 @@ class D extends Bar[Unit]{
   def foo = println("Unit: called D.foo")
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val a: Foo[Unit] = new A
   a.foo
   a.foo

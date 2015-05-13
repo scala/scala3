@@ -6,6 +6,6 @@ object IOvervalueMyPrivacy {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(IOvervalueMyPrivacy.go == 6)
 }

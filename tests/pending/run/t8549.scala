@@ -9,7 +9,7 @@ import scala.reflect.io.File
 //    )
 //
 // Use this to re-establish a baseline for serialization compatibility.
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val overwrite: Option[File] = sys.props.get("overwrite.source").map(s => new File(new java.io.File(s)))
 
   def serialize(o: AnyRef): String = {

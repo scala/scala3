@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def inferredType[T : Manifest](v : T) = println(manifest[T])
 
   trait A

@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def testList = {
     val list = new java.util.ArrayList[Int]
     list.add(1)

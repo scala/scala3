@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   classOf[Foo].getDeclaredMethods().sortBy(_.getName).map(_.getExceptionTypes.sortBy(_.getName).toList).toList.foreach(println)
 }
 

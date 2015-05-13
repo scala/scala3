@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def foo(p: => Unit)(x:Int = 0) = x
 
   println(foo { val List(_*)=List(0); 1 } ())

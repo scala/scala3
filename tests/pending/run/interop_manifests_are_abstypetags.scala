@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def manifestIsWeakTypeTag[T: Manifest] = {
     println(implicitly[WeakTypeTag[T]].tpe)
   }

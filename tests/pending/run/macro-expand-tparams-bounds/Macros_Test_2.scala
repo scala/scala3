@@ -6,7 +6,7 @@ object Macros2 {
   def foo[T <: D]: Unit = macro Impls2.foo[T]
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Macros1.foo[String]
   Macros2.foo[D]
 }

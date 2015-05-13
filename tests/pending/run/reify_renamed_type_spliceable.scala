@@ -5,7 +5,7 @@ abstract class C {
   type T >: Null
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def foo(c: C) = {
     import c.{T => U}
     reify {

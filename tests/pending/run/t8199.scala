@@ -34,7 +34,7 @@ trait trt0123456789 { def x = Test.checkCallerImplClassName() }
 trait trt01234567890 { def x = Test.checkCallerImplClassName() }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def check(c: Class[_]): Unit = {
     checkClassName(c.getName)
   }

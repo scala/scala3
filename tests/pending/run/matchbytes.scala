@@ -1,4 +1,4 @@
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   val x = (1 : Byte) match {
     case 2 => println(2);
     case 1 => println(1);

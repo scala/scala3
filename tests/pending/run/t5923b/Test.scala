@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.collection.generic.CanBuildFrom
   val cbf = implicitly[CanBuildFrom[Nothing, Nothing, Array[Nothing]]]
   println(cbf().result.getClass)

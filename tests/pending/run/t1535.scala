@@ -8,7 +8,7 @@ class ClassDecl extends BlockStmt {
     lazy val y = true
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
     val n = new ClassDecl ()
     println (n.x)
     println (n.y)

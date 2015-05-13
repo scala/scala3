@@ -11,7 +11,7 @@ class C {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val c = new C()
   println(c.$.y)
   println(c.$.abc$.xy)

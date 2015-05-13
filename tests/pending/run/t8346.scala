@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import reflect.ClassTag
 
   object SomeEnum extends Enumeration {

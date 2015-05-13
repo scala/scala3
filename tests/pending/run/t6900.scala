@@ -29,7 +29,7 @@ final class Bug {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   assert(new Bug().f(null, null) == null)
   assert(new Bug().g(null)(null) == null)
   assert(new Bug().h(null)(null) == Nil)

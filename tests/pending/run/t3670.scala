@@ -11,7 +11,7 @@ class C {
   }
 }
 
-class M extends App {
+class M extends dotty.runtime.LegacyApp {
   def foo: Unit = {
     lazy val a = {
         lazy val b = 1
@@ -25,7 +25,7 @@ class M extends App {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
     new C()
     new M().foo
 }

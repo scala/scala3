@@ -1,6 +1,6 @@
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def test[T: ClassTag](x: T): Unit = {
     println(s"Checking if ${x.getClass} matches ${classTag[T].runtimeClass}")
     println(classTag[T].unapply(x))

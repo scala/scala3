@@ -5,7 +5,7 @@ import scala.tools.reflect.ToolBox
 
 class C
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val Block(List(ValDef(_, _, tpt: CompoundTypeTree, _)), _) = reify{ val x: C{} = ??? }.tree
   println(tpt)
   println(tpt.templ.parents)

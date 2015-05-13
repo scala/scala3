@@ -21,7 +21,7 @@ object Test extends DirectTest {
       println(msg)
     }
 
-    object Test extends App {}
+    object Test extends dotty.runtime.LegacyApp {}
   """.trim
 
   override def show(): Unit = {

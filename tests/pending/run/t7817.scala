@@ -20,7 +20,7 @@ package test {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   object fooable { def foo = "foo" }
   def check(result: Any) = assert(result == "foo", result.toString)
 

@@ -45,7 +45,7 @@ package pack {
 }
 
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import reflect.runtime.universe._
   def test[T: TypeTag] = {
     val tt = typeTag[T]

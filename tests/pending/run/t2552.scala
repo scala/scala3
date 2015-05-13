@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 	def testTakeWhile = {
 		val numbers = Iterator.range(0, 50)
 		val zeroTo9 = numbers.takeWhile(x => { println("p(" + x + ")"); x < 10 } )

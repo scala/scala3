@@ -2,7 +2,7 @@
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   abstract class Value {
   }

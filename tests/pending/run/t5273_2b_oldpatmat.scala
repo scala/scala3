@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   reify {
     val RegexParser = """(.*) \d+([A-Z]+) \| (.*) \|.*""".r
     val RegexParser(name, shortname, value) = "American Dollar 1USD | 2,8567 | sometext"

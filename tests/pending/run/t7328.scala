@@ -4,7 +4,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 case class Foo(x: Int) extends AnyVal
 case class Bar(foo: Foo)
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val foo = typeOf[Bar].decl(TermName("foo")).asMethod
   println(foo.returnType) // Foo
 

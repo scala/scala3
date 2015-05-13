@@ -53,7 +53,7 @@ object Bug1189 {
   println(f(x))
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   val x = { class I; class J; (new C(new I), new C(new J)) }
   val y: (C[X], C[Y]) forSome { type X; type Y }(C[X], C[Y]) forSome { type X; type Y } = x

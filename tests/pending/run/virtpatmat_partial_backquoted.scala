@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class Region { override def toString = "You got me!" }
   class SymbolType
   case class SymbolInfo(tp: SymbolType, regions: List[Region], x: Any)

@@ -37,6 +37,6 @@ package object foo {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   foo.testAll()
 }

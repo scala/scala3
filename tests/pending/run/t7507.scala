@@ -29,7 +29,7 @@ object Outer {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val s1 = new Cake1 {}
   assert((s1.x, s1.y) == (1, 2), (s1.x, s1.y))
 }

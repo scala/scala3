@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   def foo = {
 
     abstract class MouseEventType { def x: String }

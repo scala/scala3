@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import scala.collection.mutable.DoubleLinkedList
 
   empty

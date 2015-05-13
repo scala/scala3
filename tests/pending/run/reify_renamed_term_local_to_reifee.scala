@@ -7,7 +7,7 @@ object A {
   }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val expr = reify {
     import A.{B => X}
     import A.B.{c => y}

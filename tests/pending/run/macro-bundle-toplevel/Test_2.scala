@@ -1,4 +1,4 @@
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(Macros.mono)
   println(Macros.poly[Int])
   println(new Impl(???).weird)

@@ -3,7 +3,7 @@ object Macros {
   implicit def foo(x: String): Option[Int] = macro Impls.foo
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   import Macros._
   println("2": Option[Int])
   val s: Int = "2" getOrElse 0

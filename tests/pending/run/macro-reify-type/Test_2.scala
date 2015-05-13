@@ -1,6 +1,6 @@
 import StaticReflect._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   //println(method[List[Int]]("distinct"))
   println(method[List[Int]]("map"))
   //val $u: scala.reflect.runtime.universe.type = scala.reflect.runtime.universe;

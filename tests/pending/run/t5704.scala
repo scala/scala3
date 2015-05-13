@@ -3,7 +3,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class MyQuerycollection{
     def findUserByName( name:String ) = {
       val tree = reify{ "test" == name }.tree

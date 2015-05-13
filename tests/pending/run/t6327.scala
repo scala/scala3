@@ -1,6 +1,6 @@
 import language._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   case class R[+T](s: String) { def x() = println(s) }
 

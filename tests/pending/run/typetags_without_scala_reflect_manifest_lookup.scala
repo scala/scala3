@@ -5,7 +5,7 @@ object Test extends DirectTest {
   override def extraSettings = "-cp " + sys.props("partest.lib") + " -d \"" + testOutput.path + "\""
 
   def code = """
-    object Test extends App {
+    object Test extends dotty.runtime.LegacyApp {
       // manifest lookup also involves type tag lookup
       // because we support manifest <-> typetag convertability
       //

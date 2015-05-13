@@ -12,6 +12,6 @@ object Interpreter {
     finally { }
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Interpreter.break(0)
 }

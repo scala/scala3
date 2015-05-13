@@ -1,6 +1,6 @@
 import scala.language.reflectiveCalls
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val foo = Macros.foo("T")
   val ttpe = scala.reflect.runtime.universe.weakTypeOf[foo.T]
   println(ttpe)

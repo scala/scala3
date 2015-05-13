@@ -4,7 +4,7 @@
 
 //############################################################################
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val xs = List(1, 2, 3)
   val ys = List('a, 'b, 'c)
 

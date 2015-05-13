@@ -2,7 +2,7 @@ import scala.reflect.runtime.universe._
 import scala.tools.reflect.ToolBox
 import scala.tools.reflect.Eval
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   class C[U: TypeTag] {
     type T = U
     val code = reify {

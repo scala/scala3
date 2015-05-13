@@ -10,7 +10,7 @@ class Macros {
   def foo(x: Boolean): Unit = println("fooClassBoolean")
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   Macros.foo("42")
   Macros.foo(42)
   Macros.foo(true)

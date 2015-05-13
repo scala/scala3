@@ -5,7 +5,7 @@ object O {
   type A = Unit
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val expr = reify {
     import O.{A => X}
 

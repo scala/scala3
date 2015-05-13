@@ -1,6 +1,6 @@
 import scala.collection.immutable.HashMap
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
 
   case class Collision(value: Int) extends Ordered[Collision] {
     def compare(that: Collision) = value compare that.value

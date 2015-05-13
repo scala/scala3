@@ -16,7 +16,7 @@ class Foo{
  }
 }
 
-object Test extends App{
+object Test extends dotty.runtime.LegacyApp{
   case class R(
     sales : Int,
     name : String

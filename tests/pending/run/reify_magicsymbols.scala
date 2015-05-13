@@ -1,6 +1,6 @@
 import scala.reflect.runtime.universe._
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   println(typeOf[Any])
   println(typeOf[AnyVal])
   println(typeOf[AnyRef])

@@ -12,6 +12,6 @@ object A extends O {
   println(showRaw(code.tree))
 }
 
-object Test extends App {
+object Test extends dotty.runtime.LegacyApp {
   val v: A.I = A.code.eval
 }
