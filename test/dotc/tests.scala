@@ -137,9 +137,9 @@ class tests extends CompilerTest {
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
+  
 
-  @Test def run_hello = runFile(runDir, "hello")
-  @Test def run_lazyVals = runFile(runDir, "lazyVals")
+  @Test def run_all = runFiles(runDir)
 
 
   @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
