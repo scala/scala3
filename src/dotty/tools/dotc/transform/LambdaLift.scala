@@ -289,13 +289,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package)  {
+            val encClass = local.enclosingClass
+            val topClass = local.topLevelClass
               // member of a static object
-            if (local.enclosingClass.isStatic && local.enclosingClass.isProperlyContainedIn(local.topLevelClass)) {
+            if (encClass.isStatic && encClass.isProperlyContainedIn(topClass)) {
                // though the second condition seems weird, it's not true for symbols which are defined in some
                // weird combinations of super calls.
-              (local.enclosingClass, EmptyFlags)
+              (encClass, EmptyFlags)
             } else
-              (local.topLevelClass, JavaStatic)
+              (topClass, JavaStatic)
           }
           else (lOwner, EmptyFlags)
         local.copySymDenotation(
