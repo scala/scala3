@@ -46,24 +46,24 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case ref: ClassDenotation if ref is ModuleClass =>
-      ref.linkedClass match {
-        case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
-          val cinfo = ref.classInfo
+    case moduleClass: ClassDenotation if moduleClass is ModuleClass =>
+      moduleClass.linkedClass match {
+        case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+          val cinfo = moduleClass.classInfo
           val decls1 = cinfo.decls.cloneScope
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
-            if (!(origClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
-              for (decl <- origClass.classInfo.decls) {
+            if (!(valueClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
+              for (decl <- valueClass.classInfo.decls) {
                 if (isMethodWithExtension(decl))
-                  decls1.enter(createExtensionMethod(decl, ref.symbol))
+                  decls1.enter(createExtensionMethod(decl, moduleClass.symbol))
               }
             }
 
-            val sym = ref.symbol
-            val underlying = erasure(underlyingOfValueClass(origClass))
-            val evt = ErasedValueType(origClass, underlying)
+            val sym = moduleClass.symbol
+            val underlying = erasure(underlyingOfValueClass(valueClass))
+            val evt = ErasedValueType(valueClass, underlying)
             val u2evtSym = ctx.newSymbol(sym, nme.U2EVT, Synthetic | Method,
               MethodType(List(nme.x_0), List(underlying), evt))
             val evt2uSym = ctx.newSymbol(sym, nme.EVT2U, Synthetic | Method,
@@ -71,10 +71,10 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
             decls1.enter(u2evtSym)
             decls1.enter(evt2uSym)
           }
-          if (decls1.isEmpty) ref
-          else ref.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
+          if (decls1.isEmpty) moduleClass
+          else moduleClass.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
-          ref
+          moduleClass
       }
     case ref: SymDenotation
     if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnotationClass) =>
