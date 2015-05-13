@@ -51,6 +51,10 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
           val cinfo = moduleClass.classInfo
           val decls1 = cinfo.decls.cloneScope
+          val moduleSym = moduleClass.symbol.asClass
+
+          var newSuperClass: Type = null
+
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
@@ -61,18 +65,41 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
               }
             }
 
-            val sym = moduleClass.symbol
             val underlying = erasure(underlyingOfValueClass(valueClass))
             val evt = ErasedValueType(valueClass, underlying)
-            val u2evtSym = ctx.newSymbol(sym, nme.U2EVT, Synthetic | Method,
+            val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
               MethodType(List(nme.x_0), List(underlying), evt))
-            val evt2uSym = ctx.newSymbol(sym, nme.EVT2U, Synthetic | Method,
+            val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
               MethodType(List(nme.x_0), List(evt), underlying))
+
+            val defn = ctx.definitions
+
+            val underlyingName = underlying.classSymbol match {
+              case defn.IntClass     => nme.Int
+              case defn.ByteClass    => nme.Byte
+              case defn.ShortClass   => nme.Short
+              case defn.DoubleClass  => nme.Double
+              case defn.FloatClass   => nme.Float
+              case defn.LongClass    => nme.Long
+              case defn.BooleanClass => nme.Boolean
+              case defn.CharClass    => nme.Char
+              case _                 => nme.Object
+            }
+
+            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingName}Companion").asClass
+
+            newSuperClass = tpd.ref(syp).select(nme.CONSTRUCTOR).appliedToType(valueClass.typeRef).tpe.resultType
+
             decls1.enter(u2evtSym)
             decls1.enter(evt2uSym)
           }
-          if (decls1.isEmpty) moduleClass
-          else moduleClass.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
+
+          // add a VCXXXCompanion superclass
+
+          moduleClass.copySymDenotation(info =
+            cinfo.derivedClassInfo(
+              classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
+              decls = decls1))
         case _ =>
           moduleClass
       }
