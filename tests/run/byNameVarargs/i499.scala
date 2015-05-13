@@ -1,16 +1,15 @@
-object Test {
+object Test extends dotty.runtime.LegacyApp{
   def foo(a: => Any*) = ()
   def bar(a: => Any*) = foo(a : _*)
   def baz(a: => Seq[Any]) = foo(a : _*)
   bar(???, ???)
   baz(Seq(???, ???))
-  baz(Array(???, ???))
 
-  def foo1(a => Any, b: => Any*) = ()
+  def foo1(a: => Any, b: => Any*) = ()
   foo1(???)
   foo1(???, ???, ???)
 
-  def assertFails(a => Any) = {
+  def assertFails(a: => Any) = {
    var failed = false 
    try {
      a
