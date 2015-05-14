@@ -872,7 +872,7 @@ object desugar {
    *      trait <refinement> extends C { this: T1 => type T <: A }
    *
    *  The result of this method is used for validity checking, is thrown away afterwards.
-   *  @param parentType   The type of `parent`
+   *  @param parent  The type of `parent`
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
