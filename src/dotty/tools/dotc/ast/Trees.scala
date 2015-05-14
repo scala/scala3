@@ -33,13 +33,6 @@ object Trees {
    *  @param privateWithin  If a private or protected has is followed by a
    *                        qualifier [q], the name q, "" as a typename otherwise.
    *  @param annotations    The annotations preceding the modifers
-   *  @param positions      A flagPositions structure that records the positions
-   *                        of et flags.
-   *  @param pos            The position of the modifiers. This should start with
-   *                        the first modifier or annotation and have as point
-   *                        the start of the opening keyword(s) of the definition.
-   *                        It should have as end the end of the opening keywords(s).
-   *                        If there is no opening keyword, point should equal end.
    */
   case class Modifiers[-T >: Untyped] (
     flags: FlagSet = EmptyFlags,
