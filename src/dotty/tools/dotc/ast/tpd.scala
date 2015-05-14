@@ -458,7 +458,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
       val tree1 = untpd.cpy.Select(tree)(qualifier, name)
       tree match {
-        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) =>
+        case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => tree.tpe match {
           case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe))
@@ -504,7 +504,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Block(tree: Tree)(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
       val tree1 = untpd.cpy.Block(tree)(stats, expr)
       tree match {
-        case tree: Block if (expr.tpe eq tree.expr.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case tree: Block if expr.tpe eq tree.expr.tpe => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, stats, expr)
       }
     }
@@ -532,7 +532,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = {
       val tree1 = untpd.cpy.CaseDef(tree)(pat, guard, body)
       tree match {
-        case tree: CaseDef if (body.tpe eq tree.body.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case tree: CaseDef if body.tpe eq tree.body.tpe => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, body)
       }
     }
@@ -543,7 +543,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
       val tree1 = untpd.cpy.Try(tree)(expr, cases, finalizer)
       tree match {
-        case tree: Try if (expr.tpe eq tree.expr.tpe) && (sameTypes(cases, tree.cases)) => tree1.withTypeUnchecked(tree.tpe)
+        case tree: Try if (expr.tpe eq tree.expr.tpe) && sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, expr, cases)
       }
     }
@@ -814,7 +814,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         expectedType match {
           case defn.ArrayType(el) =>
             lastParam.tpe match {
-              case defn.ArrayType(el2) if (el2 <:< el) =>
+              case defn.ArrayType(el2) if el2 <:< el =>
                 // we have a JavaSeqLiteral with a more precise type
                 // we cannot construct a tree as JavaSeqLiteral infered to precise type
                 // if we add typed than it would be both type-correct and

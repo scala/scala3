@@ -274,7 +274,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => new PolyTypeDef(name, tparams, rhs).withPos(tree.pos)
     }
     def SymbolLit(tree: Tree)(str: String) = tree match {
-      case tree: SymbolLit if (str == tree.str) => tree
+      case tree: SymbolLit if str == tree.str => tree
       case _ => untpd.SymbolLit(str).withPos(tree.pos)
     }
     def InterpolatedString(tree: Tree)(id: TermName, strings: List[Literal], elems: List[Tree]) = tree match {
@@ -298,15 +298,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => untpd.PrefixOp(op, od).withPos(tree.pos)
     }
     def Parens(tree: Tree)(t: Tree) = tree match {
-      case tree: Parens if (t eq tree.t) => tree
+      case tree: Parens if t eq tree.t => tree
       case _ => untpd.Parens(t).withPos(tree.pos)
     }
     def Tuple(tree: Tree)(trees: List[Tree]) = tree match {
-      case tree: Tuple if (trees eq tree.trees) => tree
+      case tree: Tuple if trees eq tree.trees => tree
       case _ => untpd.Tuple(trees).withPos(tree.pos)
     }
     def Throw(tree: Tree)(expr: Tree) = tree match {
-      case tree: Throw if (expr eq tree.expr) => tree
+      case tree: Throw if expr eq tree.expr => tree
       case _ => untpd.Throw(expr).withPos(tree.pos)
     }
     def WhileDo(tree: Tree)(cond: Tree, body: Tree) = tree match {
