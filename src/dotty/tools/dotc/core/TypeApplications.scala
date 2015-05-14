@@ -235,13 +235,13 @@ class TypeApplications(val self: Type) extends AnyVal {
     baseArgInfos(base) mapConserve noBounds
 
   /** The type arguments of this type's base type instance wrt.`base`.
-   *  Existential types in arguments are approximanted by their lower bound.
+   *  Existential types in arguments are approximated by their lower bound.
    */
   final def baseArgTypesLo(base: Symbol)(implicit ctx: Context): List[Type] =
     baseArgInfos(base) mapConserve boundsToLo
 
   /** The type arguments of this type's base type instance wrt.`base`.
-   *  Existential types in arguments are approximanted by their upper bound.
+   *  Existential types in arguments are approximated by their upper bound.
    */
   final def baseArgTypesHi(base: Symbol)(implicit ctx: Context): List[Type] =
     baseArgInfos(base) mapConserve boundsToHi

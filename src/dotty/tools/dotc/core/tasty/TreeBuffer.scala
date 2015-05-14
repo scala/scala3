@@ -105,7 +105,7 @@ class TreeBuffer extends TastyBuffer(50000) {
 
   /** Adjust deltas to also take account references that will shrink (and thereby
    *  generate additional zeroes that can be skipped) due to previously
-   *  computed adjustements.
+   *  computed adjustments.
    */
   private def adjustDeltas(): Int = {
     val delta1 = new Array[Int](delta.length)

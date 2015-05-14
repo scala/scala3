@@ -181,14 +181,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
       sm"""error reading Scala signature of $classRoot from $source:
-          |error occured at position $readIndex: $msg""")
+          |error occurred at position $readIndex: $msg""")
     /*if (debug)*/ original.getOrElse(ex).printStackTrace() // !!! DEBUG
     throw ex
   }
 
   protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: Context) = ex match {
     case ex: BadSignature => throw ex
-    case _ => errorBadSignature(s"a runtime exception occured: $ex", Some(ex))
+    case _ => errorBadSignature(s"a runtime exception occurred: $ex", Some(ex))
   }
 
   private var postReadOp: Context => Unit = null
@@ -884,7 +884,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     deferredAnnot(end)
   }
 
-  /** A deferred annotation that can be comleted by reading
+  /** A deferred annotation that can be completed by reading
    *  the bytes between `readIndex` and `end`.
    */
   protected def deferredAnnot(end: Int)(implicit ctx: Context): Annotation = {

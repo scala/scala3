@@ -135,7 +135,7 @@ trait TypeAssigner {
         val name = tpe.name
         val d = tpe.denot.accessibleFrom(pre, superAccess)
         if (!d.exists) {
-          // it could be that we found an inaccessbile private member, but there is
+          // it could be that we found an inaccessible private member, but there is
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)

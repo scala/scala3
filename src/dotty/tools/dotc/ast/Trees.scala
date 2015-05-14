@@ -32,7 +32,7 @@ object Trees {
    *  @param flags          The set flags
    *  @param privateWithin  If a private or protected has is followed by a
    *                        qualifier [q], the name q, "" as a typename otherwise.
-   *  @param annotations    The annotations preceding the modifers
+   *  @param annotations    The annotations preceding the modifiers
    */
   case class Modifiers[-T >: Untyped] (
     flags: FlagSet = EmptyFlags,
@@ -215,7 +215,7 @@ object Trees {
       s
     }
 
-    /** If this is a thicket, gerform `op` on each of its trees
+    /** If this is a thicket, perform `op` on each of its trees
      *  otherwise, perform `op` ion tree itself.
      */
     def foreachInThicket(op: Tree[T] => Unit): Unit = op(this)
@@ -361,7 +361,7 @@ object Trees {
   case class This[-T >: Untyped] private[ast] (qual: TypeName)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
-    // Denotation of a This tree is always the udnerlying class; needs correction for modules.
+    // Denotation of a This tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation = {
       tpe match {
         case tpe @ TermRef(pre, _) if tpe.symbol is Module =>

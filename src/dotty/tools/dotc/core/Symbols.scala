@@ -109,7 +109,7 @@ trait Symbols { this: Context =>
         ClassInfo(owner.thisType, _, parents, decls, selfInfo),
         privateWithin, coord, assocFile)
 
-  /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitary
+  /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitrary
    *  types which get normalized into type refs and parameter bindings.
    */
   def newNormalizedClassSymbol(

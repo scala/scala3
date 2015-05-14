@@ -865,7 +865,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** A traverser that passes the enlcosing class or method as an argumenr
+  /** A traverser that passes the enclosing class or method as an argument
    *  to the traverse method.
    */
   abstract class EnclosingMethodTraverser extends TreeAccumulator[Symbol] {

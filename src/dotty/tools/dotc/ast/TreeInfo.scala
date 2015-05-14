@@ -256,7 +256,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case y          => y
   }
 
-  /** Checks whether predicate `p` is true for all result parts of this epression,
+  /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
    */
   def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match {

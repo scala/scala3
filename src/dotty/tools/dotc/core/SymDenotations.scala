@@ -743,7 +743,7 @@ object SymDenotations {
      *  Definitions flagged with InSuperCall are treated specially.
      *  Their enclosing class is not the lexically enclosing class,
      *  but in turn the enclosing class of the latter. This reflects
-     *  the context created by `Context#superCallContext`, `Contect#thisCallArgContext`
+     *  the context created by `Context#superCallContext`, `Context#thisCallArgContext`
      *  for these definitions.
      *
      *  Note, that as packages have ClassSymbols, top level classes will have an `enclosingClass`
@@ -839,7 +839,7 @@ object SymDenotations {
      *  Three alternative strategies:
      *  1. If owner is a class, look in its members, otherwise
      *  2. If current compilation unit has a typed tree,
-     *     determine the definining statement sequence and search its trees, otherwise
+     *     determine the defining statement sequence and search its trees, otherwise
      *  3. If context has an enclosing scope which defines this symbol,
      *     lookup its companion in the same scope.
      */
@@ -954,7 +954,7 @@ object SymDenotations {
       loop(base.info.baseClasses.dropWhile(owner != _).tail)
     }
 
-    /** A a member of class `base` is incomplete if
+    /** A member of class `base` is incomplete if
      *  (1) it is declared deferred or
      *  (2) it is abstract override and its super symbol in `base` is
      *      nonexistent or incomplete.

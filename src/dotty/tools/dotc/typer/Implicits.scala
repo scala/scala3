@@ -186,7 +186,7 @@ object Implicits {
   abstract class SearchResult
 
   /** A successful search
-   *  @param ref   The implicit reference that succeeeded
+   *  @param ref   The implicit reference that succeeded
    *  @param tree  The typed tree that can needs to be inserted
    *  @param ctx   The context after the implicit search
    */
@@ -299,7 +299,7 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
 
     // todo: compute implicits directly, without going via companionRefs?
-    def collectCompanions(tp: Type): TermRefSet = track("computeImplicicScope") {
+    def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
       ctx.traceIndented(i"collectCompanions($tp)", implicits) {
         val comps = new TermRefSet
         tp match {

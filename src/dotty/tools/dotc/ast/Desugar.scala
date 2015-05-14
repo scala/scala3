@@ -36,7 +36,7 @@ object desugar {
     /** Make sure that for all enclosing module classes their companion lasses
      *  are completed. Reason: We need the constructor of such companion classes to
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
-     *  in appy/unapply methods.
+     *  in apply/unapply methods.
      */
     override def ensureCompletions(implicit ctx: Context) =
       if (!(ctx.owner is Package))
@@ -335,7 +335,7 @@ object desugar {
             .withMods(synthetic))
       .withPos(cdef.pos).toList
 
-    // The companion object defifinitions, if a companion is needed, Nil otherwise.
+    // The companion object definitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
     //     def apply[Ts](p1: T1, ..., pN: TN)(moreParams) = new C[Ts](p1, ..., pN)(moreParams)  (unless C is abstract)

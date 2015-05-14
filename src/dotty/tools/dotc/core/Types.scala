@@ -1194,7 +1194,7 @@ object Types {
     def denotationIsCurrent(implicit ctx: Context) =
       lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
 
-    /** The the denotation is current, its symbol, otherwise NoDenotation.
+    /** The denotation is current, its symbol, otherwise NoDenotation.
      *
      *  Note: This operation does not force the denotation, and is therefore
      *  timing dependent. It should only be used if the outcome of the
@@ -2303,7 +2303,7 @@ object Types {
    */
   final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
-    /** The permanent instance type of the the variable, or NoType is none is given yet */
+    /** The permanent instance type of the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
 
     /** The state owning the variable. This is at first `creatorState`, but it can

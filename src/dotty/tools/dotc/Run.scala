@@ -37,10 +37,10 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       throw ex
   }
 
-  /** TODO: There's a fundamental design problem here: We assmble phases using `squash`
+  /** TODO: There's a fundamental design problem here: We assemble phases using `squash`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
-   *  on each run. That modification needs to either trasnform the tree structure,
-   *  or we need to assmeble phases on each run, and take -Yskip, -Ystop into
+   *  on each run. That modification needs to either transform the tree structure,
+   *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
   def compileSources(sources: List[SourceFile]) =
@@ -67,9 +67,9 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   private def printTree(ctx: Context) = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.squashed(prevPhase)
+    val squashedPhase = ctx.squashed(prevPhase)
 
-    println(s"result of $unit after ${squahsedPhase}:")
+    println(s"result of $unit after ${squashedPhase}:")
     println(unit.tpdTree.show(ctx))
   }
 

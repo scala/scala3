@@ -553,7 +553,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
      *   The same exception for Seq patterns applies: if the last extractor is of type `Seq[U_N]`,
      *   the pattern must have at least N arguments (exactly N if the last argument is annotated with `: _*`).
      *   The arguments starting at N (and beyond) are taken from the sequence returned by apply_N,
-     *   and it is checked that that sequence has enough elements to provide values for all expected sub-patterns.
+     *   and it is checked that the sequence has enough elements to provide values for all expected sub-patterns.
      *
      *   For a case class C, the implementation is assumed to be `def unapply_I(x: C) = x._I`,
      *   and the extractor call is inlined under that assumption.

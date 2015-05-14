@@ -40,7 +40,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
   def phaseName: String = "Collect entry points"
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    if ((tree.symbol ne NoSymbol) && CollectEntryPoints.isJavaEntyPoint(tree.symbol)) {
+    if ((tree.symbol ne NoSymbol) && CollectEntryPoints.isJavaEntryPoint(tree.symbol)) {
       ctx.genBCodePhase.asInstanceOf[GenBCode].registerEntryPoint(tree.symbol)
     }
     tree
@@ -60,7 +60,7 @@ object CollectEntryPoints{
     })
   }
 
-  def isJavaEntyPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
+  def isJavaEntryPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
     import Types.MethodType
     val d = ctx.definitions
     val StringType = d.StringType
@@ -105,7 +105,7 @@ object CollectEntryPoints{
           failNoForwarder("companion contains its own main method (implementation restriction: no main is allowed, regardless of signature)")
         else if (companion.flags is Flags.Trait)
           failNoForwarder("companion is a trait")
-        // Now either succeeed, or issue some additional warnings for things which look like
+        // Now either succeed, or issue some additional warnings for things which look like
         // attempts to be java main methods.
         else (possibles exists(x=> isJavaMainMethod(x.symbol))) || {
           possibles exists { m =>

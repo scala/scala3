@@ -144,7 +144,7 @@ trait Applications extends Compatibility { self: Typer =>
      */
     protected def liftFun(): Unit = ()
 
-    /** A flag signalling that the typechecking the application was so far succesful */
+    /** A flag signalling that the typechecking the application was so far successful */
     private[this] var _ok = true
 
     def ok = _ok
@@ -191,7 +191,7 @@ trait Applications extends Compatibility { self: Typer =>
         else fail(s"$methString does not take parameters")
     }
 
-    /** The application was succesful */
+    /** The application was successful */
     def success = ok
 
     protected def methodType = methType.asInstanceOf[MethodType]
@@ -203,7 +203,7 @@ trait Applications extends Compatibility { self: Typer =>
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
        *  @param nameToArg A map from as yet unseen names to named arguments
-       *  @param toDrop    A set of names that have aready be passed as named arguments
+       *  @param toDrop    A set of names that have already be passed as named arguments
        *
        *  For a well-typed application we have the invariants
        *
@@ -638,7 +638,7 @@ trait Applications extends Compatibility { self: Typer =>
       untpd.EmptyTree
     }
 
-    /** A typed qual.unappy or qual.unappySeq tree, if this typechecks.
+    /** A typed qual.unapply or qual.unapplySeq tree, if this typechecks.
      *  Otherwise fallBack with (maltyped) qual.unapply as argument
      *  Note: requires special handling for overloaded occurrences of
      *  unapply or unapplySeq. We first try to find a non-overloaded
@@ -669,7 +669,7 @@ trait Applications extends Compatibility { self: Typer =>
       }
     }
 
-    /** Produce a typed qual.unappy or qual.unappySeq tree, or
+    /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
     val unapplyFn = trySelectUnapply(qual) { sel =>
@@ -780,7 +780,7 @@ trait Applications extends Compatibility { self: Typer =>
     new ApplicableToTrees(methRef, targs, args, resultType)(nestedContext).success
   }
 
-  /** Is given method reference applicable to type arguments `targs` and argument trees `args` without invfering views?
+  /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
   def isDirectlyApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
@@ -819,7 +819,7 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
-   *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
+   *  `alt2`? `alt1` and `alt2` are non-overloaded references.
    */
   def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
 
