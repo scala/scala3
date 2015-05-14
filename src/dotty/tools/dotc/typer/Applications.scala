@@ -93,7 +93,7 @@ trait Applications extends Compatibility { self: Typer =>
   import tpd.{ cpy => _, _ }
   import untpd.cpy
 
-  /** @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
+  /** @tparam Arg       the type of arguments, could be tpd.Tree, untpd.Tree, or Type
    *  @param methRef    the reference to the method of the application
    *  @param funType    the type of the function part of the application
    *  @param args       the arguments of the application
@@ -203,7 +203,7 @@ trait Applications extends Compatibility { self: Typer =>
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
        *  @param nameToArg A map from as yet unseen names to named arguments
-       *  @param todrop    A set of names that have aready be passed as named arguments
+       *  @param toDrop    A set of names that have aready be passed as named arguments
        *
        *  For a well-typed application we have the invariants
        *
