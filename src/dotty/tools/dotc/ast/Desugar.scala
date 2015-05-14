@@ -598,8 +598,8 @@ object desugar {
       }
     }
 
-    /** Create tree for for-comprehension <for (enums) do body> or
-     *   <for (enums) yield body> where mapName and flatMapName are chosen
+    /** Create tree for for-comprehension `<for (enums) do body>` or
+     *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
      *  The creation performs the following rewrite rules:
      *
@@ -638,7 +638,7 @@ object desugar {
      *        TupleN(x_1, ..., x_N)
      *      } ...)
      *
-     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i' is not generated
+     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
      *
      *  @param mapName      The name to be used for maps (either map or foreach)

@@ -506,7 +506,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     /** Create symbols the longest consecutive sequence of parameters with given
-     *  `tag starting at current address.
+     *  `tag` starting at current address.
      */
     def indexParams(tag: Int)(implicit ctx: Context) =
       while (nextByte == tag) createSymbol()

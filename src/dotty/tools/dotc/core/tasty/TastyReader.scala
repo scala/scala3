@@ -11,7 +11,7 @@ import collection.mutable
  *  and that supports reading and patching addresses represented as natural numbers.
  *
  *  @param bytes    The array containing data
- *  @param from     The position from which to read
+ *  @param start    The position from which to read
  *  @param end      The position one greater than the last byte to be read
  *  @param base     The index referenced by the logical zero address Addr(0)
  */
