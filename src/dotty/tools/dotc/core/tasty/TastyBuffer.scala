@@ -12,7 +12,7 @@ object TastyBuffer {
     if (nat < 128) 1 else natSize(nat >>> 7) + 1
 
   /** An address pointing to an index in a Tasty buffer's byte array */
-  case class Addr(val index: Int) extends AnyVal {
+  case class Addr(index: Int) extends AnyVal {
     def - (delta: Int): Addr = Addr(this.index - delta)
     def + (delta: Int): Addr = Addr(this.index + delta)
 
