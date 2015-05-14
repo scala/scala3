@@ -1145,7 +1145,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  `fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
-   *  2nd stratgy: If tree is a select `qual.name`, try to insert an implicit conversion
+   *  2nd strategy: If tree is a select `qual.name`, try to insert an implicit conversion
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
    */
