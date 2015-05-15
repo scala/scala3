@@ -249,7 +249,7 @@ grammar.
   AccessModifier    ::=  (`private' | `protected') [AccessQualifier]
   AccessQualifier   ::=  `[' (id | `this') `]'
 
-  Annotation        ::=  `@' SimpleType {ArgumentExprs}                         Apply(tpe, args)
+  Annotation        ::=  `@' SimpleType {ParArgumentExprs}                      Apply(tpe, args)
 
   TemplateBody      ::=  [nl] `{' [SelfType] TemplateStat {semi TemplateStat} `} (self, stats)
   TemplateStat      ::=  Import
