@@ -10,7 +10,7 @@ abstract class TastyName
 
 object TastyName {
 
-  case class NameRef(val index: Int) extends AnyVal
+  case class NameRef(index: Int) extends AnyVal
 
   case class Simple(name: TermName) extends TastyName
   case class Qualified(qualified: NameRef, selector: NameRef) extends TastyName

@@ -212,7 +212,7 @@ abstract class ClassPath {
   def sourcepaths: IndexedSeq[AbstractFile]
 
   /**
-   * Represents classes which can be loaded with a ClassfileLoader/MsilFileLoader
+   * Represents classes which can be loaded with a ClassfileLoader
    * and / or a SourcefileLoader.
    */
   case class ClassRep(binary: Option[AbstractFile], source: Option[AbstractFile]) {

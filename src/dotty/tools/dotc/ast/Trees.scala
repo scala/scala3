@@ -32,14 +32,7 @@ object Trees {
    *  @param flags          The set flags
    *  @param privateWithin  If a private or protected has is followed by a
    *                        qualifier [q], the name q, "" as a typename otherwise.
-   *  @param annotations    The annotations preceding the modifers
-   *  @param positions      A flagPositions structure that records the positions
-   *                        of et flags.
-   *  @param pos            The position of the modifiers. This should start with
-   *                        the first modifier or annotation and have as point
-   *                        the start of the opening keyword(s) of the definition.
-   *                        It should have as end the end of the opening keywords(s).
-   *                        If there is no opening keyword, point should equal end.
+   *  @param annotations    The annotations preceding the modifiers
    */
   case class Modifiers[-T >: Untyped] (
     flags: FlagSet = EmptyFlags,
@@ -222,7 +215,7 @@ object Trees {
       s
     }
 
-    /** If this is a thicket, gerform `op` on each of its trees
+    /** If this is a thicket, perform `op` on each of its trees
      *  otherwise, perform `op` ion tree itself.
      */
     def foreachInThicket(op: Tree[T] => Unit): Unit = op(this)
@@ -368,7 +361,7 @@ object Trees {
   case class This[-T >: Untyped] private[ast] (qual: TypeName)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
-    // Denotation of a This tree is always the udnerlying class; needs correction for modules.
+    // Denotation of a This tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation = {
       tpe match {
         case tpe @ TermRef(pre, _) if tpe.symbol is Module =>
@@ -897,7 +890,7 @@ object Trees {
         case tree: BackquotedIdent =>
           if (name == tree.name) tree
           else finalize(tree, new BackquotedIdent(name))
-        case tree: Ident if (name == tree.name) => tree
+        case tree: Ident if name == tree.name => tree
         case _ => finalize(tree, untpd.Ident(name))
       }
       def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = tree match {
@@ -908,7 +901,7 @@ object Trees {
         case _ => finalize(tree, untpd.Select(qualifier, name))
       }
       def This(tree: Tree)(qual: TypeName): This = tree match {
-        case tree: This if (qual == tree.qual) => tree
+        case tree: This if qual == tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
       }
       def Super(tree: Tree)(qual: Tree, mix: TypeName): Super = tree match {
@@ -924,11 +917,11 @@ object Trees {
         case _ => finalize(tree, untpd.TypeApply(fun, args))
       }
       def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal = tree match {
-        case tree: Literal if (const == tree.const) => tree
+        case tree: Literal if const == tree.const => tree
         case _ => finalize(tree, untpd.Literal(const))
       }
       def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New = tree match {
-        case tree: New if (tpt eq tree.tpt) => tree
+        case tree: New if tpt eq tree.tpt => tree
         case _ => finalize(tree, untpd.New(tpt))
       }
       def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = tree match {
@@ -979,7 +972,7 @@ object Trees {
         case tree: JavaSeqLiteral =>
           if (elems eq tree.elems) tree
           else finalize(tree, new JavaSeqLiteral(elems))
-        case tree: SeqLiteral if (elems eq tree.elems) => tree
+        case tree: SeqLiteral if elems eq tree.elems => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems))
       }
       def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
@@ -987,7 +980,7 @@ object Trees {
         case _ => finalize(tree, untpd.TypeTree(original))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
-        case tree: SingletonTypeTree if (ref eq tree.ref) => tree
+        case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
       }
       def SelectFromTypeTree(tree: Tree)(qualifier: Tree, name: Name): SelectFromTypeTree = tree match {
@@ -1011,7 +1004,7 @@ object Trees {
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args))
       }
       def ByNameTypeTree(tree: Tree)(result: Tree): ByNameTypeTree = tree match {
-        case tree: ByNameTypeTree if (result eq tree.result) => tree
+        case tree: ByNameTypeTree if result eq tree.result => tree
         case _ => finalize(tree, untpd.ByNameTypeTree(result))
       }
       def TypeBoundsTree(tree: Tree)(lo: Tree, hi: Tree): TypeBoundsTree = tree match {
@@ -1023,7 +1016,7 @@ object Trees {
         case _ => finalize(tree, untpd.Bind(name, body))
       }
       def Alternative(tree: Tree)(trees: List[Tree]): Alternative = tree match {
-        case tree: Alternative if (trees eq tree.trees) => tree
+        case tree: Alternative if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Alternative(trees))
       }
       def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = tree match {
@@ -1059,7 +1052,7 @@ object Trees {
         case _ => finalize(tree, untpd.Annotated(annot, arg))
       }
       def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
-        case tree: Thicket if (trees eq tree.trees) => tree
+        case tree: Thicket if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Thicket(trees))
       }
 

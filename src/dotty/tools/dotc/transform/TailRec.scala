@@ -207,7 +207,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
         def rewriteTailCall(recv: Tree): Tree = {
           c.debuglog("Rewriting tail recursive call:  " + tree.pos)
           rewrote = true
-          val reciever = noTailTransform(recv)
+          val receiver = noTailTransform(recv)
 
           val callTargs: List[tpd.Tree] =
             if (abstractOverClass) {
@@ -216,7 +216,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             } else targs
 
           val method = Apply(if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef),
-            List(reciever))
+            List(receiver))
 
           val res =
           if (method.tpe.widen.isParameterless) method
@@ -302,7 +302,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           rewriteTry(tree)
 
         case Alternative(_) | Bind(_, _) =>
-          assert(false, "We should've never gotten inside a pattern")
+          assert(false, "We should never have gotten inside a pattern")
           tree
 
         case ValDef(_, _, _) | EmptyTree | Super(_, _) | This(_) |

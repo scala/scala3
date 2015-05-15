@@ -161,9 +161,9 @@ object Phases {
       }
 
       def checkRequirements(p: Phase) = {
-        val unmetPreceedeRequirements = p.runsAfter -- phasesAfter
-        assert(unmetPreceedeRequirements.isEmpty,
-          s"phase ${p} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
+        val unmetPrecedeRequirements = p.runsAfter -- phasesAfter
+        assert(unmetPrecedeRequirements.isEmpty,
+          s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
         phasesAfter += p.getClazz
 
       }

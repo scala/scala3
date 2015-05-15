@@ -241,8 +241,8 @@ object TreeTransforms {
       next
     }
 
-    private def indexUpdate(prev: Array[Int], changedTansformation: Class[_], index: Int, name: String, copy: Boolean = true) = {
-      val isDefinedNow = hasRedefinedMethod(changedTansformation, name)
+    private def indexUpdate(prev: Array[Int], changedTransformation: Class[_], index: Int, name: String, copy: Boolean = true) = {
+      val isDefinedNow = hasRedefinedMethod(changedTransformation, name)
       val wasDefinedBefore = prev(index) == index
       if (isDefinedNow == wasDefinedBefore) prev
       else {
@@ -332,10 +332,10 @@ object TreeTransforms {
       this(transformations.map(_.getClass).asInstanceOf[Array[Class[_]]])
     }
 
-    def this(prev: NXTransformations, changedTansformation: TreeTransform, transformationIndex: Int, reuse: Boolean = false) = {
+    def this(prev: NXTransformations, changedTransformation: TreeTransform, transformationIndex: Int, reuse: Boolean = false) = {
       this()
       val copy = !reuse
-      val changedTransformationClass = changedTansformation.getClass
+      val changedTransformationClass = changedTransformation.getClass
       nxPrepIdent = indexUpdate(prev.nxPrepIdent, changedTransformationClass, transformationIndex, "prepareForIdent", copy)
       nxPrepSelect = indexUpdate(prev.nxPrepSelect, changedTransformationClass, transformationIndex, "prepareForSelect", copy)
       nxPrepThis = indexUpdate(prev.nxPrepThis, changedTransformationClass, transformationIndex, "prepareForThis", copy)
@@ -400,7 +400,7 @@ object TreeTransforms {
       nxTransOther = indexUpdate(prev.nxTransOther, changedTransformationClass, transformationIndex, "transformOther", copy)
     }
 
-    /** Those arrays are used as "execution plan" in order to only execute non-tivial transformations\preparations
+    /** Those arrays are used as "execution plan" in order to only execute non-trivial transformations\preparations
      *  for every integer i array(i) contains first non trivial transformation\preparation on particular tree subtype.
      *  If no nontrivial transformation are left stored value is greater than  transformers.size
      */
@@ -912,7 +912,7 @@ object TreeTransforms {
         case _ => tree
       }
 
-    final private[TreeTransforms] def goUnamed(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
+    final private[TreeTransforms] def goUnnamed(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
       tree match {
         case tree: This => goThis(tree, info.nx.nxTransThis(cur))
         case tree: Super => goSuper(tree, info.nx.nxTransSuper(cur))
@@ -945,7 +945,7 @@ object TreeTransforms {
         tree match {
           // split one big match into 2 smaller ones
           case tree: NameTree => goNamed(tree, cur)
-          case tree => goUnamed(tree, cur)
+          case tree => goUnnamed(tree, cur)
         }
       } else tree
 
@@ -1128,7 +1128,7 @@ object TreeTransforms {
           else {
             val expr = transform(tree.expr, mutatedInfo, cur)
             val from = tree.from
-              // don't thansform the `from` part, as this is not a normal ident, but
+              // don't transform the `from` part, as this is not a normal ident, but
               // a pointer to the enclosing method. Transforming this as a normal ident
               // can go wrong easily. If a transformation is needed, it should be
               // the responsibility of the transformReturn method to handle this also.

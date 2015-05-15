@@ -45,9 +45,9 @@ trait Inferencing { this: Checking =>
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. Two phases:
-   *  1st Phase: Try to stantiate covariant and non-variant type variables to
-   *  their lower bound. Record whether succesful.
-   *  2nd Phase: If first phase was succesful, instantiate all remaining type variables
+   *  1st Phase: Try to instantiate covariant and non-variant type variables to
+   *  their lower bound. Record whether successful.
+   *  2nd Phase: If first phase was successful, instantiate all remaining type variables
    *  to their upper bound.
    */
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {

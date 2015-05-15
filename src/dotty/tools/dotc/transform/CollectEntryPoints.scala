@@ -80,7 +80,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
         failNoForwarder("companion contains its own main method (implementation restriction: no main is allowed, regardless of signature)")
       else if (companion.flags is Flags.Trait)
         failNoForwarder("companion is a trait")
-      // Now either succeeed, or issue some additional warnings for things which look like
+      // Now either succeed, or issue some additional warnings for things which look like
       // attempts to be java main methods.
       else (possibles exists (x => javaPlatform.isJavaMainMethod(x.symbol))) || {
         possibles exists {

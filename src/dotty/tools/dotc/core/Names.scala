@@ -313,15 +313,15 @@ object Names {
   /** Create a term name from a string, without encoding operators */
   def termName(s: String): TermName = termName(s.toCharArray, 0, s.length)
 
-  /** Create a type name from a string, wihtout encoding operators */
+  /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
-  /** The term name represented by the empoty string */
+  /** The term name represented by the empty string */
   val EmptyTermName = new TermName(-1, 0, null)
 
   table(0) = EmptyTermName
 
-  /** The type name represented by the empoty string */
+  /** The type name represented by the empty string */
   val EmptyTypeName = EmptyTermName.toTypeName
 
   // can't move CONSTRUCTOR/EMPTY_PACKAGE to `nme` because of bootstrap failures in `encode`.

@@ -342,7 +342,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         tree match {
           case EmptyTree            => ()
           case PackageDef(_, stats) => stats foreach gen
-          case ValDef(name, tpt, rhs) => () // module val not emmited
+          case ValDef(name, tpt, rhs) => () // module val not emitted
           case cd: TypeDef         =>
             q1 add Item1(arrivalPos, cd, int.currentUnit)
             arrivalPos += 1

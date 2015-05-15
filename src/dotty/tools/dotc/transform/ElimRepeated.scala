@@ -82,7 +82,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .appliedToType(elemType)
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
         .ensureConforms(defn.ArrayType(elemType))
-          // Because of phantomclasses, the Java array's type might not conform to the resturn type
+          // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =

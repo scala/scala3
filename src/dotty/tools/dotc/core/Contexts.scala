@@ -40,7 +40,7 @@ object Contexts {
    *      named `initctx`. They pass initctx to all positions where it is needed
    *      (and these positions should all be part of the intialization sequence of the class).
    *    - Classes that need contexts that survive initialization are instead passed
-   *      a "condensed context", typically named `cctx` (or they create one). Consensed contexts
+   *      a "condensed context", typically named `cctx` (or they create one). Condensed contexts
    *      just add some basic information to the context base without the
    *      risk of capturing complete trees.
    *    - To make sure these rules are kept, it would be good to do a sanity
@@ -290,7 +290,7 @@ object Contexts {
      *  - At the same time the context should see the parameter accessors of the current class,
      *    that's why they get added to the local scope. An alternative would have been to have the
      *    context see the constructor parameters instead, but then we'd need a final substitution step
-     *    from constructor parameters to class paramater accessors.
+     *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
       val locals = newScopeWith(owner.asClass.paramAccessors: _*)
@@ -567,7 +567,7 @@ object Contexts {
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
-    /** Phases with consecutive Transforms groupped into a single phase, Empty array if squashing is disabled */
+    /** Phases with consecutive Transforms grouped into a single phase, Empty array if squashing is disabled */
     private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
@@ -576,7 +576,7 @@ object Contexts {
     private[core] var denotTransformers: Array[DenotTransformer] = _
 
     // Printers state
-    /** Number of recursive invocations of a show method on cuyrrent stack */
+    /** Number of recursive invocations of a show method on current stack */
     private[dotc] var toTextRecursions = 0
 
     // Reporters state
@@ -600,7 +600,7 @@ object Contexts {
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base
 
-    val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normallly cannot access a context
+    val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
   }
 
   /** Info that changes on each compiler run */

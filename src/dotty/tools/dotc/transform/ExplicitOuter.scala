@@ -257,7 +257,7 @@ object ExplicitOuter {
    *     they cannot be added before erasure.
    *   - outer arguments need access to outer parameters as well as to the
    *     original type prefixes of types in New expressions. These prefixes
-   *     get erased during erasure. Therefore, outer argumenrts have to be passed
+   *     get erased during erasure. Therefore, outer arguments have to be passed
    *     no later than erasure.
    */
   class OuterOps(val ictx: Context) extends AnyVal {

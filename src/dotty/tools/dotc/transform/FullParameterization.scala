@@ -109,7 +109,7 @@ trait FullParameterization {
       tp.substDealias(ctparams, classParamsRange map (PolyParam(pt, _)))
     }
 
-    /** The bounds for the added type paraneters of the polytype `pt` */
+    /** The bounds for the added type parameters of the polytype `pt` */
     def mappedClassBounds(pt: PolyType): List[TypeBounds] =
       ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 

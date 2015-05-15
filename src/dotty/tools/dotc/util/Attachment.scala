@@ -8,7 +8,7 @@ object Attachment {
   /** The class of keys for attachments yielding values of type V */
   class Key[+V]
 
-  /** An implementation trait for attachements.
+  /** An implementation trait for attachments.
    *  Clients should inherit from Container instead.
    */
   trait LinkSource {

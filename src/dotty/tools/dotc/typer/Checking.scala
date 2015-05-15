@@ -64,7 +64,7 @@ object Checking {
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
     private var nestedCycleOK = false
 
-    /** Are cycles allwoed within currently checked type? */
+    /** Are cycles allowed within currently checked type? */
     private var cycleOK = false
 
     /** A diagnostic output string that indicates the position of the last

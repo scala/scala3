@@ -182,7 +182,7 @@ abstract class SymbolLoader extends LazyType {
 
   def sourceFileOrNull: AbstractFile = null
 
-  /** Description of the resource (ClassPath, AbstractFile, MsilFile)
+  /** Description of the resource (ClassPath, AbstractFile)
    *  being processed by this loader
    */
   def description: String

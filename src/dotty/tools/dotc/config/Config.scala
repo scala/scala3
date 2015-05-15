@@ -10,7 +10,7 @@ object Config {
 
   final val checkCacheMembersNamed = false
 
-  /** When updating a connstraint bound, check that the constrained parameter
+  /** When updating a constraint bound, check that the constrained parameter
    *  does not appear at the top-level of either of its bounds.
    */
   final val checkConstraintsNonCyclic = false
@@ -56,7 +56,7 @@ object Config {
   final val fastPathForRefinedSubtype = true
 
   /** When set, use new signature-based matching.
-   *  Advantantage of doing so: It's supposed to be faster
+   *  Advantage of doing so: It's supposed to be faster
    *  Disadvantage: It might hide inconsistencies, so while debugging it's better to turn it off
    */
   final val newMatch = false

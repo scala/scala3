@@ -36,7 +36,7 @@ import collection.mutable
  *
  *      <mods> def x_=(y: T) = ()
  *
- *     deferred by maping it to
+ *     deferred by mapping it to
  *
  *      <mods> def x_=(y: T)
  *

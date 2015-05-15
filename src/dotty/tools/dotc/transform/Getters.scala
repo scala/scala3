@@ -38,7 +38,7 @@ import Decorators._
  *   - fields generated for static modules (TODO: needed?)
  *   - parameters, static fields, and fields coming from Java
  *
- *  Furthermore, assignements to mutable vars are replaced by setter calls
+ *  Furthermore, assignments to mutable vars are replaced by setter calls
  *
  *     p.x = e
  *      -->  p.x_=(e)

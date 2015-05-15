@@ -78,7 +78,7 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = x
   }
 
-  /** A class marking ignored prototypes that can be reviealed by `deepenProto` */
+  /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways {
     override def deepenProto(implicit ctx: Context): Type = ignored
   }

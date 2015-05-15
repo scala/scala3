@@ -36,7 +36,7 @@ object desugar {
     /** Make sure that for all enclosing module classes their companion lasses
      *  are completed. Reason: We need the constructor of such companion classes to
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
-     *  in appy/unapply methods.
+     *  in apply/unapply methods.
      */
     override def ensureCompletions(implicit ctx: Context) =
       if (!(ctx.owner is Package))
@@ -335,7 +335,7 @@ object desugar {
             .withMods(synthetic))
       .withPos(cdef.pos).toList
 
-    // The companion object defifinitions, if a companion is needed, Nil otherwise.
+    // The companion object definitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
     //     def apply[Ts](p1: T1, ..., pN: TN)(moreParams) = new C[Ts](p1, ..., pN)(moreParams)  (unless C is abstract)
@@ -598,8 +598,8 @@ object desugar {
       }
     }
 
-    /** Create tree for for-comprehension <for (enums) do body> or
-     *   <for (enums) yield body> where mapName and flatMapName are chosen
+    /** Create tree for for-comprehension `<for (enums) do body>` or
+     *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
      *  The creation performs the following rewrite rules:
      *
@@ -638,7 +638,7 @@ object desugar {
      *        TupleN(x_1, ..., x_N)
      *      } ...)
      *
-     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i' is not generated
+     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
      *
      *  @param mapName      The name to be used for maps (either map or foreach)
@@ -872,7 +872,7 @@ object desugar {
    *      trait <refinement> extends C { this: T1 => type T <: A }
    *
    *  The result of this method is used for validity checking, is thrown away afterwards.
-   *  @param parentType   The type of `parent`
+   *  @param parent  The type of `parent`
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
