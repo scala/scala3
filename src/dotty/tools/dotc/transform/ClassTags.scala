@@ -25,11 +25,6 @@ import collection.mutable
 class ClassTags extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
-  object names {
-    val classTag = "classTag".toTermName
-    val typeTag  = "typeTag".toTermName
-  }
-
   private var classTagCache: Symbol = null
   private var typeTagCache: Symbol  = null
   private var scala2ClassTagModule: Symbol = null
