@@ -1429,10 +1429,10 @@ object Parsers {
       else tree1
     }
 
-    /** Annotation        ::=  `@' SimpleType {ArgumentExprs}
+    /** Annotation        ::=  `@' SimpleType {ParArgumentExprs}
      */
     def annot() =
-      adjustStart(accept(AT)) { ensureApplied(argumentExprss(wrapNew(simpleType()))) }
+      adjustStart(accept(AT)) { ensureApplied(parArgumentExprss(wrapNew(simpleType()))) }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
       if (skipNewLines) newLineOptWhenFollowedBy(AT)
