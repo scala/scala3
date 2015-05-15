@@ -50,7 +50,13 @@ object ScalaRunTime {
   /** Return the class object representing an array with element class `clazz`.
     */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
-    ??? // Dmitry: I want to see where this method is used to know how to fix it
+    // Dmitry: I want to see where this method is used to know how to fix it
+    // [Martin] Here's a stacktrace
+    // Exception in thread "main" scala.NotImplementedError: an implementation is missing
+    //  at scala.Predef$.$qmark$qmark$qmark(Predef.scala:225)
+    //  at scala.runtime.ScalaRunTime$.arrayClass(ScalaRunTime.scala:53)
+    //  at scala.Array$.fill(Array.scala:281)
+    //  at dotty.tools.dotc.core.Flags$.<init>(Flags.scala:139)
     // newInstance throws an exception if the erasure is Void.TYPE. see SI-5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
