@@ -1,0 +1,54 @@
+Checking if byte matches byte
+Some(1)
+Checking if byte matches short
+None
+Checking if class java.lang.Byte matches byte
+Some(1)
+Checking if short matches short
+Some(1)
+Checking if short matches char
+None
+Checking if class java.lang.Short matches short
+Some(1)
+Checking if char matches char
+Some()
+Checking if char matches int
+None
+Checking if class java.lang.Character matches char
+Some()
+Checking if int matches int
+Some(1)
+Checking if int matches long
+None
+Checking if class java.lang.Integer matches int
+Some(1)
+Checking if long matches long
+Some(1)
+Checking if long matches float
+None
+Checking if class java.lang.Long matches long
+Some(1)
+Checking if float matches float
+Some(1.0)
+Checking if float matches double
+None
+Checking if class java.lang.Float matches float
+Some(1.0)
+Checking if double matches double
+Some(1.0)
+Checking if double matches boolean
+None
+Checking if class java.lang.Double matches double
+Some(1.0)
+Checking if boolean matches boolean
+Some(true)
+Checking if boolean matches void
+None
+Checking if class java.lang.Boolean matches boolean
+Some(true)
+Checking if void matches void
+Some(())
+Checking if void matches byte
+None
+Checking if class scala.runtime.BoxedUnit matches void
+Some(())

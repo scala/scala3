@@ -1,0 +1,75 @@
+public class Symbols {
+
+
+
+
+  // access flags 0x12
+  private final Lscala/Symbol; someSymbol3
+
+  // access flags 0xA
+  private static Lscala/Symbol; symbol$1
+
+  // access flags 0xA
+  private static Lscala/Symbol; symbol$2
+
+  // access flags 0xA
+  private static Lscala/Symbol; symbol$3
+
+  // access flags 0x9
+  public static <clinit>()V
+    GETSTATIC scala/Symbol$.MODULE$ : Lscala/Symbol$;
+    LDC "Symbolic1"
+    INVOKEVIRTUAL scala/Symbol$.apply (Ljava/lang/String;)Lscala/Symbol;
+    PUTSTATIC Symbols.symbol$1 : Lscala/Symbol;
+    GETSTATIC scala/Symbol$.MODULE$ : Lscala/Symbol$;
+    LDC "Symbolic2"
+    INVOKEVIRTUAL scala/Symbol$.apply (Ljava/lang/String;)Lscala/Symbol;
+    PUTSTATIC Symbols.symbol$2 : Lscala/Symbol;
+    GETSTATIC scala/Symbol$.MODULE$ : Lscala/Symbol$;
+    LDC "Symbolic3"
+    INVOKEVIRTUAL scala/Symbol$.apply (Ljava/lang/String;)Lscala/Symbol;
+    PUTSTATIC Symbols.symbol$3 : Lscala/Symbol;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 0
+
+  // access flags 0x1
+  public someSymbol1()Lscala/Symbol;
+    GETSTATIC Symbols.symbol$1 : Lscala/Symbol;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public someSymbol2()Lscala/Symbol;
+    GETSTATIC Symbols.symbol$2 : Lscala/Symbol;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public sameSymbol1()Lscala/Symbol;
+    GETSTATIC Symbols.symbol$1 : Lscala/Symbol;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public someSymbol3()Lscala/Symbol;
+    ALOAD 0
+    GETFIELD Symbols.someSymbol3 : Lscala/Symbol;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+
+  // access flags 0x1
+  public <init>()V
+    ALOAD 0
+    INVOKESPECIAL java/lang/Object.<init> ()V
+    ALOAD 0
+    GETSTATIC Symbols.symbol$3 : Lscala/Symbol;
+    PUTFIELD Symbols.someSymbol3 : Lscala/Symbol;
+    RETURN
+    MAXSTACK = 2
+    MAXLOCALS = 1
+}

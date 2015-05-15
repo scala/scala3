@@ -1,0 +1,3 @@
+Some(List((a @ Extractor((b @ Extractor((c @ _)))))))
+Some(List((b @ Extractor((c @ _)))))
+Some(List((c @ _)))

@@ -1,0 +1,59 @@
+exceptions-2.scala:267: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+    try { 1 } catch { case e: java.io.IOException => () }
+          ^
+nested1: 
+Innermost finally
+Outermost finally
+nested2: 
+Innermost finally
+Outermost finally
+mixed: 
+10
+Finally!
+withValue1:
+Oh, oh
+10
+withValue2:
+droped a null
+null
+method2:
+10
+Exception occurred
+method3:
+Caught an NPE
+tryFinallyTry:
+Silently ignore exception in finally
+valInFinally:
+Abc
+tryAndValInFinally
+Abc
+=================
+NoExcep.method2:
+Hello, world
+NoExcep.method3:
+method3
+NoExcep.method4:
+..
+Return inside body:
+Normal execution...
+inner finally
+Outer finally
+Return inside synchronized body:
+Synchronized normal execution...
+inner finally
+Outer finally
+Return inside body and return in finally:
+Normal execution...
+inner finally
+Outer finally
+Return inside body and return in finally inside finally:
+Normal execution...
+inner finally
+finally inside finally
+Outer finally
+Throw in catch and finally:
+ABC
+Return with finally clause that cleans the stack
+Normal execution...
+inner finally
+Outer finally

@@ -23,21 +23,24 @@ object DPConsoleRunner {
     // extra jars for run tests are passed with -dottyJars <count> <jar1> <jar2> ...
     val jarFinder = """-dottyJars (\d*) (.*)""".r
     val (jarList, otherArgs) = args.toList.partition(jarFinder.findFirstIn(_).isDefined)
-    val extraJars = jarList match {
+    val (extraJars, moreArgs) = jarList match {
       case Nil => sys.error("Error: DPConsoleRunner needs \"-dottyJars <jarCount> <jars>*\".")
       case jarFinder(nr, jarString) :: Nil => 
         val jars = jarString.split(" ").toList
-        if (jars.length.toString != nr)
-          sys.error("Error: DPConsoleRunner found wrong number of dottyJars: " + jars + ", expected: " + nr + ". Make sure the path doesn't contain any spaces.")
-        else jars
+        val count = nr.toInt
+        if (jars.length < count)
+          sys.error("Error: DPConsoleRunner found wrong number of dottyJars: " + jars + ", expected: " + nr)
+        else (jars.take(count), jars.drop(count))
       case list => sys.error("Error: DPConsoleRunner found several -dottyJars options: " + list)
     }
-    new DPConsoleRunner(otherArgs mkString (" "), extraJars).runPartest
+    new DPConsoleRunner((otherArgs ::: moreArgs) mkString (" "), extraJars).runPartest
   }
 }
 
 // console runner has a suite runner which creates a test runner for each test
 class DPConsoleRunner(args: String, extraJars: List[String]) extends ConsoleRunner(args) {
+  println("ConsoleRunner options: " + args)
+
   override val suiteRunner = new DPSuiteRunner (
     testSourcePath = optSourcePath getOrElse DPConfig.testRoot,
     fileManager = new DottyFileManager(extraJars),

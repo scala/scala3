@@ -1,0 +1,34 @@
+enclosingPackage = package test {
+  object Test extends scala.AnyRef {
+    def <init>() = {
+      super.<init>();
+      ()
+    };
+    def test = Macros.foo
+  }
+}
+enclosingClass = object Test extends scala.AnyRef {
+  def <init>() = {
+    super.<init>();
+    ()
+  };
+  def test = Macros.foo
+}
+enclosingImpl = object Test extends scala.AnyRef {
+  def <init>() = {
+    super.<init>();
+    ()
+  };
+  def test = Macros.foo
+}
+enclosingTemplate = scala.AnyRef {
+  def <init>() = {
+    super.<init>();
+    ()
+  };
+  def test = Macros.foo
+}
+enclosingMethod = def test = Macros.foo
+enclosingDef = def test = Macros.foo
+enclosingOwner = method test
+enclosingOwnerChain = List(method test, object Test, package test, package <root>)

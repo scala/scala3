@@ -1,0 +1,21 @@
+lazy-exprs.scala:38: warning: match may not be exhaustive.
+It would fail on the following input: Some((x: String forSome x not in Z1))
+    t match {
+    ^
+lazy-exprs.scala:62: warning: match may not be exhaustive.
+It would fail on the following input: Some((x: String forSome x not in LazyField))
+    t match {
+    ^
+forced <z1>
+lazy val in scrutinee: ok
+forced <z1>
+lazy val in case: ok
+lazy val in case: forced <z1>
+ok
+lazy val in if condition: forced <z1>
+ok
+lazy val in pattern: forced LazyField
+ok
+lazy val with patterns:
+x and y: xy(x, y)
+x1 and y1: x1y1(x1, y1)

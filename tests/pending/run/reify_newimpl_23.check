@@ -1,0 +1,24 @@
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe._
+
+scala> import scala.tools.reflect.ToolBox
+import scala.tools.reflect.ToolBox
+
+scala> import scala.tools.reflect.Eval
+import scala.tools.reflect.Eval
+
+scala> def foo[T]{
+  val code = reify {
+    List[T]()
+  }
+  println(code.eval)
+}
+<console>:13: free type: Ident(TypeName("T")) defined by foo in <console>:12:16
+         val code = reify {
+                          ^
+foo: [T]=> Unit
+
+scala> :quit

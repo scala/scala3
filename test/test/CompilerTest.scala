@@ -82,7 +82,7 @@ abstract class CompilerTest extends DottyTest {
     * @param extension the file extension, .scala by default
     * @param defaultOptions more arguments to the compiler
     */
-  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0, 
+  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0,
       extension: String = ".scala", runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     if (!generatePartestFiles || !partestableFile(prefix, fileName, extension, args ++ defaultOptions, xerrors)) {
@@ -102,7 +102,8 @@ abstract class CompilerTest extends DottyTest {
       }
     }
   }
-  def runFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0, 
+
+  def runFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0,
       extension: String = ".scala")(implicit defaultOptions: List[String]): Unit =
     compileFile(prefix, fileName, args, xerrors, extension, true)
 
@@ -140,23 +141,28 @@ abstract class CompilerTest extends DottyTest {
       }
     }
   }
+
   def runDir(prefix: String, dirName: String, args: List[String] = Nil, xerrors: Int = 0)
       (implicit defaultOptions: List[String]): Unit =
     compileDir(prefix, dirName, args, xerrors, true)
 
+  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
+            (implicit defaultOptions: List[String]): Unit =
+    compileFiles(path, args, verbose, true)
+
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
-  def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
+  def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, isRunTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
     val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       if (verbose) println(s"testing $path$name")
-      compileFile(path, name, args, 0, "")
+      compileFile(path, name, args, 0, "", isRunTest)
     }
     for (subdir <- dir.dirs) {
       if (verbose) println(s"testing $subdir")
-      compileDir(path, subdir.jfile.getName, args, 0)
+      compileDir(path, subdir.jfile.getName, args, 0, isRunTest)
     }
   }
 
@@ -167,7 +173,7 @@ abstract class CompilerTest extends DottyTest {
       compileArgs((files ++ args).toArray, xerrors)
     } else {
       val destDir = Directory(DPConfig.testRoot + JFile.separator + testName)
-      files.foreach({ file => 
+      files.foreach({ file =>
         val jfile = new JFile(file)
         recCopyFiles(jfile, destDir / jfile.getName)
       })
@@ -192,7 +198,7 @@ abstract class CompilerTest extends DottyTest {
     if (runTest) "run"
     else if (xerrors > 0) "neg"
     else if (prefixDir.endsWith("run" + JFile.separator)) {
-      NestUI.echoWarning("WARNING: test is being run as pos test despite being in a run directory. " + 
+      NestUI.echoWarning("WARNING: test is being run as pos test despite being in a run directory. " +
         "Use runFile/runDir instead of compileFile/compileDir to do a run test")
       "pos"
     } else "pos"
@@ -226,7 +232,7 @@ abstract class CompilerTest extends DottyTest {
         computeDestAndCopyFiles(source, nextDest, kind, flags, nerr, nr + 1, partestOutput)
     }
   }
-  
+
   /** Copies the test sources. Creates flags, nerr, check and output files. */
   private def copyFiles(sourceFile: Path, dest: Path, partestOutput: String, flags: List[String], nerr: String, kind: String) = {
     recCopyFiles(sourceFile, dest)
@@ -237,7 +243,7 @@ abstract class CompilerTest extends DottyTest {
       dest.changeExtension("flags").createFile(true).writeAll(flags.mkString(" "))
     if (nerr != "0")
       dest.changeExtension("nerr").createFile(true).writeAll(nerr)
-    sourceFile.changeExtension("check").ifFile({ check => 
+    sourceFile.changeExtension("check").ifFile({ check =>
       if (kind == "run")
         FileManager.copyFile(check.jfile, dest.changeExtension("check").jfile)
       else
@@ -256,7 +262,7 @@ abstract class CompilerTest extends DottyTest {
       } else {
         NestUI.echoWarning(s"WARNING: ignoring $sf")
       }
-    }, { sdir => 
+    }, { sdir =>
       dest.jfile.mkdirs
       sdir.list.foreach(path => recCopyFiles(path, dest / path.name))
     }, Some("DPCompilerTest.recCopyFiles: sourceFile not found: " + sourceFile))
@@ -278,7 +284,7 @@ abstract class CompilerTest extends DottyTest {
       if (!genSrc.isDefined) {
         NotExists
       } else {
-        val source = processFileDir(sourceFile, { f => f.safeSlurp }, { d => Some("") }, 
+        val source = processFileDir(sourceFile, { f => f.safeSlurp }, { d => Some("") },
             Some("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
         if (source == genSrc) {
           nerr match {
@@ -299,7 +305,7 @@ abstract class CompilerTest extends DottyTest {
     val nrString = nr.toString
     name match {
       case nrFinder(prefix, `nrString`) => prefix + (nr + 1)
-      case _ => 
+      case _ =>
         assert(nr == 0, "DPCompilerTest couldn't create new version of files, match error")
         name + "_v1"
     }
@@ -324,7 +330,7 @@ abstract class CompilerTest extends DottyTest {
     Directory(prefix + dirName).deepFiles.foreach(source => recCopyFiles(source, destDir / source.name))
     destDir.jfile
   }
-  
+
 }
 
 object CompilerTest extends App {

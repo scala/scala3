@@ -1,0 +1,5 @@
+$anon
+Test.$anon$1
+A with B {
+  def <init>(): A with B
+}

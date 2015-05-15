@@ -1,0 +1,127 @@
+names-defaults.scala:269: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+    spawn(b = { val ttt = 1; ttt }, a = 0)
+                             ^
+warning: there were four deprecation warnings; re-run with -deprecation for details
+1: @
+get: $
+get: 2
+2: $
+get: 3
+get: **
+3: **
+get: 110
+get: 11
+get: \
+get: 2.399
+11: \, 110, 2.399
+get: 14
+get: 3920
+get: }
+get: [
+14: [, 3920, }
+get: 4
+get: @
+4: @
+get: 10
+get: flu
+10: flu
+get: 8
+get: 9
+get: %
+get: 5
+5: %, 17
+12: ', 13, 16
+1: bird, swine, 10
+20
+30
+40
+6: ~
+14: /
+100: 100: nix, nix, 982, 982, 0
+100: overridden, bla, 0, 0, 555
+100: overridden, , 93.3, 93.3, -1
+first
+first
+second
+first
+second
+second
+second
+first
+second
+f
+second
+second
+first
+third
+fourth
+fifth
+sixth
+first
+2, List(4, 4, 4)
+2, List()
+5
+get: 11
+11
+get: 1
+get: 2
+get: 2
+3
+0
+get: 20
+get: 20
+20
+0
+1
+dlkfj0dlkfj102
+lskf2dkflj2
+dlkd5nixda10nixdadklfj1dklfj
+C(dlkf,234,struct)struct???
+C(dflkj,234,Some(209))None!!
+dflk10
+1-1jupee
+12.39
+2
+Factory(1,blabla)
+Factory(-1,blabla)
+Fact2(ju,1)
+Fact2(1,1)
+Fact2(10,blabla)
+test5
+2
+test5
+3
+test5
+4
+test5
+5
+10: 2
+slkdfj2
+1
+lskfdjlk
+11
+2
+20
+10
+jaa
+kldfj110101
+klfj1
+blublu1
+my text
+List(1, 2)
+3
+1
+2
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+3
+(1,0), (1,2)
+1 1 0

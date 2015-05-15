@@ -74,12 +74,16 @@ object DottyBuild extends Build {
       partestLockFile.createNewFile
       partestLockFile.deleteOnExit
     },
-    runPartestRunner <<= Def.taskDyn {
+    runPartestRunner <<= Def.inputTaskDyn {
+      // Magic! This is both an input task and a dynamic task. Apparently
+      // command line arguments get passed to the last task in an aliased
+      // sequence (see partest alias below), so this works.
+      val args = Def.spaceDelimited("<arg>").parsed
       val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++ 
           getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
       val dottyJars  = "-dottyJars " + jars.length + " " + jars.mkString(" ")
       // Provide the jars required on the classpath of run tests
-      runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars)
+      runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
     },
 
     // Adjust classpath for running dotty
@@ -170,7 +174,7 @@ object DottyBuild extends Build {
   lazy val partestLockFile = new File("." + File.separator + "tests" + File.separator + "locks" + File.separator + s"partest-$pid.lock")
   def pid = java.lang.Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")(0))
 
-  lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partest")
+  lazy val runPartestRunner = InputKey[Unit]("runPartestRunner", "Runs partest")
 
   lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
   def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
