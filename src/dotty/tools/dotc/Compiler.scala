@@ -54,6 +54,7 @@ class Compiler {
            new InterceptedMethods,
            new Literalize,
            new Getters,
+           new ClassTags,
            new ElimByName,
            new ResolveSuper),
       List(new Erasure),

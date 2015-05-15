@@ -46,35 +46,56 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case ref: ClassDenotation if ref is ModuleClass =>
-      ref.linkedClass match {
-        case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
-          val cinfo = ref.classInfo
+    case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
+      moduleClassSym.linkedClass match {
+        case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+          val cinfo = moduleClassSym.classInfo
           val decls1 = cinfo.decls.cloneScope
+          val moduleSym = moduleClassSym.symbol.asClass
+
+          var newSuperClass: Type = null
+
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
-            if (!(origClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
-              for (decl <- origClass.classInfo.decls) {
+            if (!(valueClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
+              for (decl <- valueClass.classInfo.decls) {
                 if (isMethodWithExtension(decl))
-                  decls1.enter(createExtensionMethod(decl, ref.symbol))
+                  decls1.enter(createExtensionMethod(decl, moduleClassSym.symbol))
               }
             }
 
-            val sym = ref.symbol
-            val underlying = erasure(underlyingOfValueClass(origClass))
-            val evt = ErasedValueType(origClass, underlying)
-            val u2evtSym = ctx.newSymbol(sym, nme.U2EVT, Synthetic | Method,
+            val underlying = erasure(underlyingOfValueClass(valueClass))
+            val evt = ErasedValueType(valueClass, underlying)
+            val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
               MethodType(List(nme.x_0), List(underlying), evt))
-            val evt2uSym = ctx.newSymbol(sym, nme.EVT2U, Synthetic | Method,
+            val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
               MethodType(List(nme.x_0), List(evt), underlying))
+
+            val defn = ctx.definitions
+
+            val underlyingCls = underlying.classSymbol
+            val underlyingClsName =
+              if (defn.ScalaNumericValueClasses.contains(underlyingCls) ||
+                underlyingCls == defn.BooleanClass) underlyingCls.name else nme.Object
+
+
+            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingClsName}Companion").asClass
+
+            newSuperClass = tpd.ref(syp).select(nme.CONSTRUCTOR).appliedToType(valueClass.typeRef).tpe.resultType
+
             decls1.enter(u2evtSym)
             decls1.enter(evt2uSym)
           }
-          if (decls1.isEmpty) ref
-          else ref.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
+
+          // add a VCXXXCompanion superclass
+
+          moduleClassSym.copySymDenotation(info =
+            cinfo.derivedClassInfo(
+              classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
+              decls = decls1))
         case _ =>
-          ref
+          moduleClassSym
       }
     case ref: SymDenotation
     if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnotationClass) =>

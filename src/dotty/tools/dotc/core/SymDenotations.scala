@@ -1350,7 +1350,7 @@ object SymDenotations {
           // than this is a scope that will eventually become decls of this symbol.
           // And this should only happen if this is first time the scope of symbol
           // is computed, ie symbol yet has no future.
-          assert(this.nextInRun == this)
+          assert(this.nextInRun.validFor.code <= this.validFor.code)
           scope
         case _ => unforcedDecls.openForMutations
       }
@@ -1371,7 +1371,7 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen))
+      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls))
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)
