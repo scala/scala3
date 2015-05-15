@@ -469,7 +469,11 @@ object Erasure extends TypeTestsCasts{
         tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      val restpe = sym.info.resultType
+      val restpe =
+        if (sym == defn.newRefArrayMethod) defn.ObjectType
+          // newRefArray is the only source defined method that's polymorphic
+          // after erasure; needs to be treated specially
+        else sym.info.resultType
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil,
@@ -600,7 +604,7 @@ object Erasure extends TypeTestsCasts{
 
       traverse(newStats, oldStats)
     }
-    
+
     private final val NoBridgeFlags = Flags.Accessor | Flags.Deferred | Flags.Lazy
 
     /** Create a bridge DefDef which overrides a parent method.
