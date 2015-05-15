@@ -38,7 +38,7 @@ class GenBCode extends Phase {
 
 
   def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(entryPoints.toList,  new DottyBackendInterface()(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    new GenBCodePipeline(entryPoints.toList, new DottyBackendInterface()(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
 }
