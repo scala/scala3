@@ -471,7 +471,7 @@ object Erasure extends TypeTestsCasts{
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
       var effectiveSym = sym
       if (sym == defn.newRefArrayMethod) {
-        // newRefArray is treated specially: It's new only method source-defined method
+        // newRefArray is treated specially: It's the only source-defined method
         // that has a polymorphic type after erasure. But treating its (dummy) definition
         // with a polymorphic type at and after erasure is an awkward special case.
         // We therefore rewrite the method definition with a new Symbol of type
