@@ -46,12 +46,12 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case moduleClass: ClassDenotation if moduleClass is ModuleClass =>
-      moduleClass.linkedClass match {
+    case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
+      moduleClassSym.linkedClass match {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
-          val cinfo = moduleClass.classInfo
+          val cinfo = moduleClassSym.classInfo
           val decls1 = cinfo.decls.cloneScope
-          val moduleSym = moduleClass.symbol.asClass
+          val moduleSym = moduleClassSym.symbol.asClass
 
           var newSuperClass: Type = null
 
@@ -61,7 +61,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
             if (!(valueClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
               for (decl <- valueClass.classInfo.decls) {
                 if (isMethodWithExtension(decl))
-                  decls1.enter(createExtensionMethod(decl, moduleClass.symbol))
+                  decls1.enter(createExtensionMethod(decl, moduleClassSym.symbol))
               }
             }
 
@@ -74,19 +74,13 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
 
             val defn = ctx.definitions
 
-            val underlyingName = underlying.classSymbol match {
-              case defn.IntClass     => nme.Int
-              case defn.ByteClass    => nme.Byte
-              case defn.ShortClass   => nme.Short
-              case defn.DoubleClass  => nme.Double
-              case defn.FloatClass   => nme.Float
-              case defn.LongClass    => nme.Long
-              case defn.BooleanClass => nme.Boolean
-              case defn.CharClass    => nme.Char
-              case _                 => nme.Object
-            }
+            val underlyingCls = underlying.classSymbol
+            val underlyingClsName =
+              if (defn.ScalaNumericValueClasses.contains(underlyingCls) ||
+                underlyingCls == defn.BooleanClass) underlyingCls.name else nme.Object
 
-            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingName}Companion").asClass
+
+            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingClsName}Companion").asClass
 
             newSuperClass = tpd.ref(syp).select(nme.CONSTRUCTOR).appliedToType(valueClass.typeRef).tpe.resultType
 
@@ -96,12 +90,12 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
 
           // add a VCXXXCompanion superclass
 
-          moduleClass.copySymDenotation(info =
+          moduleClassSym.copySymDenotation(info =
             cinfo.derivedClassInfo(
               classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
               decls = decls1))
         case _ =>
-          moduleClass
+          moduleClassSym
       }
     case ref: SymDenotation
     if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnotationClass) =>
