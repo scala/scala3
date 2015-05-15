@@ -289,39 +289,43 @@ object SymDenotations {
     }
 
     /** The encoded full path name of this denotation, where outer names and inner names
-     *  are separated by `separator` characters.
+     *  are separated by `separator` strings.
      *  Never translates expansions of operators back to operator symbol.
-     *  Drops package objects. Represents terms in the owner chain by a simple `separator`.
+     *  Drops package objects. Represents terms in the owner chain by a simple `~`.
+     *  (Note: scalac uses nothing to represent terms, which can cause name clashes
+     *   between same-named definitions in different enclosing methods. Before this commit
+     *   we used `$' but this can cause ambiguities with the class separator '$').
+     *  A separator "" means "flat name"; the real separator in this case is "$" and
+     *  enclosing packages do not form part of the name.
      */
-    def fullNameSeparated(separator: Char)(implicit ctx: Context): Name =
-      if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
+    def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
+      var sep = separator
+      var stopAtPackage = false
+      if (sep.isEmpty) {
+        sep = "$"
+        stopAtPackage = true
+      }
+      if (symbol == NoSymbol ||
+          owner == NoSymbol ||
+          owner.isEffectiveRoot ||
+          stopAtPackage && owner.is(PackageClass)) name
       else {
-        var owner = this
-        var sep = ""
-        do {
-          owner = owner.owner
-          sep += separator
-        } while (!owner.isClass && !owner.isPackageObject)
-        val fn = owner.fullNameSeparated(separator) ++ sep ++ name
+        var encl = owner
+        while (!encl.isClass && !encl.isPackageObject) {
+          encl = encl.owner
+          sep += "~"
+        }
+        if (owner.is(ModuleClass) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
+        val fn = encl.fullNameSeparated(separator) ++ sep ++ name
         if (isType) fn.toTypeName else fn.toTermName
       }
+    }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
-    def flatName(separator: Char = '$')(implicit ctx: Context): Name =
-      if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot || (owner is PackageClass)) name
-      else {
-        var owner = this
-        var sep = ""
-        do {
-          owner = owner.owner
-          sep += separator
-        } while (!owner.isClass && !owner.isPackageObject)
-        val fn = owner.flatName(separator) ++ sep ++ name
-        if (isType) fn.toTypeName else fn.toTermName
-      }
+    def flatName(implicit ctx: Context): Name = fullNameSeparated("")
 
     /** `fullName` where `.' is the separator character */
-    def fullName(implicit ctx: Context): Name = fullNameSeparated('.')
+    def fullName(implicit ctx: Context): Name = fullNameSeparated(".")
 
     // ----- Tests -------------------------------------------------
 
@@ -1572,8 +1576,8 @@ object SymDenotations {
       }
     }
 
-    private[this] var fullNameCache: SimpleMap[Character, Name] = SimpleMap.Empty
-    override final def fullNameSeparated(separator: Char)(implicit ctx: Context): Name = {
+    private[this] var fullNameCache: SimpleMap[String, Name] = SimpleMap.Empty
+    override final def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
       val cached = fullNameCache(separator)
       if (cached != null) cached
       else {

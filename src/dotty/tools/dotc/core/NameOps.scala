@@ -150,7 +150,7 @@ object NameOps {
     /** The expanded name of `name` relative to given class `base`.
      */
     def expandedName(base: Symbol)(implicit ctx: Context): N =
-      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$'))
+      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated("$"))
 
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
