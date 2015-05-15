@@ -302,18 +302,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
     var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
     var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty
-    def normalizeToRef(tp: Type): TypeRef = tp match {
+    def normalizeToRef(tp: Type): TypeRef = tp.dealias match {
+      case tp: TypeRef =>
+        tp
       case tp @ RefinedType(tp1, name: TypeName) =>
         val prevInfo = refinements(name)
         refinements = refinements.updated(name,
             if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
         formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
-      case tp: TypeRef =>
-        if (tp.symbol.info.isAlias) normalizeToRef(tp.info.bounds.hi)
-        else tp
       case ErrorType =>
         defn.AnyClass.typeRef
+      case AnnotatedType(_, tpe) =>
+        normalizeToRef(tpe)
       case _ =>
         throw new TypeError(s"unexpected parent type: $tp")
     }

@@ -22,7 +22,7 @@ class Test {
 
   val x: A @uncheckedVariance with B @uncheckedVariance = ???
 
-  //class C extends A @uncheckedVariance () with B @uncheckedVariance { val x = 10 }
+  class C extends A @uncheckedVariance () with B @uncheckedVariance { val x = 10 }
 
 }
 
