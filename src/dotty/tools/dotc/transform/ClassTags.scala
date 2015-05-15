@@ -43,10 +43,23 @@ class ClassTags extends MiniPhaseTransform with IdentityDenotTransformer { thisT
   override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
     if (tree.fun.symbol eq classTagCache) {
       val tp = tree.args.head.tpe
+      val defn = ctx.definitions
+      val (elemType, ndims) = tp match {
+        case defn.MultiArrayType(elem, ndims) => (elem, ndims)
+        case _ => (tp, 0)
+      }
+
       val claz = tp.classSymbol
+      val elemClaz = elemType.classSymbol
       assert(!claz.isPrimitiveValueClass) // should be inserted by typer
-      if (ValueClasses.isDerivedValueClass(claz)) ref(claz.companionModule)
-      else if (claz eq defn.AnyClass) ref(scala2ClassTagModule).select(nme.Any).ensureConforms(tree.tpe)
-      else ref(scala2ClassTagModule).select(nme.apply).appliedToType(tp).appliedTo(Literal(Constant(claz.typeRef)))
+      val elemTag = if (defn.ScalaValueClasses.contains(elemClaz) || elemClaz == defn.NothingClass || elemClaz == defn.NullClass)
+          ref(defn.DottyPredefModule).select(s"${elemClaz.name}ClassTag".toTermName)
+        else if (ValueClasses.isDerivedValueClass(elemClaz)) ref(claz.companionModule)
+        else if (elemClaz eq defn.AnyClass) ref(scala2ClassTagModule).select(nme.Any)
+        else {
+          val erazedTp = TypeErasure.erasure(elemType).classSymbol.typeRef
+          ref(scala2ClassTagModule).select(nme.apply).appliedToType(erazedTp).appliedTo(Literal(Constant(erazedTp)))
+        }
+      (1 to ndims).foldLeft(elemTag)((arr, level) => Select(arr, nme.wrap).ensureApplied).ensureConforms(tree.tpe)
     } else tree
 }
