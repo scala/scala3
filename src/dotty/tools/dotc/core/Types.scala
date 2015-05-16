@@ -2590,7 +2590,7 @@ object Types {
   abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
     /** pre: this is a type alias */
     def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if (lo eq tp) this
+      if ((lo eq tp) && (variance == this.variance)) this
       else TypeAlias(tp, variance)
 
     override def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
