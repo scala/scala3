@@ -1842,7 +1842,7 @@ object Types {
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
     def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
-      assert(!ctx.erasedTypes)
+      assert(!ctx.erasedTypes || ctx.mode.is(Mode.Printing))
       ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
     }
 
