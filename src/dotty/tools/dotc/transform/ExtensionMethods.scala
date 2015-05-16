@@ -88,11 +88,11 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
             decls1.enter(evt2uSym)
           }
 
-          // add a VCXXXCompanion superclass
-
+          // Add the extension methods, the cast methods u2evt$ and evt2u$, and a VC*Companion superclass
           moduleClassSym.copySymDenotation(info =
             cinfo.derivedClassInfo(
-              classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
+              // FIXME: use of VC*Companion superclasses is disabled until the conflicts with SyntheticMethods are solved.
+              //classParents = ctx.normalizeToClassRefs(List(newSuperClass), moduleSym, decls1),
               decls = decls1))
         case _ =>
           moduleClassSym
