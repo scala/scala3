@@ -5,7 +5,7 @@ import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import TypeErasure.ErasedValueType
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import ast.{Trees, untpd, tpd}
 import typer.Namer
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
@@ -121,6 +121,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
           return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
         }
+        if (tp.isSafeLambda) {
+          val (prefix, body, bindings) = extractApply(tp)
+          prefix match {
+            case prefix: TypeRef if prefix.symbol.isLambdaTrait && body.exists =>
+              return typeLambdaText(prefix.symbol, body, bindings)
+            case _ =>
+          }
+        }
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
@@ -158,6 +166,73 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     "{" ~ toText(trees, "\n") ~ "}"
+
+  /** If type `tp` represents a potential type Lambda of the form
+   *
+   *     parent { type Apply = body; argBindings? }
+   *
+   *  split it into
+   
+   *   - the `parent`
+   *   - the simplified `body`
+   *   - the bindings HK$ members, if there are any
+   *
+   *  The body is simplified  as follows
+   *   - if it is a TypeAlias, follow it
+   *   - replace all references to of the form <skolem>.HK$i by references
+   *     without a prefix, because the latter print nicer.
+   *
+   */
+  def extractApply(tp: Type): (Type, Type, List[(Name, Type)]) = tp.stripTypeVar match {
+    case tp @ RefinedType(parent, name) =>
+      if (name == tpnme.Apply) {
+        // simplify arguments so that parameters just print HK$i and not
+        // LambdaI{...}.HK$i
+        val simplifyArgs = new TypeMap {
+          override def apply(tp: Type) = tp match {
+            case tp @ TypeRef(SkolemType(_), name) if name.isLambdaArgName =>
+              TypeRef(NoPrefix, tp.symbol.asType)
+            case _ =>
+              mapOver(tp)
+          }
+        }
+        (parent, simplifyArgs(tp.refinedInfo.followTypeAlias), Nil)
+      } else if (name.isLambdaArgName) {
+        val (prefix, body, argBindings) = extractApply(parent)
+        (prefix, body, (name, tp.refinedInfo) :: argBindings)
+      } else (tp, NoType, Nil)
+    case _ =>
+      (tp, NoType, Nil)
+  }
+
+  /** The text for a TypeLambda
+   *
+   *     LambdaXYZ { type Apply = body'; bindings? }
+   *
+   *  where
+   *  @param  lambdaCls   The class symbol for `LambdaXYZ`
+   *  @param  body        The simplified lambda body
+   *  @param  bindings    The bindings of any HK$i arguments
+   *
+   *  @return A text of the form
+   *
+   *    [HK$0, ..., HK$n] => body
+   *
+   *  possibly followed by bindings
+   *
+   *    [HK$i = arg_i, ..., HK$k = arg_k]
+   */
+  def typeLambdaText(lambdaCls: Symbol, body: Type, bindings: List[(Name, Type)]): Text = {
+    def lambdaParamText(tparam: Symbol): Text = {
+      varianceString(tparam) ~ nameString(tparam.name)
+    }
+    def lambdaText = changePrec(GlobalPrec) {
+      "[" ~ Text(lambdaCls.typeParams.map(lambdaParamText), ", ") ~ "] => " ~ toTextGlobal(body)
+    }
+    def bindingText(binding: (Name, Type)) = binding._1.toString ~ toTextGlobal(binding._2)
+    if (bindings.isEmpty) lambdaText
+    else atPrec(DotPrec)(lambdaText) ~ "[" ~ Text(bindings.map(bindingText), ", ") ~ "]"
+  }
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 

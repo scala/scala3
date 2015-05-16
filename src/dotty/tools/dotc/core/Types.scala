@@ -729,6 +729,12 @@ object Types {
       case tp => tp
     }
 
+    /** If this is a TypeAlias type, its alias otherwise this type itself */
+    final def followTypeAlias(implicit ctx: Context): Type = this match {
+      case TypeAlias(alias) => alias
+      case _ => this
+    }
+
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     final def widenDealias(implicit ctx: Context): Type = {
       val res = this.widen.dealias
