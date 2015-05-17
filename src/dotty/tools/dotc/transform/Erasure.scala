@@ -119,7 +119,7 @@ object Erasure extends TypeTestsCasts{
   object Boxing {
 
     def isUnbox(sym: Symbol)(implicit ctx: Context) =
-      sym.name == nme.unbox && (defn.ScalaBoxedClasses contains sym.owner.linkedClass)
+      sym.name == nme.unbox && (defn.ScalaValueClasses contains sym.owner.linkedClass)
 
     def isBox(sym: Symbol)(implicit ctx: Context) =
       sym.name == nme.box && (defn.ScalaValueClasses contains sym.owner.linkedClass)
