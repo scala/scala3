@@ -515,7 +515,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
   }
 
-  /** Test whether this type has a base type `B[T1, ..., Tn]` where the type parameters
+  /** Test whether this type if od the form `B[T1, ..., Tn]`, or,
+   *  if `canWiden` if true, has a base type of the form `B[T1, ..., Bn]` where the type parameters
    *  of `B` match one-by-one the variances of `tparams`, and where the lambda
    *  abstracted type
    *
@@ -525,7 +526,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a variance V if it has V as its variance or if V == 0.
    */
-  def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {
+  def testLifted(tparams: List[Symbol], p: Type => Boolean, canWiden: Boolean)(implicit ctx: Context): Boolean = {
     def tryLift(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
         val tp = self.baseTypeWithArgs(bc)
@@ -548,7 +549,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         false
     }
     if (tparams.isEmpty) false
-    else if (typeParams.nonEmpty) p(EtaExpand) || tryLift(self.baseClasses)
-    else tryLift(self.baseClasses)
+    else if (typeParams.nonEmpty) p(EtaExpand) || canWiden && tryLift(self.baseClasses)
+    else canWiden && tryLift(self.baseClasses)
   }
 }

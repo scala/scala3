@@ -345,7 +345,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
               || fourthTry(tp1, tp2)
               )
           normalPath ||
-            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2))
+            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2), canWiden = true)
         }
         else // fast path, in particular for refinements resulting from parameterization.
           isSubType(tp1, skipped2) &&
@@ -453,7 +453,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
        isNewSubType(tp1.parent, tp2) ||
-         needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
+         needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _), canWiden = false)
     case AndType(tp11, tp12) =>
       eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
@@ -475,7 +475,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       val lambda = projection.prefix.LambdaClass(forcing = true)
       lambda.exists && !other.isLambda &&
         other.testLifted(lambda.typeParams,
-          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix))
+          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+          canWiden = !inOrder)
     }
 
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
