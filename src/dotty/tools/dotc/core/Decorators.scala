@@ -173,7 +173,7 @@ object Decorators {
       def treatSingleArg(arg: Any) : Any =
         try
           arg match {
-            case arg: Showable => arg.show(ctx.fresh.addMode(Mode.FutureDefsOK))
+            case arg: Showable => arg.show(ctx.addMode(Mode.FutureDefsOK))
             case _ => arg
           }
         catch {

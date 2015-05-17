@@ -21,6 +21,7 @@ import ast.Trees._
 import Applications._
 import TypeApplications._
 import SymUtils._, core.NameOps._
+import typer.Mode
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -464,8 +465,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           // all potentially stored subpat binders
           val potentiallyStoredBinders = stored.unzip._1.toSet
           // compute intersection of all symbols in the tree `in` and all potentially stored subpat binders
-          new DeepFolder[Unit]((x: Unit, t:Tree) =>
+          def computeBinders(implicit ctx: Context) = new DeepFolder[Unit]((x: Unit, t:Tree) =>
             if (potentiallyStoredBinders(t.symbol)) usedBinders += t.symbol).apply((), in)
+          computeBinders(ctx.addMode(Mode.FutureDefsOK)) // trigged a NotDefinedHere on $outer when compiler dotc/printing
 
           if (usedBinders.isEmpty) in
           else {
