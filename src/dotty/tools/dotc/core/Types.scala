@@ -812,10 +812,10 @@ object Types {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else pre.refinedInfo match {
-            case TypeAlias(tp) =>
-              if (!pre.refinementRefersToThis) tp
-              else tp match {
-                case TypeRef(SkolemType(`pre`), alias) => lookupRefined(alias)
+            case TypeAlias(alias) =>
+              if (!pre.refinementRefersToThis) alias
+              else alias match {
+                case TypeRef(SkolemType(`pre`), aliasName) => lookupRefined(aliasName )
                 case _ => NoType
               }
             case _ => loop(pre.parent)
