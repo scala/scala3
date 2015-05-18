@@ -35,8 +35,6 @@ import language.implicitConversions
 
 object Types {
 
-  private var recCount = 0 // used temporarily for debugging. TODO: remove
-
   private var nextId = 0
 
   /** The class of types.
@@ -417,9 +415,7 @@ object Types {
      *  as seen from given prefix `pre`. Exclude all members that have
      *  flags in `excluded` from consideration.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
-      recCount += 1
-      assert(recCount < 40)
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -456,7 +452,11 @@ object Types {
           if (tp.refinementRefersToThis) tp.refinedInfo.substSkolem(tp, pre)
           else tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
-          val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
+          val jointInfo =
+            if (rinfo.isAlias) rinfo
+            else if (pdenot.info.isAlias) pdenot.info
+            else if (ctx.typeComparer.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
+            else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else
           pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
@@ -488,15 +488,30 @@ object Types {
       }
       def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
       def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
-      go(this)
-    } catch {
-      case ex: MergeError =>
-        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
-      case ex: Throwable =>
-        println(s"findMember exception for $this member $name")
-        throw ex // DEBUG
-    } finally {
-      recCount -= 1
+      def safeAnd(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
+        case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(lo1 | lo2, AndType(hi1, hi2))
+        case _ => tp1 & tp2
+      }
+
+      val cmp = ctx.typeComparer
+      val recCount = cmp.findMemberCount
+      cmp.findMemberCount = recCount + 1
+      if (recCount >= Config.LogPendingFindMemberThreshold) {
+        cmp.pendingMemberSearches = name :: cmp.pendingMemberSearches
+      }
+      try go(this)
+      catch {
+        case ex: MergeError =>
+          throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
+        case ex: Throwable =>
+          println(i"findMember exception for $this member $name")
+          throw ex // DEBUG
+      }
+      finally {
+        cmp.findMemberCount = recCount - 1
+        if (recCount >= Config.LogPendingFindMemberThreshold)
+          cmp.pendingMemberSearches = cmp.pendingMemberSearches.tail
+      }
     }
 
     /** The set of names of members of this type that pass the given name filter

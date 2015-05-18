@@ -25,6 +25,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
 
+  private[core] var findMemberCount = 0
+  private[core] var pendingMemberSearches: List[Name] = Nil
+
   private var needsGc = false
 
   /** Is a subtype check in progress? In that case we may not
