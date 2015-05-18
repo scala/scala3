@@ -1,6 +1,6 @@
 object return_specialization {
-  def qwa[@specialized T](a: (String, String) => T, b: T): T = {
-      if(a ne this) return a("1", "2")
+  def qwa[@specialized(Int) T](a: (T, T) => T, b: T): T = {
+      if(a ne this) return a(b, b)
       else b
   }
 }

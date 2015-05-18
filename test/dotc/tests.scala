@@ -220,16 +220,18 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
 
-  //@Test def specialization = compileFile(specialDir, "specialization")//, specialise)
-  //@Test def mutual_spec = compileFile(specialDir, "mutual_specialization")
+*/
+  //@Test def specialization = compileFile(specialDir, "specialization")
+  //@Test def mutual_spec = compileFile(specialDir, "mutual_specialization", List("-Xprint:all"))
   //@Test def return_spec = compileFile(specialDir, "return_specialization")
-  //@Test def nothing_spec = compileFile(specialDir, "nothing_specialization")
-  //@Test def method_in_class_spec = compileFile(specialDir, "method_in_class_specialization")
-  //@Test def method_in_method_spec = compileFile(specialDir, "method_in_method_specialization", List("-Xprint:all"))
-  @Test def type_check_spec = compileFile(specialDir, "type_check_specialization")
-  //@Test def bounds_spec = compileFile(specialDir, "bounds_specialization", List("-Xprint:all"))
-  //@Test def multi_spec = compileFile(specialDir, "multi_specialization", List("-Xprint:all"))
-  //@Test def pos_spec_all = compileFiles(specialDir)
+  //  @Test def nothing_spec = compileFile(specialDir, "nothing_specialization")
+  //  @Test def method_in_class_spec = compileFile(specialDir, "method_in_class_specialization")
+  //  @Test def method_in_method_spec = compileFile(specialDir, "method_in_method_specialization")
+  //  @Test def pos_type_check = compileFile(specialDir, "type_test")
+  //  @Test def bounds_spec = compileFile(specialDir, "bounds_specialization")
+  //  @Test def multi_spec = compileFile(specialDir, "multi_specialization")
+  //  @Test def pos_spec_all = compileFiles(specialDir)
+    @Test def pos_this_specialization = compileFile(specialDir, "this_specialization", List("-Xprint:specialize"))
 
   //@Test def mini_method = compileFiles(miniMethodDir)//, List("-Xprint:all"))
   //@Test def mini_more = compileFiles(miniMoreDir)//, List("-Xprint:all"))
