@@ -1426,7 +1426,7 @@ object Types {
     def isTerm = isInstanceOf[TermRef]
 
     /** Guard against cycles that can arise if given `op`
-     *  follows info. The prblematic cases are a type alias to itself or
+     *  follows info. The problematic cases are a type alias to itself or
      *  bounded by itself or a val typed as itself:
      *
      *  type T <: T
@@ -1437,7 +1437,7 @@ object Types {
      */
     final def controlled[T](op: => T)(implicit ctx: Context): T = try {
       ctx.underlyingRecursions += 1
-      if (ctx.underlyingRecursions < LogPendingUnderlyingThreshold)
+      if (ctx.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
         op
       else if (ctx.pendingUnderlying contains this)
         throw CyclicReference(symbol)

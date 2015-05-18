@@ -97,7 +97,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       try {
         recCount = recCount + 1
         val result =
-          if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
+          if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
         if (!result) constraint = saved

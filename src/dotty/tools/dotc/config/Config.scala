@@ -71,4 +71,23 @@ object Config {
 
   /** Check that certain types cannot be created in erasedTypes phases */
   final val checkUnerased = true
+
+
+  /** Initial size of superId table */
+  final val InitialSuperIdsSize = 4096
+
+  /** Initial capacity of uniques HashMap */
+  final val initialUniquesCapacity = 40000
+
+  /** How many recursive calls to NamedType#underlying are performed before logging starts. */
+  final val LogPendingUnderlyingThreshold = 50
+
+  /** How many recursive calls to isSubType are performed before logging starts. */
+  final val LogPendingSubTypesThreshold = 50
+
+  /** How many recursive calls to findMember are performed before logging names starts */
+  final val LogPendingFindMemberThreshold = 20
+
+  /** Maximal number of outstanding recursive calls to findMember  */
+  final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 2
 }
