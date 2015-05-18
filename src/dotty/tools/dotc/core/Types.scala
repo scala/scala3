@@ -792,43 +792,73 @@ object Types {
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
-    /** If this is a refinement type that has a refinement for `name` (which might be followed
+    /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
      *  by other refinements), and the refined info is a type alias, return the alias,
      *  otherwise return NoType. Used to reduce types of the form
      *
      *    P { ... type T = / += / -= U ... } # T
      *
      *  to just U. Does not perform the reduction if the resulting type would contain
-     *  a reference to the "this" of the current refined type. But does follow
-     *  aliases in order to avoid such references. Example:
+     *  a reference to the "this" of the current refined type, except in the following situation
      *
-     *      Lambda$I { type $hk$Arg0 = String, type Apply = Lambda$I{...}.$hk$Arg0 } # Apply
+     *  (1) The "this" reference can be avoided by following an alias. Example:
      *
-     *  Here, the refinement for `Apply` has a refined this node, yet dereferencing ones more
-     *  yields `String` as the result of lookupRefined.
+     *      P { type T = String, type R = P{...}.T } # R  -->  String
+     *
+     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "Apply".
+     *      In this case the rhs of the apply is returned with all references to lambda argument types
+     *      substituted by their definitions.
+     *
+     *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type): Type = pre.stripTypeVar match {
+      def loop(pre: Type, resolved: List[Name]): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
-          if (pre.refinedName ne name) loop(pre.parent)
-          else pre.refinedInfo match {
+          object instantiate extends TypeMap {
+            var isSafe = true
+            def apply(tp: Type): Type = tp match {
+              case TypeRef(SkolemType(`pre`), name) if name.isLambdaArgName =>
+                val TypeAlias(alias) = member(name).info
+                alias
+              case tp: TypeVar if !tp.inst.exists =>
+                isSafe = false
+                tp
+              case _ =>
+                mapOver(tp)
+            }
+          }
+          def betaReduce(tp: Type) = {
+            val lam = pre.parent.LambdaClass(forcing = false)
+            if (lam.exists && lam.typeParams.forall(tparam => resolved.contains(tparam.name))) {
+              val reduced = instantiate(tp)
+              if (instantiate.isSafe) reduced else NoType
+            }
+            else NoType
+          }
+          pre.refinedInfo match {
             case TypeAlias(alias) =>
-              if (!pre.refinementRefersToThis) alias
+              if (pre.refinedName ne name) loop(pre.parent, pre.refinedName :: resolved)
+              else if (!pre.refinementRefersToThis) alias
               else alias match {
-                case TypeRef(SkolemType(`pre`), aliasName) => lookupRefined(aliasName )
-                case _ => NoType
+                case TypeRef(SkolemType(`pre`), aliasName) => lookupRefined(aliasName) // (1)
+                case _ => if (name == tpnme.Apply) betaReduce(alias) else NoType // (2)
               }
-            case _ => loop(pre.parent)
+            case _ => loop(pre.parent, resolved)
           }
         case SkolemType(binder) =>
           binder.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
+        case pre: TypeRef =>
+          pre.info match {
+            case TypeAlias(alias) => loop(alias, resolved)
+            case _ => NoType
+          }
         case _ =>
           NoType
       }
 
-      loop(this)
+      loop(this, Nil)
     }
 
     /** The type <this . name> , reduced if possible */
