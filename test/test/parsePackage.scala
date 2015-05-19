@@ -66,7 +66,7 @@ object parsePackage extends ParserTest {
     nodes = 0
     val start = System.nanoTime()
     parseDir("./src")
-    parseDir("../scala/src")
+    parseDir("./scala/src")
     val ms1 = (System.nanoTime() - start)/1000000
     val buf = parsedTrees map transformer.transform
     val ms2 = (System.nanoTime() - start)/1000000
