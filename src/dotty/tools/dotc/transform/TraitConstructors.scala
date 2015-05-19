@@ -23,7 +23,8 @@ class TraitConstructors extends MiniPhaseTransform with SymTransformer {
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.isPrimaryConstructor && (sym.owner is Flags.Trait))
-      sym.copySymDenotation(name = nme.INITIALIZER_PREFIX ++ sym.owner.fullName)
+      // TODO: Someone needs to carefully check if name clashes are possible with this mangling scheme
+      sym.copySymDenotation(name = nme.INITIALIZER_PREFIX ++ sym.owner.fullNameSeparated("$"))
     else sym
   }
 
