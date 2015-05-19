@@ -1,0 +1,13 @@
+update() {
+  [[ -d $baseDir ]] || mkdir -p $baseDir
+  cd $baseDir
+
+  if [ ! -d $baseDir/$2 ]; then git clone "https://github.com/$1/$2.git"; fi
+
+  cd $2
+
+  git fetch --tags "https://github.com/$1/$2.git"
+  (git fetch "https://github.com/$1/$2.git" $3 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $3 # || fallback is for local testing on tag
+  git reset --hard
+}
+

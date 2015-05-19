@@ -1,0 +1,6 @@
+baseDir=${WORKSPACE-`pwd`}
+scriptsDir="$baseDir/scripts"
+. $scriptsDir/common
+
+sbt -Ddotty.travis.build=yes update compile "partest run"
+
