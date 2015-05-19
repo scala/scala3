@@ -1787,6 +1787,11 @@ object Types {
     lazy val ref = refFn()
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef($ref)"
+    override def equals(other: Any) = other match {
+      case other: LazyRef => this.ref.equals(other.ref)
+      case _ => false
+    }
+    override def hashCode = ref.hashCode + 37
   }
 
   // --- Refined Type ---------------------------------------------------------
