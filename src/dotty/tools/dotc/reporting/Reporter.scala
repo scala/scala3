@@ -11,6 +11,7 @@ import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
 import typer.ErrorReporting.DiagnosticString
+import typer.Mode
 
 object Reporter {
 
@@ -215,7 +216,7 @@ abstract class Reporter {
   }
 
   def report(d: Diagnostic)(implicit ctx: Context): Unit = if (!isHidden(d)) {
-    doReport(d)
+    doReport(d)(ctx.addMode(Mode.Printing))
     d match {
       case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
       case d: Warning => warningCount += 1
@@ -248,7 +249,7 @@ abstract class Reporter {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean = false
+  def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
   def hasPending: Boolean = false

@@ -5,6 +5,7 @@ import core._
 
 import Contexts._, Texts._, Decorators._
 import config.Config.summarizeDepth
+import scala.util.control.NonFatal
 
 trait Showable extends Any {
 
@@ -20,7 +21,11 @@ trait Showable extends Any {
   def fallbackToText(printer: Printer): Text = toString
 
   /** The string representation of this showable element. */
-  def show(implicit ctx: Context): String = toText(ctx.printer).show
+  def show(implicit ctx: Context): String =
+    try toText(ctx.printer).show
+    catch {
+      case NonFatal(ex) => s"[cannot display due to $ex, raw string = $toString]"
+    }
 
   /** The summarized string representation of this showable element.
    *  Recursion depth is limited to some smallish value. Default is
