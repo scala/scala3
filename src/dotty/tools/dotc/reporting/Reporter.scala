@@ -74,9 +74,9 @@ trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.verbose.value) echo(msg, pos)
+    if (this.settings.verbose.value) this.println(msg, pos)
 
-  def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def println(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
@@ -112,7 +112,7 @@ trait Reporting { this: Context =>
    */
   def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.log.value.containsPhase(phase))
-      echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
+      this.println(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
   def debuglog(msg: => String): Unit =
     if (ctx.debug) log(msg)
@@ -232,10 +232,10 @@ abstract class Reporter {
 
   /** Print a summary */
   def printSummary(implicit ctx: Context): Unit = {
-    if (warningCount > 0) ctx.echo(countString(warningCount, "warning") + " found")
-    if (errorCount > 0) ctx.echo(countString(errorCount, "error") + " found")
+    if (warningCount > 0) ctx.println(countString(warningCount, "warning") + " found")
+    if (errorCount > 0) ctx.println(countString(errorCount, "error") + " found")
     for ((settingName, count) <- unreportedWarnings)
-      ctx.echo(s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details")
+      ctx.println(s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details")
   }
 
   /** Returns a string meaning "n elements". */

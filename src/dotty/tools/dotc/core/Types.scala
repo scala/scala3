@@ -504,7 +504,7 @@ object Types {
         case ex: MergeError =>
           throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
         case ex: Throwable =>
-          println(i"findMember exception for $this member $name")
+          ctx.println(i"findMember exception for $this member $name")
           throw ex // DEBUG
       }
       finally {
