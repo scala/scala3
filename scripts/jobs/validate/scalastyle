@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+baseDir=${WORKSPACE-`pwd`}
+scriptsDir="$baseDir/scripts"
+. $scriptsDir/common
+
+sbt $sbtArgs scalastyle
+

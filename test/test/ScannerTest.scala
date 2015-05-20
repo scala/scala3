@@ -58,6 +58,6 @@ class ScannerTest extends DottyTest {
 
   @Test
   def scanScala() = {
-    scanDir("../scala/src")
+    scanDir("./scala/src")
   }
 }
