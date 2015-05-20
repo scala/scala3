@@ -175,11 +175,27 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
               val tmap: (Tree => Tree) = _ match {
                 case Return(t, from) if from.symbol == tree.symbol => Return(t, ref(newSym))
                 case t: TypeApply => transformTypeApply(t)
-                case t: Apply => transformApply(t)
+                case t: Apply =>
+                  transformApply(t)
                 case t => t
               }
+              val tp = new TreeMap() {
+                  // needed to workaround https://github.com/lampepfl/dotty/issues/592
+                  override def transform(t: Tree)(implicit ctx: Context) = super.transform(t) match {
+                  case t @ Apply(fun, args) =>
+                    val newArgs = (args zip fun.tpe.firstParamTypes).map{case(t, tpe) => t.ensureConforms(tpe)}
+                    if (sameTypes(args, newArgs)) {
+                      t
+                    } else tpd.Apply(fun, newArgs)
+                  case t: ValDef =>
+                    cpy.ValDef(t)(rhs = t.rhs.ensureConforms(t.tpe.widen))
+                  case t: DefDef =>
+                    cpy.DefDef(t)(rhs = t.rhs.ensureConforms(t.tpe.finalResultType))
+                  case t => t
+                }
+              }
 
-              new TreeTypeMap(
+              val typesReplaced = new TreeTypeMap(
                 treeMap = tmap,
                 typeMap = _
                     .substDealias(origTParams, instantiations(index))
@@ -188,6 +204,9 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                 oldOwners = tree.symbol :: Nil,
                 newOwners = newSym :: Nil
               ).transform(tree.rhs)
+
+              val expectedTypeFixed = tp.transform(typesReplaced)
+              expectedTypeFixed.ensureConforms(newSym.info.widen.finalResultType)
             }})
           }
         } else Nil
