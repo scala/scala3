@@ -11,3 +11,4 @@ update() {
   git reset --hard
 }
 
+sbtArgs="-Ddotty.travis.build=yes -ivy $baseDir/ivy2 -Dsbt.global.base=$HOME/.sbt/0.13 -sbt-dir $HOME/.sbt/0.13"

@@ -2,5 +2,5 @@ baseDir=${WORKSPACE-`pwd`}
 scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
-sbt scalastyle
+sbt $sbtArgs scalastyle
 

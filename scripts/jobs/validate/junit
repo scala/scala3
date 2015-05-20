@@ -3,4 +3,4 @@ scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
 update scala scala
-sbt -Ddotty.travis.build=yes update compile test
+sbt $sbtArgs update compile test
