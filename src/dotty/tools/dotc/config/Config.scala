@@ -85,9 +85,17 @@ object Config {
   /** How many recursive calls to isSubType are performed before logging starts. */
   final val LogPendingSubTypesThreshold = 50
 
-  /** How many recursive calls to findMember are performed before logging names starts */
-  final val LogPendingFindMemberThreshold = 20
+  /** How many recursive calls to findMember are performed before logging names starts
+   *  Note: this threshold has to be chosen carefully. Too large, and programs
+   *  like tests/pos/IterableSelfRec go into polynomial (or even exponential?)
+   *  compile time slowdown. Too small and normal programs will cause the compiler  to
+   *  do inefficient operations on findMember. The current value is determined
+   *  so that (1) IterableSelfRec still compiles in reasonable time (< 10sec) (2) Compiling
+   *  dotty itself only causes small pending names lists to be generated (we measured
+   *  at max 6 elements) and these lists are never searched with contains.
+   */
+  final val LogPendingFindMemberThreshold = 10
 
   /** Maximal number of outstanding recursive calls to findMember  */
-  final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 2
+  final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 4
 }
