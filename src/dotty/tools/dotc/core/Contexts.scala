@@ -165,6 +165,14 @@ object Contexts {
       _typeComparer
     }
 
+    /** Number of findMember calls on stack */
+    private[core] var findMemberCount: Int = 0
+
+    /** List of names which have a findMemberCall on stack,
+     *  after Config.LogPendingFindMemberThreshold is reached.
+     */
+    private[core] var pendingMemberSearches: List[Name] = Nil
+
     /** The new implicit references that are introduced by this scope */
     private var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {

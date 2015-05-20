@@ -455,7 +455,7 @@ object Types {
           val jointInfo =
             if (rinfo.isAlias) rinfo
             else if (pdenot.info.isAlias) pdenot.info
-            else if (ctx.typeComparer.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
+            else if (ctx.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
             else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else
@@ -493,12 +493,12 @@ object Types {
         case _ => tp1 & tp2
       }
 
-      val cmp = ctx.typeComparer
-      val recCount = cmp.findMemberCount
-      cmp.findMemberCount = recCount + 1
-      if (recCount >= Config.LogPendingFindMemberThreshold) {
-        cmp.pendingMemberSearches = name :: cmp.pendingMemberSearches
+      { val recCount = ctx.findMemberCount + 1
+        ctx.findMemberCount = recCount
+        if (recCount >= Config.LogPendingFindMemberThreshold)
+          ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
       }
+
       try go(this)
       catch {
         case ex: MergeError =>
@@ -508,9 +508,10 @@ object Types {
           throw ex // DEBUG
       }
       finally {
-        cmp.findMemberCount = recCount - 1
+        val recCount = ctx.findMemberCount
         if (recCount >= Config.LogPendingFindMemberThreshold)
-          cmp.pendingMemberSearches = cmp.pendingMemberSearches.tail
+          ctx.pendingMemberSearches = ctx.pendingMemberSearches.tail
+        ctx.findMemberCount = recCount - 1
       }
     }
 
