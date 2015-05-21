@@ -67,4 +67,6 @@ class TastyPickler {
    * so one can reliably use this function only dirrectly after `pickler`
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
+
+  val treePkl = new TreePickler(this)
 }

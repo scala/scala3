@@ -44,7 +44,7 @@ class Pickler extends Phase {
       if (ctx.settings.YtestPickler.value) beforePickling(cls) = tree.show
       val pickler = new TastyPickler()
       unit.picklers += (cls -> pickler)
-      val treePkl = new TreePickler(pickler)
+      val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
