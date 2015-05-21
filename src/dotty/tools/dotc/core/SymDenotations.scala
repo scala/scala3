@@ -315,7 +315,7 @@ object SymDenotations {
           encl = encl.owner
           sep += "~"
         }
-        if (owner.is(ModuleClass) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
+        if (owner.is(ModuleClass, butNot = Package) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
         val fn = encl.fullNameSeparated(separator) ++ sep ++ name
         if (isType) fn.toTypeName else fn.toTermName
       }
