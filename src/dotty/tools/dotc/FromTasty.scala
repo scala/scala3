@@ -86,6 +86,7 @@ object FromTasty extends Driver {
                     val (List(unpickled), source) = unpickler.body(readPositions = true)
                     val unit1 = new CompilationUnit(source)
                     unit1.tpdTree = unpickled
+                    unit1.unpicklers += (clsd.classSymbol -> unpickler.unpickler)
                     force.traverse(unit1.tpdTree)
                     unit1
                   case _ =>
