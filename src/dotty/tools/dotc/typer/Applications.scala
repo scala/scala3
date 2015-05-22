@@ -1024,6 +1024,26 @@ trait Applications extends Compatibility { self: Typer =>
         result
     }
   }
+
+  def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
+    def numericClasses(trees: List[Tree], acc: Set[Symbol]): Set[Symbol] = trees match {
+      case tree :: trees1 =>
+        val sym = tree.tpe.typeSymbol
+        if (sym.isNumericValueClass && tree.tpe.isRef(sym))
+          numericClasses(trees1, acc + sym)
+        else
+          Set()
+      case Nil =>
+        acc
+    }
+    val clss = numericClasses(trees, Set())
+    if (clss.size > 1) {
+      val lub = defn.ScalaNumericValueClassList.find(lubCls =>
+        clss.forall(defn.isValueSubClass(_, lubCls))).get.typeRef
+      trees.mapConserve(tree => adaptInterpolated(tree, lub, tree))
+    }
+    else trees
+  }
 }
 
 /*
