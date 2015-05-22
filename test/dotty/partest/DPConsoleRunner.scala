@@ -9,7 +9,7 @@ import scala.tools.partest._
 import scala.tools.partest.nest._
 import scala.util.matching.Regex
 import tools.nsc.io.{ File => NSCFile }
-import java.io.File
+import java.io.{ File, PrintStream, FileOutputStream }
 import java.net.URLClassLoader
 
 /** Runs dotty partest from the Console, discovering test sources in
@@ -25,7 +25,7 @@ object DPConsoleRunner {
     val (jarList, otherArgs) = args.toList.partition(jarFinder.findFirstIn(_).isDefined)
     val (extraJars, moreArgs) = jarList match {
       case Nil => sys.error("Error: DPConsoleRunner needs \"-dottyJars <jarCount> <jars>*\".")
-      case jarFinder(nr, jarString) :: Nil => 
+      case jarFinder(nr, jarString) :: Nil =>
         val jars = jarString.split(" ").toList
         val count = nr.toInt
         if (jars.length < count)
@@ -39,13 +39,13 @@ object DPConsoleRunner {
 
 // console runner has a suite runner which creates a test runner for each test
 class DPConsoleRunner(args: String, extraJars: List[String]) extends ConsoleRunner(args) {
-  println("ConsoleRunner options: " + args)
 
   override val suiteRunner = new DPSuiteRunner (
     testSourcePath = optSourcePath getOrElse DPConfig.testRoot,
     fileManager = new DottyFileManager(extraJars),
     updateCheck = optUpdateCheck,
-    failed = optFailed)
+    failed = optFailed,
+    consoleArgs = args)
 
   override def run = {}
   def runPartest = super.run
@@ -62,9 +62,10 @@ class DPSuiteRunner(testSourcePath: String, // relative path, like "files", or "
   fileManager: DottyFileManager,
   updateCheck: Boolean,
   failed: Boolean,
+  consoleArgs: String,
   javaCmdPath: String = PartestDefaults.javaCmd,
   javacCmdPath: String = PartestDefaults.javacCmd,
-  scalacExtraArgs: Seq[String] = Seq.empty) 
+  scalacExtraArgs: Seq[String] = Seq.empty)
 extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPath, javacCmdPath, scalacExtraArgs) {
 
   if (!DPConfig.runTestsInParallel)
@@ -76,41 +77,52 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
   override def banner: String = {
     s"""|Welcome to Partest for Dotty! Partest version: ${Properties.versionNumberString}
         |Compiler under test: dotty.tools.dotc.Bench or dotty.tools.dotc.Main
-        |Test root: ${PathSettings.srcDir}${File.separator}
+        |Generated test sources: ${PathSettings.srcDir}${File.separator}
         |Test directories: ${DPConfig.testDirs.toList.mkString(", ")}
+        |Debugging: failed tests have compiler output in test-kind.clog, run output in test-kind.log, class files in test-kind.obj
         |Parallel: ${DPConfig.runTestsInParallel}
+        |Options: (use partest --help for usage information) ${consoleArgs}
     """.stripMargin
   }
 
-  // override to provide DPTestRunner
+  // override for DPTestRunner and redirecting compilation output to test.clog
   override def runTest(testFile: File): TestState = {
     val runner = new DPTestRunner(testFile, this)
 
-    // when option "--failed" is provided execute test only if log
-    // is present (which means it failed before)
     val state =
-      if (failed && !runner.logFile.canRead)
-        runner.genPass()
-      else {
-        val (state, _) =
-          try timed(runner.run())
-          catch {
-            case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
-          }
-        NestUI.reportTest(state)
-        runner.cleanup()
-        state
+      try {
+        // IO redirection is messy, there are no concurrency guarantees.
+        // Parts of test output might end up in the wrong file or get lost.
+        Console.out.flush
+        Console.err.flush
+        val clog = runner.cLogFile
+        val stream = new PrintStream(new FileOutputStream(clog.jfile), true)
+        val result = Console.withOut(stream)({ Console.withErr(stream)({
+          val res = runner.run()
+          Console.err.flush
+          Console.out.flush
+          res
+        })})
+        result match {
+          // Append compiler output to transcript if compilation failed,
+          // printed with --verbose option
+          case TestState.Fail(f, r@"compilation failed", transcript) =>
+            TestState.Fail(f, r, transcript ++ clog.fileLines.dropWhile(_ == ""))
+          case res => res
+        }
+      } catch {
+        case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
       }
+    NestUI.reportTest(state)
+    runner.cleanup()
+
     onFinishTest(testFile, state)
   }
-
-  // override val fileManager = new DottyFileManager(testClassLoader)
-  // sbt package generates a dotty compiler jar, currently
-  // ".../git/dotty/target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar"
-  // but it doesn't seem to be used anywhere
 }
 
 class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runner(testFile, suiteRunner) {
+  val cLogFile = SFile(logFile).changeExtension("clog")
+
   // override to provide DottyCompiler
   override def newCompiler = new dotty.partest.DPDirectCompiler(this)
 
@@ -146,7 +158,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     def nerrIsOk(reason: String) = {
       val nerrFinder = """compilation failed with (\d+) errors""".r
       reason match {
-        case nerrFinder(found) => 
+        case nerrFinder(found) =>
           SFile(FileOps(testFile) changeExtension "nerr").safeSlurp match {
             case Some(exp) if (exp != found) => CompFailedButWrongNErr(exp, found)
             case _ => CompFailed
@@ -154,10 +166,10 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
         case _ => CompFailed
       }
     }
-  
+
     // we keep the partest semantics where only one round needs to fail
     // compilation, not all
-    val compFailingRounds = compilationRounds(testFile).map({round => 
+    val compFailingRounds = compilationRounds(testFile).map({round =>
       val ok = round.isOk
       setLastState(if (ok) genPass else genFail("compilation failed"))
       (round.result, ok)
@@ -173,14 +185,14 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     if (failureStates.exists({ case CompFailed => true; case _ => false })) {
       true
     } else {
-      val existsNerr = failureStates.exists({ 
+      val existsNerr = failureStates.exists({
         case CompFailedButWrongNErr(exp, found) => nextTestActionFailing(s"wrong number of compilation errors, expected: $exp, found: $found"); true
         case _ => false
       })
       if (existsNerr) {
-        false 
+        false
       } else {
-        val existsDiff = failureStates.exists({ 
+        val existsDiff = failureStates.exists({
           case CompFailedButWrongDiff() => nextTestActionFailing(s"output differs"); true
           case _ => false
         })
@@ -191,6 +203,38 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
         }
       }
     }
+  }
+
+  // override to change check file updating to original file, not generated
+  override def diffIsOk: Boolean = {
+    // always normalize the log first
+    normalizeLog()
+    val diff = currentDiff
+    // if diff is not empty, is update needed?
+    val updating: Option[Boolean] = (
+      if (diff == "") None
+      else Some(suiteRunner.updateCheck)
+    )
+    pushTranscript(s"diff $logFile $checkFile")
+    nextTestAction(updating) {
+      case Some(true) =>
+        val origCheck = SFile(checkFile.changeExtension("checksrc").fileLines(1))
+        NestUI.echo("Updating original checkfile " + origCheck)
+        origCheck writeAll file2String(logFile)
+        genUpdated()
+      case Some(false) =>
+        // Get a word-highlighted diff from git if we can find it
+        val bestDiff = if (updating.isEmpty) "" else {
+          if (checkFile.canRead)
+            gitDiff(logFile, checkFile) getOrElse {
+              s"diff $logFile $checkFile\n$diff"
+            }
+          else diff
+        }
+        pushTranscript(bestDiff)
+        genFail("output differs")
+      case None        => genPass()  // redundant default case
+    } getOrElse true
   }
 
   // override because Dotty currently doesn't handle separate compilation well,
@@ -217,4 +261,10 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   // override to add dotty and scala jars to classpath
   override def extraClasspath = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
 
+  // override to keep class files if failed and delete clog if ok
+  override def cleanup = if (lastState.isOk) {
+    logFile.delete
+    cLogFile.delete
+    Directory(outDir).deleteRecursively
+  }
 }

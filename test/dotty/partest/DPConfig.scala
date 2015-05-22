@@ -18,9 +18,7 @@ object DPConfig {
   lazy val testDirs = {
     val root = new File(testRoot)
     val dirs = if (!root.exists) Array.empty[String] else root.listFiles.filter(_.isDirectory).map(_.getName)
-    if (dirs.length > 0)
-      println(s"Partest found generated source directories in $testRoot: " + dirs.mkString(", "))
-    else
+    if (dirs.isEmpty)
       throw new Exception("Partest did not detect any generated sources")
     dirs
   }
