@@ -11,4 +11,6 @@ update() {
   git reset --hard
 }
 
-sbtArgs="-Ddotty.travis.build=yes -ivy $baseDir/ivy2 -Dsbt.global.base=$HOME/.sbt/0.13 -sbt-dir $HOME/.sbt/0.13"
+export LC_ALL=en_US.UTF-8
+
+sbtArgs="-Ddotty.travis.build=yes -Dfile.encoding=UTF-8 -ivy $baseDir/ivy2 -Dsbt.global.base=$HOME/.sbt/0.13 -sbt-dir $HOME/.sbt/0.13"
