@@ -2,12 +2,12 @@ update() {
   [[ -d $baseDir ]] || mkdir -p $baseDir
   cd $baseDir
 
-  if [ ! -d $baseDir/$2 ]; then git clone "https://github.com/$1/$2.git"; fi
+  if [ ! -d $baseDir/$3 ]; then git clone "https://github.com/$1/$2.git" $3; fi
 
-  cd $2
+  cd $3
 
   git fetch --tags "https://github.com/$1/$2.git"
-  (git fetch "https://github.com/$1/$2.git" $3 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $3 # || fallback is for local testing on tag
+  (git fetch "https://github.com/$1/$2.git" $4 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $4 # || fallback is for local testing on tag
   git reset --hard
 }
 

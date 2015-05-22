@@ -4,5 +4,5 @@ baseDir=${WORKSPACE-`pwd`}
 scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
-update scala scala
+update scala scala scala-scala
 sbt $sbtArgs update compile test
