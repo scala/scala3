@@ -493,7 +493,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt)
     val elsep1 = typed(tree.elsep orElse untpd.unitLiteral withPos tree.pos, pt)
-    assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+    val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
+    assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
@@ -629,7 +630,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
 
         val cases1 = typedCases(tree.cases, selType, pt)
-        assignType(cpy.Match(tree)(sel1, cases1), cases1)
+        val cases2 = harmonize(cases1).asInstanceOf[List[CaseDef]]
+        assignType(cpy.Match(tree)(sel1, cases2), cases2)
     }
   }
 
@@ -737,7 +739,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val expr1 = typed(tree.expr, pt)
     val cases1 = typedCases(tree.cases, defn.ThrowableType, pt)
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    assignType(cpy.Try(tree)(expr1, cases1, finalizer1), expr1, cases1)
+    val expr2 :: cases2x = harmonize(expr1 :: cases1)
+    val cases2 = cases2x.asInstanceOf[List[CaseDef]]
+    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = track("typedThrow") {

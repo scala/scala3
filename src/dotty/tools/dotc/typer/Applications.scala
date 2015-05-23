@@ -127,6 +127,9 @@ trait Applications extends Compatibility { self: Typer =>
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
 
+    /** If all `args` have primitive numeric types, make sure it's the same one */
+    protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
+
     /** Signal failure with given message at position of given argument */
     protected def fail(msg: => String, arg: Arg): Unit
 
@@ -334,7 +337,14 @@ trait Applications extends Compatibility { self: Typer =>
                 addTyped(arg, formal)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                args foreach (addTyped(_, elemFormal))
+                val origConstraint = ctx.typerState.constraint
+                var typedArgs = args.map(typedArg(_, elemFormal))
+                val harmonizedArgs = harmonizeArgs(typedArgs)
+                if (harmonizedArgs ne typedArgs) {
+                  ctx.typerState.constraint = origConstraint
+                  typedArgs = harmonizedArgs
+                }
+                typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
           else args match {
@@ -389,6 +399,7 @@ trait Applications extends Compatibility { self: Typer =>
     def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
+    def harmonizeArgs(args: List[Tree]) = harmonize(args)
   }
 
   /** Subclass of Application for applicability tests with type arguments and value
@@ -405,6 +416,7 @@ trait Applications extends Compatibility { self: Typer =>
     def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
     def isVarArg(arg: Type): Boolean = arg.isRepeatedParam
+    def harmonizeArgs(args: List[Type]) = harmonizeTypes(args)
   }
 
   /** Subclass of Application for type checking an Apply node, where
@@ -429,6 +441,8 @@ trait Applications extends Compatibility { self: Typer =>
       val seqLit = if (methodType.isJava) JavaSeqLiteral(args) else SeqLiteral(args)
       typedArgBuf += seqToRepeated(seqLit)
     }
+
+    def harmonizeArgs(args: List[TypedArg]) = harmonize(args)
 
     override def appPos = app.pos
 
@@ -1025,25 +1039,34 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
-  def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
-    def numericClasses(trees: List[Tree], acc: Set[Symbol]): Set[Symbol] = trees match {
-      case tree :: trees1 =>
-        val sym = tree.tpe.typeSymbol
-        if (sym.isNumericValueClass && tree.tpe.isRef(sym))
-          numericClasses(trees1, acc + sym)
-        else
-          Set()
+  private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
+    def numericClasses(ts: List[T], acc: Set[Symbol]): Set[Symbol] = ts match {
+      case t :: ts1 =>
+        val sym = tpe(t).widen.classSymbol
+        if (sym.isNumericValueClass) numericClasses(ts1, acc + sym)
+        else Set()
       case Nil =>
         acc
     }
-    val clss = numericClasses(trees, Set())
+    val clss = numericClasses(ts, Set())
     if (clss.size > 1) {
       val lub = defn.ScalaNumericValueClassList.find(lubCls =>
         clss.forall(defn.isValueSubClass(_, lubCls))).get.typeRef
-      trees.mapConserve(tree => adaptInterpolated(tree, lub, tree))
+      ts.mapConserve(adapt(_, lub))
     }
-    else trees
+    else ts
   }
+
+  def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
+    def adapt(tree: Tree, pt: Type): Tree = tree match {
+      case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
+      case _ => adaptInterpolated(tree, pt, tree)
+    }
+    harmonizeWith(trees)(_.tpe, adapt)
+  }
+
+  def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
+    harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
 
 /*
