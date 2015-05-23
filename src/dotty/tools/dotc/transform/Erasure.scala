@@ -523,7 +523,7 @@ object Erasure extends TypeTestsCasts{
           // Erasure contains an ErasedValueType but the corresponding type in the functional
           // interface is not an ErasedValueType.
           val bridgeNeeded =
-            (implResultType :: implParamTypes, samResultType :: samParamTypes).zipped.forall(
+            (implResultType :: implParamTypes, samResultType :: samParamTypes).zipped.exists(
               (implType, samType) => implType.isErasedValueType && !samType.isErasedValueType
             )
 
