@@ -274,11 +274,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case _ =>
           thirdTry(tp1, tp2)
       }
-    case tp1: SkolemType =>
-      tp2 match {
-        case tp2: SkolemType if tp1 == tp2 => true
-        case _ => thirdTry(tp1, tp2)
-      }
     case tp1: TypeVar =>
       isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
