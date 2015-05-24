@@ -312,13 +312,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.compilationUnit.isJava && tree.name.isTypeName) {
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      tryEither(tryCtx => asSelect(tryCtx))((_,_) => asJavaSelectFromTypeTree(ctx))
+      tryEither(tryCtx => asSelect(tryCtx))((_, _) => asJavaSelectFromTypeTree(ctx))
     } else asSelect(ctx)
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
     val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
-    checkLegalPrefix(qual1.tpe, tree.name, qual1.pos)
     assignType(cpy.SelectFromTypeTree(tree)(qual1, tree.name), qual1)
   }
 
@@ -347,8 +346,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-          val tpt1 = typedType(tree.tpt)
-          checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+        val tpt1 = typedType(tree.tpt)
+        checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -523,7 +522,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *  of a typed expression if this is necessary to infer a parameter type.
        */
       var fnBody = tree.body
-
 
       /** If function is of the form
        *      (x1, ..., xN) => f(x1, ..., XN)

@@ -90,7 +90,7 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = this match {
-      case tp: TermRef => tp.termSymbol.isStable
+      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
       case _: SingletonType => true
       case NoPrefix => true
       case _ => false
@@ -153,18 +153,6 @@ object Types {
       case _ =>
         false
     }
-
-    /** A type T is a legal prefix in a type selection T#A if
-     *  T is stable or T contains no abstract types except possibly A.
-     *  !!! Todo: What about non-final vals that contain abstract types?
-     */
-    final def isLegalPrefixFor(selector: Name)(implicit ctx: Context): Boolean =
-      isStable || {
-        val absTypeNames = memberNames(abstractTypeNameFilter)
-        if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying()}: $absTypeNames")
-        absTypeNames.isEmpty ||
-          absTypeNames.head == selector && absTypeNames.tail.isEmpty
-      }
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could
