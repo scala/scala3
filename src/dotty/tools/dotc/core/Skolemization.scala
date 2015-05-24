@@ -18,25 +18,32 @@ trait Skolemization {
 
   implicit val ctx: Context
 
-  protected var skolemsOutstanding = false
+  private[core] var skolemsState = Skolemization.SkolemsDisallowed
 
-  def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
+  final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable =>
       tp
     case tp: ValueType =>
-      skolemsOutstanding = true
+      assert(skolemsState != Skolemization.SkolemsDisallowed)
+      skolemsState = Skolemization.SkolemsEncountered
       SkolemType(tp)
     case tp: TypeProxy =>
       ensureStableSingleton(tp.underlying)
   }
 
-  /** Approximate a type `tp` with a type that does not contain skolem types.
+  /** If skolems were encountered, approximate a type `tp` with a type that
+   *  does not contain skolem types.
    *  @param  toSuper   if true, return the smallest supertype of `tp` with this property
    *                    else return the largest subtype.
    */
-  final def deSkolemize(tp: Type, toSuper: Boolean): Type =
-    if (skolemsOutstanding) deSkolemize(tp, if (toSuper) 1 else -1, Set())
+  final def deSkolemizeIfSkolemsSeen(tp: Type, toSuper: Boolean): Type =
+    if (skolemsState == Skolemization.SkolemsEncountered)
+      deSkolemize(tp, if (toSuper) 1 else -1, Set())
     else tp
+
+  /** Approximate a type `tp` with a type that does not contain skolem types.
+   */
+  final def deSkolemize(tp: Type): Type = deSkolemize(tp, 1, Set())
 
   private def deSkolemize(tp: Type, variance: Int, seen: Set[SkolemType]): Type =
     ctx.traceIndented(s"deskolemize $tp, variance = $variance, seen = $seen  =  ") {
@@ -123,4 +130,8 @@ trait Skolemization {
       }
     }
   }
+}
+
+object Skolemization extends Enumeration {
+  val SkolemsDisallowed, SkolemsAllowed, SkolemsEncountered = Value
 }

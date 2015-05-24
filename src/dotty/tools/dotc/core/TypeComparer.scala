@@ -531,7 +531,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
-    val saved = skolemsOutstanding
+    val saved = skolemsState
+    if (skolemsState == Skolemization.SkolemsDisallowed) skolemsState = Skolemization.SkolemsAllowed
     try {
       val rebindNeeded = tp2.refinementRefersToThis
       val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
@@ -555,7 +556,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         }
       }
     }
-    finally skolemsOutstanding = saved
+    finally skolemsState = saved
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
@@ -640,7 +641,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = deSkolemize(bound, toSuper = !isUpper)
+    val bound1 = deSkolemizeIfSkolemsSeen(bound, toSuper = !isUpper)
     typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound1 ${bound1.isRef(tparam)}")
     !bound1.isRef(tparam) && {
       val oldBounds = ctx.gadt.bounds(tparam)
