@@ -1,6 +1,7 @@
 final class Opt[+A >: Null](val value: A) extends AnyVal {
   def get: A  = value
   def isEmpty = value == null
+  def isDefined = !isEmpty
 }
 object Opt {
   final val None = new Opt[Null](null)
