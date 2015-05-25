@@ -99,8 +99,9 @@ grammar.
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
   InfixType         ::=  RefinedType {id [nl] RefinedType}                      InfixOp(t1, op, t2)
-  RefinedType       ::=  WithType {Annotation | [nl] Refinement}                Annotated(t, annot), RefinedTypeTree(t, ds)
-  WithType          ::=  SimpleType {`with' SimpleType}                         (deprecated)
+  RefinedType       ::=  WithType {[nl] Refinement}                             RefinedTypeTree(t, ds)
+  WithType          ::=  AnnotType {`with' AnnotType}                           (deprecated)
+  AnnotType         ::=  SimpleType {Annotation}                                Annotated(t, annot)
   SimpleType        ::=  SimpleType TypeArgs                                    AppliedTypeTree(t, args)
                       |  SimpleType `#' id                                      SelectFromTypeTree(t, name)
                       |  StableId
@@ -121,9 +122,9 @@ grammar.
 
   Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                       |  Expr1
-  FunParams         ::=   Bindings
-                      |   [`implicit'] id
-                      |   `_'
+  FunParams         ::=  Bindings
+                      |  [`implicit'] id
+                      |  `_'
   ExprInParens      ::=  PostfixExpr `:' Type
                       |  Expr
   BlockResult       ::=  (FunParams | [`implicit'] id `:' InfixType) => Block
@@ -248,7 +249,7 @@ grammar.
   AccessModifier    ::=  (`private' | `protected') [AccessQualifier]
   AccessQualifier   ::=  `[' (id | `this') `]'
 
-  Annotation        ::=  `@' SimpleType {ArgumentExprs}                         Apply(tpe, args)
+  Annotation        ::=  `@' SimpleType {ParArgumentExprs}                      Apply(tpe, args)
 
   TemplateBody      ::=  [nl] `{' [SelfType] TemplateStat {semi TemplateStat} `} (self, stats)
   TemplateStat      ::=  Import
@@ -301,7 +302,7 @@ grammar.
   TemplateOpt       ::=  [`extends' Template | [nl] TemplateBody]
   Template          ::=  ConstrApps [TemplateBody] | TemplateBody               Template(constr, parents, self, stats)
   ConstrApps        ::=  ConstrApp {`with' ConstrApp}
-  ConstrApp         ::=  SimpleType {ArgumentExprs}                             Apply(tp, args)
+  ConstrApp         ::=  AnnotType {ArgumentExprs}                              Apply(tp, args)
 
   ConstrExpr        ::=  SelfInvocation
                       |  ConstrBlock

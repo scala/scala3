@@ -63,5 +63,10 @@ object Mode {
    */
   val AllowDependentFunctions = newMode(9, "AllowDependentFunctions")
 
+  /** We are currently printing something: avoid to produce more logs about
+   *  the printing
+   */
+  val Printing = newMode(10, "Printing")
+
   val PatternOrType = Pattern | Type
 }

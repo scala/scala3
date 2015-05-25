@@ -172,7 +172,7 @@ object StdNames {
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
-    final val LAMBDA_ARG_PREFIX: N              = "$hkArg$"
+    final val LAMBDA_ARG_PREFIX: N              = "HK$"
     final val LAMBDA_ARG_PREFIXhead: Char       = LAMBDA_ARG_PREFIX.head
 
     final val Any: N             = "Any"

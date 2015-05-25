@@ -35,8 +35,6 @@ import language.implicitConversions
 
 object Types {
 
-  private var recCount = 0 // used temporarily for debugging. TODO: remove
-
   private var nextId = 0
 
   /** The class of types.
@@ -417,9 +415,7 @@ object Types {
      *  as seen from given prefix `pre`. Exclude all members that have
      *  flags in `excluded` from consideration.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
-      recCount += 1
-      assert(recCount < 40)
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -456,7 +452,11 @@ object Types {
           if (tp.refinementRefersToThis) tp.refinedInfo.substSkolem(tp, pre)
           else tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
-          val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
+          val jointInfo =
+            if (rinfo.isAlias) rinfo
+            else if (pdenot.info.isAlias) pdenot.info
+            else if (ctx.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
+            else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else
           pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
@@ -488,15 +488,31 @@ object Types {
       }
       def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
       def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
-      go(this)
-    } catch {
-      case ex: MergeError =>
-        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
-      case ex: Throwable =>
-        println(s"findMember exception for $this member $name")
-        throw ex // DEBUG
-    } finally {
-      recCount -= 1
+      def safeAnd(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
+        case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(lo1 | lo2, AndType(hi1, hi2))
+        case _ => tp1 & tp2
+      }
+
+      { val recCount = ctx.findMemberCount + 1
+        ctx.findMemberCount = recCount
+        if (recCount >= Config.LogPendingFindMemberThreshold)
+          ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
+      }
+
+      try go(this)
+      catch {
+        case ex: MergeError =>
+          throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
+        case ex: Throwable =>
+          ctx.println(i"findMember exception for $this member $name")
+          throw ex // DEBUG
+      }
+      finally {
+        val recCount = ctx.findMemberCount
+        if (recCount >= Config.LogPendingFindMemberThreshold)
+          ctx.pendingMemberSearches = ctx.pendingMemberSearches.tail
+        ctx.findMemberCount = recCount - 1
+      }
     }
 
     /** The set of names of members of this type that pass the given name filter
@@ -729,6 +745,12 @@ object Types {
       case tp => tp
     }
 
+    /** If this is a TypeAlias type, its alias otherwise this type itself */
+    final def followTypeAlias(implicit ctx: Context): Type = this match {
+      case TypeAlias(alias) => alias
+      case _ => this
+    }
+
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     final def widenDealias(implicit ctx: Context): Type = {
       val res = this.widen.dealias
@@ -786,43 +808,73 @@ object Types {
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
-    /** If this is a refinement type that has a refinement for `name` (which might be followed
+    /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
      *  by other refinements), and the refined info is a type alias, return the alias,
      *  otherwise return NoType. Used to reduce types of the form
      *
      *    P { ... type T = / += / -= U ... } # T
      *
      *  to just U. Does not perform the reduction if the resulting type would contain
-     *  a reference to the "this" of the current refined type. But does follow
-     *  aliases in order to avoid such references. Example:
+     *  a reference to the "this" of the current refined type, except in the following situation
      *
-     *      Lambda$I { type $hk$Arg0 = String, type Apply = Lambda$I{...}.$hk$Arg0 } # Apply
+     *  (1) The "this" reference can be avoided by following an alias. Example:
      *
-     *  Here, the refinement for `Apply` has a refined this node, yet dereferencing ones more
-     *  yields `String` as the result of lookupRefined.
+     *      P { type T = String, type R = P{...}.T } # R  -->  String
+     *
+     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "Apply".
+     *      In this case the rhs of the apply is returned with all references to lambda argument types
+     *      substituted by their definitions.
+     *
+     *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type): Type = pre.stripTypeVar match {
+      def loop(pre: Type, resolved: List[Name]): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
-          if (pre.refinedName ne name) loop(pre.parent)
-          else pre.refinedInfo match {
-            case TypeAlias(tp) =>
-              if (!pre.refinementRefersToThis) tp
-              else tp match {
-                case TypeRef(SkolemType(`pre`), alias) => lookupRefined(alias)
-                case _ => NoType
+          object instantiate extends TypeMap {
+            var isSafe = true
+            def apply(tp: Type): Type = tp match {
+              case TypeRef(SkolemType(`pre`), name) if name.isLambdaArgName =>
+                val TypeAlias(alias) = member(name).info
+                alias
+              case tp: TypeVar if !tp.inst.exists =>
+                isSafe = false
+                tp
+              case _ =>
+                mapOver(tp)
+            }
+          }
+          def betaReduce(tp: Type) = {
+            val lam = pre.parent.LambdaClass(forcing = false)
+            if (lam.exists && lam.typeParams.forall(tparam => resolved.contains(tparam.name))) {
+              val reduced = instantiate(tp)
+              if (instantiate.isSafe) reduced else NoType
+            }
+            else NoType
+          }
+          pre.refinedInfo match {
+            case TypeAlias(alias) =>
+              if (pre.refinedName ne name) loop(pre.parent, pre.refinedName :: resolved)
+              else if (!pre.refinementRefersToThis) alias
+              else alias match {
+                case TypeRef(SkolemType(`pre`), aliasName) => lookupRefined(aliasName) // (1)
+                case _ => if (name == tpnme.Apply) betaReduce(alias) else NoType // (2)
               }
-            case _ => loop(pre.parent)
+            case _ => loop(pre.parent, resolved)
           }
         case SkolemType(binder) =>
           binder.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
+        case pre: TypeRef =>
+          pre.info match {
+            case TypeAlias(alias) => loop(alias, resolved)
+            case _ => NoType
+          }
         case _ =>
           NoType
       }
 
-      loop(this)
+      loop(this, Nil)
     }
 
     /** The type <this . name> , reduced if possible */
@@ -1390,7 +1442,7 @@ object Types {
     def isTerm = isInstanceOf[TermRef]
 
     /** Guard against cycles that can arise if given `op`
-     *  follows info. The prblematic cases are a type alias to itself or
+     *  follows info. The problematic cases are a type alias to itself or
      *  bounded by itself or a val typed as itself:
      *
      *  type T <: T
@@ -1401,7 +1453,7 @@ object Types {
      */
     final def controlled[T](op: => T)(implicit ctx: Context): T = try {
       ctx.underlyingRecursions += 1
-      if (ctx.underlyingRecursions < LogPendingUnderlyingThreshold)
+      if (ctx.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
         op
       else if (ctx.pendingUnderlying contains this)
         throw CyclicReference(symbol)
@@ -1751,6 +1803,11 @@ object Types {
     lazy val ref = refFn()
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef($ref)"
+    override def equals(other: Any) = other match {
+      case other: LazyRef => this.ref.equals(other.ref)
+      case _ => false
+    }
+    override def hashCode = ref.hashCode + 37
   }
 
   // --- Refined Type ---------------------------------------------------------
@@ -1842,7 +1899,7 @@ object Types {
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
     def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
-      assert(!ctx.erasedTypes)
+      assert(!ctx.erasedTypes || ctx.mode.is(Mode.Printing))
       ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
     }
 
@@ -2590,7 +2647,7 @@ object Types {
   abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
     /** pre: this is a type alias */
     def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if (lo eq tp) this
+      if ((lo eq tp) && (variance == this.variance)) this
       else TypeAlias(tp, variance)
 
     override def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {

@@ -720,7 +720,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case SELECT =>
           def readQual(name: Name) = {
             val localCtx =
-              if (name == nme.CONSTRUCTOR) ctx.fresh.addMode(Mode.InSuperCall) else ctx
+              if (name == nme.CONSTRUCTOR) ctx.addMode(Mode.InSuperCall) else ctx
             readTerm()(localCtx)
           }
           def readRest(name: Name, sig: Signature) = {

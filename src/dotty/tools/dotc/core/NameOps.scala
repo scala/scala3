@@ -99,12 +99,18 @@ object NameOps {
 
     /** Is this the name of a higher-kinded type parameter of a Lambda? */
     def isLambdaArgName =
-      name.length > 0 && name.head == tpnme.LAMBDA_ARG_PREFIXhead && name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
+      name.length > 0 &&
+      name.head == tpnme.LAMBDA_ARG_PREFIXhead &&
+      name.startsWith(tpnme.LAMBDA_ARG_PREFIX) && {
+        val digits = name.drop(tpnme.LAMBDA_ARG_PREFIX.length)
+        digits.length <= 4 && digits.forall(_.isDigit)
+      }
 
     /** The index of the higher-kinded type parameter with this name.
      *  Pre: isLambdaArgName.
      */
-    def lambdaArgIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt
+    def lambdaArgIndex: Int =
+      name.drop(tpnme.LAMBDA_ARG_PREFIX.length).toString.toInt
 
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.

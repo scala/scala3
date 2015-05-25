@@ -515,17 +515,19 @@ class TypeApplications(val self: Type) extends AnyVal {
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
   }
 
-  /** Test whether this type has a base type `B[T1, ..., Tn]` where the type parameters
-   *  of `B` match one-by-one the variances of `tparams`, and where the lambda
-   *  abstracted type
+  /** Test whether this type has a base type of the form `B[T1, ..., Bn]` where
+   *  the type parameters of `B` match one-by-one the variances of `tparams`,
+   *  and where the lambda abstracted type
    *
    *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
    *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
    *
    *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a variance V if it has V as its variance or if V == 0.
+   *  @param classBounds  A hint to bound the search. Only types that derive from one of the
+   *                      classes in classBounds are considered.
    */
-  def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {
+  def testLifted(tparams: List[Symbol], p: Type => Boolean, classBounds: List[ClassSymbol])(implicit ctx: Context): Boolean = {
     def tryLift(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
         val tp = self.baseTypeWithArgs(bc)
@@ -533,7 +535,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         val tycon = tp.withoutArgs(targs)
         def variancesMatch(param1: Symbol, param2: Symbol) =
           param2.variance == param2.variance || param2.variance == 0
-        if ((tycon.typeParams corresponds tparams)(variancesMatch)) {
+        if (classBounds.exists(tycon.derivesFrom(_)) &&
+            tycon.typeParams.corresponds(tparams)(variancesMatch)) {
           val expanded = tycon.EtaExpand
           val lifted = (expanded /: targs) { (partialInst, targ) =>
             val tparam = partialInst.typeParams.head
@@ -548,7 +551,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         false
     }
     if (tparams.isEmpty) false
-    else if (typeParams.nonEmpty) p(EtaExpand) || tryLift(self.baseClasses)
-    else tryLift(self.baseClasses)
+    else if (typeParams.nonEmpty) p(EtaExpand) || classBounds.nonEmpty && tryLift(self.baseClasses)
+    else classBounds.nonEmpty && tryLift(self.baseClasses)
   }
 }

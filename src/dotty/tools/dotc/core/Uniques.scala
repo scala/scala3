@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types._, Contexts._, util.Stats._, Hashable._, Names._
+import config.Config
 import util.HashSet
 
 /** Defines operation `unique` for hash-consing types.
@@ -39,7 +40,7 @@ object Uniques {
   )
  */
 
-  final class NamedTypeUniques extends HashSet[NamedType](initialUniquesCapacity) with Hashable {
+  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
     private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
@@ -65,7 +66,7 @@ object Uniques {
     }
   }
 
-  final class TypeAliasUniques extends HashSet[TypeAlias](initialUniquesCapacity) with Hashable {
+  final class TypeAliasUniques extends HashSet[TypeAlias](Config.initialUniquesCapacity) with Hashable {
     override def hash(x: TypeAlias): Int = x.hash
 
     private def findPrevious(h: Int, alias: Type, variance: Int): TypeAlias = {
@@ -90,7 +91,7 @@ object Uniques {
     }
   }
 
-  final class RefinedUniques extends HashSet[RefinedType](initialUniquesCapacity) with Hashable {
+  final class RefinedUniques extends HashSet[RefinedType](Config.initialUniquesCapacity) with Hashable {
     override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
     override def hash(x: RefinedType): Int = x.hash
 

@@ -97,7 +97,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       try {
         recCount = recCount + 1
         val result =
-          if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
+          if (recCount < Config.LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
         if (!result) constraint = saved
@@ -345,7 +345,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
               || fourthTry(tp1, tp2)
               )
           normalPath ||
-            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2))
+            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2), classBounds(tp2))
         }
         else // fast path, in particular for refinements resulting from parameterization.
           isSubType(tp1, skipped2) &&
@@ -453,7 +453,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
        isNewSubType(tp1.parent, tp2) ||
-         needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
+         needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _), Nil)
     case AndType(tp11, tp12) =>
       eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
@@ -475,8 +475,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       val lambda = projection.prefix.LambdaClass(forcing = true)
       lambda.exists && !other.isLambda &&
         other.testLifted(lambda.typeParams,
-          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix))
+          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+          if (inOrder) Nil else classBounds(projection.prefix))
     }
+
+  /** The class symbols bounding the type of the `Apply` member of `tp` */
+  private def classBounds(tp: Type) = tp.member(tpnme.Apply).info.classSymbols
 
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
    *  to keep the constraint as wide as possible. Specifically, if
@@ -1141,13 +1145,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     }
 
   /** Show subtype goal that led to an assertion failure */
-  def showGoal(tp1: Type, tp2: Type) = {
-    println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
+  def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    ctx.println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
     def explainPoly(tp: Type) = tp match {
-      case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
-      case tp: TypeRef if tp.symbol.exists => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-      case tp: TypeVar => println(s"typevar ${tp.show}, origin = ${tp.origin}")
-      case _ => println(s"${tp.show} is a ${tp.getClass}")
+      case tp: PolyParam => ctx.println(s"polyparam ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeRef if tp.symbol.exists => ctx.println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+      case tp: TypeVar => ctx.println(s"typevar ${tp.show}, origin = ${tp.origin}")
+      case _ => ctx.println(s"${tp.show} is a ${tp.getClass}")
     }
     explainPoly(tp1)
     explainPoly(tp2)

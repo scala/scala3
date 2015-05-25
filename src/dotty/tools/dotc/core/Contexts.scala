@@ -20,6 +20,7 @@ import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
 import typer._
 import Implicits.ContextualImplicits
 import config.Settings._
+import config.Config
 import reporting._
 import collection.mutable
 import collection.immutable.BitSet
@@ -163,6 +164,14 @@ object Contexts {
         _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }
+
+    /** Number of findMember calls on stack */
+    private[core] var findMemberCount: Int = 0
+
+    /** List of names which have a findMemberCall on stack,
+     *  after Config.LogPendingFindMemberThreshold is reached.
+     */
+    private[core] var pendingMemberSearches: List[Name] = Nil
 
     /** The new implicit references that are introduced by this scope */
     private var implicitsCache: ContextualImplicits = null
@@ -508,7 +517,7 @@ object Contexts {
     def nextId = { _nextId += 1; _nextId }
 
     /** A map from a superclass id to the typeref of the class that has it */
-    private[core] var classOfId = new Array[ClassSymbol](InitialSuperIdsSize)
+    private[core] var classOfId = new Array[ClassSymbol](Config.InitialSuperIdsSize)
 
     /** A map from a the typeref of a class to its superclass id */
     private[core] val superIdOfClass = new mutable.AnyRefMap[ClassSymbol, Int]
@@ -529,7 +538,7 @@ object Contexts {
 
     // Types state
     /** A table for hash consing unique types */
-    private[core] val uniques = new util.HashSet[Type](initialUniquesCapacity) {
+    private[core] val uniques = new util.HashSet[Type](Config.initialUniquesCapacity) {
       override def hash(x: Type): Int = x.hash
     }
 
@@ -614,20 +623,4 @@ object Contexts {
       myBounds = myBounds.updated(sym, b)
     def bounds = myBounds
   }
-
-  /** Initial size of superId table */
-  private final val InitialSuperIdsSize = 4096
-
-  /** Initial capacity of uniques HashMap */
-  private[core] final val initialUniquesCapacity = 40000
-
-  /** How many recursive calls to NamedType#underlying are performed before
-   *  logging starts.
-   */
-  private[core] final val LogPendingUnderlyingThreshold = 50
-
-  /** How many recursive calls to isSubType are performed before
-   *  logging starts.
-   */
-  private[core] final val LogPendingSubTypesThreshold = 50
 }

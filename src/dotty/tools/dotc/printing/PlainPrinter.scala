@@ -8,10 +8,11 @@ import StdNames.nme
 import ast.Trees._, ast._
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
+import typer.Mode
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
-  protected[this] implicit def ctx: Context = _ctx
+  protected[this] implicit def ctx: Context = _ctx.fresh.addMode(Mode.Printing)
 
   protected def maxToTextRecursions = 100
 
@@ -169,6 +170,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             else TypeBounds.empty
           "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
         }
+      case tp: LazyRef =>
+        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")"
       case _ =>
         tp.fallbackToText(this)
     }
