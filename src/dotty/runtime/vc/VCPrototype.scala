@@ -29,22 +29,29 @@ abstract class VCFloatCasePrototype(underlying: Float) extends VCFloatPrototype(
   }
 }
 
-abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
+// NOTE for all VCXCompanion: The type parameter T should be bounded like this:
+//   abstract class VCXCompanion[T <: VCXPrototype] extends ClassTag[T]
+// But this affects erasure: it means that Array[T] is erased to [VCIntPrototype;
+// instead of Object, but we really need it to erase to Object if we want
+// VCXArray to be a valid array. We work around this by adding casts where
+// we need to assume that T is a subtype of VCXPrototype.
+
+abstract class VCFloatCompanion[T /*<: VCFloatPrototype*/] extends ClassTag[T] {
   def box(underlying: Float): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCFloatPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCFloatArray(this, len).asInstanceOf[Array[T]]
+    new VCFloatArray(this.asInstanceOf[VCFloatCompanion[VCFloatPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Float)       = underlying
   final def hashCode$extension(underlying: Float) = underlying.hashCode()
-  final def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Float): String
 }
 
-final class VCFloatArray[T <: VCFloatPrototype] private (val arr: Array[Float], val ct: VCFloatCompanion[T])
+final class VCFloatArray[T <: VCFloatPrototype] (val arr: Array[Float], val ct: VCFloatCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCFloatCompanion[T], sz: Int) =
     this(new Array[Float](sz), ct)
@@ -60,7 +67,7 @@ final class VCFloatArray[T <: VCFloatPrototype] private (val arr: Array[Float], 
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -75,27 +82,27 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
+abstract class VCObjectCompanion[T /*<: VCObjectPrototype*/] extends ClassTag[T] {
   def box(underlying: Object): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCObjectPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCObjectArray(this, len).asInstanceOf[Array[T]]
+    new VCObjectArray(this.asInstanceOf[VCObjectCompanion[VCObjectPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Object)       = underlying
   final def hashCode$extension(underlying: Object) = underlying.hashCode()
-  final def toString$extension(underlying: Object) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Object) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Object): String
 }
 
-final class VCObjectArray[T <: VCObjectPrototype] private (val arr: Array[Object], val ct: VCObjectCompanion[T])
+final class VCObjectArray[T <: VCObjectPrototype] (val arr: Array[Object], val ct: VCObjectCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCObjectCompanion[T], sz: Int) =
     this(new Array[Object](sz), ct)
@@ -113,7 +120,7 @@ final class VCObjectArray[T <: VCObjectPrototype] private (val arr: Array[Object
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -128,27 +135,27 @@ abstract class VCShortCasePrototype(underlying: Short) extends VCShortPrototype(
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
+abstract class VCShortCompanion[T /*<: VCShortPrototype*/] extends ClassTag[T] {
   def box(underlying: Short): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCShortPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCShortArray(this, len).asInstanceOf[Array[T]]
+    new VCShortArray(this.asInstanceOf[VCShortCompanion[VCShortPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Short)       = underlying
   final def hashCode$extension(underlying: Short) = underlying.hashCode()
-  final def toString$extension(underlying: Short) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Short) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Short): String
 }
 
-final class VCShortArray[T <: VCShortPrototype] private (val arr: Array[Short], val ct: VCShortCompanion[T])
+final class VCShortArray[T <: VCShortPrototype] (val arr: Array[Short], val ct: VCShortCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCShortCompanion[T], sz: Int) =
     this(new Array[Short](sz), ct)
@@ -166,7 +173,7 @@ final class VCShortArray[T <: VCShortPrototype] private (val arr: Array[Short], 
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 
 }
@@ -182,27 +189,27 @@ abstract class VCLongCasePrototype(underlying: Long) extends VCLongPrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
+abstract class VCLongCompanion[T /*<: VCLongPrototype*/] extends ClassTag[T] {
   def box(underlying: Long): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCLongPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCLongArray(this, len).asInstanceOf[Array[T]]
+    new VCLongArray(this.asInstanceOf[VCLongCompanion[VCLongPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Long)       = underlying
   final def hashCode$extension(underlying: Long) = underlying.hashCode()
-  final def toString$extension(underlying: Long) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Long) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Long): String
 }
 
-final class VCLongArray[T <: VCLongPrototype] private (val arr: Array[Long], val ct: VCLongCompanion[T])
+final class VCLongArray[T <: VCLongPrototype] (val arr: Array[Long], val ct: VCLongCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCLongCompanion[T], sz: Int) =
     this(new Array[Long](sz), ct)
@@ -220,7 +227,7 @@ final class VCLongArray[T <: VCLongPrototype] private (val arr: Array[Long], val
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -235,27 +242,27 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
+abstract class VCIntCompanion[T /*<: VCIntPrototype*/] extends ClassTag[T] {
   def box(underlying: Int): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCIntPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCIntArray(this, len).asInstanceOf[Array[T]]
+    new VCIntArray(this.asInstanceOf[VCIntCompanion[VCIntPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Int)       = underlying
   final def hashCode$extension(underlying: Int) = underlying.hashCode()
-  final def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Int): String
 }
 
-final class VCIntArray[T <: VCIntPrototype] private (val arr: Array[Int], val ct: VCIntCompanion[T])
+final class VCIntArray[T <: VCIntPrototype] (val arr: Array[Int], val ct: VCIntCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCIntCompanion[T], sz: Int) =
     this(new Array[Int](sz), ct)
@@ -271,7 +278,7 @@ final class VCIntArray[T <: VCIntPrototype] private (val arr: Array[Int], val ct
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -286,27 +293,27 @@ abstract class VCDoubleCasePrototype(underlying: Double) extends VCDoublePrototy
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
+abstract class VCDoubleCompanion[T /*<: VCDoublePrototype*/] extends ClassTag[T] {
   def box(underlying: Double): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCDoublePrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCDoubleArray(this, len).asInstanceOf[Array[T]]
+    new VCDoubleArray(this.asInstanceOf[VCDoubleCompanion[VCDoublePrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Double)       = underlying
   final def hashCode$extension(underlying: Double) = underlying.hashCode()
-  final def toString$extension(underlying: Double) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Double) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Double): String
 }
 
-final class VCDoubleArray[T <: VCDoublePrototype] private (val arr: Array[Double], val ct: VCDoubleCompanion[T])
+final class VCDoubleArray[T <: VCDoublePrototype] (val arr: Array[Double], val ct: VCDoubleCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCDoubleCompanion[T], sz: Int) =
     this(new Array[Double](sz), ct)
@@ -322,7 +329,7 @@ final class VCDoubleArray[T <: VCDoublePrototype] private (val arr: Array[Double
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -337,27 +344,27 @@ abstract class VCBooleanCasePrototype(underlying: Boolean) extends VCBooleanProt
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
+abstract class VCBooleanCompanion[T /*<: VCBooleanPrototype*/] extends ClassTag[T] {
   def box(underlying: Boolean): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCBooleanPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCBooleanArray(this, len).asInstanceOf[Array[T]]
+    new VCBooleanArray(this.asInstanceOf[VCBooleanCompanion[VCBooleanPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Boolean)       = underlying
   final def hashCode$extension(underlying: Boolean) = underlying.hashCode()
-  final def toString$extension(underlying: Boolean) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Boolean) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Boolean): String
 }
 
-final class VCBooleanArray[T <: VCBooleanPrototype] private (val arr: Array[Boolean], val ct: VCBooleanCompanion[T])
+final class VCBooleanArray[T <: VCBooleanPrototype] (val arr: Array[Boolean], val ct: VCBooleanCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCBooleanCompanion[T], sz: Int) =
     this(new Array[Boolean](sz), ct)
@@ -375,7 +382,7 @@ final class VCBooleanArray[T <: VCBooleanPrototype] private (val arr: Array[Bool
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -390,29 +397,29 @@ abstract class VCCharCasePrototype(underlying: Char) extends VCCharPrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 
   // subclasses are expected to implement equals, productPrefix, and canEqual
 }
 
-abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
+abstract class VCCharCompanion[T /*<: VCCharPrototype*/] extends ClassTag[T] {
   def box(underlying: Char): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCCharPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCCharArray(this, len).asInstanceOf[Array[T]]
+    new VCCharArray(this.asInstanceOf[VCCharCompanion[VCCharPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Char)       = underlying
   final def hashCode$extension(underlying: Char) = underlying.hashCode()
-  final def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Char): String
 }
 
-final class VCCharArray[T <: VCCharPrototype] private (val arr: Array[Char], val ct: VCCharCompanion[T])
+final class VCCharArray[T <: VCCharPrototype] (val arr: Array[Char], val ct: VCCharCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCCharCompanion[T], sz: Int) =
     this(new Array[Char](sz), ct)
@@ -428,7 +435,7 @@ final class VCCharArray[T <: VCCharPrototype] private (val arr: Array[Char], val
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -443,27 +450,27 @@ abstract class VCByteCasePrototype(underlying: Byte) extends VCBytePrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
 
-abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
+abstract class VCByteCompanion[T /*<: VCBytePrototype*/] extends ClassTag[T] {
   def box(underlying: Byte): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCBytePrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCByteArray(this, len).asInstanceOf[Array[T]]
+    new VCByteArray(this.asInstanceOf[VCByteCompanion[VCBytePrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Byte)       = underlying
   final def hashCode$extension(underlying: Byte) = underlying.hashCode()
-  final def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Byte): String
 }
 
-final class VCByteArray[T <: VCBytePrototype] private (val arr: Array[Byte], val ct: VCByteCompanion[T])
+final class VCByteArray[T <: VCBytePrototype] (val arr: Array[Byte], val ct: VCByteCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCByteCompanion[T], sz: Int) =
     this(new Array[Byte](sz), ct)
@@ -479,7 +486,7 @@ final class VCByteArray[T <: VCBytePrototype] private (val arr: Array[Byte], val
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 
 }

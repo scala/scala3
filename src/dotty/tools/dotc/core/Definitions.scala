@@ -774,6 +774,34 @@ class Definitions {
   /** The type of the boxed class corresponding to primitive value type `tp`. */
   def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
 
+  lazy val vcPrototype: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
+  lazy val vcPrototypeValues = vcPrototype.values.toSet
+  lazy val vcCompanion: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
+  lazy val vcArray: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+
+  lazy val VCPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCPrototype")
+  def VCPrototypeType = VCPrototypeClass.typeRef
+  lazy val VCArrayPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCArrayPrototype")
+  def VCArrayPrototypeType = VCArrayPrototypeClass.typeRef
+
+  def vcPrototypeOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcPrototype.getOrElse(underlying, vcPrototype(defn.ObjectClass))
+  }
+  def vcCompanionOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcCompanion.getOrElse(underlying, vcCompanion(defn.ObjectClass))
+  }
+  def vcArrayOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcArray.getOrElse(underlying, vcArray(defn.ObjectClass))
+  }
+
+
+
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
     if (cls.isPrimitiveValueClass) nme.wrapXArray(cls.name)
