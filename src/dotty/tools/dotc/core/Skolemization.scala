@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, Contexts._
+import Symbols._, Types._, Contexts._, Decorators._
 import collection.mutable
 
 /** Methods to add and remove skolemtypes.
@@ -46,7 +46,7 @@ trait Skolemization {
   final def deSkolemize(tp: Type): Type = deSkolemize(tp, 1, Set())
 
   private def deSkolemize(tp: Type, variance: Int, seen: Set[SkolemType]): Type =
-    ctx.traceIndented(s"deskolemize $tp, variance = $variance, seen = $seen  =  ") {
+    ctx.traceIndented(i"deskolemize $tp, variance = $variance, seen = $seen  =  ", show = true) {
     def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType, newSeen: Set[SkolemType] = seen) =
       if (variance == 0) NoType
       else deSkolemize(if (variance < 0) lo else hi, variance, newSeen)
@@ -59,12 +59,20 @@ trait Skolemization {
         if (sym.isStatic) tp
         else {
           val pre1 = deSkolemize(tp.prefix, variance, seen)
-          if (pre1.exists && !pre1.isRef(defn.NothingClass)) tp.derivedSelect(pre1)
+          if (pre1 eq tp.prefix) tp
           else {
-            ctx.log(s"deskolem: $tp: ${tp.info}")
-            tp.info match {
-              case TypeBounds(lo, hi) => approx(lo, hi)
-              case info => approx(defn.NothingType, info)
+            val d = tp.prefix.member(tp.name)
+            d.info match {
+              case TypeAlias(alias) => deSkolemize(alias, variance, seen)
+              case _ =>
+                if (pre1.exists && !pre1.isRef(defn.NothingClass)) tp.derivedSelect(pre1)
+                else {
+                  ctx.log(s"deskolem: $tp: ${tp.info}")
+                  tp.info match {
+                    case TypeBounds(lo, hi) => approx(lo, hi)
+                    case info => approx(defn.NothingType, info)
+                  }
+                }
             }
           }
         }
