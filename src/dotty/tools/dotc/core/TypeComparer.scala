@@ -641,13 +641,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = deSkolemizeIfSkolemsSeen(bound, toSuper = !isUpper)
-    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound1 ${bound1.isRef(tparam)}")
-    !bound1.isRef(tparam) && {
+    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.isRef(tparam)}")
+    !bound.isRef(tparam) && {
       val oldBounds = ctx.gadt.bounds(tparam)
       val newBounds =
-        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound1)
-        else TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
+        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
+        else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
       isSubType(newBounds.lo, newBounds.hi) &&
       { ctx.gadt.setBounds(tparam, newBounds); true }
     }
