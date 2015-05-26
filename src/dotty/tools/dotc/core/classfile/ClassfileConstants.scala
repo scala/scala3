@@ -329,15 +329,11 @@ object ClassfileConstants {
   final val impdep1       = 0xfe
   final val impdep2       = 0xff
 
+  import Flags._
   abstract class FlagTranslation {
-    import Flags._
 
-    private var isAnnotation = false
-    private var isClass      = false
-    private def initFields(flags: Int) = {
-      isAnnotation = (flags & JAVA_ACC_ANNOTATION) != 0
-      isClass      = false
-    }
+    protected def baseFlags(jflags: Int) = EmptyFlags
+    protected def isClass: Boolean = false
 
     private def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match {
       case JAVA_ACC_PRIVATE    => Private
@@ -345,8 +341,8 @@ object ClassfileConstants {
       case JAVA_ACC_FINAL      => Final
       case JAVA_ACC_SYNTHETIC  => Synthetic
       case JAVA_ACC_STATIC     => JavaStatic
-      case JAVA_ACC_ABSTRACT   => if (isAnnotation) EmptyFlags else if (isClass) Abstract else Deferred
-      case JAVA_ACC_INTERFACE  => if (isAnnotation) EmptyFlags else PureInterfaceCreationFlags | JavaDefined
+      case JAVA_ACC_ABSTRACT   => if (isClass) Abstract else Deferred
+      case JAVA_ACC_INTERFACE  => PureInterfaceCreationFlags | JavaDefined
       case _                   => EmptyFlags
     }
 
@@ -354,30 +350,29 @@ object ClassfileConstants {
       if (jflag == 0) base else base | translateFlag(jflag)
 
     private def translateFlags(jflags: Int, baseFlags: FlagSet): FlagSet = {
+      val nflags =
+        if ((jflags & JAVA_ACC_ANNOTATION) == 0) jflags
+        else jflags & ~(JAVA_ACC_ABSTRACT | JAVA_ACC_INTERFACE) // annotations are neither abstract nor interfaces
       var res: FlagSet = baseFlags | JavaDefined
-      res = addFlag(res, jflags & JAVA_ACC_PRIVATE)
-      res = addFlag(res, jflags & JAVA_ACC_PROTECTED)
-      res = addFlag(res, jflags & JAVA_ACC_FINAL)
-      res = addFlag(res, jflags & JAVA_ACC_SYNTHETIC)
-      res = addFlag(res, jflags & JAVA_ACC_STATIC)
-      res = addFlag(res, jflags & JAVA_ACC_ABSTRACT)
-      res = addFlag(res, jflags & JAVA_ACC_INTERFACE)
+      res = addFlag(res, nflags & JAVA_ACC_PRIVATE)
+      res = addFlag(res, nflags & JAVA_ACC_PROTECTED)
+      res = addFlag(res, nflags & JAVA_ACC_FINAL)
+      res = addFlag(res, nflags & JAVA_ACC_SYNTHETIC)
+      res = addFlag(res, nflags & JAVA_ACC_STATIC)
+      res = addFlag(res, nflags & JAVA_ACC_ABSTRACT)
+      res = addFlag(res, nflags & JAVA_ACC_INTERFACE)
       res
     }
 
-    def classFlags(jflags: Int): FlagSet = {
-      initFields(jflags)
-      isClass = true
-      translateFlags(jflags, EmptyFlags)
-    }
-    def fieldFlags(jflags: Int): FlagSet = {
-      initFields(jflags)
-      translateFlags(jflags, if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags)
-    }
-    def methodFlags(jflags: Int): FlagSet = {
-      initFields(jflags)
-      translateFlags(jflags, if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags)
-    }
+    def flags(jflags: Int): FlagSet = translateFlags(jflags, baseFlags(jflags))
   }
-  object FlagTranslation extends FlagTranslation { }
+  val classTranslation = new FlagTranslation {
+    override def isClass = true
+  }
+  val fieldTranslation = new FlagTranslation {
+    override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags
+  }
+  val methodTranslation = new FlagTranslation {
+    override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags
+  }
 }
