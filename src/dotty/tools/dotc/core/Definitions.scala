@@ -539,7 +539,7 @@ class Definitions {
 
   // ----- primitive value class machinery ------------------------------------------
 
-  lazy val ScalaNumericValueClasses: collection.Set[Symbol] =  Set(
+  lazy val ScalaNumericValueClassList = List(
     ByteClass,
     ShortClass,
     CharClass,
@@ -548,6 +548,7 @@ class Definitions {
     FloatClass,
     DoubleClass)
 
+  lazy val ScalaNumericValueClasses: collection.Set[Symbol] = ScalaNumericValueClassList.toSet
   lazy val ScalaValueClasses: collection.Set[Symbol] = ScalaNumericValueClasses + UnitClass + BooleanClass
 
   lazy val ScalaBoxedClasses = ScalaValueClasses map boxedClass
