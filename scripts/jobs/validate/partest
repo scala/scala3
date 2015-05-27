@@ -4,5 +4,5 @@ baseDir=${WORKSPACE-`pwd`}
 scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
-sbt $sbtArgs update compile "partest-only run"
+sbt $sbtArgs update compile "partest-only run --show-diff --verbose"
 
