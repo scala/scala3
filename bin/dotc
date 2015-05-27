@@ -57,11 +57,21 @@ function checkjar {
     else
       echo "The required jar file was built successfully."
     fi
+  else
+    NEW_FILES="$(find "$DOTTY_ROOT/$3" -iname "*.scala" -newer "$1")"
+    if [ ! -z "$NEW_FILES" ]; 
+    then
+      echo "new files detected. rebuilding"
+      cd $DOTTY_ROOT
+      sbt $2
+      touch "$1"
+      cd -
+    fi
   fi
 }
 
-checkjar $MAIN_JAR package
-checkjar $TEST_JAR test:package
+checkjar $MAIN_JAR package src
+checkjar $TEST_JAR test:package test
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]
