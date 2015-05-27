@@ -1,6 +1,11 @@
+object store {
+  var str = ""
+}
+
+import store._
+
 trait A {
- var str = ""
- str = "a"
+ str += "a"
  val s = str += 'A'
  str += '1'
 }
@@ -11,15 +16,16 @@ trait B extends A {
  str += '2'
 }
 
-class D(sup: =>String) extends A {
+class D(sup: Unit) extends A {
  str += 'd'
  override val s = str += 'D'
  str += '3'
 }
 
-object Test extends D({Test.str += "Z"; Test.str}) with B {
+
+object Test extends D({str += "Z"}) with B {
  // should only have 2 fields
  str += 'E'
- def main(args: Array[String]) = assert(str == "aA1dD3bB2E4", str)
+ def main(args: Array[String]) = assert(str == "ZaA1dD3bB2E4", str)
  str += '4'
 }
