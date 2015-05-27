@@ -153,7 +153,12 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
         yield {
           // transformFollowing call is needed to make memoize & lazy vals run
-        transformFollowing(DefDef(implementation(getter.asTerm), superRef(initializer(getter)).appliedToNone))
+        val rhs = transformFollowing(superRef(initializer(getter)).appliedToNone)
+        val isCurrent = ctx.atPhase(thisTransform) { implicit ctx =>
+          cls.info.member(getter.name).suchThat(_.isGetter).symbol == getter
+        }
+        if (isCurrent) transformFollowing(DefDef(implementation(getter.asTerm), rhs))
+        else rhs
       }
 
     def setters(mixin: ClassSymbol): List[Tree] =
