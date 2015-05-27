@@ -113,10 +113,29 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
       } catch {
         case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
       }
-    NestUI.reportTest(state)
+    reportTest(state)
     runner.cleanup()
 
     onFinishTest(testFile, state)
+  }
+
+  // override NestUI.reportTest because --show-diff doesn't work. The diff used
+  // seems to add each line to transcript separately, whereas NestUI assumes
+  // that the diff string was added as one entry in the transcript
+  def reportTest(state: TestState) = {
+    import NestUI._
+    import NestUI.color._
+
+    if (isTerse && state.isOk) {
+      NestUI.reportTest(state)
+    } else {
+      echo(statusLine(state))
+      if (!state.isOk && isDiffy) {
+        val differ = bold(red("% ")) + "diff "
+        state.transcript.dropWhile(s => !(s startsWith differ)) foreach (echo(_))
+        // state.transcript find (_ startsWith differ) foreach (echo(_)) // original
+      }
+    }
   }
 }
 
