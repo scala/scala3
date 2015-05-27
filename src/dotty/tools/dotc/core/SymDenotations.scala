@@ -386,7 +386,7 @@ object SymDenotations {
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
 
-    /** Is symbol a primitive value class? */
+    /** Is symbol a primitive numeric value class? */
     def isNumericValueClass(implicit ctx: Context) = defn.ScalaNumericValueClasses contains symbol
 
     /** Is symbol a phantom class for which no runtime representation exists? */

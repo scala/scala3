@@ -1057,6 +1057,9 @@ trait Applications extends Compatibility { self: Typer =>
     else ts
   }
 
+  /** If `trees` all have numeric value types, and they do not have all the same type,
+   *  pick a common numeric supertype and convert all trees to this type.
+   */
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
     def adapt(tree: Tree, pt: Type): Tree = tree match {
       case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
@@ -1065,6 +1068,9 @@ trait Applications extends Compatibility { self: Typer =>
     harmonizeWith(trees)(_.tpe, adapt)
   }
 
+  /** If all `types` are numeric value types, and they are not all the same type,
+   *  pick a common numeric supertype and return it instead of every original type.
+   */
   def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
