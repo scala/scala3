@@ -79,7 +79,7 @@ object DottyBuild extends Build {
       // command line arguments get passed to the last task in an aliased
       // sequence (see partest alias below), so this works.
       val args = Def.spaceDelimited("<arg>").parsed
-      val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++ 
+      val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++
           getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
       val dottyJars  = "-dottyJars " + jars.length + " " + jars.mkString(" ")
       // Provide the jars required on the classpath of run tests
@@ -118,8 +118,8 @@ object DottyBuild extends Build {
 
       ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
     }
-  ) ++ addCommandAlias("partest", ";test:compile;lockPartestFile;test:test;runPartestRunner") ++ 
-       addCommandAlias("partest-only", ";test:compile;lockPartestFile;test:test-only dotc.tests;runPartestRunner")
+  ) ++ addCommandAlias("partest", ";test:package;package;lockPartestFile;test:test;runPartestRunner") ++
+       addCommandAlias("partest-only", ";test:package;package;lockPartestFile;test:test-only dotc.tests;runPartestRunner")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
@@ -179,9 +179,9 @@ object DottyBuild extends Build {
 
   lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
   def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
-    case Some(home) => 
-      modules.map({ module => 
-        val file = Path(home) / Path("cache") / 
+    case Some(home) =>
+      modules.map({ module =>
+        val file = Path(home) / Path("cache") /
           Path(module.organization) / Path(module.name) / Path("jars") /
           Path(module.name + "-" + module.revision + ".jar")
         if (!file.isFile) throw new RuntimeException("ERROR: sbt getJarPaths: dependency jar not found: " + file)
