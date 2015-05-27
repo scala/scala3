@@ -57,6 +57,15 @@ function checkjar {
     else
       echo "The required jar file was built successfully."
     fi
+  else
+    NEW_FILES="$(find "$DOTTY_ROOT/src" -iname "*.scala" -newer "$1")"
+    if [ ! -z "$NEW_FILES" ]; 
+    then
+      echo "new files detected. rebuilding"
+      cd $DOTTY_ROOT
+      sbt $2
+      cd -
+    fi
   fi
 }
 
