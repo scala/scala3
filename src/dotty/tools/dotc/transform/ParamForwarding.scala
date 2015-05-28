@@ -43,13 +43,13 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
         stat match {
           case stat: ValDef =>
             val sym = stat.symbol.asTerm
-            if (sym is (PrivateLocalParamAccessor, butNot = Mutable)) {
+            if (sym is (ParamAccessor, butNot = Mutable)) {
               val idx = superArgs.indexWhere(_.symbol == sym)
               if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
                 val alias = inheritedAccessor(sym)
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
-                    sym.copySymDenotation(initFlags = sym.flags | Method, info = sym.info.ensureMethodic)
+                    sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
                       .installAfter(thisTransformer)
                     val superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
