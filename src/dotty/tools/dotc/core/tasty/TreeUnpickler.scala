@@ -10,7 +10,8 @@ import ast.{tpd, Trees, untpd}
 import Trees._
 import Decorators._
 import TastyUnpickler._, TastyBuffer._, PositionPickler._
-import annotation.switch
+import scala.annotation.{tailrec, switch}
+import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
 import typer.Mode
 import config.Printers.pickling
@@ -65,7 +66,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   def unpickle()(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
     val stats = new TreeReader(reader)
-      .readIndexedStats(NoSymbol, reader.endAddr)(ctx.addMode(Mode.AllowDependentFunctions))
+      .readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
     normalizePos(stats, totalRange)
     stats
   }
@@ -674,6 +675,29 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       setPos(start,
         untpd.Template(constr, parents, self, lazyStats)
           .withType(localDummy.nonMemberTermRef))
+    }
+
+    def skipToplevel()(implicit ctx: Context): Unit= {
+      if (!isAtEnd)
+        nextByte match {
+          case IMPORT | PACKAGE =>
+            skipTree()
+            skipToplevel()
+          case _ =>
+        }
+    }
+
+    def readTopLevel()(implicit ctx: Context): List[Tree] = {
+      @tailrec def read(acc: ListBuffer[Tree]): List[Tree] = nextByte match {
+        case IMPORT | PACKAGE =>
+          acc += readIndexedStat(NoSymbol)
+          if (!isAtEnd)
+            read(acc)
+          else acc.toList
+        case _ => // top-level trees which are not imports or packages are not part of tree
+          acc.toList
+      }
+      read(new ListBuffer[tpd.Tree])
     }
 
     def readIndexedStat(exprOwner: Symbol)(implicit ctx: Context): Tree = nextByte match {
