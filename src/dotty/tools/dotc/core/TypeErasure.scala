@@ -164,7 +164,7 @@ object TypeErasure {
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
-        defn.BoxedUnitClass.typeRef
+        MethodType(Nil, Nil, defn.BoxedUnitClass.typeRef)
       case einfo =>
         einfo
     }

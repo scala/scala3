@@ -50,15 +50,15 @@ import Decorators._
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    
+
     def newField = ctx.newSymbol(
       owner = ctx.owner,
       name = sym.name.asTermName.fieldName,
       flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
       info = sym.info.resultType,
       coord = tree.pos).enteredAfter(thisTransform)
-      
-    lazy val field = sym.field.orElse(newField).asTerm    
+
+    lazy val field = sym.field.orElse(newField).asTerm
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
         tree.rhs.changeOwnerAfter(sym, field, thisTransform)
