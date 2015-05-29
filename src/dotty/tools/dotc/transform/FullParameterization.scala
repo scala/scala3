@@ -86,6 +86,7 @@ trait FullParameterization {
    *    }
    *
    *  If a self type is present, $this has this self type as its type.
+   *  @param abstractOverClass  if true, include the type parameters of the class in the method's list of type parameters.
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
