@@ -226,12 +226,18 @@ trait FullParameterization {
 }
 
 object FullParameterization {
+
   /** Assuming `info` is a result of a `fullyParameterizedType` call, the signature of the
    *  original method type `X` such that `info = fullyParameterizedType(X, ...)`.
    */
   def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
-    case info: PolyType => memberSignature(info.resultType)
-    case info @ MethodType(nme.SELF :: Nil, _) => info.resultType.ensureMethodic.signature
-    case _ => Signature.NotAMethod
+    case info: PolyType =>
+      memberSignature(info.resultType)
+    case info @ MethodType(nme.SELF :: Nil, _) =>
+      info.resultType.ensureMethodic.signature
+    case info @ MethodType(nme.SELF :: otherNames, thisType :: otherTypes) =>
+      info.derivedMethodType(otherNames, otherTypes, info.resultType).signature
+    case _ =>
+      Signature.NotAMethod
   }
 }
