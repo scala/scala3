@@ -418,6 +418,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Thicket(valdef, clsdef)
   }
 
+  /** A `_' with given type */
+  def Underscore(tp: Type)(implicit ctx: Context) = untpd.Ident(nme.WILDCARD).withType(tp)
+
   def defaultValue(tpe: Types.Type)(implicit ctx: Context) = {
     val tpw = tpe.widen
 

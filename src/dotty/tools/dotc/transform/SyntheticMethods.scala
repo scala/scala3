@@ -105,8 +105,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
-      def wildcardAscription(tp: Type) =
-        Typed(untpd.Ident(nme.WILDCARD).withType(tp), TypeTree(tp))
+      def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(clazzType)) // x$0 @ (_: C)
       val comparisons = accessors map (accessor =>
         This(clazz).select(accessor).select(defn.Any_==).appliedTo(ref(thatAsClazz).select(accessor)))
