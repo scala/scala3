@@ -14,6 +14,7 @@ import DenotTransformers._
 import StdNames._
 import NameOps._
 import Phases._
+import ast.untpd
 import ast.Trees._
 import collection.mutable
 
@@ -150,16 +151,20 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
 
     def traitInits(mixin: ClassSymbol): List[Tree] =
-      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
-        yield {
-        // transformFollowing call is needed to make memoize & lazy vals run
-        val rhs = transformFollowing(superRef(initializer(getter)).appliedToNone)
+      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList) yield {
         // isCurrent: getter is a member of implementing class
         val isCurrent = getter.is(ExpandedName) || ctx.atPhase(thisTransform) { implicit ctx =>
           cls.info.member(getter.name).suchThat(_.isGetter).symbol == getter
         }
-        if (isCurrent) transformFollowing(DefDef(implementation(getter.asTerm), rhs))
-        else rhs
+        val isScala2x = mixin.is(Scala2x)
+        def default = Underscore(getter.info.resultType)
+        def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
+        if (isCurrent)
+          // transformFollowing call is needed to make memoize & lazy vals run
+          transformFollowing(
+            DefDef(implementation(getter.asTerm), if (isScala2x) default else initial))
+        else if (isScala2x) EmptyTree
+        else initial
       }
 
     def setters(mixin: ClassSymbol): List[Tree] =
