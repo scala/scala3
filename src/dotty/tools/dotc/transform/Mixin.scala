@@ -47,9 +47,22 @@ import collection.mutable
  *        reverse linearization order, add the following definitions to C:
  *
  *          3.1 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M,
- *              in order of textual occurrence:
+ *              in order of textual occurrence, produce the following:
+ *
+ *              3.1.1 If `x` is also a member of `C`, and M is a Dotty trait:
  *
  *                <mods> def x(): T = super[M].initial$x()
+ *
+ *              3.1.2 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *
+ *                <mods> def x(): T = _
+ *
+ *              3.1.3 If `x` is not a member of `C`, and M is a Dotty trait:
+ *
+ *                super[M].initial$x()
+ *
+ *              3.1.4 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *
  *
  *          3.2 (done in `superCallOpt`) The call:
  *
