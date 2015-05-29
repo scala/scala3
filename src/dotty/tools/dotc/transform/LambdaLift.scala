@@ -292,7 +292,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             val encClass = local.enclosingClass
             val topClass = local.topLevelClass
               // member of a static object
-            if (encClass.isStatic && encClass.isContainedIn(topClass)) {
+            if (encClass.isStatic && encClass.isProperlyContainedIn(topClass)) {
                // though the second condition seems weird, it's not true for symbols which are defined in some
                // weird combinations of super calls.
               (encClass, EmptyFlags)
