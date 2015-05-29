@@ -1,0 +1,96 @@
+package dotty.tools.dotc
+package transform
+
+import core._
+import TreeTransforms._
+import Contexts.Context
+import Flags._
+import SymUtils._
+import Symbols._
+import SymDenotations._
+import Types._
+import Decorators._
+import DenotTransformers._
+import StdNames._
+import NameOps._
+import ast.Trees._
+
+/** This phase augments Scala2 traits with implementation classes and with additional members
+ *  needed for mixin composition.
+ *  These symbols would have been added between Unpickling and Mixin in the Scala2 pipeline.
+ *  Specifcally, it adds
+ *
+ *   - an implementation class which defines a trait constructor and trait method implementations
+ *   - trait setters for vals defined in traits
+ *
+ *  Furthermore, it expands the names of all private getters and setters in the trait and makes
+ *  them not-private.
+ */
+class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransformer with FullParameterization { thisTransform =>
+  import ast.tpd._
+
+  override def phaseName: String = "augmentScala2Traits"
+
+  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
+
+  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
+    val cls = impl.symbol.owner.asClass
+    for (mixin <- cls.mixins)
+      if (mixin.is(Scala2x))
+        augmentScala2Trait(mixin, cls)
+    impl
+  }
+
+  private def augmentScala2Trait(mixin: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context): Unit = {
+    if (mixin.implClass.is(Scala2x)) () // nothing to do, mixin was already augmented
+    else {
+      //println(i"creating new implclass for $mixin ${mixin.implClass}")
+      val ops = new MixinOps(cls, thisTransform)
+      import ops._
+
+      val implClass = ctx.newCompleteClassSymbol(
+        owner = mixin.owner,
+        name = mixin.name.implClassName,
+        flags = Abstract | Scala2x,
+        parents = defn.ObjectClass.typeRef :: Nil,
+        assocFile = mixin.assocFile).enteredAfter(thisTransform)
+
+      def implMethod(meth: TermSymbol): Symbol = {
+        val mold =
+          if (meth.isConstructor)
+            meth.copySymDenotation(
+              name = nme.IMPLCLASS_CONSTRUCTOR,
+              info = MethodType(Nil, defn.UnitType))
+          else meth.ensureNotPrivate
+        meth.copy(
+          owner = implClass,
+          name = mold.name.asTermName,
+          flags = Method | JavaStatic | mold.flags & ExpandedName,
+          info = fullyParameterizedType(mold.info, mixin))
+      }
+
+      def traitSetter(getter: TermSymbol) = {
+        val separator = if (getter.is(Private)) nme.EXPAND_SEPARATOR else nme.TRAIT_SETTER_SEPARATOR
+        val expandedGetterName =
+          if (getter.is(ExpandedName)) getter.name
+          else getter.name.expandedName(getter.owner, separator)
+        getter.copy(
+          name = expandedGetterName.setterName,
+          flags = Method | Accessor | ExpandedName,
+          info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
+      }
+
+      for (sym <- mixin.info.decls) {
+        if (needsForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy))
+          implClass.enter(implMethod(sym.asTerm))
+        if (sym.isGetter && !sym.is(LazyOrDeferred) && !sym.setter.exists)
+          traitSetter(sym.asTerm).enteredAfter(thisTransform)
+        if (sym.is(PrivateAccessor, butNot = ExpandedName) &&
+          (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
+          sym.ensureNotPrivate.installAfter(thisTransform)
+      }
+      ctx.log(i"Scala2x trait decls of $mixin = ${mixin.info.decls.toList.map(_.showDcl)}%\n %")
+      ctx.log(i"Scala2x impl decls of $mixin = ${implClass.info.decls.toList.map(_.showDcl)}%\n %")
+    }
+  }
+}
