@@ -64,7 +64,7 @@ class Compiler {
            new Mixin,
            new LazyVals,
            new Memoize,
-           //new LinkScala2ImplClasses,
+           new LinkScala2ImplClasses,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
            new FunctionalInterfaces),
