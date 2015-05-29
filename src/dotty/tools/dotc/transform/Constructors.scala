@@ -30,15 +30,19 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   import tpd._
 
   override def phaseName: String = "constructors"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Memoize])
 
 
-  /** All initializers should be moved into constructor
-    */
+  /** All initializers for non-lazy fields should be moved into constructor.
+   *  All non-abstract methods should be implemented (this is assured for constructors
+   *  in this phase and for other methods in memoize).
+   */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     tree match {
-      case t: ValDef if ((t.rhs ne EmptyTree) && !(t.symbol is Flags.Lazy) && t.symbol.owner.isClass) =>
-        assert(false, i"$t initializers should be moved to constructors")
+      case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) =>
+        assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")
+      case tree: DefDef if !tree.symbol.is(LazyOrDeferred) =>
+        assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
       case _ =>
     }
   }

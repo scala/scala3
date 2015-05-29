@@ -42,12 +42,6 @@ import Decorators._
    */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: DefDef if !tree.symbol.is(Lazy | Deferred) =>
-      assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
-    case _ =>
-  }
-
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
 
