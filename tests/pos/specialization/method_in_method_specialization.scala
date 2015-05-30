@@ -10,4 +10,10 @@ object method_in_method_specialization {
 
   outer(2)
   outer('d')
+
+  def outer2[@specialized(Int) O](o: O): Int = {
+    def inner2[@specialized(Int) I] (i: I) = 1
+    inner2(42)
+  }
+  outer2(1)
 }

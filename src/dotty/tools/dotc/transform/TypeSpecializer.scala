@@ -2,7 +2,6 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.{tpd, TreeTypeMap}
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.StringDecorator
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
@@ -13,6 +12,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools._
 
 class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   import tpd._
@@ -175,36 +175,34 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
               val tmap: (Tree => Tree) = _ match {
                 case Return(t, from) if from.symbol == tree.symbol => Return(t, ref(newSym))
                 case t: TypeApply => transformTypeApply(t)
-                case t: Apply =>
-                  transformApply(t)
+                case t: Apply => transformApply(t)
                 case t => t
-              }
-              val tp = new TreeMap() {
-                  // needed to workaround https://github.com/lampepfl/dotty/issues/592
-                  override def transform(t: Tree)(implicit ctx: Context) = super.transform(t) match {
-                  case t @ Apply(fun, args) =>
-                    val newArgs = (args zip fun.tpe.firstParamTypes).map{case(t, tpe) => t.ensureConforms(tpe)}
-                    if (sameTypes(args, newArgs)) {
-                      t
-                    } else tpd.Apply(fun, newArgs)
-                  case t: ValDef =>
-                    cpy.ValDef(t)(rhs = t.rhs.ensureConforms(t.tpe.widen))
-                  case t: DefDef =>
-                    cpy.DefDef(t)(rhs = t.rhs.ensureConforms(t.tpe.finalResultType))
-                  case t => t
-                }
               }
 
               val typesReplaced = new TreeTypeMap(
                 treeMap = tmap,
                 typeMap = _
                     .substDealias(origTParams, instantiations(index))
-                    .subst(origVParams, vparams.flatten.map(_.tpe))
-                ,
+                    .subst(origVParams, vparams.flatten.map(_.tpe)),
                 oldOwners = tree.symbol :: Nil,
                 newOwners = newSym :: Nil
               ).transform(tree.rhs)
 
+              val tp = new TreeMap() {
+              // needed to workaround https://github.com/lampepfl/dotty/issues/592
+              override def transform(t: Tree)(implicit ctx: Context) = super.transform(t) match {
+                case t @ Apply(fun, args) =>
+                  assert(sameLength(args, fun.tpe.widen.firstParamTypes))
+                  val newArgs = (args zip fun.tpe.widen.firstParamTypes).map{case(t, tpe) => t.ensureConforms(tpe)}
+                  if (sameTypes(args, newArgs)) {
+                    t
+                  } else tpd.Apply(fun, newArgs)
+                case t: ValDef =>
+                  cpy.ValDef(t)(rhs = if(t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
+                case t: DefDef =>
+                  cpy.DefDef(t)(rhs = if(t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
+                case t => t
+              }}
               val expectedTypeFixed = tp.transform(typesReplaced)
               expectedTypeFixed.ensureConforms(newSym.info.widen.finalResultType)
             }})
@@ -227,23 +225,13 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
     val Apply(fun, args) = tree
     fun match {
       case fun: TypeApply => {
-        println(
-          s"""
-               |args             ->  ${args}
-
-              |f.fun            ->  ${fun.fun.tree}
-             """.stripMargin)
-
         val newFun = rewireTree(fun)
         if (fun ne newFun) {
-        val b = (args zip newFun.tpe.firstParamTypes)
-        val a = b.map{
+        val as = (args zip newFun.tpe.widen.firstParamTypes).map{
           case (arg, tpe) =>
             arg.ensureConforms(tpe)
         }
-        Apply(newFun,a)
-        /* zip (instantiations zip paramTypes)).map{
-              case (argType, (specType, castType)) => argType.ensureConforms(specType)})*/
+        Apply(newFun,as)
         } else tree
       }
       case _ => tree
