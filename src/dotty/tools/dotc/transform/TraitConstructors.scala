@@ -18,7 +18,6 @@ class TraitConstructors extends MiniPhaseTransform with SymTransformer {
   import dotty.tools.dotc.ast.tpd._
   def phaseName: String = "traitConstructors"
 
-
   override def treeTransformPhase: Phase = this.phase
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {

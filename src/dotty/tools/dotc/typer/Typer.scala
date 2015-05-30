@@ -1337,10 +1337,22 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
     }
 
+    /** Adapt an expression of constant type to a different constant type `tpe`. */
+    def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
+      def lit = Literal(tpe.value).withPos(tree.pos)
+      tree match {
+        case Literal(c) => lit
+        case tree @ Block(stats, expr) => tpd.cpy.Block(tree)(stats, adaptConstant(expr, tpe))
+        case tree =>
+          if (isIdempotentExpr(tree)) lit // See discussion in phase Literalize why we demand isIdempotentExpr
+          else Block(tree :: Nil, lit)
+      }
+    }
+
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
-      if (folded ne tree) return folded
+      if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass)
         return tpd.Block(tree :: Nil, Literal(Constant(())))

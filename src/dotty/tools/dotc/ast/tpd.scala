@@ -418,7 +418,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Thicket(valdef, clsdef)
   }
 
-  def initValue(tpe: Types.Type)(implicit ctx: Context) = {
+  def defaultValue(tpe: Types.Type)(implicit ctx: Context) = {
     val tpw = tpe.widen
 
     if (tpw isRef defn.IntClass) Literal(Constant(0))

@@ -177,7 +177,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           tpe, coord = x.symbol.coord
         ).entered
 
-        val containerTree = ValDef(containerSymbol, initValue(tpe))
+        val containerTree = ValDef(containerSymbol, defaultValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.ObjectType) { // can use 'null' value instead of flag
           val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, x.rhs))
           Thicket(List(containerTree, slowPath))
@@ -234,7 +234,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       val thiz = This(claz)(ctx.fresh.setOwner(claz))
 
       val resultSymbol = ctx.newSymbol(methodSymbol, lazyNme.result, containerFlags, tp)
-      val resultDef = ValDef(resultSymbol, initValue(tp))
+      val resultDef = ValDef(resultSymbol, defaultValue(tp))
 
       val retrySymbol = ctx.newSymbol(methodSymbol, lazyNme.retry, containerFlags, defn.BooleanType)
       val retryDef = ValDef(retrySymbol, Literal(Constants.Constant(true)))
@@ -332,7 +332,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
         val containerName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).entered
-        val containerTree = ValDef(containerSymbol, initValue(tpe))
+        val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 
         val offset =  ref(companion).ensureApplied.select(offsetSymbol)
         val getFlag = Select(ref(helperModule), lazyNme.RLazyVals.get)
