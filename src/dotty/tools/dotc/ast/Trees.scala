@@ -347,7 +347,7 @@ object Trees {
 
   class BackquotedIdent[-T >: Untyped] private[ast] (name: Name)
     extends Ident[T](name) {
-    override def toString = "BackquotedIdent($name)"
+    override def toString = s"BackquotedIdent($name)"
   }
 
   /** qualifier.name */
@@ -358,7 +358,7 @@ object Trees {
 
   class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)
     extends Select[T](qualifier, name) {
-    override def toString = "SelectWithSig($qualifier, $name, $sig)"
+    override def toString = s"SelectWithSig($qualifier, $name, $sig)"
   }
 
   /** qual.this */
