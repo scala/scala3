@@ -29,6 +29,9 @@ class ElimWildcardIdents extends MiniPhaseTransform {
     recur(tree)
   }
 
+  override def transformAssign(tree: tpd.Assign)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
+    cpy.Assign(tree)(tree.lhs, wildcardToDefaultValue(tree.rhs))
+
   override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
     cpy.ValDef(tree)(rhs = wildcardToDefaultValue(tree.rhs))
 
