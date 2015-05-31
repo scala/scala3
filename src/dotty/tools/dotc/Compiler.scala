@@ -68,6 +68,7 @@ class Compiler {
            new FunctionalInterfaces),
       List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new Flatten,
+           new ElimStaticThis,
            new RestoreScopes),
       List(/*new PrivateToStatic,*/
            new ExpandPrivate,

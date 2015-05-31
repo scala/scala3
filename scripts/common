@@ -9,6 +9,7 @@ update() {
   git fetch --tags "https://github.com/$1/$2.git"
   (git fetch "https://github.com/$1/$2.git" $4 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $4 # || fallback is for local testing on tag
   git reset --hard
+  cd -
 }
 
 export LC_ALL=en_US.UTF-8
