@@ -210,8 +210,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
-            if (sym.owner.isTerm && !sym.is(Label)) liftedOwner(sym) = sym.topLevelClass.owner
-            else if (sym.isPrimaryConstructor && sym.owner.owner.isTerm) symSet(called, sym) += sym.owner
+            if (sym.owner.isTerm && !sym.is(Label))
+              liftedOwner(sym) = sym.enclosingClass.topLevelClass
+                // this will make methods in supercall constructors of top-level classes owned
+                // by the enclosing package, which means they will be static.
+                // On the other hand, all other methods will be indirectly owned by their
+                // top-level class. This avoids possible deadlocks when a static method
+                // has to access its enclosing object from the outside.
+            else if (sym.isPrimaryConstructor && sym.owner.owner.isTerm)
+              symSet(called, sym) += sym.owner
           case tree: TypeDef =>
             if (sym.owner.isTerm) liftedOwner(sym) = sym.topLevelClass.owner
           case tree: Template =>
