@@ -83,7 +83,8 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
       for (sym <- mixin.info.decls) {
         if (needsForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy))
           implClass.enter(implMethod(sym.asTerm))
-        if (sym.isGetter && !sym.is(LazyOrDeferred) && !sym.setter.exists)
+        if (sym.isGetter && !sym.is(LazyOrDeferred) &&
+            !sym.setter.exists && !sym.info.resultType.isInstanceOf[ConstantType])
           traitSetter(sym.asTerm).enteredAfter(thisTransform)
         if (sym.is(PrivateAccessor, butNot = ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
