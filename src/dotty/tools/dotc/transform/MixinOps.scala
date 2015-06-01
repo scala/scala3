@@ -31,12 +31,13 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     //sup.select(target)
   }
 
+  /** Is `sym` a member of implementing class `cls`? */
+  def isCurrent(sym: Symbol) = cls.info.member(sym.name).hasAltWith(_.symbol == sym)
+
   def needsForwarder(meth: Symbol): Boolean = {
     def needsDisambiguation = !meth.allOverriddenSymbols.forall(_ is Deferred)
-    def isOverridden = meth.overridingSymbol(cls).is(Method, butNot = Deferred)
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    !isOverridden &&
-    !meth.isConstructor &&
+    isCurrent(meth) &&
     (needsDisambiguation || meth.owner.is(Scala2x))
   }
 
