@@ -5,7 +5,7 @@
 
 
 
-object Test {
+object Test extends dotty.runtime.LegacyApp {
   def seqarr(i: Int) = Array[Int]() ++ (0 until i)
   def pararr(i: Int) = seqarr(i).par
 
@@ -15,9 +15,7 @@ object Test {
     assert(gseq == gpar, (gseq, gpar))
   }
 
-  def main(args: Array[String]): Unit = {
-    for (i <- 0 until 20) check(i, _ > 0)
-    for (i <- 0 until 20) check(i, _ % 2)
-    for (i <- 0 until 20) check(i, _ % 4)
-  }
+  for (i <- 0 until 20) check(i, _ > 0)
+  for (i <- 0 until 20) check(i, _ % 2)
+  for (i <- 0 until 20) check(i, _ % 4)
 }
