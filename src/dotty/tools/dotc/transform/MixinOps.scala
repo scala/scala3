@@ -37,7 +37,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     !isOverridden &&
     !meth.isConstructor &&
-    (needsDisambiguation/* || meth.owner.is(Scala2x)*/)
+    (needsDisambiguation || meth.owner.is(Scala2x))
   }
 
   final val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
