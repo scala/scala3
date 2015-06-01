@@ -146,8 +146,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
     def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree)(implicit ctx: Context) = {
       val setFlag = flag.becomes(Literal(Constants.Constant(true)))
-      val setTarget = target.becomes(rhs)
-      val init = Block(List(setFlag, setTarget), target.ensureApplied)
+      val setTargets = if (isWildcardArg(rhs)) Nil else target.becomes(rhs) :: Nil
+      val init = Block(setFlag :: setTargets, target.ensureApplied)
       If(flag.ensureApplied, target.ensureApplied, init)
     }
 

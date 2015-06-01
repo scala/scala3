@@ -723,6 +723,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
       if (tree.tpe <:< tp) tree else asInstance(tp)
 
+    /** If inititializer tree is `_', the default value of its type,
+     *  otherwise the tree itself.
+     */
+    def wildcardToDefault(implicit ctx: Context) =
+      if (isWildcardArg(tree)) defaultValue(tree.tpe) else tree
+
     /** `this && that`, for boolean trees `this`, `that` */
     def and(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_&&).appliedTo(that)
