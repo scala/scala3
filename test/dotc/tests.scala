@@ -16,7 +16,7 @@ class tests extends CompilerTest {
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
-        "-pagewidth", "160")
+        )
 
   val defaultOutputDir = "./out/"
 
@@ -36,12 +36,16 @@ class tests extends CompilerTest {
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
 
+  val specialise = List("-Yspecialize:all")
+
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
+  val miniMethodDir = testsDir + "method_minibox/"
+  val miniMoreDir   = testsDir + "more_minibox/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -216,8 +220,13 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
 
-  @Test def pos_specialization = compileFile(posDir, "specialization")
+  //@Test def pos_specialization = compileFile(posDir, "specialization")//, specialise)
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
-  
+
+  //@Test def test = compileFile(posDir, "t247", List("-Xprint:all"))
+  @Test def mini_method = compileFiles(miniMethodDir)//, List("-Xprint:all"))
+  @Test def mini_more = compileFiles(miniMoreDir)//, List("-Xprint:all"))
+  //@Test def pos_all = compileFiles(posDir)//, List("-Xprint:all"))
+
 }
