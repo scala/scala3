@@ -227,16 +227,36 @@ object Denotations {
       else
         asSingleDenotation
 
-    /** Form a denotation by conjoining with denotation `that` */
+    /** Form a denotation by conjoining with denotation `that`.
+     *
+     *  NoDenotations are dropped. MultiDenotations are handled by merging
+     *  parts with same signatures. SingleDenotations with equal signatures
+     *  are joined as follows:
+     *
+     *  In a first step, consider only those denotations which have symbols
+     *  that are accessible from prefix `pre`.
+     *
+     *  If there are several such denotations, try to pick one by applying the following
+     *  three precedence rules in decreasing order of priority:
+     *
+     *  1. Prefer denotations with more specific infos.
+     *  2. If infos are equally specific, prefer denotations with concrete symbols over denotations
+     *     with abstract symbols.
+     *  3. If infos are equally specific and symbols are equally concrete,
+     *     prefer denotations with symbols defined in subclasses
+     *     over denotations with symbols defined in proper superclasses.
+     *
+     *  If there is exactly one (preferred) accessible denotation, return it.
+     *
+     *  If there is no preferred accessible denotation, return a JointRefDenotation
+     *  with one of the operand symbols (unspecified which one), and an info which
+     *  is intersection (&) of the infos of the operand denotations.
+     *
+     *  If SingleDenotations with different signatures are joined, return NoDenotation.
+     */
     def & (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
-      /** Try to merge denot1 and denot2 without adding a new signature.
-       *  Prefer denotations with more specific types, provided the symbol stays accessible
-       *  Prefer denotations with accessible symbols over denotations with
-       *  existing, but inaccessible symbols.
-       *  If there's no preference, produce a JointRefDenotation with the intersection of both infos.
-       *  If unsuccessful, return NoDenotation.
-       */
+      /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
           val d1 = mergeDenot(denot11, denot2)
@@ -254,8 +274,24 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
+            def shadows(sym1: Symbol, sym2: Symbol) = {
+              val owner1 = sym1.owner
+              val owner2 = sym2.owner
+              owner1.derivesFrom(owner2) && owner1.ne(owner2)
+            }
+            /** Preference according to order (overrides, isAsConcrete, shadows)*/
             def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
-              info1.overrides(info2) && (sym1.isAsConcrete(sym2) || !info2.overrides(info1))
+              info1.overrides(info2) && (
+                // non-standard ordering of tests for efficiency -
+                // overrides is costlier to compute than the others, so its 2nd test comes last.
+                sym1.isAsConcrete(sym2) && (
+                  !sym2.isAsConcrete(sym1)
+                  ||
+                  shadows(sym1, sym2)
+                )
+                ||
+                !info2.overrides(info1)
+              )
             if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)
