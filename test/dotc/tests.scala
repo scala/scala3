@@ -90,13 +90,13 @@ class tests extends CompilerTest {
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239")
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
+
   @Test def pos_specialization = compileFile(posDir, "specialization")
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
   @Test def pos_specialization = compileFile(posDir, "specialization")
 
-// contains buggy tests
   @Test def pos_all = compileFiles(posDir, failedOther)
 
   @Test def pos_SI7638 = compileFile(posDir, "SI-7638")
@@ -207,4 +207,5 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
+  
 }
