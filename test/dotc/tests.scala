@@ -94,6 +94,15 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
+  @Test def pos_specialization = compileFile(posDir, "specialization")
+
+// contains buggy tests
+  @Test def pos_all = compileFiles(posDir, failedOther)
+
+  @Test def pos_SI7638 = compileFile(posDir, "SI-7638")
+  @Test def pos_SI7638a = compileFile(posDir, "SI-7638a")
+
+
   @Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)

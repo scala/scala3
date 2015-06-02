@@ -20,7 +20,8 @@ class TypeSpecializer extends MiniPhaseTransform {
   private val specializationRequests: mutable.HashMap[Symbols.Symbol, List[List[Type]]] = mutable.HashMap.empty
 
   def registerSpecializationRequest(method: Symbols.Symbol)(arguments: List[Type])(implicit ctx: Context) = {
-    //assert(ctx.phaseId <= this.period.phaseId) // This fails - why ?
+    if(ctx.phaseId > this.treeTransformPhase.id)
+      assert(ctx.phaseId <= this.treeTransformPhase.id)
     val prev = specializationRequests.getOrElse(method, List.empty)
     specializationRequests.put(method, arguments :: prev)
   }
@@ -49,6 +50,7 @@ class TypeSpecializer extends MiniPhaseTransform {
 
   def specializeForAll(sym: Symbols.Symbol)(implicit ctx: Context): List[List[Type]] = {
     registerSpecializationRequest(sym)(specialisedType2Suffix.keys.toList)
+    println("Specializing for all primitive types")
     specializationRequests.getOrElse(sym, Nil)
   }
 
@@ -59,29 +61,31 @@ class TypeSpecializer extends MiniPhaseTransform {
   }
 
   def shouldSpecializeFor(sym: Symbols.Symbol)(implicit ctx: Context): List[List[Type]] = {
-    if (sym.denot.hasAnnotation(ctx.definitions.specializedAnnot)) {
-      val specAnnotation = sym.denot.getAnnotation(ctx.definitions.specializedAnnot).getOrElse(Nil)
-      specAnnotation.asInstanceOf[Annotation].arguments match {
-        case List(SeqLiteral(types)) => specializeForSome(sym)(types.map(tpeTree => name2SpecialisedType(ctx)(tpeTree.tpe.asInstanceOf[TermRef].name.toString())))
-        case List() => specializeForAll(sym)
+      sym.denot.getAnnotation(ctx.definitions.specializedAnnot).getOrElse(Nil) match {
+        case annot: Annotation =>
+          annot.arguments match {
+            case List(SeqLiteral(types)) =>
+              specializeForSome(sym)(types.map(tpeTree =>
+                name2SpecialisedType(ctx)(tpeTree.tpe.asInstanceOf[TermRef].name.toString())))
+            case List() => specializeForAll(sym)
+          }
+        case nil =>
+          if(ctx.settings.Yspecialize.value == "all") specializeForAll(sym)
+          else Nil
       }
-    }
-    else if(ctx.settings.Yspecialize.value == "all") specializeForAll(sym)
-    else Nil
   }
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
 
     tree.tpe.widen match {
-        
+
       case poly: PolyType if !(tree.symbol.isPrimaryConstructor
                                || (tree.symbol is Flags.Label)) => {
         val origTParams = tree.tparams.map(_.symbol)
         val origVParams = tree.vparamss.flatten.map(_.symbol)
-        println(s"specializing ${tree.symbol} for Tparams: ${origTParams}")
+        println(s"specializing ${tree.symbol} for Tparams: $origTParams")
 
         def specialize(instatiations: List[Type], names: List[String]): Tree = {
-
           val newSym = ctx.newSymbol(tree.symbol.owner, (tree.name + names.mkString).toTermName, tree.symbol.flags | Flags.Synthetic, poly.instantiate(instatiations.toList))
           polyDefDef(newSym, { tparams => vparams => {
             assert(tparams.isEmpty)
@@ -102,10 +106,9 @@ class TypeSpecializer extends MiniPhaseTransform {
           if (remainingTParams.nonEmpty) {
             val typeToSpecialize = remainingTParams.head
             val bounds = remainingBounds.head
-            val specializeFor = shouldSpecializeFor(typeToSpecialize.symbol).flatten
-            println(s"types to specialize for are : $specializeFor")
-
-            specializeFor.filter{ tpe =>
+            shouldSpecializeFor(typeToSpecialize.symbol)
+              .flatten
+              .filter{ tpe =>
               bounds.contains(tpe)
             }.flatMap { tpe =>
               val nme = specialisedType2Suffix(ctx)(tpe)
