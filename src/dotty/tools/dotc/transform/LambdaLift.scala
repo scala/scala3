@@ -94,7 +94,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *  than the previous value of `liftedowner(sym)`.
      */
     def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
-      if (sym.owner.isTerm &&
+      if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
         ctx.log(i"narrow lifted $sym to $owner")
@@ -366,7 +366,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       val clazz = sym.enclosingClass
       val qual =
         if (clazz.isStaticOwner) singleton(clazz.thisType)
-        else outer(ctx.withPhase(thisTransform)).path(clazz)
+        else outer.path(clazz)
       transformFollowingDeep(qual.select(sym))
     }
 
