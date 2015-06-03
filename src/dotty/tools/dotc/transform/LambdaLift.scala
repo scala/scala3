@@ -189,10 +189,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         val sym = tree.symbol
         def narrowTo(thisClass: ClassSymbol) = {
           val enclClass = enclosure.enclosingClass
-          if (!thisClass.isStaticOwner)
-            narrowLiftedOwner(enclosure,
-              if (enclClass.isContainedIn(thisClass)) thisClass
-              else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
+          narrowLiftedOwner(enclosure,
+            if (enclClass.isContainedIn(thisClass)) thisClass
+            else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
         }
         tree match {
           case tree: Ident =>
