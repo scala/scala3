@@ -20,17 +20,6 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   final val maxTparamsToSpecialize = 2
 
-  private final def nameToSpecialisedType(implicit ctx: Context) =
-    Map("Byte" -> ctx.definitions.ByteType,
-      "Boolean" -> ctx.definitions.BooleanType,
-      "Short" -> ctx.definitions.ShortType,
-      "Int" -> ctx.definitions.IntType,
-      "Long" -> ctx.definitions.LongType,
-      "Float" -> ctx.definitions.FloatType,
-      "Double" -> ctx.definitions.DoubleType,
-      "Char" -> ctx.definitions.CharType,
-      "Unit" -> ctx.definitions.UnitType)
-
   private final def specialisedTypeToSuffix(implicit ctx: Context) =
     Map(ctx.definitions.ByteType -> "$mcB$sp",
       ctx.definitions.BooleanType -> "$mcZ$sp",
@@ -54,7 +43,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       ctx.definitions.UnitType
     )
 
-  private val specializationRequests: mutable.HashMap[Symbols.Symbol, List[List[Type]]] = mutable.HashMap.empty
+  private val specializationRequests: mutable.HashMap[Symbols.Symbol, List[Type]] = mutable.HashMap.empty
 
   /**
    *  A map that links symbols to their specialized variants.
@@ -63,14 +52,12 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   private val newSymbolMap: mutable.HashMap[Symbol, mutable.HashMap[List[Type], Symbols.Symbol]] = mutable.HashMap.empty
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
-
-    def generateSpecializations(remainingTParams: List[Name], remainingBounds: List[TypeBounds], specTypes: List[Type])
+    def generateSpecializations(remainingTParams: List[Name], specTypes: List[Type])
                                (instantiations: List[Type], names: List[String], poly: PolyType, decl: Symbol)
                                (implicit ctx: Context): List[Symbol] = {
       if (remainingTParams.nonEmpty) {
-        val bounds = remainingBounds.head
         val specializations = (for (tpe <- specTypes) yield {
-          generateSpecializations(remainingTParams.tail, remainingBounds.tail, specTypes)(tpe :: instantiations, specialisedTypeToSuffix(ctx)(tpe) :: names, poly, decl)
+          generateSpecializations(remainingTParams.tail, specTypes)(tpe :: instantiations, specialisedTypeToSuffix(ctx)(tpe) :: names, poly, decl)
         }).flatten
         specializations
       }
@@ -96,12 +83,15 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       sym.info match {
         case classInfo: ClassInfo =>
           val newDecls = classInfo.decls.filterNot(_.isConstructor/*isPrimaryConstructor*/).flatMap(decl => {
+            if(decl.name.toString.contains("foobar")) {
+              println("hello")
+            }
             if (shouldSpecialize(decl)) {
               decl.info.widen match {
                 case poly: PolyType =>
                   if (poly.paramNames.length <= maxTparamsToSpecialize && poly.paramNames.length > 0) {
-                    val specTypes = getSpecTypes(sym)
-                    generateSpecializations(poly.paramNames, poly.paramBounds, specTypes)(List.empty, List.empty, poly, decl)
+                    val specTypes = getSpecTypes(decl).filter(tpe => poly.paramBounds.forall(_.contains(tpe)))
+                    generateSpecializations(poly.paramNames, specTypes)(List.empty, List.empty, poly, decl)
                   }
                   else Nil
                 case nil => Nil
@@ -120,16 +110,11 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   def getSpecTypes(sym: Symbol)(implicit ctx: Context): List[Type] = {
-    sym.denot.getAnnotation(ctx.definitions.specializedAnnot).getOrElse(Nil) match {
-      case annot: Annotation =>
-        annot.arguments match {
-          case List(SeqLiteral(types)) =>
-            types.map(tpeTree => nameToSpecialisedType(ctx)(tpeTree.tpe.asInstanceOf[TermRef].name.toString()))
-          case List() => primitiveTypes
-        }
-      case nil =>
-        if(ctx.settings.Yspecialize.value == "all") primitiveTypes
-        else Nil
+    val requested = specializationRequests.getOrElse(sym, List())
+    if (requested.nonEmpty) requested.toList
+    else {
+      if(ctx.settings.Yspecialize.value == "all") primitiveTypes
+      else Nil
     }
   }
 
@@ -142,35 +127,8 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
     if(ctx.phaseId > this.treeTransformPhase.id)
       assert(ctx.phaseId <= this.treeTransformPhase.id)
     val prev = specializationRequests.getOrElse(method, List.empty)
-    specializationRequests.put(method, arguments :: prev)
+    specializationRequests.put(method, arguments ::: prev)
   }
-/*
-  def specializeForAll(sym: Symbols.Symbol)(implicit ctx: Context): List[Type] = {
-    registerSpecializationRequest(sym)(primitiveTypes)
-    println(s"Specializing $sym for all primitive types")
-    specializationRequests.getOrElse(sym, Nil).flatten
-  }
-
-  def specializeForSome(sym: Symbols.Symbol)(annotationArgs: List[Type])(implicit ctx: Context): List[Type] = {
-    registerSpecializationRequest(sym)(annotationArgs)
-    println(s"specializationRequests : $specializationRequests")
-    specializationRequests.getOrElse(sym, Nil).flatten
-  }
-
-  def specializeFor(sym: Symbols.Symbol)(implicit ctx: Context): List[Type] = {
-    sym.denot.getAnnotation(ctx.definitions.specializedAnnot).getOrElse(Nil) match {
-      case annot: Annotation =>
-        annot.arguments match {
-          case List(SeqLiteral(types)) =>
-            specializeForSome(sym)(types.map(tpeTree =>
-              nameToSpecialisedType(ctx)(tpeTree.tpe.asInstanceOf[TermRef].name.toString()))) // Not sure how to match TermRefs rather than type names
-          case List() => specializeForAll(sym)
-        }
-      case nil =>
-        if(ctx.settings.Yspecialize.value == "all") specializeForAll(sym)
-        else Nil
-    }
-  }*/
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
 
@@ -228,7 +186,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       assert(betterDefs.length < 2) // TODO: How to select the best if there are several ?
 
       if (betterDefs.nonEmpty) {
-        println(s"method $fun rewired to specialozed variant with type (${betterDefs.head._1})")
+        println(s"method $fun rewired to specialized variant with type (${betterDefs.head._1})")
         val prefix = fun match {
           case Select(pre, name) =>
             pre
