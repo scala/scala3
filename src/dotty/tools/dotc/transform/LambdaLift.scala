@@ -94,7 +94,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *  than the previous value of `liftedowner(sym)`.
      */
     def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
-      if (sym.owner.isTerm &&
+      if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
         ctx.log(i"narrow lifted $sym to $owner")
@@ -189,10 +189,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         val sym = tree.symbol
         def narrowTo(thisClass: ClassSymbol) = {
           val enclClass = enclosure.enclosingClass
-          if (!thisClass.isStaticOwner)
-            narrowLiftedOwner(enclosure,
-              if (enclClass.isContainedIn(thisClass)) thisClass
-              else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
+          narrowLiftedOwner(enclosure,
+            if (enclClass.isContainedIn(thisClass)) thisClass
+            else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
         }
         tree match {
           case tree: Ident =>
@@ -210,8 +209,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
-            if (sym.owner.isTerm && !sym.is(Label)) liftedOwner(sym) = sym.topLevelClass.owner
-            else if (sym.isPrimaryConstructor && sym.owner.owner.isTerm) symSet(called, sym) += sym.owner
+            if (sym.owner.isTerm && !sym.is(Label))
+              liftedOwner(sym) = sym.enclosingClass.topLevelClass
+                // this will make methods in supercall constructors of top-level classes owned
+                // by the enclosing package, which means they will be static.
+                // On the other hand, all other methods will be indirectly owned by their
+                // top-level class. This avoids possible deadlocks when a static method
+                // has to access its enclosing object from the outside.
+            else if (sym.isPrimaryConstructor && sym.owner.owner.isTerm)
+              symSet(called, sym) += sym.owner
           case tree: TypeDef =>
             if (sym.owner.isTerm) liftedOwner(sym) = sym.topLevelClass.owner
           case tree: Template =>
@@ -360,7 +366,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       val clazz = sym.enclosingClass
       val qual =
         if (clazz.isStaticOwner) singleton(clazz.thisType)
-        else outer(ctx.withPhase(thisTransform)).path(clazz)
+        else outer.path(clazz)
       transformFollowingDeep(qual.select(sym))
     }
 

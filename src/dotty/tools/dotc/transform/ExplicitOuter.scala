@@ -299,9 +299,10 @@ object ExplicitOuter {
     def path(toCls: Symbol): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
-        ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)}")
+        val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
+        ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")
         if (treeCls == toCls) tree
-        else loop(tree select outerAccessor(treeCls.asClass))
+        else loop(tree select outerAccessor(treeCls.asClass)(outerAccessorCtx))
       }
       ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
       loop(This(ctx.owner.enclosingClass.asClass))
