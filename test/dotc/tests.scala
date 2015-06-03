@@ -44,6 +44,7 @@ class tests extends CompilerTest {
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
+  val specialDir    = posDir   + "specialization/"
   val miniMethodDir = testsDir + "method_minibox/"
   val miniMoreDir   = testsDir + "more_minibox/"
 
@@ -106,8 +107,7 @@ class tests extends CompilerTest {
   @Test def pos_SI7638 = compileFile(posDir, "SI-7638")
   @Test def pos_SI7638a = compileFile(posDir, "SI-7638a")
 
-
-  @Test def new_all = compileFiles(newDir, twice)
+  //@Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
@@ -220,20 +220,21 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
 
-  //@Test def pos_specialization = compileFile(posDir, "specialization")//, specialise)
+  //@Test def specialization = compileFile(specialDir, "specialization")//, specialise)
+  //@Test def mutual_spec = compileFile(specialDir, "mutual_specialization")
+  //@Test def return_spec = compileFile(specialDir, "return_specialization")
+  //@Test def nothing_spec = compileFile(specialDir, "nothing_specialization")
+  //@Test def method_in_class_spec = compileFile(specialDir, "method_in_class_specialization")
+  //@Test def method_in_method_spec = compileFile(specialDir, "method_in_method_specialization", List("-Xprint:all"))
+  @Test def type_check_spec = compileFile(specialDir, "type_check_specialization")
+  //@Test def bounds_spec = compileFile(specialDir, "bounds_specialization", List("-Xprint:all"))
+  //@Test def multi_spec = compileFile(specialDir, "multi_specialization", List("-Xprint:all"))
+  //@Test def pos_spec_all = compileFiles(specialDir)
 
-  //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
-
-  //@Test def test = compileFile(posDir, "t247", List("-Xprint:all"))
-  @Test def mini_method = compileFiles(miniMethodDir)//, List("-Xprint:all"))
-  @Test def mini_more = compileFiles(miniMoreDir)//, List("-Xprint:all"))
+  //@Test def mini_method = compileFiles(miniMethodDir)//, List("-Xprint:all"))
+  //@Test def mini_more = compileFiles(miniMoreDir)//, List("-Xprint:all"))
   //@Test def pos_all = compileFiles(posDir)//, List("-Xprint:all"))
 
-  @Test def pos_mutual_spec = compileFile(posDir, "mutual_specialization", List("-Xprint:all"))
-  //@Test def pos_mutual_spec = compileFile(posDir, "mutual_specialization")
-  //@Test def pos_spec = compileFile(posDir, "specialization")
-*/
-  @Test def pos_return_spec = compileFile(posDir, "return_specialization")
-//  @Test def pos_si7638 = compileFile(posDir, "SI-7638", List("-Xprint:all"))
-
+  //@Test def pos_si7638 = compileFile(posDir, "SI-7638", List("-Xprint:all"))
+  //@Test def test = compileFile(posDir, "t247", List("-Xprint:all"))
 }

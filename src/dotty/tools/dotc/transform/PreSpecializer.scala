@@ -14,9 +14,8 @@ import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTran
 import scala.collection.mutable
 
 /**
- * This phase runs before {what phase ?}, so as to retrieve all `@specialized`
- * anotations before they are thrown away, and stores them through a `PhaseCache`
- * for the `TypeSpecializer` phase.
+ * This phase retrieves all `@specialized` anotations before they are thrown away,
+ * and stores them for the `TypeSpecializer` phase.
  */
 class PreSpecializer extends MiniPhaseTransform with InfoTransformer {
 
@@ -30,6 +29,7 @@ class PreSpecializer extends MiniPhaseTransform with InfoTransformer {
 
       def allowedToSpecialize(sym: Symbol): Boolean = {
         sym.name != nme.asInstanceOf_ &&
+          sym.name != nme.isInstanceOf_ &&
           !(sym is Flags.JavaDefined) &&
           !sym.isConstructor//isPrimaryConstructor
       }
@@ -41,15 +41,9 @@ class PreSpecializer extends MiniPhaseTransform with InfoTransformer {
             val args = annot.arguments
             if (args.isEmpty) primitiveTypes
             else args.head match {
-              case a@Typed(SeqLiteral(types), _) => types.map(t => nameToType(t.tpe))
-              case a@Select(Ident(_), _) => {
-                println(a)
-                primitiveTypes
-              }
-              case _ => {
-                println("Nonono")
-                ctx.error("surprising match on specialized annotation"); Nil
-              }
+              case a@Typed(SeqLiteral(types), _) => types.map(t => nameToType(t.tpe)) // Matches the expected `@specialized(...)` annotations
+              case a@Select(Ident(_), _)         => primitiveTypes  // Matches `Select(Ident(Specializable), Primitives)` which is used in several instances
+              case _ => ctx.error("surprising match on specialized annotation"); Nil
             }
           case nil => Nil
         }
@@ -57,7 +51,7 @@ class PreSpecializer extends MiniPhaseTransform with InfoTransformer {
     }
     val st = getSpecTypes(sym)
     if (st.nonEmpty) {
-      specTypes.put(sym, st)
+      specTypes.put(sym.owner, st)
     }
     tp
   }
@@ -90,9 +84,8 @@ class PreSpecializer extends MiniPhaseTransform with InfoTransformer {
     )
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    specTypes.keys.foreach(
-      sym => ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(specTypes(sym))
-    )
+    val st = specTypes.getOrElse(tree.symbol, List())
+    if (st.nonEmpty) ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(st)
     tree
   }
 }
