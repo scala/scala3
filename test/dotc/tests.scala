@@ -11,11 +11,11 @@ class tests extends CompilerTest {
   def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
 
   val noCheckOptions = List(
-    //        "-verbose",
-    //         "-Ylog:frontend",
-    //        "-Xprompt",
-    //        "-explaintypes",
-    //        "-Yshow-suppressed-errors",
+//        "-verbose",
+//         "-Ylog:frontend",
+//        "-Xprompt",
+//        "-explaintypes",
+//        "-Yshow-suppressed-errors",
   )
 
   val defaultOutputDir = "./out/"
@@ -54,11 +54,10 @@ class tests extends CompilerTest {
   val dotcDir   = toolsDir + "dotc/"
   val coreDir   = dotcDir + "core/"
 
-/*
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
-  // This directory doesn't exist anymore
-  // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
+// This directory doesn't exist anymore
+// @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
 
   //@Test def pickle_core = compileDir(dotcDir, "core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
@@ -98,7 +97,6 @@ class tests extends CompilerTest {
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
-  //@Test def pos_specialization = compileFile(posDir, "specialization")
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
@@ -180,9 +178,9 @@ class tests extends CompilerTest {
   @Test def dotc_reporting = compileDir(dotcDir, "reporting") // twice omitted to make tests run faster
 
   @Test def dotc_typer = compileDir(dotcDir, "typer")// twice omitted to make tests run faster
-  // error: error while loading Checking$$anon$2$,
-  // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
-  // has location not matching its contents: contains class $anon
+ // error: error while loading Checking$$anon$2$,
+ // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
+ // has location not matching its contents: contains class $anon
 
   @Test def dotc_util = compileDir(dotcDir, "util") // twice omitted to make tests run faster
 
@@ -193,19 +191,19 @@ class tests extends CompilerTest {
   //@Test def tools = compileDir(dottyDir, "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileList("testNonCyclic", List(
-    dotcDir + "CompilationUnit.scala",
-    coreDir + "Types.scala",
-    dotcDir + "ast/Trees.scala"
-  ), List("-Xprompt") ++ staleSymbolError ++ twice)
+     dotcDir + "CompilationUnit.scala",
+     coreDir + "Types.scala",
+     dotcDir + "ast/Trees.scala"
+   ), List("-Xprompt") ++ staleSymbolError ++ twice)
 
   @Test def testIssue_34 = compileList("testIssue_34", List(
-    dotcDir + "config/Properties.scala",
-    dotcDir + "config/PathResolver.scala"
-  ), List(/* "-Ylog:frontend", */ "-Xprompt") ++ staleSymbolError ++ twice)
+     dotcDir + "config/Properties.scala",
+     dotcDir + "config/PathResolver.scala"
+   ), List(/* "-Ylog:frontend", */ "-Xprompt") ++ staleSymbolError ++ twice)
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
-*/
+
   @Test def specialization = compileFile(specialDir, "specialization", List("-Xprint:specialize"))
   @Test def mutual_spec = compileFile(specialDir, "mutual_specialization", List("-Xprint:specialize"))
   @Test def return_spec = compileFile(specialDir, "return_specialization", List("-Xprint:specialize"))
@@ -218,12 +216,7 @@ class tests extends CompilerTest {
   @Test def pos_this_specialization = compileFile(specialDir, "this_specialization", List("-Xprint:specialize"))
   @Test def pos_spec_all = compileFiles(specialDir)
 
-
-  //@Test def mini_method = compileFiles(miniMethodDir)//, List("-Xprint:all"))
-  //@Test def mini_more = compileFiles(miniMoreDir)//, List("-Xprint:all"))
-  //@Test def pos_all = compileFiles(posDir)//, List("-Xprint:all"))
-
-  //@Test def pos_si7638 = compileFile(posDir, "SI-7638", List("-Xprint:all"))
-  //@Test def test = compileFile(posDir, "t247", List("-Xprint:all"))
+  @Test def run_spec = runFile(runDir, "specialization")
+  
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 }

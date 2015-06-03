@@ -20,21 +20,21 @@ import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 class Compiler {
 
   /** Meta-ordering constraint:
-    *
-    *  DenotTransformers that change the signature of  their denotation's info must go
-    *  after erasure. The reason is that denotations are permanently referred to by
-    *  TermRefs which contain a signature. If the signature of a symbol would change,
-    *  all refs to it would become outdated - they could not be dereferenced in the
-    *  new phase.
-    *
-    *  After erasure, signature changing denot-transformers are OK because erasure
-    *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
-    *  is possible because:
-    *
-    *   - splitter has run, so every ident or select refers to a unique symbol
-    *   - after erasure, asSeenFrom is the identity, so every reference has a
-    *     plain SymDenotation, as opposed to a UniqueRefDenotation.
-    */
+   *
+   *  DenotTransformers that change the signature of  their denotation's info must go
+   *  after erasure. The reason is that denotations are permanently referred to by
+   *  TermRefs which contain a signature. If the signature of a symbol would change,
+   *  all refs to it would become outdated - they could not be dereferenced in the
+   *  new phase.
+   *
+   *  After erasure, signature changing denot-transformers are OK because erasure
+   *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
+   *  is possible because:
+   *
+   *   - splitter has run, so every ident or select refers to a unique symbol
+   *   - after erasure, asSeenFrom is the identity, so every reference has a
+   *     plain SymDenotation, as opposed to a UniqueRefDenotation.
+   */
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
@@ -93,13 +93,13 @@ class Compiler {
   }
 
   /** Produces the following contexts, from outermost to innermost
-    *
-    *    bootStrap:   A context with next available runId and a scope consisting of
-    *                 the RootPackage _root_
-    *    start        A context with RootClass as owner and the necessary initializations
-    *                 for type checking.
-    *    imports      For each element of RootImports, an import context
-    */
+   *
+   *    bootStrap:   A context with next available runId and a scope consisting of
+   *                 the RootPackage _root_
+   *    start        A context with RootClass as owner and the necessary initializations
+   *                 for type checking.
+   *    imports      For each element of RootImports, an import context
+   */
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init(ctx)
     ctx.setPhasePlan(phases)
