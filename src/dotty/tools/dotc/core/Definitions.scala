@@ -329,10 +329,10 @@ class Definitions {
   lazy val NonLocalReturnControlClass   = ctx.requiredClass("scala.runtime.NonLocalReturnControl")
 
   // Annotation base classes
-  lazy val AnnotationClass               = ctx.requiredClass("scala.annotation.Annotation")
-  lazy val ClassfileAnnotationClass      = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
-  lazy val StaticAnnotationClass         = ctx.requiredClass("scala.annotation.StaticAnnotation")
-  lazy val TailrecAnnotationClass        = ctx.requiredClass("scala.annotation.tailrec")
+  lazy val AnnotationClass              = ctx.requiredClass("scala.annotation.Annotation")
+  lazy val ClassfileAnnotationClass     = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
+  lazy val StaticAnnotationClass        = ctx.requiredClass("scala.annotation.StaticAnnotation")
+  lazy val TailrecAnnotationClass       = ctx.requiredClass("scala.annotation.tailrec")
   lazy val RemoteAnnot                   = ctx.requiredClass("scala.remote")
   lazy val SerialVersionUIDAnnot         = ctx.requiredClass("scala.SerialVersionUID")
   lazy val TransientAnnot                = ctx.requiredClass("scala.transient")

@@ -30,7 +30,8 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       defn.FloatType -> "F",
       defn.DoubleType -> "D",
       defn.CharType -> "C",
-      defn.UnitType -> "V")
+      defn.UnitType -> "V",
+      defn.AnyRefType -> "A")
 
   private def primitiveTypes(implicit ctx: Context) =
     List(defn.ByteType,
