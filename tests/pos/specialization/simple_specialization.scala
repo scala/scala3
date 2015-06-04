@@ -1,4 +1,4 @@
-trait specialization {
+trait simple_specialization {
   def printer1[@specialized(Int, Long) T](a: T) = {
     println(a.toString)
   }

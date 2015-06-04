@@ -203,7 +203,7 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
 
-  @Test def specialization = compileFile(specialDir, "specialization", List("-Xprint:specialize"))
+  @Test def simple_specialization = compileFile(specialDir, "simple_specialization", List("-Xprint:specialize"))
   @Test def mutual_spec = compileFile(specialDir, "mutual_specialization", List("-Xprint:specialize"))
   @Test def return_spec = compileFile(specialDir, "return_specialization", List("-Xprint:specialize"))
   @Test def nothing_spec = compileFile(specialDir, "nothing_specialization", List("-Xprint:specialize"))
@@ -215,7 +215,7 @@ class tests extends CompilerTest {
   @Test def pos_this_specialization = compileFile(specialDir, "this_specialization", List("-Xprint:specialize"))
   @Test def pos_spec_all = compileFiles(specialDir)
 
-  @Test def run_spec = runFile(runDir, "specialization")
+  @Test def run_spec = runFile(runDir, "method-specialization")
   
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 }
