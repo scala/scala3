@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling with Skolemization {
+class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   implicit val ctx: Context = initctx
 
   val state = ctx.typerState
@@ -531,19 +531,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
-    val saved = skolemsState
-    if (skolemsState == Skolemization.SkolemsDisallowed) skolemsState = Skolemization.SkolemsAllowed
-    try {
-      val rebindNeeded = tp2.refinementRefersToThis
-      val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
-      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(tp2, base) else tp2.refinedInfo
-      def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
-      def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
-        case mbr: SingleDenotation => qualifies(mbr)
-        case _ => mbr hasAltWith qualifies
-      }
-      /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
-        memberMatches(base member name) ||
+    val rebindNeeded = tp2.refinementRefersToThis
+    val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
+    val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(tp2, base) else tp2.refinedInfo
+    def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
+    def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+      case mbr: SingleDenotation => qualifies(mbr)
+      case _ => mbr hasAltWith qualifies
+    }
+    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
+      memberMatches(base member name) ||
         tp1.isInstanceOf[SingletonType] &&
         { // special case for situations like:
           //    class C { type T }
@@ -554,9 +551,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             case _ => false
           }
         }
-      }
     }
-    finally skolemsState = saved
+  }
+
+  final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
+    case tp: SingletonType if tp.isStable => tp
+    case tp: ValueType => SkolemType(tp)
+    case tp: TypeProxy => ensureStableSingleton(tp.underlying)
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
