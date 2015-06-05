@@ -24,7 +24,7 @@ class PreSpecializer extends MiniPhaseTransform {
     }
     else {
       val claz = companion.termSymbol.companionClass
-      assert(ctx.definitions.ScalaValueClasses.contains(claz))
+      assert(defn.ScalaValueClasses.contains(claz))
       claz.typeRef
     }
   }
@@ -49,12 +49,11 @@ class PreSpecializer extends MiniPhaseTransform {
       sym.name != nme.asInstanceOf_ &&
         sym.name != nme.isInstanceOf_ &&
         !(sym is Flags.JavaDefined) &&
-        !sym.isConstructor &&
-        !sym.name.toString.contains("Function2")
+        !sym.isConstructor
     }
 
     if (allowedToSpecialize(sym)) {
-      val annotation = sym.denot.getAnnotation(ctx.definitions.specializedAnnot).getOrElse(Nil)
+      val annotation = sym.denot.getAnnotation(defn.specializedAnnot).getOrElse(Nil)
       annotation match {
         case annot: Annotation =>
           val args = annot.arguments

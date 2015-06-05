@@ -47,7 +47,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   private def defn(implicit ctx:Context) = ctx.definitions
 
-  private var specializationRequests: mutable.HashMap[Symbols.Symbol, List[Type]] = mutable.HashMap.empty
+  private val specializationRequests: mutable.HashMap[Symbols.Symbol, List[Type]] = mutable.HashMap.empty
 
   /**
    *  A map that links symbols to their specialized variants.
@@ -61,15 +61,14 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       sym.name != nme.asInstanceOf_ &&
       sym.name != nme.isInstanceOf_ &&
       !(sym is Flags.JavaDefined) &&
-      !sym.isConstructor &&
-      !sym.name.toString.contains("Function2")
+      !sym.isConstructor
   }
 
   def getSpecTypes(method: Symbol, poly: PolyType)(implicit ctx: Context): List[Type] = {
     val requested = specializationRequests.getOrElse(method, List.empty)
     if (requested.nonEmpty) requested
     else {
-      if(ctx.settings.Yspecialize.value == "all") primitiveTypes.filter(tpe => poly.paramBounds.forall(_.contains(tpe)))
+      if (ctx.settings.Yspecialize.value == "all") primitiveTypes.filter(tpe => poly.paramBounds.forall(_.contains(tpe)))
       else Nil
     }
   }
@@ -80,7 +79,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       ctx.settings.Yspecialize.value == "all"
 
   def registerSpecializationRequest(method: Symbols.Symbol)(arguments: List[Type])(implicit ctx: Context) = {
-    if(ctx.phaseId > this.treeTransformPhase.id)
+    if (ctx.phaseId > this.treeTransformPhase.id)
       assert(ctx.phaseId <= this.treeTransformPhase.id)
     val prev = specializationRequests.getOrElse(method, List.empty)
     specializationRequests.put(method, arguments ::: prev)
@@ -126,7 +125,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       map.values.toList
     }
 
-    if((sym ne defn.ScalaPredefModule.moduleClass) &&
+    if ((sym ne defn.ScalaPredefModule.moduleClass) &&
       !(sym is Flags.JavaDefined) &&
       !(sym is Flags.Scala2x) &&
       !(sym is Flags.Package) &&
@@ -204,9 +203,9 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                         t
                       } else tpd.Apply(fun, newArgs)
                     case t: ValDef =>
-                      cpy.ValDef(t)(rhs = if(t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
+                      cpy.ValDef(t)(rhs = if (t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
                     case t: DefDef =>
-                      cpy.DefDef(t)(rhs = if(t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
+                      cpy.DefDef(t)(rhs = if (t.rhs.isEmpty) EmptyTree else t.rhs.ensureConforms(t.tpt.tpe))
                     case t => t
                   }}
                 val expectedTypeFixed = tp.transform(typesReplaced)
