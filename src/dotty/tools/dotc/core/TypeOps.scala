@@ -13,19 +13,19 @@ import ast.tpd._
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
-    val m = if (pre.isStable || ctx.isAfterTyper) null else new AsSeenFromMap(pre, cls)
-    asSeenFrom(tp, pre, cls, null)
+    val m = if (pre.isStable || !ctx.phase.isTyper) null else new AsSeenFromMap(pre, cls)
+    var res = asSeenFrom(tp, pre, cls, m)
+    if (m != null && m.unstable) asSeenFrom(tp, SkolemType(pre), cls) else res
   }
-    
+
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-        if (!pre.isStable && theMap != null && theMap.currentVariance <= 0) {
+        if (theMap != null && theMap.currentVariance <= 0 && !pre.isStable)
           theMap.unstable = true
-        }
         pre match {
           case SuperType(thispre, _) => thispre
           case _ => pre
@@ -43,10 +43,13 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           val sym = tp.symbol
           if (sym.isStatic) tp
           else {
+            val prevStable = theMap == null || !theMap.unstable
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (theMap != null && theMap.unstable) {
+            if (theMap != null && theMap.unstable && prevStable) {
               pre1.member(tp.name).info match {
-                case TypeAlias(alias) => return alias
+                case TypeAlias(alias) =>
+                  theMap.unstable = false
+                  return alias
                 case _ =>
               }
             }
@@ -61,7 +64,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeAlias  =>
+        case tp: TypeAlias if theMap == null => // if theMap exists, need to do the variance calculation
           tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))

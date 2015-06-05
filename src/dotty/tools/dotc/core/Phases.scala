@@ -285,6 +285,9 @@ object Phases {
      */
     def relaxedTyping: Boolean = false
 
+    /** Overridden by FrontEnd */
+    def isTyper = false
+
     def exists: Boolean = true
 
     private var myPeriod: Period = Periods.InvalidPeriod

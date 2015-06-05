@@ -274,6 +274,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           thirdTry(tp1, tp2)
       }
+    case tp1: SkolemType =>
+      tp2 match {
+        case tp2: SkolemType if !ctx.phase.isTyper && tp1.info <:< tp2.info => true
+        case _ => thirdTry(tp1, tp2)
+      }
     case tp1: TypeVar =>
       isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
