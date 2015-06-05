@@ -32,6 +32,11 @@ object Config {
    */
   final val checkConstraintsPropagated = false
 
+  /** Check that no type appearing as the info of a SymDenotation contains
+   *  skolem types.
+   */
+  final val checkNoSkolemsInInfo = false
+
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing

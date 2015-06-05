@@ -79,6 +79,7 @@ object SymDenotations {
       super.validFor_=(p)
     }
     */
+    if (Config.checkNoSkolemsInInfo) assertNoSkolems(initInfo)
 
     // ------ Getting and setting fields -----------------------------
 
@@ -168,8 +169,8 @@ object SymDenotations {
     }
 
     protected[dotc] final def info_=(tp: Type) = {
-      /*
-      def illegal: String = s"illegal type for $this: $tp"
+      /* // DEBUG
+       def illegal: String = s"illegal type for $this: $tp"
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
         tp match {
           case tp: ClassInfo => assert(tp.selfInfo.isInstanceOf[TermRefBySym], illegal)
@@ -178,6 +179,7 @@ object SymDenotations {
           case _ =>
         }
         */
+      if (Config.checkNoSkolemsInInfo) assertNoSkolems(initInfo)
       myInfo = tp
     }
 
@@ -1038,7 +1040,27 @@ object SymDenotations {
       s"$kindString $name"
     }
 
+    // ----- Sanity checks and debugging */
+
     def debugString = toString + "#" + symbol.id // !!! DEBUG
+
+        def hasSkolems(tp: Type): Boolean = tp match {
+      case tp: SkolemType => true
+      case tp: NamedType => hasSkolems(tp.prefix)
+      case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
+      case tp: PolyType => tp.paramBounds.exists(hasSkolems) || hasSkolems(tp.resType)
+      case tp: MethodType => tp.paramTypes.exists(hasSkolems) || hasSkolems(tp.resType)
+      case tp: ExprType => hasSkolems(tp.resType)
+      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: TypeBounds => hasSkolems(tp.lo) || hasSkolems(tp.hi)
+      case tp: AnnotatedType => hasSkolems(tp.tpe)
+      case tp: TypeVar => hasSkolems(tp.inst)
+      case _ => false
+    }
+
+    def assertNoSkolems(tp: Type) =
+      if (!this.isSkolem)
+        assert(!hasSkolems(tp), s"assigning type $tp containing skolems to $this")
 
     // ----- copies and transforms  ----------------------------------------
 

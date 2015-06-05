@@ -2011,7 +2011,7 @@ object Types {
     def isJava = false
     def isImplicit = false
 
-    private val resType = resultTypeExp(this)
+    private[core] val resType = resultTypeExp(this)
     assert(resType.exists)
 
     override def resultType(implicit ctx: Context): Type =
