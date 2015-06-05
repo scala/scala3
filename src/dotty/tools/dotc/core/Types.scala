@@ -2335,7 +2335,8 @@ object Types {
     override def underlying(implicit ctx: Context) = info
     def derivedSkolemType(info: Type)(implicit ctx: Context) =
       if (info eq this.info) this else SkolemType(info)
-    override def computeHash = doHash(info)
+    override def computeHash: Int = identityHash
+    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
     override def toString = s"Skolem($info)"
   }
 
