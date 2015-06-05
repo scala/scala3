@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.{Flags, Definitions}
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{TermRef, Type}
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
+import dotty.tools.dotc.core.Decorators._
 
 /**
  * This phase retrieves all `@specialized` anotations before they are thrown away,
@@ -19,7 +20,7 @@ class PreSpecializer extends MiniPhaseTransform {
   override def phaseName: String = "prespecialize"
 
   private final def primitiveCompanionToPrimitive(companion: Type)(implicit ctx: Context) = {
-    if (companion.asInstanceOf[TermRef].name.toString == "AnyRef") { // Handles `@specialized(AnyRef)` cases
+    if (companion.termSymbol eq ctx.requiredModule("scala.package").info.member("AnyRef".toTermName).symbol) { // Handles `@specialized(AnyRef)` cases
       defn.AnyRefType
     }
     else {
@@ -53,7 +54,7 @@ class PreSpecializer extends MiniPhaseTransform {
     }
 
     if (allowedToSpecialize(sym)) {
-      val annotation = sym.denot.getAnnotation(defn.specializedAnnot).getOrElse(Nil)
+      val annotation = sym.denot.getAnnotation(defn.SpecializedAnnot).getOrElse(Nil)
       annotation match {
         case annot: Annotation =>
           val args = annot.arguments
