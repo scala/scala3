@@ -228,11 +228,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case sk: SkolemType =>
-        sk.binder match {
-          case rt: RefinedType => s"${nameString(rt.typeSymbol)}{...}.this"
-          case _ => "<skolem>"
-        }
+      case tp: RefinedThis =>
+        s"${nameString(tp.binder.typeSymbol)}{...}.this"
+      case tp: SkolemType =>
+        "<skolem>" // !!! todo refine with unique identifier.
     }
   }
 

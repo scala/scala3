@@ -103,9 +103,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFpkg            fullyQualified_NameRef
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
-                  SKOLEMtype            refinedType_ASTRef
+                  REFINEDthis           refinedType_ASTRef
+                  SKOLEMtype            Type_ASTRef
                   SHARED                path_ASTRef
-
 
   Constant      = UNITconst
                   FALSEconst
@@ -262,15 +262,16 @@ object TastyFormat {
   final val TERMREFpkg = 67
   final val TYPEREFpkg = 68
   final val SKOLEMtype = 69
-  final val BYTEconst = 70
-  final val SHORTconst = 71
-  final val CHARconst = 72
-  final val INTconst = 73
-  final val LONGconst = 74
-  final val FLOATconst = 75
-  final val DOUBLEconst = 76
-  final val STRINGconst = 77
-  final val IMPORTED = 78
+  final val REFINEDthis = 70
+  final val BYTEconst = 71
+  final val SHORTconst = 72
+  final val CHARconst = 73
+  final val INTconst = 74
+  final val LONGconst = 75
+  final val FLOATconst = 76
+  final val DOUBLEconst = 77
+  final val STRINGconst = 78
+  final val IMPORTED = 79
 
   final val THIS = 96
   final val CLASSconst = 97

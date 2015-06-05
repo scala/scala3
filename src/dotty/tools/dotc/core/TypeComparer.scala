@@ -536,7 +536,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     try {
       val rebindNeeded = tp2.refinementRefersToThis
       val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
-      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substSkolem(tp2, base) else tp2.refinedInfo
+      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(tp2, base) else tp2.refinedInfo
       def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
       def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)

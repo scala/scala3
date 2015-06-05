@@ -30,7 +30,7 @@ trait Skolemization {
     case tp: TypeProxy =>
       ensureStableSingleton(tp.underlying)
   }
-
+/*@@@
   /** If skolems were encountered, approximate a type `tp` with a type that
    *  does not contain skolem types.
    *  @param  toSuper   if true, return the smallest supertype of `tp` with this property
@@ -137,7 +137,7 @@ trait Skolemization {
         this.seen = savedSeen
       }
     }
-  }
+  }*/
 }
 
 object Skolemization extends Enumeration {

@@ -12,6 +12,9 @@ import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
+    asSeenFrom(tp, pre, cls, null)
+
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {

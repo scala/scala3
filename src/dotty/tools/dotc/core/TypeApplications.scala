@@ -387,9 +387,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
 
-  def containsSkolemType(target: Type)(implicit ctx: Context): Boolean = {
+  def containsRefinedThis(target: Type)(implicit ctx: Context): Boolean = {
     def recur(tp: Type): Boolean = tp.stripTypeVar match {
-      case SkolemType(tp) =>
+      case RefinedThis(tp) =>
         tp eq target
       case tp: NamedType =>
         tp.info match {
@@ -446,7 +446,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
        def replacements(rt: RefinedType): List[Type] =
           for (sym <- boundSyms)
-            yield TypeRef(SkolemType(rt), correspondingParamName(sym))
+            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
 
         def rewrite(tp: Type): Type = tp match {
           case tp @ RefinedType(parent, name: TypeName) =>
@@ -489,7 +489,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
-          SkolemType(rt).select(tpnme.lambdaArgName(i)))
+          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
         tp.subst(boundSyms, argRefs).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
