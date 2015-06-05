@@ -12,19 +12,25 @@ import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
+    val m = if (pre.isStable || ctx.isAfterTyper) null else new AsSeenFromMap(pre, cls)
     asSeenFrom(tp, pre, cls, null)
-
+  }
+    
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
-      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
+      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
+        if (!pre.isStable && theMap != null && theMap.currentVariance <= 0) {
+          theMap.unstable = true
+        }
         pre match {
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
+      }
       else if ((pre.termSymbol is Package) && !(thiscls is Package))
         toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
       else
@@ -36,7 +42,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp: NamedType =>
           val sym = tp.symbol
           if (sym.isStatic) tp
-          else tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls, theMap))
+          else {
+            val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
+            if (theMap != null && theMap.unstable) {
+              pre1.member(tp.name).info match {
+                case TypeAlias(alias) => return alias
+                case _ =>
+              }
+            }
+            tp.derivedSelect(pre1)
+          }
         case tp: ThisType =>
           toPrefix(pre, cls, tp.cls)
         case _: BoundType | NoPrefix =>
@@ -57,6 +72,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
+    def currentVariance = variance
+    var unstable = false
   }
 
   /** Implementation of Types#simplified */
