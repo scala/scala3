@@ -12,14 +12,50 @@ import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
+  /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
+   *  for what this means. Called very often, so the code is optimized heavily.
+   *
+   *  A tricky aspect is what to do with unstable prefixes. E.g. say we have a class
+   *
+   *    class C { type T; def f(x: T): T }
+   *
+   *  and an expression `e` of type `C`. Then computing the type of `e.f` leads
+   *  to the query asSeenFrom(`C`, `(x: T)T`). What should it's result be? The
+   *  naive answer `(x: C.T)C.T` is incorrect given that we treat `C.T` as the existential
+   *  `exists(c: C)c.T`. What we need to do instead is to skolemize the existential. So
+   *  the answer would be `(x: c.T)c.T` for some (unknown) value `c` of type `C`.
+   *  `c.T` is expressed in the compiler as a skolem type `Skolem(C)`.
+   *
+   *  Now, skolemization is messy and expensive, so we want to do it only if we absolutely
+   *  must. We must skolemize if an unstable prefix is used in nonvariant or
+   *  contravariant position of the return type of asSeenFrom.
+   *
+   *  In the implementation of asSeenFrom, we first try to run asSeenFrom without
+   *  skolemizing. If that would be incorrect we will be told by the fact that
+   *  `unstable` is set in the passed AsSeenFromMap. In that case we run asSeenFrom
+   *  again with a skolemized prefix.
+   *
+   *  In the interest of speed we want to avoid creating an AsSeenFromMap every time
+   *  asSeenFrom is called. So we do this here only if the prefix is unstable
+   *  (because then we need the map as a container for the unstable field). For
+   *  stable prefixes the map is `null`; it might however be instantiated later
+   *  for more complicated types.
+   */
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
     val m = if (pre.isStable || !ctx.phase.isTyper) null else new AsSeenFromMap(pre, cls)
     var res = asSeenFrom(tp, pre, cls, m)
     if (m != null && m.unstable) asSeenFrom(tp, SkolemType(pre), cls) else res
   }
 
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
+  /** Helper method, taking a map argument which is instantiated only for more
+   *  complicated cases of asSeenFrom.
+   */
+  private def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
+    /** Map a `C.this` type to the right prefix. If the prefix is unstable and
+     *  the `C.this` occurs in nonvariant or contravariant position, mark the map
+     *  to be unstable.
+     */
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
@@ -48,6 +84,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             if (theMap != null && theMap.unstable && prevStable) {
               pre1.member(tp.name).info match {
                 case TypeAlias(alias) =>
+                  // try to follow aliases of this will avoid skolemization.
                   theMap.unstable = false
                   return alias
                 case _ =>
@@ -73,13 +110,20 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
+  /** The TypeMap handling the asSeenFrom in more complicated cases */
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
+
+    /** A method to export the current variance of the map */
     def currentVariance = variance
+
+    /** A field which indicates whether an unstable argument in nonvariant
+     *  or contravariant position was encountered.
+     */
     var unstable = false
   }
 
- /** Approximate a type `tp` with a type that does not contain skolem types.
+  /** Approximate a type `tp` with a type that does not contain skolem types.
    */
   final def deskolemize(tp: Type): Type = deskolemize(tp, 1, Set())
 
