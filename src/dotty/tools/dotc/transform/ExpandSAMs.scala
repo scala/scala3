@@ -74,7 +74,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         val defaultSym = ctx.newSymbol(isDefinedAtFn, nme.WILDCARD, Synthetic, selector.tpe.widen)
         val defaultCase =
           CaseDef(
-            Bind(defaultSym, untpd.Ident(nme.WILDCARD).withType(selector.tpe.widen)),
+            Bind(defaultSym, Underscore(selector.tpe.widen)),
             EmptyTree,
             Literal(Constant(false)))
         cpy.Match(applyRhs)(paramRef, cases.map(translateCase) :+ defaultCase)

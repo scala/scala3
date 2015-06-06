@@ -427,7 +427,7 @@ object Flags {
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
-    SourceModifierFlags | Module | Param | Synthetic | Package | Local
+    SourceModifierFlags | Module | Param | Synthetic | Package | Local | commonFlags(Mutable)
       // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
 
   assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
@@ -520,11 +520,17 @@ object Flags {
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
 
+  /** A private accessor */
+  final val PrivateAccessor = allOf(Private, Accessor)
+
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | ParamAccessor
+
+  /** A lazy or deferred value */
+  final val LazyOrDeferred = Lazy | Deferred
 
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor

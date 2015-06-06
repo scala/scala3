@@ -42,12 +42,6 @@ import Decorators._
    */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: DefDef if !tree.symbol.is(Lazy | Deferred) =>
-      assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
-    case _ =>
-  }
-
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
 
@@ -61,8 +55,9 @@ import Decorators._
     lazy val field = sym.field.orElse(newField).asTerm
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
-        tree.rhs.changeOwnerAfter(sym, field, thisTransform)
-        val fieldDef = transformFollowing(ValDef(field, tree.rhs))
+        var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
+        if (isWildcardArg(rhs)) rhs = EmptyTree
+        val fieldDef = transformFollowing(ValDef(field, rhs))
         val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field)))
         Thicket(fieldDef, getterDef)
       }

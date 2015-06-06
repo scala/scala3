@@ -86,6 +86,7 @@ trait FullParameterization {
    *    }
    *
    *  If a self type is present, $this has this self type as its type.
+   *  @param abstractOverClass  if true, include the type parameters of the class in the method's list of type parameters.
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
@@ -225,12 +226,18 @@ trait FullParameterization {
 }
 
 object FullParameterization {
+
   /** Assuming `info` is a result of a `fullyParameterizedType` call, the signature of the
    *  original method type `X` such that `info = fullyParameterizedType(X, ...)`.
    */
   def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
-    case info: PolyType => memberSignature(info.resultType)
-    case info @ MethodType(nme.SELF :: Nil, _) => info.resultType.ensureMethodic.signature
-    case _ => Signature.NotAMethod
+    case info: PolyType =>
+      memberSignature(info.resultType)
+    case info @ MethodType(nme.SELF :: Nil, _) =>
+      info.resultType.ensureMethodic.signature
+    case info @ MethodType(nme.SELF :: otherNames, thisType :: otherTypes) =>
+      info.derivedMethodType(otherNames, otherTypes, info.resultType).signature
+    case _ =>
+      Signature.NotAMethod
   }
 }

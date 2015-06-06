@@ -56,6 +56,7 @@ class Compiler {
            new Getters,
            new ClassTags,
            new ElimByName,
+           new AugmentScala2Traits,
            new ResolveSuper),
       List(new Erasure),
       List(new ElimErasedValueType,
@@ -63,6 +64,7 @@ class Compiler {
            new Mixin,
            new LazyVals,
            new Memoize,
+           new LinkScala2ImplClasses,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
            new FunctionalInterfaces),
@@ -74,7 +76,6 @@ class Compiler {
            new ExpandPrivate,
            new CollectEntryPoints,
            new LabelDefs,
-           new ElimWildcardIdents,
            new TraitConstructors),
       List(new GenBCode)
     )

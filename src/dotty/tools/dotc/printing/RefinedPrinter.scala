@@ -172,7 +172,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
    *     parent { type Apply = body; argBindings? }
    *
    *  split it into
-   
+   *
    *   - the `parent`
    *   - the simplified `body`
    *   - the bindings HK$ members, if there are any

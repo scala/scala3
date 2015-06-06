@@ -155,13 +155,17 @@ object NameOps {
 
     /** The expanded name of `name` relative to given class `base`.
      */
-    def expandedName(base: Symbol)(implicit ctx: Context): N =
-      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated("$"))
+    def expandedName(base: Symbol, separator: Name)(implicit ctx: Context): N =
+      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated("$"), separator)
+
+    def expandedName(base: Symbol)(implicit ctx: Context): N = expandedName(base, nme.EXPAND_SEPARATOR)
 
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
-    def expandedName(prefix: Name): N =
-      name.fromName(prefix ++ nme.EXPAND_SEPARATOR ++ name).asInstanceOf[N]
+    def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
+      name.fromName(prefix ++ separator ++ name).asInstanceOf[N]
+
+    def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
 
     def unexpandedName: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
@@ -177,6 +181,8 @@ object NameOps {
     def shadowedName: N = likeTyped(nme.SHADOWED ++ name)
 
     def revertShadowed: N = likeTyped(name.drop(nme.SHADOWED.length))
+
+    def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether

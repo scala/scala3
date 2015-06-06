@@ -31,6 +31,18 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     //sup.select(target)
   }
 
+  /** Is `sym` a member of implementing class `cls`? */
+  def isCurrent(sym: Symbol) = cls.info.member(sym.name).hasAltWith(_.symbol == sym)
+
+  def needsForwarder(meth: Symbol): Boolean = {
+    def needsDisambiguation = !meth.allOverriddenSymbols.forall(_ is Deferred)
+    meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
+    isCurrent(meth) &&
+    (needsDisambiguation || meth.owner.is(Scala2x))
+  }
+
+  final val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
+
   def forwarder(target: Symbol) = (targs: List[Type]) => (vrefss: List[List[Tree]]) =>
     superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
 }

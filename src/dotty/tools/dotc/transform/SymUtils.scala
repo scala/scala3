@@ -85,9 +85,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def field(implicit ctx: Context): Symbol =
     self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
 
-  def initializer(implicit ctx: Context): TermSymbol =
-    self.owner.info.decl(InitializerName(self.asTerm.name)).symbol.asTerm
-
   def isField(implicit ctx: Context): Boolean =
     self.isTerm && !self.is(Method)
+
+  def implClass(implicit ctx: Context): Symbol =
+    self.owner.info.decl(self.name.implClassName).symbol
 }

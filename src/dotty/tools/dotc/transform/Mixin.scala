@@ -14,6 +14,7 @@ import DenotTransformers._
 import StdNames._
 import NameOps._
 import Phases._
+import ast.untpd
 import ast.Trees._
 import collection.mutable
 
@@ -46,9 +47,22 @@ import collection.mutable
  *        reverse linearization order, add the following definitions to C:
  *
  *          3.1 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M,
- *              in order of textual occurrence:
+ *              in order of textual occurrence, produce the following:
+ *
+ *              3.1.1 If `x` is also a member of `C`, and M is a Dotty trait:
  *
  *                <mods> def x(): T = super[M].initial$x()
+ *
+ *              3.1.2 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *
+ *                <mods> def x(): T = _
+ *
+ *              3.1.3 If `x` is not a member of `C`, and M is a Dotty trait:
+ *
+ *                super[M].initial$x()
+ *
+ *              3.1.4 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *
  *
  *          3.2 (done in `superCallOpt`) The call:
  *
@@ -104,7 +118,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           val isym = initializer(vsym)
           val rhs = Block(
             initBuf.toList.map(_.changeOwner(impl.symbol, isym)),
-            stat.rhs.changeOwner(vsym, isym))
+            stat.rhs.changeOwner(vsym, isym).wildcardToDefault)
           initBuf.clear()
           cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
@@ -134,15 +148,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         if (baseCls.is(NoInitsTrait) || defn.PhantomClasses.contains(baseCls)) Nil
         else {
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
-          superRef(baseCls.primaryConstructor).appliedToNone :: Nil
-/*          constr.tpe.widen match {
-            case tpe: PolyType =>
-              val targs = cls.thisType.baseTypeWithArgs(baseCls).argTypes
-              constr = constr.appliedToTypes(targs)
-            case _ =>
-          }
-          constr.ensureApplied :: Nil
-*/
+          transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
         }
     }
 
@@ -150,16 +156,16 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
 
     def traitInits(mixin: ClassSymbol): List[Tree] =
-      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
-        yield {
-        // transformFollowing call is needed to make memoize & lazy vals run
-        val rhs = transformFollowing(superRef(initializer(getter)).appliedToNone)
-        // isCurrent: getter is a member of implementing class
-        val isCurrent = getter.is(ExpandedName) || ctx.atPhase(thisTransform) { implicit ctx =>
-          cls.info.member(getter.name).suchThat(_.isGetter).symbol == getter
-        }
-        if (isCurrent) transformFollowing(DefDef(implementation(getter.asTerm), rhs))
-        else rhs
+      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList) yield {
+        val isScala2x = mixin.is(Scala2x)
+        def default = Underscore(getter.info.resultType)
+        def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
+        if (isCurrent(getter) || getter.is(ExpandedName))
+          // transformFollowing call is needed to make memoize & lazy vals run
+          transformFollowing(
+            DefDef(implementation(getter.asTerm), if (isScala2x) default else initial))
+        else if (isScala2x) EmptyTree
+        else initial
       }
 
     def setters(mixin: ClassSymbol): List[Tree] =
