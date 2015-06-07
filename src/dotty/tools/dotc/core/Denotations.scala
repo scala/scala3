@@ -274,24 +274,17 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
-            def shadows(sym1: Symbol, sym2: Symbol) = {
-              val owner1 = sym1.owner
-              val owner2 = sym2.owner
-              owner1.derivesFrom(owner2) && owner1.ne(owner2)
+            def unshadowed(sym: Symbol, from: Symbol) = {
+              val symOwner = sym.owner
+              val fromOwner = from.owner
+              !fromOwner.derivesFrom(symOwner) || fromOwner.eq(symOwner)
             }
-            /** Preference according to order (overrides, isAsConcrete, shadows)*/
+            /** Preference according to partial pre-order (isConcrete, unshadowed) */
+            def preferSym(sym1: Symbol, sym2: Symbol) =
+              sym1.isAsConcrete(sym2) && (!sym2.isAsConcrete(sym1) || unshadowed(sym1, sym2))
+            /** Sym preference provided types also override */
             def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
-              info1.overrides(info2) && (
-                // non-standard ordering of tests for efficiency -
-                // overrides is costlier to compute than the others, so its 2nd test comes last.
-                sym1.isAsConcrete(sym2) && (
-                  !sym2.isAsConcrete(sym1)
-                  ||
-                  shadows(sym1, sym2)
-                )
-                ||
-                !info2.overrides(info1)
-              )
+              preferSym(sym1, sym2) && info1.overrides(info2)
             if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)
@@ -302,7 +295,7 @@ object Denotations {
                 val sym =
                   if (!sym1.exists) sym2
                   else if (!sym2.exists) sym1
-                  else if (sym2 isAsConcrete sym1) sym2
+                  else if (preferSym(sym2, sym1)) sym2
                   else sym1
                 new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
               }
