@@ -326,22 +326,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
+    else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
+      followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else tp.prefix match {
-      case pre: SingletonType =>
-        val prefix =
-          singleton(pre) match {
-            case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
-              // after erasure outer paths should be respected
-              new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
-            case t =>
-              t
-          }
-        prefix.select(tp)
+      case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
   def ref(sym: Symbol)(implicit ctx: Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
+
+  private def followOuterLinks(t: Tree)(implicit ctx: Context) = t match {
+    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+      // after erasure outer paths should be respected
+      new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
+    case t =>
+      t
+  }
 
   def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
     case tp: TermRef => ref(tp)

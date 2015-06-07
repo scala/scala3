@@ -2,7 +2,9 @@ object test {
   def method(): Unit = {
     class Foo extends AnyRef {
       object Color {
-        object Blue
+        object Blue {
+          //val b = new Board
+        }
       }
 
       class Board {

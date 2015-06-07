@@ -420,7 +420,7 @@ object RefChecks {
         for (member <- missing) {
           val memberSym = member.symbol
           def undefined(msg: String) =
-            abstractClassError(false, member.showDcl + " is not defined" + msg)
+            abstractClassError(false, s"${member.showDcl} is not defined $msg")
           val underlying = memberSym.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -456,9 +456,8 @@ object RefChecks {
                   case (pa, pc) :: Nil =>
                     val abstractSym = pa.typeSymbol
                     val concreteSym = pc.typeSymbol
-                    def subclassMsg(c1: Symbol, c2: Symbol) = (
-                      ": %s is a subclass of %s, but method parameter types must match exactly.".format(
-                        c1.showLocated, c2.showLocated))
+                    def subclassMsg(c1: Symbol, c2: Symbol) =
+                      s": ${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
                     val addendum =
                       if (abstractSym == concreteSym) {
                         val paArgs = pa.argInfos
@@ -478,12 +477,14 @@ object RefChecks {
                         subclassMsg(concreteSym, abstractSym)
                       else ""
 
-                    undefined("\n(Note that %s does not match %s%s)".format(pa, pc, addendum))
+                    undefined(s"\n(Note that $pa does not match $pc$addendum)")
                   case xs =>
-                    undefined("")
+                    undefined(s"\n(The class implements a member with a different type: ${concrete.showDcl})")
                 }
-              case _ =>
+              case Nil =>
                 undefined("")
+              case concretes =>
+                undefined(s"\n(The class implements members with different types: ${concretes.map(_.showDcl)}%\n  %)")
             }
           } else undefined("")
         }
