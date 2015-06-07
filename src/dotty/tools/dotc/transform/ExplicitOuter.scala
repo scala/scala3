@@ -221,7 +221,7 @@ object ExplicitOuter {
       case nw: New =>
         isOuter(nw.tpe.classSymbol.owner.enclosingClass)
       case _ =>
-       false
+        false
     }
   }
 
