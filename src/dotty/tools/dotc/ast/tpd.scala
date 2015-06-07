@@ -327,16 +327,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
-      correctForPath(This(tp.symbol.moduleClass.asClass))
+      followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else tp.prefix match {
-      case pre: SingletonType => correctForPath(singleton(pre)).select(tp)
+      case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
   def ref(sym: Symbol)(implicit ctx: Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
-  private def correctForPath(t: Tree)(implicit ctx: Context) = t match {
+  private def followOuterLinks(t: Tree)(implicit ctx: Context) = t match {
     case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
       new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
