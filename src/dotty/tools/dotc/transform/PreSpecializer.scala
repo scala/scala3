@@ -1,26 +1,52 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.ast.Trees.{Select, Ident, SeqLiteral, Typed}
+import dotty.tools.dotc.ast.Trees.{Ident, SeqLiteral, Typed}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.{Flags, Definitions}
-import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.{TermRef, Type}
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
+import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.{Definitions, Flags}
+import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, MiniPhaseTransform, TransformerInfo}
 
 /**
- * This phase retrieves all `@specialized` anotations before they are thrown away,
+ * This phase retrieves all `@specialized` anotations,
  * and stores them for the `TypeSpecializer` phase.
  */
 class PreSpecializer extends MiniPhaseTransform {
 
   override def phaseName: String = "prespecialize"
 
+  private var anyRefModule: Symbol = NoSymbol
+  private var specializableMapping: Map[Symbol, List[Type]] = _
+  private var specializableModule: Symbol = NoSymbol
+
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+    specializableModule = ctx.requiredModule("scala.Specializable")
+    anyRefModule = ctx.requiredModule("scala.package") // Using nme.PACKAGE generated errors on my machine - should be further explored
+    def specializableField(nm: String) = specializableModule.info.member(nm.toTermName).symbol
+
+    specializableMapping = Map(
+      specializableField("Primitives") -> List(defn.IntType, defn.LongType, defn.FloatType, defn.ShortType,
+        defn.DoubleType, defn.BooleanType, defn.UnitType, defn.CharType, defn.ByteType),
+      specializableField("Everything") -> List(defn.IntType, defn.LongType, defn.FloatType, defn.ShortType,
+        defn.DoubleType, defn.BooleanType, defn.UnitType, defn.CharType, defn.ByteType, defn.AnyRefType),
+      specializableField("Bits32AndUp") -> List(defn.IntType, defn.LongType, defn.FloatType, defn.DoubleType),
+      specializableField("Integral") -> List(defn.ByteType, defn.ShortType, defn.IntType, defn.LongType, defn.CharType),
+      specializableField("AllNumeric") -> List(defn.ByteType, defn.ShortType, defn.IntType, defn.LongType,
+        defn.CharType, defn.FloatType, defn.DoubleType),
+      specializableField("BestOfBreed") -> List(defn.IntType, defn.DoubleType, defn.BooleanType, defn.UnitType,
+        defn.AnyRefType)
+    )
+    this
+  }
+
   private final def primitiveCompanionToPrimitive(companion: Type)(implicit ctx: Context) = {
-    if (companion.termSymbol eq ctx.requiredModule("scala.package").info.member("AnyRef".toTermName).symbol) { // Handles `@specialized(AnyRef)` cases
+    if (companion.termSymbol eq anyRefModule.info.member(nme.AnyRef.toTermName).symbol) {
       defn.AnyRefType
     }
     else {
@@ -28,6 +54,13 @@ class PreSpecializer extends MiniPhaseTransform {
       assert(defn.ScalaValueClasses.contains(claz))
       claz.typeRef
     }
+  }
+
+  private def specializableToPrimitive(specializable: Type, name: Name)(implicit ctx: Context): List[Type] = {
+    if (specializable.termSymbol eq specializableModule.info.member(name).symbol) {
+      specializableMapping(specializable.termSymbol)
+    }
+    else Nil
   }
 
   def defn(implicit ctx: Context): Definitions = ctx.definitions
@@ -60,12 +93,13 @@ class PreSpecializer extends MiniPhaseTransform {
           val args = annot.arguments
           if (args.isEmpty) primitiveTypes
           else args.head match {
-            case a@Typed(SeqLiteral(types), _) =>  // Matches the expected `@specialized(...)` annotations
+            case a @ Typed(SeqLiteral(types), _) =>
               types.map(t => primitiveCompanionToPrimitive(t.tpe))
 
-            case a@Select(Ident(_), _)         => primitiveTypes  // Matches `Select(Ident(Specializable), Primitives)`
-                                                                  // which is used in several instances in the compiler
-            case _ => ctx.error("surprising match on specialized annotation"); Nil
+            case a @ Ident(groupName) if a.tpe.isInstanceOf[Type] => // Matches `@specialized` annotations on Specializable Groups
+              specializableToPrimitive(a.tpe.asInstanceOf[Type], groupName)
+
+            case _ => ctx.error("unexpected match on specialized annotation"); Nil
           }
         case nil => Nil
       }
