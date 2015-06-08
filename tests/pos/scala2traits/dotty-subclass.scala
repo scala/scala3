@@ -1,7 +1,13 @@
 // This is supposed to be compiled by Dotty
 class Sub extends T
 
-class A extends S2T with S2Tprivate {
+trait DT {
+
+  @volatile lazy val dx = 2
+
+}
+
+class A extends S2T with S2Tprivate with DT {
   val a: Int = 3
   var b = 2
 }

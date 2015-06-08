@@ -13,12 +13,15 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   val superCls: Symbol = cls.superClass
   val mixins: List[ClassSymbol] = cls.mixins
 
-  def implementation(member: TermSymbol): TermSymbol =
-    member.copy(
+  def implementation(member: TermSymbol): TermSymbol = {
+    val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisTransform).asTerm
+    res.addAnnotations(member)
+    res
+  }
 
   def superRef(target: Symbol, pos: Position = cls.pos): Tree = {
     val sup = if (target.isConstructor && !target.owner.is(Trait))
