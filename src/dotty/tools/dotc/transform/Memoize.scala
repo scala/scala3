@@ -50,7 +50,16 @@ import Decorators._
       name = sym.name.asTermName.fieldName,
       flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
       info = sym.info.resultType,
-      coord = tree.pos).enteredAfter(thisTransform)
+      coord = tree.pos)
+      .withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
+      .enteredAfter(thisTransform)
+
+    /** Can be used to filter annotations on getters and setters; not used yet */
+    def keepAnnotations(denot: SymDenotation, meta: ClassSymbol) = {
+      val cpy = sym.copySymDenotation()
+      cpy.filterAnnotations(_.symbol.derivesFrom(meta))
+      if (cpy.annotations ne denot.annotations) cpy.installAfter(thisTransform)
+    }
 
     lazy val field = sym.field.orElse(newField).asTerm
     if (sym.is(Accessor, butNot = NoFieldNeeded))

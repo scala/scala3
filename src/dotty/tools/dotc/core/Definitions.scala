@@ -346,6 +346,9 @@ class Definitions {
   lazy val UncheckedStableAnnot = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
   lazy val UncheckedVarianceAnnot = ctx.requiredClass("scala.annotation.unchecked.uncheckedVariance")
   lazy val VolatileAnnot = ctx.requiredClass("scala.volatile")
+  lazy val FieldMetaAnnot = ctx.requiredClass("scala.annotation.meta.field")
+  lazy val GetterMetaAnnot = ctx.requiredClass("scala.annotation.meta.getter")
+  lazy val SetterMetaAnnot = ctx.requiredClass("scala.annotation.meta.setter")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type) = MethodType(List(AnyType), tp)
