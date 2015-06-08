@@ -286,6 +286,13 @@ object SymDenotations {
 
     // ------ Names ----------------------------------------------
 
+    /** The expanded name of this denotation. */
+    final def expandedName(implicit ctx: Context) =
+      if (is(ExpandedName) || isConstructor) name
+      else name.expandedName(initial.asSymDenotation.owner)
+        // need to use initial owner to disambiguate, as multiple private symbols with the same name
+        // might have been moved from different origins into the same class
+
     /** The name with which the denoting symbol was created */
     final def originalName(implicit ctx: Context) = {
       val d = initial.asSymDenotation
@@ -1081,11 +1088,7 @@ object SymDenotations {
     def ensureNotPrivate(implicit ctx: Context) =
       if (is(Private))
         copySymDenotation(
-          name =
-            if (is(ExpandedName) || isConstructor) this.name
-            else this.name.expandedName(initial.asSymDenotation.owner),
-              // need to use initial owner to disambiguate, as multiple private symbols with the same name
-              // might have been moved from different origins into the same class
+          name = expandedName,
           initFlags = this.flags &~ Private | ExpandedName)
       else this
   }
