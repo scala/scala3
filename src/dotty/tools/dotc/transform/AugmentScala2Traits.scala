@@ -69,16 +69,13 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
           info = fullyParameterizedType(mold.info, mixin))
       }
 
-      def traitSetter(getter: TermSymbol) = {
-        val separator = if (getter.is(Private)) nme.EXPAND_SEPARATOR else nme.TRAIT_SETTER_SEPARATOR
-        val expandedGetterName =
-          if (getter.is(ExpandedName)) getter.name
-          else getter.name.expandedName(getter.owner, separator)
+      def traitSetter(getter: TermSymbol) =
         getter.copy(
-          name = expandedGetterName.setterName,
+          name = getter.ensureNotPrivate.name
+                  .expandedName(getter.owner, nme.TRAIT_SETTER_SEPARATOR)
+                  .asTermName.setterName,
           flags = Method | Accessor | ExpandedName,
           info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
-      }
 
       for (sym <- mixin.info.decls) {
         if (needsForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy))
