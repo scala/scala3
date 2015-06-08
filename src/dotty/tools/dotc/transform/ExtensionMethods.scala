@@ -117,7 +117,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
       imeth.flags | Final &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    extensionMeth.addAnnotations(from = imeth)(ctx.withPhase(thisTransformer))
+    extensionMeth.addAnnotations(imeth.annotations)(ctx.withPhase(thisTransformer))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }

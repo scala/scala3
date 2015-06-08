@@ -19,7 +19,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisTransform).asTerm
-    res.addAnnotations(member)
+    res.addAnnotations(member.annotations)
     res
   }
 

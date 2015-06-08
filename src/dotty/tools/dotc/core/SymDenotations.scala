@@ -215,6 +215,10 @@ object SymDenotations {
     final def transformAnnotations(f: Annotation => Annotation)(implicit ctx: Context): Unit =
       annotations = annotations.mapConserve(f)
 
+    /** Keep only those annotations that satisfy `p` */
+    final def filterAnnotations(p: Annotation => Boolean)(implicit ctx: Context): Unit =
+      annotations = annotations.filterConserve(p)
+
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
@@ -230,9 +234,9 @@ object SymDenotations {
     final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)
 
-    /** Copy all annotations from given symbol by adding them to this symbol */
-    final def addAnnotations(from: Symbol)(implicit ctx: Context): Unit =
-      from.annotations.foreach(addAnnotation)
+    /** Add all given annotations to this symbol */
+    final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit =
+      annots.foreach(addAnnotation)
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
