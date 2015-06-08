@@ -19,7 +19,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   import tpd._
   override def phaseName = "specialize"
 
-  final val maxTparamsToSpecialize = 2
+  final var maxTparamsToSpecialize = 0
 
   private final def specialisedTypeToSuffix(implicit ctx: Context) =
     Map(defn.ByteType -> "B",
@@ -56,7 +56,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   private val newSymbolMap: mutable.HashMap[Symbol, mutable.HashMap[List[Type], Symbols.Symbol]] = mutable.HashMap.empty
 
   def allowedToSpecialize(sym: Symbol, numOfTypes: Int)(implicit ctx: Context): Boolean = {
-    numOfTypes <= maxTparamsToSpecialize &&
+    (maxTparamsToSpecialize == 0 || numOfTypes <= maxTparamsToSpecialize) &&
       numOfTypes > 0 &&
       sym.name != nme.asInstanceOf_ &&
       sym.name != nme.isInstanceOf_ &&
@@ -179,14 +179,12 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
               polyDefDef(newSym.asTerm, { tparams => vparams => {
                 val tmap: (Tree => Tree) = _ match {
                   case Return(t, from) if from.symbol == tree.symbol => Return(t, ref(newSym))
-                  case t: TypeApply => {
+                  case t: TypeApply =>
                     (origTParams zip instantiations(index)).foreach(x => genericToInstantiation.put(x._1, x._2))
                     transformTypeApply(t)
-                  }
-                  case t: Apply => {
+                  case t: Apply =>
                     (origTParams zip instantiations(index)).foreach(x => genericToInstantiation.put(x._1, x._2))
                     transformApply(t)
-                  }
                   case t => t
                 }
 
@@ -204,7 +202,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                   override def transform(tree1: Tree)(implicit ctx: Context) = super.transform(tree1) match {
                     case t @ Apply(fun, args) =>
                       assert(sameLength(args, fun.tpe.widen.firstParamTypes))
-                      val newArgs = (args zip fun.tpe.widen.firstParamTypes).map{case(t, tpe) => t.ensureConforms(tpe)}
+                      val newArgs = (args zip fun.tpe.widen.firstParamTypes).map{case(tr, tpe) => tr.ensureConforms(tpe)}
                       if (sameTypes(args, newArgs)) {
                         t
                       } else tpd.Apply(fun, newArgs)

@@ -213,9 +213,11 @@ class tests extends CompilerTest {
   @Test def bounds_spec = compileFile(specialDir, "bounds_specialization")
   @Test def multi_spec = compileFile(specialDir, "multi_specialization")
   @Test def pos_this_specialization = compileFile(specialDir, "this_specialization")
-  @Test def pos_spec_all = compileFiles(specialDir)
+  @Test def specializable_spec = runFile(specialDir, "specializable_specialization")
+  @Test def anyRef_spec = runFile(specialDir, "anyRef_specialization")
+  @Test def recursive_spec = runFile(specialDir, "recursive_specialization")
 
   @Test def run_spec = runFile(runDir, "method-specialization")
-  
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 }
