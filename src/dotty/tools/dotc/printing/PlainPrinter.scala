@@ -231,7 +231,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: RefinedThis =>
         s"${nameString(tp.binder.typeSymbol)}{...}.this"
       case tp: SkolemType =>
-        "<unknown instance of type " ~ toTextGlobal(tp.info) ~ ">"
+        if (homogenizedView) toText(tp.info)
+        else "<unknown instance of type " ~ toTextGlobal(tp.info) ~ ">"
     }
   }
 
