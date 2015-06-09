@@ -427,7 +427,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case PRIVATE => addFlag(Private)
           case INTERNAL => ??? // addFlag(Internal)
           case PROTECTED => addFlag(Protected)
-          case ABSTRACT => addFlag(Abstract)
+          case ABSTRACT =>
+            readByte()
+            nextByte match {
+              case OVERRIDE => addFlag(AbsOverride)
+              case _ => flags |= Abstract
+            }
           case FINAL => addFlag(Final)
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
