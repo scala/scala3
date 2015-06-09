@@ -269,6 +269,9 @@ object RefChecks {
         overrideError("cannot be used here - classes can only override abstract types")
       } else if (other.isEffectivelyFinal) { // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
+      } else if ((other == defn.Any_equals || other == defn.Any_hashCode) &&
+                 !member.is(Deferred) && member.owner.isUniversalTrait) {
+        overrideError(i"is defined in universal trait, cannot redefine ${other.name}")
       } else if (!other.is(Deferred) &&
                  !isDefaultGetter(other.name) &&
                  !member.isAnyOverride) {

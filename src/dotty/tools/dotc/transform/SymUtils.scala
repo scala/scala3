@@ -48,6 +48,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isAnyOverride(implicit ctx: Context) = self.is(Override) || self.is(AbsOverride)
     // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
 
+  def isUniversalTrait(implicit ctx: Context) =
+    self.is(Trait) && (self.asClass.superClass == defn.AnyClass)
+
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
