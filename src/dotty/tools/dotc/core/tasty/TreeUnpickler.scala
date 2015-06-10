@@ -440,7 +440,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
-          case ABSOVERRIDE => addFlag(AbsOverride)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)
