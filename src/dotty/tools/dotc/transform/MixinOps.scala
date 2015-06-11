@@ -17,7 +17,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
-      flags = member.flags &~ Deferred,
+      flags = member.flags &~ (Deferred | ParamAccessor),
       info = cls.thisType.memberInfo(member)).enteredAfter(thisTransform).asTerm
     res.addAnnotations(member.annotations)
     res
