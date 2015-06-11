@@ -20,7 +20,7 @@ import collection.mutable
 
 /** This phase performs the following transformations:
  *
- *  1. (done in `traitDefs`) Map every concrete trait getter
+ *  1. (done in `traitDefs` and `transformSym`) Map every concrete trait getter
  *
  *       <mods> def x(): T = expr
  *
@@ -46,31 +46,42 @@ import collection.mutable
  *        For every trait M directly implemented by the class (see SymUtils.mixin), in
  *        reverse linearization order, add the following definitions to C:
  *
- *          3.1 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M,
- *              in order of textual occurrence, produce the following:
+ *          3.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
+ *              in order of textual occurrence, add
  *
- *              3.1.1 If `x` is also a member of `C`, and M is a Dotty trait:
+ *               <mods> def x() = e
+ *
+ *              where `e` is the constructor argument in C that corresponds to `x`. Issue
+ *              an error if no such argument exists.
+ *
+ *          3.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
+ *              which is not a parameter accessor, in order of textual occurrence, produce the following:
+ *
+ *              3.2.1 If `x` is also a member of `C`, and M is a Dotty trait:
  *
  *                <mods> def x(): T = super[M].initial$x()
  *
- *              3.1.2 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *              3.2.2 If `x` is also a member of `C`, and M is a Scala 2.x trait:
  *
  *                <mods> def x(): T = _
  *
- *              3.1.3 If `x` is not a member of `C`, and M is a Dotty trait:
+ *              3.2.3 If `x` is not a member of `C`, and M is a Dotty trait:
  *
  *                super[M].initial$x()
  *
- *              3.1.4 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *              3.2.4 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
  *
  *
- *          3.2 (done in `superCallOpt`) The call:
+ *          3.3 (done in `superCallOpt`) The call:
  *
  *                super[M].<init>
  *
- *          3.3 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
+ *          3.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
  *                <mods> def x_=(y: T) = ()
+ *
+ *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
+ *      constructors.
  *
  *  Conceptually, this is the second half of the previous mixin phase. It needs to run
  *  after erasure because it copies references to possibly private inner classes and objects
@@ -87,6 +98,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
       sym.copySymDenotation(initFlags = sym.flags | Deferred).ensureNotPrivate
+    else if (sym.isConstructor && sym.owner.is(Trait) && sym.info.firstParamTypes.nonEmpty)
+      sym.copySymDenotation(info = MethodType(Nil, sym.info.resultType))
     else
       sym
 
@@ -131,15 +144,22 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       }) ++ initBuf
     }
 
-    def transformSuper(tree: Tree): Tree = {
+    /** Map constructor call to a pair of a supercall and a list of arguments
+     *  to be used as initializers of trait parameters if the target of the call
+     *  is a trait.
+     */
+    def transformConstructor(tree: Tree): (Tree, List[Tree]) = {
       val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
-      superRef(tree.symbol, tree.pos).appliedToArgs(args)
+      val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
+      (superRef(tree.symbol, tree.pos).appliedToArgs(callArgs), initArgs)
     }
 
-    val superCalls = (
+    val superCallsAndArgs = (
       for (p <- impl.parents if p.symbol.isConstructor)
-      yield p.symbol.owner -> transformSuper(p)
+      yield p.symbol.owner -> transformConstructor(p)
     ).toMap
+    val superCalls = superCallsAndArgs.mapValues(_._1)
+    val initArgs = superCallsAndArgs.mapValues(_._2)
 
     def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
       case Some(call) =>
@@ -155,12 +175,31 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     def wasDeferred(sym: Symbol) =
       ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
 
-    def traitInits(mixin: ClassSymbol): List[Tree] =
+    def traitInits(mixin: ClassSymbol): List[Tree] = {
+      var argNum = 0
+      def nextArgument() = initArgs.get(mixin) match {
+        case Some(arguments) =>
+          try arguments(argNum) finally argNum += 1
+        case None =>
+          val (msg, pos) = impl.parents.find(_.tpe.typeSymbol == mixin) match {
+            case Some(parent) => ("lacks argument list", parent.pos)
+            case None =>
+              ("""is indirectly implemented,
+                 |needs to be implemented directly so that arguments can be passed""".stripMargin,
+               cls.pos)
+          }
+          ctx.error(i"parameterized $mixin $msg", pos)
+          EmptyTree
+      }
       for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList) yield {
         val isScala2x = mixin.is(Scala2x)
         def default = Underscore(getter.info.resultType)
         def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
-        if (isCurrent(getter) || getter.is(ExpandedName))
+        if (isCurrent(getter) || getter.is(ExpandedName)) {
+          val rhs =
+            if (getter.is(ParamAccessor)) nextArgument()
+            else if (isScala2x) Underscore(getter.info.resultType)
+            else transformFollowing(superRef(initializer(getter)).appliedToNone)
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(
             DefDef(implementation(getter.asTerm), 
@@ -178,12 +217,17 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         else if (isScala2x) EmptyTree
         else initial
       }
+    }
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
         yield DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos))
 
     cpy.Template(impl)(
+      constr =
+        if (cls.is(Trait) && impl.constr.vparamss.flatten.nonEmpty)
+          cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
+        else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withPos(p.pos)),
       body =
         if (cls is Trait) traitDefs(impl.body)

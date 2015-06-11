@@ -516,7 +516,7 @@ object SymDenotations {
         !isAnonymousFunction &&
         !isCompanionMethod
 
-    /** Is this a setter? */
+    /** Is this a getter? */
     final def isGetter(implicit ctx: Context) =
       (this is Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
 
