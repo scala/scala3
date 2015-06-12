@@ -9,7 +9,7 @@ trait T {
 trait S2T {
   var x: Int = 0
   lazy val y: Int = 1
-//  val z: Int = 2
+  val z: Int = 2
   val a: Int
   var b: Int
 
@@ -19,13 +19,13 @@ trait S2T {
 trait S2Tprivate {
   private var x: Int = 0
   private lazy val y: Int = 1
-//  private val z: Int = 2  // @darkdimius uncomment once lazy vals can be inherited.
+  private val z: Int = 2
 
   private def f(x: Int): Int = x + y
   def xx = x
   def xx_=(x: Int) = this.x = x
   def yy = y
-//  def zz = z
+  def zz = z
   def ff(x: Int) = f(x)
 }
 

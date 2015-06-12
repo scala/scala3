@@ -11,6 +11,7 @@ import Names._
 import StdNames._
 import NameOps._
 import Flags._
+import Annotations._
 import language.implicitConversions
 
 object SymUtils {
@@ -90,4 +91,12 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def implClass(implicit ctx: Context): Symbol =
     self.owner.info.decl(self.name.implClassName).symbol
+
+  def annotationsCarrying(meta: ClassSymbol)(implicit ctx: Context): List[Annotation] =
+    self.annotations.filter(_.symbol.hasAnnotation(meta))
+
+  def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(implicit ctx: Context): self.type = {
+    self.addAnnotations(from.annotationsCarrying(meta))
+    self
+  }
 }
