@@ -1,3 +1,5 @@
+// This test now is pointless, since
+// hashCode and equals are no longer supported for value classes
 trait Foo extends Any { override def equals(x: Any) = false }
 trait Ding extends Any { override def hashCode = -1 }
 
