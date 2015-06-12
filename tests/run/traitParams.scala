@@ -10,6 +10,12 @@ trait U extends T {
   State.s += 1
   override def f = super.f + y
 }
+trait U2(a: Any) extends T {
+  def d = a // okay
+  val v = a // okay
+  a // used to crash
+}
+
 import State._
 class C(x: Int) extends U with T(x, x * x + s)
 class C2(x: Int) extends T(x, x * x + s) with U

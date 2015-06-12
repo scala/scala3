@@ -20,7 +20,7 @@ import collection.mutable
 
 /** This phase performs the following transformations:
  *
- *  1. (done in `traitDefs` and `transformSym`) Map every concrete trait getter
+ *   1. (done in `traitDefs` and `transformSym`) Map every concrete trait getter
  *
  *       <mods> def x(): T = expr
  *
@@ -83,6 +83,8 @@ import collection.mutable
  *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
  *      constructors.
  *
+ *   5. (done in `transformSym`) Drop ParamAccessor flag from all parameter accessors in traits.
+ *
  *  Conceptually, this is the second half of the previous mixin phase. It needs to run
  *  after erasure because it copies references to possibly private inner classes and objects
  *  into enclosing classes where they are not visible. This can only be done if all references
@@ -97,7 +99,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
-      sym.copySymDenotation(initFlags = sym.flags | Deferred).ensureNotPrivate
+      sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred).ensureNotPrivate
     else if (sym.isConstructor && sym.owner.is(Trait) && sym.info.firstParamTypes.nonEmpty)
       sym.copySymDenotation(info = MethodType(Nil, sym.info.resultType))
     else
@@ -124,7 +126,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     def traitDefs(stats: List[Tree]): List[Tree] = {
       val initBuf = new mutable.ListBuffer[Tree]
       stats.flatMap({
-        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty && !stat.symbol.is(Flags.Lazy)  =>
+        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty && !stat.symbol.is(Flags.Lazy) =>
           // make initializer that has all effects of previous getter,
           // replace getter rhs with empty tree.
           val vsym = stat.symbol
@@ -197,7 +199,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
         if (isCurrent(getter) || getter.is(ExpandedName)) {
           val rhs =
-            if (getter.is(ParamAccessor)) nextArgument()
+            if (ctx.atPhase(thisTransform)(implicit ctx => getter.is(ParamAccessor))) nextArgument()
             else if (isScala2x) Underscore(getter.info.resultType)
             else transformFollowing(superRef(initializer(getter)).appliedToNone)
           // transformFollowing call is needed to make memoize & lazy vals run
