@@ -861,7 +861,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def addTypedModifiersAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     val mods1 = typedModifiers(untpd.modsDeco(mdef).mods, sym)
-    for (tree <- mods1.annotations) sym.addAnnotation(Annotation(tree))
+    sym.annotations.foreach(_.tree) // force trees to be computed
   }
 
   def typedModifiers(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers = track("typedModifiers") {
