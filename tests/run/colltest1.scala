@@ -139,7 +139,8 @@ object Test extends dotty.runtime.LegacyApp {
 
   def setTest(empty: => Set[String]): Unit = {
     var s = empty + "A" + "B" + "C"
-    s += ("D", "E", "F")
+    s += "D"
+    s = s + ("D", "E", "F")
     s ++= List("G", "H", "I")
     s ++= ('J' to 'Z') map (_.toString)
     assert(s forall (s contains))

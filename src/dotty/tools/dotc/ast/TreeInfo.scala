@@ -33,7 +33,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
-    case Apply(fn, _ :: Nil) =>
+    case Apply(fn, _ :: _) =>
       unsplice(fn) match {
         case Select(_, name) if name.isOpAssignmentName => true
         case _ => false
