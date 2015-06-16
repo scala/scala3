@@ -8,6 +8,7 @@ import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
+  import TreeInfo._
 
   // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
   // But Scalac accepts the program happily without it. Need to find out why.
@@ -26,10 +27,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Does tree contain an initialization part when seen as a member of a class or trait?
    */
-  def isNoInitMember(tree: Tree): Boolean = unsplice(tree) match {
-    case EmptyTree | Import(_, _) | TypeDef(_, _) | DefDef(_, _, _, _, _) => true
-    case tree: ValDef => tree.unforcedRhs == EmptyTree
-    case _ => false
+  def defKind(tree: Tree): DefKind = unsplice(tree) match {
+    case EmptyTree | _: Import => InterfaceDef
+    case tree: TypeDef => if (tree.isClassDef) NoInitDef else InterfaceDef
+    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) InterfaceDef else NoInitDef
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) InterfaceDef else GeneralDef
+    case _ => GeneralDef
   }
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
@@ -272,6 +275,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
+  import TreeInfo._
 
   /** The purity level of this statement.
    *  @return   pure        if statement has no side effects
@@ -510,15 +514,27 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+}
 
-  private class PurityLevel(val x: Int) {
+object TreeInfo {
+
+  class PurityLevel(val x: Int) extends AnyVal {
     def >= (that: PurityLevel) = x >= that.x
     def min(that: PurityLevel) = new PurityLevel(x min that.x)
   }
 
-  private val Pure = new PurityLevel(2)
-  private val Idempotent = new PurityLevel(1)
-  private val Impure = new PurityLevel(0)
+  val Pure = new PurityLevel(2)
+  val Idempotent = new PurityLevel(1)
+  val Impure = new PurityLevel(0)
+
+  case class DefKind(val x: Int) extends AnyVal {
+    def >= (that: DefKind) = x >= that.x
+    def min(that: DefKind) = new DefKind(x min that.x)
+  }
+
+  val InterfaceDef = new DefKind(2)
+  val NoInitDef = new DefKind(1)
+  val GeneralDef = new DefKind(0)
 }
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe)

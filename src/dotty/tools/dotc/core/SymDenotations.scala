@@ -115,6 +115,12 @@ object SymDenotations {
     /** Unset given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
+    final def setFlagsFromDefKind(kind: TreeInfo.DefKind): Unit =
+      if (kind >= TreeInfo.NoInitDef) {
+        setFlag(NoInits)
+        if (kind == TreeInfo.InterfaceDef && myFlags.is(Trait)) setFlag(PureInterface)
+      }
+
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context) = {
       (if (fs <= FromStartFlags) myFlags else flags) is fs

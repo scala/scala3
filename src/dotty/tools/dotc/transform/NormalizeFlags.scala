@@ -19,12 +19,7 @@ class NormalizeFlags extends MiniPhaseTransform with SymTransformer { thisTransf
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     var newFlags = ref.flags &~ Local
-    if (ref.is(NoInitsTrait) && ref.info.decls.forall(isPureInterfaceMember))
-      newFlags |= PureInterface
     if (newFlags != ref.flags) ref.copySymDenotation(initFlags = newFlags)
     else ref
   }
-
-  private def isPureInterfaceMember(sym: Symbol)(implicit ctx: Context) =
-    if (sym.isTerm) sym.is(Deferred) else !sym.isClass
 }

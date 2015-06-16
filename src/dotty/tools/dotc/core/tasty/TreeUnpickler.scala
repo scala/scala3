@@ -6,7 +6,8 @@ package tasty
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import util.Positions._
-import dotty.tools.dotc.ast.{tpd, Trees, untpd}
+import ast.{tpd, Trees, untpd}
+import ast.TreeInfo._
 import Trees._
 import Decorators._
 import TastyUnpickler._, TastyBuffer._, PositionPickler._
@@ -352,7 +353,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     /** Create symbol of definition node and enter in symAtAddr map
      *  @return  true iff the definition does not contain initialization code
      */
-    def createSymbol()(implicit ctx: Context): Boolean = {
+    def createSymbol()(implicit ctx: Context): DefKind = {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
@@ -408,7 +409,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      tag != VALDEF || rhsIsEmpty
+      if (isClass) NoInitDef
+      else if (sym.isType || sym.isConstructor || flags.is(Deferred)) InterfaceDef
+      else if (tag == VALDEF) GeneralDef
+      else NoInitDef
     }
 
     /** Read modifier list into triplet of flags, annotations and a privateWithin
@@ -474,23 +478,23 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
      *  current address and `end`.
      *  @return  true iff none of the statements contains initialization code
      */
-    def indexStats(end: Addr)(implicit ctx: Context): Boolean = {
-      val noInitss =
+    def indexStats(end: Addr)(implicit ctx: Context): DefKind = {
+      val defKinds =
         until(end) {
           nextByte match {
             case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
               createSymbol()
             case IMPORT =>
               skipTree()
-              true
+              InterfaceDef
             case PACKAGE =>
               processPackage { (pid, end) => implicit ctx => indexStats(end) }
             case _ =>
               skipTree()
-              false
+              GeneralDef
           }
         }
-      noInitss.forall(_ == true)
+      (InterfaceDef /: defKinds)(_ min _)
     }
 
     /** Process package with given operation `op`. The operation takes as arguments
@@ -631,8 +635,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         }
         else EmptyValDef
       setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
-      val noInits = fork.indexStats(end)
-      if (noInits) cls.setFlag(NoInits)
+      cls.setFlagsFromDefKind(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
       def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree]): (List[Tree], List[Tree]) =
