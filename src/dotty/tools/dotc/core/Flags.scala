@@ -467,6 +467,8 @@ object Flags {
   /** Pure interfaces always have these flags */
   final val PureInterfaceCreationFlags = Trait | NoInits | PureInterface
 
+  final val NoInitsInterface = NoInits | PureInterface
+
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
 

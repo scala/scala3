@@ -563,8 +563,8 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      cls.setFlagsFromDefKind(
-        (TreeInfo.InterfaceDef /: impl.body)((kind, stat) => kind min defKind(stat)))
+      cls.setApplicableFlags(
+        (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))
     }
   }
 

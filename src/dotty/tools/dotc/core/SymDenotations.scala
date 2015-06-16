@@ -115,11 +115,11 @@ object SymDenotations {
     /** Unset given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
-    final def setFlagsFromDefKind(kind: TreeInfo.DefKind): Unit =
-      if (kind >= TreeInfo.NoInitDef) {
-        setFlag(NoInits)
-        if (kind == TreeInfo.InterfaceDef && myFlags.is(Trait)) setFlag(PureInterface)
-      }
+    /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
+    final def setApplicableFlags(flags: FlagSet): Unit = {
+      val mask = if (myFlags.is(Trait)) NoInitsInterface else NoInits
+      setFlag(flags & mask)
+    }
 
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context) = {
