@@ -40,7 +40,7 @@ trait SymDenotations { this: Context =>
   }
 
   def stillValid(denot: SymDenotation): Boolean =
-    if (denot is ValidForever) true
+    if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
       if (initial ne denot)
@@ -49,6 +49,7 @@ trait SymDenotations { this: Context =>
         val owner = denot.owner.denot
         stillValid(owner) && (
           !owner.isClass
+          || owner.isRefinementClass
           || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
           || denot.isSelfSym)
       } catch {
