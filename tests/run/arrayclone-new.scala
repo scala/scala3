@@ -1,4 +1,4 @@
-import scala.reflect.{ClassTag, classTag}
+import scala.reflect.ClassTag
 
 object Test extends dotty.runtime.LegacyApp{
   BooleanArrayClone;
@@ -106,3 +106,4 @@ object PolymorphicArrayClone{
 
   testIt(mangled.it, 0, 1);
 }
+

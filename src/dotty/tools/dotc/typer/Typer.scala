@@ -1238,7 +1238,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
-          adapt(tree.withType(alt), pt, original)
+          adapt(tree.withType(adaptByResult(alts, alt, pt)), pt, original)
         case Nil =>
           def noMatches =
             errorTree(tree,

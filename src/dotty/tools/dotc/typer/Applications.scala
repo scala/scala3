@@ -1039,6 +1039,46 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
+  /** If the `chosen` alternative has a result type incompatible with the expected result
+   *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
+   *  If the latter succeeds with a single alternative, return it, otherwise
+   *  fallback to `chosen`.
+   */
+  def adaptByResult(alts: List[TermRef], chosen: TermRef, pt: Type)(implicit ctx: Context) =
+    if (ctx.isAfterTyper) chosen
+    else {
+      def nestedCtx = ctx.fresh.setExploreTyperState
+      pt match {
+        case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
+          alts.filter(alt =>
+            (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
+            case Nil => chosen
+            case alt2 :: Nil => alt2
+            case alts2 =>
+              resolveOverloaded(alts2, pt) match {
+                case alt2 :: Nil => alt2
+                case _ => chosen
+              }
+          }
+        case _ => chosen
+      }
+    }
+
+  /** Is `alt` a method or polytype whose result type after the first value parameter
+   *  section conforms to the expected type `resultType`? If `resultType`
+   *  is a `IgnoredProto`, pick the underlying type instead.
+   */
+  private def resultConforms(alt: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
+    case IgnoredProto(ignored) => resultConforms(alt, ignored)
+    case _: ValueType =>
+      alt.widen match {
+        case tp: PolyType => resultConforms(constrained(tp).resultType, resultType)
+        case tp: MethodType => constrainResult(tp.resultType, resultType)
+        case _ => true
+      }
+    case _ => true
+  }
+
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
     def numericClasses(ts: List[T], acc: Set[Symbol]): Set[Symbol] = ts match {
       case t :: ts1 =>
