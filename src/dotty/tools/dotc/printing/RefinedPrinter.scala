@@ -148,7 +148,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
       case tp: SelectionProto =>
-        return "?{ " ~ toText(tp.name) ~ ": " ~ toText(tp.memberProto) ~ " }"
+        return "?{ " ~ toText(tp.name) ~ (" " provided !tp.name.decode.last.isLetterOrDigit) ~
+          ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType, _) =>
