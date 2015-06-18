@@ -68,5 +68,10 @@ object Mode {
    */
   val Printing = newMode(10, "Printing")
 
+  /** We are currently typechecking an ident to determine whether some implicit
+   *  is shadowed - don't do any other shadowing tests.
+   */
+  val ImplicitShadowing = newMode(11, "ImplicitShadowing")
+
   val PatternOrType = Pattern | Type
 }
