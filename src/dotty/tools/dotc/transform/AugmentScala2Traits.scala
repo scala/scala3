@@ -11,6 +11,7 @@ import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
+import Annotations._
 import StdNames._
 import NameOps._
 import ast.Trees._
@@ -80,9 +81,14 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
       for (sym <- mixin.info.decls) {
         if (needsForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy))
           implClass.enter(implMethod(sym.asTerm))
-        if (sym.isGetter && !sym.is(LazyOrDeferred) &&
-            !sym.setter.exists && !sym.info.resultType.isInstanceOf[ConstantType])
-          traitSetter(sym.asTerm).enteredAfter(thisTransform)
+        if (sym.isGetter)
+          if (sym.is(Lazy)) {
+            if (!sym.hasAnnotation(defn.VolatileAnnot))
+              sym.addAnnotation(Annotation(defn.VolatileAnnot, Nil))
+          }
+          else if (!sym.is(Deferred) && !sym.setter.exists &&
+                   !sym.info.resultType.isInstanceOf[ConstantType])
+            traitSetter(sym.asTerm).enteredAfter(thisTransform)
         if (sym.is(PrivateAccessor, butNot = ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
           sym.ensureNotPrivate.installAfter(thisTransform)

@@ -163,7 +163,18 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         if (isCurrent(getter) || getter.is(ExpandedName))
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(
-            DefDef(implementation(getter.asTerm), if (isScala2x) default else initial))
+            DefDef(implementation(getter.asTerm), 
+               if (isScala2x) {
+                 if (getter.is(Flags.Lazy)) { // lazy vals need to have a rhs that will be the lazy initializer
+                   val sym = mixin.implClass.info.nonPrivateDecl(getter.name).suchThat(_.info.paramTypess match {
+                     case List(List(t: TypeRef)) => t.isDirectRef(mixin)
+                     case _ => false
+                   }).symbol // lazy val can be overloaded
+                   ref(mixin.implClass).select(sym).appliedTo(This(ctx.owner.asClass))
+                 }
+                 else default
+               } else initial)
+          )
         else if (isScala2x) EmptyTree
         else initial
       }
