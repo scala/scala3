@@ -384,7 +384,9 @@ trait Implicits { self: Typer =>
     && (ctx.mode is Mode.ImplicitsEnabled)
     && from.isInstanceOf[ValueType]
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
+       || inferView(dummyTreeOfType(from), to)
+            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)
+            .isInstanceOf[SearchSuccess]
        )
     )
 
@@ -515,8 +517,11 @@ trait Implicits { self: Typer =>
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.setExploreTyperState))
-              rankImplicits(newPending, best :: acc)
+              if (ctx.mode.is(Mode.ImplicitExploration)) best :: Nil
+              else {
+                val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.setExploreTyperState))
+                rankImplicits(newPending, best :: acc)
+              }
           }
         case nil => acc
       }
