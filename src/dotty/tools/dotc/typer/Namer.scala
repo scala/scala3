@@ -701,7 +701,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
+      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
       def rhsType = ctx.deskolemize(
         typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion)
       def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)

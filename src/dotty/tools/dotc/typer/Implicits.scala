@@ -90,7 +90,7 @@ object Implicits {
       }
 
       if (refs.isEmpty) refs
-      else refs filter (refMatches(_)(ctx.fresh.setExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
+      else refs filter (refMatches(_)(ctx.fresh.addMode(Mode.TypevarsMissContext).setExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
   }
 
@@ -480,7 +480,8 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.setNewTyperState.addMode(Mode.ImplicitShadowing))
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)
+               (nestedContext.addMode(Mode.ImplicitShadowing).setNewTyperState)
         def refMatches(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
