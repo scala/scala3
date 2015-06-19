@@ -601,7 +601,7 @@ object Types {
       ctx.typeComparer.isSameType(this, that)
     }
 
-    /** Is this type a primitive value type which can be widened to the primitive value type `to`? */
+    /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
     def isValueSubType(that: Type)(implicit ctx: Context) = widenExpr match {
       case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
         that.widenExpr match {
