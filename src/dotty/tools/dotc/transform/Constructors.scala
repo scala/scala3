@@ -156,6 +156,16 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
 
+    /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
+    def mapOuter(outerParam: Symbol) = new TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+        case Apply(fn, Nil) if fn.symbol.is(OuterAccessor) || fn.symbol.isGetter && fn.symbol.name == nme.OUTER =>
+          ref(outerParam)
+        case _ =>
+          super.transform(tree)
+      }
+    }
+
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
     def splitStats(stats: List[Tree]): Unit = stats match {
@@ -174,6 +184,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
                 owner = constr.symbol).installAfter(thisTransform)
               constrStats += intoConstr(stat, sym)
             }
+          case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+            clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
             clsStats += stat
           case _ =>
