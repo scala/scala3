@@ -46,7 +46,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case _: FunProto =>
+      case pt: FunProto =>
         mt match {
           case mt: MethodType =>
             mt.isDependent || constrainResult(mt.resultType, pt.resultType)
