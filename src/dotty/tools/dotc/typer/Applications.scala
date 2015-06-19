@@ -915,7 +915,9 @@ trait Applications extends Compatibility { self: Typer =>
   }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
-    (alts: @unchecked) match {
+    alts match {
+      case Nil => alts
+      case _ :: Nil => alts
       case alt :: alts1 =>
         def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
           case alt :: alts1 =>
@@ -993,9 +995,7 @@ trait Applications extends Compatibility { self: Typer =>
      *  probability of pruning the search. result type comparisons are neither cheap nor
      *  do they prune much, on average.
      */
-    def adaptByResult(alts: List[TermRef], chosen: TermRef) =
-      if (ctx.isAfterTyper) chosen
-      else {
+    def adaptByResult(alts: List[TermRef], chosen: TermRef) = {
         def nestedCtx = ctx.fresh.setExploreTyperState
         pt match {
           case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
@@ -1074,14 +1074,19 @@ trait Applications extends Compatibility { self: Typer =>
       case pt =>
         alts filter (normalizedCompatible(_, pt))
     }
-    if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates) match {
+    narrowMostSpecific(candidates) match {
       case Nil => Nil
-      case alt :: Nil => adaptByResult(candidates, alt) :: Nil
+      case alt :: Nil =>
+        adaptByResult(alts, alt) :: Nil
+        // why `alts` and not `candidates`? pos/array-overload.scala gives a test case.
+        // Here, only the Int-apply is a candidate, but it is not compatible with the result
+        // type. Picking the Byte-apply as the only result-compatible solution then forces
+        // the arguments (which are constants) to be adapted to Byte. If we had picked
+        // `candidates` instead, no solution would have been found.
       case alts =>
 //      overload.println(i"ambiguous $alts%, %")
         val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(candidates, deepPt, targs)
+        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
         else alts
     }
   }
