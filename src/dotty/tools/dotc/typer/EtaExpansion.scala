@@ -58,7 +58,7 @@ object EtaExpansion {
    *  and replace by the idents of so created ValDefs.
    */
   def liftArgs(defs: mutable.ListBuffer[Tree], methType: Type, args: List[Tree])(implicit ctx: Context) =
-    methType match {
+    methType.widen match {
       case MethodType(paramNames, paramTypes) =>
         (args, paramNames, paramTypes).zipped map { (arg, name, tp) =>
           if (tp.isInstanceOf[ExprType]) arg
