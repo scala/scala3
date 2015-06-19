@@ -966,6 +966,53 @@ trait Applications extends Compatibility { self: Typer =>
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts filter (isApplicable(_, argTypes, resultType))
 
+    /** Is `alt` a method or polytype whose result type after the first value parameter
+     *  section conforms to the expected type `resultType`? If `resultType`
+     *  is a `IgnoredProto`, pick the underlying type instead.
+     */
+    def resultConforms(alt: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
+      case IgnoredProto(ignored) => resultConforms(alt, ignored)
+      case _: ValueType =>
+        alt.widen match {
+          case tp: PolyType => resultConforms(constrained(tp).resultType, resultType)
+          case tp: MethodType => constrainResult(tp.resultType, resultType)
+          case _ => true
+        }
+      case _ => true
+    }
+
+    /** If the `chosen` alternative has a result type incompatible with the expected result
+     *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
+     *  If the latter succeeds with a single alternative, return it, otherwise
+     *  fallback to `chosen`.
+     *
+     *  Note this order of events is done for speed. One might be tempted to
+     *  preselect alternatives by result type. But is slower, because it discriminates
+     *  less. The idea is when searching for a best solution, as is the case in overloading
+     *  resolution, we should first try criteria which are cheap and which have a high
+     *  probability of pruning the search. result type comparisons are neither cheap nor
+     *  do they prune much, on average.
+     */
+    def adaptByResult(alts: List[TermRef], chosen: TermRef) =
+      if (ctx.isAfterTyper) chosen
+      else {
+        def nestedCtx = ctx.fresh.setExploreTyperState
+        pt match {
+          case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
+            alts.filter(alt =>
+              (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
+              case Nil => chosen
+              case alt2 :: Nil => alt2
+              case alts2 =>
+                resolveOverloaded(alts2, pt) match {
+                  case alt2 :: Nil => alt2
+                  case _ => chosen
+                }
+            }
+          case _ => chosen
+        }
+      }
+
     val candidates = pt match {
       case pt @ FunProto(args, resultType, _) =>
         val numArgs = args.length
@@ -1029,54 +1076,14 @@ trait Applications extends Compatibility { self: Typer =>
     }
     if (isDetermined(candidates)) candidates
     else narrowMostSpecific(candidates) match {
-      case result @ (alt1 :: alt2 :: _) =>
-//        overload.println(i"ambiguous $alt1 $alt2")
+      case Nil => Nil
+      case alt :: Nil => adaptByResult(candidates, alt) :: Nil
+      case alts =>
+//      overload.println(i"ambiguous $alts%, %")
         val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-        else result
-      case result =>
-        result
+        if (deepPt ne pt) resolveOverloaded(candidates, deepPt, targs)
+        else alts
     }
-  }
-
-  /** If the `chosen` alternative has a result type incompatible with the expected result
-   *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
-   *  If the latter succeeds with a single alternative, return it, otherwise
-   *  fallback to `chosen`.
-   */
-  def adaptByResult(alts: List[TermRef], chosen: TermRef, pt: Type)(implicit ctx: Context) =
-    if (ctx.isAfterTyper) chosen
-    else {
-      def nestedCtx = ctx.fresh.setExploreTyperState
-      pt match {
-        case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
-          alts.filter(alt =>
-            (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
-            case Nil => chosen
-            case alt2 :: Nil => alt2
-            case alts2 =>
-              resolveOverloaded(alts2, pt) match {
-                case alt2 :: Nil => alt2
-                case _ => chosen
-              }
-          }
-        case _ => chosen
-      }
-    }
-
-  /** Is `alt` a method or polytype whose result type after the first value parameter
-   *  section conforms to the expected type `resultType`? If `resultType`
-   *  is a `IgnoredProto`, pick the underlying type instead.
-   */
-  private def resultConforms(alt: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
-    case IgnoredProto(ignored) => resultConforms(alt, ignored)
-    case _: ValueType =>
-      alt.widen match {
-        case tp: PolyType => resultConforms(constrained(tp).resultType, resultType)
-        case tp: MethodType => constrainResult(tp.resultType, resultType)
-        case _ => true
-      }
-    case _ => true
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
