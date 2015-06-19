@@ -40,7 +40,7 @@ trait SymDenotations { this: Context =>
   }
 
   def stillValid(denot: SymDenotation): Boolean =
-    if (denot is ValidForever) true
+    if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
       if (initial ne denot)
@@ -49,6 +49,7 @@ trait SymDenotations { this: Context =>
         val owner = denot.owner.denot
         stillValid(owner) && (
           !owner.isClass
+          || owner.isRefinementClass
           || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
           || denot.isSelfSym)
       } catch {
@@ -114,6 +115,12 @@ object SymDenotations {
 
     /** Unset given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+
+    /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
+    final def setApplicableFlags(flags: FlagSet): Unit = {
+      val mask = if (myFlags.is(Trait)) NoInitsInterface else NoInits
+      setFlag(flags & mask)
+    }
 
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context) = {

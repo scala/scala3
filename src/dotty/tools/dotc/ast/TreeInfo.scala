@@ -8,6 +8,7 @@ import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
+  import TreeInfo._
 
   // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
   // But Scalac accepts the program happily without it. Need to find out why.
@@ -24,12 +25,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Does tree contain an initialization part when seen as a member of a class or trait?
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait enclosing this statement can have as flags.
+   *   Does tree contain an initialization part when seen as a member of a class or trait?
    */
-  def isNoInitMember(tree: Tree): Boolean = unsplice(tree) match {
-    case EmptyTree | Import(_, _) | TypeDef(_, _) | DefDef(_, _, _, _, _) => true
-    case tree: ValDef => tree.unforcedRhs == EmptyTree
-    case _ => false
+  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
   }
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
@@ -272,6 +277,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
+  import TreeInfo._
 
   /** The purity level of this statement.
    *  @return   pure        if statement has no side effects
@@ -510,15 +516,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+}
 
-  private class PurityLevel(val x: Int) {
+object TreeInfo {
+  class PurityLevel(val x: Int) extends AnyVal {
     def >= (that: PurityLevel) = x >= that.x
     def min(that: PurityLevel) = new PurityLevel(x min that.x)
   }
 
-  private val Pure = new PurityLevel(2)
-  private val Idempotent = new PurityLevel(1)
-  private val Impure = new PurityLevel(0)
+  val Pure = new PurityLevel(2)
+  val Idempotent = new PurityLevel(1)
+  val Impure = new PurityLevel(0)
 }
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe)
