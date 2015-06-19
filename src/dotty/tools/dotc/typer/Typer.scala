@@ -377,10 +377,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
-        if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
+        if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) regularTyped(isWildcard = true)
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos), pt)
+          val name = if (untpd.isWildcardStarArg(tree)) nme.WILDCARD_STAR else nme.WILDCARD
+          typed(Bind(id.name, Typed(Ident(name), tree.tpt)).withPos(id.pos), pt)
         }
       case _ =>
         if (untpd.isWildcardStarArg(tree))

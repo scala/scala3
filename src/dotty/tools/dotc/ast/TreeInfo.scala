@@ -189,7 +189,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Is this argument node of the form <expr> : _* ?
    */
-  def isWildcardStarArg(tree: untpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+  def isWildcardStarArg(tree: Tree)(implicit ctx: Context): Boolean = unbind(tree) match {
+    case Typed(Ident(nme.WILDCARD_STAR), _) => true
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
     case Typed(_, tpt: TypeTree) => tpt.hasType && tpt.tpe.isRepeatedParam
     case _ => false
