@@ -479,7 +479,9 @@ object Erasure extends TypeTestsCasts{
         val MethodType(pnames, ptypes) = sym.info.resultType
         effectiveSym = sym.copy(info = MethodType(pnames, ptypes, defn.ObjectType))
       }
-      val restpe = effectiveSym.info.resultType
+      val restpe =
+        if (effectiveSym.isConstructor) defn.UnitType
+        else effectiveSym.info.resultType
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = (outer.paramDefs(effectiveSym) ::: ddef.vparamss.flatten) :: Nil,
