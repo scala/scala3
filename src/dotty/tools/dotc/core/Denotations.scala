@@ -274,21 +274,31 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
-            def unshadowed(sym: Symbol, from: Symbol) = {
-              val symOwner = sym.owner
-              val fromOwner = from.owner
-              !fromOwner.derivesFrom(symOwner) || fromOwner.eq(symOwner)
+
+            /** Does `sym1` come before `sym2` in the linearization of `pre`? */
+            def precedes(sym1: Symbol, sym2: Symbol) = {
+              def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
+                case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
+                case Nil => true
+              }
+              sym1.derivesFrom(sym2) ||
+              !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
             }
-            /** Preference according to partial pre-order (isConcrete, unshadowed) */
+
+            /** Preference according to partial pre-order (isConcrete, precedes) */
             def preferSym(sym1: Symbol, sym2: Symbol) =
-              sym1.isAsConcrete(sym2) && (!sym2.isAsConcrete(sym1) || unshadowed(sym1, sym2))
+              sym1.eq(sym2) ||
+              sym1.isAsConcrete(sym2) &&
+              (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
+
             /** Sym preference provided types also override */
-            def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
+            def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
               preferSym(sym1, sym2) && info1.overrides(info2)
-            if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
+
+            if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)
-              if (sym1Accessible && prefer(info1, sym1, info2, sym2)) denot1
+              if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
               else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
               else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
               else {
