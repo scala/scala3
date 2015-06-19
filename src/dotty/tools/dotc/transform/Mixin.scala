@@ -193,29 +193,32 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           ctx.error(i"parameterized $mixin $msg", pos)
           EmptyTree
       }
+
       for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList) yield {
         val isScala2x = mixin.is(Scala2x)
         def default = Underscore(getter.info.resultType)
         def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
+
+        /** A call to the implementation of `getter` in `mixin`'s implementation class */
+        def lazyGetterCall = {
+          def canbeImplClassGetter(sym: Symbol) = sym.info.firstParamTypes match {
+            case t :: Nil => t.isDirectRef(mixin)
+            case _ => false
+          }
+          val implClassGetter = mixin.implClass.info.nonPrivateDecl(getter.name)
+            .suchThat(canbeImplClassGetter).symbol
+          ref(mixin.implClass).select(implClassGetter).appliedTo(This(cls))
+        }
+
         if (isCurrent(getter) || getter.is(ExpandedName)) {
           val rhs =
             if (ctx.atPhase(thisTransform)(implicit ctx => getter.is(ParamAccessor))) nextArgument()
-            else if (isScala2x) Underscore(getter.info.resultType)
+            else if (isScala2x)
+              if (getter.is(Lazy)) lazyGetterCall
+              else Underscore(getter.info.resultType)
             else transformFollowing(superRef(initializer(getter)).appliedToNone)
           // transformFollowing call is needed to make memoize & lazy vals run
-          transformFollowing(
-            DefDef(implementation(getter.asTerm),
-               if (isScala2x) {
-                 if (getter.is(Flags.Lazy)) { // lazy vals need to have a rhs that will be the lazy initializer
-                   val sym = mixin.implClass.info.nonPrivateDecl(getter.name).suchThat(_.info.paramTypess match {
-                     case List(List(t: TypeRef)) => t.isDirectRef(mixin)
-                     case _ => false
-                   }).symbol // lazy val can be overloaded
-                   ref(mixin.implClass).select(sym).appliedTo(This(ctx.owner.asClass))
-                 }
-                 else default
-               } else initial)
-          )
+          transformFollowing(DefDef(implementation(getter.asTerm), rhs))
         }
         else if (isScala2x) EmptyTree
         else initial
