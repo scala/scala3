@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling with Skolemization {
+class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   implicit val ctx: Context = initctx
 
   val state = ctx.typerState
@@ -276,7 +276,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       }
     case tp1: SkolemType =>
       tp2 match {
-        case tp2: SkolemType if tp1 == tp2 => true
+        case tp2: SkolemType if !ctx.phase.isTyper && tp1.info <:< tp2.info => true
         case _ => thirdTry(tp1, tp2)
       }
     case tp1: TypeVar =>
@@ -536,18 +536,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
-    val saved = skolemsOutstanding
-    try {
-      val rebindNeeded = tp2.refinementRefersToThis
-      val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
-      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substSkolem(tp2, base) else tp2.refinedInfo
-      def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
-      def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
-        case mbr: SingleDenotation => qualifies(mbr)
-        case _ => mbr hasAltWith qualifies
-      }
-      /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
-        memberMatches(base member name) ||
+    val rebindNeeded = tp2.refinementRefersToThis
+    val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
+    val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(tp2, base) else tp2.refinedInfo
+    def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
+    def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+      case mbr: SingleDenotation => qualifies(mbr)
+      case _ => mbr hasAltWith qualifies
+    }
+    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
+      memberMatches(base member name) ||
         tp1.isInstanceOf[SingletonType] &&
         { // special case for situations like:
           //    class C { type T }
@@ -558,9 +556,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             case _ => false
           }
         }
-      }
     }
-    finally skolemsOutstanding = saved
+  }
+
+  final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
+    case tp: SingletonType if tp.isStable => tp
+    case tp: ValueType => SkolemType(tp)
+    case tp: TypeProxy => ensureStableSingleton(tp.underlying)
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
@@ -645,13 +647,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = deSkolemize(bound, toSuper = !isUpper)
-    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound1 ${bound1.isRef(tparam)}")
-    !bound1.isRef(tparam) && {
+    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.isRef(tparam)}")
+    !bound.isRef(tparam) && {
       val oldBounds = ctx.gadt.bounds(tparam)
       val newBounds =
-        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound1)
-        else TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
+        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
+        else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
       isSubType(newBounds.lo, newBounds.hi) &&
       { ctx.gadt.setBounds(tparam, newBounds); true }
     }

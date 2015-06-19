@@ -104,7 +104,6 @@ class tests extends CompilerTest {
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
   @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 11)
-  @Test def neg_projections = compileFile(negDir, "projections", xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 2)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 6)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
@@ -133,14 +132,13 @@ class tests extends CompilerTest {
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
+  @Test def neg_i583 = compileFile(negDir, "i0583-skolemize", xerrors = 2)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 
-
   @Test def run_all = runFiles(runDir)
-
 
   @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
 

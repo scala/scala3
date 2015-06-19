@@ -12,16 +12,61 @@ import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
+  /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
+   *  for what this means. Called very often, so the code is optimized heavily.
+   *
+   *  A tricky aspect is what to do with unstable prefixes. E.g. say we have a class
+   *
+   *    class C { type T; def f(x: T): T }
+   *
+   *  and an expression `e` of type `C`. Then computing the type of `e.f` leads
+   *  to the query asSeenFrom(`C`, `(x: T)T`). What should it's result be? The
+   *  naive answer `(x: C.T)C.T` is incorrect given that we treat `C.T` as the existential
+   *  `exists(c: C)c.T`. What we need to do instead is to skolemize the existential. So
+   *  the answer would be `(x: c.T)c.T` for some (unknown) value `c` of type `C`.
+   *  `c.T` is expressed in the compiler as a skolem type `Skolem(C)`.
+   *
+   *  Now, skolemization is messy and expensive, so we want to do it only if we absolutely
+   *  must. We must skolemize if an unstable prefix is used in nonvariant or
+   *  contravariant position of the return type of asSeenFrom.
+   *
+   *  In the implementation of asSeenFrom, we first try to run asSeenFrom without
+   *  skolemizing. If that would be incorrect we will be told by the fact that
+   *  `unstable` is set in the passed AsSeenFromMap. In that case we run asSeenFrom
+   *  again with a skolemized prefix.
+   *
+   *  In the interest of speed we want to avoid creating an AsSeenFromMap every time
+   *  asSeenFrom is called. So we do this here only if the prefix is unstable
+   *  (because then we need the map as a container for the unstable field). For
+   *  stable prefixes the map is `null`; it might however be instantiated later
+   *  for more complicated types.
+   */
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
+    val m = if (pre.isStable || !ctx.phase.isTyper) null else new AsSeenFromMap(pre, cls)
+    var res = asSeenFrom(tp, pre, cls, m)
+    if (m != null && m.unstable) asSeenFrom(tp, SkolemType(pre), cls) else res
+  }
 
+  /** Helper method, taking a map argument which is instantiated only for more
+   *  complicated cases of asSeenFrom.
+   */
+  private def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
+
+    /** Map a `C.this` type to the right prefix. If the prefix is unstable and
+     *  the `C.this` occurs in nonvariant or contravariant position, mark the map
+     *  to be unstable.
+     */
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
-      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
+      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
+        if (theMap != null && theMap.currentVariance <= 0 && !pre.isStable)
+          theMap.unstable = true
         pre match {
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
+      }
       else if ((pre.termSymbol is Package) && !(thiscls is Package))
         toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
       else
@@ -33,7 +78,20 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp: NamedType =>
           val sym = tp.symbol
           if (sym.isStatic) tp
-          else tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls, theMap))
+          else {
+            val prevStable = theMap == null || !theMap.unstable
+            val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
+            if (theMap != null && theMap.unstable && prevStable) {
+              pre1.member(tp.name).info match {
+                case TypeAlias(alias) =>
+                  // try to follow aliases of this will avoid skolemization.
+                  theMap.unstable = false
+                  return alias
+                case _ =>
+              }
+            }
+            tp.derivedSelect(pre1)
+          }
         case tp: ThisType =>
           toPrefix(pre, cls, tp.cls)
         case _: BoundType | NoPrefix =>
@@ -43,7 +101,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeAlias  =>
+        case tp: TypeAlias if theMap == null => // if theMap exists, need to do the variance calculation
           tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
@@ -52,8 +110,114 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
+  /** The TypeMap handling the asSeenFrom in more complicated cases */
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
+
+    /** A method to export the current variance of the map */
+    def currentVariance = variance
+
+    /** A field which indicates whether an unstable argument in nonvariant
+     *  or contravariant position was encountered.
+     */
+    var unstable = false
+  }
+
+  /** Approximate a type `tp` with a type that does not contain skolem types.
+   */
+  final def deskolemize(tp: Type): Type = deskolemize(tp, 1, Set())
+
+  private def deskolemize(tp: Type, variance: Int, seen: Set[SkolemType]): Type = {
+    def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType, newSeen: Set[SkolemType] = seen) =
+      if (variance == 0) NoType
+      else deskolemize(if (variance < 0) lo else hi, variance, newSeen)
+    tp match {
+      case tp: SkolemType =>
+        if (seen contains tp) NoType
+        else approx(hi = tp.info, newSeen = seen + tp)
+      case tp: NamedType =>
+        val sym = tp.symbol
+        if (sym.isStatic) tp
+        else {
+          val pre1 = deskolemize(tp.prefix, variance, seen)
+          if (pre1 eq tp.prefix) tp
+          else {
+            val d = tp.prefix.member(tp.name)
+            d.info match {
+              case TypeAlias(alias) => deskolemize(alias, variance, seen)
+              case _ =>
+                if (pre1.exists && !pre1.isRef(defn.NothingClass)) tp.derivedSelect(pre1)
+                else {
+                  ctx.log(s"deskolem: $tp: ${tp.info}")
+                  tp.info match {
+                    case TypeBounds(lo, hi) => approx(lo, hi)
+                    case info => approx(defn.NothingType, info)
+                  }
+                }
+            }
+          }
+        }
+      case _: ThisType | _: BoundType | _: SuperType | NoType | NoPrefix =>
+        tp
+      case tp: RefinedType =>
+        val parent1 = deskolemize(tp.parent, variance, seen)
+        if (parent1.exists) {
+          val refinedInfo1 = deskolemize(tp.refinedInfo, variance, seen)
+          if (refinedInfo1.exists)
+            tp.derivedRefinedType(parent1, tp.refinedName, refinedInfo1)
+          else
+            approx(hi = parent1)
+        }
+        else approx()
+      case tp: TypeAlias =>
+        val alias1 = deskolemize(tp.alias, variance * tp.variance, seen)
+        if (alias1.exists) tp.derivedTypeAlias(alias1)
+        else approx(hi = TypeBounds.empty)
+      case tp: TypeBounds =>
+        val lo1 = deskolemize(tp.lo, -variance, seen)
+        val hi1 = deskolemize(tp.hi, variance, seen)
+        if (lo1.exists && hi1.exists) tp.derivedTypeBounds(lo1, hi1)
+        else approx(hi =
+          if (lo1.exists) TypeBounds.lower(lo1)
+          else if (hi1.exists) TypeBounds.upper(hi1)
+          else TypeBounds.empty)
+      case tp: ClassInfo =>
+        val pre1 = deskolemize(tp.prefix, variance, seen)
+        if (pre1.exists) tp.derivedClassInfo(pre1)
+        else NoType
+      case tp: AndOrType =>
+        val tp1d = deskolemize(tp.tp1, variance, seen)
+        val tp2d = deskolemize(tp.tp2, variance, seen)
+        if (tp1d.exists && tp2d.exists)
+          tp.derivedAndOrType(tp1d, tp2d)
+        else if (tp.isAnd)
+          approx(hi = tp1d & tp2d)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
+        else
+          approx(lo = tp1d & tp2d)
+      case tp: WildcardType =>
+        val bounds1 = deskolemize(tp.optBounds, variance, seen)
+        if (bounds1.exists) tp.derivedWildcardType(bounds1)
+        else WildcardType
+      case _ =>
+        if (tp.isInstanceOf[MethodicType]) assert(variance != 0, tp)
+        deskolemizeMap.mapOver(tp, variance, seen)
+    }
+  }
+
+  object deskolemizeMap extends TypeMap {
+    private var seen: Set[SkolemType] = _
+    def apply(tp: Type) = deskolemize(tp, variance, seen)
+    def mapOver(tp: Type, variance: Int, seen: Set[SkolemType]) = {
+      val savedVariance = this.variance
+      val savedSeen = this.seen
+      this.variance = variance
+      this.seen = seen
+      try super.mapOver(tp)
+      finally {
+        this.variance = savedVariance
+        this.seen = savedSeen
+      }
+    }
   }
 
   /** Implementation of Types#simplified */

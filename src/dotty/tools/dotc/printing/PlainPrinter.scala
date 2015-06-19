@@ -223,16 +223,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case SuperType(thistpe: SingletonType, _) =>
         toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super"))
       case SuperType(thistpe, _) =>
-        "Super(" ~ toTextLocal(thistpe) ~ ")"
+        "Super(" ~ toTextGlobal(thistpe) ~ ")"
       case tp @ ConstantType(value) =>
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case sk: SkolemType =>
-        sk.binder match {
-          case rt: RefinedType => s"${nameString(rt.typeSymbol)}{...}.this"
-          case _ => "<skolem>"
-        }
+      case tp: RefinedThis =>
+        s"${nameString(tp.binder.typeSymbol)}{...}.this"
+      case tp: SkolemType =>
+        "<unknown instance of type " ~ toTextGlobal(tp.info) ~ ">"
     }
   }
 

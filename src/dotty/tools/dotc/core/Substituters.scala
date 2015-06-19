@@ -179,21 +179,21 @@ trait Substituters { this: Context =>
           .mapOver(tp)
     }
 
-  final def substSkolem(tp: Type, from: Type, to: Type, theMap: SubstSkolemMap): Type =
+  final def substRefinedThis(tp: Type, from: Type, to: Type, theMap: SubstRefinedThisMap): Type =
     tp match {
-      case tp @ SkolemType(binder) =>
+      case tp @ RefinedThis(binder) =>
         if (binder eq from) to else tp
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
-        else tp.derivedSelect(substSkolem(tp.prefix, from, to, theMap))
+        else tp.derivedSelect(substRefinedThis(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substSkolem(tp.parent, from, to, theMap), tp.refinedName, substSkolem(tp.refinedInfo, from, to, theMap))
+        tp.derivedRefinedType(substRefinedThis(tp.parent, from, to, theMap), tp.refinedName, substRefinedThis(tp.refinedInfo, from, to, theMap))
       case tp: TypeAlias =>
-        tp.derivedTypeAlias(substSkolem(tp.alias, from, to, theMap))
+        tp.derivedTypeAlias(substRefinedThis(tp.alias, from, to, theMap))
       case _ =>
-        (if (theMap != null) theMap else new SubstSkolemMap(from, to))
+        (if (theMap != null) theMap else new SubstRefinedThisMap(from, to))
           .mapOver(tp)
     }
 
@@ -222,7 +222,7 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
-      case _: ThisType | NoPrefix | _: SkolemType =>
+      case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substParams(tp.parent, from, to, theMap), tp.refinedName, substParams(tp.refinedInfo, from, to, theMap))
@@ -266,8 +266,8 @@ trait Substituters { this: Context =>
     def apply(tp: Type): Type = substThis(tp, from, to, this)
   }
 
-  final class SubstSkolemMap(from: Type, to: Type) extends DeepTypeMap {
-    def apply(tp: Type): Type = substSkolem(tp, from, to, this)
+  final class SubstRefinedThisMap(from: Type, to: Type) extends DeepTypeMap {
+    def apply(tp: Type): Type = substRefinedThis(tp, from, to, this)
   }
 
   final class SubstParamMap(from: ParamType, to: Type) extends DeepTypeMap {

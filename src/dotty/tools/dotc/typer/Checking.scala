@@ -252,12 +252,6 @@ trait Checking {
     if (!tp.isStable && !tp.isErroneous)
       ctx.error(d"$tp is not stable", pos)
 
-  /** Check that type `tp` is a legal prefix for '#'.
-   *  @return The type itself
-   */
-  def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isLegalPrefixFor(selector)) ctx.error(d"$tp is not a valid prefix for '# $selector'", pos)
-
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.
    *  Stability checking is disabled in phases after RefChecks.
@@ -345,7 +339,6 @@ trait NoChecking extends Checking {
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
-  override def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
