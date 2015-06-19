@@ -159,7 +159,11 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-        case Apply(fn, Nil) if fn.symbol.is(OuterAccessor) || fn.symbol.isGetter && fn.symbol.name == nme.OUTER =>
+        case Apply(fn, Nil)
+          if (fn.symbol.is(OuterAccessor)
+             || fn.symbol.isGetter && fn.symbol.name == nme.OUTER
+             ) &&
+             fn.symbol.info.resultType.classSymbol == outerParam.info.classSymbol =>
           ref(outerParam)
         case _ =>
           super.transform(tree)
