@@ -20,6 +20,7 @@ import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
 import util.common._
+import transform.SymUtils._
 import Decorators._
 import Uniques._
 import ErrorReporting.{err, errorType, DiagnosticString}
@@ -328,9 +329,15 @@ trait Checking {
     }
   }
 
-  def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {
-    ??? // to be done in later phase: check that class `cls` is legal in a new.
-  }
+  def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) =
+    if (!ctx.isAfterTyper) {
+      val called = call.tpe.classSymbol
+      if (caller is Trait)
+        ctx.error(i"$caller may not call constructor of $called", call.pos)
+      else if (called.is(Trait) && !caller.mixins.contains(called))
+        ctx.error(i"""$called is already implemented by super${caller.superClass},
+                   |its constructor cannot be called again""".stripMargin, call.pos)
+    }
 }
 
 trait NoChecking extends Checking {
@@ -343,4 +350,5 @@ trait NoChecking extends Checking {
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
 }
