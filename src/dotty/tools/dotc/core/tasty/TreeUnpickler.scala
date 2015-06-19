@@ -256,8 +256,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case REFINEDthis =>
           RefinedThis(readTypeRef().asInstanceOf[RefinedType])
-        case SKOLEMtype =>
-          SkolemType(readTypeRef())
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -433,7 +431,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case PRIVATE => addFlag(Private)
           case INTERNAL => ??? // addFlag(Internal)
           case PROTECTED => addFlag(Protected)
-          case ABSTRACT => addFlag(Abstract)
+          case ABSTRACT =>
+            readByte()
+            nextByte match {
+              case OVERRIDE => addFlag(AbsOverride)
+              case _ => flags |= Abstract
+            }
           case FINAL => addFlag(Final)
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
@@ -441,7 +444,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
-          case ABSOVERRIDE => addFlag(AbsOverride)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)

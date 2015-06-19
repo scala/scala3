@@ -179,7 +179,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
    *
    *  The body is simplified  as follows
    *   - if it is a TypeAlias, follow it
-   *   - replace all references to of the form <skolem>.HK$i by references
+   *   - replace all references to of the form <refined-this>.HK$i by references
    *     without a prefix, because the latter print nicer.
    *
    */
