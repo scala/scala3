@@ -384,14 +384,23 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def addFreeParams(tree: Tree, proxies: List[Symbol])(implicit ctx: Context, info: TransformerInfo): Tree = proxies match {
       case Nil => tree
       case proxies =>
+        val sym = tree.symbol
         val ownProxies =
-          if (!tree.symbol.isConstructor) proxies
-          else proxies.map(_.copy(owner = tree.symbol, flags = Synthetic | Param))
+          if (!sym.isConstructor) proxies
+          else proxies.map(_.copy(owner = sym, flags = Synthetic | Param))
         val freeParamDefs = ownProxies.map(proxy =>
           transformFollowingDeep(ValDef(proxy.asTerm).withPos(tree.pos)).asInstanceOf[ValDef])
+        def proxyInit(field: Symbol, param: Symbol) =
+          transformFollowingDeep(ref(field).becomes(ref(param)))
+        def copyParams(rhs: Tree) = {
+          ctx.log(i"copy params ${proxies.map(_.showLocated)}%, %, own = ${ownProxies.map(_.showLocated)}%, %")
+          seq((proxies, ownProxies).zipped.map(proxyInit), rhs)
+        }
         tree match {
           case tree: DefDef =>
-            cpy.DefDef(tree)(vparamss = tree.vparamss.map(freeParamDefs ++ _))
+            cpy.DefDef(tree)(
+                vparamss = tree.vparamss.map(freeParamDefs ++ _),
+                rhs = if (sym.isPrimaryConstructor) copyParams(tree.rhs) else tree.rhs)
           case tree: Template =>
             cpy.Template(tree)(body = freeParamDefs ++ tree.body)
         }

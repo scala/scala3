@@ -136,7 +136,9 @@ object ExplicitOuter {
 
   /** A new outer accessor or param accessor */
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
-    ctx.newSymbol(owner, name, Synthetic | flags, cls.owner.enclosingClass.typeRef, coord = cls.coord)
+    val target = cls.owner.enclosingClass.typeRef
+    val info = if (flags.is(Method)) ExprType(target) else target
+    ctx.newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
   }
 
   /** A new param accessor for the outer field in class `cls` */
@@ -302,7 +304,7 @@ object ExplicitOuter {
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
         ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")
         if (treeCls == toCls) tree
-        else loop(tree select outerAccessor(treeCls.asClass)(outerAccessorCtx))
+        else loop(tree.select(outerAccessor(treeCls.asClass)(outerAccessorCtx)).ensureApplied)
       }
       ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
       loop(This(ctx.owner.enclosingClass.asClass))

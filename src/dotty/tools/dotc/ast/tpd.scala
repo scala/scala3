@@ -76,8 +76,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block =
     ta.assignType(untpd.Block(stats, expr), stats, expr)
 
-  def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
-    if (stats.isEmpty) expr else Block(stats, expr)
+  /** Join `stats` in front of `expr` creating a new block if necessary */
+  def seq(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
+    if (stats.isEmpty) expr
+    else expr match {
+      case Block(estats, eexpr) => cpy.Block(expr)(stats ::: estats, eexpr)
+      case _ => Block(stats, expr)
+    }
 
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
