@@ -136,7 +136,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         def callDirect   = tgt.select(nme.drop).appliedTo(Literal(Constant(n)))
         def callRuntime  = ref(defn.traversableDropMethod).appliedTo(tgt, Literal(Constant(n)))
 
-        def needsRuntime = tgt.tpe derivesFrom defn.SeqClass /*typeOfMemberNamedDrop(tgt.tpe) == NoType*/
+        def needsRuntime = !(tgt.tpe derivesFrom defn.SeqClass) /*typeOfMemberNamedDrop(tgt.tpe) == NoType*/
 
         if (needsRuntime) callRuntime else callDirect
       }
