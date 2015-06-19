@@ -233,9 +233,15 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       case stats => (Nil, stats)
     }
 
+    val mappedSuperCalls = vparams match {
+      case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
+        superCalls.map(mapOuter(outerParam.symbol).transform)
+      case _ => superCalls
+    }
+
     cpy.Template(tree)(
       constr = cpy.DefDef(constr)(
-        rhs = Block(superCalls ::: copyParams ::: followConstrStats, unitLiteral)),
+        rhs = Block(mappedSuperCalls ::: copyParams ::: followConstrStats, unitLiteral)),
       body = clsStats.toList)
   }
 }
