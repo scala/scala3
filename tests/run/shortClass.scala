@@ -15,7 +15,7 @@ object Test {
   import bippity._
   import bop._
 
-  def printSanitized(x: String) = println(x)//.filterNot(_.isDigit))
+  def printSanitized(x: String) = println(x.filterNot(_.isDigit))
 
   def main(args: Array[String]): Unit = {
     val f = new Foo
