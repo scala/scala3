@@ -601,6 +601,19 @@ object Types {
       ctx.typeComparer.isSameType(this, that)
     }
 
+    /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
+    def isValueSubType(that: Type)(implicit ctx: Context) = widenExpr match {
+      case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
+        that.widenExpr match {
+          case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
+            defn.isValueSubClass(self.symbol, that.symbol)
+          case _ =>
+            false
+        }
+      case _ =>
+        false
+    }
+
     /** Is this type a legal type for a member that overrides another
      *  member of type `that`? This is the same as `<:<`, except that
      *  the types ()T and => T are identified, and T is seen as overriding

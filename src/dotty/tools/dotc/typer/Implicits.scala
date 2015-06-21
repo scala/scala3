@@ -382,21 +382,10 @@ trait Implicits { self: Typer =>
     && !to.isError
     && !ctx.isAfterTyper
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && { from.widenExpr match {
-           case from: TypeRef if defn.ScalaValueClasses contains from.symbol =>
-             to.widenExpr match {
-               case to: TypeRef if defn.ScalaValueClasses contains to.symbol =>
-                 util.Stats.record("isValueSubClass")
-                 return defn.isValueSubClass(from.symbol, to.symbol)
-               case _ =>
-             }
-           case from: ValueType =>
-             ;
-           case _ =>
-             return false
-         }
-         inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
-       }
+    && from.isInstanceOf[ValueType]
+    && (  from.isValueSubType(to)
+       || inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
+       )
     )
 
   /** Find an implicit conversion to apply to given tree `from` so that the
