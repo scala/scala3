@@ -72,9 +72,7 @@ class ReTyper extends Typer {
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
     fallBack(tree, ctx.typerState)
 
-  override def addTypedModifiersAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit =
-    () // was: typedModifiers(Modifiers(sym), sym)
-       // but annotations are not transformed after typer, so no use to check them.
+  override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = ()
 
   override def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] =
     parents

@@ -15,6 +15,7 @@ import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Printers._
+import Annotations._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
@@ -495,8 +496,23 @@ class Namer { typer: Typer =>
       completeInCreationContext(denot)
     }
 
-    def completeInCreationContext(denot: SymDenotation): Unit =
+    protected def addAnnotations(denot: SymDenotation): Unit = original match {
+      case original: untpd.MemberDef =>
+        for (annotTree <- untpd.modsDeco(original).mods.annotations) {
+          val cls = typedAheadAnnotation(annotTree)
+          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+          denot.addAnnotation(ann)
+        }
+      case _ =>
+    }
+
+    /** Intentionally left without `implicit ctx` parameter. We need
+     *  to pick up the context at the point where the completer was created.
+     */
+    def completeInCreationContext(denot: SymDenotation): Unit = {
       denot.info = typeSig(denot.symbol)
+      addAnnotations(denot)
+    }
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
@@ -563,6 +579,7 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
+      addAnnotations(denot)
       cls.setApplicableFlags(
         (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))
     }
@@ -585,6 +602,13 @@ class Namer { typer: Typer =>
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType)
+
+  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): Symbol = tree match {
+    case Apply(fn, _) => typedAheadAnnotation(fn)
+    case TypeApply(fn, _) => typedAheadAnnotation(fn)
+    case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotation(qual)
+    case New(tpt) => typedAheadType(tpt).tpe.classSymbol
+  }
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
