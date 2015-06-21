@@ -10,6 +10,7 @@ float
 double
 Class types
 class SomeClass
+class ValueClass
 class scala.collection.immutable.List
 class scala.Tuple2
 Arrays:
