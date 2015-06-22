@@ -393,7 +393,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         def proxyInit(field: Symbol, param: Symbol) =
           transformFollowingDeep(memberRef(field).becomes(ref(param)))
 
-        /** Map references to proxy fields `this.proxy` to procy parameers */
+        /** Map references to proxy fields `this.proxy` to proxy parameters */
         def mapProxies = new TreeMap {
           override def transform(tree: Tree)(implicit ctx: Context) = tree match {
             case Select(This(_), _) if proxies contains tree.symbol =>
@@ -408,7 +408,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           ctx.log(i"copy params ${proxies.map(_.showLocated)}%, %, own = ${ownProxies.map(_.showLocated)}%, %")
           seq((proxies, ownProxies).zipped.map(proxyInit), mapProxies.transform(rhs))
         }
-        
+
         tree match {
           case tree: DefDef =>
             cpy.DefDef(tree)(
