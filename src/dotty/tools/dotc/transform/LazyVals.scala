@@ -68,14 +68,9 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     appendOffsetDefs.get(cls) match {
       case None => template
       case Some(data) =>
-        cpy.Template(template)(body = addInFront(data.defs, template.body))
+        cpy.Template(template)(body = data.defs ::: template.body)
     }
 
-  }
-
-  private def addInFront(prefix: List[Tree], stats: List[Tree]) = stats match {
-    case first :: rest if isSuperConstrCall(first) => first :: prefix ::: rest
-    case _ => prefix ::: stats
   }
 
     /** Replace a local lazy val inside a method,

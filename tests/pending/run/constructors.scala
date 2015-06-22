@@ -4,9 +4,8 @@ class A(x: Int, y: Int) {
   def this(x: Int) = this(x, x);
   def this() = this(1);
   override def toString() = "x=" + x + " y=" + y;
-  class B(val a: Int, b: Int, c: String) {
+  class B(a: Int, b: Int, c: String) {
     def this(str: String) = this(x, y, str);
-    val xx = a
     override def toString() =
       "x=" + x + " y=" + y + " a=" + a + " b=" + b + " c=" + c;
   }
