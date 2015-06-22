@@ -386,13 +386,6 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    final def withMode(mode: Mode): Context =
-      if (mode != this.mode) fresh.setMode(mode) else this
-
-    final def addMode(mode: Mode): Context = withMode(this.mode | mode)
-    final def maskMode(mode: Mode): Context = withMode(this.mode & mode)
-    final def retractMode(mode: Mode): Context = withMode(this.mode &~ mode)
-
     override def toString =
       "Context(\n" +
       (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}") mkString "\n")
@@ -442,6 +435,21 @@ object Contexts {
     def setFreshGADTBounds: this.type = { this.gadt = new GADTMap(gadt.bounds); this }
 
     def setDebug = setSetting(base.settings.debug, true)
+  }
+
+  implicit class ModeChanges(val c: Context) extends AnyVal {
+    final def withMode(mode: Mode): Context =
+      if (mode != c.mode) c.fresh.setMode(mode) else c
+
+    final def addMode(mode: Mode): Context = withMode(c.mode | mode)
+    final def maskMode(mode: Mode): Context = withMode(c.mode & mode)
+    final def retractMode(mode: Mode): Context = withMode(c.mode &~ mode)
+  }
+
+  implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {
+    final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
+    final def maskMode(mode: Mode): c.type = c.setMode(c.mode & mode)
+    final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
   /** A class defining the initial context with given context base

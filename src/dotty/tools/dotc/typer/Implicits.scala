@@ -90,7 +90,7 @@ object Implicits {
       }
 
       if (refs.isEmpty) refs
-      else refs filter (refMatches(_)(ctx.fresh.setExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
+      else refs filter (refMatches(_)(ctx.fresh.addMode(Mode.TypevarsMissContext).setExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
   }
 
@@ -384,7 +384,9 @@ trait Implicits { self: Typer =>
     && (ctx.mode is Mode.ImplicitsEnabled)
     && from.isInstanceOf[ValueType]
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
+       || inferView(dummyTreeOfType(from), to)
+            (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)
+            .isInstanceOf[SearchSuccess]
        )
     )
 
@@ -480,7 +482,8 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.setNewTyperState.addMode(Mode.ImplicitShadowing))
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)
+               (nestedContext.addMode(Mode.ImplicitShadowing).setNewTyperState)
         def refMatches(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
@@ -514,8 +517,11 @@ trait Implicits { self: Typer =>
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.setExploreTyperState))
-              rankImplicits(newPending, best :: acc)
+              if (ctx.mode.is(Mode.ImplicitExploration)) best :: Nil
+              else {
+                val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.setExploreTyperState))
+                rankImplicits(newPending, best :: acc)
+              }
           }
         case nil => acc
       }

@@ -12,7 +12,7 @@ import typer.Mode
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
-  protected[this] implicit def ctx: Context = _ctx.fresh.addMode(Mode.Printing)
+  protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
   protected def maxToTextRecursions = 100
 
