@@ -1299,7 +1299,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
-          adapt(tpd.Apply(tree, args), pt)
+          if (args.exists(_.isEmpty)) tree
+          else adapt(tpd.Apply(tree, args), pt)
         }
         if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
         else

@@ -450,7 +450,7 @@ trait Implicits { self: Typer =>
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
-        d"found: ${argument.tpe}, expected: $pt")
+        d"found: $argument: ${argument.tpe}, expected: $pt")
 
     /** The expected type for the searched implicit */
     lazy val fullProto = implicitProto(pt, identity)
