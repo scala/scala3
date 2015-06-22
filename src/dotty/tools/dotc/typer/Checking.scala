@@ -50,8 +50,11 @@ object Checking {
         if (cls.is(AbstractOrTrait))
           ctx.error(d"$cls is abstract; cannot be instantiated", pos)
         if (!cls.is(Module)) {
-          val selfType = tp.givenSelfType.asSeenFrom(tref.prefix, cls.owner)
-          if (selfType.exists && !(tp <:< selfType))
+          // Create a synthetic singleton type instance, and check whether
+          // it conforms to the self type of the class as seen from that instance.
+          val stp = SkolemType(tp)
+          val selfType = tref.givenSelfType.asSeenFrom(stp, cls)
+          if (selfType.exists && !(stp <:< selfType))
             ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
         }
       case _ =>
