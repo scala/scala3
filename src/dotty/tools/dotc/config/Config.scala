@@ -32,6 +32,9 @@ object Config {
    */
   final val checkConstraintsPropagated = false
 
+  /** Check that constraints of globally committable typer states are closed */
+  final val checkConstraintsClosed = true
+
   /** Check that no type appearing as the info of a SymDenotation contains
    *  skolem types.
    */

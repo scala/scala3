@@ -9,6 +9,7 @@ import util.{SimpleMap, DotClass}
 import reporting._
 import printing.{Showable, Printer}
 import printing.Texts._
+import config.Config
 import collection.mutable
 
 class TyperState(r: Reporter) extends DotClass with Showable {
@@ -19,7 +20,7 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** The current constraint set */
   def constraint: Constraint =
     new OrderingConstraint(SimpleMap.Empty, SimpleMap.Empty, SimpleMap.Empty)
-  def constraint_=(c: Constraint): Unit = {}
+  def constraint_=(c: Constraint)(implicit ctx: Context): Unit = {}
 
   /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
@@ -85,7 +86,10 @@ extends TyperState(r) {
   private var myConstraint: Constraint = previous.constraint
 
   override def constraint = myConstraint
-  override def constraint_=(c: Constraint) = myConstraint = c
+  override def constraint_=(c: Constraint)(implicit ctx: Context) = {
+    if (Config.checkConstraintsClosed && isGlobalCommittable) c.checkClosed()
+    myConstraint = c
+  }
 
   private var myEphemeral: Boolean = previous.ephemeral
 

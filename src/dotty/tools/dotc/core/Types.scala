@@ -2458,6 +2458,9 @@ object Types {
       if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
         inst = inst.approximateUnion
 
+      if (ctx.typerState.isGlobalCommittable)
+        assert(!inst.isInstanceOf[PolyParam], i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
+
       instantiateWith(inst)
     }
 
