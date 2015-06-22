@@ -74,7 +74,7 @@ object Mode {
   val ImplicitShadowing = newMode(11, "ImplicitShadowing")
 
   /** We are currently in a `viewExists` check. In that case, ambiguous
-   *  implicits checks are disabled and we succeed with teh first implicit
+   *  implicits checks are disabled and we succeed with the first implicit
    *  found.
    */
   val ImplicitExploration = newMode(12, "ImplicitExploration")
