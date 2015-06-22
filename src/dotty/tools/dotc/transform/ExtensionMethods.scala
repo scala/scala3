@@ -65,7 +65,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
               }
             }
 
-            val underlying = erasure(underlyingOfValueClass(valueClass))
+            val underlying = erasure(underlyingOfValueClass(valueClass), semiEraseVCs = true)
             val evt = ErasedValueType(valueClass, underlying)
             val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
               MethodType(List(nme.x_0), List(underlying), evt))
