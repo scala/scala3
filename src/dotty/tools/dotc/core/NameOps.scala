@@ -4,7 +4,7 @@ package core
 import java.security.MessageDigest
 import scala.annotation.switch
 import scala.io.Codec
-import Names._, StdNames._, Contexts._, Symbols._, Flags._
+import Names._, dotty.tools.dotc.core.StdNames._, Contexts._, Symbols._, Flags._
 import Decorators.StringDecorator
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
@@ -244,7 +244,8 @@ object NameOps {
     def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
 
       def typeToTag(tp: Types.Type): Name = {
-        tp.classSymbol match {
+        if (tp eq null) "".toTermName
+        else tp.classSymbol match {
           case t if t eq defn.IntClass     => nme.specializedTypeNames.Int
           case t if t eq defn.BooleanClass => nme.specializedTypeNames.Boolean
           case t if t eq defn.ByteClass    => nme.specializedTypeNames.Byte

@@ -27,7 +27,7 @@ class PreSpecializer extends MiniPhaseTransform {
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     specializableModule = ctx.requiredModule("scala.Specializable")
-    anyRefModule = ctx.requiredModule("scala.package") // Using nme.PACKAGE generated errors on my machine - should be further explored
+    anyRefModule = ctx.requiredModule("scala.package")
     def specializableField(nm: String) = specializableModule.info.member(nm.toTermName).symbol
 
     specializableMapping = Map(
