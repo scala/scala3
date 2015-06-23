@@ -442,8 +442,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def remove(pt: PolyType)(implicit ctx: Context): This = {
     def removeFromOrdering(po: ParamOrdering) = {
       def removeFromBoundss(key: PolyType, bndss: Array[List[PolyParam]]): Array[List[PolyParam]] = {
-        val bndss1 = bndss.map(bnds => bnds.filterConserve(_.binder ne pt))
-        if ((0 until bndss.length).forall(i => bndss(i) eq bndss1(i))) bndss else bndss1
+        val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
+        if (bndss.corresponds(bndss1)(_ eq _)) bndss else bndss1
       }
       po.remove(pt).mapValues(removeFromBoundss)
     }
