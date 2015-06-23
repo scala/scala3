@@ -20,7 +20,7 @@ object Test {
  }
 
   object Fail {
-//    import I.arrToTrav
-//    foo(Arr("3")) // found String, expected Long
+    import I.arrToTrav
+    foo(Arr("3")) // found String, expected Long
   }
 }
