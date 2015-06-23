@@ -445,7 +445,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
         if (bndss.corresponds(bndss1)(_ eq _)) bndss else bndss1
       }
-      po.remove(pt).mapValues(removeFromBoundss)
+      po.remove(pt).mapValuesNow(removeFromBoundss)
     }
     newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap))
   }
