@@ -223,7 +223,7 @@ object Trees {
 
     override def toText(printer: Printer) = printer.toText(this)
 
-    override def hashCode(): Int = System.identityHashCode(this)
+    override def hashCode(): Int = uniqueId
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
 
