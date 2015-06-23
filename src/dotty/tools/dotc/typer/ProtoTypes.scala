@@ -341,7 +341,8 @@ object ProtoTypes {
 
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
-   *   - skips implicit parameters
+   *   - skips implicit parameters; if result type depends on implicit parameter,
+   *     replace with Wildcard.
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
    *   - dereferences nullary method types provided the corresponding function type
@@ -356,17 +357,22 @@ object ProtoTypes {
   def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
       case poly: PolyType => normalize(constrained(poly).resultType, pt)
-      case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
-        if (mt.isImplicit) mt.resultType
-        else {
-          val rt = normalize(mt.resultType, pt)
-          if (pt.isInstanceOf[ApplyingProto])
-            mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+      case mt: MethodType =>
+        if (mt.isImplicit)
+          if (mt.isDependent)
+            mt.resultType.substParams(mt, mt.paramTypes.map(Function.const(WildcardType)))
+          else mt.resultType
+        else
+          if (mt.isDependent) tp
           else {
-            val ft = defn.FunctionType(mt.paramTypes, rt)
-            if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+            val rt = normalize(mt.resultType, pt)
+            if (pt.isInstanceOf[ApplyingProto])
+              mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+            else {
+              val ft = defn.FunctionType(mt.paramTypes, rt)
+              if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+            }
           }
-        }
       case et: ExprType => et.resultType
       case _ => tp
     }
