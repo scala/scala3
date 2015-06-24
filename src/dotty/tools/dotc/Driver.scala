@@ -14,21 +14,22 @@ abstract class Driver extends DotClass {
 
   protected def emptyReporter: Reporter = new StoreReporter
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  protected def doCompile(compiler: Compiler, fileNames: List[String], reporter: Option[Reporter] = None)
+      (implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty) {
-      val run = compiler.newRun
+      val run = compiler.newRun(ctx, reporter)
       run.compile(fileNames)
       run.printSummary()
     } else emptyReporter
 
   protected def initCtx = (new ContextBase).initialCtx
 
-  def process(args: Array[String], rootCtx: Context): Reporter = {
+  def process(args: Array[String], rootCtx: Context, reporter: Option[Reporter] = None): Reporter = {
     val summary = CompilerCommand.distill(args)(rootCtx)
     implicit val ctx: Context = initCtx.fresh.setSettings(summary.sstate)
     val fileNames = CompilerCommand.checkUsage(summary)
     try {
-      doCompile(newCompiler(), fileNames)
+      doCompile(newCompiler(), fileNames, reporter)
     } catch {
       case ex: FatalError  =>
         ctx.error(ex.getMessage) // signals that we should fail compilation.

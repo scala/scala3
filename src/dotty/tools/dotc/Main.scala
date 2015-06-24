@@ -19,10 +19,10 @@ object Main extends Driver {
 
   override def newCompiler(): Compiler = new Compiler
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter = {
+  override def doCompile(compiler: Compiler, fileNames: List[String], reporter: Option[Reporter] = None)(implicit ctx: Context): Reporter = {
     if (new config.Settings.Setting.SettingDecorator[Boolean](ctx.base.settings.resident).value(ctx))
       resident(compiler)
     else
-      super.doCompile(compiler, fileNames)
+      super.doCompile(compiler, fileNames, reporter)
   }
 }
