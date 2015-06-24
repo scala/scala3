@@ -1,7 +1,8 @@
 package dotty.partest
 
-import java.io.File
 import scala.collection.JavaConversions._
+import scala.reflect.io.Path
+import java.io.File
 
 
 /** Dotty Partest runs all tests in the provided testDirs located under
@@ -14,7 +15,9 @@ import scala.collection.JavaConversions._
   * otherwise pos/__defaultFlags.flags are used if the file exists).
   */
 object DPConfig {
-  val testRoot = "./tests/partest-generated"
+  val testRoot = (Path(".") / Path("tests") / Path("partest-generated")).toString
+  val genLog = Path(testRoot) / Path("gen.log")
+
   lazy val testDirs = {
     val root = new File(testRoot)
     val dirs = if (!root.exists) Array.empty[String] else root.listFiles.filter(_.isDirectory).map(_.getName)
