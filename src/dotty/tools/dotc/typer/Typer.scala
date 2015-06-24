@@ -1292,7 +1292,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             def where = d"parameter $pname of $methodStr"
             inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
               case SearchSuccess(arg, _, _) =>
-                adapt(arg, formal)
+                arg
               case ambi: AmbiguousImplicits =>
                 implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
               case failure: SearchFailure =>
