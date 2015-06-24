@@ -421,6 +421,7 @@ trait Implicits { self: Typer =>
     assert(!ctx.isAfterTyper,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
+    val prevConstr = ctx.typerState.constraint
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
@@ -435,6 +436,7 @@ trait Implicits { self: Typer =>
           val deepPt = pt.deepenProto
           if (deepPt ne pt) inferImplicit(deepPt, argument, pos) else result
         case _ =>
+          assert(prevConstr eq ctx.typerState.constraint)
           result
       }
     }
@@ -472,9 +474,11 @@ trait Implicits { self: Typer =>
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
+      val constr = ctx.typerState.constraint
 
       /** Try to typecheck an implicit reference */
       def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+        assert(constr eq ctx.typerState.constraint)
         var generated: Tree = tpd.ref(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
@@ -483,7 +487,7 @@ trait Implicits { self: Typer =>
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)
-               (nestedContext.addMode(Mode.ImplicitShadowing).setNewTyperState)
+               (nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState)
         def refMatches(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {

@@ -1283,6 +1283,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case wtp: ExprType =>
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, pt) =>
+        val constr = ctx.typerState.constraint
         def addImplicitArgs = {
           def implicitArgError(msg: => String): Tree = {
             ctx.error(msg, tree.pos.endPos)
@@ -1299,7 +1300,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
-          if (args.exists(_.isEmpty)) tree
+          if (args.exists(_.isEmpty)) { assert(constr eq ctx.typerState.constraint); tree }
           else adapt(tpd.Apply(tree, args), pt)
         }
         if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
