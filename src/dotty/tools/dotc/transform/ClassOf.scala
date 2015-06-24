@@ -9,10 +9,12 @@ import core.Symbols.TermSymbol
 import core.TypeErasure
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 
-/** Performs rewritings as follows for `classOf` calls:
- * classOf[CustomValueClass] ~> CustomValueClass class
- * classOf[ValueClass]       ~> ValueClass class, where ValueClass is Boolean, Byte, Short, etc.
- * classOf[AnyOtherClass]    ~> erasure(AnyOtherClass)
+/** Rewrite `classOf` calls as follow:
+ *
+ *  For every primitive class C whose boxed class is called B:
+ *    classOf[C]    -> B.TYPE
+ *  For every non-primitive class D:
+ *    classOf[D]    -> Literal(Constant(erasure(D)))
  */
 class ClassOf extends MiniPhaseTransform {
   import tpd._
@@ -32,22 +34,19 @@ class ClassOf extends MiniPhaseTransform {
       val tp = tree.args.head.tpe
       val defn = ctx.definitions
       val claz = tp.classSymbol
-      if (ValueClasses.isDerivedValueClass(claz)) {
-        Literal(Constant(ref(claz).tpe))
-      } else {
-        def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_).ensureConforms(tree.tpe)
-        claz match {
-          case defn.BooleanClass => TYPE(defn.BoxedBooleanModule)
-          case defn.ByteClass    => TYPE(defn.BoxedByteModule)
-          case defn.ShortClass   => TYPE(defn.BoxedShortModule)
-          case defn.CharClass    => TYPE(defn.BoxedCharModule)
-          case defn.IntClass     => TYPE(defn.BoxedIntModule)
-          case defn.LongClass    => TYPE(defn.BoxedLongModule)
-          case defn.FloatClass   => TYPE(defn.BoxedFloatModule)
-          case defn.DoubleClass  => TYPE(defn.BoxedDoubleModule)
-          case defn.UnitClass    => TYPE(defn.BoxedVoidModule)
-          case _                 => Literal(Constant(TypeErasure.erasure(tp)))
-        }
+
+      def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_).ensureConforms(tree.tpe)
+      claz match {
+        case defn.BooleanClass => TYPE(defn.BoxedBooleanModule)
+        case defn.ByteClass    => TYPE(defn.BoxedByteModule)
+        case defn.ShortClass   => TYPE(defn.BoxedShortModule)
+        case defn.CharClass    => TYPE(defn.BoxedCharModule)
+        case defn.IntClass     => TYPE(defn.BoxedIntModule)
+        case defn.LongClass    => TYPE(defn.BoxedLongModule)
+        case defn.FloatClass   => TYPE(defn.BoxedFloatModule)
+        case defn.DoubleClass  => TYPE(defn.BoxedDoubleModule)
+        case defn.UnitClass    => TYPE(defn.BoxedVoidModule)
+        case _                 => Literal(Constant(TypeErasure.erasure(tp)))
       }
     } else tree
   }
