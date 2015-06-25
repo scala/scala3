@@ -347,4 +347,27 @@ object Names {
       StringBuilder.newBuilder.mapResult(s => from.fromChars(s.toCharArray, 0, s.length))
     def apply(): Builder[Char, Name] = termNameBuilder
   }
+
+  implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
+    def compare(x: Name, y: Name): Int = {
+      if (x.isTermName && y.isTypeName) 1
+      else if (x.isTypeName && y.isTermName) -1
+      else if (x.start == y.start && x.length == y.length) 0
+      else {
+        val until = Math.min(x.length, y.length)
+        var i = 0
+
+        while (i < until && x(i) == y(i)) i = i + 1
+
+        if (i < until) {
+          if (x(i) < y(i)) -1
+          else /*(x(i) > y(i))*/ 1
+        } else {
+          if (x.length < y.length) 1
+          else if (x.length > y.length) -1
+          else 0 // shouldn't happen, but still
+        }
+      }
+    }
+  }
 }

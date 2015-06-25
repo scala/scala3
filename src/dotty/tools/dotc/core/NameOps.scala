@@ -236,7 +236,7 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
-    def specializedFor(returnType: Types.Type, args: List[Types.Type])(implicit ctx: Context): name.ThisName = {
+    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
 
       def typeToTag(tp: Types.Type): Name = {
         tp.classSymbol match {
@@ -253,9 +253,12 @@ object NameOps {
         }
       }
 
+      val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
+      val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
+
       name.fromName(name ++ nme.specializedTypeNames.prefix ++
-        args.map(typeToTag).foldRight(typeToTag(returnType))(_ ++ _) ++
-        nme.specializedTypeNames.suffix)
+        methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
+        classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
 
     /** If name length exceeds allowable limit, replace part of it by hash */
