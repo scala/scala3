@@ -480,7 +480,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
   implicit def positionHelper(a: Position): PositionHelper = new PositionHelper {
     def isDefined: Boolean = a.exists
-    def line: Int = sourcePos(a).line
+    def line: Int = sourcePos(a).line + 1
     def finalPosition: Position = a
   }
 
