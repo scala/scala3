@@ -1292,11 +1292,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def followAlias(tp: Type)(implicit ctx: Context): Type = {
       val constraint = ctx.typerState.constraint
       def inst(tp: Type): Type = tp match {
-        case TypeBounds(lo, hi) =>
-          if ((lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState)) inst(lo) else NoType
+        case TypeBounds(lo, hi)
+        if (lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState) =>
+          inst(lo)
         case tp: PolyParam =>
-          var tvar1 = constraint.typeVarOfParam(tp)
-          if (tvar1.exists) tvar1 else tp
+          constraint.typeVarOfParam(tp).orElse(tp)
         case _ => tp
       }
       tp match {
