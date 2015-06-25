@@ -1279,10 +1279,36 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+    /** If `tp` is a TypeVar which is fully constrained (i.e. its upper bound `hi` conforms
+     *  to its lower bound `lo`), replace `tp` by `hi`. This is necessary to
+     *  keep the right constraints for some implicit search problems. The paradigmatic case
+     *  is `implicitNums.scala`. Without the healing done in `followAlias`, we cannot infer
+     *  implicitly[_3], where _2 is the typelevel number 3. The problem here is that if a
+     *  prototype is, say, Succ[Succ[Zero]], we can infer that it's argument type is Succ[Zero].
+     *  But if the prototype is N? >: Succ[Succ[Zero]] <: Succ[Succ[Zero]], the same
+     *  decomposition does not work - we'd get a N?#M where M is the element type name of Succ
+     *  instead.
+     */
+    def followAlias(tp: Type)(implicit ctx: Context): Type = {
+      val constraint = ctx.typerState.constraint
+      def inst(tp: Type): Type = tp match {
+        case TypeBounds(lo, hi) =>
+          if ((lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState)) inst(lo) else NoType
+        case tp: PolyParam =>
+          var tvar1 = constraint.typeVarOfParam(tp)
+          if (tvar1.exists) tvar1 else tp
+        case _ => tp
+      }
+      tp match {
+        case tp: TypeVar if constraint.contains(tp) => inst(constraint.entry(tp.origin))
+        case _ => tp
+      }
+    }
+
     def adaptNoArgs(wtp: Type): Tree = wtp match {
       case wtp: ExprType =>
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
-      case wtp: ImplicitMethodType if constrainResult(wtp, pt) =>
+      case wtp: ImplicitMethodType if constrainResult(wtp, followAlias(pt)) =>
         val constr = ctx.typerState.constraint
         def addImplicitArgs = {
           def implicitArgError(msg: => String): Tree = {
