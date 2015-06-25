@@ -192,7 +192,7 @@ object Parsers {
           case _ =>
             if (mustStartStat &&
                 in.isAfterLineEnd() &&
-                isLeqIndented(in.offset, lastStatOffset))
+                isLeqIndented(in.offset, lastStatOffset max 0))
               return
         }
         in.nextToken()

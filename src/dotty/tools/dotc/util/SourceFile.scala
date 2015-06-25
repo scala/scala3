@@ -103,7 +103,10 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
     lastLine
   }
 
-  def startOfLine(offset: Int): Int = lineToOffset(offsetToLine(offset))
+  def startOfLine(offset: Int): Int = {
+    require(offset >= 0)
+    lineToOffset(offsetToLine(offset))
+  }
 
   def nextLine(offset: Int): Int =
     lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
