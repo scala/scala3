@@ -72,7 +72,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.pos shift start)
 
-  def isLineBreak(idx: Int) =
+  private def isLineBreak(idx: Int) =
     if (idx >= length) false else {
       val ch = content(idx)
       // don't identify the CR in CR LF as a line break, since LF will do.
@@ -80,7 +80,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
       else isLineBreakChar(ch)
     }
 
-  def calculateLineIndices(cs: Array[Char]) = {
+  private def calculateLineIndices(cs: Array[Char]) = {
     val buf = new ArrayBuffer[Int]
     buf += 0
     for (i <- 0 until cs.length) if (isLineBreak(i)) buf += i + 1
@@ -103,25 +103,29 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
     lastLine
   }
 
+  /** The index of the first character of the line containing position `offset` */
   def startOfLine(offset: Int): Int = {
     require(offset >= 0)
     lineToOffset(offsetToLine(offset))
   }
 
+  /** The start index of the line following the one containing position `offset` */
   def nextLine(offset: Int): Int =
     lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
 
+  /** The contents of the line containing position `offset` */
   def lineContents(offset: Int): String =
     content.slice(startOfLine(offset), nextLine(offset)).mkString
 
+  /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (content(idx) == '\t') tabInc - col % tabInc else 1)
+      col += (if (content(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
-    col + 1
+    col
   }
 
   override def toString = file.toString
