@@ -399,7 +399,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       def removeParam(ps: List[PolyParam]) =
         ps.filterNot(p => p.binder.eq(poly) && p.paramNum == idx)
 
-      def replaceParam(tp: Type, atPoly: PolyType, atIdx: Int) = tp match {
+      def replaceParam(tp: Type, atPoly: PolyType, atIdx: Int): Type = tp match {
         case bounds @ TypeBounds(lo, hi) =>
 
           def recombine(andor: AndOrType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
@@ -424,7 +424,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           }
 
           bounds.derivedTypeBounds(replaceIn(lo, isUpper = false), replaceIn(hi, isUpper = true))
-        case _ => tp
+        case _ =>
+          tp.substParam(param, replacement)
       }
 
       var current =
@@ -438,8 +439,16 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
   }
 
-  def remove(pt: PolyType)(implicit ctx: Context): This =
-    newConstraint(boundsMap.remove(pt), lowerMap.remove(pt), upperMap.remove(pt))
+  def remove(pt: PolyType)(implicit ctx: Context): This = {
+    def removeFromOrdering(po: ParamOrdering) = {
+      def removeFromBoundss(key: PolyType, bndss: Array[List[PolyParam]]): Array[List[PolyParam]] = {
+        val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
+        if (bndss.corresponds(bndss1)(_ eq _)) bndss else bndss1
+      }
+      po.remove(pt).mapValuesNow(removeFromBoundss)
+    }
+    newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap))
+  }
 
   def isRemovable(pt: PolyType, removedParam: Int = -1): Boolean = {
     val entries = boundsMap(pt)
@@ -490,6 +499,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         }
       }
     }
+
+  override def checkClosed()(implicit ctx: Context): Unit = {
+    def isFreePolyParam(tp: Type) = tp match {
+      case PolyParam(binder, _) => !contains(binder)
+      case _ => false
+    }
+    def checkClosedType(tp: Type, where: String) =
+      if (tp != null)
+        assert(!tp.existsPart(isFreePolyParam), i"unclosed constraint: $this refers to $tp in $where")
+    boundsMap.foreachBinding((_, tps) => tps.foreach(checkClosedType(_, "bounds")))
+    lowerMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "lower"))))
+    upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
+  }
 
   private var myUninstVars: mutable.ArrayBuffer[TypeVar] = _
 

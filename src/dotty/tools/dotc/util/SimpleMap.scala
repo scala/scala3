@@ -8,7 +8,7 @@ abstract class SimpleMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
   def remove(k: K): SimpleMap[K, V]
   def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleMap[K, V1]
   def contains(k: K): Boolean = apply(k) != null
-  def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1): SimpleMap[K, V1]
+  def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1): SimpleMap[K, V1]
   def foreachBinding(f: (K, V) => Unit): Unit
   def map2[T](f: (K, V) => T): List[T] = {
     val buf = new ListBuffer[T]
@@ -32,7 +32,7 @@ object SimpleMap {
     def apply(k: AnyRef) = null
     def remove(k: AnyRef) = this
     def updated[V1 >: Null <: AnyRef](k: AnyRef, v: V1) = new Map1(k, v)
-    def mapValues[V1 >: Null <: AnyRef](f: (AnyRef, V1) => V1) = this
+    def mapValuesNow[V1 >: Null <: AnyRef](f: (AnyRef, V1) => V1) = this
     def foreachBinding(f: (AnyRef, Null) => Unit) = ()
   }
 
@@ -49,7 +49,7 @@ object SimpleMap {
     def updated[V1 >: V <: AnyRef](k: K, v: V1) =
       if (k == k1) new Map1(k, v)
       else new Map2(k1, v1, k, v)
-    def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
+    def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1)
       if (v1 eq w1) this else new Map1(k1, w1)
     }
@@ -70,7 +70,7 @@ object SimpleMap {
       if (k == k1) new Map2(k, v, k2, v2)
       else if (k == k2) new Map2(k1, v1, k, v)
       else new Map3(k1, v1, k2, v2, k, v)
-    def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
+    def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2)
       if ((v1 eq w1) && (v2 eq w2)) this
       else new Map2(k1, w1, k2, w2)
@@ -95,7 +95,7 @@ object SimpleMap {
       else if (k == k2) new Map3(k1, v1, k, v, k3, v3)
       else if (k == k3) new Map3(k1, v1, k2, v2, k, v)
       else new Map4(k1, v1, k2, v2, k3, v3, k, v)
-    def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
+    def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2); val w3 = f(k3, v3)
       if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3)) this
       else new Map3(k1, w1, k2, w2, k3, w3)
@@ -123,7 +123,7 @@ object SimpleMap {
       else if (k == k3) new Map4(k1, v1, k2, v2, k, v, k4, v4)
       else if (k == k4) new Map4(k1, v1, k2, v2, k3, v3, k, v)
       else new MapMore(Array[AnyRef](k1, v1, k2, v2, k3, v3, k4, v4, k, v))
-    def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
+    def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       val w1 = f(k1, v1); val w2 = f(k2, v2); val w3 = f(k3, v3); val w4 = f(k4, v4)
       if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3) && (v4 eq w4)) this
       else new Map4(k1, w1, k2, w2, k3, w3, k4, w4)
@@ -197,7 +197,7 @@ object SimpleMap {
       false
     }
 
-    def mapValues[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
+    def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1) = {
       var bindings1: Array[AnyRef] = bindings
       var i = 0
       while (i < bindings.length) {

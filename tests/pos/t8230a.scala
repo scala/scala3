@@ -15,9 +15,9 @@ object Test {
   object Okay {
     Arr("1")
 
-    import I.{ arrToTrav, longArrToTrav }
-    foo(Arr("2"))
-  }
+   import I.{ arrToTrav, longArrToTrav }
+   val x = foo(Arr("2"))
+ }
 
   object Fail {
     import I.arrToTrav

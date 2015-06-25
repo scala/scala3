@@ -146,4 +146,7 @@ abstract class Constraint extends Showable {
 
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): Unit
+
+  /** Check that constraint only refers to PolyParams bound by itself */
+  def checkClosed()(implicit ctx: Context): Unit
 }
