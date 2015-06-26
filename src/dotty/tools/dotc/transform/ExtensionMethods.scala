@@ -14,7 +14,7 @@ import core._
 import Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
-import TypeErasure.{ erasure, valueErasure, ErasedValueType }
+import TypeErasure.{ valueErasure, ErasedValueType }
 import TypeUtils._
 import util.Positions._
 import Decorators._
