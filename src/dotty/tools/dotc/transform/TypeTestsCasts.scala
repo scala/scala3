@@ -96,7 +96,7 @@ trait TypeTestsCasts {
           } else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
-        def erasedArg = erasure(tree.args.head.tpe, semiEraseVCs = false)
+        def erasedArg = erasure(tree.args.head.tpe)
         if (sym eq defn.Any_isInstanceOf)
           transformIsInstanceOf(qual, erasedArg)
         else if (sym eq defn.Any_asInstanceOf)

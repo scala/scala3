@@ -110,7 +110,14 @@ object TypeErasure {
   private def erasureCtx(implicit ctx: Context) =
     if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase).addMode(Mode.FutureDefsOK) else ctx
 
-  def erasure(tp: Type, semiEraseVCs: Boolean = true)(implicit ctx: Context): Type =
+  /** The standard erasure of a Scala type.
+   *
+   *  @param tp            The type to erase.
+   *  @param semiEraseVCs  If true, value classes are semi-erased to ErasedValueType
+   *                       (they will be fully erased in [[ElimErasedValueType]]).
+   *                       If false, they are erased like normal classes.
+   */
+  def erasure(tp: Type, semiEraseVCs: Boolean = false)(implicit ctx: Context): Type =
     erasureFn(isJava = false, semiEraseVCs, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
@@ -134,7 +141,7 @@ object TypeErasure {
     case tp: ThisType =>
       tp
     case tp =>
-      erasure(tp)
+      erasure(tp, semiEraseVCs = true)
   }
 
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
@@ -389,7 +396,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    ErasedValueType(cls, erasure(underlying))
+    ErasedValueType(cls, erasure(underlying, semiEraseVCs = true))
   }
 
 

@@ -268,7 +268,7 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    def erasedType(tree: untpd.Tree, semiEraseVCs: Boolean = true)(implicit ctx: Context): Type =
+    def erasedType(tree: untpd.Tree, semiEraseVCs: Boolean)(implicit ctx: Context): Type =
       tree.typeOpt match {
         case tp: TermRef if tree.isTerm => erasedRef(tp)
         case tp => erasure(tp, semiEraseVCs)
@@ -296,7 +296,7 @@ object Erasure extends TypeTestsCasts{
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
       val Typed(expr, tpt) = tree
-      val tpt1 = promote(tpt)
+      val tpt1 = promote(tpt, semiEraseVCs = true)
       val expr1 = typed(expr, tpt1.tpe)
       assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
@@ -460,7 +460,7 @@ object Erasure extends TypeTestsCasts{
       if (pt.isValueType) pt else {
         if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
-        else erasure(tree.typeOpt)
+        else erasure(tree.typeOpt, semiEraseVCs = true)
       }
     }
 
