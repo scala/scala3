@@ -218,7 +218,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         /*BackendStats.timed(BackendStats.methodOptTimer)*/(localOpt.methodOptimizations(classNode))
       }
 
-      def run(): Unit = {
+      def run() {
         while (true) {
           val item = q2.poll
           if (item.isPoison) {
