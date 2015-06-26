@@ -2460,6 +2460,8 @@ object Types {
 
       if (ctx.typerState.isGlobalCommittable)
         assert(!inst.isInstanceOf[PolyParam], i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
+          // If this fails, you might want to turn on Config.debugCheckConstraintsClosed
+          // to help find the root of the problem.
 
       instantiateWith(inst)
     }

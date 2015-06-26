@@ -87,7 +87,7 @@ extends TyperState(r) {
 
   override def constraint = myConstraint
   override def constraint_=(c: Constraint)(implicit ctx: Context) = {
-    if (Config.checkConstraintsClosed && isGlobalCommittable) c.checkClosed()
+    if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
   }
 
