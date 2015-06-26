@@ -315,12 +315,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val parent = tp.parent
       if (parent isRef defn.ArrayClass) eraseArray(tp)
       else this(parent)
-    case tp: TermRef =>
+    case _: TermRef | _: ThisType =>
       this(tp.widen)
-    case tp: ThisType =>
-      def thisTypeErasure(tpToErase: Type) =
-        erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
-      thisTypeErasure(tp.cls.typeRef)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>

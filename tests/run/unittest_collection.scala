@@ -4,11 +4,11 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     test(collection.mutable.ArrayBuffer[String]())
-    test(collection.mutable.ListBuffer[String]())
-    class BBuf(z:ListBuffer[String]) extends BufferProxy[String] {
-      def self = z
-    }
-    test(new BBuf(collection.mutable.ListBuffer[String]()))
+//    test(collection.mutable.ListBuffer[String]())
+//    class BBuf(z:ListBuffer[String]) extends BufferProxy[String] {
+//      def self = z
+//    }
+//    test(new BBuf(collection.mutable.ListBuffer[String]()))
   }
 
   def test(x: Buffer[String]): Unit = {

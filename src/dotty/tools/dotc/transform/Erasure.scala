@@ -271,6 +271,7 @@ object Erasure extends TypeTestsCasts{
     def erasedType(tree: untpd.Tree, semiEraseVCs: Boolean)(implicit ctx: Context): Type =
       tree.typeOpt match {
         case tp: TermRef if tree.isTerm => erasedRef(tp)
+        case tp: ThisType => tp
         case tp => erasure(tp, semiEraseVCs)
       }
 
