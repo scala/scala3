@@ -11,14 +11,11 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /***
-  * Renames constructors in traits so that backend will call them with invokeInterface
-  * Also makes sure that renamed constructor bodies conforms to type of method
+ * Renames constructors in traits so that backend will call them with invokeInterface
  */
 class TraitConstructors extends MiniPhaseTransform with SymTransformer {
   import dotty.tools.dotc.ast.tpd._
   def phaseName: String = "traitConstructors"
-
-  override def treeTransformPhase: Phase = this.phase
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.isPrimaryConstructor && (sym.owner is Flags.Trait))
@@ -29,8 +26,7 @@ class TraitConstructors extends MiniPhaseTransform with SymTransformer {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
     if (sym.isPrimaryConstructor && (sym.owner is Flags.Trait))
-      cpy.DefDef(tree)(rhs = Block(List(tree.rhs), This(tree.symbol.enclosingClass.asClass)))
+      cpy.DefDef(tree)(name = nme.IMPLCLASS_CONSTRUCTOR)
     else tree
   }
-
 }
