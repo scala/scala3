@@ -14,7 +14,7 @@ import core._
 import Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
-import TypeErasure.{ erasure, ErasedValueType }
+import TypeErasure.{ erasure, valueErasure, ErasedValueType }
 import TypeUtils._
 import util.Positions._
 import Decorators._
@@ -65,7 +65,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
               }
             }
 
-            val underlying = erasure(underlyingOfValueClass(valueClass), semiEraseVCs = true)
+            val underlying = valueErasure(underlyingOfValueClass(valueClass))
             val evt = ErasedValueType(valueClass, underlying)
             val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
               MethodType(List(nme.x_0), List(underlying), evt))

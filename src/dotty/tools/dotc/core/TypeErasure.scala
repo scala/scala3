@@ -110,15 +110,20 @@ object TypeErasure {
   private def erasureCtx(implicit ctx: Context) =
     if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase).addMode(Mode.FutureDefsOK) else ctx
 
-  /** The standard erasure of a Scala type.
+  /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *
    *  @param tp            The type to erase.
-   *  @param semiEraseVCs  If true, value classes are semi-erased to ErasedValueType
-   *                       (they will be fully erased in [[ElimErasedValueType]]).
-   *                       If false, they are erased like normal classes.
+  */
+  def erasure(tp: Type)(implicit ctx: Context): Type =
+    erasureFn(isJava = false, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+
+  /** The value class erasure of a Scala type, where value classes are semi-erased to
+   *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
+   *
+   *  @param tp            The type to erase.
    */
-  def erasure(tp: Type, semiEraseVCs: Boolean = false)(implicit ctx: Context): Type =
-    erasureFn(isJava = false, semiEraseVCs, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+  def valueErasure(tp: Type)(implicit ctx: Context): Type =
+    erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
@@ -141,7 +146,7 @@ object TypeErasure {
     case tp: ThisType =>
       tp
     case tp =>
-      erasure(tp, semiEraseVCs = true)
+      valueErasure(tp)
   }
 
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
@@ -392,7 +397,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    ErasedValueType(cls, erasure(underlying, semiEraseVCs = true))
+    ErasedValueType(cls, valueErasure(underlying))
   }
 
 

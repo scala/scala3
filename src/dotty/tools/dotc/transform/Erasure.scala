@@ -270,7 +270,7 @@ object Erasure extends TypeTestsCasts{
 
     def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = {
       val tp = tree.typeOpt
-      if (tree.isTerm) erasedRef(tp) else erasure(tp, semiEraseVCs = true)
+      if (tree.isTerm) erasedRef(tp) else valueErasure(tp)
     }
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
@@ -285,7 +285,7 @@ object Erasure extends TypeTestsCasts{
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
-      tree.withType(erasure(tree.tpe, semiEraseVCs = false))
+      tree.withType(erasure(tree.tpe))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
@@ -454,7 +454,7 @@ object Erasure extends TypeTestsCasts{
       if (pt.isValueType) pt else {
         if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
-        else erasure(tree.typeOpt, semiEraseVCs = true)
+        else valueErasure(tree.typeOpt)
       }
     }
 
