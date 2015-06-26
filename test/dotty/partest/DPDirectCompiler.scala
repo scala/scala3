@@ -1,14 +1,17 @@
 package dotty.partest
 
+import dotty.tools.dotc.reporting.ConsoleReporter
 import scala.tools.partest.{ TestState, nest }
-import java.io.File
+import java.io.{ File, PrintWriter, FileWriter }
 
 
 /* NOTE: Adapted from partest.DirectCompiler and DottyTest */
-class DPDirectCompiler(runner: nest.Runner) extends nest.DirectCompiler(runner) {
+class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner) {
 
   override def compile(opts0: List[String], sources: List[File]): TestState = {
-    println("\ncompiling " + sources.mkString(" ") + "\noptions: " + opts0.mkString(" ")) 
+    val clogFWriter = new FileWriter(runner.cLogFile.jfile, true)
+    val clogWriter = new PrintWriter(clogFWriter, true)
+    clogWriter.println("\ncompiling " + sources.mkString(" ") + "\noptions: " + opts0.mkString(" "))
 
     implicit var ctx: dotty.tools.dotc.core.Contexts.Context = {
       val base = new dotty.tools.dotc.core.Contexts.ContextBase
@@ -18,17 +21,21 @@ class DPDirectCompiler(runner: nest.Runner) extends nest.DirectCompiler(runner) 
       base.definitions.init(ctx)
       ctx
     }
-    
+
     try {
       val processor = if (opts0.exists(_.startsWith("#"))) dotty.tools.dotc.Bench else dotty.tools.dotc.Main
-      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, ctx)
+      val clogger = new ConsoleReporter(writer = clogWriter)(ctx)
+      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, ctx, Some(clogger))
       if (!reporter.hasErrors) runner.genPass()
       else {
         reporter.printSummary(ctx)
         runner.genFail(s"compilation failed with ${reporter.errorCount} errors")
       }
-    } catch { 
+    } catch {
       case t: Throwable => runner.genCrash(t)
+    } finally {
+      clogFWriter.close
+      clogWriter.close
     }
   }
 }

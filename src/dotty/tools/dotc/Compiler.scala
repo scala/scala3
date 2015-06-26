@@ -7,7 +7,7 @@ import Periods._
 import Symbols._
 import Scopes._
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
-import reporting.ConsoleReporter
+import reporting.{ConsoleReporter, Reporter}
 import Phases.Phase
 import dotty.tools.dotc.transform._
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
@@ -94,7 +94,7 @@ class Compiler {
    *                 for type checking.
    *    imports      For each element of RootImports, an import context
    */
-  def rootContext(implicit ctx: Context): Context = {
+  def rootContext(implicit ctx: Context, r: Option[Reporter] = None): Context = {
     ctx.definitions.init(ctx)
     ctx.setPhasePlan(phases)
     val rootScope = new MutableScope
@@ -106,7 +106,7 @@ class Compiler {
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .setMode(Mode.ImplicitsEnabled)
-      .setTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
+      .setTyperState(new MutableTyperState(ctx.typerState, r.getOrElse(new ConsoleReporter()(ctx)), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
     def addImport(ctx: Context, symf: () => Symbol) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(symf)(ctx))
@@ -118,8 +118,8 @@ class Compiler {
     ctx.runInfo.clear()
   }
 
-  def newRun(implicit ctx: Context): Run = {
+  def newRun(implicit ctx: Context, r: Option[Reporter] = None): Run = {
     reset()
-    new Run(this)(rootContext)
+    new Run(this)(rootContext(ctx, r))
   }
 }

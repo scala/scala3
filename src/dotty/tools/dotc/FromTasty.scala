@@ -12,6 +12,7 @@ import SymDenotations._
 import typer.FrontEnd
 import Phases.Phase
 import util._
+import reporting.Reporter
 import Decorators._
 import dotty.tools.dotc.transform.Pickler
 import tasty.DottyUnpickler
@@ -41,7 +42,7 @@ object FromTasty extends Driver {
       List(new ReadTastyTreesFromClasses) :: backendPhases
     }
 
-    override def newRun(implicit ctx: Context): Run = {
+    override def newRun(implicit ctx: Context, reporter: Option[Reporter] = None): Run = {
       reset()
       new TASTYRun(this)(rootContext)
     }

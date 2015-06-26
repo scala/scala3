@@ -29,14 +29,15 @@ object Bench extends Driver {
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (emptyReporter /: (0 until n)) ((_, _) => op)
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+  override def doCompile(compiler: Compiler, fileNames: List[String], reporter: Option[Reporter] = None)
+      (implicit ctx: Context): Reporter =
     if (new config.Settings.Setting.SettingDecorator[Boolean](ctx.base.settings.resident).value(ctx))
       resident(compiler)
     else
       ntimes(numRuns) {
         val start = System.nanoTime()
-        val r = super.doCompile(compiler, fileNames)
-        println(s"time elapsed: ${(System.nanoTime - start) / 1000000}ms")
+        val r = super.doCompile(compiler, fileNames, reporter)
+        ctx.println(s"time elapsed: ${(System.nanoTime - start) / 1000000}ms")
         r
       }
 
@@ -46,11 +47,11 @@ object Bench extends Driver {
     else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
   }
 
-  override def process(args: Array[String], rootCtx: Context): Reporter = {
+  override def process(args: Array[String], rootCtx: Context, reporter: Option[Reporter] = None): Reporter = {
     val (numCompilers, args1) = extractNumArg(args, "#compilers")
     val (numRuns, args2) = extractNumArg(args1, "#runs")
     this.numRuns = numRuns
-    ntimes(numCompilers)(super.process(args2, rootCtx))
+    ntimes(numCompilers)(super.process(args2, rootCtx, reporter))
   }
 }
 

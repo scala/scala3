@@ -42,8 +42,8 @@ class TreeChecker extends Phase with SymTransformer {
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
 
-  def printError(str: String) = {
-    println(Console.RED + "[error] " + Console.WHITE  + str)
+  def printError(str: String)(implicit ctx: Context) = {
+    ctx.println(Console.RED + "[error] " + Console.WHITE  + str)
   }
 
   val NoSuperClass = Trait | Package
@@ -109,7 +109,7 @@ class TreeChecker extends Phase with SymTransformer {
   def check(phasesToRun: Seq[Phase], ctx: Context) = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squahsedPhase = ctx.squashed(prevPhase)
-    println(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
+    ctx.println(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
     val checkingCtx = ctx.fresh
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.typerState.reporter)))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
@@ -117,7 +117,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>
         implicit val ctx: Context = checkingCtx
-        println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
+        ctx.println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
         throw ex
     }
   }
@@ -151,10 +151,10 @@ class TreeChecker extends Phase with SymTransformer {
         }
 
         nowDefinedSyms += tree.symbol
-        //println(i"defined: ${tree.symbol}")
+        //ctx.println(i"defined: ${tree.symbol}")
         val res = op
         nowDefinedSyms -= tree.symbol
-        //println(i"undefined: ${tree.symbol}")
+        //ctx.println(i"undefined: ${tree.symbol}")
         res
       case _ => op
     }

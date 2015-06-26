@@ -9,7 +9,7 @@ import scala.tools.partest._
 import scala.tools.partest.nest._
 import scala.util.matching.Regex
 import tools.nsc.io.{ File => NSCFile }
-import java.io.{ File, PrintStream, FileOutputStream }
+import java.io.{ File, PrintStream, FileOutputStream, PrintWriter, FileWriter }
 import java.net.URLClassLoader
 
 /** Runs dotty partest from the Console, discovering test sources in
@@ -91,23 +91,11 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
 
     val state =
       try {
-        // IO redirection is messy, there are no concurrency guarantees.
-        // Parts of test output might end up in the wrong file or get lost.
-        Console.out.flush
-        Console.err.flush
-        val clog = runner.cLogFile
-        val stream = new PrintStream(new FileOutputStream(clog.jfile), true)
-        val result = Console.withOut(stream)({ Console.withErr(stream)({
-          val res = runner.run()
-          Console.err.flush
-          Console.out.flush
-          res
-        })})
-        result match {
+        runner.run match {
           // Append compiler output to transcript if compilation failed,
           // printed with --verbose option
           case TestState.Fail(f, r@"compilation failed", transcript) =>
-            TestState.Fail(f, r, transcript ++ clog.fileLines.dropWhile(_ == ""))
+            TestState.Fail(f, r, transcript ++ runner.cLogFile.fileLines.dropWhile(_ == ""))
           case res => res
         }
       } catch {
@@ -261,11 +249,16 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   override def groupedFiles(sources: List[File]): List[List[File]] = {
     val grouped = sources groupBy (_.group)
     val flatGroup = List(grouped.keys.toList.sorted.map({ k => grouped(k) sortBy (_.getName) }).flatten)
-    try { // try/catch because of bug in partest
+    try { // try/catch because of bug in partest that throws exception
       if (flatGroup != super.groupedFiles(sources))
-        NestUI.echoWarning("Warning: Overriding compilation groups for tests: " + sources)
+        throw new java.lang.UnsupportedOperationException()
     } catch {
-      case e: java.lang.UnsupportedOperationException => NestUI.echoWarning("Warning: Overriding compilation groups for tests: " + sources)
+      case e: java.lang.UnsupportedOperationException =>
+        val genlogFWriter = new FileWriter(DPConfig.genLog.jfile, true)
+        val genlogWriter = new PrintWriter(genlogFWriter, true)
+        genlogWriter.println("Warning: Overriding compilation groups for tests: " + sources)
+        genlogWriter.close
+        genlogFWriter.close
     }
     flatGroup
   }

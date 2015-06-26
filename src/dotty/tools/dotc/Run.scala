@@ -33,7 +33,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
-      println(i"exception occurred while compiling $units%, %")
+      ctx.println(i"exception occurred while compiling $units%, %")
       throw ex
   }
 
@@ -55,7 +55,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     ctx.usePhases(phases)
     for (phase <- ctx.allPhases)
       if (!ctx.reporter.hasErrors) {
-        if (ctx.settings.verbose.value) println(s"[$phase]")
+        if (ctx.settings.verbose.value) ctx.println(s"[$phase]")
         units = phase.runOn(units)
         def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
           for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
@@ -69,8 +69,8 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.squashed(prevPhase)
 
-    println(s"result of $unit after ${squashedPhase}:")
-    println(unit.tpdTree.show(ctx))
+    ctx.println(s"result of $unit after ${squashedPhase}:")
+    ctx.println(unit.tpdTree.show(ctx))
   }
 
   def compile(sourceCode: String): Unit = {

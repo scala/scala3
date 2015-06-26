@@ -344,7 +344,7 @@ object CompilerTest extends App {
   lazy val init: SFile = {
     scala.reflect.io.Directory(DPConfig.testRoot).deleteRecursively
     new JFile(DPConfig.testRoot).mkdirs
-    val log = (Path(DPConfig.testRoot) / Path("gen.log")).createFile(true)
+    val log = DPConfig.genLog.createFile(true)
     println(s"CompilerTest is generating tests for partest, log: $log")
     log
   }
