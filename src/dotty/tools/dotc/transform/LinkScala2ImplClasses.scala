@@ -50,7 +50,7 @@ class LinkScala2ImplClasses extends MiniPhaseTransform with IdentityDenotTransfo
 
   private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol =
     meth.owner.implClass.info
-      .decl(if (meth.isConstructor) nme.IMPLCLASS_CONSTRUCTOR else meth.name)
+      .decl(if (meth.isConstructor) nme.TRAIT_CONSTRUCTOR else meth.name)
       .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
       .symbol
 

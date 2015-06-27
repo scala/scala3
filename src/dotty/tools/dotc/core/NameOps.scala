@@ -62,7 +62,7 @@ object NameOps {
     def likeTyped(n: Name): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
-    def isConstructorName = name == CONSTRUCTOR || name == IMPLCLASS_CONSTRUCTOR
+    def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isExceptionResultName = name startsWith EXCEPTION_RESULT_PREFIX
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX

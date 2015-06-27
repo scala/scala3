@@ -232,7 +232,6 @@ object StdNames {
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
-    val IMPLCLASS_CONSTRUCTOR: N    = "$init$"
     val LAZY_LOCAL: N               = "$lzy"
     val LAZY_LOCAL_INIT: N          = "$lzyINIT"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
@@ -261,6 +260,7 @@ object StdNames {
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
+    val TRAIT_CONSTRUCTOR: N        = "$init$"
     val U2EVT: N                    = "u2evt$"
 
     final val Nil: N                = "Nil"

@@ -76,8 +76,7 @@ class Compiler {
       List(/*new PrivateToStatic,*/
            new ExpandPrivate,
            new CollectEntryPoints,
-           new LabelDefs,
-           new TraitConstructors),
+           new LabelDefs),
       List(new GenBCode)
     )
 
