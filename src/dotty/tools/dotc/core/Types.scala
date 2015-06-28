@@ -936,6 +936,7 @@ object Types {
     /** the self type of the underlying classtype */
     def givenSelfType(implicit ctx: Context): Type = this match {
       case tp @ RefinedType(parent, name) => tp.wrapIfMember(parent.givenSelfType)
+      case tp: ThisType => tp.tref.givenSelfType
       case tp: TypeProxy => tp.underlying.givenSelfType
       case _ => NoType
     }
@@ -3181,14 +3182,23 @@ object Types {
   // ----- Exceptions -------------------------------------------------------------
 
   class TypeError(msg: String) extends Exception(msg)
-  class FatalTypeError(msg: String) extends TypeError(msg)
 
   class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])
-    extends FatalTypeError(
-      s"""malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}""")
+    extends TypeError(
+      s"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}")
+
+  class MissingType(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
+    i"""cannot resolve reference to type $pre.$name
+       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""".stripMargin)
+
+  private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
+    case pre: ThisType if pre.givenSelfType.exists =>
+      i"\nor the self type of $pre might not contain all transitive dependencies"
+    case _ => ""
+  }
 
   class CyclicReference private (val denot: SymDenotation)
-    extends FatalTypeError(s"cyclic reference involving $denot") {
+    extends TypeError(s"cyclic reference involving $denot") {
     def show(implicit ctx: Context) = s"cyclic reference involving ${denot.show}"
   }
 
@@ -3204,7 +3214,7 @@ object Types {
     }
   }
 
-  class MergeError(msg: String) extends FatalTypeError(msg)
+  class MergeError(msg: String) extends TypeError(msg)
 
   // ----- Debug ---------------------------------------------------------
 
