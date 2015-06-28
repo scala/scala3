@@ -26,3 +26,7 @@ object Test {
   object M extends C // error
 
 }
+
+trait X { self: Y => }
+trait Y { self: Z => }
+trait Z
