@@ -23,9 +23,11 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
     }
 
     try {
-      val processor = if (opts0.exists(_.startsWith("#"))) dotty.tools.dotc.Bench else dotty.tools.dotc.Main
+      val processor =
+        if (opts0.exists(_.startsWith("#"))) dotty.tools.dotc.Bench else dotty.tools.dotc.Main
       val clogger = new ConsoleReporter(writer = clogWriter)(ctx)
-      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, ctx, Some(clogger))
+      val logCtx = ctx.fresh.setTyperState(ctx.typerState.withReporter(clogger))
+      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, logCtx)
       if (!reporter.hasErrors) runner.genPass()
       else {
         reporter.printSummary(ctx)

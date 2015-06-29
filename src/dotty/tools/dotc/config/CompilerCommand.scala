@@ -60,7 +60,7 @@ object CompilerCommand extends DotClass {
    *  are already applied in context.
    *  @return  The list of files to compile.
    */
-  def checkUsage(summary: ArgsSummary)(implicit ctx: Context): List[String] = {
+  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(implicit ctx: Context): List[String] = {
     val settings = ctx.settings
 
     /** Creates a help message for a subset of options based on cond */
@@ -121,8 +121,7 @@ object CompilerCommand extends DotClass {
       ctx.println(infoMessage)
       Nil
     } else {
-      if (summary.arguments.isEmpty && !settings.resident.value)
-        ctx.println(usageMessage)
+      if (sourcesRequired && summary.arguments.isEmpty) ctx.println(usageMessage)
       summary.arguments
     }
   }

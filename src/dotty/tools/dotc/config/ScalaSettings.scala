@@ -81,7 +81,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val Xprintpos = BooleanSetting("-Xprint-pos", "Print tree positions, as offsets.")
   val printtypes = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
   val prompt = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val resident = BooleanSetting("-Xresident", "Compiler stays resident: read source filenames from standard input.")
   val script = StringSetting("-Xscript", "object", "Treat the source file as a script and wrap it in a main method.", "")
   val mainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val Xshowcls = StringSetting("-Xshow-class", "class", "Show internal representation of class.", "")

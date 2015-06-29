@@ -42,7 +42,7 @@ object FromTasty extends Driver {
       List(new ReadTastyTreesFromClasses) :: backendPhases
     }
 
-    override def newRun(implicit ctx: Context, reporter: Option[Reporter] = None): Run = {
+    override def newRun(implicit ctx: Context): Run = {
       reset()
       new TASTYRun(this)(rootContext)
     }
