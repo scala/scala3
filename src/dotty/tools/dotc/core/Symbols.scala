@@ -503,6 +503,8 @@ object Symbols {
     def showKind(implicit ctx: Context): String = ctx.kindString(this)
     def showName(implicit ctx: Context): String = ctx.nameString(this)
     def showFullName(implicit ctx: Context): String = ctx.fullNameString(this)
+
+    override def hashCode(): PhaseId = id
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }
