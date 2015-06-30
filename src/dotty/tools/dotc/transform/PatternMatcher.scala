@@ -1443,7 +1443,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // require (nbSubPats > 0 && (!lastIsStar || isSeq))
       protected def subPatRefs(binder: Symbol): List[Tree] = {
         val refs = if (totalArity > 0 && isSeq) subPatRefsSeq(binder)
-        else if (defn.isProductSubType(binder.info) && !isSeq) productElemsToN(binder, totalArity)
+        else if (binder.info.member(nme._1).exists && !isSeq) productElemsToN(binder, totalArity)
         else ref(binder):: Nil
         refs
       }
