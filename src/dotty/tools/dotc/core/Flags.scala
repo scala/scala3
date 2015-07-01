@@ -388,7 +388,7 @@ object Flags {
   /** Symbol is a self name */
   final val SelfName = termFlag(54, "<selfname>")
 
-  /** Symbol is an implementation class */
+  /** Symbol is an implementation class of a Scala2 trait */
   final val ImplClass = typeFlag(54, "<implclass>")
 
   final val SelfNameOrImplClass = SelfName.toCommonFlags

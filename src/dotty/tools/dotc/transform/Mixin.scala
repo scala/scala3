@@ -100,8 +100,10 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
       sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred).ensureNotPrivate
-    else if (sym.isConstructor && sym.owner.is(Trait) && sym.info.firstParamTypes.nonEmpty)
-      sym.copySymDenotation(info = MethodType(Nil, sym.info.resultType))
+    else if (sym.isConstructor && sym.owner.is(Trait))
+      sym.copySymDenotation(
+        name = nme.TRAIT_CONSTRUCTOR,
+        info = MethodType(Nil, sym.info.resultType))
     else
       sym
 
@@ -231,8 +233,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
     cpy.Template(impl)(
       constr =
-        if (cls.is(Trait) && impl.constr.vparamss.flatten.nonEmpty)
-          cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
+        if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
         else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withPos(p.pos)),
       body =

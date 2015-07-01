@@ -530,7 +530,7 @@ object SymDenotations {
     final def isClassConstructor = name == nme.CONSTRUCTOR
 
     /** Is this the constructor of a trait? */
-    final def isImplClassConstructor = name == nme.IMPLCLASS_CONSTRUCTOR
+    final def isImplClassConstructor = name == nme.TRAIT_CONSTRUCTOR
 
     /** Is this the constructor of a trait or a class */
     final def isConstructor = name.isConstructorName
@@ -1630,8 +1630,11 @@ object SymDenotations {
     override def fullName(implicit ctx: Context): Name = super.fullName
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
-      val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
-      info.decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
+      def constrNamed(cname: TermName) = info.decls.denotsNamed(cname).last.symbol
+        // denotsNamed returns Symbols in reverse order of occurrence
+      if (this.is(ImplClass)) constrNamed(nme.TRAIT_CONSTRUCTOR) // ignore normal constructor
+      else
+        constrNamed(nme.CONSTRUCTOR).orElse(constrNamed(nme.TRAIT_CONSTRUCTOR))
     }
 
     /** The parameter accessors of this class. Term and type accessors,
