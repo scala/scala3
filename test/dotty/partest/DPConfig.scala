@@ -28,5 +28,5 @@ object DPConfig {
 
   // Tests finish faster when running in parallel, but console output is
   // out of order and sometimes the compiler crashes
-  val runTestsInParallel = false
+  val runTestsInParallel = true
 }
