@@ -309,7 +309,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ InSuperCall | Private | maybeStatic,
+          initFlags = local.flags &~ (InSuperCall | Module) | Private | maybeStatic,
+            // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisTransform)
         if (local.isClass)
           for (member <- local.asClass.info.decls)
