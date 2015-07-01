@@ -40,7 +40,7 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Float)       = underlying
   final def hashCode$extension(underlying: Float) = underlying.hashCode()
-  final def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Float): String
 }
 
@@ -75,7 +75,7 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -91,7 +91,7 @@ abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Object)       = underlying
   final def hashCode$extension(underlying: Object) = underlying.hashCode()
-  final def toString$extension(underlying: Object) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Object) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Object): String
 }
 
@@ -128,7 +128,7 @@ abstract class VCShortCasePrototype(underlying: Short) extends VCShortPrototype(
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -144,7 +144,7 @@ abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Short)       = underlying
   final def hashCode$extension(underlying: Short) = underlying.hashCode()
-  final def toString$extension(underlying: Short) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Short) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Short): String
 }
 
@@ -182,7 +182,7 @@ abstract class VCLongCasePrototype(underlying: Long) extends VCLongPrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -198,7 +198,7 @@ abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Long)       = underlying
   final def hashCode$extension(underlying: Long) = underlying.hashCode()
-  final def toString$extension(underlying: Long) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Long) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Long): String
 }
 
@@ -235,7 +235,7 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -251,7 +251,7 @@ abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Int)       = underlying
   final def hashCode$extension(underlying: Int) = underlying.hashCode()
-  final def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Int): String
 }
 
@@ -286,7 +286,7 @@ abstract class VCDoubleCasePrototype(underlying: Double) extends VCDoublePrototy
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -302,7 +302,7 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Double)       = underlying
   final def hashCode$extension(underlying: Double) = underlying.hashCode()
-  final def toString$extension(underlying: Double) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Double) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Double): String
 }
 
@@ -337,7 +337,7 @@ abstract class VCBooleanCasePrototype(underlying: Boolean) extends VCBooleanProt
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -353,7 +353,7 @@ abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Boolean)       = underlying
   final def hashCode$extension(underlying: Boolean) = underlying.hashCode()
-  final def toString$extension(underlying: Boolean) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Boolean) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Boolean): String
 }
 
@@ -390,7 +390,7 @@ abstract class VCCharCasePrototype(underlying: Char) extends VCCharPrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 
@@ -408,7 +408,7 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Char)       = underlying
   final def hashCode$extension(underlying: Char) = underlying.hashCode()
-  final def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Char): String
 }
 
@@ -443,7 +443,7 @@ abstract class VCByteCasePrototype(underlying: Byte) extends VCBytePrototype(und
     underlying.hashCode()
   }
 
-  override final def toString: String = {
+  override def toString: String = {
     s"$productPrefix($underlying)"
   }
 }
@@ -459,7 +459,7 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
 
   final def _1$extension(underlying: Byte)       = underlying
   final def hashCode$extension(underlying: Byte) = underlying.hashCode()
-  final def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
+  def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Byte): String
 }
 
