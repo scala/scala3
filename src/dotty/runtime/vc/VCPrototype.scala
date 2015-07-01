@@ -67,7 +67,7 @@ final class VCFloatArray[T <: VCFloatPrototype] (val arr: Array[Float], val ct: 
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -120,7 +120,7 @@ final class VCObjectArray[T <: VCObjectPrototype] (val arr: Array[Object], val c
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -173,7 +173,7 @@ final class VCShortArray[T <: VCShortPrototype] (val arr: Array[Short], val ct: 
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 
 }
@@ -227,7 +227,7 @@ final class VCLongArray[T <: VCLongPrototype] (val arr: Array[Long], val ct: VCL
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -278,7 +278,7 @@ final class VCIntArray[T <: VCIntPrototype] (val arr: Array[Int], val ct: VCIntC
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -329,7 +329,7 @@ final class VCDoubleArray[T <: VCDoublePrototype] (val arr: Array[Double], val c
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -382,7 +382,7 @@ final class VCBooleanArray[T <: VCBooleanPrototype] (val arr: Array[Boolean], va
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -435,7 +435,7 @@ final class VCCharArray[T <: VCCharPrototype] (val arr: Array[Char], val ct: VCC
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 }
 
@@ -486,7 +486,7 @@ final class VCByteArray[T <: VCBytePrototype] (val arr: Array[Byte], val ct: VCB
   }
 
   override def toString: String = {
-    "[" + ct.runtimeClass
+    "[" + ct.toString
   }
 
 }
