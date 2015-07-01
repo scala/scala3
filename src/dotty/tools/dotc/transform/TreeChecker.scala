@@ -308,5 +308,3 @@ class TreeChecker extends Phase with SymTransformer {
     }
   }
 }
-
-object TreeChecker extends TreeChecker
