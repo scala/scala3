@@ -13,6 +13,6 @@ import Reporter._
 class ThrowingReporter(reportInfo: Reporter) extends Reporter {
   def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
     case _: Error => throw d
-    case _ => reportInfo.report(d)
+    case _ => reportInfo.doReport(d)
   }
 }
