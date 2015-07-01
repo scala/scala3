@@ -29,13 +29,20 @@ abstract class VCFloatCasePrototype(underlying: Float) extends VCFloatPrototype(
   }
 }
 
-abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
+// NOTE for all VCXCompanion: The type parameter T should be bounded like this:
+//   abstract class VCXCompanion[T <: VCXPrototype] extends ClassTag[T]
+// But this affects erasure: it means that Array[T] is erased to [VCIntPrototype;
+// instead of Object, but we really need it to erase to Object if we want
+// VCXArray to be a valid array. We work around this by adding casts where
+// we need to assume that T is a subtype of VCXPrototype.
+
+abstract class VCFloatCompanion[T /*<: VCFloatPrototype*/] extends ClassTag[T] {
   def box(underlying: Float): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCFloatPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCFloatArray(this, len).asInstanceOf[Array[T]]
+    new VCFloatArray(this.asInstanceOf[VCFloatCompanion[VCFloatPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Float)       = underlying
@@ -80,13 +87,13 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
   }
 }
 
-abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
+abstract class VCObjectCompanion[T /*<: VCObjectPrototype*/] extends ClassTag[T] {
   def box(underlying: Object): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCObjectPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCObjectArray(this, len).asInstanceOf[Array[T]]
+    new VCObjectArray(this.asInstanceOf[VCObjectCompanion[VCObjectPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Object)       = underlying
@@ -133,13 +140,13 @@ abstract class VCShortCasePrototype(underlying: Short) extends VCShortPrototype(
   }
 }
 
-abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
+abstract class VCShortCompanion[T /*<: VCShortPrototype*/] extends ClassTag[T] {
   def box(underlying: Short): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCShortPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCShortArray(this, len).asInstanceOf[Array[T]]
+    new VCShortArray(this.asInstanceOf[VCShortCompanion[VCShortPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Short)       = underlying
@@ -187,13 +194,13 @@ abstract class VCLongCasePrototype(underlying: Long) extends VCLongPrototype(und
   }
 }
 
-abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
+abstract class VCLongCompanion[T /*<: VCLongPrototype*/] extends ClassTag[T] {
   def box(underlying: Long): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCLongPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCLongArray(this, len).asInstanceOf[Array[T]]
+    new VCLongArray(this.asInstanceOf[VCLongCompanion[VCLongPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Long)       = underlying
@@ -240,13 +247,13 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
   }
 }
 
-abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
+abstract class VCIntCompanion[T /*<: VCIntPrototype*/] extends ClassTag[T] {
   def box(underlying: Int): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCIntPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCIntArray(this, len).asInstanceOf[Array[T]]
+    new VCIntArray(this.asInstanceOf[VCIntCompanion[VCIntPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Int)       = underlying
@@ -291,13 +298,13 @@ abstract class VCDoubleCasePrototype(underlying: Double) extends VCDoublePrototy
   }
 }
 
-abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
+abstract class VCDoubleCompanion[T /*<: VCDoublePrototype*/] extends ClassTag[T] {
   def box(underlying: Double): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCDoublePrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCDoubleArray(this, len).asInstanceOf[Array[T]]
+    new VCDoubleArray(this.asInstanceOf[VCDoubleCompanion[VCDoublePrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Double)       = underlying
@@ -342,13 +349,13 @@ abstract class VCBooleanCasePrototype(underlying: Boolean) extends VCBooleanProt
   }
 }
 
-abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
+abstract class VCBooleanCompanion[T /*<: VCBooleanPrototype*/] extends ClassTag[T] {
   def box(underlying: Boolean): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCBooleanPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCBooleanArray(this, len).asInstanceOf[Array[T]]
+    new VCBooleanArray(this.asInstanceOf[VCBooleanCompanion[VCBooleanPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Boolean)       = underlying
@@ -397,13 +404,13 @@ abstract class VCCharCasePrototype(underlying: Char) extends VCCharPrototype(und
   // subclasses are expected to implement equals, productPrefix, and canEqual
 }
 
-abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
+abstract class VCCharCompanion[T /*<: VCCharPrototype*/] extends ClassTag[T] {
   def box(underlying: Char): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCCharPrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCCharArray(this, len).asInstanceOf[Array[T]]
+    new VCCharArray(this.asInstanceOf[VCCharCompanion[VCCharPrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Char)       = underlying
@@ -448,13 +455,13 @@ abstract class VCByteCasePrototype(underlying: Byte) extends VCBytePrototype(und
   }
 }
 
-abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
+abstract class VCByteCompanion[T /*<: VCBytePrototype*/] extends ClassTag[T] {
   def box(underlying: Byte): T
-  final def unbox(boxed: T) = boxed.underlying
+  final def unbox(boxed: T) = boxed.asInstanceOf[VCBytePrototype].underlying
 
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
-    new VCByteArray(this, len).asInstanceOf[Array[T]]
+    new VCByteArray(this.asInstanceOf[VCByteCompanion[VCBytePrototype]], len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Byte)       = underlying
