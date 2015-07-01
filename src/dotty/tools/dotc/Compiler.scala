@@ -46,6 +46,7 @@ class Compiler {
            new ElimRepeated,
            new NormalizeFlags,
            new ExtensionMethods,
+           new VCParents,
            new ExpandSAMs,
            new TailRec,
            new ClassOf),

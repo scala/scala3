@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import transform.ValueClasses
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -598,6 +599,31 @@ class Definitions {
 
   lazy val volatileRefClass: Map[Symbol, Symbol] =
     refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+
+  lazy val vcPrototype: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
+  lazy val vcCompanion: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
+  lazy val vcArray: Map[Symbol, Symbol] =
+    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+
+  lazy val VCArrayPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCArrayPrototype")
+  def VCArrayPrototypeType = VCArrayPrototypeClass.typeRef
+
+  def vcPrototypeOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcPrototype.getOrElse(underlying, vcPrototype(defn.ObjectClass))
+  }
+  def vcCompanionOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcCompanion.getOrElse(underlying, vcCompanion(defn.ObjectClass))
+  }
+  def vcArrayOf(vc: ClassDenotation) = {
+    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
+    vcArray.getOrElse(underlying, vcArray(defn.ObjectClass))
+  }
+
+
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
