@@ -91,7 +91,7 @@ fi
 
 if [ "$JLINE_JAR" == "" ]
 then
-  JLINE_JAR=$HOME/.ivy2//cache/jline/jline/jars/jline-$JLINE_VERSION.jar
+  JLINE_JAR=$HOME/.ivy2/cache/jline/jline/jars/jline-$JLINE_VERSION.jar
 fi
 
 if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR"  -o ! -f "$SCALA_COMPILER_JAR"  -o ! -f "$JLINE_JAR" ]
@@ -188,11 +188,30 @@ trap onExit INT
 # If using the boot classpath, also pass an empty classpath
 # to java to suppress "." from materializing.
 classpathArgs () {
-  if [[ -n $bootcp ]]; then
-echo "-Xbootclasspath/a:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR:$MAIN_JAR -classpath $MAIN_JAR:$TEST_JAR"
+  toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
+  if [[ -n "$cygwin" ]]; then
+    if [[ "$OS" = "Windows_NT" ]] && cygpath -m .>/dev/null 2>/dev/null ; then
+      format=mixed
+    else
+      format=windows
+    fi
+
+    if [[ -n $bootcp ]]; then
+      boot_classpath="$(cygpath --path --$format "$toolchain:$MAIN_JAR")"
+      classpath="$(cygpath --path --$format "$MAIN_JAR:$TEST_JAR")"
+      cpArgs="-Xbootclasspath/a:$boot_classpath -classpath $classpath"
+    else
+      classpath="$(cygpath --path --$format "$toolchain:$MAIN_JAR:$TEST_JAR")"
+      cpArgs="-classpath $classpath"
+    fi
   else
-echo "-classpath $SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR:$MAIN_JAR:$TEST_JAR"
+    if [[ -n $bootcp ]]; then
+      cpArgs="-Xbootclasspath/a:$toolchain:$MAIN_JAR -classpath $MAIN_JAR:$TEST_JAR"
+    else
+      cpArgs="-classpath $toolchain:$MAIN_JAR:$TEST_JAR"
+    fi
   fi
+  echo ${cpArgs}
 }
 
 # e.g. path -java-home /path/to/java_home
