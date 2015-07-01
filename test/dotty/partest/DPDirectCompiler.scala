@@ -13,7 +13,7 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
     val clogWriter = new PrintWriter(clogFWriter, true)
     clogWriter.println("\ncompiling " + sources.mkString(" ") + "\noptions: " + opts0.mkString(" "))
 
-    implicit var ctx: dotty.tools.dotc.core.Contexts.Context = {
+    implicit val ctx: dotty.tools.dotc.core.Contexts.Context = {
       val base = new dotty.tools.dotc.core.Contexts.ContextBase
       import base.settings._
       val ctx = base.initialCtx.fresh.setSetting(printtypes, true)
