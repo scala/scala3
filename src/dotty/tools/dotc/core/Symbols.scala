@@ -38,12 +38,12 @@ trait Symbols { this: Context =>
    *  Note this uses a cast instead of a direct type refinement because
    *  it's debug-friendlier not to create an anonymous class here.
    */
-  def newNakedSymbol[N <: Name](coord: Coord = NoCoord): Symbol { type ThisName = N } =
-    new Symbol(coord).asInstanceOf[Symbol { type ThisName = N }]
+  def newNakedSymbol[N <: Name](coord: Coord = NoCoord)(implicit ctx: Context): Symbol { type ThisName = N } =
+    new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
-  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null) =
-    new ClassSymbol(coord, assocFile)
+  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context) =
+    new ClassSymbol(coord, assocFile, ctx.nextId)
 
 // ---- Symbol creation methods ----------------------------------
 
@@ -364,21 +364,15 @@ trait Symbols { this: Context =>
 
 object Symbols {
 
-  var _nextId = 0 // !!! DEBUG, use global counter instead
-  def nextId = { _nextId += 1; _nextId }
-
-
   /** A Symbol represents a Scala definition/declaration or a package.
+   *  @param coord  The coordinates of the symbol (a position or an index)
+   *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord) extends DotClass with printing.Showable {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with printing.Showable {
 
     type ThisName <: Name
 
-    private[this] var _id: Int = nextId
     //assert(_id != 30214)
-
-    /** The unique id of this symbol */
-    def id = _id
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
@@ -514,8 +508,8 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile)
-    extends Symbol(coord) {
+  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
+    extends Symbol(coord, id) {
 
     type ThisName = TypeName
 
@@ -551,12 +545,12 @@ object Symbols {
     override protected def prefixString = "ClassSymbol"
   }
 
-  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord) {
+  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, ctx.nextId) {
     type ThisName = underlying.ThisName
     denot = underlying.denot
   }
 
-  object NoSymbol extends Symbol(NoCoord) {
+  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     denot = NoDenotation
 
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
@@ -590,5 +584,5 @@ object Symbols {
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
-  var stubs: List[Symbol] = Nil // diagnostic
+  @sharable var stubs: List[Symbol] = Nil // diagnostic only
 }
