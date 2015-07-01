@@ -182,7 +182,7 @@ trait Reporting { this: Context =>
 abstract class Reporter {
 
   /** Report a diagnostic */
-  protected def doReport(d: Diagnostic)(implicit ctx: Context): Unit
+  def doReport(d: Diagnostic)(implicit ctx: Context): Unit
 
  /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
