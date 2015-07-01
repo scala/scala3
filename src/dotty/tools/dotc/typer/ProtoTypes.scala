@@ -429,7 +429,7 @@ object ProtoTypes {
     def apply(tp: Type) = wildApprox(tp, this)
   }
 
-  private lazy val dummyTree = untpd.Literal(Constant(null))
+  @sharable private lazy val dummyTree = untpd.Literal(Constant(null))
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {

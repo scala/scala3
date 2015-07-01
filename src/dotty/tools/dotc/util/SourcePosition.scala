@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import Positions.{Position, NoPosition}
 
@@ -23,7 +24,7 @@ case class SourcePosition(source: SourceFile, pos: Position) {
 }
 
 /** A sentinel for a non-existing source position */
-object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
   override def toString = "?"
 }
 

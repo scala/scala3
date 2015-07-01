@@ -12,7 +12,7 @@ import ScriptSourceFile._
 import Positions._
 
 object ScriptSourceFile {
-  private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
+  @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
   def apply(file: AbstractFile, content: Array[Char]) = {

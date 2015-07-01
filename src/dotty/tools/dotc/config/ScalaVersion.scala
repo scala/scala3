@@ -53,7 +53,7 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
 /**
  * A Scala version that sorts lower than all actual versions
  */
-case object AnyScalaVersion extends ScalaVersion {
+@sharable case object AnyScalaVersion extends ScalaVersion {
   def unparse = "any"
 
   def compare(that: ScalaVersion): Int = that match {
@@ -65,7 +65,7 @@ case object AnyScalaVersion extends ScalaVersion {
 /**
  * Methods for parsing ScalaVersions
  */
-object ScalaVersion {
+@sharable object ScalaVersion {
   private val dot = "\\."
   private val dash = "\\-"
   private def not(s:String) = s"[^${s}]"
