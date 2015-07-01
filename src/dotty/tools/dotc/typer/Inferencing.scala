@@ -257,7 +257,7 @@ trait Inferencing { this: Checking =>
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
-object ForceDegree extends Enumeration {
+@sharable object ForceDegree extends Enumeration {
   val none,           // don't force type variables
       noBottom,       // force type variables, fail if forced to Nothing or Null
       all = Value     // force type variables, don't fail

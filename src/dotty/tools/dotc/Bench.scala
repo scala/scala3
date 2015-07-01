@@ -10,7 +10,7 @@ import reporting.Reporter
 
 object Bench extends Driver {
 
-  private var numRuns = 1
+  @sharable private var numRuns = 1
 
   def newCompiler(): Compiler = new Compiler
 

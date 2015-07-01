@@ -36,11 +36,11 @@ object Parsers {
     def nonePositive: Boolean = parCounts forall (_ <= 0)
   }
 
-  object Location extends Enumeration {
+  @sharable object Location extends Enumeration {
     val InParens, InBlock, InPattern, ElseWhere = Value
   }
 
-  object ParamOwner extends Enumeration {
+  @sharable object ParamOwner extends Enumeration {
     val Class, Type, TypeParam, Def = Value
   }
 

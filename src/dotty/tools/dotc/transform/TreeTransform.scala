@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.ast.tpd
@@ -194,7 +195,7 @@ object TreeTransforms {
     }
   }
 
-  val NoTransform = new TreeTransform {
+  @sharable val NoTransform = new TreeTransform {
     def phase = unsupported("phase")
     idx = -1
   }

@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
@@ -1713,8 +1714,8 @@ object SymDenotations {
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 
-  val NoDenotation = new NoDenotation
-  val NotDefinedHereDenotation = new NoDenotation
+  @sharable val NoDenotation = new NoDenotation
+  @sharable val NotDefinedHereDenotation = new NoDenotation
 
   // ---- Completion --------------------------------------------------------
 
@@ -1757,7 +1758,7 @@ object SymDenotations {
   val NoSymbolFn = (ctx: Context) => NoSymbol
 
   /** A missing completer */
-  class NoCompleter extends LazyType {
+  @sharable class NoCompleter extends LazyType {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 

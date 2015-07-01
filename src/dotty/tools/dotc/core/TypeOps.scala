@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
@@ -572,5 +573,5 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
 object TypeOps {
   val emptyDNF = (Nil, Set[Name]()) :: Nil
-  var track = false // !!!DEBUG
+  @sharable var track = false // !!!DEBUG
 }

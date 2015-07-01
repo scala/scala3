@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import util.common._
@@ -35,7 +36,7 @@ import language.implicitConversions
 
 object Types {
 
-  private var nextId = 0
+  @sharable private var nextId = 0
 
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
@@ -73,6 +74,7 @@ object Types {
 
 // ----- Tests -----------------------------------------------------
 
+    // debug only: a unique identifier for a type
     val uniqId = {
       nextId = nextId + 1
 //      if (nextId == 19555)
@@ -2752,13 +2754,13 @@ object Types {
   case class ImportType(expr: Tree) extends UncachedGroundType
 
   /** Sentinel for "missing type" */
-  case object NoType extends CachedGroundType {
+  @sharable case object NoType extends CachedGroundType {
     override def exists = false
     override def computeHash = hashSeed
   }
 
   /** Missing prefix */
-  case object NoPrefix extends CachedGroundType {
+  @sharable case object NoPrefix extends CachedGroundType {
     override def computeHash = hashSeed
   }
 
@@ -2775,7 +2777,7 @@ object Types {
 
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
 
-  object WildcardType extends WildcardType(NoType) {
+  @sharable object WildcardType extends WildcardType(NoType) {
     def apply(bounds: TypeBounds)(implicit ctx: Context) = unique(new CachedWildcardType(bounds))
   }
 
@@ -2983,7 +2985,7 @@ object Types {
     }
   }
 
-  object IdentityTypeMap extends TypeMap()(NoContext) {
+  @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
     override def stopAtStatic = true
     def apply(tp: Type) = tp
   }
@@ -3208,7 +3210,7 @@ object Types {
 
   // ----- Debug ---------------------------------------------------------
 
-  var debugTrace = false
+  @sharable var debugTrace = false
 
   val watchList = List[String](
   ) map (_.toTypeName)

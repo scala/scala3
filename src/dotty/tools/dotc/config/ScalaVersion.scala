@@ -1,6 +1,7 @@
 /* @author  James Iry
  */
-package dotty.tools.dotc.config
+package dotty.tools
+package dotc.config
 
 import scala.util.{Try, Success, Failure}
 
@@ -15,7 +16,7 @@ sealed abstract class ScalaVersion extends Ordered[ScalaVersion] {
 /**
  * A scala version that sorts higher than all actual versions
  */
-case object NoScalaVersion extends ScalaVersion {
+@sharable case object NoScalaVersion extends ScalaVersion {
   def unparse = "none"
 
   def compare(that: ScalaVersion): Int = that match {

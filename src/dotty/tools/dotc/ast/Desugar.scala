@@ -209,7 +209,7 @@ object desugar {
     else tdef
   }
 
-  private val synthetic = Modifiers(Synthetic)
+  @sharable private val synthetic = Modifiers(Synthetic)
 
   private def toDefParam(tparam: TypeDef): TypeDef =
     tparam.withFlags(Param)

@@ -151,7 +151,7 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed)
+  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed)
 
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed)
@@ -308,7 +308,7 @@ object ProtoTypes {
    *
    *    [] _
    */
-  object AnyFunctionProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
 
   /** Add all parameters in given polytype `pt` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,

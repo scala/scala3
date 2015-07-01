@@ -20,7 +20,6 @@ import typer.Checking
 import Names.Name
 import NameOps._
 import StdNames._
-import util.CtxLazy
 
 
 /** The first tree transform

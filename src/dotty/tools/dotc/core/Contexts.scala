@@ -28,6 +28,7 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
+
 object Contexts {
 
   /** A context is passed basically everywhere in dotc.
@@ -473,7 +474,7 @@ object Contexts {
     gadt = new GADTMap(SimpleMap.Empty)
   }
 
-  object NoContext extends Context {
+  @sharable object NoContext extends Context {
     lazy val base = unsupported("base")
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
@@ -620,7 +621,7 @@ object Contexts {
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base
 
-    val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
+    // @sharable val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
   }
 
   /** Info that changes on each compiler run */
