@@ -23,7 +23,7 @@ import scala.annotation.tailrec
  */
 object Resident extends Driver {
 
-  object residentCompiler extends Compiler
+  @unshared object residentCompiler extends Compiler
 
   override def newCompiler(): Compiler = ???
 
