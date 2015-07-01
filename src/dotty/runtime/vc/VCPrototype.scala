@@ -44,7 +44,7 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Float): String
 }
 
-final class VCFloatArray[T <: VCFloatPrototype] private (val arr: Array[Float], val ct: VCFloatCompanion[T])
+final class VCFloatArray[T <: VCFloatPrototype] (val arr: Array[Float], val ct: VCFloatCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCFloatCompanion[T], sz: Int) =
     this(new Array[Float](sz), ct)
@@ -95,7 +95,7 @@ abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Object): String
 }
 
-final class VCObjectArray[T <: VCObjectPrototype] private (val arr: Array[Object], val ct: VCObjectCompanion[T])
+final class VCObjectArray[T <: VCObjectPrototype] (val arr: Array[Object], val ct: VCObjectCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCObjectCompanion[T], sz: Int) =
     this(new Array[Object](sz), ct)
@@ -148,7 +148,7 @@ abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Short): String
 }
 
-final class VCShortArray[T <: VCShortPrototype] private (val arr: Array[Short], val ct: VCShortCompanion[T])
+final class VCShortArray[T <: VCShortPrototype] (val arr: Array[Short], val ct: VCShortCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCShortCompanion[T], sz: Int) =
     this(new Array[Short](sz), ct)
@@ -202,7 +202,7 @@ abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Long): String
 }
 
-final class VCLongArray[T <: VCLongPrototype] private (val arr: Array[Long], val ct: VCLongCompanion[T])
+final class VCLongArray[T <: VCLongPrototype] (val arr: Array[Long], val ct: VCLongCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCLongCompanion[T], sz: Int) =
     this(new Array[Long](sz), ct)
@@ -255,7 +255,7 @@ abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Int): String
 }
 
-final class VCIntArray[T <: VCIntPrototype] private (val arr: Array[Int], val ct: VCIntCompanion[T])
+final class VCIntArray[T <: VCIntPrototype] (val arr: Array[Int], val ct: VCIntCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCIntCompanion[T], sz: Int) =
     this(new Array[Int](sz), ct)
@@ -306,7 +306,7 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Double): String
 }
 
-final class VCDoubleArray[T <: VCDoublePrototype] private (val arr: Array[Double], val ct: VCDoubleCompanion[T])
+final class VCDoubleArray[T <: VCDoublePrototype] (val arr: Array[Double], val ct: VCDoubleCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCDoubleCompanion[T], sz: Int) =
     this(new Array[Double](sz), ct)
@@ -357,7 +357,7 @@ abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Boolean): String
 }
 
-final class VCBooleanArray[T <: VCBooleanPrototype] private (val arr: Array[Boolean], val ct: VCBooleanCompanion[T])
+final class VCBooleanArray[T <: VCBooleanPrototype] (val arr: Array[Boolean], val ct: VCBooleanCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCBooleanCompanion[T], sz: Int) =
     this(new Array[Boolean](sz), ct)
@@ -412,7 +412,7 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Char): String
 }
 
-final class VCCharArray[T <: VCCharPrototype] private (val arr: Array[Char], val ct: VCCharCompanion[T])
+final class VCCharArray[T <: VCCharPrototype] (val arr: Array[Char], val ct: VCCharCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCCharCompanion[T], sz: Int) =
     this(new Array[Char](sz), ct)
@@ -463,7 +463,7 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Byte): String
 }
 
-final class VCByteArray[T <: VCBytePrototype] private (val arr: Array[Byte], val ct: VCByteCompanion[T])
+final class VCByteArray[T <: VCBytePrototype] (val arr: Array[Byte], val ct: VCByteCompanion[T])
   extends VCArrayPrototype[T] {
   def this(ct: VCByteCompanion[T], sz: Int) =
     this(new Array[Byte](sz), ct)
