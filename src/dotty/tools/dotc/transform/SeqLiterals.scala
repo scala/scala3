@@ -7,7 +7,7 @@ import dotty.tools.dotc.transform.TreeTransforms._
 import Contexts.Context
 import Symbols._
 import Phases._
-import Decorators._
+import Decorators._, ValueClasses._
 
 /** A transformer that eliminates SeqLiteral's, transforming `SeqLiteral(elems)` to an operation
  *  equivalent to
@@ -36,13 +36,20 @@ class SeqLiterals extends MiniPhaseTransform {
       //println(i"trans seq $tree, arr = $arr: ${arr.tpe} ${arr.tpe.elemType}")
       val elemtp = arr.tpe.elemType.bounds.hi
       val elemCls = elemtp.classSymbol
-      val (wrapMethStr, targs) =
-        if (elemCls.isPrimitiveValueClass) (s"wrap${elemCls.name}Array", Nil)
-        else if (elemtp derivesFrom defn.ObjectClass) ("wrapRefArray", elemtp :: Nil)
-        else ("genericWrapArray", elemtp :: Nil)
-      ref(defn.ScalaPredefModule)
-        .select(wrapMethStr.toTermName)
-        .appliedToTypes(targs)
-        .appliedTo(arr)
+      if (isDerivedValueClass(elemCls)) {
+        ref(defn.DottyPredefModule)
+          .select("wrapVCArray".toTermName)
+          .appliedToTypes(List(elemtp))
+          .appliedTo(arr)
+      } else {
+        val (wrapMethStr, targs) =
+          if (elemCls.isPrimitiveValueClass) (s"wrap${elemCls.name}Array", Nil)
+          else if (elemtp derivesFrom defn.ObjectClass) ("wrapRefArray", elemtp :: Nil)
+          else ("genericWrapArray", elemtp :: Nil)
+        ref(defn.ScalaPredefModule)
+          .select(wrapMethStr.toTermName)
+          .appliedToTypes(targs)
+          .appliedTo(arr)
+      }
   }
 }
