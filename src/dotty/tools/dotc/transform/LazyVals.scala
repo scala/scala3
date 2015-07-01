@@ -46,18 +46,38 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     * before this phase starts processing same tree */
   override def runsAfter = Set(classOf[Mixin])
 
-    override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (!(tree.symbol is Flags.Lazy) || tree.symbol.owner.is(Flags.Trait)) tree
-      else {
-          val isField = tree.symbol.owner.isClass
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
+   transformLazyVal(tree)
 
-          if (isField) {
-            if (tree.symbol.isVolatile || tree.symbol.is(Flags.Module)) transformMemberDefVolatile(tree)
-            else transformMemberDefNonVolatile(tree)
-          }
-          else transformLocalDef(tree)
+
+  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    transformLazyVal(tree)
+  }
+
+  def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val sym = tree.symbol
+    if (!(sym is Flags.Lazy) || sym.owner.is(Flags.Trait) || (sym.isStatic && sym.is(Flags.Module))) tree
+    else {
+
+      val isField = sym.owner.isClass
+
+      if (isField) {
+        if (sym.isVolatile ||
+          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic))) // companion class is synthesized. Should be threadsafe to
+        // make inner lazy vals thread safe
+          transformMemberDefVolatile(tree)
+        else if (sym.is(Flags.Module)) { // synthetic module
+          val holderSymbol = ctx.newSymbol(sym.owner, sym.asTerm.name ++ nme.LAZY_LOCAL,
+            Flags.Synthetic, sym.info.widen.resultType).enteredAfter(this)
+          val field = ValDef(holderSymbol, tree.rhs.changeOwnerAfter(sym, holderSymbol, this))
+          val getter = DefDef(sym.asTerm, ref(holderSymbol))
+          Thicket(field, getter)
+        }
+        else transformMemberDefNonVolatile(tree)
       }
+      else transformLocalDef(tree)
     }
+  }
 
 
   /** Append offset fields to companion objects
@@ -82,7 +102,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       * with a LazyHolder from
       * dotty.runtime(eg dotty.runtime.LazyInt)
       */
-    def transformLocalDef(x: DefDef)(implicit ctx: Context) = {
+    def transformLocalDef(x: ValOrDefDef)(implicit ctx: Context) = {
         val valueInitter = x.rhs
         val holderName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
         val initName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL_INIT).toTermName
@@ -172,7 +192,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       If(cond, init, exp)
     }
 
-    def transformMemberDefNonVolatile(x: DefDef)(implicit ctx: Context) = {
+    def transformMemberDefNonVolatile(x: ValOrDefDef)(implicit ctx: Context) = {
         val claz = x.symbol.owner.asClass
         val tpe = x.tpe.widen.resultType.widen
         assert(!(x.mods is Flags.Mutable))
@@ -293,7 +313,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
     }
 
-    def transformMemberDefVolatile(x: DefDef)(implicit ctx: Context) = {
+    def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context) = {
         assert(!(x.mods is Flags.Mutable))
 
         val tpe = x.tpe.widen.resultType.widen
