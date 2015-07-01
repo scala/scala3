@@ -14,7 +14,10 @@ class CtxLazy[T](expr: Context => T) {
   private var myValue: T = _
   private var forced = false
   def apply()(implicit ctx: Context): T = {
-    if (!forced) myValue = expr(ctx)
+    if (!forced) {
+      myValue = expr(ctx)
+      forced = true
+    }
     myValue
   }
 }
