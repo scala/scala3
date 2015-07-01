@@ -62,6 +62,7 @@ class Compiler {
            new AugmentScala2Traits,
            new ResolveSuper),
       List(new Erasure),
+      List(new VCArrays), // Separate group for easier debugging for now
       List(new ElimErasedValueType,
            new VCInline,
            new Mixin,
