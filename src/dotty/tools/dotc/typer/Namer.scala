@@ -16,6 +16,7 @@ import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Printers._
 import Annotations._
+import transform.ValueClasses._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
@@ -580,6 +581,7 @@ class Namer { typer: Typer =>
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
       addAnnotations(denot)
+      if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.setApplicableFlags(
         (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))
     }
