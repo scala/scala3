@@ -71,10 +71,17 @@ object RefChecks {
     }
   }
 
-  /** Check that self type of this class conforms to self types of parents */
-  private def checkSelfType(clazz: Symbol)(implicit ctx: Context): Unit = clazz.info match {
+  /** Check that final and sealed restrictions on class parents
+   *  and that self type of this class conforms to self types of parents.
+   */
+  private def checkParents(clazz: Symbol)(implicit ctx: Context): Unit = clazz.info match {
     case cinfo: ClassInfo =>
       for (parent <- cinfo.classParents) {
+        val pclazz = parent.classSymbol
+        if (pclazz.is(Final))
+          ctx.error(d"cannot extend final $pclazz", clazz.pos)
+        if (pclazz.is(Sealed) && pclazz.associatedFile != clazz.associatedFile)
+          ctx.error(d"cannot extend sealed $pclazz in different compilation unit", clazz.pos)
         val pself = parent.givenSelfType.asSeenFrom(clazz.thisType, parent.classSymbol)
         if (pself.exists && !(cinfo.selfType <:< pself))
           ctx.error(d"illegal inheritance: self type ${cinfo.selfType} of $clazz does not conform to self type $pself of parent ${parent.classSymbol}", clazz.pos)
@@ -768,7 +775,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
     override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
       val cls = ctx.owner
       checkOverloadedRestrictions(cls)
-      checkSelfType(cls)
+      checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
       checkAnyValSubclass(cls)
