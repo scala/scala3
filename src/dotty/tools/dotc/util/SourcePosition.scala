@@ -10,7 +10,11 @@ case class SourcePosition(source: SourceFile, pos: Position) {
   def exists = pos.exists
 
   def lineContents: String = source.lineContents(point)
+
+  /** The line of the position, starting at 0 */
   def line: Int = source.offsetToLine(point)
+
+  /** The column of the position, starting at 0 */
   def column: Int = source.column(point)
 
   override def toString =

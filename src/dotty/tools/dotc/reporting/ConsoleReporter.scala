@@ -25,7 +25,7 @@ class ConsoleReporter(
     printMessage(pos.lineContents.stripLineEnd)
 
   def printColumnMarker(pos: SourcePosition) =
-    if (pos.exists) { printMessage(" " * (pos.column - 1) + "^") }
+    if (pos.exists) { printMessage(" " * pos.column + "^") }
 
   /** Prints the message. */
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
