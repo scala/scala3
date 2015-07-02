@@ -655,7 +655,17 @@ object RefChecks {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  private def checkDerivedValueClass(clazz: Symbol)(implicit ctx: Context) =
+  private def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
+    def checkValueClassMember(stat: Tree) = stat match {
+      case _: ValDef if !stat.symbol.is(ParamAccessor) =>
+        ctx.error(s"value class may not define non-parameter field", stat.pos)
+      case _: DefDef if stat.symbol.isConstructor =>
+        ctx.error(s"value class may not define secondary constructor", stat.pos)
+      case _: MemberDef | _: Import | EmptyTree =>
+      // ok
+      case _ =>
+        ctx.error(s"value class may not contain initialization statements", stat.pos)
+    }
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
@@ -663,7 +673,9 @@ object RefChecks {
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
       if (!clazz.isStatic)
         ctx.error("value class cannot be an inner class", clazz.pos)
+      stats.foreach(checkValueClassMember)
     }
+  }
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
@@ -780,7 +792,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
-      checkDerivedValueClass(cls)
+      checkDerivedValueClass(cls, tree.body)
       tree
     }
 

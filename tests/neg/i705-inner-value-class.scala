@@ -2,6 +2,13 @@ class Foo {
   class B(val a: Int) extends AnyVal // error
 }
 
+class VCwithBadMembers(val a: Int) extends AnyVal {
+  def this() = this(1) // error
+  var x = 0 // error
+  val y = 2 // error
+  println("hi") // error
+}
+
 object Test {
   class B(val a: Int) extends AnyVal // ok
   def f = {
