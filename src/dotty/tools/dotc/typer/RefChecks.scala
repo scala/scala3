@@ -71,10 +71,17 @@ object RefChecks {
     }
   }
 
-  /** Check that self type of this class conforms to self types of parents */
-  private def checkSelfType(clazz: Symbol)(implicit ctx: Context): Unit = clazz.info match {
+  /** Check that final and sealed restrictions on class parents
+   *  and that self type of this class conforms to self types of parents.
+   */
+  private def checkParents(clazz: Symbol)(implicit ctx: Context): Unit = clazz.info match {
     case cinfo: ClassInfo =>
       for (parent <- cinfo.classParents) {
+        val pclazz = parent.classSymbol
+        if (pclazz.is(Final))
+          ctx.error(d"cannot extend final $pclazz", clazz.pos)
+        if (pclazz.is(Sealed) && pclazz.associatedFile != clazz.associatedFile)
+          ctx.error(d"cannot extend sealed $pclazz in different compilation unit", clazz.pos)
         val pself = parent.givenSelfType.asSeenFrom(clazz.thisType, parent.classSymbol)
         if (pself.exists && !(cinfo.selfType <:< pself))
           ctx.error(d"illegal inheritance: self type ${cinfo.selfType} of $clazz does not conform to self type $pself of parent ${parent.classSymbol}", clazz.pos)
@@ -648,13 +655,27 @@ object RefChecks {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  private def checkAnyValSubclass(clazz: Symbol)(implicit ctx: Context) =
+  private def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
+    def checkValueClassMember(stat: Tree) = stat match {
+      case _: ValDef if !stat.symbol.is(ParamAccessor) =>
+        ctx.error(s"value class may not define non-parameter field", stat.pos)
+      case _: DefDef if stat.symbol.isConstructor =>
+        ctx.error(s"value class may not define secondary constructor", stat.pos)
+      case _: MemberDef | _: Import | EmptyTree =>
+      // ok
+      case _ =>
+        ctx.error(s"value class may not contain initialization statements", stat.pos)
+    }
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
-      else if (clazz.is(Abstract))
+      if (clazz.is(Abstract))
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
+      if (!clazz.isStatic)
+        ctx.error("value class cannot be an inner class", clazz.pos)
+      stats.foreach(checkValueClassMember)
     }
+  }
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
@@ -701,7 +722,7 @@ import RefChecks._
  *  - only one overloaded alternative defines default arguments
  *  - applyDynamic methods are not overloaded
  *  - all overrides conform to rules laid down by `checkAllOverrides`.
- *  - any value classes conform to rules laid down by `checkAnyValSubClass`.
+ *  - any value classes conform to rules laid down by `checkDerivedValueClass`.
  *  - this(...) constructor calls do not forward reference other definitions in their block (not even lazy vals).
  *  - no forward reference in a local block jumps over a non-lazy val definition.
  *  - a class and its companion object do not both define a class or module with the same name.
@@ -768,10 +789,10 @@ class RefChecks extends MiniPhase { thisTransformer =>
     override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
       val cls = ctx.owner
       checkOverloadedRestrictions(cls)
-      checkSelfType(cls)
+      checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
-      checkAnyValSubclass(cls)
+      checkDerivedValueClass(cls, tree.body)
       tree
     }
 
