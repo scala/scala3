@@ -655,12 +655,14 @@ object RefChecks {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  private def checkAnyValSubclass(clazz: Symbol)(implicit ctx: Context) =
+  private def checkDerivedValueClass(clazz: Symbol)(implicit ctx: Context) =
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
-      else if (clazz.is(Abstract))
+      if (clazz.is(Abstract))
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
+      if (!clazz.isStatic)
+        ctx.error("value class cannot be an inner class", clazz.pos)
     }
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
@@ -708,7 +710,7 @@ import RefChecks._
  *  - only one overloaded alternative defines default arguments
  *  - applyDynamic methods are not overloaded
  *  - all overrides conform to rules laid down by `checkAllOverrides`.
- *  - any value classes conform to rules laid down by `checkAnyValSubClass`.
+ *  - any value classes conform to rules laid down by `checkDerivedValueClass`.
  *  - this(...) constructor calls do not forward reference other definitions in their block (not even lazy vals).
  *  - no forward reference in a local block jumps over a non-lazy val definition.
  *  - a class and its companion object do not both define a class or module with the same name.
@@ -778,7 +780,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
-      checkAnyValSubclass(cls)
+      checkDerivedValueClass(cls)
       tree
     }
 
