@@ -7,6 +7,8 @@ import scala.reflect.ClassTag
  */
 object Arrays {
 
+  // note: this class is magical. Do not touch it unless you know what you are doing.`
+
   /** Creates an array of some element type determined by the given `ClassTag`
    *  argument. The erased type of applications of this method is `Object`.
    */

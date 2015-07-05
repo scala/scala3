@@ -42,7 +42,7 @@ object DottyBuild extends Build {
     resolvers += Resolver.sonatypeRepo("releases"),
 
     // get libraries onboard
-    partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20150506-175515-8fc7635b56",
+    partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20150619-173733-3bcd390afa",
                       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
                       "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
     libraryDependencies ++= partestDeps.value,
