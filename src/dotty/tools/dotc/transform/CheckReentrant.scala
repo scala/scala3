@@ -45,12 +45,8 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
 
   override def phaseName = "checkReentrant"
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
-
   private var shared: Set[Symbol] = Set()
-
   private var seen: Set[ClassSymbol] = Set()
-
   private var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(implicit ctx =>
