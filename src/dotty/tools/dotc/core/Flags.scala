@@ -136,7 +136,7 @@ object Flags {
   private final val FirstNotPickledFlag = 48
   private final val MaxFlag = 63
 
-  private var flagName = Array.fill(64, 2)("")
+  private val flagName = Array.fill(64, 2)("")
 
   private def isDefinedAsFlag(idx: Int) = flagName(idx) exists (_.nonEmpty)
 

@@ -12,7 +12,7 @@ object Properties extends PropertiesTrait {
 
   /** Scala manifest attributes.
    */
-  val ScalaCompilerVersion = new AttributeName("Scala-Compiler-Version")
+  @sharable val ScalaCompilerVersion = new AttributeName("Scala-Compiler-Version")
 }
 
 trait PropertiesTrait {
@@ -23,7 +23,7 @@ trait PropertiesTrait {
   protected val propFilename = "/" + propCategory + ".properties"
 
   /** The loaded properties */
-  protected lazy val scalaProps: java.util.Properties = {
+  @sharable protected lazy val scalaProps: java.util.Properties = {
     val props = new java.util.Properties
     val stream = pickJarBasedOn getResourceAsStream propFilename
     if (stream ne null)

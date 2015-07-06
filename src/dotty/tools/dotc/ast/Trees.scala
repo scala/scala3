@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package ast
 
 import core._
@@ -26,7 +27,7 @@ object Trees {
   type Untyped = Null
 
   /** The total number of created tree nodes, maintained if Stats.enabled */
-  var ntrees = 0
+  @sharable var ntrees = 0
 
   /** Modifiers and annotations for definitions
    *  @param flags          The set flags
@@ -68,7 +69,7 @@ object Trees {
     def tokenPos: Seq[(Token, Position)] = ???
   }
 
-  private var nextId = 0 // for debugging
+  @sharable private var nextId = 0 // for debugging
 
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
@@ -723,9 +724,9 @@ object Trees {
     setMods(Modifiers[T](PrivateLocal))
   }
 
-  val theEmptyTree: Thicket[Type] = Thicket(Nil)
-  val theEmptyValDef = new EmptyValDef[Type]
-  val theEmptyModifiers = new Modifiers()
+  @sharable val theEmptyTree: Thicket[Type] = Thicket(Nil)
+  @sharable val theEmptyValDef = new EmptyValDef[Type]
+  @sharable val theEmptyModifiers = new Modifiers()
 
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
@@ -845,9 +846,9 @@ object Trees {
     type Annotated = Trees.Annotated[T]
     type Thicket = Trees.Thicket[T]
 
-    val EmptyTree: Thicket = genericEmptyTree
-    val EmptyValDef: ValDef = genericEmptyValDef
-    val EmptyModifiers: Modifiers = genericEmptyModifiers
+    @sharable val EmptyTree: Thicket = genericEmptyTree
+    @sharable val EmptyValDef: ValDef = genericEmptyValDef
+    @sharable val EmptyModifiers: Modifiers = genericEmptyModifiers
 
     // ----- Auxiliary creation methods ------------------
 

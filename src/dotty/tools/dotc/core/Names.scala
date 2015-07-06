@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import scala.io.Codec
@@ -151,11 +152,13 @@ object Names {
     override def seq = toCollection(this)
   }
 
-  class TermName(val start: Int, val length: Int, private[Names] var next: TermName) extends Name {
+  class TermName(val start: Int, val length: Int, @sharable private[Names] var next: TermName) extends Name {
+    // `next` is @sharable because it is only modified in the synchronized block of termName.
     type ThisName = TermName
     def isTypeName = false
     def isTermName = true
 
+    @sharable // because it is only modified in the synchronized block of toTypeName.
     @volatile private[this] var _typeName: TypeName = null
 
     def toTypeName: TypeName = {
@@ -200,43 +203,20 @@ object Names {
   private final val fillFactor = 0.7
 
   /** Memory to store all names sequentially. */
+  @sharable // because it's only mutated in synchronized block of termName
   private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
+  @sharable // because it's only mutated in synchronized block of termName
   private var nc = 0
 
   /** Hashtable for finding term names quickly. */
+  @sharable // because it's only mutated in synchronized block of termName
   private var table = new Array[TermName](InitialHashSize)
 
   /** The number of defined names. */
+  @sharable // because it's only mutated in synchronized block of termName
   private var size = 1
-
-  /** Make sure the capacity of the character array is at least `n` */
-  private def ensureCapacity(n: Int) =
-    if (n > chrs.length) {
-      val newchrs = new Array[Char](chrs.length * 2)
-      chrs.copyToArray(newchrs)
-      chrs = newchrs
-    }
-
-  /** Make sure the hash table is large enough for the given load factor */
-  private def incTableSize() = {
-    size += 1
-    if (size.toDouble / table.size > fillFactor) {
-      val oldTable = table
-      table = new Array[TermName](table.size * 2)
-      for (i <- 0 until oldTable.size) rehash(oldTable(i))
-    }
-  }
-
-  /** Rehash chain of names */
-  private def rehash(name: TermName): Unit =
-    if (name != null) {
-      rehash(name.next)
-      val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
-      name.next = table(h)
-      table(h) = name
-    }
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
@@ -257,24 +237,53 @@ object Names {
     i == len
   }
 
-  /** Enter characters into chrs array. */
-  private def enterChars(cs: Array[Char], offset: Int, len: Int): Unit = {
-    ensureCapacity(nc + len)
-    var i = 0
-    while (i < len) {
-      chrs(nc + i) = cs(offset + i)
-      i += 1
-    }
-    nc += len
-  }
-
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
   def termName(cs: Array[Char], offset: Int, len: Int): TermName = {
     util.Stats.record("termName")
     val h = hashValue(cs, offset, len) & (table.size - 1)
+
     synchronized {
+
+      /** Make sure the capacity of the character array is at least `n` */
+      def ensureCapacity(n: Int) =
+        if (n > chrs.length) {
+          val newchrs = new Array[Char](chrs.length * 2)
+          chrs.copyToArray(newchrs)
+          chrs = newchrs
+        }
+
+      /** Enter characters into chrs array. */
+      def enterChars(): Unit = {
+        ensureCapacity(nc + len)
+        var i = 0
+        while (i < len) {
+          chrs(nc + i) = cs(offset + i)
+          i += 1
+        }
+        nc += len
+      }
+
+      /** Rehash chain of names */
+      def rehash(name: TermName): Unit =
+        if (name != null) {
+          rehash(name.next)
+          val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
+          name.next = table(h)
+          table(h) = name
+        }
+
+      /** Make sure the hash table is large enough for the given load factor */
+      def incTableSize() = {
+        size += 1
+        if (size.toDouble / table.size > fillFactor) {
+          val oldTable = table
+          table = new Array[TermName](table.size * 2)
+          for (i <- 0 until oldTable.size) rehash(oldTable(i))
+        }
+      }
+
       val next = table(h)
       var name = next
       while (name ne null) {
@@ -283,7 +292,7 @@ object Names {
         name = name.next
       }
       name = new TermName(nc, len, next)
-      enterChars(cs, offset, len)
+      enterChars()
       table(h) = name
       incTableSize()
       name

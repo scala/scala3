@@ -21,7 +21,7 @@ import scala.annotation.tailrec
  *
  *  dotc> :q     // quit
  */
-object Resident extends Driver {
+class Resident extends Driver {
 
   object residentCompiler extends Compiler
 

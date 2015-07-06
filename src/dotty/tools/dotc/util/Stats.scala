@@ -1,10 +1,11 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package util
 
 import core.Contexts._
 import collection.mutable
 
-object Stats {
+@sharable object Stats {
 
   final val enabled = true
 

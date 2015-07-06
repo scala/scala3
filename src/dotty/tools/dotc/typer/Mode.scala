@@ -18,7 +18,7 @@ case class Mode(val bits: Int) extends AnyVal {
 object Mode {
   val None = Mode(0)
 
-  private var modeName = new Array[String](32)
+  private val modeName = new Array[String](32)
 
   def newMode(bit: Int, name: String): Mode = {
     modeName(bit) = name

@@ -681,4 +681,4 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
         f(TermRef(pre, sym))
 }
 
-object EmptyTermRefSet extends TermRefSet()(NoContext)
+@sharable object EmptyTermRefSet extends TermRefSet()(NoContext)

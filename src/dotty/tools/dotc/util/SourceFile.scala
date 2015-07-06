@@ -12,7 +12,7 @@ import ScriptSourceFile._
 import Positions._
 
 object ScriptSourceFile {
-  private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
+  @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
   def apply(file: AbstractFile, content: Array[Char]) = {
@@ -131,7 +131,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   override def toString = file.toString
 }
 
-object NoSource extends SourceFile("<no source>", Nil) {
+@sharable object NoSource extends SourceFile("<no source>", Nil) {
   override def exists = false
 }
 
