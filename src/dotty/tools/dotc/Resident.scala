@@ -21,9 +21,9 @@ import scala.annotation.tailrec
  *
  *  dotc> :q     // quit
  */
-object Resident extends Driver {
+class Resident extends Driver {
 
-  @unshared object residentCompiler extends Compiler
+  object residentCompiler extends Compiler
 
   override def newCompiler(): Compiler = ???
 
