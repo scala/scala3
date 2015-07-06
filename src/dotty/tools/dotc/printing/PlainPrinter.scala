@@ -120,7 +120,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
       case tp: SingletonType =>
-        toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
+        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: RefinedType =>

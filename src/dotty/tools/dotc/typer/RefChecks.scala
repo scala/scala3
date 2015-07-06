@@ -73,19 +73,25 @@ object RefChecks {
 
   /** Check that final and sealed restrictions on class parents
    *  and that self type of this class conforms to self types of parents.
+   *  and required classes.
    */
-  private def checkParents(clazz: Symbol)(implicit ctx: Context): Unit = clazz.info match {
+  private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
+      def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
+        val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
+        if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
+          ctx.error(d"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
+      }
       for (parent <- cinfo.classParents) {
         val pclazz = parent.classSymbol
         if (pclazz.is(Final))
-          ctx.error(d"cannot extend final $pclazz", clazz.pos)
-        if (pclazz.is(Sealed) && pclazz.associatedFile != clazz.associatedFile)
-          ctx.error(d"cannot extend sealed $pclazz in different compilation unit", clazz.pos)
-        val pself = parent.givenSelfType.asSeenFrom(clazz.thisType, parent.classSymbol)
-        if (pself.exists && !(cinfo.selfType <:< pself))
-          ctx.error(d"illegal inheritance: self type ${cinfo.selfType} of $clazz does not conform to self type $pself of parent ${parent.classSymbol}", clazz.pos)
+          ctx.error(d"cannot extend final $pclazz", cls.pos)
+        if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
+          ctx.error(d"cannot extend sealed $pclazz in different compilation unit", cls.pos)
+        checkSelfConforms(parent, "illegal inheritance", "parent")
       }
+      for (reqd <- cinfo.givenSelfType.classSymbols)
+        checkSelfConforms(reqd.typeRef, "missing requirement", "required")
     case _ =>
   }
 
