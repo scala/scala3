@@ -869,7 +869,13 @@ object Types {
         case SkolemType(tp) =>
           tp.lookupRefined(name)
         case pre: WildcardType =>
-          WildcardType
+          pre.optBounds match {
+            case TypeBounds(lo, hi) if name.isTypeName =>
+              // for term names, forming a Termref with just the name risks losing overloaded instance
+              WildcardType(TypeBounds(NamedType(lo, name), NamedType(hi, name)))
+            case _ =>
+              WildcardType
+          }
         case pre: TypeRef =>
           pre.info match {
             case TypeAlias(alias) => loop(alias, resolved)
