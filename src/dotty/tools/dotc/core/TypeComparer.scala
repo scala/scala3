@@ -467,16 +467,23 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** If `projection` is of the form T # Apply where `T` is an instance of a Lambda class,
-   *  and `other` is not a type lambda projection, then convert `other` to a type lambda `U`, and
-   *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
+   *  then
+   *    (1) if `other` is not a (possibly projected) type lambda, convert `other` to a type lambda `U`,
+   *        and continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
+   *    (2) if `other` is a already a type lambda,
+   *        continue with `T <:< other` if `inOrder` is true and `other <:< T` otherwise.
    */
   def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
     projection.name == tpnme.Apply && {
       val lambda = projection.prefix.LambdaClass(forcing = true)
-      lambda.exists && !other.isLambda &&
-        other.testLifted(lambda.typeParams,
-          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
-          if (inOrder) Nil else classBounds(projection.prefix))
+      lambda.exists && {
+        if (!other.isLambda)
+          other.testLifted(lambda.typeParams,
+            if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+            if (inOrder) Nil else classBounds(projection.prefix))
+        else if (inOrder) isSubType(projection.prefix, other)
+        else isSubType(other, projection.prefix)
+      }
     }
 
   /** The class symbols bounding the type of the `Apply` member of `tp` */
