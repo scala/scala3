@@ -378,24 +378,31 @@ object ProtoTypes {
   final def wildApprox(tp: Type, theMap: WildApproxMap = null)(implicit ctx: Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic) tp
-      else tp.derivedSelect(wildApprox(tp.prefix, theMap))
+      else {
+        val pre = wildApprox(tp.prefix, theMap)
+        val res = tp.derivedSelect(pre)
+        if ((res eq WildcardType) && (pre ne WildcardType) &&
+            (theMap != null) && (theMap.discarded != null))
+          theMap.discarded += pre
+        res
+      }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
     case tp @ PolyParam(poly, pnum) =>
       ctx.typerState.constraint.entry(tp) match {
-        case bounds: TypeBounds => wildApprox(WildcardType(bounds))
-        case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
-        case inst => wildApprox(inst)
+        case bounds: TypeBounds => wildApprox(WildcardType(bounds), theMap)
+        case NoType => WildcardType(wildApprox(poly.paramBounds(pnum), theMap).bounds)
+        case inst => wildApprox(inst, theMap)
       }
     case MethodParam(mt, pnum) =>
-      WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
+      WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum), theMap)))
     case tp: TypeVar =>
-      wildApprox(tp.underlying)
+      wildApprox(tp.underlying, theMap)
     case tp: AndType =>
-      val tp1a = wildApprox(tp.tp1)
-      val tp2a = wildApprox(tp.tp2)
+      val tp1a = wildApprox(tp.tp1, theMap)
+      val tp2a = wildApprox(tp.tp2, theMap)
       def wildBounds(tp: Type) =
         if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
       if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
@@ -403,23 +410,29 @@ object ProtoTypes {
       else
         tp.derivedAndType(tp1a, tp2a)
     case tp: OrType =>
-      val tp1a = wildApprox(tp.tp1)
-      val tp2a = wildApprox(tp.tp2)
+      val tp1a = wildApprox(tp.tp1, theMap)
+      val tp2a = wildApprox(tp.tp2, theMap)
       if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
         WildcardType(tp1a.bounds | tp2a.bounds)
       else
         tp.derivedOrType(tp1a, tp2a)
     case tp: SelectionProto =>
-      tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto), NoViewsAllowed)
+      tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto, theMap), NoViewsAllowed)
     case tp: ViewProto =>
-      tp.derivedViewProto(wildApprox(tp.argType), wildApprox(tp.resultType))
+      tp.derivedViewProto(wildApprox(tp.argType, theMap), wildApprox(tp.resultType, theMap))
     case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
       tp
     case _ =>
       (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }
 
-  private[ProtoTypes] class WildApproxMap(implicit ctx: Context) extends TypeMap {
+  /** A backing map for `wildApprox`.
+   *  @param discarded  A ListBuffer in which to store parts of intermediate steps of the approximation
+   *                    that have been discarded in a lookupRefined yielding a WildcardType.
+   *                    The idea is that these bits still matter as far as companion search is
+   *                    concerned, so they need to be kept somewhere.
+   */
+  private[dotty] class WildApproxMap(val discarded: mutable.ListBuffer[Type] = null)(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = wildApprox(tp, this)
   }
 

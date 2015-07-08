@@ -462,7 +462,8 @@ trait Implicits { self: Typer =>
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto(pt, wildApprox(_))
+    val approximator = new WildApproxMap(new mutable.ListBuffer[Type])
+    val wildProto = implicitProto(pt, wildApprox(_, approximator))
 
     /** Search failures; overridden in ExplainedImplicitSearch */
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
@@ -565,11 +566,23 @@ trait Implicits { self: Typer =>
         case result: SearchSuccess => result
         case result: AmbiguousImplicits => result
         case result: SearchFailure =>
-          searchImplicits(implicitScope(wildProto).eligible, contextual = false)
+          searchImplicits(implicitScope(wildProto, approximator.discarded).eligible, contextual = false)
       }
     }
 
-    def implicitScope(tp: Type): OfTypeImplicits = ctx.runInfo.implicitScope(tp, ctx)
+    /** The implicit scope corresponding to type `tp` and discarded parts `others`.
+     */
+    def implicitScope(tp: Type, others: Traversable[Type]): OfTypeImplicits = {
+      val typeScope = ctx.runInfo.implicitScope(tp, ctx)
+      if (others.isEmpty) typeScope
+      else {
+        val allCompanionRefs = new TermRefSet
+        allCompanionRefs ++= typeScope.companionRefs
+        for (tp <- others)
+          allCompanionRefs ++= ctx.runInfo.implicitScope(tp, ctx).companionRefs
+        new OfTypeImplicits(tp, allCompanionRefs)(ctx)
+      }
+    }
   }
 
   final class ExplainedImplicitSearch(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context)
