@@ -6,7 +6,7 @@ import scala.annotation.switch
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._
 import Decorators.StringDecorator
-import dotty.tools.dotc.util.Chars
+import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
 
 object NameOps {
@@ -59,7 +59,7 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
-    def likeTyped(n: Name): N =
+    def likeTyped(n: PreName): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
@@ -183,6 +183,11 @@ object NameOps {
     def revertShadowed: N = likeTyped(name.drop(nme.SHADOWED.length))
 
     def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
+
+    def freshened(implicit ctx: Context): N =
+      likeTyped(
+        if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
+        else likeTyped(ctx.freshName(name ++ NameTransformer.NAME_JOIN_STRING)))
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether
