@@ -240,22 +240,26 @@ class Namer { typer: Typer =>
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
-    def checkNoConflict(name: Name): Unit = {
-      def preExisting = ctx.effectiveScope.lookup(name)
-      if (ctx.owner is PackageClass) {
-        if (preExisting.isDefinedInCurrentRun)
-          ctx.error(s"${preExisting.showLocated} is compiled twice, runid = ${ctx.runId}", tree.pos)
-        }
-      else if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists) {
-        ctx.error(i"$name is already defined as $preExisting", tree.pos)
+    def checkNoConflict(name: Name): Name = {
+      def errorName(msg: => String) = {
+        ctx.error(msg, tree.pos)
+        name.freshened
       }
+      def preExisting = ctx.effectiveScope.lookup(name)
+      if (ctx.owner is PackageClass)
+        if (preExisting.isDefinedInCurrentRun)
+          errorName(s"${preExisting.showLocated} is compiled twice")
+        else name
+      else
+        if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists)
+          errorName(i"$name is already defined as $preExisting")
+        else name
     }
 
     val inSuperCall = if (ctx.mode is Mode.InSuperCall) InSuperCall else EmptyFlags
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val name = tree.name.encode.asTypeName
-        checkNoConflict(name)
+        val name = checkNoConflict(tree.name.encode).asTypeName
         val cls = record(ctx.newClassSymbol(
           ctx.owner, name, tree.mods.flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -263,8 +267,7 @@ class Namer { typer: Typer =>
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
-        val name = tree.name.encode
-        checkNoConflict(name)
+        val name = checkNoConflict(tree.name.encode)
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
