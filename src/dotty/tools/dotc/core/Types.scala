@@ -3118,6 +3118,8 @@ object Types {
             apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
           case tp: TypeRef =>
             foldOver(maybeAdd(x, tp), tp)
+          case TypeBounds(_, hi) =>
+            apply(x, hi)
           case tp: ThisType =>
             apply(x, tp.underlying)
           case tp: ConstantType =>
