@@ -1,7 +1,7 @@
 object i39neg {
 
   trait B {
-    type D <: { type T }
+    type D <: { type T }           // error
     def d: D
   }
 
@@ -11,7 +11,7 @@ object i39neg {
   }
 
   val d: bc.D = bc.d
-  val pd: bc.D = bc.pd
+  val pd: bc.D = bc.pd             // error
 
   // infinite loop in Typer
   val asT: d.T = ???
