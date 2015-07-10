@@ -4,14 +4,14 @@ trait T {
 
 class C extends T {
 
-  val x = 2
-  override val y = 2
+  val x = 2                // error
+  override val y = 2       // error
 
 }
 
 class D extends T {
 
-  def x(): String = ""
+  def x(): String = ""     // error
 
 }
 

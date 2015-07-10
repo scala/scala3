@@ -1,6 +1,6 @@
 object test {
-  val b: scala.Boolean = null
+  val b: scala.Boolean = null                         // error
   val c: Unit = null
-  val d: Float = null
-  val e: AnyVal = null
+  val d: Float = null                                 // error
+  val e: AnyVal = null                                // error
 }

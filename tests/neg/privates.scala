@@ -5,7 +5,7 @@ trait T {
 }
 
 class C { self: T =>
-  foo
-  bar
+  foo                                     // error
+  bar                                     // error
 }
 

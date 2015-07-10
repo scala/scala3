@@ -8,7 +8,7 @@ object companionsNeg {
 
     { object C {
       private val p = 1
-      println(new C().q)
+      println(new C().q)   // error
     }}
   }
 
