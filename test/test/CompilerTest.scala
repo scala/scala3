@@ -3,9 +3,12 @@ package test
 import dotty.partest.DPConfig
 import dotty.tools.dotc.{Main, Bench, Driver}
 import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.config.CompilerCommand
 import scala.collection.mutable.ListBuffer
-import scala.reflect.io.{ Path, Directory, File => SFile }
+import scala.reflect.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.tools.partest.nest.{ FileManager, NestUI }
+import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 
 import org.junit.Test
@@ -178,12 +181,80 @@ abstract class CompilerTest extends DottyTest {
 
   // ========== HELPERS =============
 
-  private def compileArgs(args: Array[String], xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = {
+  private def compileArgs(args: Array[String], xerrors: Int = 0)
+      (implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
-    val nerrors = processor.process(allArgs, ctx).errorCount
+    val reporter = processor.process(allArgs, ctx)
+
+    val nerrors = reporter.errorCount
     assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
+
+    // is neg test, check errors occur on right line
+    if (xerrors > 0) {
+      val errorLines = reporter.allErrors.map(_.pos)
+      // reporter didn't record as many errors as its errorCount says
+      assert(errorLines.length == nerrors, s"Not enough errors recorded.")
+      val (byFile, noPos) = errorLines.groupBy(_.source.file).partition(_._1.toString != "<no source>")
+
+      // check the compiler errors that have a source position
+      val noPosErrFiles = byFile.foldLeft(0)(_ + checkErrorsInFile(_))
+
+      // check that files without compiler errors don't contain error markers
+      val allFiles = CompilerCommand.distill(allArgs)(ctx).arguments
+      val checkedFiles = byFile.keys.toList.map(_.toString)
+      val noPosExpected = noPosErrFiles + checkNoErrorMissing(allFiles.filter(!checkedFiles.contains(_)))
+
+      // check compiler errors without source position, their number should
+      // correspond to all "// nopos-error" markers in any files
+      val noPosFound = noPos.foldLeft(0)(_ + _._2.length)
+      assert(noPosFound == noPosExpected,
+        s"Wrong # of errors without source position. Expected (all files): $noPosExpected, found (compiler): $noPosFound")
+    }
   }
+
+  /** For neg tests, check that all errors thrown by compiler have a "// error"
+    * on the corresponding line in the source file.
+    */
+  def checkErrorsInFile(errors: (AbstractFile, List[SourcePosition])): Int = {
+    errors match {
+      case (fileName, pos@(first :: rest)) =>
+        val content = first.source.content.mkString
+        val (line, rest) = content.span(_ != '\n')
+        val byLine = scala.collection.mutable.Map(errors._2.groupBy(_.line).toSeq: _*)
+
+        @tailrec
+        def checkLine(line: String, rest: String, index: Int): Unit = {
+          val expected = countErrors(line)
+          byLine.remove(index) match {
+            case Some(pos) => checkErrors(fileName.toString, Some(index), expected, pos.length)
+            case None      => checkErrors(fileName.toString, Some(index), expected, 0)
+          }
+          val (newLine, newRest) = rest.span(_ != '\n')
+          if (!newRest.isEmpty)
+            checkLine(newLine, newRest.drop(1), index + 1)
+        }
+
+        checkLine(line, rest.drop(1), 0)
+        assert(byLine.isEmpty, "Some compiler errors don't correspond to any line in the source file: " + fileName + ": " + byLine)
+        countNoPosErrors(content)
+      case (fileName, Nil) => assert(false, "impossible: empty groupBy value in file: " + fileName); 0
+    }
+  }
+
+  def countErrors(s: String) = "// ?error".r.findAllIn(s).length
+  def countNoPosErrors(s: String) = "// ?nopos-error".r.findAllIn(s).length
+
+  def checkErrors(fileName: String, index: Option[Int], exp: Int, found: Int) = {
+    val i = index.map({ i => ":" + (i + 1) }).getOrElse("")
+    assert(found == exp, s"Wrong # of errors for $fileName$i. Expected (file): $exp, found (compiler): $found")
+  }
+
+  def checkNoErrorMissing(files: List[String]) = files.foldLeft(0)({ case (sum, fileName) =>
+    val content = SFile(fileName).slurp
+    checkErrors(fileName, None, countErrors(content), 0)
+    sum + countNoPosErrors(content)
+  })
 
   // In particular, don't copy flags from scalac tests
   private val extensionsToCopy = scala.collection.immutable.HashSet("scala", "java")
