@@ -785,10 +785,10 @@ class Namer { typer: Typer =>
       //
       // The scheme critically relies on an implementation detail of isRef, which
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
-    val rhsType = typedAheadType(tdef.rhs).tpe
+    val rhsType = abstracted(typedAheadType(tdef.rhs).tpe)
     val unsafeInfo = rhsType match {
-      case _: TypeBounds => abstracted(rhsType).asInstanceOf[TypeBounds]
-      case _ => TypeAlias(abstracted(rhsType), if (sym is Local) sym.variance else 0)
+      case bounds: TypeBounds => bounds
+      case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
     checkNonCyclic(sym, unsafeInfo, reportErrors = true)
