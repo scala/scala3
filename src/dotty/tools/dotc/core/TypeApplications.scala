@@ -416,9 +416,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case RefinedThis(tp) =>
         tp eq target
       case tp: NamedType =>
-        tp.info match {
+        if (tp.symbol.isClass) !tp.symbol.isStatic && recur(tp.prefix)
+        else tp.info match {
           case TypeAlias(alias) => recur(alias)
-          case _ => !tp.symbol.isStatic && recur(tp.prefix)
+          case _ => recur(tp.prefix)
         }
       case tp: RefinedType =>
         recur(tp.refinedInfo) || recur(tp.parent)
