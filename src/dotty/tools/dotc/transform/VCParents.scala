@@ -10,9 +10,11 @@ import ValueClasses._
 
 /** This phase makes value classes extend VCXPrototype and make their companions extend VCXCompanion.
  *
- *  For a value class class V whose erased underlying type is U, X is "U" if U is a primitive
- *  type and is "Object" otherwise.
+ *  (For a value class class V whose erased underlying type is U, X is "U" if U is a primitive
+ *  type and is "Object" otherwise).
  *
+ *  Furthermore, this phase also make VCPrototype extend AnyVal instead of AnyRef to preserve the
+ *  invariant that value classes should always extend AnyVal.
  */
 class VCParents extends MiniPhaseTransform with DenotTransformer {
   import tpd._
@@ -46,6 +48,22 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
       assert(p.isRef(defn.AnyValClass))
       val parents = superType :: ps
       valueClass.copySymDenotation(info = cinfo.derivedClassInfo(classParents = parents))
+    case proto: ClassDenotation if proto.symbol eq defn.VCPrototypeClass =>
+      // After this phase, value classes extend VCXPrototype which extends VCPrototype,
+      // so we make VCPrototype extend AnyVal to preserve existing subtyping relations.
+      // We could make VCPrototype extend AnyVal earlier than this phase, but then we
+      // would need to be careful to not treat it like a real value class.
+      val cinfo = proto.classInfo
+      val (p :: ps) = cinfo.classParents
+      assert(p.isRef(defn.ObjectClass))
+      proto.copySymDenotation(info =
+        cinfo.derivedClassInfo(classParents = defn.AnyValClass.typeRef :: ps))
+    case proto: ClassDenotation if defn.vcPrototypeValues.contains(proto.symbol) =>
+      // We need to copy the ClassDenotations of the VCXPrototype classes to reset
+      // their cache of base classes, the cache is no longer valid because these
+      // classes extend VCPrototype and we changed the superclass of VCPrototype
+      // in this phase.
+      proto.copySymDenotation(info = proto.info)
     case _ =>
       ref
   }

@@ -602,11 +602,14 @@ class Definitions {
 
   lazy val vcPrototype: Map[Symbol, Symbol] =
     refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
+  lazy val vcPrototypeValues = vcPrototype.values.toSet
   lazy val vcCompanion: Map[Symbol, Symbol] =
     refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
   lazy val vcArray: Map[Symbol, Symbol] =
     refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
 
+  lazy val VCPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCPrototype")
+  def VCPrototypeType = VCPrototypeClass.typeRef
   lazy val VCArrayPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCArrayPrototype")
   def VCArrayPrototypeType = VCArrayPrototypeClass.typeRef
 
