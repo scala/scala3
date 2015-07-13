@@ -20,7 +20,7 @@ class tests extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes", "-Yno-double-bindings",
-      "-Ycheck:tailrec,resolveSuper,mixin,restoreScopes",
+      "-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef",
       "-d", defaultOutputDir
   )
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
