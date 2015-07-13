@@ -63,15 +63,12 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
       if (isField) {
         if (sym.isVolatile ||
-          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic))) // companion class is synthesized. Should be threadsafe to
-        // make inner lazy vals thread safe
+          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic))) 
+          // module class is user-defined. 
+          // Should be threadsafe, to mimic safety guaranteed by global object
           transformMemberDefVolatile(tree)
         else if (sym.is(Flags.Module)) { // synthetic module
-          val holderSymbol = ctx.newSymbol(sym.owner, sym.asTerm.name ++ nme.LAZY_LOCAL,
-            Flags.Synthetic, sym.info.widen.resultType).enteredAfter(this)
-          val field = ValDef(holderSymbol, tree.rhs.changeOwnerAfter(sym, holderSymbol, this))
-          val getter = DefDef(sym.asTerm, ref(holderSymbol))
-          Thicket(field, getter)
+          transformSyntheticModule(tree)
         }
         else transformMemberDefNonVolatile(tree)
       }
@@ -96,6 +93,19 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   private def addInFront(prefix: List[Tree], stats: List[Tree]) = stats match {
     case first :: rest if isSuperConstrCall(first) => first :: prefix ::: rest
     case _ => prefix ::: stats
+  }
+
+  /** Make an eager val that would implement synthetic module.
+    * Eager val ensures thread safety and has less code generated.
+    *
+    */
+  def transformSyntheticModule(tree: ValOrDefDef)(implicit ctx: Context) = {
+    val sym = tree.symbol
+    val holderSymbol = ctx.newSymbol(sym.owner, sym.asTerm.name ++ nme.LAZY_LOCAL,
+      Flags.Synthetic, sym.info.widen.resultType).enteredAfter(this)
+    val field = ValDef(holderSymbol, tree.rhs.changeOwnerAfter(sym, holderSymbol, this))
+    val getter = DefDef(sym.asTerm, ref(holderSymbol))
+    Thicket(field, getter)
   }
 
     /** Replace a local lazy val inside a method,
