@@ -4,6 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Flags._, Trees._, Types._, StdNames._, Symbols._
+import Constants.Constant
 import Denotations._, SymDenotations._
 import DenotTransformers._, TreeTransforms._, Phases.Phase
 import ValueClasses._
@@ -27,6 +28,16 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
           val moduleSym = moduleClass.symbol.asClass
           val cinfo = moduleClass.classInfo
+          val decls1 = cinfo.decls.cloneScope
+
+          val underlying = underlyingOfValueClass(valueClass)
+          // FIXME: what should we do if these symbols already exist?
+          val boxSym = ctx.newSymbol(moduleClass.symbol, nme.box,
+            Synthetic | Override | Method, MethodType(List(nme.x_0), List(underlying), valueClass.typeRef))
+          val runtimeClassSym = ctx.newSymbol(moduleClass.symbol, nme.runtimeClass,
+            Synthetic | Override | Method, MethodType(Nil, defn.ClassClass.typeRef))
+          decls1.enter(boxSym)
+          decls1.enter(runtimeClassSym)
 
           val superType = tpd.ref(defn.vcCompanionOf(valueClass))
             .select(nme.CONSTRUCTOR)
@@ -35,8 +46,8 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             .resultType
 
           moduleClass.copySymDenotation(info =
-            cinfo.derivedClassInfo(classParents =
-              ctx.normalizeToClassRefs(List(superType), moduleSym, cinfo.decls)))
+            cinfo.derivedClassInfo(decls = decls1, classParents =
+              ctx.normalizeToClassRefs(List(superType), moduleSym, decls1)))
         case _ =>
           moduleClass
       }
@@ -68,11 +79,31 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
       ref
   }
 
+  private def boxDefDef(vc: ClassDenotation)(implicit ctx: Context) = {
+    val vctp = vc.typeRef
+    val sym = vc.linkedClass.info.decl(nme.box).symbol.asTerm
+    DefDef(sym, { paramss =>
+      val List(params) = paramss
+      New(vctp, params)
+    })
+  }
+
+  private def runtimeClassDefDef(vc: ClassDenotation)(implicit ctx: Context) = {
+    val vctp = vc.typeRef
+    val sym = vc.linkedClass.info.decl(nme.runtimeClass).symbol.asTerm
+    DefDef(sym, { _ =>
+      Literal(Constant(TypeErasure.erasure(vctp)))
+    })
+  }
+
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
     ctx.owner.denot match {
       case moduleClass: ClassDenotation if moduleClass.is(ModuleClass) =>
         moduleClass.linkedClass match {
           case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+            val rcDef = runtimeClassDefDef(valueClass)
+            val boxDef = boxDefDef(valueClass)
+
             val superCall = New(defn.vcCompanionOf(valueClass).typeRef)
               .select(nme.CONSTRUCTOR)
               .appliedToType(valueClass.typeRef)
@@ -82,7 +113,7 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             // TODO: We shouldn't disallow extending companion objects of value classes
             // with classes other than AnyRef
             assert(p.tpe.isRef(defn.ObjectClass))
-            cpy.Template(tree)(parents = superCall :: ps)
+            cpy.Template(tree)(parents = superCall :: ps, body = boxDef :: rcDef :: tree.body)
           case _ =>
             tree
         }

@@ -5,12 +5,6 @@ class Meter(val underlying: Int) extends AnyVal {
   override def toString = "Meter(" + underlying + ")"
 }
 
-object Meter {
-  // FIXME: generate these methods in VCParents
-  def box(underlying: Int) = new Meter(underlying)
-  def runtimeClass = classOf[Meter]
-}
-
 object Test {
   def genAccess[T](genArray: Array[T]) = genArray(0)
   def genUpdated[T](genArray: Array[T], elem: T) = genArray(0) = elem
