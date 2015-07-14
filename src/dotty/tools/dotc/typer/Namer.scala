@@ -803,6 +803,30 @@ class Namer { typer: Typer =>
       case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
-    checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    etaExpandArgs.apply(sym.info)
+  }
+
+  /** Eta expand all class types C appearing as arguments to a higher-kinded
+   *  type parameter to type lambdas, e.g. [HK0] => C[HK0]
+   */
+  def etaExpandArgs(implicit ctx: Context) = new TypeMap {
+    def etaExpandArg(tp: Type, tparam: Symbol): Type =
+      if (tparam.info.isLambda && tp.typeSymbol.isClass && tp.isLambda) tp.EtaExpand
+      else tp
+    def apply(tp: Type) = tp match {
+      case tp: RefinedType =>
+        val args = tp.argInfos(interpolate = false).mapconserve(this)
+        if (args.nonEmpty) {
+          val tycon = tp.withoutArgs(args)
+          val tparams = tycon.typeParams
+          assert(args.length == tparams.length,
+              i"lengths differ in $tp: args = $args%, %, type params of $tycon = $tparams%, %")
+          this(tycon).appliedTo(args.zipWithConserve(tparams)(etaExpandArg))
+        }
+        else mapOver(tp)
+      case _ =>
+        mapOver(tp)
+    }
   }
 }

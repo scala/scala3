@@ -1,8 +1,8 @@
 object Test {
 
-  type Histogram = Map[_, Int]
+  type Histogram[X] = Map[X, Int]
 
-  type StringlyHistogram = Histogram[_ >: String]
+  type StringlyHistogram[X >: String] = Histogram[X]
 
   val xs: Histogram[String] = Map[String, Int]()
 
