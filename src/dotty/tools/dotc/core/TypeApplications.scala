@@ -145,10 +145,12 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
         val tparam = tparams.head
         val arg1 =
-          if ((tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty)
+          if ((tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty) {
+            println(i"missing eta expansion of $arg")
             arg.EtaExpand
+          }
           else arg
-        val tp1 = RefinedType(tp, tparam.name, arg1.toBounds(tparam))
+        val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
         matchParams(tp1, tparams.tail, args1)
       case nil => tp
     }
