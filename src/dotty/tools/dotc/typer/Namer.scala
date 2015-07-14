@@ -802,19 +802,21 @@ class Namer { typer: Typer =>
     def etaExpandArg(tp: Type, tparam: Symbol): Type =
       if (tparam.info.isLambda && tp.typeSymbol.isClass && tp.isLambda) tp.EtaExpand
       else tp
-    def apply(tp: Type) = tp match {
-      case tp: RefinedType =>
-        val args = tp.argInfos(interpolate = false).mapconserve(this)
-        if (args.nonEmpty) {
-          val tycon = tp.withoutArgs(args)
-          val tparams = tycon.typeParams
-          assert(args.length == tparams.length,
-              i"lengths differ in $tp: args = $args%, %, type params of $tycon = $tparams%, %")
-          this(tycon).appliedTo(args.zipWithConserve(tparams)(etaExpandArg))
-        }
-        else mapOver(tp)
-      case _ =>
-        mapOver(tp)
+    def apply(tp: Type): Type = {
+      tp match {
+        case tp: RefinedType =>
+          val args = tp.argInfos(interpolate = false).mapconserve(this)
+          if (args.nonEmpty) {
+            val tycon = tp.withoutArgs(args)
+            val tparams = tycon.typeParams
+            if (args.length == tparams.length) { // if lengths differ, problem is caught in typedTypeApply
+              val args1 = args.zipWithConserve(tparams)(etaExpandArg)
+              if (args1 ne args) return this(tycon).appliedTo(args1)
+            }
+          }
+        case _ =>
+      }
+      mapOver(tp)
     }
   }
 }
