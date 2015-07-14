@@ -827,9 +827,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)
-    val argPts =
-      if (ctx.mode is Mode.Pattern) tpt1.tpe.typeParams.map(_.info)
-      else tree.args.map(_ => WildcardType)
     val tparams = tpt1.tpe.typeParams
     var args = tree.args
     if (tparams.isEmpty) {
@@ -840,7 +837,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
       args = args.take(tparams.length)
     }
-    val args1 = args.zipWithConserve(argPts)(typed(_, _)).asInstanceOf[List[Tree]]
+    val argPts =
+      if (ctx.mode is Mode.Pattern) tpt1.tpe.typeParams.map(_.info)
+      else tree.args.map(_ => WildcardType)
+    def typedArg(arg: untpd.Tree, pt: Type) = adaptTypeArg(typed(arg, pt), pt)
+    val args1 = args.zipWithConserve(argPts)(typedArg(_, _)).asInstanceOf[List[Tree]]
     // check that arguments conform to bounds is done in phase PostTyper
     assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
   }
