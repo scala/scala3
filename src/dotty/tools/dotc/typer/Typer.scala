@@ -830,8 +830,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val argPts =
       if (ctx.mode is Mode.Pattern) tpt1.tpe.typeParams.map(_.info)
       else tree.args.map(_ => WildcardType)
-    val args1 = tree.args.zipWithConserve(argPts)(typed(_, _)).asInstanceOf[List[Tree]]
-    // check that arguments conform to bounds is done in phase FirstTransform
+    val tparams = tpt1.tpe.typeParams
+    var args = tree.args
+    if (tparams.isEmpty) {
+      ctx.error(d"${tpt1.tpe} does not take type parameters")
+      tpt1
+    }
+    else if (args.length != tparams.length) {
+      ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
+      args = args.take(tparams.length)
+    }
+    val args1 = args.zipWithConserve(argPts)(typed(_, _)).asInstanceOf[List[Tree]]
+    // check that arguments conform to bounds is done in phase PostTyper
     assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
   }
 
