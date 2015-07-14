@@ -540,6 +540,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
   }
 
+  def EtaExpandIfLambda(bound: Type)(implicit ctx: Context): Type =
+    if (bound.isLambda && self.typeSymbol.isClass && !isLambda) EtaExpand else self
+
   /** Test whether this type has a base type of the form `B[T1, ..., Bn]` where
    *  the type parameters of `B` match one-by-one the variances of `tparams`,
    *  and where the lambda abstracted type

@@ -811,9 +811,6 @@ class Namer { typer: Typer =>
    *  type parameter to type lambdas, e.g. [HK0] => C[HK0]
    */
   def etaExpandArgs(implicit ctx: Context) = new TypeMap {
-    def etaExpandArg(tp: Type, tparam: Symbol): Type =
-      if (tparam.info.isLambda && tp.typeSymbol.isClass && tp.isLambda) tp.EtaExpand
-      else tp
     def apply(tp: Type): Type = {
       tp match {
         case tp: RefinedType =>
@@ -822,7 +819,7 @@ class Namer { typer: Typer =>
             val tycon = tp.withoutArgs(args)
             val tparams = tycon.typeParams
             if (args.length == tparams.length) { // if lengths differ, problem is caught in typedTypeApply
-              val args1 = args.zipWithConserve(tparams)(etaExpandArg)
+              val args1 = args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfLambda(tparam.info))
               if (args1 ne args) return this(tycon).appliedTo(args1)
             }
           }
