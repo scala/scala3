@@ -4,6 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Trees._, Types._, StdNames._, Symbols._
+import Constants.Constant
 import DenotTransformers._, TreeTransforms._, Phases.Phase
 import TypeErasure.ErasedValueType, ValueClasses._
 
@@ -56,20 +57,15 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         transformTypeOfTree(tree1)
     }
 
-  override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree =
-    tree.tpe match {
-      // [arg1, arg2,  ...] => new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...])
-      case JavaArrayType(ErasedValueType(cls, _)) =>
-        val evt2uMethod = ref(evt2u(cls))
-        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)))
-        val mod = cls.companionModule
-        New(defn.vcArrayOf(cls).typeRef, List(underlyingArray, ref(mod)))
-      case _ =>
-        tree
-    }
-
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree match {
+      // vcArray(xs, clsTp) => new VCXArray(xs, mod)
+      case Apply(qual, List(xs, Literal(Constant(clsTp: Type))))
+        if qual.symbol == defn.vcArrayMethod =>
+        val cls = clsTp.classSymbol.asClass
+        val mod = cls.companionModule
+        New(defn.vcArrayOf(cls).typeRef, List(xs, ref(mod)))
+
       // newRefArray[ErasedValueType(V, U)[]](args) => New VCXArray(newXArray(args), V)
       case Apply(ta @ TypeApply(sel @ Select(_,_), List(targ)), args)
           if (sel.symbol == defn.newRefArrayMethod) =>
@@ -84,27 +80,22 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         }
       // array.[]update(idx, elem) => array.arr().[]update(idx, elem)
       case Apply(Select(array, nme.primitive.arrayUpdate), List(idx, elem)) =>
-        elem.tpe.widen match {
-          case ErasedValueType(cls, _) =>
-            array.select(nme.ARR).appliedToNone
-              .select(nme.primitive.arrayUpdate).appliedTo(idx, ref(evt2u(cls)).appliedTo(elem))
-          case _ =>
-            tree
-        }
+        if (defn.vcArrayValues.contains(array.tpe.widen.classSymbol)) {
+          array.select(nme.ARR).appliedToNone
+            .select(nme.primitive.arrayUpdate).appliedTo(idx, elem)
+        } else tree
       // array.[]apply(idx) => array.arr().[]apply(idx)
-      case Apply(Select(array, nme.primitive.arrayApply), List(idx)) =>
-        tree.tpe.widen match {
-          case ErasedValueType(cls, _) =>
-            ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
-              .select(nme.primitive.arrayApply).appliedTo(idx))
-          case _ =>
-            tree
-        }
+      case Apply(sel @ Select(array, nme.primitive.arrayApply), List(idx)) =>
+        if (defn.vcArrayValues.contains(array.tpe.widen.classSymbol)) {
+            array.select(nme.ARR).appliedToNone
+              .select(nme.primitive.arrayApply).appliedTo(idx)
+        } else tree
       // array.[]length() => array.arr().[]length()
-      case Apply(Select(array, nme.primitive.arrayLength), Nil)
-      if (array.tpe <:< defn.VCArrayPrototypeType) =>
-        array.select(nme.ARR).appliedToNone
-          .select(nme.primitive.arrayLength).appliedToNone
+      case Apply(Select(array, nme.primitive.arrayLength), Nil) =>
+        if (defn.vcArrayValues.contains(array.tpe.widen.classSymbol)) {
+          array.select(nme.ARR).appliedToNone
+            .select(nme.primitive.arrayLength).appliedToNone
+        } else tree
       case _ =>
         tree
     }

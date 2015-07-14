@@ -4,6 +4,7 @@ package transform
 import core._
 import Types._
 import dotty.tools.dotc.transform.TreeTransforms._
+import Constants.Constant
 import Contexts.Context
 import Symbols._
 import Phases._
@@ -37,10 +38,16 @@ class SeqLiterals extends MiniPhaseTransform {
       val elemtp = arr.tpe.elemType.bounds.hi
       val elemCls = elemtp.classSymbol
       if (isDerivedValueClass(elemCls)) {
+        val vcArr =
+          ref(defn.DottyArraysModule)
+          .select(defn.vcArrayMethod)
+          .appliedToTypes(List(elemtp))
+          .appliedTo(arr, Literal(Constant(TypeErasure.erasure(elemtp))))
+
         ref(defn.DottyPredefModule)
           .select("wrapVCArray".toTermName)
           .appliedToTypes(List(elemtp))
-          .appliedTo(arr)
+          .appliedTo(vcArr)
       } else {
         val (wrapMethStr, targs) =
           if (elemCls.isPrimitiveValueClass) (s"wrap${elemCls.name}Array", Nil)

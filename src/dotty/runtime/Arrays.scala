@@ -22,6 +22,11 @@ object Arrays {
     arr
   }
 
+  /** Method used only to remember the unerased type of an array of
+   *  value class after erasure.
+   */
+  def vcArray[T <: AnyVal](xs: Array[T], clazz: Class[_]): Array[T] = ???
+
   /** Create an array of type T. T must be of form Array[E], with
    *  E being a reference type.
    */

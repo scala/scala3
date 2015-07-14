@@ -209,6 +209,7 @@ class Definitions {
   lazy val DottyArraysModule = ctx.requiredModule("dotty.runtime.Arrays")
 
     def newRefArrayMethod = ctx.requiredMethod(DottyArraysModule.moduleClass.asClass, "newRefArray")
+    def vcArrayMethod = ctx.requiredMethod(DottyArraysModule.moduleClass.asClass, "vcArray")
 
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
@@ -607,6 +608,7 @@ class Definitions {
     refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
   lazy val vcArray: Map[Symbol, Symbol] =
     refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+  lazy val vcArrayValues = vcArray.values.toSet
 
   lazy val VCPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCPrototype")
   def VCPrototypeType = VCPrototypeClass.typeRef
