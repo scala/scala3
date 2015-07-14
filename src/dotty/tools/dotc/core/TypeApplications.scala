@@ -145,7 +145,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        def needsEtaExpand =
+        val needsEtaExpand =
           try {
             (tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty
           }
