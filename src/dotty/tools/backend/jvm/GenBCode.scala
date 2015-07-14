@@ -179,7 +179,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           for (pickler <- ctx.compilationUnit.picklers.get(claszSymbol.asClass)) {
             val binary = pickler.assembleParts()
             val dataAttr = new CustomAttr(nme.TASTYATTR.toString, binary)
-            plainC.visitAttribute(dataAttr)
+            (if (mirrorC ne null) mirrorC else plainC).visitAttribute(dataAttr)
           }
 
         // -------------- bean info class, if needed --------------
