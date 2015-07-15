@@ -7,20 +7,18 @@ import Contexts._, Trees._, StdNames._, Symbols._
 import DenotTransformers._, TreeTransforms._, Phases.Phase
 import ExtensionMethods._, TreeExtractors._, ValueClasses._
 
-/** This phase inlines calls to methods and fields of value classes.
+/** This phase elides unnecessary value class allocations
  *
  *  For a value class V defined as:
- *    case class V(val underlying: U) extends AnyVal
- *  We replace method calls by calls to the corresponding extension method:
- *    v.foo(args) => V.foo$extension(v.underlying(), args)
- *  And we avoid unnecessary allocations:
+ *    class V(val underlying: U) extends AnyVal
+ *  we avoid unnecessary allocations:
  *     new V(u1) == new V(u2) => u1 == u2
  *    (new V(u)).underlying() => u
  */
-class VCInline extends MiniPhaseTransform with IdentityDenotTransformer {
+class VCElideAllocations extends MiniPhaseTransform with IdentityDenotTransformer {
   import tpd._
 
-  override def phaseName: String = "vcInline"
+  override def phaseName: String = "vcElideAllocations"
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimErasedValueType])
 
@@ -36,22 +34,6 @@ class VCInline extends MiniPhaseTransform with IdentityDenotTransformer {
       // (new V(u)).underlying() => u
       case ValueClassUnbox(NewWithArgs(_, List(u))) =>
         u
-
-      // (new V(u)).foo(args) => V.foo$extension(u, args)
-      //          v.foo(args) => V.foo$extension(v.underlying(), args)
-      case Apply(sel @ Select(receiver, _), args) =>
-        val classMeth = sel.symbol
-        if (isMethodWithExtension(classMeth)) {
-          val classSym = receiver.tpe.widenDealias.typeSymbol.asClass
-          val unboxedReceiver = receiver match {
-            case NewWithArgs(_, List(u)) =>
-              u
-            case _ =>
-              receiver.select(valueClassUnbox(classSym)).appliedToNone
-          }
-          val extensionMeth = extensionMethod(classMeth)
-          ref(extensionMeth).appliedToArgs(unboxedReceiver :: args)
-        } else tree
 
       case _ =>
         tree

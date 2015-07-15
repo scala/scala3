@@ -661,9 +661,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  is in fact the symbol you would get when you select with the symbol's name,
      *  otherwise a data race may occur which would be flagged by -Yno-double-bindings.
      */
-    def select(sym: Symbol)(implicit ctx: Context): Select =
-      untpd.Select(tree, sym.name).withType(
-        TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(tree.tpe)))
+    def select(sym: Symbol)(implicit ctx: Context): Select = {
+      val tp =
+        if (sym.isType)
+          TypeRef(tree.tpe, sym.name.asTypeName)
+        else
+          TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName,
+            sym.signature, sym.denot.asSeenFrom(tree.tpe))
+      untpd.Select(tree, sym.name)
+        .withType(tp)
+    }
 
     /** A select node with the given selector name and signature and a computed type */
     def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context): Tree =
