@@ -22,6 +22,8 @@ import scala.language.postfixOps
  *    def hashCode(): Int
  *    def canEqual(other: Any): Boolean
  *    def toString(): String
+ *    def productArity: Int
+ *    def productPrefix: String
  *  Special handling:
  *    protected def readResolve(): AnyRef
  *
@@ -40,7 +42,8 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual, defn.Product_productArity)
+      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
+        defn.Product_productArity, defn.Product_productPrefix)
     }
 
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
@@ -83,6 +86,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         case nme.equals_ => vrefss => equalsBody(vrefss.head.head)
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
+        case nme.productPrefix => vrefss => Literal(Constant(clazz.name.decode.toString))
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
