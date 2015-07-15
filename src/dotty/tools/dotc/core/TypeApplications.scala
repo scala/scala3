@@ -44,7 +44,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
-   *  For a typeref referring to an alias or abstract type, the type parameters of
+   *  For a typeref referring to a Lambda class, the type parameters of
    *    its right hand side or upper bound.
    *  For a refinement type, the type parameters of its parent, unless the refinement
    *  re-binds the type parameter with a type-alias.
@@ -58,7 +58,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else tp.underlying.typeParams
+        else {
+          val lam = LambdaClass(forcing = false)
+          if (lam.exists) lam.typeParams else Nil//tp.underlying.typeParams
+        }
       case tp: RefinedType =>
         val tparams = tp.parent.typeParams
         tp.refinedInfo match {
