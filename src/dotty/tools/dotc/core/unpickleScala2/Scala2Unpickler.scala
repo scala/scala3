@@ -49,18 +49,9 @@ object Scala2Unpickler {
    */
   def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      if (denot.isAbstractType)
-        restpe.LambdaAbstract(tparams) // bounds needed?
-      else if (denot.isAliasType) {
-        var err: Option[(String, Position)] = None
-        val result = restpe.parameterizeWith(tparams)
-        for ((msg, pos) <- err)
-          ctx.warning(
-            sm"""$msg
-                |originally parsed type : ${tp.show}
-                |will be approximated by: ${result.show}.
-                |Proceed at own risk.""")
-        result
+      if (denot.isType) {
+        assert(!denot.isClass)
+        restpe.LambdaAbstract(tparams)
       }
       else
         PolyType.fromSymbols(tparams, restpe)
