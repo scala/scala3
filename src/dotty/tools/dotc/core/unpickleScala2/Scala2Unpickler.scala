@@ -127,9 +127,11 @@ object Scala2Unpickler {
       val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, module)
       if (companionClassMethod.exists)
         companionClassMethod.entered
-      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, module, claz)
-      if (companionModuleMethod.exists)
-        companionModuleMethod.entered
+      if (claz.isClass) {
+        val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, module, claz)
+        if (companionModuleMethod.exists)
+          companionModuleMethod.entered
+      }
     }
 
     if (denot.flagsUNSAFE is Module) {
