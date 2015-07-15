@@ -268,10 +268,11 @@ object Names {
       /** Rehash chain of names */
       def rehash(name: TermName): Unit =
         if (name != null) {
-          rehash(name.next)
+          val oldNext = name.next
           val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
           name.next = table(h)
           table(h) = name
+          rehash(oldNext)
         }
 
       /** Make sure the hash table is large enough for the given load factor */
