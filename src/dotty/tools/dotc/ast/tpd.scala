@@ -384,7 +384,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
     New(tp withoutArgs targs)
-      .select(TermRef.withSig(tp.normalizedPrefix, constr))
+      .select(constr)
       .appliedToTypes(targs)
       .appliedToArgs(args)
   }
