@@ -514,12 +514,45 @@ class TypeApplications(val self: Type) extends AnyVal {
   def EtaExpand(implicit ctx: Context): Type = {
     val tparams = typeParams
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
+      //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
   /** Eta expand if `bound` is a type lambda */
   def EtaExpandIfLambda(bound: Type)(implicit ctx: Context): Type =
     if (bound.isLambda && self.typeSymbol.isClass && typeParams.nonEmpty && !isLambda) EtaExpand
     else self
+
+  /** If `self` is an eta expansion of type T, return T, otherwise NoType */
+  def EtaReduce(implicit ctx: Context): Type = {
+    def etaCore(tp: Type, tparams: List[Symbol]): Type = tparams match {
+      case Nil => tp
+      case tparam :: otherParams =>
+        tp match {
+          case tp: RefinedType =>
+            tp.refinedInfo match {
+              case TypeAlias(TypeRef(RefinedThis(rt), rname)) // TODO: Drop once hk applications have been updated
+              if (rname == tparam.name) && (rt eq self) =>
+                etaCore(tp.parent, otherParams)
+              case TypeRef(TypeAlias(TypeRef(RefinedThis(rt), rname)), tpnme.Apply)
+              if (rname == tparam.name) && (rt eq self) =>
+                etaCore(tp.parent, otherParams)
+              case _ =>
+                NoType
+            }
+          case _ =>
+            NoType
+        }
+    }
+    self match {
+      case self @ RefinedType(parent, tpnme.Apply) =>
+        val lc = parent.LambdaClass(forcing = false)
+        self.refinedInfo match {
+          case TypeAlias(alias) if lc.exists => etaCore(alias, lc.typeParams.reverse)
+          case _ => NoType
+        }
+      case _ => NoType
+    }
+  }
 
   /** Test whether this type has a base type of the form `B[T1, ..., Bn]` where
    *  the type parameters of `B` match one-by-one the variances of `tparams`,
