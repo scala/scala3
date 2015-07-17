@@ -808,7 +808,10 @@ class Namer { typer: Typer =>
   }
 
   /** Eta expand all class types C appearing as arguments to a higher-kinded
-   *  type parameter to type lambdas, e.g. [HK0] => C[HK0]
+   *  type parameter to type lambdas, e.g. [HK0] => C[HK0]. This is necessary
+   *  because in `typedAppliedTypeTree` we might ahve missed some eta expansions
+   *  of arguments in F-bounds, because the recursive type was initialized with
+   *  TypeBounds.empty.
    */
   def etaExpandArgs(implicit ctx: Context) = new TypeMap {
     def apply(tp: Type): Type = {
