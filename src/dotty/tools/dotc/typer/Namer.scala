@@ -768,11 +768,11 @@ class Namer { typer: Typer =>
     completeParams(tdef.tparams)
     val tparamSyms = tdef.tparams map symbolOfTree
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val toParameterize = tparamSyms.nonEmpty && !isDerived
-    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
+    //val toParameterize = tparamSyms.nonEmpty && !isDerived
+    //val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     def abstracted(tp: Type): Type =
-      if (needsLambda) tp.LambdaAbstract(tparamSyms)
-      else if (toParameterize) tp.parameterizeWith(tparamSyms)
+      if (tparamSyms.nonEmpty) tp.LambdaAbstract(tparamSyms)
+      //else if (toParameterize) tp.parameterizeWith(tparamSyms)
       else tp
     sym.info = abstracted(TypeBounds.empty)
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
