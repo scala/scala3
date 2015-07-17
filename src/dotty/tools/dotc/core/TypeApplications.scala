@@ -437,7 +437,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
     recur(self)
   }
-
+/*
   /** Given a type alias
    *
    *      type T[boundSyms] = p.C[targs]
@@ -500,7 +500,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (cls.isClass) matchParams(boundSyms, cls.typeParams, argInfos, Map())
     else LambdaAbstract(boundSyms)
   }
-
+*/
   /** The typed lambda abstraction of this type `T` relative to `boundSyms`.
    *  This is:
    *
