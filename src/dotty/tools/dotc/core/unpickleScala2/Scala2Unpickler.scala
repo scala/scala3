@@ -584,15 +584,35 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *    tp { name: T }
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
+    // Need to be careful not to run into cyclic references here (observed when 
+    // comiling t247.scala). That's why we avoiud taking `symbol` of a TypeRef
+    // unless names match up.
+    val isBound = (tp: Type) => {
+      def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
+        case tp @ TypeRef(_, name) => sym.name == name && sym == tp.symbol
+        case tp: TypeVar => refersTo(tp.underlying, sym)
+        case tp : LazyRef => refersTo(tp.ref, sym)
+        case _ => false
+      }
+      boundSyms.exists(refersTo(tp, _))
+    }
+    // Cannot use standard `existsPart` method because it calls `lookupRefined`
+    // which can cause CyclicReference errors.
+    val isBoundAccumulator = new ExistsAccumulator(isBound) {
+      override def foldOver(x: Boolean, tp: Type): Boolean = tp match {
+        case tp: TypeRef => applyToPrefix(x, tp)
+        case _ => super.foldOver(x, tp)
+      }
+    }
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)
         tp.refinedInfo match {
-          case TypeAlias(info: TypeRef) if boundSyms contains info.symbol =>
+          case TypeAlias(info: TypeRef) if isBound(info) =>
             RefinedType(parent1, name, info.symbol.info)
-          case info: TypeRef if boundSyms contains info.symbol =>
+          case info: TypeRef if isBound(info) =>
             val info1 = info.symbol.info
             assert(info1.derivesFrom(defn.SingletonClass))
             RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
@@ -605,8 +625,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         tp
     }
     val tp1 = elim(tp)
-    val isBound = (tp: Type) => boundSyms contains tp.typeSymbol
-    if (tp1 existsPart isBound) {
+    if (isBoundAccumulator(false, tp1)) {
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
