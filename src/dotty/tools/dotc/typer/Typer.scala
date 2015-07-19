@@ -822,7 +822,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     res
   }
 
-  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = track("typedAppliedTypeTree") {
+  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)
     val tparams = tpt1.tpe.typeParams
     var args = tree.args
@@ -830,17 +830,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       ctx.error(d"${tpt1.tpe} does not take type parameters")
       tpt1
     }
-    else if (args.length != tparams.length) {
-      ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
-      args = args.take(tparams.length)
+    else {
+      if (args.length != tparams.length) {
+        ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
+        args = args.take(tparams.length)
+      }
+      def typedArg(arg: untpd.Tree, tparam: Symbol) = {
+        val arg1 = typed(arg, if (ctx.mode is Mode.Pattern) tparam.info else WildcardType)
+        adaptTypeArg(arg1, if (tparam.isCompleted) tparam.info else WildcardType)
+      }
+      val args1 = args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+      // check that arguments conform to bounds is done in phase PostTyper
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
     }
-    val argPts =
-      if (ctx.mode is Mode.Pattern) tpt1.tpe.typeParams.map(_.info)
-      else tree.args.map(_ => WildcardType)
-    def typedArg(arg: untpd.Tree, pt: Type) = adaptTypeArg(typed(arg, pt), pt)
-    val args1 = args.zipWithConserve(argPts)(typedArg(_, _)).asInstanceOf[List[Tree]]
-    // check that arguments conform to bounds is done in phase PostTyper
-    assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
