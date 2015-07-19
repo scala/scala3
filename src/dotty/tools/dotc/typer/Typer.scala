@@ -827,7 +827,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tparams = tpt1.tpe.typeParams
     var args = tree.args
     if (tparams.isEmpty) {
-      ctx.error(d"${tpt1.tpe} does not take type parameters")
+      ctx.error(d"${tpt1.tpe} does not take type parameters", tree.pos)
       tpt1
     }
     else {
