@@ -180,7 +180,9 @@ class TypeApplications(val self: Type) extends AnyVal {
           matchParams(tp, safeTypeParams, args)
         }
       case tp: RefinedType =>
-        tp.derivedRefinedType(
+        val redux = tp.EtaReduce
+        if (redux.exists) redux.appliedTo(args) // Rewrite ([HK$0] => C[HK$0])(T)   to   C[T]
+        else tp.derivedRefinedType(
           instantiate(tp.parent, original),
           tp.refinedName,
           tp.refinedInfo)
