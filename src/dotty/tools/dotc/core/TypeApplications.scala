@@ -206,11 +206,20 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp
     }
 
+    def isHK(tp: Type): Boolean = tp match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym.isLambdaTrait
+        else !sym.isAliasType || isHK(tp.info)
+      case tp: TypeProxy => isHK(tp.underlying)
+      case _ => false
+    }
+
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (res.isInstantiatedLambda)
-        // Note: isInstantiatedLambda needs to be conservative, using isSafeLambda
+      if (isHK(res))
+        // Note: isHK needs to be conservative, using isSafeLambda
         // in order to avoid cyclic reference errors. But this means that some fully
         // instantiated types will remain unprojected, which essentially means
         // that they stay as higher-kinded types. checkNonCyclic checks the type again
@@ -218,7 +227,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         // that fall through the hole. Not adding an #Apply typically manifests itself
         // with a <:< failure of two types that "look the same". An example is #779,
         // where compiling scala.immutable.Map gives a bounds violation.
-        res.select(tpnme.Apply)
+        TypeRef(res, tpnme.Apply)
       else res
     }
   }
