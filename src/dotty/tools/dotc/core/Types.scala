@@ -1492,7 +1492,7 @@ object Types {
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
-    protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
 
     /** Create a NamedType of the same kind as this type, but with a "inherited name".

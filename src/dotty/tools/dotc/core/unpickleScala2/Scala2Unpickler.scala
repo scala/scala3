@@ -52,7 +52,7 @@ object Scala2Unpickler {
     case TempPolyType(tparams, restpe) =>
       if (denot.isType) {
         assert(!denot.isClass)
-        restpe.LambdaAbstract(tparams)
+        restpe.LambdaAbstract(tparams, cycleParanoid = true)
       }
       else
         PolyType.fromSymbols(tparams, restpe)
