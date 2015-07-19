@@ -194,10 +194,19 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp
     }
 
+    def isHK(tp: Type): Boolean = tp match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym.isLambdaTrait
+        else !sym.isAliasType || isHK(tp.info)
+      case tp: TypeProxy => isHK(tp.underlying)
+      case _ => false
+    }
+
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (res.isInstantiatedLambda) res.select(tpnme.Apply) else res
+      if (isHK(res)) TypeRef(res, tpnme.Apply) else res
     }
   }
 
