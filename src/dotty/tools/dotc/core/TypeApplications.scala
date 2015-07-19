@@ -489,14 +489,22 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  `this.Arg$i`.
    *
    *  TypeBounds are lambda abstracting by lambda abstracting their upper bound.
+   *
+   *  @param cycleParanoid   If `true` don't force denotation of a TypeRef unless
+   *                         its name matches one of `boundSyms`. Needed to avoid cycles
+   *                         involving F-boundes hk-types when reading Scala2 collection classes
+   *                         with new hk-scheme.
    */
-  def LambdaAbstract(boundSyms: List[Symbol])(implicit ctx: Context): Type = {
+  def LambdaAbstract(boundSyms: List[Symbol], cycleParanoid: Boolean = false)(implicit ctx: Context): Type = {
     def expand(tp: Type) = {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
           RefinedThis(rt).select(tpnme.lambdaArgName(i)))
-        tp.subst(boundSyms, argRefs).bounds.withVariance(1)
+        val substituted =
+          if (cycleParanoid) new ctx.SafeSubstMap(boundSyms, argRefs).apply(tp)
+          else tp.subst(boundSyms, argRefs)
+        substituted.bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
