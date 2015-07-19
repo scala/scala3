@@ -669,11 +669,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
-        else if (args.isEmpty && sym.typeParams.nonEmpty) {
-          val res = tycon.LambdaAbstract(sym.typeParams)
-          println(s"lambda abstract $tycon")
-          res
-        }
+        else if (args.isEmpty && sym.typeParams.nonEmpty) tycon.EtaExpand
         else tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
