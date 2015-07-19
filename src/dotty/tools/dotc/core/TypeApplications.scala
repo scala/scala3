@@ -60,9 +60,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
+        else if (tsym.isAliasType) tp.underlying.rawTypeParams
         else {
           val lam = LambdaClass(forcing = false)
-          if (lam.exists) lam.typeParams else Nil//tp.underlying.typeParams
+          if (lam.exists) lam.typeParams else Nil
         }
       case tp: RefinedType =>
         val tparams = tp.parent.typeParams
@@ -85,7 +86,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  do not remove corresponding type parameters.
    *  Second, it will return Nil for BoundTypes because we might get a NullPointer exception
    *  on PolyParam#underlying otherwise (demonstrated by showClass test).
-   *  Third, it won't return higher-kinded type parameters, i.e. the type parameters of
+   *  Third, it won't return abstract higher-kinded type parameters, i.e. the type parameters of
    *  an abstract type are always empty.
    */
   final def rawTypeParams(implicit ctx: Context): List[TypeSymbol] = {
