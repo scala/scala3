@@ -14,6 +14,7 @@ import StdNames.tpnme
 import util.Positions.Position
 import config.Printers._
 import collection.mutable
+import java.util.NoSuchElementException
 
 object TypeApplications {
 
@@ -602,8 +603,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil =>
         false
     }
-    if (tparams.isEmpty) false
-    else if (typeParams.nonEmpty) p(EtaExpand) || classBounds.nonEmpty && tryLift(self.baseClasses)
-    else classBounds.nonEmpty && tryLift(self.baseClasses)
+    try { // temporary, to avoid type mismatches in applications. Should come back to this
+          // when subtyping is rewritten to account for new hk-scheme.
+      if (tparams.isEmpty) false
+      else if (typeParams.nonEmpty) p(EtaExpand) || classBounds.nonEmpty && tryLift(self.baseClasses)
+      else classBounds.nonEmpty && tryLift(self.baseClasses)
+    } catch {
+      case ex: NoSuchElementException => false
+    }
   }
 }
