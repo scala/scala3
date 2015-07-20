@@ -494,7 +494,7 @@ class Definitions {
   /** The set of HigherKindedXYZ traits encountered so far */
   def lambdaTraits: Set[Symbol] = myLambdaTraits
 
-  private var lambdaTraitForVariances = mutable.Map[List[Int], ClassSymbol]()
+  private var LambdaTraitForVariances = mutable.Map[List[Int], ClassSymbol]()
 
   /** The HigherKinded trait corresponding to symbols `boundSyms` (which are assumed
    *  to be the type parameters of a higher-kided type). This is a class symbol that
@@ -513,7 +513,7 @@ class Definitions {
    *   - for each positive or negative variance v_i there is a parent trait Pj which
    *     is the same as LambdaXYZ except that it has `I` in i-th position.
    */
-  def lambdaTrait(vcs: List[Int]): ClassSymbol = {
+  def LambdaTrait(vcs: List[Int]): ClassSymbol = {
     assert(vcs.nonEmpty)
 
     def varianceFlags(v: Int) = v match {
@@ -527,17 +527,17 @@ class Definitions {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         for (i <- 0 until vcs.length)
-          newTypeParam(cls, tpnme.lambdaArgName(i), varianceFlags(vcs(i)), paramDecls)
+          newTypeParam(cls, tpnme.LambdaArgName(i), varianceFlags(vcs(i)), paramDecls)
         newTypeField(cls, tpnme.hkApply, Covariant, paramDecls)
         val parentTraitRefs =
           for (i <- 0 until vcs.length if vcs(i) != 0)
-          yield lambdaTrait(vcs.updated(i, 0)).typeRef
+          yield LambdaTrait(vcs.updated(i, 0)).typeRef
         denot.info = ClassInfo(
             ScalaPackageClass.thisType, cls, ObjectClass.typeRef :: parentTraitRefs.toList, paramDecls)
       }
     }
 
-    val traitName = tpnme.lambdaTraitName(vcs)
+    val traitName = tpnme.LambdaTraitName(vcs)
 
     def createTrait = {
       val cls = newClassSymbol(
@@ -549,7 +549,7 @@ class Definitions {
       cls
     }
 
-    lambdaTraitForVariances.getOrElseUpdate(vcs, createTrait)
+    LambdaTraitForVariances.getOrElseUpdate(vcs, createTrait)
   }
 
   // ----- primitive value class machinery ------------------------------------------

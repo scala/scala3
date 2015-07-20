@@ -110,7 +110,7 @@ object NameOps {
     /** The index of the higher-kinded type parameter with this name.
      *  Pre: isLambdaArgName.
      */
-    def lambdaArgIndex: Int =
+    def LambdaArgIndex: Int =
       name.drop(tpnme.LAMBDA_ARG_PREFIX.length).toString.toInt
 
     /** If the name ends with $nn where nn are

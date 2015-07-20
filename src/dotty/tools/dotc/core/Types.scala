@@ -1865,8 +1865,8 @@ object Types {
           case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
             val cls = parent.LambdaClass(forcing = false)
             if (cls.exists)
-              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.lambdaArgIndex).variance,
-                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.lambdaArgIndex).variance}, ${refinedInfo.variance}")
+              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.LambdaArgIndex).variance,
+                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.LambdaArgIndex).variance}, ${refinedInfo.variance}")
           case _ =>
         }
       this
@@ -1882,7 +1882,7 @@ object Types {
         this
       else if (   refinedName.isLambdaArgName
                //&& { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
-               && refinedName.lambdaArgIndex < underlyingTypeParams.length
+               && refinedName.LambdaArgIndex < underlyingTypeParams.length
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
