@@ -556,10 +556,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp match {
           case tp: RefinedType =>
             tp.refinedInfo match {
-              case TypeAlias(TypeRef(RefinedThis(rt), rname)) // TODO: Drop once hk applications have been updated
-              if (rname == tparam.name) && (rt eq self) =>
-                etaCore(tp.parent, otherParams)
-              case TypeRef(TypeAlias(TypeRef(RefinedThis(rt), rname)), tpnme.hkApply)
+              case TypeAlias(TypeRef(RefinedThis(rt), rname))
               if (rname == tparam.name) && (rt eq self) =>
                 etaCore(tp.parent, otherParams)
               case _ =>
