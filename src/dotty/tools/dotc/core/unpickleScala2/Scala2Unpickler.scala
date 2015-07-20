@@ -584,7 +584,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *    tp { name: T }
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
-    // Need to be careful not to run into cyclic references here (observed when 
+    // Need to be careful not to run into cyclic references here (observed when
     // comiling t247.scala). That's why we avoiud taking `symbol` of a TypeRef
     // unless names match up.
     val isBound = (tp: Type) => {
@@ -619,7 +619,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
-      case tp @ TypeRef(pre, tpnme.Apply) if pre.isLambda =>
+      case tp @ TypeRef(pre, tpnme.hkApply) =>
         elim(pre)
       case _ =>
         tp

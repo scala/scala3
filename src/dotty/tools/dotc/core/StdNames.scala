@@ -311,7 +311,7 @@ object StdNames {
 
     val AnnotatedType: N        = "AnnotatedType"
     val AppliedTypeTree: N      = "AppliedTypeTree"
-    val Apply: N                = "Apply"
+    val hkApply: N              = "$apply"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"

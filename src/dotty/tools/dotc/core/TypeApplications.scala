@@ -227,7 +227,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         // that fall through the hole. Not adding an #Apply typically manifests itself
         // with a <:< failure of two types that "look the same". An example is #779,
         // where compiling scala.immutable.Map gives a bounds violation.
-        TypeRef(res, tpnme.Apply)
+        TypeRef(res, tpnme.hkApply)
       else res
     }
   }
@@ -235,8 +235,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Simplify a fully instantiated type of the form `LambdaX{... type Apply = T } # Apply` to `T`.
    */
   def simplifyApply(implicit ctx: Context): Type = self match {
-    case self @ TypeRef(prefix, tpnme.Apply) if prefix.isInstantiatedLambda =>
-      prefix.member(tpnme.Apply).info match {
+    case self @ TypeRef(prefix, tpnme.hkApply) if prefix.isInstantiatedLambda =>
+      prefix.member(tpnme.hkApply).info match {
         case TypeAlias(alias) => alias
         case _ => self
       }
@@ -541,7 +541,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           else tp.subst(boundSyms, argRefs)
         substituted.bounds.withVariance(1)
       }
-      val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
+      val res = RefinedType(lambda.typeRef, tpnme.hkApply, substitutedRHS)
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
       res
     }
@@ -581,7 +581,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               case TypeAlias(TypeRef(RefinedThis(rt), rname)) // TODO: Drop once hk applications have been updated
               if (rname == tparam.name) && (rt eq self) =>
                 etaCore(tp.parent, otherParams)
-              case TypeRef(TypeAlias(TypeRef(RefinedThis(rt), rname)), tpnme.Apply)
+              case TypeRef(TypeAlias(TypeRef(RefinedThis(rt), rname)), tpnme.hkApply)
               if (rname == tparam.name) && (rt eq self) =>
                 etaCore(tp.parent, otherParams)
               case _ =>
@@ -592,7 +592,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
     }
     self match {
-      case self @ RefinedType(parent, tpnme.Apply) =>
+      case self @ RefinedType(parent, tpnme.hkApply) =>
         val lc = parent.LambdaClass(forcing = false)
         self.refinedInfo match {
           case TypeAlias(alias) if lc.exists => etaCore(alias, lc.typeParams.reverse)
