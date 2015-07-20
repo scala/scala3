@@ -254,18 +254,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         } narrowLiftedOwner(caller, liftedOwner(callee.skipConstructor))
       } while (changedLiftedOwner)
 
-    private def newName(sym: Symbol)(implicit ctx: Context): Name = {
-      def freshen(prefix: String): Name = {
-        val fname = ctx.freshName(prefix)
-        if (sym.isType) fname.toTypeName else fname.toTermName
-      }
+    private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
-        freshen(sym.name.toString ++ NJ ++ sym.owner.name ++ NJ)
-      else if (sym is ModuleClass)
-        freshen(sym.sourceModule.name.toString ++ NJ).moduleClassName
-      else
-        freshen(sym.name.toString ++ NJ)
-    }
+        (sym.name ++ NJ ++ sym.owner.name).freshened
+      else sym.name.freshened
 
     private def generateProxies()(implicit ctx: Context): Unit =
       for ((owner, freeValues) <- free.toIterator) {

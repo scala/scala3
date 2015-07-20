@@ -126,6 +126,7 @@ class tests extends CompilerTest {
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
+  @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
   @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
@@ -149,7 +150,6 @@ class tests extends CompilerTest {
   @Test def run_all = runFiles(runDir)
 
   @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes ++ twice) // note the -deep argument
-
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
