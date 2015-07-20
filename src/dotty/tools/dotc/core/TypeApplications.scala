@@ -59,7 +59,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.rawTypeParams
+        else if (tsym.isAliasType) tp.underlying.typeParams
         else {
           val lam = LambdaClass(forcing = false)
           if (lam.exists) lam.typeParams else Nil
@@ -524,12 +524,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** Test whether this type has a base type of the form `B[T1, ..., Bn]` where
+  /** Test whether this type has a base type of the form `B[T1, ..., Tn]` where
    *  the type parameters of `B` match one-by-one the variances of `tparams`,
    *  and where the lambda abstracted type
    *
-   *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
-   *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
+   *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg${n-1}] }
+   *               { type $hkArg$0 = T1; ...; type $hkArg${n-1} = Tn }
    *
    *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a variance V if it has V as its variance or if V == 0.
@@ -559,13 +559,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil =>
         false
     }
-    try { // temporary, to avoid type mismatches in applications. Should come back to this
-          // when subtyping is rewritten to account for new hk-scheme.
-      if (tparams.isEmpty) false
-      else if (typeParams.nonEmpty) p(EtaExpand) || classBounds.nonEmpty && tryLift(self.baseClasses)
-      else classBounds.nonEmpty && tryLift(self.baseClasses)
-    } catch {
-      case ex: NoSuchElementException => false
-    }
+    tparams.nonEmpty &&
+      (typeParams.nonEmpty && p(EtaExpand) ||
+       classBounds.nonEmpty && tryLift(self.baseClasses))
   }
 }
