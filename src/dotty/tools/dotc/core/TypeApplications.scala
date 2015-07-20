@@ -140,6 +140,16 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isInstantiatedLambda(implicit ctx: Context): Boolean =
     isSafeLambda && typeParams.isEmpty
 
+  def isHK(implicit ctx: Context): Boolean = self.dealias match {
+    case self: TypeRef =>
+      self.info match {
+        case TypeBounds(_, hi) => hi.isHK
+        case _ => false
+      }
+    case RefinedType(_, name) => name == tpnme.hkApply || name.isLambdaArgName
+    case _ => false
+  }
+
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
@@ -175,7 +185,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             if (tsym.isClass || !tp.typeSymbol.isCompleting) original.typeParams
             else {
               ctx.warning(i"encountered F-bounded higher-kinded type parameters for $tsym; assuming they are invariant")
-              defn.lambdaTrait(args map alwaysZero).typeParams
+              defn.LambdaTrait(args map alwaysZero).typeParams // @@@ can we force?
             }
           matchParams(tp, safeTypeParams, args)
         }
@@ -428,70 +438,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
     recur(self)
   }
-/*
-  /** Given a type alias
-   *
-   *      type T[boundSyms] = p.C[targs]
-   *
-   *  produce its equivalent right hand side RHS that makes no reference to the bound
-   *  symbols on the left hand side. I.e. the type alias can be replaced by
-   *
-   *      type T = RHS
-   *
-   *  There are two strategies how this is achieved.
 
-   *  1st strategy: Applies if `C` is a class such that every bound symbol in `boundSyms`
-   *  appears as an argument in `targs`, and in the same order. Then the rewriting replaces
-   *  bound symbols by references to the parameters of class C. Example:
-   *
-   *  Say we have:
-   *
-   *     class Triple[type T1, type T2, type T3]
-   *     type A[X] = Triple[(X, X), X, String]
-   *
-   *  Then this is rewritable, as `X` appears as second type argument to `Triple`.
-   *  Occurrences of `X` are rewritten to `this.T2` and the whole definition becomes:
-   *
-   *     type A = Triple { type T1 = (this.T2, this.T2); type T3 = String }
-   *
-   *  2nd strategy: Used as a fallback if 1st strategy does not apply. It rewrites
-   *  the RHS to a typed lambda abstraction.
-   */
-  def parameterizeWith(boundSyms: List[Symbol])(implicit ctx: Context): Type = {
-    def matchParams(bsyms: List[Symbol], tparams: List[Symbol], targs: List[Type],
-                    correspondingParamName: Map[Symbol, TypeName]): Type = {
-      if (bsyms.isEmpty) {
-        val correspondingNames = correspondingParamName.values.toSet
-
-       def replacements(rt: RefinedType): List[Type] =
-          for (sym <- boundSyms)
-            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
-
-        def rewrite(tp: Type): Type = tp match {
-          case tp @ RefinedType(parent, name: TypeName) =>
-            if (correspondingNames contains name) rewrite(parent)
-            else RefinedType(
-              rewrite(parent), name,
-              rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
-          case tp =>
-            tp
-        }
-
-        rewrite(self)
-      }
-      else if (tparams.isEmpty || targs.isEmpty)
-        LambdaAbstract(boundSyms)
-      else if (bsyms.head == targs.head.typeSymbol)
-        matchParams(bsyms.tail, tparams.tail, targs.tail,
-            correspondingParamName + (bsyms.head -> tparams.head.name.asTypeName))
-      else
-        matchParams(bsyms, tparams.tail, targs.tail, correspondingParamName)
-    }
-    val cls = self.typeSymbol
-    if (cls.isClass) matchParams(boundSyms, cls.typeParams, argInfos, Map())
-    else LambdaAbstract(boundSyms)
-  }
-*/
   /** The typed lambda abstraction of this type `T` relative to `boundSyms`.
    *  This is:
    *
@@ -510,18 +457,16 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def LambdaAbstract(boundSyms: List[Symbol], cycleParanoid: Boolean = false)(implicit ctx: Context): Type = {
     def expand(tp: Type) = {
-      val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
+      val lambda = defn.LambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
-          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
+          RefinedThis(rt).select(tpnme.LambdaArgName(i)))
         val substituted =
           if (cycleParanoid) new ctx.SafeSubstMap(boundSyms, argRefs).apply(tp)
           else tp.subst(boundSyms, argRefs)
         substituted.bounds.withVariance(1)
       }
-      val res = RefinedType(lambda.typeRef, tpnme.hkApply, substitutedRHS)
-      //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
-      res
+      RefinedType(lambda.typeRef, tpnme.hkApply, substitutedRHS)
     }
     self match {
       case self @ TypeBounds(lo, hi) =>
