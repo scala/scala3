@@ -1865,23 +1865,9 @@ object Types {
       this
     }
 
-    /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
-     *  is transformed to a refinement of the original type parameter if that one exists.
-     */
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      lazy val underlyingTypeParams = parent.rawTypeParams
-
-      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
-        this
-      else if (   refinedName.isLambdaArgName
-               //&& { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
-               && refinedName.LambdaArgIndex < underlyingTypeParams.length
-               && !parent.isLambda)
-        derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
-      else
-        if (false) RefinedType(parent, refinedName, refinedInfo)
-        else RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
-    }
+    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
+      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
+      else RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
