@@ -810,7 +810,7 @@ class Namer { typer: Typer =>
             val tycon = tp.withoutArgs(args)
             val tparams = tycon.typeParams
             if (args.length == tparams.length) { // if lengths differ, problem is caught in typedTypeApply
-              val args1 = args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfLambda(tparam.info))
+              val args1 = args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.info))
               if (args1 ne args) return this(tycon).appliedTo(args1)
             }
           }

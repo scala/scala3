@@ -140,13 +140,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isInstantiatedLambda(implicit ctx: Context): Boolean =
     isSafeLambda && typeParams.isEmpty
 
+  /** Is receiver type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
-    case self: TypeRef =>
-      self.info match {
-        case TypeBounds(_, hi) => hi.isHK
-        case _ => false
-      }
+    case self: TypeRef => self.info.isHK
     case RefinedType(_, name) => name == tpnme.hkApply || name.isLambdaArgName
+    case TypeBounds(_, hi) => hi.isHK
     case _ => false
   }
 
@@ -159,12 +157,6 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        val arg1 =
-          if ((tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty) {
-            println(i"missing eta expansion of $arg")
-            arg.EtaExpand
-          }
-          else arg
         val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
         matchParams(tp1, tparams.tail, args1)
       case nil => tp
@@ -204,19 +196,23 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp
     }
 
-    def isHK(tp: Type): Boolean = tp match {
+    /** Same as isHK, except we classify all abstract types as HK,
+     *  (they must be, because the are applied). This avoids some forcing and
+     *  CyclicReference errors of the standard isHK.
+     */
+    def isKnownHK(tp: Type): Boolean = tp match {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym.isLambdaTrait
-        else !sym.isAliasType || isHK(tp.info)
-      case tp: TypeProxy => isHK(tp.underlying)
+        else !sym.isAliasType || isKnownHK(tp.info)
+      case tp: TypeProxy => isKnownHK(tp.underlying)
       case _ => false
     }
 
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (isHK(res)) TypeRef(res, tpnme.hkApply) else res
+      if (isKnownHK(res)) TypeRef(res, tpnme.hkApply) else res
     }
   }
 
@@ -488,9 +484,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
-  /** Eta expand if `bound` is a type lambda */
-  def EtaExpandIfLambda(bound: Type)(implicit ctx: Context): Type =
-    if (bound.isLambda && self.typeSymbol.isClass && typeParams.nonEmpty && !isLambda) EtaExpand
+  /** Eta expand if `bound` is a higher-kinded type */
+  def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type =
+    if (bound.isHK && !isHK && self.typeSymbol.isClass && typeParams.nonEmpty) EtaExpand
     else self
 
   /** If `self` is an eta expansion of type T, return T, otherwise NoType */
