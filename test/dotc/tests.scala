@@ -8,6 +8,8 @@ import org.junit.experimental.categories._
 
 class tests extends CompilerTest {
 
+  def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
+
   val noCheckOptions = List(
 //        "-verbose",
 //         "-Ylog:frontend",
@@ -20,9 +22,12 @@ class tests extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes", "-Yno-double-bindings",
-      "-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef",
-      "-d", defaultOutputDir
-  )
+      "-d", defaultOutputDir) ++ {
+    if (isRunByJenkins) List("-Ycheck:all")
+    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+  }
+
+
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val twice = List("#runs", "2")
