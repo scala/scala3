@@ -527,7 +527,7 @@ class Definitions {
         val paramDecls = newScope
         for (i <- 0 until vcs.length)
           newTypeParam(cls, tpnme.lambdaArgName(i), varianceFlags(vcs(i)), paramDecls)
-        newTypeField(cls, tpnme.Apply, Covariant, paramDecls)
+        newTypeField(cls, tpnme.hkApply, Covariant, paramDecls)
         val parentTraitRefs =
           for (i <- 0 until vcs.length if vcs(i) != 0)
           yield lambdaTrait(vcs.updated(i, 0)).typeRef

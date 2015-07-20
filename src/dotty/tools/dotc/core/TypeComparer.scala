@@ -471,7 +471,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
    */
   def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
-    projection.name == tpnme.Apply && {
+    projection.name == tpnme.hkApply && { // @@@ rewrite
       val lambda = projection.prefix.LambdaClass(forcing = true)
       lambda.exists && !other.isLambda &&
         other.testLifted(lambda.typeParams,
@@ -480,7 +480,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
 
   /** The class symbols bounding the type of the `Apply` member of `tp` */
-  private def classBounds(tp: Type) = tp.member(tpnme.Apply).info.classSymbols
+  private def classBounds(tp: Type) = tp.member(tpnme.hkApply).info.classSymbols
 
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
    *  to keep the constraint as wide as possible. Specifically, if
@@ -633,9 +633,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Does `tp` need to be eta lifted to be comparable to `target`? */
   private def needsEtaLift(tp: Type, target: RefinedType): Boolean = {
-    //default.echo(i"needs eta $tp $target?", {
+    //default.echo(i"needs eta $tp $target?", { // @@@ rewrite
     val name = target.refinedName
-    (name.isLambdaArgName || (name eq tpnme.Apply)) && target.isLambda &&
+    (name.isLambdaArgName || (name eq tpnme.hkApply)) && target.isLambda &&
     tp.exists && !tp.isLambda
     //})
   }

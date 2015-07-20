@@ -826,7 +826,7 @@ object Types {
      *
      *      P { type T = String, type R = P{...}.T } # R  -->  String
      *
-     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "Apply".
+     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "$apply".
      *      In this case the rhs of the apply is returned with all references to lambda argument types
      *      substituted by their definitions.
      *
@@ -862,7 +862,7 @@ object Types {
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.Apply) betaReduce(alias) else NoType // (2)
+                case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2)
               }
             case _ => loop(pre.parent, resolved)
           }
