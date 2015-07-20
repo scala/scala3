@@ -634,7 +634,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     // if (tp.isLambda != tp.isHK) println(i"discrepancy for $tp, isLambda = ${tp.isLambda}, isHK = ${tp.isHK}")
     val name = target.refinedName
     (name.isLambdaArgName || (name eq tpnme.hkApply)) &&
-    tp.exists && !tp.isLambda // we do encounter Lambda classes without any arguments here @@@ check whether this makes sense.
+    tp.exists && !tp.isLambda // we do encounter Lambda classes without any arguments here
   }
 
   /** Narrow gadt.bounds for the type parameter referenced by `tr` to include
