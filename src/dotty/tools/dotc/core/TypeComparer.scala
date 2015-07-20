@@ -466,18 +466,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       false
   }
 
-  /** If `projection` is of the form T # Apply where `T` is an instance of a Lambda class,
-   *  and `other` is not a type lambda projection, then convert `other` to a type lambda `U`, and
+  /** If `projection` is a hk projection T#$apply
+   *  and `other` is not a hk projection, then convert `other` to a hk projection `U`, and
    *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
    */
   def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
-    projection.name == tpnme.hkApply && { // @@@ rewrite
-      val lambda = projection.prefix.LambdaClass(forcing = true)
-      lambda.exists && !other.isLambda &&
-        other.testLifted(lambda.typeParams,
-          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
-          if (inOrder) Nil else classBounds(projection.prefix))
-    }
+    projection.name == tpnme.hkApply &&
+    !other.isHKApply &&
+    other.testLifted(projection.prefix.LambdaClass(forcing = true).typeParams,
+      if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+      if (inOrder) Nil else classBounds(projection.prefix))
 
   /** The class symbols bounding the type of the `Apply` member of `tp` */
   private def classBounds(tp: Type) = tp.member(tpnme.hkApply).info.classSymbols
