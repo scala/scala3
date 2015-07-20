@@ -141,13 +141,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isInstantiatedLambda(implicit ctx: Context): Boolean =
     isSafeLambda && typeParams.isEmpty
 
+  /** Is receiver type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
-    case self: TypeRef =>
-      self.info match {
-        case TypeBounds(_, hi) => hi.isHK
-        case _ => false
-      }
+    case self: TypeRef => self.info.isHK
     case RefinedType(_, name) => name == tpnme.hkApply || name.isLambdaArgName
+    case TypeBounds(_, hi) => hi.isHK
     case _ => false
   }
 
@@ -160,24 +158,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        val needsEtaExpand =
-          try {
-            (tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty
-          }
-          catch {
-            case ex: CyclicReference =>
-              if (ctx.mode.is(Mode.Scala2Unpickling))
-                // When unpickling Scala2, we might run into cyclic references when
-                // checking whether eta expansion is needed or eta expanding.
-                // (e.g. try compile collection/generic/GenericTraversableTemplate.scala).
-                // In that case, back out gracefully. Ideally, we should not have
-                // underdefined pickling data that requires post-transformations like
-                // eta expansion, but we can't change Scala2's.
-                false
-              else throw ex
-          }
-        val arg1 = if (needsEtaExpand) arg.EtaExpand else arg
-        val tp1 = RefinedType(tp, tparam.name, arg1.toBounds(tparam))
+        val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
         matchParams(tp1, tparams.tail, args1)
       case nil => tp
     }
@@ -216,29 +197,23 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp
     }
 
-    def isHK(tp: Type): Boolean = tp match {
+    /** Same as isHK, except we classify all abstract types as HK,
+     *  (they must be, because the are applied). This avoids some forcing and
+     *  CyclicReference errors of the standard isHK.
+     */
+    def isKnownHK(tp: Type): Boolean = tp match {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym.isLambdaTrait
-        else !sym.isAliasType || isHK(tp.info)
-      case tp: TypeProxy => isHK(tp.underlying)
+        else !sym.isAliasType || isKnownHK(tp.info)
+      case tp: TypeProxy => isKnownHK(tp.underlying)
       case _ => false
     }
 
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (isHK(res))
-        // Note: isHK needs to be conservative, using isSafeLambda
-        // in order to avoid cyclic reference errors. But this means that some fully
-        // instantiated types will remain unprojected, which essentially means
-        // that they stay as higher-kinded types. checkNonCyclic checks the type again
-        // and potentially inserts an #Apply then. Hopefully, this catches all types
-        // that fall through the hole. Not adding an #Apply typically manifests itself
-        // with a <:< failure of two types that "look the same". An example is #779,
-        // where compiling scala.immutable.Map gives a bounds violation.
-        TypeRef(res, tpnme.hkApply)
-      else res
+      if (isKnownHK(res)) TypeRef(res, tpnme.hkApply) else res
     }
   }
 
@@ -510,9 +485,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
-  /** Eta expand if `bound` is a type lambda */
-  def EtaExpandIfLambda(bound: Type)(implicit ctx: Context): Type =
-    if (bound.isLambda && self.typeSymbol.isClass && typeParams.nonEmpty && !isLambda) EtaExpand
+  /** Eta expand if `bound` is a higher-kinded type */
+  def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type =
+    if (bound.isHK && !isHK && self.typeSymbol.isClass && typeParams.nonEmpty) EtaExpand
     else self
 
   /** If `self` is an eta expansion of type T, return T, otherwise NoType */

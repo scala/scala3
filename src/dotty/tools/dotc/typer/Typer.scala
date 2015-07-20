@@ -1434,12 +1434,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case Select(New(tpt), nme.CONSTRUCTOR) => tpt.tpe.dealias.argTypesLo
               case _ => Nil
             }
-            if (typeArgs.isEmpty) {
-              //for ((pname, pbound) <- poly.paramNames.zip(poly.paramBounds))
-              //  if (pbound.hi.isSafeLambda)
-              //    ctx.error(d"cannot infer argument for higher-kinded type parameter $pname", tree.pos)
-              typeArgs = constrained(poly, tree)._2
-            }
+            if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
             convertNewArray(
               adaptInterpolated(tree.appliedToTypes(typeArgs), pt, original))
           }
