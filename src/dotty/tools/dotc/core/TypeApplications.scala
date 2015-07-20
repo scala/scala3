@@ -149,6 +149,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => false
   }
 
+  /** is receiver of the form T#$apply? */
+  def isHKApply: Boolean = self match {
+    case TypeRef(_, name) => name == tpnme.hkApply
+    case _ => false
+  }
+
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
