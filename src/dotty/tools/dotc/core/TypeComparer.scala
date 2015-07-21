@@ -1232,5 +1232,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
+  override def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
+    if (projection.name == tpnme.hkApply)
+      traceIndented(i"compareHK $projection, $other, $inOrder") {
+        super.compareHK(projection, other, inOrder)
+      }
+    else super.compareHK(projection, other, inOrder)
+
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }
