@@ -506,9 +506,12 @@ class TypeApplications(val self: Type) extends AnyVal {
             tp.refinedInfo match {
               case TypeAlias(TypeRef(RefinedThis(rt), rname))
               if (rname == tparam.name) && (rt eq self) =>
+                // todo: add bounds
                 etaCore(tp.parent, otherParams)
               case _ =>
-                NoType
+                val pcore = etaCore(tp.parent, tparams)
+                if (pcore.exists) tp.derivedRefinedType(pcore, tp.refinedName, tp.refinedInfo)
+                else NoType
             }
           case _ =>
             NoType
@@ -518,7 +521,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self @ RefinedType(parent, tpnme.hkApply) =>
         val lc = parent.LambdaClass(forcing = false)
         self.refinedInfo match {
-          case TypeAlias(alias) if lc.exists => etaCore(alias, lc.typeParams.reverse)
+          case TypeAlias(alias) if lc.exists =>
+            etaCore(alias, lc.typeParams.reverse)
           case _ => NoType
         }
       case _ => NoType
