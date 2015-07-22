@@ -22,9 +22,9 @@ trait Seq[T] extends Iterable[T] { self =>
   def apply(x: Int): T
 }
 
-abstract class CollectionCompanion[+CC <: Collection { type This <: CC }]
+abstract class CollectionCompanion[+CC[X] <: Collection[X] { type This <: CC }]
 
-abstract class IterableCompanion[+CC <: Iterable { type This <: CC }] extends CollectionCompanion[CC] {
+abstract class IterableCompanion[+CC[X] <: Iterable[X] { type This <: CC }] extends CollectionCompanion[CC] {
   def fromIterator[T](it: Iterator[T]): CC[T]
   def map[T, U](xs: Iterable[T], f: T => U): CC[U] =
     fromIterator(xs.iterator.map(f))
@@ -36,7 +36,7 @@ abstract class IterableCompanion[+CC <: Iterable { type This <: CC }] extends Co
   implicit def transformOps[T](xs: CC[T] @uncheckedVariance): TransformOps[CC, T] = ??? // new TransformOps[CC, T](xs)
 }
 
-class TransformOps[+CC <: Iterable { type This <: CC }, T] (val xs: CC[T]) extends AnyVal {
+class TransformOps[+CC[X] <: Iterable[X] { type This <: CC }, T] (val xs: CC[T]) extends AnyVal {
   def companion[T](xs: CC[T] @uncheckedVariance): IterableCompanion[CC] = xs.companion
   def map[U](f: T => U): CC[U] = companion(xs).map(xs, f)
   def filter(p: T => Boolean): CC[T] = companion(xs).filter(xs, p)
