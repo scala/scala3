@@ -8,7 +8,7 @@ object DottyBuild extends Build {
 
   val travisMemLimit = List("-Xmx1g", "-Xss2m")
 
-  val TRAVIS_BUILD = "dotty.travis.build"
+  val JENKINS_BUILD = "dotty.jenkins.build"
 
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
@@ -104,8 +104,8 @@ object DottyBuild extends Build {
       // System.err.println("BOOTPATH: " + fullpath)
 
       val travis_build = // propagate if this is a travis build
-        if (sys.props.isDefinedAt(TRAVIS_BUILD))
-          List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}") ::: travisMemLimit
+        if (sys.props.isDefinedAt(JENKINS_BUILD))
+          List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: travisMemLimit
         else
           List()
 
@@ -156,8 +156,8 @@ object DottyBuild extends Build {
       // System.err.println("BOOTPATH: " + fullpath)
 
       val travis_build = // propagate if this is a travis build
-        if (sys.props.isDefinedAt(TRAVIS_BUILD))
-          List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
+        if (sys.props.isDefinedAt(JENKINS_BUILD))
+          List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}")
         else
           List()
       val res = agentOptions ::: travis_build ::: fullpath
