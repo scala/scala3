@@ -929,7 +929,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tp1.derivedRefinedType(
               tp1.parent & tp2.parent,
               tp1.refinedName,
-              tp1.refinedInfo & tp2.refinedInfo)
+              tp1.refinedInfo & tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
         case _ =>
           NoType
       }
@@ -995,7 +995,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tp1.derivedRefinedType(
               tp1.parent | tp2.parent,
               tp1.refinedName,
-              tp1.refinedInfo | tp2.refinedInfo)
+              tp1.refinedInfo | tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
         case _ =>
           NoType
       }
