@@ -404,6 +404,14 @@ object SymDenotations {
       name.toTermName == nme.COMPANION_CLASS_METHOD ||
       name.toTermName == nme.COMPANION_MODULE_METHOD
 
+    /** Is this a syntetic method that represents conversions between representations of a value class
+      *  These methods are generated in ExtensionMethods
+      *  and used in ElimErasedValueType.
+      */
+    final def isValueClassConvertMethod(implicit ctx: Context) =
+      name.toTermName == nme.U2EVT ||
+      name.toTermName == nme.EVT2U
+
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
 
