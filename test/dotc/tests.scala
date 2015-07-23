@@ -147,7 +147,7 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
-  @Test def dotty = compileDir(dottyDir, "tools", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes ++ twice) // note the -deep argument
+  @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
 
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
