@@ -154,24 +154,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case tp1: NamedType =>
             val sym1 = tp1.symbol
             (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
-               ctx.erasedTypes || sym1.isStaticOwner ||
-               { // Implements: A # X  <:  B # X
-                 // if either A =:= B (i.e. A <: B and B <: A), or the following three conditions hold:
-                 //  1. X is a class type,
-                 //  2. B is a class type without abstract type members.
-                 //  3. A <: B.
-                 // Dealiasing is taken care of elsewhere.
-                 val pre1 = tp1.prefix
-                 val pre2 = tp2.prefix
-                 isSameType(pre1, pre2) ||
-                   sym1.isClass &&
-                   pre2.classSymbol.exists &&
-                   pre2.abstractTypeMembers.isEmpty &&
-                   isSubType(pre1, pre2)
-              }
+               ctx.erasedTypes || sym1.isStaticOwner || isSubType(tp1.prefix, tp2.prefix)
             else
               (tp1.name eq tp2.name) &&
-              isSameType(tp1.prefix, tp2.prefix) &&
+              isSubType(tp1.prefix, tp2.prefix) &&
               (tp1.signature == tp2.signature) &&
               !tp1.isInstanceOf[WithFixedSym] &&
               !tp2.isInstanceOf[WithFixedSym]
