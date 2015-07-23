@@ -62,6 +62,7 @@ class Compiler {
            new AugmentScala2Traits,
            new ResolveSuper),
       List(new Erasure),
+      List(new GetClass), // getClass transformation should be applied to specialized methods
       List(new ElimErasedValueType,
            new VCElideAllocations,
            new Mixin,
