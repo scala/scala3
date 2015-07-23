@@ -2258,7 +2258,7 @@ object Types {
           res ++= nxt.until(nxt + until - id).map(PolyParam(pp, _))
           res.toList
         }
-      def args(pp: PolyType) = mergeArgs(pp, 0, 0, argTypes.length, argTypes, argNum, ListBuffer.empty)
+      def args(pp: PolyType) = mergeArgs(pp, 0, 0, argTypes.length + pp.paramNames.length, argTypes, argNum, ListBuffer.empty)
 
       def pnames(origPnames: List[TypeName] = paramNames, argN: List[Int] = argNum, id: Int = 0, tmp: ListBuffer[TypeName] = ListBuffer.empty): List[TypeName] = {
         if (argN.isEmpty) {
