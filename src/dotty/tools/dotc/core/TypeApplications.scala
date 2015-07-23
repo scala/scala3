@@ -497,7 +497,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val boundss = new mutable.ListBuffer[TypeBounds]
       for (sym <- boundSyms) {
         val bounds = sym.info.bounds
-        if (!(TypeBounds.empty <:< bounds)) {
+        if (!(TypeBounds.empty frozen_<:< bounds)) {
           boundNames += sym.name
           boundss += bounds
         }
@@ -574,7 +574,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                 // we have a binding T = Lambda$XYZ{...}.this.hk$i where hk$i names the current `tparam`.
                 val pcore = etaCore(tp.parent, otherParams)
                 val hkBounds = self.member(rname).info.bounds
-                if (TypeBounds.empty <:< hkBounds) pcore
+                if (TypeBounds.empty frozen_<:< hkBounds) pcore
                 else tp.derivedRefinedType(pcore, tp.refinedName, hkBounds)
               case _ =>
                 val pcore = etaCore(tp.parent, tparams)

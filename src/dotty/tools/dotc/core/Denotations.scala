@@ -339,8 +339,8 @@ object Denotations {
           val info1 = denot1.info
           val info2 = denot2.info
           val sameSym = sym1 eq sym2
-          if (sameSym && info1 <:< info2) denot2
-          else if (sameSym && info2 <:< info1) denot1
+          if (sameSym && (info1 frozen_<:< info2)) denot2
+          else if (sameSym && (info2 frozen_<:< info1)) denot1
           else {
             val jointSym =
               if (sameSym) sym1

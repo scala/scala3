@@ -595,6 +595,11 @@ object Types {
       ctx.typeComparer.topLevelSubType(this, that)
     }
 
+    /** Is this type a subtype of that type? */
+    final def frozen_<:<(that: Type)(implicit ctx: Context): Boolean = track("frozen_<:<") {
+      ctx.typeComparer.isSubTypeWhenFrozen(this, that)
+    }
+
     /** Is this type the same as that type?
      *  This is the case iff `this <:< that` and `that <:< this`.
      */
@@ -625,9 +630,9 @@ object Types {
         case ExprType(_) | MethodType(Nil, _) => tp.resultType
         case _ => tp
       }
-      this <:< that || {
+      (this frozen_<:< that) || {
         val rthat = result(that)
-        (rthat ne that) && result(this) <:< rthat
+        (rthat ne that) && (result(this) frozen_<:< rthat)
       }
     }
 
@@ -2652,13 +2657,13 @@ object Types {
     }
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      if (this.lo <:< that.lo && that.hi <:< this.hi) that
-      else if (that.lo <:< this.lo && this.hi <:< that.hi) this
+      if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
+      else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
       else TypeBounds(this.lo | that.lo, this.hi & that.hi)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      if (this.lo <:< that.lo && that.hi <:< this.hi) this
-      else if (that.lo <:< this.lo && this.hi <:< that.hi) that
+      if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) this
+      else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) that
       else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
