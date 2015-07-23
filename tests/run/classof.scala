@@ -18,19 +18,19 @@ object Test {
     println(classOf[Float])
     println(classOf[Double])
 
-    println("Class types")
+    println("\nClass types:")
     println(classOf[SomeClass])
     println(classOf[ValueClass])
     println(classOf[List[Array[Float]]])
     println(classOf[(String, Map[Int, String])])
 
-    println("Arrays:")
+    println("\nArrays:")
     println(classOf[Array[Unit]])
     println(classOf[Array[Int]])
     println(classOf[Array[Double]])
     println(classOf[Array[List[String]]])
 
-    println("Functions:")
+    println("\nFunctions:")
     println(classOf[(Int, Int) => Unit])
     println(classOf[Int => Boolean])
   }
