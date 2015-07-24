@@ -440,7 +440,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       def emitVars = storedBinders.nonEmpty
 
-      private lazy val (stored, substed) = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
+      private lazy val storedSubsted = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
+
+      def stored = storedSubsted._1
+
+      def substed = storedSubsted._2
 
       // dd: this didn't yet trigger error. But I believe it would. if this causes double denition of symbol error this can be replaced with NoRebindings
       protected lazy val introducedRebindings:  Rebindings = if (!emitVars) Rebindings(subPatBinders, subPatRefs)
