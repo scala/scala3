@@ -77,18 +77,16 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       poly.paramNames.zipWithIndex.map{case(name, i) => (i, requested.getOrElse(i, Nil))}
     }
     else {
-      if (ctx.settings.Yspecialize.value == "all") {
+      if (ctx.settings.Yspecialize.value > 0) {
         val filteredPrims = primitiveTypes.filter(tpe => poly.paramBounds.forall(_.contains(tpe)))
-        List.range(0, poly.paramNames.length).map(i => (i, filteredPrims))
+        List.range(0, Math.min(poly.paramNames.length, ctx.settings.Yspecialize.value)).map(i => (i, filteredPrims))
       }
       else Nil
     }
   }
 
   def requestedSpecialization(decl: Symbol)(implicit ctx: Context): Boolean =
-    specializationRequests.contains(decl) ||
-      (ctx.settings.Yspecialize.value != "" && decl.name.contains(ctx.settings.Yspecialize.value)) ||
-      ctx.settings.Yspecialize.value == "all"
+    ctx.settings.Yspecialize.value != 0 || specializationRequests.contains(decl)
 
   def registerSpecializationRequest(method: Symbols.Symbol)(index: Int, arguments: List[Type])(implicit ctx: Context) = {
     if (ctx.phaseId > this.treeTransformPhase.id)
