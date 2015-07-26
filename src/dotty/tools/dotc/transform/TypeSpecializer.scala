@@ -64,10 +64,10 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   def allowedToSpecialize(sym: Symbol, numOfTypes: Int)(implicit ctx: Context) =
     numOfTypes > 0 &&
       sym.name != nme.asInstanceOf_ &&
-      sym.name != nme.isInstanceOf_ &&
       !newSymbolMap.contains(sym) &&
+      !sym.name.toString.contains("$sp") &&
       !(sym is Flags.JavaDefined) &&
-      !sym.isConstructor
+      !sym.isPrimaryConstructor
 
 
   def getSpecTypes(method: Symbol, poly: PolyType)(implicit ctx: Context): List[(Int, List[Type])] = {
@@ -189,9 +189,10 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
     tree.tpe.widen match {
 
-      case poly: PolyType if !(tree.symbol.isConstructor
-        || (tree.symbol is Flags.Label))
-        || (tree.symbol.name == nme.asInstanceOf_) =>
+      case poly: PolyType
+        if !(tree.symbol.isPrimaryConstructor
+          || (tree.symbol is Flags.Label)
+          ) =>
         val origTParams = tree.tparams.map(_.symbol)
         val origVParams = tree.vparamss.flatten.map(_.symbol)
 

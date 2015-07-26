@@ -82,9 +82,8 @@ class PreSpecializer extends MiniPhaseTransform {
 
     def allowedToSpecialize(sym: Symbol): Boolean = {
       sym.name != nme.asInstanceOf_ &&
-        sym.name != nme.isInstanceOf_ &&
         !(sym is Flags.JavaDefined) &&
-        !sym.isConstructor
+        !sym.isPrimaryConstructor
     }
 
     if (allowedToSpecialize(sym)) {
