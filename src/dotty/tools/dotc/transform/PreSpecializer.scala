@@ -5,10 +5,11 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol}
+import dotty.tools.dotc.core.Types.{ClassInfo, Type}
 import dotty.tools.dotc.core.{Definitions, Flags}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, MiniPhaseTransform, TransformerInfo}
 
@@ -95,10 +96,8 @@ class PreSpecializer extends MiniPhaseTransform {
           else args.head match {
             case a @ Typed(SeqLiteral(types), _) =>
               types.map(t => primitiveCompanionToPrimitive(t.tpe))
-
-            case a @ Ident(groupName) if a.tpe.isInstanceOf[Type] => // Matches `@specialized` annotations on Specializable Groups
+            case a @ Ident(groupName) => // Matches `@specialized` annotations on Specializable Groups
               specializableToPrimitive(a.tpe.asInstanceOf[Type], groupName)
-
             case _ => ctx.error("unexpected match on specialized annotation"); Nil
           }
         case nil => Nil
@@ -108,11 +107,11 @@ class PreSpecializer extends MiniPhaseTransform {
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val tparams = tree.tparams.map(_.symbol)
-    val st = tparams.map(getSpec)
+    val st = tparams.zipWithIndex.map{case(sym, i) => (i, getSpec(sym))}
     if (st.nonEmpty) {
       st.map{
-        case (types: List[Type]) if types.nonEmpty =>
-          ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(types)
+        case (index: Int, types: List[Type]) if types.nonEmpty =>
+          ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(index, types)
         case _ =>
       }
     }
