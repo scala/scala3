@@ -99,6 +99,45 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
 
+    def enterNewSyms(newDecls: List[Symbol], classInfo: ClassInfo) = {
+      val decls = classInfo.decls.cloneScope
+      newDecls.foreach(decls.enter)
+      classInfo.derivedClassInfo(decls = decls)
+    }
+
+    def specializeMethods(sym: Symbol) = {
+      specialized += sym
+      sym.info match {
+        case classInfo: ClassInfo =>
+          val newDecls = classInfo.decls
+            .filter(_.symbol.isCompleted) // We do not want to force symbols. Unforced symbol are not used in the source
+            .filterNot(_.isConstructor)
+            .filter(requestedSpecialization)
+            .flatMap(decl => {
+            decl.info.widen match {
+              case poly: PolyType if allowedToSpecialize(decl.symbol, poly.paramNames.length) =>
+                generateMethodSpecializations(getSpecTypes(decl, poly))(List.empty, poly, decl)
+              case _ => Nil
+            }
+          })
+
+          if (newDecls.nonEmpty) enterNewSyms(newDecls.toList, classInfo)
+          else tp
+        case poly: PolyType if allowedToSpecialize(sym, poly.paramNames.length) =>
+          if (sym.owner.info.isInstanceOf[ClassInfo]) {
+            transformInfo(sym.owner.info, sym.owner)
+            tp
+          }
+          else if (requestedSpecialization(sym) &&
+            allowedToSpecialize(sym, poly.paramNames.length)) {
+            generateMethodSpecializations(getSpecTypes(sym, poly))(List.empty, poly, sym)
+            tp
+          }
+          else tp
+        case _ => tp
+      }
+    }
+
     def generateMethodSpecializations(specTypes: List[(Int, List[Type])])
                                      (instantiations: List[(Int, Type)], poly: PolyType, decl: Symbol)
                                      (implicit ctx: Context): List[Symbol] = {
@@ -144,40 +183,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       !(sym is Flags.Scala2x) &&
       !(sym is Flags.Package) &&
       !sym.isAnonymousClass) {
-      specialized += sym
-      sym.info match {
-        case classInfo: ClassInfo =>
-          val newDecls = classInfo.decls
-            .filter(_.symbol.isCompleted) // We do not want to force symbols. Unforced symbol are not used in the source
-            .filterNot(_.isConstructor)
-            .filter(requestedSpecialization)
-            .flatMap(decl => {
-            decl.info.widen match {
-              case poly: PolyType if allowedToSpecialize(decl.symbol, poly.paramNames.length) =>
-                generateMethodSpecializations(getSpecTypes(decl, poly))(List.empty, poly, decl)
-              case _ => Nil
-            }
-          })
-
-          if (newDecls.nonEmpty) {
-            val decls = classInfo.decls.cloneScope
-            newDecls.foreach(decls.enter)
-            classInfo.derivedClassInfo(decls = decls)
-          }
-          else tp
-        case poly: PolyType if allowedToSpecialize(sym, poly.paramNames.length) =>
-          if (sym.owner.info.isInstanceOf[ClassInfo]) {
-            transformInfo(sym.owner.info, sym.owner)
-            tp
-          }
-          else if (requestedSpecialization(sym) &&
-            allowedToSpecialize(sym, poly.paramNames.length)) {
-            generateMethodSpecializations(getSpecTypes(sym, poly))(List.empty, poly, sym)
-            tp
-          }
-          else tp
-        case _ => tp
-      }
+      specializeMethods(sym)
     } else tp
   }
 
@@ -277,8 +283,8 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
             }
           } else Nil
         }
-        val specialized_trees = specialize(tree.symbol)
-        Thicket(tree :: specialized_trees)
+        val specializedTrees = specialize(tree.symbol)
+        Thicket(tree :: specializedTrees)
       case _ => tree
     }
   }
@@ -297,9 +303,8 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
             args(ord).tpe <:< tp
           }}).toList
 
-
       if (betterDefs.length > 1) {
-        ctx.debuglog(s"Several specialized variants fit for method ${fun.symbol.name} of ${fun.symbol.owner}. Defaulting to no specialization.")
+        ctx.debuglog(s"Several specialized variants fit for ${fun.symbol.name} of ${fun.symbol.owner}. Defaulting to no specialization.")
         tree
       }
 

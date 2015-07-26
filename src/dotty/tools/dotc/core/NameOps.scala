@@ -244,7 +244,7 @@ object NameOps {
     def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTargsNames: List[Name])(implicit ctx: Context): name.ThisName = {
 
       def typeToTag(tp: Types.Type): Name = {
-        if (tp eq null) "".toTermName
+        if (tp eq null) nme.EMPTY
         else tp.classSymbol match {
           case t if t eq defn.IntClass     => nme.specializedTypeNames.Int
           case t if t eq defn.BooleanClass => nme.specializedTypeNames.Boolean

@@ -108,13 +108,17 @@ class PreSpecializer extends MiniPhaseTransform {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val tparams = tree.tparams.map(_.symbol)
     val st = tparams.zipWithIndex.map{case(sym, i) => (i, getSpec(sym))}
-    if (st.nonEmpty) {
-      st.map{
-        case (index: Int, types: List[Type]) if types.nonEmpty =>
+    sendRequests(st, tree)
+    tree
+  }
+
+  def sendRequests(requests: List[(Int, List[Type])], tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    if (requests.nonEmpty) {
+      requests.map{
+        case (index, types) if types.nonEmpty =>
           ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(index, types)
         case _ =>
       }
     }
-    tree
   }
 }
