@@ -56,7 +56,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
   private val newSymbolsGenericIndices: mutable.HashMap[Symbol, List[Int]] = mutable.HashMap.empty
 
   /**
-   *  A list of symbols gone through specialisation
+   *  A list of symbols gone through the specialisation pipeline
    *  Is used to make calls to transformInfo idempotent
    */
   private val specialized: ListBuffer[Symbol] = ListBuffer.empty
@@ -224,7 +224,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                   case _ => instantiations(index).map(_._2)
                 }
 
-                val tmap: (Tree => Tree) = _ match {
+                val treemap: (Tree => Tree) = _ match {
                   case Return(t, from) if from.symbol == tree.symbol => Return(t, ref(newSym))
                   case t: TypeApply =>
                     (origTParams zip instTypes).foreach(x => genericToInstantiation.put(x._1, x._2))
@@ -235,11 +235,27 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                   case t => t
                 }
 
+                val abstractPolyType = tree.symbol.info.widenDealias.asInstanceOf[PolyType]
+                val typemap = new TypeMap {
+                  override def apply(tp: Type): Type = {
+                    val t = mapOver(tp)
+                      .substDealias(origTParams, instTypes)
+                      .substParams(abstractPolyType, instTypes)
+                      .subst(origVParams, vparams.flatten.map(_.tpe))
+                    newSymType match {
+                      case mt: MethodType if tparams.isEmpty =>
+                        t.substParams(newSymType.asInstanceOf[MethodType], vparams.flatten.map(_.tpe))
+                      case pt: PolyType =>
+                        t.substParams(newSymType.asInstanceOf[PolyType], tparams)
+                          .substParams(newSymType.resultType.asInstanceOf[MethodType], vparams.flatten.map(_.tpe))
+                      case _ => t
+                    }
+                  }
+                }
+
                 val typesReplaced = new TreeTypeMap(
-                  treeMap = tmap,
-                  typeMap = _
-                    .substDealias(origTParams, instTypes)
-                    .subst(origVParams, vparams.flatten.map(_.tpe)),
+                  treeMap = treemap,
+                  typeMap = typemap,
                   oldOwners = tree.symbol :: Nil,
                   newOwners = newSym :: Nil
                 ).transform(tree.rhs)
@@ -253,7 +269,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                       val newArgs = (args zip fun.tpe.widen.firstParamTypes).map{
                         case(tr, tpe) =>
                           assert(tpe.widen ne NoType, "Bad cast when specializing")
-                          tr.ensureConforms(tpe.widen)
+                          tr.ensureConforms(typemap(tpe.widen))
                       }
                       if (sameTypes(args, newArgs)) {
                         t
@@ -275,7 +291,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
                   }}
                 val expectedTypeFixed = tp.transform(typesReplaced)
                 if (expectedTypeFixed ne EmptyTree) {
-                  expectedTypeFixed.ensureConforms(newSym.info.widen.finalResultType.widenDealias)
+                  expectedTypeFixed.ensureConforms(typemap(newSym.info.widen.finalResultType.widenDealias))
                 }
                 else expectedTypeFixed
               }})
