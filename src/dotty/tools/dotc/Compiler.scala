@@ -62,7 +62,6 @@ class Compiler {
            new AugmentScala2Traits,
            new ResolveSuper),
       List(new Erasure),
-      List(new GetClass), // getClass transformation should be applied to specialized methods
       List(new ElimErasedValueType,
            new VCElideAllocations,
            new Mixin,
@@ -71,7 +70,8 @@ class Compiler {
            new LinkScala2ImplClasses,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
-           new FunctionalInterfaces),
+           new FunctionalInterfaces,
+           new GetClass), // getClass transformation should be applied to specialized methods
       List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,
            new Flatten,
