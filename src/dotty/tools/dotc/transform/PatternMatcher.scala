@@ -440,7 +440,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       def emitVars = storedBinders.nonEmpty
 
-      private lazy val storedSubsted = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
+      lazy val storedSubsted = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
 
       def stored = storedSubsted._1
 
