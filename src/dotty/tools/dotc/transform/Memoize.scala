@@ -45,14 +45,20 @@ import Decorators._
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
 
-    def newField = ctx.newSymbol(
-      owner = ctx.owner,
-      name = sym.name.asTermName.fieldName,
-      flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
-      info = sym.info.resultType,
-      coord = tree.pos)
-      .withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
-      .enteredAfter(thisTransform)
+    def newField = {
+      val fieldType =
+        if (sym.isGetter) sym.info.resultType
+        else /*sym.isSetter*/ sym.info.firstParamTypes.head
+
+      ctx.newSymbol(
+        owner = ctx.owner,
+        name = sym.name.asTermName.fieldName,
+        flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
+        info = fieldType,
+        coord = tree.pos)
+        .withAnnotationsCarrying(sym, defn.FieldMetaAnnot)
+        .enteredAfter(thisTransform)
+    }
 
     /** Can be used to filter annotations on getters and setters; not used yet */
     def keepAnnotations(denot: SymDenotation, meta: ClassSymbol) = {
