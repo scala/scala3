@@ -56,12 +56,11 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val Apply(fun, args) = tree
-    val name = fun.symbol.name
 
     // The casts to and from ErasedValueType are no longer needed once ErasedValueType
     // has been eliminated.
     val t =
-      if ((name eq nme.U2EVT) || (name eq nme.EVT2U))
+      if (fun.symbol.isValueClassConvertMethod)
         args.head
       else
         tree

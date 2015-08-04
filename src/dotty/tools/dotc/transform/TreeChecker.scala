@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import TreeTransforms._
+import core.Names.Name
 import core.DenotTransformers._
 import core.Denotations._
 import core.SymDenotations._
@@ -41,6 +42,12 @@ class TreeChecker extends Phase with SymTransformer {
 
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
+
+  def isValidJVMName(name: Name) =
+      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
+
+  def isValidJVMMethodName(name: Name) =
+      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   def printError(str: String)(implicit ctx: Context) = {
     ctx.println(Console.RED + "[error] " + Console.WHITE  + str)
@@ -130,6 +137,7 @@ class TreeChecker extends Phase with SymTransformer {
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
       case tree: DefTree =>
         val sym = tree.symbol
+        assert(isValidJVMName(sym.name), s"${sym.fullName} name is invalid on jvm")
         everDefinedSyms.get(sym) match {
           case Some(t)  =>
             if (t ne tree)
@@ -257,12 +265,24 @@ class TreeChecker extends Phase with SymTransformer {
       assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
+
+      def isNonMagicalMethod(x: Symbol) =
+        x.is(Method) &&
+          !x.isCompanionMethod &&
+          !x.isValueClassConvertMethod &&
+          x != defn.newRefArrayMethod
+
+      val symbolsNotDefined = cls.classInfo.decls.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
+
+      assert(symbolsNotDefined.isEmpty, i" $cls tree does not define methods: $symbolsNotDefined")
+
       super.typedClassDef(cdef, cls)
     }
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
+          if (!sym.isClassConstructor) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
           super.typedDefDef(ddef, sym)
         }
       }

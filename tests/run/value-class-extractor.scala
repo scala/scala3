@@ -6,7 +6,7 @@ object NonNullChar {
   @inline final val None = new NonNullChar(0.toChar)
 }
 
-final class SomeProduct /*extends Product3[String, Int, List[String]]*/ {
+final class SomeProduct extends Product3[String, Int, List[String]] {
   def canEqual(x: Any) = x.isInstanceOf[SomeProduct]
   def _1 = "abc"
   def _2 = 5

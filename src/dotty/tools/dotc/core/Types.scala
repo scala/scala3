@@ -1296,7 +1296,7 @@ object Types {
           case d: SymDenotation =>
             if (this.isInstanceOf[WithFixedSym]) d.current
             else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (prefix.isTightPrefix(d.owner) || d.isConstructor) d.current
+              if (d.exists && prefix.isTightPrefix(d.owner) || d.isConstructor) d.current
               else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot

@@ -98,7 +98,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
-    if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
+    if (sym.is(Accessor, butNot = Deferred | Lazy) && sym.owner.is(Trait))
       sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred).ensureNotPrivate
     else if (sym.isConstructor && sym.owner.is(Trait))
       sym.copySymDenotation(
@@ -108,8 +108,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       sym
 
   private def initializer(sym: Symbol)(implicit ctx: Context): TermSymbol = {
-    val initName = InitializerName(sym.name.asTermName)
-    sym.owner.info.decl(initName).symbol
+    val initName = if(!sym.is(Lazy)) InitializerName(sym.name.asTermName) else sym.name.asTermName
+    sym.owner.info.decl(initName).suchThat(_.is(Lazy) == sym.is(Lazy)).symbol
       .orElse(
         ctx.newSymbol(
           sym.owner,
@@ -229,7 +229,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
-        yield DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos))
+        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos)))
 
     cpy.Template(impl)(
       constr =
