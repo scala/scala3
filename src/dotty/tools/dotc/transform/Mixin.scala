@@ -109,8 +109,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
   private def initializer(sym: Symbol)(implicit ctx: Context): TermSymbol = {
     val initName = if(!sym.is(Lazy)) InitializerName(sym.name.asTermName) else sym.name.asTermName
-    def hasSameLaziness(s: Symbol) = if(sym.is(Lazy)) s.is(Lazy) else !s.is(Lazy)
-    sym.owner.info.decl(initName).suchThat(hasSameLaziness).symbol
+    sym.owner.info.decl(initName).suchThat(_.is(Lazy) == sym.is(Lazy)).symbol
       .orElse(
         ctx.newSymbol(
           sym.owner,
