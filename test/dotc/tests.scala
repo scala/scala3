@@ -24,7 +24,7 @@ class tests extends CompilerTest {
       "-Yno-deep-subtypes", "-Yno-double-bindings",
       "-d", defaultOutputDir) ++ {
     if (isRunByJenkins) List("-Ycheck:-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes")
+    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   }
 
 
