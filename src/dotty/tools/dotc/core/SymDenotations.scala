@@ -299,7 +299,11 @@ object SymDenotations {
     /** The expanded name of this denotation. */
     final def expandedName(implicit ctx: Context) =
       if (is(ExpandedName) || isConstructor) name
-      else name.expandedName(initial.asSymDenotation.owner)
+      else {
+        def legalize(name: Name): Name = // JVM method names may not contain `<' or `>' characters
+          if (is(Method)) name.replace('<', '(').replace('>', ')') else name
+        legalize(name.expandedName(initial.asSymDenotation.owner))
+      }
         // need to use initial owner to disambiguate, as multiple private symbols with the same name
         // might have been moved from different origins into the same class
 
