@@ -161,6 +161,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
     ta.assignType(untpd.Bind(sym.name, body), sym)
 
+  /** A pattern corrsponding to `sym: tpe` */ 
+  def BindTyped(sym: TermSymbol, tpe: Type)(implicit ctx: Context): Bind =
+    Bind(sym, Typed(Underscore(tpe), TypeTree(tpe)))
+
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
 

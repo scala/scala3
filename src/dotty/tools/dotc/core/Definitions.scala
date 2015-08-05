@@ -326,6 +326,7 @@ class Definitions {
     lazy val Product_productArity = ProductClass.requiredMethod(nme.productArity)
     lazy val Product_productPrefix = ProductClass.requiredMethod(nme.productPrefix)
   lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
+  lazy val NonLocalReturnControlClass   = ctx.requiredClass("scala.runtime.NonLocalReturnControl")
 
   // Annotation base classes
   lazy val AnnotationClass              = ctx.requiredClass("scala.annotation.Annotation")

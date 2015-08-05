@@ -68,6 +68,7 @@ class Compiler {
            new LazyVals,
            new Memoize,
            new LinkScala2ImplClasses,
+           new NonLocalReturns,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
            new FunctionalInterfaces,
