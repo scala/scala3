@@ -3135,6 +3135,18 @@ object Types {
             apply(x, tp.underlying)
           case tp: PolyParam =>
             apply(x, tp.underlying)
+          case tp: TypeVar =>
+            val inst = tp.instanceOpt
+            if (inst.exists) apply(x, inst)
+            else {
+              ctx.typerState.ephemeral = true
+              val bounds =
+                if (ctx.typerState.constraint.contains(tp))
+                  ctx.typerState.constraint.fullBounds(tp.origin)
+                else
+                  tp.origin
+              apply(x, bounds)
+            }
           case _ =>
             foldOver(x, tp)
         }
