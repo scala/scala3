@@ -48,6 +48,7 @@ class Compiler {
            new ExtensionMethods,
            new ExpandSAMs,
            new TailRec,
+           new LiftTry,
            new ClassOf),
       List(new PatternMatcher,
            new ExplicitOuter,
