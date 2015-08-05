@@ -177,26 +177,25 @@ object Contexts {
     /** The new implicit references that are introduced by this scope */
     private var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {
-      if (implicitsCache == null ) {
-        val outerImplicits =
-          if (isImportContext && importInfo.hiddenRoot.exists)
-            outer.implicits exclude importInfo.hiddenRoot
-          else
-            outer.implicits
-        try
-          implicitsCache = {
-            val implicitRefs: List[TermRef] =
-              if (isClassDefContext) owner.thisType.implicitMembers
-              else if (isImportContext) importInfo.importedImplicits
-              else if (isNonEmptyScopeContext) scope.implicitDecls
-              else Nil
-            if (implicitRefs.isEmpty) outerImplicits
-            else new ContextualImplicits(implicitRefs, outerImplicits)(this)
-          }
-        catch {
-          case ex: CyclicReference => implicitsCache = outerImplicits
+      if (implicitsCache == null )
+        implicitsCache = {
+          val implicitRefs: List[TermRef] =
+            if (isClassDefContext)
+              try owner.thisType.implicitMembers
+              catch {
+                case ex: CyclicReference => Nil
+              }
+            else if (isImportContext) importInfo.importedImplicits
+            else if (isNonEmptyScopeContext) scope.implicitDecls
+            else Nil
+          val outerImplicits =
+            if (isImportContext && importInfo.hiddenRoot.exists)
+              outer.implicits exclude importInfo.hiddenRoot
+            else
+              outer.implicits
+          if (implicitRefs.isEmpty) outerImplicits
+          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
         }
-      }
       implicitsCache
     }
 
