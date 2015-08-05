@@ -7,11 +7,18 @@ import TreeTransforms._
 import ast.Trees._
 import collection.mutable
 
+object NonLocalReturns {
+  import ast.tpd._
+  def isNonLocalReturn(ret: Return)(implicit ctx: Context) =
+    ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy)
+}
+
 /** Implement non-local returns using NonLocalReturnControl exceptions.
  */
 class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
   override def phaseName = "nonLocalReturns"
 
+  import NonLocalReturns._
   import ast.tpd._
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimByName])
@@ -44,7 +51,7 @@ class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
     Throw(
       New(
         defn.NonLocalReturnControlClass.typeRef,
-        ref(nonLocalReturnKey(meth)) :: ensureConforms(expr, defn.ObjectType) :: Nil))
+        ref(nonLocalReturnKey(meth)) :: expr.ensureConforms(defn.ObjectType) :: Nil))
 
   /** Transform (body, key) to:
    *
@@ -66,15 +73,12 @@ class NonLocalReturns extends MiniPhaseTransform { thisTransformer =>
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),
-        ensureConforms(ref(ex).select(nme.value), meth.info.finalResultType),
+        ref(ex).select(nme.value).ensureConforms(meth.info.finalResultType),
         Throw(ref(ex)))
     val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
     val tryCatch = Try(body, catches, EmptyTree)
     Block(keyDef :: Nil, tryCatch)
   }
-
-  def isNonLocalReturn(ret: Return)(implicit ctx: Context) =
-    ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy) // Lazy needed?
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
     nonLocalReturnKeys.remove(tree.symbol) match {
