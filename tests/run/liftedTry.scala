@@ -12,14 +12,13 @@ object Test {
 
   foo(try 3 catch handle)
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]) = {
     assert(x == 1)
     assert(foo(2) == 2)
     assert(foo(try raise(3) catch handle) == 3)
     Tr.foo
   }
 }
-
 
 object Tr {
   def fun(a: Int => Unit) = a(2)
