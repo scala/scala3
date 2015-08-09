@@ -43,6 +43,11 @@ trait Inferencing { this: Checking =>
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
+
+  /** Instantiate selected type variables `tvars` in type `tp` */
+  def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
+    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains)).process(tp)
+
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. Two phases:
    *  1st Phase: Try to instantiate covariant and non-variant type variables to
@@ -61,8 +66,7 @@ trait Inferencing { this: Checking =>
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
-        if (force == ForceDegree.none) false
-        else {
+        force.appliesTo(tvar) && {
           val minimize =
             variance >= 0 && !(
               force == ForceDegree.noBottom &&
@@ -91,6 +95,33 @@ trait Inferencing { this: Checking =>
       if (res && toMaximize) new UpperInstantiator().apply((), tp)
       res
     }
+  }
+
+  /** If `tree`'s type is of the form
+   *
+   *      e [T1, ..., Tn] (ps1)...(psn)
+   *
+   *  the list of uninstantiated type variables matching one of `T1`, ..., `Tn`
+   *  which also appear in one of the parameter sections `ps1`, ..., `psn`, otherwise Nil.
+   */
+  def tvarsInParams(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
+    def occursInParam(mtp: Type, tvar: TypeVar, secCount: Int): Boolean = mtp match {
+      case mtp: MethodType =>
+        secCount > 0 && (
+          mtp.paramTypes.exists(tvar.occursIn) ||
+          occursInParam(mtp.resultType, tvar, secCount - 1))
+      case _ => false
+    }
+    def collect(tree: Tree, secCount: Int): List[TypeVar] = tree match {
+      case Apply(fn, _) => collect(fn, secCount + 1)
+      case TypeApply(_, targs) =>
+        targs.tpes.collect {
+          case tvar: TypeVar
+          if !tvar.isInstantiated && occursInParam(tree.tpe, tvar, secCount) => tvar
+        }
+      case _ => Nil
+    }
+    collect(tree, 0)
   }
 
   def isBottomType(tp: Type)(implicit ctx: Context) =
@@ -257,9 +288,11 @@ trait Inferencing { this: Checking =>
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
-@sharable object ForceDegree extends Enumeration {
-  val none,           // don't force type variables
-      noBottom,       // force type variables, fail if forced to Nothing or Null
-      all = Value     // force type variables, don't fail
+@sharable object ForceDegree {
+  class Value(val appliesTo: TypeVar => Boolean)
+  val none = new Value(_ => false)
+  val all = new Value(_ => true)
+  val noBottom = new Value(_ => true)
 }
+
 
