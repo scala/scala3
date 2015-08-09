@@ -13,6 +13,7 @@ import config.Printers._
 import typer.Mode
 import collection.mutable
 import typer.ErrorReporting._
+import transform.Erasure
 
 import scala.annotation.tailrec
 
@@ -160,6 +161,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
     ta.assignType(untpd.Bind(sym.name, body), sym)
+
+  /** A pattern corresponding to `sym: tpe` */
+  def BindTyped(sym: TermSymbol, tpe: Type)(implicit ctx: Context): Bind =
+    Bind(sym, Typed(Underscore(tpe), TypeTree(tpe)))
 
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
@@ -733,9 +738,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree.select(defn.Any_asInstanceOf).appliedToType(tp)
     }
 
-    /** `tree.asInstanceOf[tp]` unless tree's type already conforms to `tp` */
+    /** `tree.asInstanceOf[tp]` (or its box/unbox/cast equivalent when after
+     *  erasure and value and non-value types are mixed),
+     *  unless tree's type already conforms to `tp`.
+     */
     def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
-      if (tree.tpe <:< tp) tree else asInstance(tp)
+      if (tree.tpe <:< tp) tree
+      else if (!ctx.erasedTypes) asInstance(tp)
+      else Erasure.Boxing.adaptToType(tree, tp)
 
     /** If inititializer tree is `_', the default value of its type,
      *  otherwise the tree itself.

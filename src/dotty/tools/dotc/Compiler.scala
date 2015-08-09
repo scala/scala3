@@ -48,6 +48,7 @@ class Compiler {
            new ExtensionMethods,
            new ExpandSAMs,
            new TailRec,
+           new LiftTry,
            new ClassOf),
       List(new PatternMatcher,
            new ExplicitOuter,
@@ -68,6 +69,7 @@ class Compiler {
            new LazyVals,
            new Memoize,
            new LinkScala2ImplClasses,
+           new NonLocalReturns,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
            new FunctionalInterfaces,

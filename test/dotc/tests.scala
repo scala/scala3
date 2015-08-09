@@ -115,7 +115,7 @@ class tests extends CompilerTest {
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
 
   val negTailcallDir = negDir + "tailcall/"
-  @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b", xerrors = 6)
+  @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b", xerrors = 5)
   @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275", xerrors = 1)
   @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574", xerrors = 2)
   @Test def neg_tailcall = compileFile(negTailcallDir, "tailrec", xerrors = 7)
