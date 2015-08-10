@@ -344,7 +344,7 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val TypeApply(fun, _) = tree
-    if (fun.tpe.isParameterless) rewireTree(tree)
+    if (fun.tpe.widenDealias.isParameterless) rewireTree(tree)
     else tree
   }
 
