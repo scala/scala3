@@ -17,6 +17,7 @@ import Decorators._
 import Uniques._
 import ErrorReporting.{errorType, DiagnosticString}
 import config.Printers._
+import annotation.tailrec
 import collection.mutable
 
 trait Inferencing { this: Checking =>
@@ -97,31 +98,43 @@ trait Inferencing { this: Checking =>
     }
   }
 
-  /** If `tree`'s type is of the form
-   *
-   *      e [T1, ..., Tn] (ps1)...(psn)
-   *
-   *  the list of uninstantiated type variables matching one of `T1`, ..., `Tn`
-   *  which also appear in one of the parameter sections `ps1`, ..., `psn`, otherwise Nil.
+  /** The list of uninstantiated type variables bound by some prefix of type `T` which
+   *  occur in at least one formal parameter type of a prefix application.
+   *  Considered prefixes are:
+   *    - The function `f` of an application node `f(e1, .., en)`
+   *    - The function `f` of a type application node `f[T1, ..., Tn]`
+   *    - The prefix `p` of a selection `p.f`.
+   *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
   def tvarsInParams(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
-    def occursInParam(mtp: Type, tvar: TypeVar, secCount: Int): Boolean = mtp match {
-      case mtp: MethodType =>
-        secCount > 0 && (
-          mtp.paramTypes.exists(tvar.occursIn) ||
-          occursInParam(mtp.resultType, tvar, secCount - 1))
-      case _ => false
-    }
-    def collect(tree: Tree, secCount: Int): List[TypeVar] = tree match {
-      case Apply(fn, _) => collect(fn, secCount + 1)
-      case TypeApply(_, targs) =>
-        targs.tpes.collect {
-          case tvar: TypeVar
-          if !tvar.isInstantiated && occursInParam(tree.tpe, tvar, secCount) => tvar
+    @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+      case Apply(fn, _) => boundVars(fn, acc)
+      case TypeApply(fn, targs) =>
+        val tvars = targs.tpes.collect {
+          case tvar: TypeVar if !tvar.isInstantiated => tvar
         }
-      case _ => Nil
+        boundVars(fn, acc ::: tvars)
+      case Select(pre, _) => boundVars(pre, acc)
+      case Block(_, expr) => boundVars(expr, acc)
+      case _ => acc
     }
-    collect(tree, 0)
+    @tailrec def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+      if (toTest.isEmpty) acc
+      else tree match {
+        case Apply(fn, _) =>
+          fn.tpe match {
+            case mtp: MethodType =>
+              val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
+              occurring(fn, nocc, occ ::: acc)
+            case _ =>
+              occurring(fn, toTest, acc)
+          }
+        case TypeApply(fn, targs) => occurring(fn, toTest, acc)
+        case Select(pre, _) => occurring(pre, toTest, acc)
+        case Block(_, expr) => occurring(expr, toTest, acc)
+        case _ => acc
+      }
+    occurring(tree, boundVars(tree, Nil), Nil)
   }
 
   def isBottomType(tp: Type)(implicit ctx: Context) =
