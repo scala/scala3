@@ -290,6 +290,14 @@ trait Inferencing { this: Checking =>
           if (v == null) vmap.updated(t, variance)
           else if (v == variance) vmap
           else vmap.updated(t, 0)
+        case t: ImplicitMethodType =>
+          // Assume type vars in implicit parameters are non-variant, in order not
+          // to widen them prematurely to upper bound if they don't occur in the result type.
+          val saved = variance
+          variance = 0
+          val vmap1 = foldOver(vmap, t.paramTypes)
+          variance = saved
+          this(vmap1, t.resultType)
         case _ =>
           foldOver(vmap, t)
       }
