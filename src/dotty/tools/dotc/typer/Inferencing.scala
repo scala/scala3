@@ -45,9 +45,13 @@ trait Inferencing { this: Checking =>
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
 
-  /** Instantiate selected type variables `tvars` in type `tp` */
-  def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
-    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains)).process(tp)
+  /** Minimize selected type variables `tvars` if they appear in type `tp`.
+   *  Instantiation is always to lower bound, independently of the variance in
+   *  which the type variable occurs in `tp`.
+   */
+  def minimizeSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit = {
+    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains), alwaysDown = true).process(tp)
+  }
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. Two phases:
@@ -56,7 +60,7 @@ trait Inferencing { this: Checking =>
    *  2nd Phase: If first phase was successful, instantiate all remaining type variables
    *  to their upper bound.
    */
-  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value, alwaysDown: Boolean = false)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
@@ -69,7 +73,7 @@ trait Inferencing { this: Checking =>
       case tvar: TypeVar if !tvar.isInstantiated =>
         force.appliesTo(tvar) && {
           val minimize =
-            variance >= 0 && !(
+            alwaysDown || variance >= 0 && !(
               force == ForceDegree.noBottom &&
               isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
           if (minimize) instantiate(tvar, fromBelow = true)
