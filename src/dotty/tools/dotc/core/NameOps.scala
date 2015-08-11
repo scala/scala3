@@ -259,7 +259,7 @@ object NameOps {
         }
       }
 
-      val methodTags: Seq[Name] = (methodTargs zip methodTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
+      val methodTags: Seq[Name] = (methodTargs zip methodTargsNames).map(x => typeToTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
 
       name.fromName(name ++ nme.specializedTypeNames.prefix ++
