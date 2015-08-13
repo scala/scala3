@@ -42,8 +42,9 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisTransform =>
       else liftingTransform
 
     override def prepareForAssign(tree: Assign)(implicit ctx: Context) =
-      if (tree.lhs.symbol.maybeOwner == ctx.owner.enclosingMethod) this
-      else liftingTransform
+      /* this is inefficient in many cases,
+         but after CapturedVars is completed this assign could become one with non-empty stack */
+     liftingTransform
 
     override def prepareForReturn(tree: Return)(implicit ctx: Context) =
       if (!isNonLocalReturn(tree)) this
