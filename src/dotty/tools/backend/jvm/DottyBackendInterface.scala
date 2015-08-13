@@ -622,8 +622,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isSynchronized: Boolean = sym is Flags.Synchronized
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
     def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
-    def shouldEmitForwarders: Boolean =  //exitingPickler { !(sym.name.toString contains '$')
-      (sym is Flags.Module) && !(sym is Flags.ImplClass) /// !sym.isNestedClass
+    def shouldEmitForwarders: Boolean =
+      (sym is Flags.Module) && !(sym is Flags.ImplClass) && sym.isStatic
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
