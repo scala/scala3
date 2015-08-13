@@ -632,7 +632,16 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
      * True for module classes of modules that are top-level or owned only by objects. Module classes
      * for such objects will get a MODULE$ flag and a corresponding static initializer.
      */
-    def isStaticModuleClass: Boolean = sym.isStatic && (sym is Flags.Module)
+    def isStaticModuleClass: Boolean =
+      (sym is Flags.Module) && {
+        // scalac uses atPickling here
+        // this would not work if modules are created after pickling
+        // for example by specialization
+        val original = toDenot(sym).initial
+        val validity = original.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        toDenot(sym)(shiftedContext).isStatic
+      }
 
     def isStaticConstructor: Boolean = isStaticMember && isClassConstructor
 
