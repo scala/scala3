@@ -8,6 +8,7 @@ object Test {
     val iCls: Class[Int] = 1.getClass
     val f1: Function2[Int, Int, Unit] = (a: Int, b: Int) => println(a + b)
     val f2: Function1[Int, Boolean] = (a: Int) => a % 2 == 0
+    val one = 1
 
     println("Value types:")
     println(().getClass)
@@ -15,7 +16,7 @@ object Test {
     println(1.asInstanceOf[Byte].getClass)
     println(1.asInstanceOf[Short].getClass)
     println('a'.getClass)
-    println(1.getClass)
+    println(one.getClass)
     println(1L.getClass)
     println(1f.getClass)
     println(1d.getClass)
