@@ -204,7 +204,7 @@ which in turn simplifies to `List[List[String]]`.
 
 2nd Example: Consider the two aliases
 
-    type RMap[K, V] = Map[V, K]]
+    type RMap[K, V] = Map[V, K]
     type RRMap[K, V] = RMap[V, K]
 
 These expand as follows:
