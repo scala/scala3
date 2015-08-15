@@ -28,7 +28,7 @@ class GetClass extends MiniPhaseTransform {
     tree match {
       case Apply(Select(qual, nme.getClass_), Nil) =>
         val defn = ctx.definitions
-        val claz = qual.tpe.classSymbol
+        val claz = qual.tpe.widen.classSymbol
 
         def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_).ensureConforms(tree.tpe)
         claz match {
