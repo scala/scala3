@@ -641,7 +641,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def traverse(tree: Tree)(implicit ctx: Context) = tree match {
           case tree: DefTree =>
             val sym = tree.symbol
-            if (sym.denot(ctx.withPhase(trans)).owner == from) {
+            val prevDenot = sym.denot(ctx.withPhase(trans))
+            if (prevDenot.validFor.containsPhaseId(trans.id) && prevDenot.owner == from) {
               val d = sym.copySymDenotation(owner = to)
               d.installAfter(trans)
               d.transformAfter(trans, d => if (d.owner eq from) d.copySymDenotation(owner = to) else d)
@@ -651,7 +652,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             traverseChildren(tree)
         }
       }
-      traverser.traverse(tree)
+      traverser.traverse(tree)(ctx.withMode(Mode.FutureDefsOK))
       tree
     }
 
