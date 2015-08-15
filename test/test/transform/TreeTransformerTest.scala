@@ -20,7 +20,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new EmptyTransform)
+        override def miniPhases = Array(new EmptyTransform)
 
         override def phaseName: String = "test"
       }
@@ -42,7 +42,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new ConstantTransform)
+        override def miniPhases = Array(new ConstantTransform)
 
         override def phaseName: String = "test"
       }
@@ -72,7 +72,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation)
+        override def miniPhases = Array(new Transformation)
 
         override def phaseName: String = "test"
 
@@ -119,7 +119,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation1, new Transformation2)
+        override def miniPhases = Array(new Transformation1, new Transformation2)
 
         override def phaseName: String = "test"
       }
@@ -187,7 +187,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation1, new Transformation2)
+        override def miniPhases = Array(new Transformation1, new Transformation2)
 
         override def phaseName: String = "test"
       }

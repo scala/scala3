@@ -103,7 +103,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   private def previousPhases(phases: List[Phase])(implicit ctx: Context): List[Phase] = phases match {
     case (phase: TreeTransformer) :: phases1 =>
-      val subPhases = phase.transformations.map(_.phase)
+      val subPhases = phase.miniPhases
       val previousSubPhases = previousPhases(subPhases.toList)
       if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
       else previousSubPhases
