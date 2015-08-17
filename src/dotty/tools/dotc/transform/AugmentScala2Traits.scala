@@ -24,7 +24,7 @@ import ast.Trees._
  *   - an implementation class which defines a trait constructor and trait method implementations
  *   - trait setters for vals defined in traits
  *
- *  Furthermore, it expands the names of all private getters and setters in the trait and makes
+ *  Furthermore, it expands the names of all private getters and setters as well as super accessors in the trait and makes
  *  them not-private.
  */
 class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransformer with FullParameterization { thisTransform =>
@@ -89,8 +89,9 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
           else if (!sym.is(Deferred) && !sym.setter.exists &&
                    !sym.info.resultType.isInstanceOf[ConstantType])
             traitSetter(sym.asTerm).enteredAfter(thisTransform)
-        if (sym.is(PrivateAccessor, butNot = ExpandedName) &&
+        if ((sym.is(PrivateAccessor, butNot = ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
+          || sym.is(SuperAccessor)) // scala2 superaccessors are pickled as private, but are compiler as public expanded
           sym.ensureNotPrivate.installAfter(thisTransform)
       }
       ctx.log(i"Scala2x trait decls of $mixin = ${mixin.info.decls.toList.map(_.showDcl)}%\n %")
