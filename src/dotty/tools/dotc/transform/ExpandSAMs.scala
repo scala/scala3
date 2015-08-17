@@ -37,9 +37,10 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType => tree // it's a plain function
+        case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
+          toPartialFunction(tree)
         case tpe @ SAMType(_) if isJvmSam(tpe.classSymbol.asClass) =>
-          if (tpe isRef defn.PartialFunctionClass) toPartialFunction(tree)
-          else tree
+          tree
         case tpe =>
           cpy.Block(tree)(stats,
               AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, nme.apply :: Nil))
