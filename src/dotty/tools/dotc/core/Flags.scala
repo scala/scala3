@@ -598,6 +598,7 @@ object Flags {
   final val SyntheticTypeParam = allOf(Synthetic, TypeParam)
   final val SyntheticCase = allOf(Synthetic, Case)
   final val AbstractAndOverride = allOf(Abstract, Override)
+  final val Scala2Trait = allOf(Scala2x, Trait)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)
