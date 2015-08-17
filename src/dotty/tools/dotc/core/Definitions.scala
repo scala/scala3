@@ -592,13 +592,16 @@ class Definitions {
   }
 
   /** The classes for which a Ref type exists. */
-  lazy val refClasses: collection.Set[Symbol] = ScalaNumericValueClasses + BooleanClass + ObjectClass
+  lazy val refClassKeys: collection.Set[Symbol] = ScalaNumericValueClasses + BooleanClass + ObjectClass
 
   lazy val refClass: Map[Symbol, Symbol] =
-    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+    refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
 
   lazy val volatileRefClass: Map[Symbol, Symbol] =
-    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+    refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+
+  lazy val boxedRefClasses: collection.Set[Symbol] =
+    refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
