@@ -680,7 +680,7 @@ object Denotations {
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
-        if (current.validFor.firstPhaseId == targetId)
+        if (current.validFor.firstPhaseId >= targetId)
           replaceDenotation(current)
         else {
           // insert this denotation after current
