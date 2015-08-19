@@ -71,11 +71,12 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val Select(qual, name) = sel
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
-      val supername = name.superName
+      var supername = name.superName
+      if (clazz is Trait) supername = supername.expandedName(clazz)
 
       val superAcc = clazz.info.decl(supername).suchThat(_.signature == sym.signature).symbol orElse {
         ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
-        val deferredOrPrivate = if (clazz is Trait) Deferred else Private
+        val deferredOrPrivate = if (clazz is Trait) Deferred | ExpandedName else Private
         val acc = ctx.newSymbol(
             clazz, supername, SuperAccessor | Artifact | Method | deferredOrPrivate,
             sel.tpe.widenSingleton.ensureMethodic, coord = sym.coord).enteredAfter(thisTransformer)
@@ -110,6 +111,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           ctx.error(
               i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
               sel.pos)
+        else println(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
       }
       else if (mix == tpnme.EMPTY && !(sym.owner is Trait))
         // SI-4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
