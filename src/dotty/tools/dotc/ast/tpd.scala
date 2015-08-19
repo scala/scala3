@@ -642,7 +642,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case tree: DefTree =>
             val sym = tree.symbol
             val prevDenot = sym.denot(ctx.withPhase(trans))
-            if (prevDenot.validFor.containsPhaseId(trans.id) && prevDenot.owner == from) {
+            if (prevDenot.owner == from) {
               val d = sym.copySymDenotation(owner = to)
               d.installAfter(trans)
               d.transformAfter(trans, d => if (d.owner eq from) d.copySymDenotation(owner = to) else d)
