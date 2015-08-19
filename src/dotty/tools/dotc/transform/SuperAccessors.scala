@@ -107,7 +107,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         val member = sym.overridingSymbol(clazz)
         if (mix != tpnme.EMPTY ||
             !member.exists ||
-            !(member is AbsOverride) && member.isIncompleteIn(clazz))
+            !((member is AbsOverride) && member.isIncompleteIn(clazz)))
           ctx.error(
               i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
               sel.pos)
