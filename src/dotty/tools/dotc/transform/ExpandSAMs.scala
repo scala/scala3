@@ -58,7 +58,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
 
     val MethodType(paramNames, paramTypes) = applyFn.info
     val isDefinedAtFn = applyFn.copy(
-        name  = nme.isDefinedAtImpl,
+        name  = nme.isDefinedAt,
         flags = Synthetic | Method,
         info = MethodType(paramNames, paramTypes, defn.BooleanType)).asTerm
     val tru = Literal(Constant(true))
