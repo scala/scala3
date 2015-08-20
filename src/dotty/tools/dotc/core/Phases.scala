@@ -231,6 +231,8 @@ object Phases {
     }
 
     private val typerCache = new PhaseCache(classOf[FrontEnd])
+    private val picklerCache = new PhaseCache(classOf[Pickler])
+
     private val refChecksCache = new PhaseCache(classOf[RefChecks])
     private val extensionMethodsCache = new PhaseCache(classOf[ExtensionMethods])
     private val erasureCache = new PhaseCache(classOf[Erasure])
@@ -242,6 +244,7 @@ object Phases {
     private val genBCodeCache = new PhaseCache(classOf[GenBCode])
 
     def typerPhase = typerCache.phase
+    def picklerPhase = picklerCache.phase
     def refchecksPhase = refChecksCache.phase
     def extensionMethodsPhase = extensionMethodsCache.phase
     def erasurePhase = erasureCache.phase
