@@ -63,9 +63,6 @@ object TreeTransforms {
 
     def treeTransformPhase: Phase = phase.next
 
-    /** id of this treeTransform in group */
-    var idx: Int = _
-
     def prepareForIdent(tree: Ident)(implicit ctx: Context) = this
     def prepareForSelect(tree: Select)(implicit ctx: Context) = this
     def prepareForThis(tree: This)(implicit ctx: Context) = this
@@ -137,10 +134,10 @@ object TreeTransforms {
     def transform(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, 0)
 
     /** Transform subtree using all transforms following the current one in this group */
-    def transformFollowingDeep(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, idx + 1)
+    def transformFollowingDeep(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, phase.idx + 1)
 
     /** Transform single node using all transforms following the current one in this group */
-    def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, idx + 1)
+    def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, phase.idx + 1)
 
     def atGroupEnd[T](action : Context => T)(implicit ctx: Context, info: TransformerInfo) = {
       val last = info.transformers(info.transformers.length - 1)
@@ -152,6 +149,9 @@ object TreeTransforms {
   trait MiniPhase extends Phase { thisPhase =>
     def treeTransform: TreeTransform
 
+    /** id of this mini phase in group */
+    var idx: Int = _
+
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
      */
@@ -159,7 +159,7 @@ object TreeTransforms {
 
     protected def mkTreeTransformer = new TreeTransformer {
       override def phaseName: String = thisPhase.phaseName
-      override def transformations = Array(treeTransform)
+      override def miniPhases = Array(thisPhase)
     }
 
     override def run(implicit ctx: Context): Unit = {
@@ -197,7 +197,6 @@ object TreeTransforms {
 
   @sharable val NoTransform = new TreeTransform {
     def phase = unsupported("phase")
-    idx = -1
   }
 
   type Mutator[T] = (TreeTransform, T, Context) => TreeTransform
@@ -474,7 +473,7 @@ object TreeTransforms {
   /** A group of tree transforms that are applied in sequence during the same phase */
   abstract class TreeTransformer extends Phase {
 
-    def transformations: Array[TreeTransform]
+    def miniPhases: Array[MiniPhase]
 
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
@@ -549,10 +548,10 @@ object TreeTransforms {
     val prepForStats: Mutator[List[Tree]] = (trans, trees, ctx) => trans.prepareForStats(trees)(ctx)
     val prepForUnit: Mutator[Tree] = (trans, tree, ctx) => trans.prepareForUnit(tree)(ctx)
 
-    val initialTransformationsCache = transformations.zipWithIndex.map {
-      case (transform, id) =>
-        transform.idx = id
-        transform
+    val initialTransformationsCache = miniPhases.zipWithIndex.map {
+      case (miniPhase, id) =>
+        miniPhase.idx = id
+        miniPhase.treeTransform
     }
 
     val initialInfoCache = new TransformerInfo(initialTransformationsCache, new NXTransformations(initialTransformationsCache), this)

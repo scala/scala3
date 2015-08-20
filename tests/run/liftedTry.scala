@@ -12,10 +12,20 @@ object Test {
 
   foo(try 3 catch handle)
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String]): Unit = {
     assert(x == 1)
     assert(foo(2) == 2)
     assert(foo(try raise(3) catch handle) == 3)
+    Tr.foo
   }
 }
 
+
+object Tr {
+  def fun(a: Int => Unit) = a(2)
+  def foo: Int = {
+    var s = 1
+    s = try {fun(s = _); 3} catch{ case ex: Throwable => val x = 4; s = x; 5 }
+    s
+  }
+}

@@ -109,11 +109,9 @@ object Phases {
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
               }
-              val transforms = filteredPhaseBlock.asInstanceOf[List[MiniPhase]].map(_.treeTransform)
               val block = new TreeTransformer {
-                override def phaseName: String = transformations.map(_.phase.phaseName).mkString("TreeTransform:{", ", ", "}")
-
-                override def transformations: Array[TreeTransform] = transforms.toArray
+                override def phaseName: String = miniPhases.map(_.phaseName).mkString("TreeTransform:{", ", ", "}")
+                override def miniPhases: Array[MiniPhase] = filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray
               }
               prevPhases ++= filteredPhaseBlock.map(_.getClazz)
               block
@@ -145,7 +143,7 @@ object Phases {
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
-        case t: TreeTransformer => flatPhases ++= t.transformations.map(_.phase)
+        case t: TreeTransformer => flatPhases ++= t.miniPhases
         case _ => flatPhases += p
       })
 
@@ -173,11 +171,11 @@ object Phases {
         val phase = phasess(i)
         phase match {
           case t: TreeTransformer =>
-            val transforms = t.transformations
-            transforms.foreach{ x =>
-              checkRequirements(x.phase)
-              x.phase.init(this, nextPhaseId)}
-            t.init(this, transforms.head.phase.id, transforms.last.phase.id)
+            val miniPhases = t.miniPhases
+            miniPhases.foreach{ phase =>
+              checkRequirements(phase)
+              phase.init(this, nextPhaseId)}
+            t.init(this, miniPhases.head.id, miniPhases.last.id)
           case _ =>
             phase.init(this, nextPhaseId)
             checkRequirements(phase)

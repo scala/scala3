@@ -92,14 +92,34 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
       else id
     }
 
+    /** If assignment is to a boxed ref type, e.g.
+     *
+     *      intRef.elem = expr
+     *
+     *  rewrite using a temporary var to
+     *
+     *      val ev$n = expr
+     *      intRef.elem = ev$n
+     *
+     *  That way, we avoid the problem that `expr` might contain a `try` that would
+     *  run on a non-empty stack (which is illegal under JVM rules). Note that LiftTry
+     *  has already run before, so such `try`s would not be eliminated.
+     *
+     *  Also: If the ref type lhs is followed by a cast (can be an artifact of nested translation),
+     *  drop the cast.
+     */
     override def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      val lhs1 = tree.lhs match {
-        case TypeApply(Select(qual @ Select(qual2, nme.elem), nme.asInstanceOf_), _) =>
-          assert(captured(qual2.symbol))
-          qual
-        case _ => tree.lhs
+      def recur(lhs: Tree): Tree = lhs match {
+        case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
+          val Select(_, nme.elem) = qual
+          recur(qual)
+        case Select(_, nme.elem) if defn.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
+          val tempDef = transformFollowing(SyntheticValDef(ctx.freshName("ev$").toTermName, tree.rhs))
+          transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
+        case _ =>
+          tree
       }
-      cpy.Assign(tree)(lhs1, tree.rhs)
+      recur(tree.lhs)
     }
   }
 }
