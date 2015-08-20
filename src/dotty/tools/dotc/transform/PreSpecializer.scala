@@ -93,7 +93,7 @@ class PreSpecializer extends MiniPhaseTransform {
           val args = annot.arguments
           if (args.isEmpty) primitiveTypes
           else args.head match {
-            case a @ Typed(SeqLiteral(types), _) =>
+            case _ @ Typed(SeqLiteral(types), _) =>
               types.map(t => primitiveCompanionToPrimitive(t.tpe))
             case a @ Ident(groupName) => // Matches `@specialized` annotations on Specializable Groups
               specializableToPrimitive(a.tpe.asInstanceOf[Type], groupName)
@@ -106,18 +106,16 @@ class PreSpecializer extends MiniPhaseTransform {
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val tparams = tree.tparams.map(_.symbol)
-    val st = tparams.zipWithIndex.map{case(sym, i) => (i, getSpec(sym))}
-    sendRequests(st, tree)
+    val requests = tparams.zipWithIndex.map{case(sym, i) => (i, getSpec(sym))}
+    if (requests.nonEmpty) sendRequests(requests, tree)
     tree
   }
 
   def sendRequests(requests: List[(Int, List[Type])], tree: tpd.Tree)(implicit ctx: Context): Unit = {
-    if (requests.nonEmpty) {
-      requests.map{
-        case (index, types) if types.nonEmpty =>
-          ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(index, types)
-        case _ =>
-      }
+    requests.map {
+      case (index, types) if types.nonEmpty =>
+        ctx.specializePhase.asInstanceOf[TypeSpecializer].registerSpecializationRequest(tree.symbol)(index, types)
+      case _ =>
     }
   }
 }

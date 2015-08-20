@@ -36,17 +36,12 @@ class tests extends CompilerTest {
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
 
-  val specialise = List("-Yspecialize:all")
-
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
-  val specialDir    = posDir   + "specialization/"
-  val miniMethodDir = testsDir + "method_minibox/"
-  val miniMoreDir   = testsDir + "more_minibox/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -96,6 +91,7 @@ class tests extends CompilerTest {
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
+  @Test def pos_specialization = compileDir(posDir, "specialization", twice)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
@@ -202,20 +198,5 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
-
-  @Test def specialization = compileDir(posDir, "specialization", twice)
-  @Test def simple_specialization = compileFile(specialDir, "simple_specialization", twice)
-  @Test def mutual_spec = compileFile(specialDir, "mutual_specialization", twice)
-  @Test def return_spec = compileFile(specialDir, "return_specialization", twice)
-  @Test def nothing_spec = compileFile(specialDir, "nothing_specialization", twice)
-  @Test def method_in_class_spec = compileFile(specialDir, "method_in_class_specialization", twice)
-  @Test def method_in_method_spec = compileFile(specialDir, "method_in_method_specialization", twice)
-  @Test def pos_type_check = compileFile(specialDir, "type_test", twice)
-  @Test def bounds_spec = compileFile(specialDir, "bounds_specialization", twice)
-  @Test def multi_spec = compileFile(specialDir, "multi_specialization", twice)
-  @Test def pos_this_specialization = compileFile(specialDir, "this_specialization", twice)
-  @Test def anyRef_spec = runFile(specialDir, "anyRef_specialization", twice)
-  @Test def genClass_spec = compileFile(specialDir, "genericClass_specialization", twice)
-
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 }
