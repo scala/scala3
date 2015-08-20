@@ -184,7 +184,7 @@ of `Lambda$NP` would themselves be written as follows.
 
     trait Lambda$IP[type $hkArg$0, +$hkArg1] { type +Apply } extends Lambda$II
     trait Lambda$NI[type -$hkArg$0, $hkArg1] { type +Apply } extends Lambda$II
-    trait Lambda$II[type -hkArg$0, $hkArg1] { type +Apply }
+    trait Lambda$II[type $hkArg$0, $hkArg1] { type +Apply }
 
 `Lambda` traits are special in that
 they influence how type applications are expanded: If the standard type application `T[X1, ..., Xn]`
@@ -204,7 +204,7 @@ which in turn simplifies to `List[List[String]]`.
 
 2nd Example: Consider the two aliases
 
-    type RMap[K, V] = Map[V, K]]
+    type RMap[K, V] = Map[V, K]
     type RRMap[K, V] = RMap[V, K]
 
 These expand as follows:
