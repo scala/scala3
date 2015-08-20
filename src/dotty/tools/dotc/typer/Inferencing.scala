@@ -17,6 +17,7 @@ import Decorators._
 import Uniques._
 import ErrorReporting.{errorType, DiagnosticString}
 import config.Printers._
+import annotation.tailrec
 import collection.mutable
 
 trait Inferencing { this: Checking =>
@@ -43,6 +44,15 @@ trait Inferencing { this: Checking =>
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
+
+  /** Minimize selected type variables `tvars` if they appear in type `tp`.
+   *  Instantiation is always to lower bound, independently of the variance in
+   *  which the type variable occurs in `tp`.
+   */
+  def minimizeSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit = {
+    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains), alwaysDown = true).process(tp)
+  }
+
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. Two phases:
    *  1st Phase: Try to instantiate covariant and non-variant type variables to
@@ -50,7 +60,7 @@ trait Inferencing { this: Checking =>
    *  2nd Phase: If first phase was successful, instantiate all remaining type variables
    *  to their upper bound.
    */
-  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value, alwaysDown: Boolean = false)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
@@ -61,10 +71,9 @@ trait Inferencing { this: Checking =>
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
-        if (force == ForceDegree.none) false
-        else {
+        force.appliesTo(tvar) && {
           val minimize =
-            variance >= 0 && !(
+            alwaysDown || variance >= 0 && !(
               force == ForceDegree.noBottom &&
               isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
           if (minimize) instantiate(tvar, fromBelow = true)
@@ -91,6 +100,45 @@ trait Inferencing { this: Checking =>
       if (res && toMaximize) new UpperInstantiator().apply((), tp)
       res
     }
+  }
+
+  /** The list of uninstantiated type variables bound by some prefix of type `T` which
+   *  occur in at least one formal parameter type of a prefix application.
+   *  Considered prefixes are:
+   *    - The function `f` of an application node `f(e1, .., en)`
+   *    - The function `f` of a type application node `f[T1, ..., Tn]`
+   *    - The prefix `p` of a selection `p.f`.
+   *    - The result expression `e` of a block `{s1; .. sn; e}`.
+   */
+  def tvarsInParams(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
+    @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+      case Apply(fn, _) => boundVars(fn, acc)
+      case TypeApply(fn, targs) =>
+        val tvars = targs.tpes.collect {
+          case tvar: TypeVar if !tvar.isInstantiated => tvar
+        }
+        boundVars(fn, acc ::: tvars)
+      case Select(pre, _) => boundVars(pre, acc)
+      case Block(_, expr) => boundVars(expr, acc)
+      case _ => acc
+    }
+    @tailrec def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+      if (toTest.isEmpty) acc
+      else tree match {
+        case Apply(fn, _) =>
+          fn.tpe match {
+            case mtp: MethodType =>
+              val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
+              occurring(fn, nocc, occ ::: acc)
+            case _ =>
+              occurring(fn, toTest, acc)
+          }
+        case TypeApply(fn, targs) => occurring(fn, toTest, acc)
+        case Select(pre, _) => occurring(pre, toTest, acc)
+        case Block(_, expr) => occurring(expr, toTest, acc)
+        case _ => acc
+      }
+    occurring(tree, boundVars(tree, Nil), Nil)
   }
 
   def isBottomType(tp: Type)(implicit ctx: Context) =
@@ -246,6 +294,14 @@ trait Inferencing { this: Checking =>
           if (v == null) vmap.updated(t, variance)
           else if (v == variance) vmap
           else vmap.updated(t, 0)
+        case t: ImplicitMethodType =>
+          // Assume type vars in implicit parameters are non-variant, in order not
+          // to widen them prematurely to upper bound if they don't occur in the result type.
+          val saved = variance
+          variance = 0
+          val vmap1 = foldOver(vmap, t.paramTypes)
+          variance = saved
+          this(vmap1, t.resultType)
         case _ =>
           foldOver(vmap, t)
       }
@@ -257,9 +313,11 @@ trait Inferencing { this: Checking =>
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
-@sharable object ForceDegree extends Enumeration {
-  val none,           // don't force type variables
-      noBottom,       // force type variables, fail if forced to Nothing or Null
-      all = Value     // force type variables, don't fail
+@sharable object ForceDegree {
+  class Value(val appliesTo: TypeVar => Boolean)
+  val none = new Value(_ => false)
+  val all = new Value(_ => true)
+  val noBottom = new Value(_ => true)
 }
+
 
