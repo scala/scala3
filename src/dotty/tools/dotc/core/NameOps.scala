@@ -167,6 +167,11 @@ object NameOps {
 
     def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
 
+    /** Revert the expanded name. Note: This currently gives incorrect results
+     *  if the normal name contains `nme.EXPAND_SEPARATOR`, i.e. two consecutive '$'
+     *  signs. This can happen for instance if a super accessor is paired with
+     *  an encoded name, e.g. super$$plus$eq. See #765.
+     */
     def unexpandedName: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]

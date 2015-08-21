@@ -59,9 +59,13 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
   private def rebindSuper(base: Symbol, acc: Symbol)(implicit ctx: Context): Symbol = {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
-    val originalAccName =
-      if (acc.is(ExpandedName)) acc.name.unexpandedName else acc.name
-    val SuperAccessorName(memberName) = originalAccName: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
+    val unexpandedAccName =
+      if (acc.is(ExpandedName))  // Cannot use unexpandedName because of #765. t2183.scala would fail if we did.
+        acc.name
+          .drop(acc.name.indexOfSlice(nme.EXPAND_SEPARATOR ++ nme.SUPER_PREFIX))
+          .drop(nme.EXPAND_SEPARATOR.length)
+      else acc.name
+    val SuperAccessorName(memberName) = unexpandedAccName: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
     ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
