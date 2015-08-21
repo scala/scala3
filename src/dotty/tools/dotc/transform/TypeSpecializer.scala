@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.{tpd, TreeTypeMap}
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
+import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.{NameOps, Symbols, Flags}
 import dotty.tools.dotc.core.Types._
@@ -163,7 +164,8 @@ class TypeSpecializer extends MiniPhaseTransform  with InfoTransformer {
       val newSym = ctx.newSymbol(
             decl.owner,
             NameOps.NameDecorator(decl.name)
-              .specializedFor(Nil, Nil, instanceTypes, instanceTypes.map(_.asInstanceOf[NamedType].name)),
+              .specializedFor(Nil, Nil, instanceTypes, instanceTypes.map(_.asInstanceOf[NamedType].name))
+              .asInstanceOf[TermName],
             decl.flags | Flags.Synthetic,
             { if (indices.length != poly.paramNames.length) // Partial Specialisation case
               poly.instantiate(indices, instanceTypes) // Returns a PolyType with uninstantiated types kept generic
