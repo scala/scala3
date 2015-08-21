@@ -38,10 +38,12 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   def isCurrent(sym: Symbol) = cls.info.member(sym.name).hasAltWith(_.symbol == sym)
 
   def needsForwarder(meth: Symbol): Boolean = {
-    def needsDisambiguation = !meth.allOverriddenSymbols.forall(_ is Deferred)
+    lazy val overridenSymbols = meth.allOverriddenSymbols
+    def needsDisambiguation = !overridenSymbols.forall(_ is Deferred)
+    def hasNonInterfaceDefinition = overridenSymbols.forall(!_.owner.is(Trait))
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     isCurrent(meth) &&
-    (needsDisambiguation || meth.owner.is(Scala2x))
+    (needsDisambiguation || hasNonInterfaceDefinition || meth.owner.is(Scala2x))
   }
 
   final val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
