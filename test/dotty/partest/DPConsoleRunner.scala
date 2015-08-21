@@ -120,7 +120,7 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
       echo(statusLine(state))
       if (!state.isOk && isDiffy) {
         val differ = bold(red("% ")) + "diff "
-        state.transcript.dropWhile(s => !(s startsWith differ)) foreach (echo(_))
+        state.transcript.dropWhile(s => !(s startsWith differ)) foreach (echo)
         // state.transcript find (_ startsWith differ) foreach (echo(_)) // original
       }
     }
@@ -248,7 +248,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   // so we ignore groups (tests suffixed with _1 and _2)
   override def groupedFiles(sources: List[File]): List[List[File]] = {
     val grouped = sources groupBy (_.group)
-    val flatGroup = List(grouped.keys.toList.sorted.map({ k => grouped(k) sortBy (_.getName) }).flatten)
+    val flatGroup = List(grouped.keys.toList.sorted.flatMap { k => grouped(k) sortBy (_.getName) })
     try { // try/catch because of bug in partest that throws exception
       if (flatGroup != super.groupedFiles(sources))
         throw new java.lang.UnsupportedOperationException()

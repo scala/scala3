@@ -91,7 +91,7 @@ object Attachment {
     private[Attachment] var next: Link[_] = null
 
     final def pushAttachment[V](key: Key[V], value: V): Unit = {
-      assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")
+      assert(getAttachment(key).isEmpty, s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
   }
