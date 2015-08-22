@@ -501,7 +501,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           }
           ctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
         }
-      case MODULEsym | VALsym =>
+      case VALsym =>
+        ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
+      case MODULEsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
