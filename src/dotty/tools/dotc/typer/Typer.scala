@@ -577,7 +577,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
-          else cpy.ValDef(param)(tpt = untpd.TypeTree(inferredParamType(param, protoFormal(i))))
+          else cpy.ValDef(param)(
+            tpt = untpd.TypeTree(
+              inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
 
       // Define result type of closure as the expected type, thereby pushing
       // down any implicit searches. We do this even if the expected type is not fully
