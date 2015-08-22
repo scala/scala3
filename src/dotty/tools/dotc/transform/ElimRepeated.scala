@@ -43,6 +43,8 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
           paramTypes.init :+ last
         } else paramTypes
       tp.derivedMethodType(paramNames, paramTypes1, resultType1)
+    case tp: ExprType if tp.resultType.isRepeatedParam =>
+       ExprType(tp.resultType.underlyingIfRepeated(isJava = false))
     case tp: PolyType =>
       tp.derivedPolyType(tp.paramNames, tp.paramBounds, elimRepeated(tp.resultType))
     case tp =>
