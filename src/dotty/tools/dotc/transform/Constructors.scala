@@ -245,7 +245,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     cpy.Template(tree)(
       constr = cpy.DefDef(constr)(
-        rhs = Block(mappedSuperCalls ::: copyParams ::: followConstrStats, unitLiteral)),
+        rhs = Block(copyParams ::: mappedSuperCalls ::: followConstrStats, unitLiteral)),
       body = clsStats.toList)
   }
 }
