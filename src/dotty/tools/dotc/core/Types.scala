@@ -94,9 +94,8 @@ object Types {
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
       case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
-      case _: SingletonType => true
+      case _: SingletonType | NoPrefix => true
       case tp: RefinedType => tp.parent.isStable
-      case NoPrefix => true
       case _ => false
     }
 

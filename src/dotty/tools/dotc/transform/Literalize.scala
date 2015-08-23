@@ -51,9 +51,13 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
    *  Revisit this issue once we have implemented `inline`. Then we can demand
    *  purity of the prefix unless the selection goes to an inline val.
    */
-  def literalize(tree: Tree)(implicit ctx: Context): Tree = tree.tpe match {
-    case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
-    case _ => tree
+  def literalize(tree: Tree)(implicit ctx: Context): Tree = {
+    def recur(tp: Type): Tree = tp match {
+      case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
+      case tp: TermRef if tp.symbol.isStable => recur(tp.info.widenExpr)
+      case _ => tree
+    }
+    recur(tree.tpe)
   }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
