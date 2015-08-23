@@ -12,8 +12,17 @@ object Test {
   val b: 2 = a
 
   def f: 3 = 3
-  val c = f
+  final val c = f
 
+  val dc: 3.0 = 3.0
+  final val dc1 = dc
+  val fc: 3.0f = 3.0f
+  final val fc1 = fc
+
+  val t: true = true
+
+  val str: "" = ""
+  final val str2 = str
 }
 /* To do: test that after erasure we have generated code like this:
  *
@@ -34,7 +43,14 @@ package <empty> {
     }
     <accessor> def b(): Int = 2
     def f(): Int = 3
-    <accessor> def c(): Int = Test.f()
+    final <accessor> def c(): Int = Test.f()
+    <accessor> def dc(): Double = 3.0
+    final <accessor> def dc1(): Double = 3.0
+    <accessor> def fc(): Float = 3.0
+    final <accessor> def fc1(): Float = 3.0
+    <accessor> def t(): Boolean = true
+    <accessor> def str(): String = ""
+    final <accessor> def str2(): String = ""
   }
 }
 */
