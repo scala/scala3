@@ -706,10 +706,18 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
+      def isInline = sym.is(Final, butNot = Method)
+      def widenRhs(tp: Type): Type = tp match {
+        case tp: TermRef => widenRhs(tp.underlying)
+        case tp: ExprType => widenRhs(tp.resultType)
+        case tp: ConstantType if isInline => tp
+        case _ => tp.widen.approximateUnion
+      }
       val rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      def rhsType = ctx.deskolemize(
-        typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion)
-      def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
+      def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe
+      def cookedRhsType = ctx.deskolemize(widenRhs(rhsType))
+      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists) inherited
       else {
         if (sym is Implicit) {
