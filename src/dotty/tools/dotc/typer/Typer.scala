@@ -782,7 +782,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.pos)
+    val illegal = Set[Symbol](defn.NullClass, defn.SymbolClass)
+    val refSym = ref1.tpe.widen.typeSymbol
+    if (illegal contains refSym) ctx.error(i"$refSym is not a legal singleton constant type", tree.pos)
+    else checkStable(ref1.tpe, tree.pos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
