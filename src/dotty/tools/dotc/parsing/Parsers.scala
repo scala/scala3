@@ -709,12 +709,14 @@ object Parsers {
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  Refinement
+     *                     |  Literal
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
         atPos(in.offset) { makeTupleOrParens(inParens(argTypes())) }
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
+      else if (isLiteral) { SingletonTypeTree(literal()) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
