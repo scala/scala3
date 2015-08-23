@@ -108,6 +108,7 @@ grammar.
                       |  Path `.' `type'                                        SingletonTypeTree(p)
                       |  `(' ArgTypes ')'                                       Tuple(ts)
                       |  Refinement                                             RefinedTypeTree(EmptyTree, refinement)
+                      |  Literal                                                SingletonTypeTree(l)
   ArgType           ::=  Type
                       |  `_' TypeBounds
   ArgTypes          ::=  ArgType {`,' ArgType}
