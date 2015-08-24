@@ -280,9 +280,11 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val handlerSymbol = ctx.newSymbol(methodSymbol, nme.ANON_FUN, Flags.Synthetic,
           MethodType(List(nme.x_1), List(defn.ThrowableType), defn.IntType))
         val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Flags.Synthetic, defn.ThrowableType)
-        val complete = setFlagState.appliedTo(thiz, offset, initState, Literal(Constant(ord)))
+        val triggerRetry = setFlagState.appliedTo(thiz, offset, initState, Literal(Constant(ord)))
+        val complete = setFlagState.appliedTo(thiz, offset, computedState, Literal(Constant(ord)))
+
         val handler = CaseDef(Bind(caseSymbol, ref(caseSymbol)), EmptyTree,
-          Block(List(complete), Throw(ref(caseSymbol))
+          Block(List(triggerRetry), Throw(ref(caseSymbol))
         ))
 
         val compute = ref(resultSymbol).becomes(rhs)
