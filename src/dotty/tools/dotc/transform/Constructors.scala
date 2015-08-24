@@ -60,7 +60,10 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
         tree match {
           case Ident(_) | Select(This(_), _) =>
-            def inConstructor = ctx.owner.enclosingMethod.isPrimaryConstructor && ctx.owner.enclosingClass == owner
+            def inConstructor = {
+              val method = ctx.owner.enclosingMethod
+              method.isPrimaryConstructor && ctx.owner.enclosingClass == owner
+            }
             if (inConstructor && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
               // used inside constructor, accessed on this,
               // could use constructor argument instead, no need to retain field
@@ -131,6 +134,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val cls = ctx.owner.asClass
+    if (cls.toString.contains("VarianceChecker"))
+      println("hoho")
     val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
@@ -298,6 +303,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       cls.copy(
         info = clsInfo.derivedClassInfo(
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
+
+      // TODO: this happens to work only because Constructors is the last phase in group
     }
 
     val (superCalls, followConstrStats) = constrStats.toList match {
