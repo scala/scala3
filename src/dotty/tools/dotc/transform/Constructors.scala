@@ -253,6 +253,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       cls.copy(
         info = clsInfo.derivedClassInfo(
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
+
+      // TODO: this happens to work only because Constructors is the last phase in group
     }
 
     val (superCalls, followConstrStats) = constrStats.toList match {

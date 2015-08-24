@@ -71,7 +71,7 @@ class Compiler {
            new LinkScala2ImplClasses,
            new NonLocalReturns,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
-           new Constructors,
+           new Constructors, // constructors changes decls in transformTemplate, no InfoTransformers should be added after it
            new FunctionalInterfaces,
            new GetClass), // getClass transformation should be applied to specialized methods
       List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
