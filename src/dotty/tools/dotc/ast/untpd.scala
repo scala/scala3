@@ -228,7 +228,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
 
-  def refOfDef(tree: NameTree)(implicit ctx: Context) = Ident(tree.name)
+  /** A reference to given definition. If definition is a repeated
+   *  parameter, the reference will be a repeated argument.
+   */
+  def refOfDef(tree: MemberDef)(implicit ctx: Context) = tree match {
+    case ValDef(_, PostfixOp(_, nme.raw.STAR), _) =>
+      Typed(Ident(tree.name), Ident(tpnme.WILDCARD_STAR))
+    case _ =>
+      Ident(tree.name)
+  }
 
 // ------- Decorators -------------------------------------------------
 

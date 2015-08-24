@@ -228,16 +228,21 @@ class TreeChecker extends Phase with SymTransformer {
       }
     }.apply(tp)
 
+    def checkNotRepeated(tree: Tree)(implicit ctx: Context): tree.type = {
+      assert(!tree.tpe.widen.isRepeatedParam, i"repeated parameter type not allowed here: $tree")
+      tree
+    }
+
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
-      super.typedIdent(tree, pt)
+      checkNotRepeated(super.typedIdent(tree, pt))
     }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
-      super.typedSelect(tree, pt)
+      checkNotRepeated(super.typedSelect(tree, pt))
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context) = {
