@@ -117,6 +117,7 @@ object Parsers {
 
     def isIdent = in.token == IDENTIFIER || in.token == BACKQUOTED_IDENT
     def isIdent(name: Name) = in.token == IDENTIFIER && in.name == name
+    def isSimpleLiteral = simpleLiteralTokens contains in.token
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isModifier = modifierTokens contains in.token
@@ -716,7 +717,7 @@ object Parsers {
         atPos(in.offset) { makeTupleOrParens(inParens(argTypes())) }
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
-      else if (isLiteral) { SingletonTypeTree(literal()) }
+      else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)

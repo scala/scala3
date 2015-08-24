@@ -146,7 +146,7 @@ class tests extends CompilerTest {
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 6)
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 4)
-  @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 4)
+  @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 5)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)

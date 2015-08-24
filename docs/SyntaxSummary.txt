@@ -75,11 +75,12 @@ grammar.
 
 {\small
 \begin{lstlisting}
-  Literal           ::=  [`-'] integerLiteral
+  SimpleLiteral     ::=  [`-'] integerLiteral
                       |  [`-'] floatingPointLiteral
                       |  booleanLiteral
                       |  characterLiteral
                       |  stringLiteral
+  Literal           ::=  SimpleLiteral
                       |  processedStringLiteral
                       |  symbolLiteral
                       |  `null'
@@ -108,7 +109,7 @@ grammar.
                       |  Path `.' `type'                                        SingletonTypeTree(p)
                       |  `(' ArgTypes ')'                                       Tuple(ts)
                       |  Refinement                                             RefinedTypeTree(EmptyTree, refinement)
-                      |  Literal                                                SingletonTypeTree(l)
+                      |  SimpleLiteral                                          SingletonTypeTree(l)
   ArgType           ::=  Type
                       |  `_' TypeBounds
   ArgTypes          ::=  ArgType {`,' ArgType}

@@ -6,4 +6,6 @@ object Test {
   val n: null = null // error: Null is not a legal singleton type
 
   val sym: 'sym = 'sym // error: Symbol is a legal singleton type
+
+  val foo: s"abc" = "abc"  // error: not a legal singleton type
 }
