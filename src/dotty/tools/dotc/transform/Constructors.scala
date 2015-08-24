@@ -33,6 +33,62 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Memoize])
 
 
+  // Collect all private parameter accessors and value definitions that need
+  // to be retained. There are several reasons why a parameter accessor or
+  // definition might need to be retained:
+  // 1. It is accessed after the constructor has finished
+  // 2. It is accessed before it is defined
+  // 3. It is accessed on an object other than `this`
+  // 4. It is a mutable parameter accessor
+  // 5. It is has a wildcard initializer `_`
+
+  private var retainedPrivateVals = mutable.Set[Symbol]()
+  private var seenPrivateVals = mutable.Set[Symbol]()
+  private var insideConstructor = false
+
+  private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
+
+    val sym = tree.symbol
+    def retain = {
+      if (sym.toString.contains("initialValues"))
+        println("hooooo")
+      retainedPrivateVals.add(sym)
+    }
+
+    if (mightBeDropped(sym) && sym.owner.isClass) {
+      val owner = sym.owner.asClass
+
+        tree match {
+          case Ident(_) | Select(This(_), _) =>
+            def inConstructor = ctx.owner.enclosingMethod.isPrimaryConstructor && ctx.owner.enclosingClass == owner
+            if (inConstructor && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
+              // used inside constructor, accessed on this,
+              // could use constructor argument instead, no need to retain field
+              println("hoha")
+            }
+            else retain
+          case _ => retain
+        }
+    }
+  }
+
+  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    markUsedPrivateSymbols(tree)
+    tree
+  }
+
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    markUsedPrivateSymbols(tree)
+    tree
+  }
+
+
+  override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    if (mightBeDropped(tree.symbol))
+      (if (isWildcardStarArg(tree.rhs)) retainedPrivateVals else seenPrivateVals) += tree.symbol
+    tree
+  }
+
   /** All initializers for non-lazy fields should be moved into constructor.
    *  All non-abstract methods should be implemented (this is assured for constructors
    *  in this phase and for other methods in memoize).
@@ -152,7 +208,15 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     }
     usage.collect(tree.body)
 
-    def isRetained(acc: Symbol) = !mightBeDropped(acc) || usage.retained(acc)
+    def isRetained(acc: Symbol) = {
+      !mightBeDropped(acc) || {
+        val a = usage.retained(acc)
+        val b = retainedPrivateVals(acc)
+        if (a != b)
+          println("fail")
+        b
+      }
+    }
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
 
@@ -170,6 +234,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       }
     }
 
+    val dropped = mutable.Set[Symbol]()
+
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
     def splitStats(stats: List[Tree]): Unit = stats match {
@@ -183,6 +249,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!stat.rhs.isEmpty) {
+              dropped += sym
               sym.copySymDenotation(
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisTransform)
@@ -203,8 +270,10 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     // The initializers for the retained accessors */
     val copyParams = accessors flatMap { acc =>
-      if (!isRetained(acc)) Nil
-      else {
+      if (!isRetained(acc)) {
+        dropped += acc
+        Nil
+      } else {
         val target = if (acc.is(Method)) acc.field else acc
         if (!target.exists) Nil // this case arises when the parameter accessor is an alias
         else {
@@ -224,7 +293,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     }
 
     // Drop accessors that are not retained from class scope
-    val dropped = usage.dropped
     if (dropped.nonEmpty) {
       val clsInfo = cls.classInfo // TODO investigate: expand clsInfo to cls.info => dotty type error
       cls.copy(
