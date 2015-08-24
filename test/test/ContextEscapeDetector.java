@@ -1,6 +1,5 @@
 package test;
 
-import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 import org.junit.Assert;

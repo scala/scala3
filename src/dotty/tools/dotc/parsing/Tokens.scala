@@ -141,7 +141,7 @@ abstract class TokensCommon {
 
 object Tokens extends TokensCommon {
   final val minToken = EMPTY
-  final val maxToken = XMLSTART
+  final val maxToken = 96
 
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
   final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
@@ -187,6 +187,8 @@ object Tokens extends TokensCommon {
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+
+  assert(XMLSTART == maxToken, "update if max token changes")
 
   final val alphaKeywords = tokenRange(IF, FORSOME)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)

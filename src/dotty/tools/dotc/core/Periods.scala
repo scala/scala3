@@ -136,9 +136,11 @@ object Periods {
 
   final val Nowhere = new Period(0)
 
-  final val InitialPeriod = Period(InitialRunId, FirstPhaseId)
 
-  final val InvalidPeriod = Period(NoRunId, NoPhaseId)
+  /** The number of bits needed to encode a phase identifier. */
+  final val PhaseWidth = 6
+  final val PhaseMask = (1 << PhaseWidth) - 1
+  final val MaxPossiblePhaseId = PhaseMask
 
   /** An ordinal number for compiler runs. First run has number 1. */
   type RunId = Int
@@ -152,8 +154,8 @@ object Periods {
   final val NoPhaseId = 0
   final val FirstPhaseId = 1
 
-  /** The number of bits needed to encode a phase identifier. */
-  final val PhaseWidth = 6
-  final val PhaseMask = (1 << PhaseWidth) - 1
-  final val MaxPossiblePhaseId = PhaseMask
+
+  final val InitialPeriod = Period(InitialRunId, FirstPhaseId)
+
+  final val InvalidPeriod = Period(NoRunId, NoPhaseId)
 }
