@@ -41,7 +41,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
   // 5. It is has a wildcard initializer `_`
-
   private var retainedPrivateVals = mutable.Set[Symbol]()
   private var seenPrivateVals = mutable.Set[Symbol]()
   private var insideConstructor = false
@@ -49,11 +48,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
 
     val sym = tree.symbol
-    def retain = {
-      if (sym.toString.contains("initialValues"))
-        println("hooooo")
+    def retain =
       retainedPrivateVals.add(sym)
-    }
 
     if (mightBeDropped(sym) && sym.owner.isClass) {
       val owner = sym.owner.asClass
@@ -134,8 +130,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val cls = ctx.owner.asClass
-    if (cls.toString.contains("VarianceChecker"))
-      println("hoho")
+
     val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
@@ -174,53 +169,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       }
     }
 
-    // Collect all private parameter accessors and value definitions that need
-    // to be retained. There are several reasons why a parameter accessor or
-    // definition might need to be retained:
-    // 1. It is accessed after the constructor has finished
-    // 2. It is accessed before it is defined
-    // 3. It is accessed on an object other than `this`
-    // 4. It is a mutable parameter accessor
-    // 5. It is has a wildcard initializer `_`
-    object usage extends TreeTraverser {
-      private var inConstr: Boolean = true
-      private val seen = mutable.Set[Symbol](accessors: _*)
-      val retained = mutable.Set[Symbol]()
-      def dropped: collection.Set[Symbol] = seen -- retained
-      override def traverse(tree: Tree)(implicit ctx: Context) = {
-        val sym = tree.symbol
-        tree match {
-          case Ident(_) | Select(This(_), _) if inConstr && seen(tree.symbol) =>
-            // could refer to definition in constructors, so no retention necessary
-          case tree: RefTree =>
-            if (mightBeDropped(sym)) retained += sym
-          case _ =>
-        }
-        if (!noDirectRefsFrom(tree)) traverseChildren(tree)
-      }
-      def collect(stats: List[Tree]): Unit = stats foreach {
-        case stat: ValDef if !stat.symbol.is(Lazy) =>
-          traverse(stat)
-          if (mightBeDropped(stat.symbol))
-            (if (isWildcardStarArg(stat.rhs)) retained else seen) += stat.symbol
-        case stat: DefTree =>
-          inConstr = false
-          traverse(stat)
-          inConstr = true
-        case stat =>
-          traverse(stat)
-      }
-    }
-    usage.collect(tree.body)
-
     def isRetained(acc: Symbol) = {
-      !mightBeDropped(acc) || {
-        val a = usage.retained(acc)
-        val b = retainedPrivateVals(acc)
-        if (a != b)
-          println("fail")
-        b
-      }
+      !mightBeDropped(acc) || retainedPrivateVals(acc)
     }
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
@@ -303,8 +253,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       cls.copy(
         info = clsInfo.derivedClassInfo(
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
-
-      // TODO: this happens to work only because Constructors is the last phase in group
     }
 
     val (superCalls, followConstrStats) = constrStats.toList match {
