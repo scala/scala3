@@ -41,9 +41,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
   // 5. It is has a wildcard initializer `_`
-  private var retainedPrivateVals = mutable.Set[Symbol]()
-  private var seenPrivateVals = mutable.Set[Symbol]()
-  private var insideConstructor = false
+  private val retainedPrivateVals = mutable.Set[Symbol]()
+  private val seenPrivateVals = mutable.Set[Symbol]()
 
   private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
 
@@ -63,7 +62,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
             if (inConstructor && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
               // used inside constructor, accessed on this,
               // could use constructor argument instead, no need to retain field
-              println("hoha")
             }
             else retain
           case _ => retain
@@ -80,7 +78,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     markUsedPrivateSymbols(tree)
     tree
   }
-
 
   override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (mightBeDropped(tree.symbol))
