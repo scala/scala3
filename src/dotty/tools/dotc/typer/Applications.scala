@@ -604,10 +604,6 @@ trait Applications extends Compatibility { self: Typer =>
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>
-        def adaptTypeArg(tree: tpd.Tree, bound: Type): tpd.Tree =
-          if (bound.isLambda && !tree.tpe.isLambda && tree.tpe.typeParams.nonEmpty)
-            tree.withType(tree.tpe.EtaExpand)
-          else tree
         if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
         checkBounds(typedArgs, pt)
@@ -615,6 +611,9 @@ trait Applications extends Compatibility { self: Typer =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
+
+  def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
+    tree.withType(tree.tpe.EtaExpandIfHK(bound))
 
   /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
   def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {

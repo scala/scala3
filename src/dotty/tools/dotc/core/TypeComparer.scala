@@ -466,21 +466,19 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       false
   }
 
-  /** If `projection` is of the form T # Apply where `T` is an instance of a Lambda class,
-   *  and `other` is not a type lambda projection, then convert `other` to a type lambda `U`, and
+  /** If `projection` is a hk projection T#$apply
+   *  and `other` is not a hk projection, then convert `other` to a hk projection `U`, and
    *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
    */
   def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
-    projection.name == tpnme.Apply && {
-      val lambda = projection.prefix.LambdaClass(forcing = true)
-      lambda.exists && !other.isLambda &&
-        other.testLifted(lambda.typeParams,
-          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
-          if (inOrder) Nil else classBounds(projection.prefix))
-    }
+    projection.name == tpnme.hkApply &&
+    !other.isHKApply &&
+    other.testLifted(projection.prefix.LambdaClass(forcing = true).typeParams,
+      if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+      if (inOrder) Nil else classBounds(projection.prefix))
 
   /** The class symbols bounding the type of the `Apply` member of `tp` */
-  private def classBounds(tp: Type) = tp.member(tpnme.Apply).info.classSymbols
+  private def classBounds(tp: Type) = tp.member(tpnme.hkApply).info.classSymbols
 
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
    *  to keep the constraint as wide as possible. Specifically, if
@@ -633,11 +631,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Does `tp` need to be eta lifted to be comparable to `target`? */
   private def needsEtaLift(tp: Type, target: RefinedType): Boolean = {
-    //default.echo(i"needs eta $tp $target?", {
+    // if (tp.isLambda != tp.isHK) println(i"discrepancy for $tp, isLambda = ${tp.isLambda}, isHK = ${tp.isHK}")
     val name = target.refinedName
-    (name.isLambdaArgName || (name eq tpnme.Apply)) && target.isLambda &&
-    tp.exists && !tp.isLambda
-    //})
+    (name.isLambdaArgName || (name eq tpnme.hkApply)) &&
+    tp.exists && !tp.isLambda // we do encounter Lambda classes without any arguments here
   }
 
   /** Narrow gadt.bounds for the type parameter referenced by `tr` to include
@@ -932,7 +929,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tp1.derivedRefinedType(
               tp1.parent & tp2.parent,
               tp1.refinedName,
-              tp1.refinedInfo & tp2.refinedInfo)
+              tp1.refinedInfo & tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
         case _ =>
           NoType
       }
@@ -998,7 +995,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tp1.derivedRefinedType(
               tp1.parent | tp2.parent,
               tp1.refinedName,
-              tp1.refinedInfo | tp2.refinedInfo)
+              tp1.refinedInfo | tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
         case _ =>
           NoType
       }
@@ -1234,6 +1231,13 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
+
+  override def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
+    if (projection.name == tpnme.hkApply)
+      traceIndented(i"compareHK $projection, $other, $inOrder") {
+        super.compareHK(projection, other, inOrder)
+      }
+    else super.compareHK(projection, other, inOrder)
 
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }

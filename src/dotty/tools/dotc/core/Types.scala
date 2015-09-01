@@ -825,7 +825,7 @@ object Types {
      *
      *      P { type T = String, type R = P{...}.T } # R  -->  String
      *
-     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "Apply".
+     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "$apply".
      *      In this case the rhs of the apply is returned with all references to lambda argument types
      *      substituted by their definitions.
      *
@@ -861,7 +861,7 @@ object Types {
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.Apply) betaReduce(alias) else NoType // (2)
+                case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2)
               }
             case _ => loop(pre.parent, resolved)
           }
@@ -1484,7 +1484,7 @@ object Types {
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
-    protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+    def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
 
     /** Create a NamedType of the same kind as this type, but with a "inherited name".
@@ -1807,7 +1807,16 @@ object Types {
   }
 
   case class LazyRef(refFn: () => Type) extends UncachedProxyType with ValueType {
-    lazy val ref = refFn()
+    private var myRef: Type = null
+    private var computed = false
+    lazy val ref = {
+      if (computed) assert(myRef != null)
+      else {
+        computed = true
+        myRef = refFn()
+      }
+      myRef
+    }
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef($ref)"
     override def equals(other: Any) = other match {
@@ -1848,30 +1857,16 @@ object Types {
           case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
             val cls = parent.LambdaClass(forcing = false)
             if (cls.exists)
-              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.lambdaArgIndex).variance,
-                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.lambdaArgIndex).variance}, ${refinedInfo.variance}")
+              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.LambdaArgIndex).variance,
+                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.LambdaArgIndex).variance}, ${refinedInfo.variance}")
           case _ =>
         }
       this
     }
 
-    /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
-     *  is transformed to a refinement of the original type parameter if that one exists.
-     */
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      lazy val underlyingTypeParams = parent.rawTypeParams
-
-      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
-        this
-      else if (   refinedName.isLambdaArgName
-               //&& { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
-               && refinedName.lambdaArgIndex < underlyingTypeParams.length
-               && !parent.isLambda)
-        derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
-      else
-        if (false) RefinedType(parent, refinedName, refinedInfo)
-        else RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
-    }
+    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
+      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
+      else RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =

@@ -21,7 +21,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *    class C { type T; def f(x: T): T }
    *
    *  and an expression `e` of type `C`. Then computing the type of `e.f` leads
-   *  to the query asSeenFrom(`C`, `(x: T)T`). What should it's result be? The
+   *  to the query asSeenFrom(`C`, `(x: T)T`). What should its result be? The
    *  naive answer `(x: C.T)C.T` is incorrect given that we treat `C.T` as the existential
    *  `exists(c: C)c.T`. What we need to do instead is to skolemize the existential. So
    *  the answer would be `(x: c.T)c.T` for some (unknown) value `c` of type `C`.

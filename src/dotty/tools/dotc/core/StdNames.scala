@@ -173,7 +173,7 @@ object StdNames {
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
-    final val LAMBDA_ARG_PREFIX: N              = "HK$"
+    final val LAMBDA_ARG_PREFIX: N              = "hk$"
     final val LAMBDA_ARG_PREFIXhead: Char       = LAMBDA_ARG_PREFIX.head
 
     final val Any: N             = "Any"
@@ -311,7 +311,7 @@ object StdNames {
 
     val AnnotatedType: N        = "AnnotatedType"
     val AppliedTypeTree: N      = "AppliedTypeTree"
-    val Apply: N                = "Apply"
+    val hkApply: N              = "$apply"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
@@ -738,8 +738,8 @@ object StdNames {
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
 
-    def lambdaTraitName(vcs: List[Int]): TypeName = LambdaPrefix ++ vcs.map(varianceSuffix).mkString
-    def lambdaArgName(n: Int) = LAMBDA_ARG_PREFIX ++ n.toString
+    def LambdaTraitName(vcs: List[Int]): TypeName = LambdaPrefix ++ vcs.map(varianceSuffix).mkString
+    def LambdaArgName(n: Int) = LAMBDA_ARG_PREFIX ++ n.toString
 
     final val Conforms = encode("<:<")
 

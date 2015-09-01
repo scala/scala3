@@ -122,7 +122,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
         }
         if (tp.isSafeLambda) {
-          val (prefix, body, bindings) = extractApply(tp)
+          val (prefix, body, bindings) = decomposeHKApply(tp)
           prefix match {
             case prefix: TypeRef if prefix.symbol.isLambdaTrait && body.exists =>
               return typeLambdaText(prefix.symbol, body, bindings)
@@ -184,9 +184,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
    *     without a prefix, because the latter print nicer.
    *
    */
-  def extractApply(tp: Type): (Type, Type, List[(Name, Type)]) = tp.stripTypeVar match {
+  def decomposeHKApply(tp: Type): (Type, Type, List[(Name, Type)]) = tp.stripTypeVar match {
     case tp @ RefinedType(parent, name) =>
-      if (name == tpnme.Apply) {
+      if (name == tpnme.hkApply) {
         // simplify arguments so that parameters just print HK$i and not
         // LambdaI{...}.HK$i
         val simplifyArgs = new TypeMap {
@@ -199,7 +199,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         (parent, simplifyArgs(tp.refinedInfo.followTypeAlias), Nil)
       } else if (name.isLambdaArgName) {
-        val (prefix, body, argBindings) = extractApply(parent)
+        val (prefix, body, argBindings) = decomposeHKApply(parent)
         (prefix, body, (name, tp.refinedInfo) :: argBindings)
       } else (tp, NoType, Nil)
     case _ =>

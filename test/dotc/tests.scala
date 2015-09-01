@@ -56,6 +56,8 @@ class tests extends CompilerTest {
 
   //@Test def pickle_core = compileDir(dotcDir, "core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
+  @Test def pos_arraycopy =
+    compileFile(runDir, "arraycopy", List("-Ylog-classpath"))
   @Test def pos_t2168_pat = compileFile(posDir, "t2168", twice)
   @Test def pos_erasure = compileFile(posDir, "erasure", twice)
   @Test def pos_Coder() = compileFile(posDir, "Coder", twice)
@@ -153,6 +155,7 @@ class tests extends CompilerTest {
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
   @Test def neg_implicitLowerBound = compileFile(negDir, "implicit-lower-bound", xerrors = 1)
+  @Test def neg_partialApplications = compileFile(negDir, "partialApplications", xerrors = 8)
 
   @Test def run_all = runFiles(runDir)
 
