@@ -49,7 +49,13 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                 val alias = inheritedAccessor(sym)
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
-                    sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
+                    // as super alias was accessible it means it is NOT private
+                    // we cannot override it by a private member
+                    // as that will narrow access bounds
+                    // needs to have the same access bounds as previous one
+                    // TODO: why do we generate method at all? #783
+                    val newFlags = sym.flags &~Private | Method | Stable | Override | (if (sym.is(Protected)) Protected else EmptyFlags)
+                    sym.copySymDenotation(initFlags = newFlags, info = sym.info.ensureMethodic)
                       .installAfter(thisTransformer)
                     val superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
