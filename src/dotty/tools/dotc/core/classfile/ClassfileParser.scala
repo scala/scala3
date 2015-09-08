@@ -12,6 +12,7 @@ import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
+import typer.Mode
 import io.AbstractFile
 import scala.util.control.NonFatal
 
@@ -673,7 +674,7 @@ class ClassfileParser(
 
       def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
-        unpickler.run()
+        unpickler.run()(ctx.addMode(Mode.Scala2Unpickling))
         Some(unpickler)
       }
 

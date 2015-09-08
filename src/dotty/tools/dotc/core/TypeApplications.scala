@@ -11,6 +11,7 @@ import Names._
 import NameOps._
 import Flags._
 import StdNames.tpnme
+import typer.Mode
 import util.Positions.Position
 import config.Printers._
 import collection.mutable
@@ -144,10 +145,23 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        val arg1 =
-          if ((tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty)
-            arg.EtaExpand
-          else arg
+        def needsEtaExpand =
+          try {
+            (tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty
+          }
+          catch {
+            case ex: CyclicReference =>
+              if (ctx.mode.is(Mode.Scala2Unpickling))
+                // When unpickling Scala2, we might run into cyclic references when
+                // checking whether eta expansion is needed or eta expanding.
+                // (e.g. try compile collection/generic/GenericTraversableTemplate.scala).
+                // In that case, back out gracefully. Ideally, we should not have
+                // underdefined pickling data that requires post-transformations like
+                // eta expansion, but we can't change Scala2's.
+                false
+              else throw ex
+          }
+        val arg1 = if (needsEtaExpand) arg.EtaExpand else arg
         val tp1 = RefinedType(tp, tparam.name, arg1.toBounds(tparam))
         matchParams(tp1, tparams.tail, args1)
       case nil => tp

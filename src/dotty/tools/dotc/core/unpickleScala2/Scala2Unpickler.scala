@@ -17,6 +17,7 @@ import printing.Printer
 import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
+import typer.Mode
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
@@ -520,7 +521,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = try {
-      def parseToCompletion(denot: SymDenotation) = {
+      def parseToCompletion(denot: SymDenotation)(implicit ctx: Context) = {
         val tag = readByte()
         val end = readNat() + readIndex
         def atEnd = readIndex == end
@@ -566,7 +567,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
       }
-      atReadPos(startCoord(denot).toIndex, () => parseToCompletion(denot))
+      atReadPos(startCoord(denot).toIndex,
+          () => parseToCompletion(denot)(ctx.addMode(Mode.Scala2Unpickling)))
     } catch {
       case ex: RuntimeException => handleRuntimeException(ex)
     }
