@@ -18,6 +18,11 @@ import TreeTransforms._
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
+ *
+ *  Also, make non-private any private parameter forwarders that forward to an inherited
+ *  public or protected parameter accessor with the same name as the forwarder.
+ *  This is necessary since private methods are not allowed to have the same name
+ *  as inherited public ones.
  */
 class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
@@ -40,6 +45,17 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
     ensurePrivateAccessible(tree.symbol)
+    tree
+  }
+
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+    val sym = tree.symbol
+    tree.rhs match {
+      case Apply(sel @ Select(_: Super, _), _)
+      if sym.is(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
+        sym.ensureNotPrivate.installAfter(thisTransform)
+      case _ =>
+    }
     tree
   }
 }
