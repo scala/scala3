@@ -24,13 +24,17 @@ object Test1 extends U {
   final val f3 = f1 + f2
   final val f2 = 2
   val f4: 3 = f3
+
+
 }
 
 object Test extends T {
  override final val f1 = /*super.f1*/ 1 + f2
  override final val f2 = 2
  override final val f3 = {println(3); 3}
- override val f4 = 4
+ override val f4 = f3 + 1
 
+ def g: 3 = { println("g"); 3 }
+ final val x = g + 1
  def main(args: Array[String]): Unit = {}
 }
