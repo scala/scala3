@@ -8,6 +8,24 @@ trait T {
  println(s"$f1 $f2 $f3 $f4")
 }
 
+trait U {
+  val f2: Int
+}
+
+object Test0 extends U {
+  final val f1 = 1
+  final val f2 = 2
+  final val f3 = f1 + f2
+  val f4: 3 = f3
+}
+
+object Test1 extends U {
+  final val f1 = 1
+  final val f3 = f1 + f2
+  final val f2 = 2
+  val f4: 3 = f3
+}
+
 object Test extends T {
  override final val f1 = /*super.f1*/ 1 + f2
  override final val f2 = 2
