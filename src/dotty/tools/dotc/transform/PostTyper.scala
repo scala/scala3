@@ -68,8 +68,43 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  private def normalizeTypeTree(tree: Tree)(implicit ctx: Context) = {
-    def norm(tree: Tree) = if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+  /** Check bounds of AppliedTypeTrees.
+   *  Replace type trees with TypeTree nodes.
+   *  Replace constant expressions with Literal nodes.
+   *  Note: Demanding idempotency instead of purityin literalize is strictly speaking too loose.
+   *  Example
+   *
+   *    object O { final val x = 42; println("43") }
+   *    O.x
+   *
+   *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
+   *  most expressions non-constant. Maybe we can change the spec to accept this
+   *  kind of eliding behavior. Or else enforce true purity in the compiler.
+   *  The choice will be affected by what we will do with `inline` and with
+   *  Singleton type bounds (see SIP 23). Presumably
+   *
+   *     object O1 { val x: Singleton = 42; println("43") }
+   *     object O2 { inline val x = 42; println("43") }
+   *
+   *  should behave differently.
+   *
+   *     O1.x  should have the same effect as   { println("43"; 42 }
+   *
+   *  whereas
+   *
+   *     O2.x = 42
+   *
+   *  Revisit this issue once we have implemented `inline`. Then we can demand
+   *  purity of the prefix unless the selection goes to an inline val.
+   */
+  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = {
+    def literalize(tp: Type): Tree = tp.widenTermRefExpr match {
+      case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
+      case _ => tree
+    }
+    def norm(tree: Tree) =
+      if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
+      else literalize(tree.tpe)
     tree match {
       case tree: TypeTree =>
         tree
@@ -115,7 +150,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      try normalizeTypeTree(tree) match {
+      try normalizeTree(tree) match {
         case tree: Ident =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
