@@ -23,6 +23,9 @@ import TreeTransforms._
  *  public or protected parameter accessor with the same name as the forwarder.
  *  This is necessary since private methods are not allowed to have the same name
  *  as inherited public ones.
+ *
+ *  See discussion in https://github.com/lampepfl/dotty/pull/784
+ *  and https://github.com/lampepfl/dotty/issues/783
  */
 class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
