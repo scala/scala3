@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer}
 import Contexts.Context
 import Symbols._
@@ -31,6 +32,24 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
+
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+    tree match {
+      case t: DefDef =>
+        val sym = t.symbol
+        def hasWeakerAccess(other: Symbol) = {
+          // public > protected > /* default */ > private
+          if (sym.is(Private)) other.is(Private)
+          else if (sym.is(Protected)) other.is(Protected | Private)
+          else true // sym is private
+        }
+        val fail = sym.allOverriddenSymbols.findSymbol(x => !hasWeakerAccess(x))
+        if (fail.exists) {
+          assert(false, i"${sym.showFullName} has weaker access that superclass method ${fail.showFullName}")
+        }
+      case _ =>
+    }
+  }
 
   /** Make private terms accessed from different classes non-private.
    *  Note: this happens also for accesses between class and linked module class.
