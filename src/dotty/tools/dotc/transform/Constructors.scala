@@ -47,10 +47,10 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   private def markUsedPrivateSymbols(tree: RefTree)(implicit ctx: Context): Unit = {
 
     val sym = tree.symbol
-    def retain =
+    def retain() =
       retainedPrivateVals.add(sym)
 
-    if (mightBeDropped(sym) && sym.owner.isClass) {
+    if (sym.exists && sym.owner.isClass && mightBeDropped(sym)) {
       val owner = sym.owner.asClass
 
         tree match {
@@ -63,8 +63,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
               // used inside constructor, accessed on this,
               // could use constructor argument instead, no need to retain field
             }
-            else retain
-          case _ => retain
+            else retain()
+          case _ => retain()
         }
     }
   }
