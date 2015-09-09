@@ -79,5 +79,8 @@ object Mode {
    */
   val ImplicitExploration = newMode(12, "ImplicitExploration")
 
+  /** We are currently unpickling Scala2 info */
+  val Scala2Unpickling = newMode(13, "Scala2Unpickling")
+
   val PatternOrType = Pattern | Type
 }
