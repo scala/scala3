@@ -828,7 +828,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val alts = receiver.tpe.member(method).alternatives.map(_.termRef)
 
     val alternatives = ctx.typer.resolveOverloaded(alts, proto, Nil)
-    assert(alternatives.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
+    assert(alternatives.size == 1,
+      i"multiple overloads available for $method on ${receiver.tpe.widenDealias} with targs: $targs, args: $args and expectedType: $expectedType." +
+        i" isAnnotConstructor = $isAnnotConstructor.\n" +
+        i"alternatives: $alternatives") // this is parsed from bytecode tree. there's nothing user can do about it
 
     val selected = alternatives.head
     val fun = receiver
