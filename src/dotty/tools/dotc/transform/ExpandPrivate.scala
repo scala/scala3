@@ -41,7 +41,7 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
           // public > protected > /* default */ > private
           if (sym.is(Private)) other.is(Private)
           else if (sym.is(Protected)) other.is(Protected | Private)
-          else true // sym is private
+          else true // sym is public
         }
         val fail = sym.allOverriddenSymbols.findSymbol(x => !hasWeakerAccess(x))
         if (fail.exists) {
