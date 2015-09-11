@@ -43,7 +43,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  for more complicated types.
    */
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
-    val m = if (pre.isStable || !ctx.phase.isTyper) null else new AsSeenFromMap(pre, cls)
+    val m = if (isLegalPrefix(pre)) null else new AsSeenFromMap(pre, cls)
     var res = asSeenFrom(tp, pre, cls, m)
     if (m != null && m.unstable) asSeenFrom(tp, SkolemType(pre), cls) else res
   }
@@ -61,7 +61,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-        if (theMap != null && theMap.currentVariance <= 0 && !pre.isStable)
+        if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
           theMap.unstable = true
         pre match {
           case SuperType(thispre, _) => thispre
@@ -110,6 +110,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     }
   }
+
+  private def isLegalPrefix(pre: Type)(implicit ctx: Context) =
+    pre.isStable || !ctx.phase.isTyper
 
   /** The TypeMap handling the asSeenFrom in more complicated cases */
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
