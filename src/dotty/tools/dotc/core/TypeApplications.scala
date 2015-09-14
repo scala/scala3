@@ -202,7 +202,17 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (res.isInstantiatedLambda) res.select(tpnme.Apply) else res
+      if (res.isInstantiatedLambda)
+        // Note: isInstantiatedLambda needs to be conservative, using isSafeLambda
+        // in order to avoid cyclic reference errors. But this means that some fully
+        // instantiated types will remain unprojected, which essentially means
+        // that they stay as higher-kinded types. checkNonCyclic checks the type again
+        // and potentially inserts an #Apply then. Hopefully, this catches all types
+        // that fall through the hole. Not adding an #Apply typically manifests itself
+        // with a <:< failure of two types that "look the same". An example is #779,
+        // where compiling scala.immutable.Map gives a bounds violation.
+        res.select(tpnme.Apply)
+      else res
     }
   }
 

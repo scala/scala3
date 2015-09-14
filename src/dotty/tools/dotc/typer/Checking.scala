@@ -115,8 +115,18 @@ object Checking {
         val parent1 = this(parent)
         val saved = cycleOK
         cycleOK = nestedCycleOK
-        try tp.derivedRefinedType(parent1, name, this(tp.refinedInfo))
-        finally cycleOK = saved
+
+        /** A derived refined type with two possible tweaks:
+         *  (1) LazyRefs in parents are pulled out,
+         *  (2) #Apply is added if the type is a fully applied type lambda.
+         */
+        def derivedType(p: Type): Type = p match {
+          case p: LazyRef => LazyRef(() => derivedType(p.ref))
+          case _ =>
+            val res = tp.derivedRefinedType(p, name, this(tp.refinedInfo))
+            if (res.isSafeLambda && res.typeParams.isEmpty) res.select(tpnme.Apply) else res
+        }
+        try derivedType(parent1) finally cycleOK = saved
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -130,6 +140,9 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
+            case _: RefinedType => false
+              // Note: it's important not to visit parents of RefinedTypes,
+              // since otherwise spurious #Apply projections might be inserted.
             case _ => false
           }
           // If prefix is interesting, check info of typeref recursively, marking the referred symbol
@@ -158,6 +171,9 @@ object Checking {
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
    *  @return  `info` where every legal F-bounded reference is proctected
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
+   *                  Furthermore: Add an #Apply to a fully instantiated type lambda, if none was
+   *                  given before. This is necessary here because sometimes type lambdas are not
+   *                  recognized when they are first formed.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(implicit ctx: Context): Type = {
     val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.addMode(Mode.CheckCyclic))
