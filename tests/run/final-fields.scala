@@ -36,5 +36,8 @@ object Test extends T {
 
  def g: 3 = { println("g"); 3 }
  final val x = g + 1
- def main(args: Array[String]): Unit = {}
+ def main(args: Array[String]): Unit = {
+   Test0
+   Test1
+ }
 }
