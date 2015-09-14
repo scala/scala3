@@ -412,7 +412,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
         def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
           sym.is(Mutable, butNot = Accessor) ||
-          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner
+          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner ||
+          ctx.owner.name.isTraitSetterName
         lhsCore.tpe match {
           case ref: TermRef if canAssign(ref.symbol) =>
             assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, ref.info)))
