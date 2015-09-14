@@ -69,6 +69,7 @@ object NameOps {
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
+    def isTraitSetterName = name containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
@@ -298,7 +299,14 @@ object NameOps {
       else setterToGetter
 
     def fieldName: TermName =
-      if (name.isSetterName) getterName.fieldName
+      if (name.isSetterName) {
+        if (name.isTraitSetterName) {
+          // has form <$-separated-trait-name>$_setter_$ `name`_$eq
+          val start = name.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
+          val end = name.indexOfSlice(SETTER_SUFFIX)
+          name.slice(start, end) ++ LOCAL_SUFFIX
+        } else getterName.fieldName
+      }
       else name ++ LOCAL_SUFFIX
 
     private def setterToGetter: TermName = {
