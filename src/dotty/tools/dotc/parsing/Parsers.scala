@@ -258,6 +258,9 @@ object Parsers {
       } finally inFunReturnType = saved
     }
 
+    /** Cannot use ctx.featureEnabled because accessing the context would force too much */
+    private def scala2mode = ctx.settings.language.value.contains(nme.Scala2.toString)
+
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
     /** Convert tree to formal parameter list
@@ -1713,11 +1716,12 @@ object Parsers {
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
+      def atScala2Brace = scala2mode && in.token == LBRACE
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
         val rhs = {
-          accept(EQUALS)
+          if (!atScala2Brace) accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods)
@@ -1725,10 +1729,10 @@ object Parsers {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
-        val tpt = fromWithinReturnType(typedOpt())
+        var tpt = fromWithinReturnType(typedOpt())
         val rhs =
           if (tpt.isEmpty || in.token == EQUALS) {
-            accept(EQUALS)
+            if (atScala2Brace) tpt = scalaUnit else accept(EQUALS)
             expr()
           } else EmptyTree
         DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods | Method)

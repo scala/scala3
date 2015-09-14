@@ -118,11 +118,11 @@ object desugar {
    *
    *  Expand default arguments to default getters. E.g,
    *
-   *      def f(x: Int = 1)(y: String = x + "m") = ...
+   *      def f[T: B](x: Int = 1)(y: String = x + "m") = ...
    *  ==>
-   *      def f(x: Int)(y: String) = ...
-   *      def f$default$1 = 1
-   *      def f$default$2(x: Int) = x + "m"
+   *      def f[T](x: Int)(y: String)(implicit evidence$0: B[T]) = ...
+   *      def f$default$1[T] = 1
+   *      def f$default$2[T](x: Int) = x + "m"
    */
   def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
@@ -162,15 +162,20 @@ object desugar {
         Nil
     }
 
-    def normalizedVparamss = vparamss map (_ map (vparam =>
+    def normalizedVparamss = meth1.vparamss map (_ map (vparam =>
       cpy.ValDef(vparam)(rhs = EmptyTree)))
+
+    def dropContextBound(tparam: TypeDef) = tparam.rhs match {
+      case ContextBounds(tbounds, _) => cpy.TypeDef(tparam)(rhs = tbounds)
+      case _ => tparam
+    }
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
             name = meth.name.defaultGetterName(n),
-            tparams = meth.tparams map toDefParam,
+            tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss, n),
             tpt = TypeTree(),
             rhs = vparam.rhs
