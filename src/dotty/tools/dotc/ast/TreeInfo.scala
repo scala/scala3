@@ -326,17 +326,25 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
       free.symbol.hasStableFlag && isIdempotentExpr(free)
 */
-    case Apply(fn, Nil) =>
+    case Apply(fn, args) =>
+      def isKnownPureOp(sym: Symbol) =
+        sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
       // Note: After uncurry, field accesses are represented as Apply(getter, Nil),
       // so an Apply can also be pure.
-      if (fn.symbol is Stable) exprPurity(fn) else Impure
+      if (args.isEmpty && fn.symbol.is(Stable)) exprPurity(fn)
+      else if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol))
+        // A constant expression with pure arguments is pure.
+        minOf(exprPurity(fn), args.map(exprPurity))
+      else Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
-      (exprPurity(expr) /: stats.map(statPurity))(_ min _)
+      minOf(exprPurity(expr), stats.map(statPurity))
     case _ =>
       Impure
   }
+
+  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
 
   def isPureExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) == Pure
   def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent

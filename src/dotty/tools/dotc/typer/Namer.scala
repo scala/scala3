@@ -707,18 +707,19 @@ class Namer { typer: Typer =>
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       def isInline = sym.is(Final, butNot = Method)
-      def widenRhs(tp: Type): Type = tp match {
-        case tp: TermRef => widenRhs(tp.underlying)
-        case tp: ExprType => widenRhs(tp.resultType)
+      def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
         case tp: ConstantType if isInline => tp
         case _ => tp.widen.approximateUnion
       }
       val rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe
+      def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
       def cookedRhsType = ctx.deskolemize(widenRhs(rhsType))
-      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      lazy val lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists) inherited
+      if (inherited.exists)
+        if (sym.is(Final, butNot = Method) && lhsType.isInstanceOf[ConstantType])
+          lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+        else inherited
       else {
         if (sym is Implicit) {
           val resStr = if (mdef.isInstanceOf[DefDef]) "result " else ""

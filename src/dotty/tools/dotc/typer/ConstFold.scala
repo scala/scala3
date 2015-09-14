@@ -20,16 +20,16 @@ object ConstFold {
   def apply(tree: Tree)(implicit ctx: Context): Tree = finish(tree) {
     tree match {
       case Apply(Select(xt, op), yt :: Nil) =>
-        xt.tpe match {
+        xt.tpe.widenTermRefExpr match {
           case ConstantType(x) =>
-            yt.tpe match {
+            yt.tpe.widenTermRefExpr match {
               case ConstantType(y) => foldBinop(op, x, y)
               case _ => null
             }
           case _ => null
         }
       case Select(xt, op) =>
-        xt.tpe match {
+        xt.tpe.widenTermRefExpr match {
           case ConstantType(x) => foldUnop(op, x)
           case _ => null
         }
@@ -42,7 +42,7 @@ object ConstFold {
    */
   def apply(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     finish(apply(tree)) {
-      tree.tpe match {
+      tree.tpe.widenTermRefExpr match {
         case ConstantType(x) => x convertTo pt
         case _ => null
       }

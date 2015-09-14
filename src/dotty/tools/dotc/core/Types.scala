@@ -715,6 +715,14 @@ object Types {
       case _ => this
     }
 
+    /** Widen from TermRef to its underlying non-termref
+     *  base type, while also skipping Expr types.
+     */
+    final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
+      case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
+      case _ => this
+    }
+
     /** Widen from ExprType type to its result type.
      *  (Note: no stripTypeVar needed because TypeVar's can't refer to ExprTypes.)
      */

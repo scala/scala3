@@ -70,13 +70,26 @@ import Decorators._
     lazy val field = sym.field.orElse(newField).asTerm
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
-          var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
-          if (isWildcardArg(rhs)) rhs = EmptyTree
-          val fieldDef = transformFollowing(ValDef(field, rhs))
-          val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
-          Thicket(fieldDef, getterDef)
+        def skipBlocks(t: Tree): Tree = t match {
+          case Block(_, t1) => skipBlocks(t1)
+          case _ => t
         }
-      else if (sym.isSetter) {
+        skipBlocks(tree.rhs) match {
+          case lit: Literal if sym.is(Final) && isIdempotentExpr(tree.rhs) =>
+            // duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
+            // and instead return the value. This seemingly minor optimization has huge effect on initialization
+            // order and the values that can be observed during superconstructor call
+
+            // see remark about idempotency in PostTyper#normalizeTree
+            cpy.DefDef(tree)(rhs = lit)
+          case _ =>
+            var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
+            if (isWildcardArg(rhs)) rhs = EmptyTree
+            val fieldDef = transformFollowing(ValDef(field, rhs))
+            val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
+            Thicket(fieldDef, getterDef)
+        }
+      } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         val initializer = Assign(ref(field), ref(tree.vparamss.head.head.symbol))
         cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))

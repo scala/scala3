@@ -56,7 +56,6 @@ class Compiler {
       List(new VCInlineMethods,
            new SeqLiterals,
            new InterceptedMethods,
-           new Literalize,
            new Getters,
            new ClassTags,
            new ElimByName,
