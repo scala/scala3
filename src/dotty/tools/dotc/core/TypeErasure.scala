@@ -234,7 +234,11 @@ object TypeErasure {
             case nil =>
               bestSoFar
           }
-          loop(tp1.baseClasses, defn.ObjectClass).typeRef
+          val t = loop(tp1.baseClasses, defn.ObjectClass)
+          if (t eq defn.AnyValClass)
+            // while AnyVal is a valid common super class for primitives it does not exist after erasure
+            defn.ObjectType
+          else t.typeRef
       }
   }
 
