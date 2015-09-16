@@ -45,7 +45,8 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
         }
         val fail = sym.allOverriddenSymbols.findSymbol(x => !hasWeakerAccess(x))
         if (fail.exists) {
-          assert(false, i"${sym.showFullName} has weaker access that superclass method ${fail.showFullName}")
+          println(i"FAILURE: ${sym.showFullName}: ${sym.info} sym has weaker access than superclass method ${fail.showFullName}")
+          assert(false, i"${sym.showFullName}: ${sym.info} sym has weaker access than superclass method ${fail.showFullName}")
         }
       case _ =>
     }
