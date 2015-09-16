@@ -36,6 +36,7 @@ unset verbose quiet cygwin toolcp colors saved_stty CDPATH
 
 
 CompilerMain=dotty.tools.dotc.Main
+FromTasty=dotty.tools.dotc.FromTasty
 ReplMain=test.DottyRepl
 
 
@@ -238,8 +239,8 @@ case "$1" in
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
-
         -repl) main_class=$ReplMain && shift ;;
+        -tasty) main_class=$FromTasty && shift ;;
      -compile) main_class=$CompilerMain && shift ;;
          -run) main_class=$ReplMain && shift ;;
          -fsc) main_class=$FscMain && shift ;;
