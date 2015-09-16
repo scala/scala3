@@ -625,8 +625,10 @@ object Erasure extends TypeTestsCasts{
         assert(false, s"failure creating bridge from ${newDefSym} to ${parentSym}, reason: $reason")
         ???
       }
+      var excluded = NoBridgeFlags
+      if (!newDefSym.is(Flags.Protected)) excluded |= Flags.Protected // needed to avoid "weaker access" assertion failures in expandPrivate
       val bridge = ctx.newSymbol(currentClass,
-        parentSym.name, parentSym.flags &~ NoBridgeFlags | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
+        parentSym.name, parentSym.flags &~ excluded | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
       bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
       ctx.debuglog(s"generating bridge from ${newDefSym} to $bridge")
 
