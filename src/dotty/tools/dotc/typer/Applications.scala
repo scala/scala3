@@ -1117,7 +1117,7 @@ trait Applications extends Compatibility { self: Typer =>
       case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
       case _ => adaptInterpolated(tree, pt, tree)
     }
-    harmonizeWith(trees)(_.tpe, adapt)
+    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adapt)
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,
