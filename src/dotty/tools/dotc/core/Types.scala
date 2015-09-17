@@ -2530,7 +2530,7 @@ object Types {
     def selfType(implicit ctx: Context): Type = {
       if (selfTypeCache == null)
         selfTypeCache = {
-          def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
+          def fullRef = fullyAppliedRef
           val given = givenSelfType
           val raw =
             if (!given.exists) fullRef
@@ -2560,6 +2560,9 @@ object Types {
       case nil =>
         base
     }
+
+    /** The class type with all type parameters */
+    def fullyAppliedRef(implicit ctx: Context): Type = fullyAppliedRef(cls.typeRef, cls.typeParams)
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass || ctx.erasedTypes) tp
