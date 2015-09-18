@@ -1312,6 +1312,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case wtp: ExprType =>
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, followAlias(pt)) =>
+        val tvarsToInstantiate = tvarsInParams(tree)
+        wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
         def addImplicitArgs = {
           def implicitArgError(msg: => String): Tree = {
