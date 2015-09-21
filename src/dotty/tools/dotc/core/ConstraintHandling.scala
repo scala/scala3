@@ -104,7 +104,7 @@ trait ConstraintHandling {
     up.forall(addOneBound(_, lo, isUpper = false))
   }
 
-  protected final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
     try isSubType(tp1, tp2)
