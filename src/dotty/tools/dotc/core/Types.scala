@@ -1487,7 +1487,9 @@ object Types {
       if (prefix eq this.prefix) this
       else {
         val res = prefix.lookupRefined(name)
-        if (res.exists) res else newLikeThis(prefix)
+        if (res.exists) res
+        else if (name == tpnme.hkApply && prefix.noHK) derivedSelect(prefix.EtaExpandCore)
+        else newLikeThis(prefix)
       }
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
@@ -1725,9 +1727,15 @@ object Types {
   }
 
   object TypeRef {
+    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) =
+      if (name == tpnme.hkApply && prefix.noHK)
+        assert(false, s"bad type : $prefix.$name should not be $$applied")
+
     /** Create type ref with given prefix and name */
-    def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
+    def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef = {
+      if (Config.checkProjections) checkProjection(prefix, name)
       ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
+    }
 
     /** Create type ref to given symbol */
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
@@ -1736,8 +1744,10 @@ object Types {
     /** Create a non-member type ref  (which cannot be reloaded using `member`),
      *  with given prefix, name, and symbol.
      */
-    def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
+    def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef = {
+      if (Config.checkProjections) checkProjection(prefix, name)
       unique(new TypeRefWithFixedSym(prefix, name, sym))
+    }
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -3198,7 +3208,9 @@ object Types {
 
   class MissingType(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
     i"""cannot resolve reference to type $pre.$name
-       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""".stripMargin)
+       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""".stripMargin) {
+    printStackTrace()
+  }
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
     case pre: ThisType if pre.givenSelfType.exists =>

@@ -155,6 +155,27 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => false
   }
 
+  /** True if it can be determined without forcing that the class symbol
+   *  of this application exists and is not a lambda trait.
+   *  Equivalent to
+   *
+   *    self.classSymbol.exists && !self.classSymbol.isLambdaTrait
+   *
+   *  but without forcing anything.
+   */
+  def noHK(implicit ctx: Context): Boolean = self.stripTypeVar match {
+    case self: RefinedType =>
+      self.parent.noHK
+    case self: TypeRef =>
+      (self.denot.exists) && {
+        val sym = self.symbol
+        if (sym.isClass) !sym.isLambdaTrait
+        else sym.isCompleted && self.info.isAlias && self.info.bounds.hi.noHK
+      }
+    case _ =>
+      false
+  }
+
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
@@ -509,6 +530,14 @@ class TypeApplications(val self: Type) extends AnyVal {
   def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type =
     if (bound.isHK && !isHK && self.typeSymbol.isClass && typeParams.nonEmpty) EtaExpand
     else self
+
+  /** Eta expand the prefix in front of any refinements. */
+  def EtaExpandCore(implicit ctx: Context): Type = self.stripTypeVar match {
+    case self: RefinedType =>
+      self.derivedRefinedType(self.parent.EtaExpandCore, self.refinedName, self.refinedInfo)
+    case _ =>
+      self.EtaExpand
+  }
 
   /** If `self` is a (potentially partially instantiated) eta expansion of type T, return T,
    *  otherwise NoType. More precisely if `self` is of the form
