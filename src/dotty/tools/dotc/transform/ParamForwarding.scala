@@ -33,6 +33,18 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
         case _ => (Nil, Nil)
       }
       def inheritedAccessor(sym: Symbol): Symbol = {
+        /**
+         * Dmitry: having it have the same name is needed to maintain correctness in presence of subclassing
+         * if you would use parent param-name `a` to implement param-field `b`
+         * overriding field `b` will actually override field `a`, that is wrong!
+         *
+         * class A(val s: Int);
+         * class B(val b: Int) extends A(b)
+         * class C extends A(2) {
+         *   def s = 3
+         *   assert(this.b == 2)
+         * }
+         */
         val candidate = sym.owner.asClass.superClass
           .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = Mutable)).symbol
         if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
