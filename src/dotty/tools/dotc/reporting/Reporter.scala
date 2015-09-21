@@ -159,7 +159,8 @@ trait Reporting { this: Context =>
         logctx.log(s"${base.indentTab * base.indent}${trailing(result)}$note")
         finalized = true
       }
-    try {
+    if (ctx.mode.is(Mode.Printing)) op
+    else try {
       logctx.log(s"${base.indentTab * base.indent}$leading")
       base.indent += 1
       val res = op
