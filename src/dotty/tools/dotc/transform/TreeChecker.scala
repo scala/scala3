@@ -66,7 +66,7 @@ class TreeChecker extends Phase with SymTransformer {
     val cur = symd.linkedClass
     val prev = ctx.atPhase(ctx.phase.prev) {
       ct => {
-        implicit val ctx: Context = ct.withMode(Mode.FutureDefsOK)
+        implicit val ctx: Context = ct.addMode(Mode.FutureDefsOK)
         symd.symbol.linkedClass
       }
     }

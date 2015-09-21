@@ -439,12 +439,12 @@ object Contexts {
   }
 
   implicit class ModeChanges(val c: Context) extends AnyVal {
-    final def withMode(mode: Mode): Context =
+    final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
-    final def addMode(mode: Mode): Context = withMode(c.mode | mode)
-    final def maskMode(mode: Mode): Context = withMode(c.mode & mode)
-    final def retractMode(mode: Mode): Context = withMode(c.mode &~ mode)
+    final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
+    final def maskMode(mode: Mode): Context = withModeBits(c.mode & mode)
+    final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
   }
 
   implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {

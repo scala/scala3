@@ -166,7 +166,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else {
           val constr = ctx.typerState.constraint
           val bounds =
-            if (constr.contains(tp)) constr.fullBounds(tp.origin)
+            if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
             else TypeBounds.empty
           "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
         }
