@@ -137,7 +137,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isSafeLambda(implicit ctx: Context): Boolean =
     LambdaClass(forcing = false).exists
 
-  /** Is type `tp` a Lambda with all Arg$ fields fully instantiated? */
+  /** Is type `tp` a Lambda with all hk$i fields fully instantiated? */
   def isInstantiatedLambda(implicit ctx: Context): Boolean =
     isSafeLambda && typeParams.isEmpty
 
@@ -211,7 +211,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case tp: RefinedType =>
         val redux = tp.EtaReduce
-        if (redux.exists) redux.appliedTo(args) // Rewrite ([HK$0] => C[HK$0])(T)   to   C[T]
+        if (redux.exists) redux.appliedTo(args) // Rewrite ([hk$0] => C[hk$0])(T)   to   C[T]
         else tp.derivedRefinedType(
           instantiate(tp.parent, original),
           tp.refinedName,
@@ -473,7 +473,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   - `bounds` consists of type declarations `type hk$i >: toHK(L) <: toHK(U),
    *     one for each type parameter in `T` with non-trivial bounds L,U.
    *   - `toHK` is a substitution that replaces every bound symbol sym_i by
-   *     `this.Arg$i`.
+   *     `this.hk$i`.
    *
    *  TypeBounds are lambda abstracting by lambda abstracting their upper bound.
    *
@@ -516,7 +516,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Convert a type constructor `TC` with type parameters `T1, ..., Tn` to
    *
-   *     LambdaXYZ { Apply = TC[$hkArg$0, ..., $hkArg$n] }
+   *     LambdaXYZ { Apply = TC[hk$0, ..., hk$n] }
    *
    *  where XYZ is a corresponds to the variances of the type parameters.
    */
@@ -617,8 +617,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  the type parameters of `B` match one-by-one the variances of `tparams`,
    *  and where the lambda abstracted type
    *
-   *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg${n-1}] }
-   *               { type $hkArg$0 = T1; ...; type $hkArg${n-1} = Tn }
+   *     LambdaXYZ { type Apply = B[hk$0, ..., hk${n-1}] }
+   *               { type hk$0 = T1; ...; type hk${n-1} = Tn }
    *
    *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a variance V if it has V as its variance or if V == 0.

@@ -31,13 +31,13 @@ object Test {
 object Test2 {
   type Histogram = Map[_, Int]
 
-  type StringlyHistogram = Histogram[_ >: String] // error
+  type StringlyHistogram = Histogram[_ >: String]
 
-  val xs: Histogram[String] = Map[String, Int]() // error
+  val xs: Histogram[String] = Map[String, Int]()
 
-  val ys: StringlyHistogram[String] = xs // error
+  val ys: StringlyHistogram[String] = xs
 
-  val zs: StringlyHistogram = xs // error
+  val zs: StringlyHistogram = xs
 
   val xs1 = xs
   val ys1 = ys
