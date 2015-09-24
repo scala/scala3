@@ -215,6 +215,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareSuper
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
+    case OrType(tp21, tp22) =>
+      if (tp21.stripTypeVar eq tp22.stripTypeVar) isSubType(tp1, tp21)
+      else thirdTry(tp1, tp2)
     case TypeErasure.ErasedValueType(cls2, underlying2) =>
       def compareErasedValueType = tp1 match {
         case TypeErasure.ErasedValueType(cls1, underlying1) =>
@@ -277,6 +280,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
       isSubType(tp1.tpe, tp2)
+    case AndType(tp11, tp12) =>
+      if (tp11.stripTypeVar eq tp12.stripTypeVar) isSubType(tp11, tp2)
+      else thirdTry(tp1, tp2)
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
