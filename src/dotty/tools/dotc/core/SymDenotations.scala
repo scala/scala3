@@ -1587,6 +1587,7 @@ object SymDenotations {
               if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
               else baseTypeRefCache.remove(tp)
             } else if (basetp == NoPrefix) {
+              baseTypeRefCache.put(tp, null)
               throw CyclicReference(this)
             }
             basetp
