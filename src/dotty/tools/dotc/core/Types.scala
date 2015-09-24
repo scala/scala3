@@ -806,12 +806,18 @@ object Types {
       case _ => NoType
     }
 
-    /** The chain of underlying types as long as type is a TypeProxy.
+    /** The iterator of underlying types as long as type is a TypeProxy.
      *  Useful for diagnostics
      */
-    def underlyingChain(implicit ctx: Context): List[Type] = this match {
-      case tp: TypeProxy => tp :: tp.underlying.underlyingChain
-      case _ => Nil
+    def underlyingIterator(implicit ctx: Context): Iterator[Type] = new Iterator[Type] {
+      var current = Type.this
+      var hasNext = true
+      def next = {
+        val res = current
+        hasNext = current.isInstanceOf[TypeProxy]
+        if (hasNext) current = current.asInstanceOf[TypeProxy].underlying
+        res
+      }
     }
 
     /** A prefix-less refined this or a termRef to a new skolem symbol
