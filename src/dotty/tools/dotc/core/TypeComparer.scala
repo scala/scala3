@@ -685,7 +685,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case formal1 :: rest1 =>
       formals2 match {
         case formal2 :: rest2 =>
-          (isSameType(formal1, formal2)
+          (isSameTypeWhenFrozen(formal1, formal2)
             || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
             || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
           matchingParams(rest1, rest2, isJava1, isJava2)
@@ -1059,7 +1059,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo =>
-          isSubType(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
         case _ =>
           false
       }
@@ -1075,7 +1075,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2 match {
         case tp2: MethodType =>
           def asGoodParams(formals1: List[Type], formals2: List[Type]) =
-            (formals2 corresponds formals1)(isSubType)
+            (formals2 corresponds formals1)(isSubTypeWhenFrozen)
           asGoodParams(tp1.paramTypes, tp2.paramTypes) &&
           (!asGoodParams(tp2.paramTypes, tp1.paramTypes) ||
            isAsGood(tp1.resultType, tp2.resultType))
