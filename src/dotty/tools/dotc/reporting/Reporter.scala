@@ -149,18 +149,19 @@ trait Reporting { this: Context =>
     else traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
   }
 
-  def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T = {
-    var finalized = false
-    var logctx = this
-    while (logctx.reporter.isInstanceOf[StoreReporter]) logctx = logctx.outer
-    def finalize(result: Any, note: String) =
-      if (!finalized) {
-        base.indent -= 1
-        logctx.log(s"${base.indentTab * base.indent}${trailing(result)}$note")
-        finalized = true
-      }
+  def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T =
     if (ctx.mode.is(Mode.Printing)) op
-    else try {
+    else {
+      var finalized = false
+      var logctx = this
+      while (logctx.reporter.isInstanceOf[StoreReporter]) logctx = logctx.outer
+      def finalize(result: Any, note: String) =
+        if (!finalized) {
+          base.indent -= 1
+          logctx.log(s"${base.indentTab * base.indent}${trailing(result)}$note")
+          finalized = true
+        }
+    try {
       logctx.log(s"${base.indentTab * base.indent}$leading")
       base.indent += 1
       val res = op
