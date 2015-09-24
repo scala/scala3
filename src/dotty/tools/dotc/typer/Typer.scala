@@ -826,7 +826,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
-    val tpt1 = typed(tree.tpt)
+    val tpt1 = typed(tree.tpt)(ctx retractMode Mode.Pattern)
     val tparams = tpt1.tpe.typeParams
     var args = tree.args
     if (tparams.isEmpty) {
