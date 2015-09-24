@@ -129,7 +129,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   type This = OrderingConstraint
 
-
 // ----------- Basic indices --------------------------------------------------
 
   /** The number of type parameters in the given entry array */
@@ -575,5 +574,23 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         Text(deps, "\n")
       }
     Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
+  }
+
+  override def toString: String = {
+    def entryText(tp: Type): String = tp match {
+      case tp: TypeBounds => tp.toString
+      case _ =>" := " + tp
+    }
+    val constrainedText =
+      " constrained types = " + domainPolys.mkString("\n")
+    val boundsText =
+      " bounds = " + {
+        val assocs =
+          for (param <- domainParams)
+          yield
+            param.binder.paramNames(param.paramNum) + ": " + entryText(entry(param))
+        assocs.mkString("\n")
+    }
+    constrainedText + "\n" + boundsText
   }
 }
