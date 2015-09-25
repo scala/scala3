@@ -115,18 +115,8 @@ object Checking {
         val parent1 = this(parent)
         val saved = cycleOK
         cycleOK = nestedCycleOK
-
-        /** A derived refined type with two possible tweaks:
-         *  (1) LazyRefs in parents are pulled out,
-         *  (2) #Apply is added if the type is a fully applied type lambda.
-         */
-        def derivedType(p: Type): Type = p match {
-          case p: LazyRef => LazyRef(() => derivedType(p.ref))
-          case _ =>
-            val res = tp.derivedRefinedType(p, name, this(tp.refinedInfo))
-            if (res.isSafeLambda && res.typeParams.isEmpty) res.select(tpnme.Apply) else res
-        }
-        try derivedType(parent1) finally cycleOK = saved
+        try tp.derivedRefinedType(parent1, name, this(tp.refinedInfo))
+        finally cycleOK = saved
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference

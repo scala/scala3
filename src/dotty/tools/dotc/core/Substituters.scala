@@ -277,4 +277,31 @@ trait Substituters { this: Context =>
   final class SubstParamsMap(from: BindingType, to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type) = substParams(tp, from, to, this)
   }
+
+  /** A map for "cycle safe substitutions" which do not force the denotation
+   *  of a TypeRef unless the name matches up with one of the substituted symbols.
+   */
+  final class SafeSubstMap(from: List[Symbol], to: List[Type]) extends TypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: NamedType =>
+        try {
+          var sym: Symbol = null
+          var fs = from
+          var ts = to
+          while (fs.nonEmpty) {
+            if (fs.head.name == tp.name) {
+              if (sym == null) sym = tp.symbol
+              if (fs.head eq sym) return ts.head
+            }
+            fs = fs.tail
+            ts = ts.tail
+          }
+          tp.newLikeThis(apply(tp.prefix))
+        }
+        catch {
+          case ex: CyclicReference => tp.derivedSelect(apply(tp.prefix))
+        }
+      case _ => mapOver(tp)
+    }
+  }
 }

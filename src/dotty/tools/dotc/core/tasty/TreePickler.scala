@@ -176,7 +176,7 @@ class TreePickler(pickler: TastyPickler) {
           pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
         }
       case tpe: NamedType =>
-        if (tpe.name == tpnme.Apply && tpe.prefix.argInfos.nonEmpty && tpe.prefix.isInstantiatedLambda)
+        if (tpe.name == tpnme.hkApply && tpe.prefix.argInfos.nonEmpty && tpe.prefix.isInstantiatedLambda)
           // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will
           // be reconstituted when unpickling.
           pickleType(tpe.prefix)
@@ -200,7 +200,9 @@ class TreePickler(pickler: TastyPickler) {
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
       case tpe: RefinedThis =>
         writeByte(REFINEDthis)
-        writeRef(pickledTypes.get(tpe.binder).asInstanceOf[Addr])
+        val binderAddr = pickledTypes.get(tpe.binder)
+        assert(binderAddr != null, tpe.binder)
+        writeRef(binderAddr.asInstanceOf[Addr])
       case tpe: SkolemType =>
         pickleType(tpe.info)
       case tpe: RefinedType =>

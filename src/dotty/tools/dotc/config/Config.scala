@@ -71,6 +71,11 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
+  /** If this flag is set, $apply projections are checked that they apply to a
+   *  higher-kinded type.
+   */
+  final val checkProjections = false
+
   /** When set, use new signature-based matching.
    *  Advantage of doing so: It's supposed to be faster
    *  Disadvantage: It might hide inconsistencies, so while debugging it's better to turn it off

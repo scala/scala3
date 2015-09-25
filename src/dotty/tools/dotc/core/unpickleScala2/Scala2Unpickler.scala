@@ -50,18 +50,9 @@ object Scala2Unpickler {
    */
   def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      if (denot.isAbstractType)
-        restpe.LambdaAbstract(tparams) // bounds needed?
-      else if (denot.isAliasType) {
-        var err: Option[(String, Position)] = None
-        val result = restpe.parameterizeWith(tparams)
-        for ((msg, pos) <- err)
-          ctx.warning(
-            sm"""$msg
-                |originally parsed type : ${tp.show}
-                |will be approximated by: ${result.show}.
-                |Proceed at own risk.""")
-        result
+      if (denot.isType) {
+        assert(!denot.isClass)
+        restpe.LambdaAbstract(tparams, cycleParanoid = true)
       }
       else
         PolyType.fromSymbols(tparams, restpe)
@@ -127,9 +118,11 @@ object Scala2Unpickler {
       val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, module)
       if (companionClassMethod.exists)
         companionClassMethod.entered
-      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, module, claz)
-      if (companionModuleMethod.exists)
-        companionModuleMethod.entered
+      if (claz.isClass) {
+        val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, module, claz)
+        if (companionModuleMethod.exists)
+          companionModuleMethod.entered
+      }
     }
 
     if (denot.flagsUNSAFE is Module) {
@@ -591,29 +584,48 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *    tp { name: T }
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
+    // Need to be careful not to run into cyclic references here (observed when
+    // comiling t247.scala). That's why we avoiud taking `symbol` of a TypeRef
+    // unless names match up.
+    val isBound = (tp: Type) => {
+      def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
+        case tp @ TypeRef(_, name) => sym.name == name && sym == tp.symbol
+        case tp: TypeVar => refersTo(tp.underlying, sym)
+        case tp : LazyRef => refersTo(tp.ref, sym)
+        case _ => false
+      }
+      boundSyms.exists(refersTo(tp, _))
+    }
+    // Cannot use standard `existsPart` method because it calls `lookupRefined`
+    // which can cause CyclicReference errors.
+    val isBoundAccumulator = new ExistsAccumulator(isBound) {
+      override def foldOver(x: Boolean, tp: Type): Boolean = tp match {
+        case tp: TypeRef => applyToPrefix(x, tp)
+        case _ => super.foldOver(x, tp)
+      }
+    }
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)
         tp.refinedInfo match {
-          case TypeAlias(info: TypeRef) if boundSyms contains info.symbol =>
+          case TypeAlias(info: TypeRef) if isBound(info) =>
             RefinedType(parent1, name, info.symbol.info)
-          case info: TypeRef if boundSyms contains info.symbol =>
+          case info: TypeRef if isBound(info) =>
             val info1 = info.symbol.info
             assert(info1.derivesFrom(defn.SingletonClass))
             RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
-      case tp @ TypeRef(pre, tpnme.Apply) if pre.isLambda =>
+      case tp @ TypeRef(pre, tpnme.hkApply) =>
         elim(pre)
       case _ =>
         tp
     }
     val tp1 = elim(tp)
-    val isBound = (tp: Type) => boundSyms contains tp.typeSymbol
-    if (tp1 existsPart isBound) {
+    if (isBoundAccumulator(false, tp1)) {
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
@@ -681,6 +693,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        else if (args.isEmpty && sym.typeParams.nonEmpty) tycon.EtaExpand
         else tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())

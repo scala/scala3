@@ -780,11 +780,11 @@ class Namer { typer: Typer =>
     completeParams(tdef.tparams)
     val tparamSyms = tdef.tparams map symbolOfTree
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val toParameterize = tparamSyms.nonEmpty && !isDerived
-    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
+    //val toParameterize = tparamSyms.nonEmpty && !isDerived
+    //val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     def abstracted(tp: Type): Type =
-      if (needsLambda) tp.LambdaAbstract(tparamSyms)
-      else if (toParameterize) tp.parameterizeWith(tparamSyms)
+      if (tparamSyms.nonEmpty && !isDerived) tp.LambdaAbstract(tparamSyms)
+      //else if (toParameterize) tp.parameterizeWith(tparamSyms)
       else tp
     sym.info = abstracted(TypeBounds.empty)
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
@@ -797,12 +797,38 @@ class Namer { typer: Typer =>
       //
       // The scheme critically relies on an implementation detail of isRef, which
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
-    val rhsType = typedAheadType(tdef.rhs).tpe
+    val rhsType = abstracted(typedAheadType(tdef.rhs).tpe)
     val unsafeInfo = rhsType match {
-      case _: TypeBounds => abstracted(rhsType).asInstanceOf[TypeBounds]
-      case _ => TypeAlias(abstracted(rhsType), if (sym is Local) sym.variance else 0)
+      case bounds: TypeBounds => bounds
+      case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
-    checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    etaExpandArgs.apply(sym.info)
+  }
+
+  /** Eta expand all class types C appearing as arguments to a higher-kinded
+   *  type parameter to type lambdas, e.g. [HK0] => C[HK0]. This is necessary
+   *  because in `typedAppliedTypeTree` we might ahve missed some eta expansions
+   *  of arguments in F-bounds, because the recursive type was initialized with
+   *  TypeBounds.empty.
+   */
+  def etaExpandArgs(implicit ctx: Context) = new TypeMap {
+    def apply(tp: Type): Type = {
+      tp match {
+        case tp: RefinedType =>
+          val args = tp.argInfos(interpolate = false).mapconserve(this)
+          if (args.nonEmpty) {
+            val tycon = tp.withoutArgs(args)
+            val tparams = tycon.typeParams
+            if (args.length == tparams.length) { // if lengths differ, problem is caught in typedTypeApply
+              val args1 = args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.info))
+              if (args1 ne args) return this(tycon).appliedTo(args1)
+            }
+          }
+        case _ =>
+      }
+      mapOver(tp)
+    }
   }
 }
