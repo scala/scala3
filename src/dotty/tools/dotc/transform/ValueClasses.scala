@@ -22,6 +22,7 @@ object ValueClasses {
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
     d.isRealMethod &&
+      !(d.initial.validFor.firstPhaseId > ctx.extensionMethodsPhase.id) &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.is(SuperAccessor) &&

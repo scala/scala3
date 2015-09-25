@@ -404,7 +404,7 @@ object Symbols {
       (if(isDefinedInCurrentRun) lastDenot else denot).isTerm
 
     final def isType(implicit ctx: Context): Boolean =
-      (if(isDefinedInCurrentRun) lastDenot else denot).isType
+      (if (isDefinedInCurrentRun) lastDenot else denot).isType
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
 

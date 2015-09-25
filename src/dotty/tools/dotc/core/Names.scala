@@ -353,9 +353,9 @@ object Names {
     def compare(x: Name, y: Name): Int = {
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
-      else if (x eq y) 0
+      else if (x.start == y.start && x.length == y.length) 0
       else {
-        val until = x.length min y.length
+        val until = Math.min(x.length, y.length)
         var i = 0
 
         while (i < until && x(i) == y(i)) i = i + 1
@@ -364,7 +364,9 @@ object Names {
           if (x(i) < y(i)) -1
           else /*(x(i) > y(i))*/ 1
         } else {
-          x.length - y.length
+          if (x.length < y.length) 1
+          else if (x.length > y.length) -1
+          else 0 // shouldn't happen, but still
         }
       }
     }

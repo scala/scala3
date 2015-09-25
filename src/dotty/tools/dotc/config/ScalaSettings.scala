@@ -152,6 +152,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val YprintSyms = BooleanSetting("-Yprint-syms", "when printing trees print info in symbols instead of corresponding info in trees.")
   val YtestPickler = BooleanSetting("-Ytest-pickler", "self-test for pickling functionality; should be used with -Ystop-after:pickler")
   val YcheckReentrant = BooleanSetting("-Ycheck-reentrant", "check that compiled program does not contain vars that can be accessed from a global root.")
+  val Yspecialize = IntSetting("-Yspecialize","Specialize methods with maximum this amount of polymorphic types.", 0, 0 to 10)
+
   def stop = YstopAfter
 
   /** Area-specific debug output.

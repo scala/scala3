@@ -206,7 +206,7 @@ trait Applications extends Compatibility { self: Typer =>
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
        *  @param nameToArg A map from as yet unseen names to named arguments
-       *  @param toDrop    A set of names that have already be passed as named arguments
+       *  @param toDrop    A set of names that have already been passed as named arguments
        *
        *  For a well-typed application we have the invariants
        *
