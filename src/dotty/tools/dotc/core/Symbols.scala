@@ -47,13 +47,6 @@ trait Symbols { this: Context =>
 
 // ---- Symbol creation methods ----------------------------------
 
-  /** Create a symbol from a function producing its denotation */
-  def newSymbolDenoting[N <: Name](denotFn: Symbol => SymDenotation, coord: Coord = NoCoord): Symbol { type ThisName = N } = {
-    val sym = newNakedSymbol[N](coord)
-    sym.denot = denotFn(sym)
-    sym
-  }
-
   /** Create a symbol from its fields (info may be lazy) */
   def newSymbol[N <: Name](
       owner: Symbol,
