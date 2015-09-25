@@ -345,6 +345,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareRefined
     case OrType(tp21, tp22) =>
+      // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
+      // and analogously for T1 <: T21 | (T221 & T222)
+      tp21 match {
+        case AndType(tp211, tp212) =>
+          return isSubType(tp1, OrType(tp211, tp22)) && isSubType(tp1, OrType(tp212, tp22))
+        case _ =>
+      }
+      tp22 match {
+        case AndType(tp221, tp222) =>
+          return isSubType(tp1, OrType(tp21, tp221)) && isSubType(tp1, OrType(tp21, tp222))
+        case _ =>
+      }
       eitherIsSubType(tp1, tp21, tp1, tp22) || fourthTry(tp1, tp2)
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
@@ -446,6 +458,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
        isNewSubType(tp1.parent, tp2) ||
          needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _), Nil)
     case AndType(tp11, tp12) =>
+      // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
+      // and analogously for T11 & (T121 | T122) & T12 <: T2
+      tp11 match {
+        case OrType(tp111, tp112) =>
+          return isSubType(AndType(tp111, tp12), tp2) && isSubType(AndType(tp112, tp12), tp2)
+        case _ =>
+      }
+      tp12 match {
+        case OrType(tp121, tp122) =>
+          return isSubType(AndType(tp11, tp121), tp2) && isSubType(AndType(tp11, tp122), tp2)
+        case _ =>
+      }
       eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
       def compareJavaArray = tp2 match {
