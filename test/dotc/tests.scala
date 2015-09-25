@@ -93,6 +93,7 @@ class tests extends CompilerTest {
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
+  @Test def pos_companions = compileFile(posDir, "companions", twice)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
