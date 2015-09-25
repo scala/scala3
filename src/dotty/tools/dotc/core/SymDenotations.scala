@@ -885,7 +885,7 @@ object SymDenotations {
      */
     private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol =
       if (owner.isClass)
-        owner.info.decl(name).suchThat(_.isCoDefinedWith(symbol)).symbol
+        owner.info.decl(name).suchThat(x => x.isCoDefinedWith(symbol) && x.isClass && x.symbol.isClass).symbol
       else if (!owner.exists || ctx.compilationUnit == null)
         NoSymbol
       else if (!ctx.compilationUnit.tpdTree.isEmpty)
