@@ -93,6 +93,15 @@ object Patterns {
     case t: a2.B =>
       t
   }
+
+  class caseWithPatternVariableHelper1[A]
+  class caseWithPatternVariableHelper2[A]
+
+  def caseWithPatternVariable(x: Any) = x match {
+    case a: caseWithPatternVariableHelper1[_] => ()
+    case b: caseWithPatternVariableHelper2[_] => ()
+  }
+
 }
 
 object NestedPattern {
