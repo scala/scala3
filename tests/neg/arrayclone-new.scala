@@ -7,7 +7,7 @@ object Test extends dotty.runtime.LegacyApp{
 }
 
 object ObjectArrayClone{
-  val it : Array[String] = Array("1", "0");
+  val it : Array[String] = Array("1", "0");           // error
   val cloned = it.clone();
   assert(cloned.sameElements(it));
   cloned(0) = "0";
@@ -22,7 +22,7 @@ object PolymorphicArrayClone{
     assert(it(0) == one)
   }
 
-  testIt(Array("one", "two"), "one", "two");
+  testIt(Array("one", "two"), "one", "two");          // error
 
   class Mangler[T: ClassTag](ts : T*){
     // this will always be a BoxedAnyArray even after we've unboxed its contents.

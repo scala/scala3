@@ -13,11 +13,11 @@ object assignments {
     x = x + 1
     x *= 2
 
-    x_= = 2  // should give missing arguments + reassignment to val
+    x_= = 2  // error should give missing arguments + // error reassignment to val
   }
 
   var c = new C
-  import c._ // should give: prefix is not stable
+  import c._ // error should give: prefix is not stable
   x = x + 1
   x *= 2
 }

@@ -5,10 +5,10 @@ class A extends B
 
 object Test {
   def test1(): Unit = {
-    implicitly[B#X <:< A#X]
+    implicitly[B#X <:< A#X]                           // error
   }
   def test2(): Unit = {
-    val a : { type T; type U } = ???
-    implicitly[a.T <:< a.U]
+    val a : { type T; type U } = ???                  // error // error
+    implicitly[a.T <:< a.U]                           // error
   }
 }

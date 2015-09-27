@@ -13,7 +13,7 @@ object test2 {
 
 
   def f(x: Any): Tree[Null] = x match {
-    case y: Tree[_] => y
+    case y: Tree[_] => y                              // error
   }
 }
 object test3 {
@@ -21,7 +21,7 @@ object test3 {
 
 
   def f(x: Any): Tree[Null] = x match {
-    case y: Tree[_] => y
+    case y: Tree[_] => y                              // error
   }
 }
 
@@ -34,11 +34,11 @@ object test4 {
     class Tree[-S, -T >: Option[S]]
 
     def g(x: Any): Tree[_, _ <: Option[N]] = x match {
-      case y: Tree[_, _] => y
+      case y: Tree[_, _] => y                         // error
     }
   }
 }
 
 class Test5 {
-"": ({ type U = this.type })#U
+"": ({ type U = this.type })#U                        // error // error
 }

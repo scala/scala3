@@ -22,7 +22,7 @@ class A[T](x: T) {
 object T {
   def main(args: Array[String]): Unit = {
     implicit def g2h(g: G): H = new H
-    new A[Int](new H, 23)
+    new A[Int](new H, 23)                             // error
       // in the context here, either secondary constructor is applicable
       // to the other, due to the implicit in scope. So the call is ambiguous.
   }
@@ -40,7 +40,7 @@ object X {
 object T2 {
   def main(args: Array[String]): Unit = {
     implicit def g2h(g: G): H = new H
-    X.f(new H, 23)
+    X.f(new H, 23)                                    // error
   }
 }
 

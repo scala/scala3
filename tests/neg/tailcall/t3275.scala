@@ -1,3 +1,3 @@
 object Test {
-  @annotation.tailrec def foo() = 5
+  @annotation.tailrec def foo() = 5                   // error
 }

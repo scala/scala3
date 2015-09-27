@@ -12,7 +12,7 @@ object Test1 {
 
   val xs: List[C[_]] = List(c, d)
 
-  xs(0).x = xs(1).x
+  xs(0).x = xs(1).x                                   // error
 
 }
 object Test {
@@ -20,7 +20,7 @@ object Test {
     val f: ListBuffer[Int] = ListBuffer(1,2)
     val g: ListBuffer[Double] = ListBuffer(3.0,4.0)
     val lb: ListBuffer[ListBuffer[_]] = ListBuffer(f, g)
-    lb(0)(0) = lb(1)(0)
+    lb(0)(0) = lb(1)(0)                               // error
     val x: Int = f(0)
   }
 }

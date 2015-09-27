@@ -3,9 +3,12 @@ package test
 import dotty.partest.DPConfig
 import dotty.tools.dotc.{Main, Bench, Driver}
 import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.config.CompilerCommand
 import scala.collection.mutable.ListBuffer
-import scala.reflect.io.{ Path, Directory, File => SFile }
+import scala.reflect.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.tools.partest.nest.{ FileManager, NestUI }
+import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
 
 import org.junit.Test
@@ -178,12 +181,137 @@ abstract class CompilerTest extends DottyTest {
 
   // ========== HELPERS =============
 
-  private def compileArgs(args: Array[String], xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = {
+  private def compileArgs(args: Array[String], xerrors: Int = 0)
+      (implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
-    val nerrors = processor.process(allArgs, ctx).errorCount
+    val reporter = processor.process(allArgs, ctx)
+
+    val nerrors = reporter.errorCount
     assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
+
+    // NEG TEST
+    if (xerrors > 0) {
+      val errorLines = reporter.allErrors.map(_.pos)
+      // reporter didn't record as many errors as its errorCount says
+      assert(errorLines.length == nerrors, s"Not enough errors recorded.")
+
+      val allFiles = CompilerCommand.distill(allArgs)(ctx).arguments
+      val expectedErrorsPerFile = allFiles.map(getErrors(_))
+
+      // Some compiler errors have an associated source position. Each error
+      // needs to correspond to a "// error" marker on that line in the source
+      // file and vice versa.
+      // Other compiler errors don't have an associated source position. Their
+      // number should correspond to the total count of "// nopos-error"
+      // markers in all files
+      val (errorsByFile, errorsWithoutPos) = errorLines.groupBy(_.source.file).toList.partition(_._1.toString != "<no source>")
+
+      // check errors with source position
+      val foundErrorsPerFile = errorsByFile.map({ case (fileName, errorList) =>
+        val posErrorLinesToNr = errorList.groupBy(_.line).toList.map({ case (line, list) => (line, list.length) }).sortBy(_._1)
+        ErrorsInFile(fileName.toString, 0, posErrorLinesToNr)
+      })
+      val expectedErrorsPerFileZeroed = expectedErrorsPerFile.map({
+        case ErrorsInFile(fileName, _, posErrorLinesToNr) =>
+          ErrorsInFile(fileName.toString, 0, posErrorLinesToNr)
+      })
+      checkErrorsWithPosition(expectedErrorsPerFileZeroed, foundErrorsPerFile)
+
+      // check errors without source position
+      val expectedNoPos = expectedErrorsPerFile.map(_.noposErrorNr).sum
+      val foundNoPos = errorsWithoutPos.map(_._2.length).sum
+      assert(foundNoPos == expectedNoPos,
+        s"Wrong # of errors without source position. Expected (all files): $expectedNoPos, found (compiler): $foundNoPos")
+    }
   }
+
+  // ========== NEG TEST HELPERS =============
+
+  /** Captures the number of nopos-errors in the given file and the number of
+    * errors with a position, represented as a tuple of source line and number
+    * of errors on that line. */
+  case class ErrorsInFile(fileName: String, noposErrorNr: Int, posErrorLinesToNr: List[(Int, Int)])
+
+  /** Extracts the errors expected for the given neg test file. */
+  def getErrors(fileName: String): ErrorsInFile = {
+    val content = SFile(fileName).slurp
+    val (line, rest) = content.span(_ != '\n')
+
+    @tailrec
+    def checkLine(line: String, rest: String, index: Int, noposAcc: Int, posAcc: List[(Int, Int)]): ErrorsInFile = {
+      val posErrors = "// ?error".r.findAllIn(line).length
+      val newPosAcc = if (posErrors > 0) (index, posErrors) :: posAcc else posAcc
+      val newNoPosAcc = noposAcc + "// ?nopos-error".r.findAllIn(line).length
+      val (newLine, newRest) = rest.span(_ != '\n')
+      if (newRest.isEmpty)
+        ErrorsInFile(fileName.toString, newNoPosAcc, newPosAcc.reverse)
+      else
+        checkLine(newLine, newRest.tail, index + 1, newNoPosAcc, newPosAcc) // skip leading '\n'
+    }
+
+    checkLine(line, rest.tail, 0, 0, Nil) // skip leading '\n'
+  }
+
+  /** Asserts that the expected and found number of errors correspond, and
+    * otherwise throws an error with the filename, plus optionally a line
+    * number if available. */
+  def errorMsg(fileName: String, lineNumber: Option[Int], exp: Int, found: Int) = {
+    val i = lineNumber.map({ i => ":" + (i + 1) }).getOrElse("")
+    assert(found == exp, s"Wrong # of errors for $fileName$i. Expected (file): $exp, found (compiler): $found")
+  }
+
+  /** Compares the expected with the found errors and creates a nice error
+    * message if they don't agree. */
+  def checkErrorsWithPosition(expected: List[ErrorsInFile], found: List[ErrorsInFile]): Unit = {
+      // create nice error messages
+      expected.diff(found) match {
+        case Nil => // nothing missing
+        case ErrorsInFile(fileName, _, expectedLines) :: xs =>
+          found.find(_.fileName == fileName) match {
+            case None =>
+              // expected some errors, but none found for this file
+              errorMsg(fileName, None, expectedLines.map(_._2).sum, 0)
+            case Some(ErrorsInFile(_,_,foundLines)) =>
+              // found wrong number/location of markers for this file
+              compareLines(fileName, expectedLines, foundLines)
+          }
+      }
+
+      found.diff(expected) match {
+        case Nil => // nothing missing
+        case ErrorsInFile(fileName, _, foundLines) :: xs =>
+          expected.find(_.fileName == fileName) match {
+            case None =>
+              // found some errors, but none expected for this file
+              errorMsg(fileName, None, 0, foundLines.map(_._2).sum)
+            case Some(ErrorsInFile(_,_,expectedLines)) =>
+              // found wrong number/location of markers for this file
+              compareLines(fileName, expectedLines, foundLines)
+          }
+      }
+  }
+
+  /** Gives an error message for one line where the expected number of errors and
+    * the number of compiler errors differ. */
+  def compareLines(fileName: String, expectedLines: List[(Int, Int)], foundLines: List[(Int, Int)]) = {
+    expectedLines.foreach({ case (line, expNr) =>
+      foundLines.find(_._1 == line) match {
+        case Some((_, `expNr`)) => // this line is ok
+        case Some((_, foundNr)) => errorMsg(fileName, Some(line), expNr, foundNr)
+        case None               => errorMsg(fileName, Some(line), expNr, 0)
+      }
+    })
+    foundLines.foreach({ case (line, foundNr) =>
+      expectedLines.find(_._1 == line) match {
+        case Some((_, `foundNr`)) => // this line is ok
+        case Some((_, expNr))     => errorMsg(fileName, Some(line), expNr, foundNr)
+        case None                 => errorMsg(fileName, Some(line), 0,     foundNr)
+      }
+    })
+  }
+
+  // ========== PARTEST HELPERS =============
 
   // In particular, don't copy flags from scalac tests
   private val extensionsToCopy = scala.collection.immutable.HashSet("scala", "java")

@@ -40,19 +40,19 @@ class Winners {
 
 object Failures {
   @tailrec
-  def facfail(n: Int): Int =
+  def facfail(n: Int): Int =                          // error
     if (n == 0) 1
-    else n * facfail(n - 1)
+    else n * facfail(n - 1)                           // error
 }
 
 class Failures {
   // not private, not final
-  @tailrec def fail1(x: Int): Int = fail1(x)
+  @tailrec def fail1(x: Int): Int = fail1(x)          // error
 
   // a typical between-chair-and-keyboard error
-  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {
+  @tailrec final def fail2[T](xs: List[T]): List[T] = xs match {   // error
     case Nil      => Nil
-    case x :: xs  => x :: fail2[T](xs)
+    case x :: xs  => x :: fail2[T](xs)                // error
   }
 
   // unsafe
@@ -60,6 +60,6 @@ class Failures {
 
   // unsafe
   class Tom[T](x: Int) {
-    @tailrec final def fail4[U](other: Tom[U], x: Int): Int = other.fail4[U](other, x - 1)
+    @tailrec final def fail4[U](other: Tom[U], x: Int): Int = other.fail4[U](other, x - 1) // error // error
   }
 }
