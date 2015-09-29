@@ -76,12 +76,6 @@ object Config {
    */
   final val checkProjections = false
 
-  /** When set, use new signature-based matching.
-   *  Advantage of doing so: It's supposed to be faster
-   *  Disadvantage: It might hide inconsistencies, so while debugging it's better to turn it off
-   */
-  final val newMatch = false
-
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
 
