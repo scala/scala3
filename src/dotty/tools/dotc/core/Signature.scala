@@ -35,6 +35,16 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   final def matches(that: Signature)(implicit ctx: Context) =
     if (ctx.erasedTypes) equals(that) else sameParams(that)
 
+  /** A signature matches fully another if it has the same parameter type names
+   *  and either one of the result type names is a wildcard or both agree.
+   */
+  final def matchesFully(that: Signature)(implicit ctx: Context) =
+    this.paramsSig == that.paramsSig &&
+    (isWildcard(this.resSig) || isWildcard(that.resSig) || this.resSig == that.resSig)
+
+  /** name.toString == "" or name.toString == "_" */
+  private def isWildcard(name: TypeName) = name.isEmpty || name == tpnme.WILDCARD
+
   /** Construct a signature by prepending the signature names of the given `params`
    *  to the parameter part of this signature.
    */

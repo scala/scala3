@@ -125,8 +125,9 @@ object Denotations {
 
     /** Resolve overloaded denotation to pick the one with the given signature
      *  when seen from prefix `site`.
+     *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix)(implicit ctx: Context): SingleDenotation
+    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): SingleDenotation
 
     /** The variant of this denotation that's current in the given context, or
      *  `NotDefinedHereDenotation` if this denotation does not exist at current phase, but
@@ -221,7 +222,7 @@ object Denotations {
      */
     def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation =
       if (isOverloaded)
-        atSignature(targetType.signature, site).matchingDenotation(site, targetType)
+        atSignature(targetType.signature, site, relaxed = true).matchingDenotation(site, targetType)
       else if (exists && !site.memberInfo(symbol).matchesLoosely(targetType))
         NoDenotation
       else
@@ -398,8 +399,8 @@ object Denotations {
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     final def signature(implicit ctx: Context) = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type)(implicit ctx: Context): SingleDenotation =
-      denot1.atSignature(sig, site) orElse denot2.atSignature(sig, site)
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation =
+      denot1.atSignature(sig, site, relaxed) orElse denot2.atSignature(sig, site, relaxed)
     def currentIfExists(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.currentIfExists, denot2.currentIfExists)
     def current(implicit ctx: Context): Denotation =
@@ -469,9 +470,12 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type)(implicit ctx: Context): SingleDenotation = {
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
       val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      if (sig matches situated.signature) this else NoDenotation
+      val matches =
+        if (relaxed) sig.matches(situated.signature)
+        else sig.matchesFully(situated.signature)
+      if (matches) this else NoDenotation
     }
 
     def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
