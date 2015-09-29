@@ -216,7 +216,9 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           val rhs =
             if (ctx.atPhase(thisTransform)(implicit ctx => getter.is(ParamAccessor))) nextArgument()
             else if (isScala2x)
-              if (getter.is(Lazy)) lazyGetterCall
+              if (getter.is(Lazy, Module)) lazyGetterCall
+              else if (getter.is(Module))
+                New(getter.info.resultType, List(This(cls)))
               else Underscore(getter.info.resultType)
             else transformFollowing(superRef(initializer(getter)).appliedToNone)
           // transformFollowing call is needed to make memoize & lazy vals run
