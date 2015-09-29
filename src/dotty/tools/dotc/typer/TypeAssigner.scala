@@ -63,7 +63,8 @@ trait TypeAssigner {
               val parentType = info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _))
               def addRefinement(parent: Type, decl: Symbol) = {
                 val inherited = parentType.findMember(decl.name, info.cls.thisType, Private)
-                val inheritedInfo = inherited.atSignature(decl.info .signature).info
+                val inheritedInfo = inherited.atSignature(decl.info.signature).info
+                    // @smarter atSignature probably wrong now; we are now missing out on types that refine the result type
                 if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info))
                   typr.echo(
                     i"add ref $parent $decl --> ",
