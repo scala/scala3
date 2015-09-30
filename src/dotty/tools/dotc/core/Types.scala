@@ -1380,6 +1380,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
+      checkedPeriod = Nowhere
     }
 
     private[dotc] def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
