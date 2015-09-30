@@ -474,12 +474,6 @@ object Denotations {
       if (matches) this else NoDenotation
     }
 
-    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
-      val d = signature.matchDegree(other.signature)
-      d == Signature.FullMatch ||
-      d >= Signature.ParamMatch && info.matches(other.info)
-    }
-
     // ------ Forming types -------------------------------------------
 
     /** The TypeRef representing this type denotation at its original location. */
@@ -786,12 +780,15 @@ object Denotations {
     final def last = this
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
-    final def containsSig(sig: Signature)(implicit ctx: Context) =
-      exists && signature.matchDegree(sig) >= Signature.ParamMatch
+    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
+      val d = signature.matchDegree(other.signature)
+      d == Signature.FullMatch ||
+      d >= Signature.ParamMatch && info.matches(other.info)
+    }
     final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
-      if (denots.exists && denots.containsSig(signature)) NoDenotation else this
+      if (denots.exists && denots.matches(this)) NoDenotation else this
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
       if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
       else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
@@ -880,7 +877,7 @@ object Denotations {
     def containsSym(sym: Symbol): Boolean
 
     /** Group contains a denotation with given signature */
-    def containsSig(sig: Signature)(implicit ctx: Context): Boolean
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean
 
     /** Keep only those denotations in this group which satisfy predicate `p`. */
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation
@@ -941,8 +938,8 @@ object Denotations {
       (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
       (denots1 containsSym sym) || (denots2 containsSym sym)
-    def containsSig(sig: Signature)(implicit ctx: Context) =
-      (denots1 containsSig sig) || (denots2 containsSig sig)
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
+      denots1.matches(other) || denots2.matches(other)
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
       derivedUnion(denots1 filterWithPredicate p, denots2 filterWithPredicate p)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
