@@ -22,11 +22,11 @@ object typers {
     val z: Int
     def z(): String      // error: double def
 
-    def f(x: Any) = ()   // error: double def
+    def f(x: Any) = ()   // OK!
     def f(x: AnyRef): AnyRef
 
     def g(x: Object): Unit
-    def g[T](x: T): T = x  // error: double def
+    def g[T](x: T): T = x  // OK!
   }
 
 

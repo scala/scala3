@@ -358,8 +358,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       def compareMethod = tp1 match {
         case tp1 @ MethodType(_, formals1) =>
           (tp1.signature sameParams tp2.signature) &&
-            (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
-            else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
+            matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
             tp1.isImplicit == tp2.isImplicit && // needed?
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -705,21 +704,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       formals2.isEmpty
   }
 
-  private def subsumeParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
-    case formal1 :: rest1 =>
-      formals2 match {
-        case formal2 :: rest2 =>
-          (isSubType(formal2, formal1)
-            || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
-          subsumeParams(rest1, rest2, isJava1, isJava2)
-        case nil =>
-          false
-      }
-    case nil =>
-      formals2.isEmpty
-  }
-
   /** Do poly types `poly1` and `poly2` have type parameters that
    *  have the same bounds (after renaming one set to the other)?
    */
@@ -948,13 +932,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
         case tp2 @ MethodType(names2, formals2)
-        if Config.newMatch && tp1.signature.sameParams(tp2.signature) &&
-           tp1.isImplicit == tp2.isImplicit =>
-          tp1.derivedMethodType(
-              mergeNames(names1, names2, nme.syntheticParamName),
-              (formals1 zipWithConserve formals2)(_ | _),
-              tp1.resultType & tp2.resultType.subst(tp2, tp1))
-        case tp2 @ MethodType(names2, formals2)
         if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
            tp1.isImplicit == tp2.isImplicit =>
           tp1.derivedMethodType(
@@ -1013,13 +990,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
-        case tp2 @ MethodType(names2, formals2)
-        if Config.newMatch && tp1.signature.sameParams(tp2.signature) &&
-           tp1.isImplicit == tp2.isImplicit =>
-          tp1.derivedMethodType(
-              mergeNames(names1, names2, nme.syntheticParamName),
-              (formals1 zipWithConserve formals2)(_ & _),
-              tp1.resultType | tp2.resultType.subst(tp2, tp1))
         case tp2 @ MethodType(names2, formals2)
         if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
            tp1.isImplicit == tp2.isImplicit =>

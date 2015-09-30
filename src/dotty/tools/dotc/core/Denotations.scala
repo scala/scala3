@@ -125,8 +125,9 @@ object Denotations {
 
     /** Resolve overloaded denotation to pick the one with the given signature
      *  when seen from prefix `site`.
+     *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix)(implicit ctx: Context): SingleDenotation
+    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): SingleDenotation
 
     /** The variant of this denotation that's current in the given context, or
      *  `NotDefinedHereDenotation` if this denotation does not exist at current phase, but
@@ -221,7 +222,7 @@ object Denotations {
      */
     def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation =
       if (isOverloaded)
-        atSignature(targetType.signature, site).matchingDenotation(site, targetType)
+        atSignature(targetType.signature, site, relaxed = true).matchingDenotation(site, targetType)
       else if (exists && !site.memberInfo(symbol).matchesLoosely(targetType))
         NoDenotation
       else
@@ -268,7 +269,7 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.signature matches denot2.signature) {
+          else if (denot1.matches(denot2)) {
             val info1 = denot1.info
             val info2 = denot2.info
             val sym1 = denot1.symbol
@@ -282,14 +283,14 @@ object Denotations {
                 case Nil => true
               }
               sym1.derivesFrom(sym2) ||
-              !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
+                !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
             }
 
             /** Preference according to partial pre-order (isConcrete, precedes) */
             def preferSym(sym1: Symbol, sym2: Symbol) =
               sym1.eq(sym2) ||
-              sym1.isAsConcrete(sym2) &&
-              (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
+                sym1.isAsConcrete(sym2) &&
+                (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
 
             /** Sym preference provided types also override */
             def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
@@ -310,8 +311,7 @@ object Denotations {
                 new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
               }
             }
-          }
-          else NoDenotation
+          } else NoDenotation
       }
 
       if (this eq that) this
@@ -333,7 +333,7 @@ object Denotations {
     def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
       def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
-        if (denot1.signature matches denot2.signature) {
+        if (denot1.matches(denot2)) {
           val sym1 = denot1.symbol
           val sym2 = denot2.symbol
           val info1 = denot1.info
@@ -396,8 +396,8 @@ object Denotations {
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     final def signature(implicit ctx: Context) = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type)(implicit ctx: Context): SingleDenotation =
-      denot1.atSignature(sig, site) orElse denot2.atSignature(sig, site)
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation =
+      denot1.atSignature(sig, site, relaxed) orElse denot2.atSignature(sig, site, relaxed)
     def currentIfExists(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.currentIfExists, denot2.currentIfExists)
     def current(implicit ctx: Context): Denotation =
@@ -467,9 +467,11 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type)(implicit ctx: Context): SingleDenotation = {
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
       val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      if (sig matches situated.signature) this else NoDenotation
+      val matches = sig.matchDegree(situated.signature) >=
+        (if (relaxed) Signature.ParamMatch else Signature.FullMatch)
+      if (matches) this else NoDenotation
     }
 
     // ------ Forming types -------------------------------------------
@@ -778,12 +780,15 @@ object Denotations {
     final def last = this
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
-    final def containsSig(sig: Signature)(implicit ctx: Context) =
-      exists && (signature matches sig)
+    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
+      val d = signature.matchDegree(other.signature)
+      d == Signature.FullMatch ||
+      d >= Signature.ParamMatch && info.matches(other.info)
+    }
     final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
-      if (denots.exists && denots.containsSig(signature)) NoDenotation else this
+      if (denots.exists && denots.matches(this)) NoDenotation else this
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
       if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
       else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
@@ -872,7 +877,7 @@ object Denotations {
     def containsSym(sym: Symbol): Boolean
 
     /** Group contains a denotation with given signature */
-    def containsSig(sig: Signature)(implicit ctx: Context): Boolean
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean
 
     /** Keep only those denotations in this group which satisfy predicate `p`. */
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation
@@ -933,8 +938,8 @@ object Denotations {
       (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
       (denots1 containsSym sym) || (denots2 containsSym sym)
-    def containsSig(sig: Signature)(implicit ctx: Context) =
-      (denots1 containsSig sig) || (denots2 containsSig sig)
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
+      denots1.matches(other) || denots2.matches(other)
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
       derivedUnion(denots1 filterWithPredicate p, denots2 filterWithPredicate p)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =

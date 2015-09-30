@@ -312,7 +312,7 @@ trait Checking {
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.signature matches other.signature) {
+        if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
             def ofType = if (decl.isType) "" else d": ${other.info}"
             def explanation =

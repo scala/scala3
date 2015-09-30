@@ -647,12 +647,9 @@ object Types {
      *  (*) when matching with a Java method, we also regard Any and Object as equivalent
      *      parameter types.
      */
-    def matches(that: Type)(implicit ctx: Context): Boolean =
-      if (Config.newMatch) this.signature matches that.signature
-      else track("matches") {
-        ctx.typeComparer.matchesType(
-          this, that, relaxed = !ctx.phase.erasedTypes)
-      }
+    def matches(that: Type)(implicit ctx: Context): Boolean = track("matches") {
+      ctx.typeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
+    }
 
     /** This is the same as `matches` except that it also matches => T with T and
      *  vice versa.
@@ -1383,6 +1380,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
+      checkedPeriod = Nowhere
     }
 
     private[dotc] def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
