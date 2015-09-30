@@ -369,7 +369,7 @@ object RefChecks {
             clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
               alt.symbol.is(JavaDefined, butNot = Deferred) &&
                 !sym.owner.derivesFrom(alt.symbol.owner) &&
-                alt.signature.matches(sym.signature)
+                alt.matches(sym)
             }
           }
 

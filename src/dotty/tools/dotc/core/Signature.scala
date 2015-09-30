@@ -24,23 +24,24 @@ import TypeErasure.sigName
  *  The signatures of non-method types are always `NotAMethod`.
  */
 case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
+  import Signature._
 
   /** Does this signature coincide with that signature on their parameter parts? */
   final def sameParams(that: Signature): Boolean = this.paramsSig == that.paramsSig
 
-  /** The meaning of `matches` depends on the phase. If types are not erased,
-   *  it means `sameParams`. Once types are erased, it means `==`, comparing parameter as
-   *  well as result type parts.
+  /** The degree to which this signature matches `that`.
+   *  If both parameter and result type names match (i.e. they are the same
+   *  or one is a wildcard), the result is `FullMatch`.
+   *  If only the parameter names match, the result is `ParamMatch` before erasure and
+   *  `NoMatch` otherwise.
+   *  If the parameters do not match, the result is always `NoMatch`.
    */
-  final def matches(that: Signature)(implicit ctx: Context) =
-    if (ctx.erasedTypes) equals(that) else sameParams(that)
-
-  /** A signature matches fully another if it has the same parameter type names
-   *  and either one of the result type names is a wildcard or both agree.
-   */
-  final def matchesFully(that: Signature)(implicit ctx: Context) =
-    this.paramsSig == that.paramsSig &&
-    (isWildcard(this.resSig) || isWildcard(that.resSig) || this.resSig == that.resSig)
+  final def matchDegree(that: Signature)(implicit ctx: Context): MatchDegree =
+    if (sameParams(that))
+      if (resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig)) FullMatch
+      else if (!ctx.erasedTypes) ParamMatch
+      else NoMatch
+    else NoMatch
 
   /** name.toString == "" or name.toString == "_" */
   private def isWildcard(name: TypeName) = name.isEmpty || name == tpnme.WILDCARD
@@ -54,6 +55,11 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 }
 
 object Signature {
+
+  type MatchDegree = Int
+  val NoMatch = 0
+  val ParamMatch = 1
+  val FullMatch = 2
 
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType, MethodType, or ExprType.

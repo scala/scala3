@@ -269,52 +269,49 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else {
+          else if (denot1.matches(denot2)) {
             val info1 = denot1.info
             val info2 = denot2.info
-            if (denot1.signature.matches(denot2.signature) &&
-                denot1.info.matches(denot2.info)) {
-              val sym1 = denot1.symbol
-              val sym2 = denot2.symbol
-              val sym2Accessible = sym2.isAccessibleFrom(pre)
+            val sym1 = denot1.symbol
+            val sym2 = denot2.symbol
+            val sym2Accessible = sym2.isAccessibleFrom(pre)
 
-              /** Does `sym1` come before `sym2` in the linearization of `pre`? */
-              def precedes(sym1: Symbol, sym2: Symbol) = {
-                def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
-                  case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
-                  case Nil => true
-                }
-                sym1.derivesFrom(sym2) ||
-                  !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
+            /** Does `sym1` come before `sym2` in the linearization of `pre`? */
+            def precedes(sym1: Symbol, sym2: Symbol) = {
+              def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
+                case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
+                case Nil => true
               }
+              sym1.derivesFrom(sym2) ||
+                !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
+            }
 
-              /** Preference according to partial pre-order (isConcrete, precedes) */
-              def preferSym(sym1: Symbol, sym2: Symbol) =
-                sym1.eq(sym2) ||
-                  sym1.isAsConcrete(sym2) &&
-                  (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
+            /** Preference according to partial pre-order (isConcrete, precedes) */
+            def preferSym(sym1: Symbol, sym2: Symbol) =
+              sym1.eq(sym2) ||
+                sym1.isAsConcrete(sym2) &&
+                (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
 
-              /** Sym preference provided types also override */
-              def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
-                preferSym(sym1, sym2) && info1.overrides(info2)
+            /** Sym preference provided types also override */
+            def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
+              preferSym(sym1, sym2) && info1.overrides(info2)
 
-              if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
+            if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
+            else {
+              val sym1Accessible = sym1.isAccessibleFrom(pre)
+              if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
+              else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
+              else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
               else {
-                val sym1Accessible = sym1.isAccessibleFrom(pre)
-                if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
-                else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
-                else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-                else {
-                  val sym =
-                    if (!sym1.exists) sym2
-                    else if (!sym2.exists) sym1
-                    else if (preferSym(sym2, sym1)) sym2
-                    else sym1
-                  new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
-                }
+                val sym =
+                  if (!sym1.exists) sym2
+                  else if (!sym2.exists) sym1
+                  else if (preferSym(sym2, sym1)) sym2
+                  else sym1
+                new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
               }
-            } else NoDenotation
-          }
+            }
+          } else NoDenotation
       }
 
       if (this eq that) this
@@ -472,14 +469,16 @@ object Denotations {
 
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
       val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      val matches =
-        if (relaxed) sig.matches(situated.signature)
-        else sig.matchesFully(situated.signature)
+      val matches = sig.matchDegree(situated.signature) >=
+        (if (relaxed) Signature.ParamMatch else Signature.FullMatch)
       if (matches) this else NoDenotation
     }
 
-    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
-      signature.matches(other.signature) && info.matches(other.info)
+    def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
+      val d = signature.matchDegree(other.signature)
+      d == Signature.FullMatch ||
+      d >= Signature.ParamMatch && info.matches(other.info)
+    }
 
     // ------ Forming types -------------------------------------------
 
@@ -788,7 +787,7 @@ object Denotations {
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
-      exists && (signature matches sig)
+      exists && signature.matchDegree(sig) >= Signature.ParamMatch
     final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
