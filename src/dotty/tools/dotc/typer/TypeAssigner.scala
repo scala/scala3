@@ -31,10 +31,12 @@ trait TypeAssigner {
   /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
    *  Approximation steps are:
    *
-   *   - follow aliases if the original refers to a forbidden symbol
+   *   - follow aliases and upper bounds if the original refers to a forbidden symbol
    *   - widen termrefs that refer to a forbidden symbol
    *   - replace ClassInfos of forbidden classes by the intersection of their parents, refined by all
    *     non-private fields, methods, and type members.
+   *   - if the prefix of a class refers to a forbidden symbol, first try to replace the prefix,
+   *     if this is not possible, replace the ClassInfo as above.
    *   - drop refinements referring to a forbidden symbol.
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
@@ -52,7 +54,7 @@ trait TypeAssigner {
         case _ =>
           false
       }
-      def apply(tp: Type) = tp match {
+      def apply(tp: Type): Type = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
           apply(tp.info.widenExpr)
         case tp: TypeRef if (forbidden contains tp.symbol) || toAvoid(tp.prefix) =>
@@ -60,6 +62,12 @@ trait TypeAssigner {
             case TypeAlias(ref) =>
               apply(ref)
             case info: ClassInfo if variance > 0 =>
+              if (!(forbidden contains tp.symbol)) {
+                val prefix = apply(tp.prefix)
+                val tp1 = tp.derivedSelect(prefix)
+                if (tp1.typeSymbol.exists)
+                  return tp1
+              }
               val parentType = info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _))
               def addRefinement(parent: Type, decl: Symbol) = {
                 val inherited =
