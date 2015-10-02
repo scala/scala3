@@ -4,6 +4,8 @@ class Outer {
   }
 }
 
+class HasA { type A }
+
 object Test {
   def test = {
     val a: Outer#Inner = {
@@ -15,6 +17,14 @@ object Test {
       val o = new Outer
       val i = new o.Inner
       new i.Inner2
+    }
+
+    val c: HasA { type A = Int } = {
+      val h = new HasA {
+        type A = Int
+      }
+      val x: HasA { type A = h.A } = h
+      x
     }
   }
 }
