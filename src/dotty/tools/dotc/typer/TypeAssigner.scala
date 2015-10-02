@@ -42,22 +42,19 @@ trait TypeAssigner {
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
       lazy val forbidden = symsToAvoid.toSet
-      def toAvoid(tp: Type): Boolean = tp match {
-        case tp: TermRef =>
-          val sym = tp.symbol
-          sym.exists && (
-               sym.owner.isTerm && (forbidden contains sym)
-            || !(sym.owner is Package) && toAvoid(tp.prefix)
-            )
-        case tp: TypeRef =>
-          forbidden contains tp.symbol
-        case _ =>
-          false
-      }
+      def toAvoid(tp: Type): Boolean =
+        // TODO: measure the cost of using `existsPart`, and if necessary replace it
+        // by a `TypeAccumulator` where we have set `stopAtStatic = true`.
+        tp existsPart {
+          case tp: NamedType =>
+            forbidden contains tp.symbol
+          case _ =>
+            false
+        }
       def apply(tp: Type): Type = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
           apply(tp.info.widenExpr)
-        case tp: TypeRef if (forbidden contains tp.symbol) || toAvoid(tp.prefix) =>
+        case tp: TypeRef if toAvoid(tp) =>
           tp.info match {
             case TypeAlias(ref) =>
               apply(ref)
@@ -92,7 +89,7 @@ trait TypeAssigner {
           }
         case tp: RefinedType =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
-          if (tp1.refinedInfo.existsPart(toAvoid) && variance > 0) {
+          if (toAvoid(tp1.refinedInfo) && variance > 0) {
             typr.println(s"dropping refinement from $tp1")
             parent1
           }

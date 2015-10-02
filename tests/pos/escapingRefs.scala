@@ -1,5 +1,7 @@
 class Outer {
-  class Inner
+  class Inner {
+    class Inner2
+  }
 }
 
 object Test {
@@ -7,6 +9,12 @@ object Test {
     val a: Outer#Inner = {
       val o = new Outer
       new o.Inner
+    }
+
+    val b: Outer#Inner#Inner2 = {
+      val o = new Outer
+      val i = new o.Inner
+      new i.Inner2
     }
   }
 }
