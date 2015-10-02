@@ -347,6 +347,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
+      // `|' types to the right of <: are problematic, because
+      // we have to choose one constraint set or another, which might cut off
+      // solutions. The rewriting delays the point where we have to choose.
       tp21 match {
         case AndType(tp211, tp212) =>
           return isSubType(tp1, OrType(tp211, tp22)) && isSubType(tp1, OrType(tp212, tp22))
@@ -460,6 +463,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case AndType(tp11, tp12) =>
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
+      // `&' types to the left of <: are problematic, because
+      // we have to choose one constraint set or another, which might cut off
+      // solutions. The rewriting delays the point where we have to choose.
       tp11 match {
         case OrType(tp111, tp112) =>
           return isSubType(AndType(tp111, tp12), tp2) && isSubType(AndType(tp112, tp12), tp2)
