@@ -6,6 +6,8 @@ class Outer {
 
 class HasA { type A }
 
+class Foo[A]
+
 object Test {
   def test = {
     val a: Outer#Inner = {
@@ -25,6 +27,16 @@ object Test {
       }
       val x: HasA { type A = h.A } = h
       x
+    }
+
+    val d: Foo[Int] = {
+      class Bar[B] extends Foo[B]
+      new Bar[Int]
+    }
+
+    val e: Foo[_] = {
+      class Bar[B] extends Foo[B]
+      new Bar[Int]: Bar[_ <: Int]
     }
   }
 }

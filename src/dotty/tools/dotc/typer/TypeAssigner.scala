@@ -87,13 +87,28 @@ trait TypeAssigner {
             case _ =>
               mapOver(tp)
           }
-        case tp: RefinedType =>
-          val tp1 @ RefinedType(parent1, _) = mapOver(tp)
-          if (toAvoid(tp1.refinedInfo) && variance > 0) {
-            typr.println(s"dropping refinement from $tp1")
-            parent1
+        case tp @ RefinedType(parent, name) if variance > 0 =>
+          // The naive approach here would be to first approximate the parent,
+          // but if the base type of the approximated parent is different from
+          // the current base type, then the current refinement won't be valid
+          // if it's a type parameter refinement.
+          // Therefore we first approximate the base type, then use `baseArgInfos`
+          // to get correct refinements for the approximated base type, then
+          // recursively approximate the resulting type.
+          val base = tp.unrefine
+          if (toAvoid(base)) {
+            val base1 = apply(base)
+            apply(base1.appliedTo(tp.baseArgInfos(base1.typeSymbol)))
+          } else {
+            val parent1 = apply(tp.parent)
+            val refinedInfo1 = apply(tp.refinedInfo)
+            if (toAvoid(refinedInfo1)) {
+              typr.println(s"dropping refinement from $tp")
+              parent1
+            } else {
+              tp.derivedRefinedType(parent1, name, refinedInfo1)
+            }
           }
-          else tp1
         case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
           val lo = ctx.typerState.constraint.fullLowerBound(tp.origin)
           val lo1 = avoid(lo, symsToAvoid)
