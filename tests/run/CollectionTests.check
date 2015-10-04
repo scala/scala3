@@ -21,17 +21,17 @@ Cons(3,Cons(2,Cons(1,Nil)))
 1
 1
 Cons(1,Cons(2,Cons(3,Nil)))
-Array(2)
-Array(1, 3)
-Array(3)
-Array(true, true, true)
-Array(1, -1, 2, -2, 3, -3)
-Array(1, 2, 3, 1, 2, 3)
-Array(1, 2, 3)
+ArrayBuffer(2)
+ArrayBuffer(1, 3)
+ArrayBuffer(3)
+ArrayBuffer(true, true, true)
+ArrayBuffer(1, -1, 2, -2, 3, -3)
+ArrayBuffer(1, 2, 3, 1, 2, 3)
+ArrayBuffer(1, 2, 3)
 Cons(1,Cons(2,Cons(3,Nil)))
-Array(1, 2, 3, a)
-Array((1,true), (2,true), (3,true))
-Array(3, 2, 1)
+ArrayBuffer(1, 2, 3, a)
+ArrayBuffer((1,true), (2,true), (3,true))
+ArrayBuffer(3, 2, 1)
 -------
 123
 123
