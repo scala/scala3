@@ -160,8 +160,10 @@ object Test {
 
   def main(args: Array[String]) = {
     val ints = Cons(1, Cons(2, Cons(3, Nil)))
+    val intsBuf = ints.collect(ArrayBuffer)
     val intsView = ints.view
     seqOps(ints)
+    seqOps(intsBuf)
     viewOps(intsView)
     stringOps("abc")
   }

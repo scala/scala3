@@ -36,9 +36,7 @@ object CollectionStrawMan1 {
   }
 
   /** Base trait for generic collections */
-  trait Iterable[+IA] extends HasIterator[IA] with FromIterator[Iterable] {
-    def buildIterator: Iterator[IA] = iterator
-  }
+  trait Iterable[+IA] extends HasIterator[IA] with FromIterator[Iterable]
 
   /** Base trait for sequence collections */
   trait Seq[+AA] extends Iterable[AA] with FromIterator[Seq] {
@@ -50,67 +48,67 @@ object CollectionStrawMan1 {
 
   /** Operations returning types unrelated to current collection */
   trait Ops[A] extends Any {
-    def toIterator: Iterator[A]
-    def foreach(f: A => Unit): Unit = toIterator.foreach(f)
-    def foldLeft[B](z: B)(op: (B, A) => B): B = toIterator.foldLeft(z)(op)
-    def foldRight[B](z: B)(op: (A, B) => B): B = toIterator.foldRight(z)(op)
-    def indexWhere(p: A => Boolean): Int = toIterator.indexWhere(p)
-    def head: A = toIterator.next
-    def view: View[A] = new View(toIterator)
-    def collect[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(toIterator)
+    def iterator: Iterator[A]
+    def foreach(f: A => Unit): Unit = iterator.foreach(f)
+    def foldLeft[B](z: B)(op: (B, A) => B): B = iterator.foldLeft(z)(op)
+    def foldRight[B](z: B)(op: (A, B) => B): B = iterator.foldRight(z)(op)
+    def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
+    def head: A = iterator.next
+    def view: View[A] = new View(iterator)
+    def collect[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
   }
 
   /** Transforms returning same collection type */
   trait MonoTransforms[A, Repr] extends Any {
-    def toIterator: Iterator[A]
-    def fromIterator(it: => Iterator[A]): Repr
+    protected def iter: Iterator[A]
+    protected def fromIter(it: => Iterator[A]): Repr
     def partition(p: A => Boolean): (Repr, Repr) = {
-      val (xs, ys) = toIterator.partition(p)
-      (fromIterator(xs), fromIterator(ys))
+      val (xs, ys) = iter.partition(p)
+      (fromIter(xs), fromIter(ys))
     }
-    def drop(n: Int): Repr = fromIterator(toIterator.drop(n))
+    def drop(n: Int): Repr = fromIter(iter.drop(n))
   }
 
   /** Transforms returning same collection type constructor */
   trait PolyTransforms[A, C[X]] extends Any {
-    def toIterator: Iterator[A]
-    def fromIterator[B](it: => Iterator[B]): C[B]
-    def map[B](f: A => B): C[B] = fromIterator(toIterator.map(f))
-    def flatMap[B](f: A => CanIterate[B]): C[B] = fromIterator(toIterator.flatMap(f(_)))
-    def ++[B >: A](xs: CanIterate[B]): C[B] = fromIterator(toIterator ++ xs)
-    def zip[B](xs: CanIterate[B]): C[(A, B)] = fromIterator(toIterator.zip(xs.iterator))
+    protected def iter: Iterator[A]
+    protected def fromIter[B](it: => Iterator[B]): C[B]
+    def map[B](f: A => B): C[B] = fromIter(iter.map(f))
+    def flatMap[B](f: A => CanIterate[B]): C[B] = fromIter(iter.flatMap(f(_)))
+    def ++[B >: A](xs: CanIterate[B]): C[B] = fromIter(iter ++ xs)
+    def zip[B](xs: CanIterate[B]): C[(A, B)] = fromIter(iter.zip(xs.iterator))
   }
 
   /** Transforms that only apply to Seq */
   trait MonoTransformsOfSeqs[A, Repr] extends Any with MonoTransforms[A, Repr] {
-    def reverse: Repr = fromIterator(toIterator.reverse)
+    def reverse: Repr = fromIter(iter.reverse)
   }
 
   /** Implementation of Ops for all generic collections */
   implicit class IterableOps[A](val c: Iterable[A])
   extends AnyVal with Ops[A] {
-    def toIterator = c.iterator
+    def iterator = c.iterator
   }
 
   /** Implementation of MonoTransforms for all generic collections */
   implicit class IterableMonoTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterator[C])
   extends AnyVal with MonoTransforms[A, C[A]] {
-    def toIterator = c.buildIterator
-    def fromIterator(it: => Iterator[A]): C[A] = c.fromIterator(it)
+    protected def iter = c.iterator
+    protected def fromIter(it: => Iterator[A]): C[A] = c.fromIterator(it)
   }
 
   /** Implementation of PolyTransforms for all generic collections */
   implicit class IterablePolyTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterator[C])
   extends AnyVal with PolyTransforms[A, C] {
-    def toIterator = c.buildIterator
-    def fromIterator[B](it: => Iterator[B]) = c.fromIterator(it)
+    protected def iter = c.iterator
+    protected def fromIter[B](it: => Iterator[B]) = c.fromIterator(it)
   }
 
   /** Implementation of MonoTransformsForSeqs for all generic collections */
   implicit class SeqMonoTransforms[A, C[X] <: Seq[X]](val c: Seq[A] with FromIterator[C])
   extends AnyVal with MonoTransformsOfSeqs[A, C[A]] {
-    def toIterator = c.buildIterator
-    def fromIterator(it: => Iterator[A]) = c.fromIterator(it)
+    protected def iter = c.iterator
+    protected def fromIter(it: => Iterator[A]) = c.fromIterator(it)
   }
 
   /* --------- Concrete collection types ------------------------------- */
@@ -156,41 +154,80 @@ object CollectionStrawMan1 {
     def tail = ???
   }
 
+  /** Concrete collection type: ArrayBuffer */
+  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLen: Int = 0) extends Seq[A] with FromIterator[ArrayBuffer] {
+    def this() = this(new Array[AnyRef](16))
+    private var elems: Array[AnyRef] = initElems
+    private var len = 0
+    def apply(i: Int) = elems(i).asInstanceOf[A]
+    def length = len
+    def iterator = new RandomAccessIterator[A] {
+      override val knownLength = len
+      def apply(n: Int) = elems(n).asInstanceOf[A]
+    }
+    def fromIterator[B](it: Iterator[B]): ArrayBuffer[B] =
+      ArrayBuffer.fromIterator(it)
+    def +=(elem: A): this.type = {
+      if (len == elems.length) {
+        val newelems = new Array[AnyRef](len * 2)
+        Array.copy(elems, 0, newelems, 0, len)
+        elems = newelems
+      }
+      elems(len) = elem.asInstanceOf[AnyRef]
+      len += 1
+      this
+    }
+    override def toString = elems.take(len).deep.toString
+  }
+
+  object ArrayBuffer extends IterableFactory[ArrayBuffer] {
+    def fromIterator[B](it: Iterator[B]): ArrayBuffer[B] =
+      if (it.knownLength == 0) {
+        val elems = new Array[AnyRef](it.knownLength)
+        for (i <- 0 until elems.length) elems(i) = it.next.asInstanceOf[AnyRef]
+        new ArrayBuffer(elems)
+      }
+      else {
+        val buf = new ArrayBuffer[B]
+        while (it.hasNext) buf += it.next
+        buf
+      }
+  }
+
   /** Concrete collection type: View */
   class View[+A](it: => Iterator[A]) extends HasIterator[A] {
     def iterator = it
   }
 
   implicit class ViewOps[A](val v: View[A]) extends AnyVal with Ops[A] {
-    def toIterator = v.iterator
-    def cache = collect(List).view
+    def iterator = v.iterator
+    def cache = collect(ArrayBuffer).view
   }
 
   implicit class ViewMonoTransforms[A](val v: View[A])
   extends AnyVal with MonoTransforms[A, View[A]] {
-    def toIterator = v.iterator
-    def fromIterator(it: => Iterator[A]): View[A] = new View(it)
+    protected def iter = v.iterator
+    protected def fromIter(it: => Iterator[A]): View[A] = new View(it)
   }
 
   implicit class ViewPolyTransforms[A](val v: View[A])
   extends AnyVal with PolyTransforms[A, View] {
-    def toIterator = v.iterator
-    def fromIterator[B](it: => Iterator[B]) = new View(it)
+    protected def iter = v.iterator
+    protected def fromIter[B](it: => Iterator[B]) = new View(it)
   }
 
   /** Concrete collection type: String */
   implicit class StringOps(val s: String) extends AnyVal with Ops[Char] {
     def iterator: Iterator[Char] = new RandomAccessIterator[Char] {
-      def length = s.length
+      override val knownLength = s.length
       def apply(n: Int) = s.charAt(n)
     }
-    def toIterator = iterator
   }
 
   implicit class StringMonoTransforms(val s: String)
   extends AnyVal with MonoTransformsOfSeqs[Char, String] {
-    def toIterator = s.iterator
-    def fromIterator(it: => Iterator[Char]) = {
+    protected def iter = StringOps(s).iterator
+    protected def fromIter(it: => Iterator[Char]) = {
       val sb = new StringBuilder
       for (ch <- it) sb.append(ch)
       sb.toString
@@ -199,8 +236,8 @@ object CollectionStrawMan1 {
 
   implicit class StringPolyTransforms(val s: String)
   extends AnyVal with PolyTransforms[Char, Seq] {
-    def toIterator = s.iterator
-    def fromIterator[B](it: => Iterator[B]) = List.fromIterator(it)
+    protected def iter = StringOps(s).iterator
+    protected def fromIter[B](it: => Iterator[B]) = List.fromIterator(it)
     def map(f: Char => Char): String = {
       val sb = new StringBuilder
       for (ch <- s) sb.append(f(ch))
@@ -240,91 +277,107 @@ object CollectionStrawMan1 {
       }
       -1
     }
-    def map[B](f: A => B): Iterator[B] = new Iterator[B] {
-      def hasNext = self.hasNext
-      def next = f(self.next)
-    }
-    def flatMap[B](f: A => CanIterate[B]): Iterator[B] = new Iterator[B] {
-      private var myCurrent: Iterator[B] = Iterator.empty
-      private def current = {
-        while (!myCurrent.hasNext && self.hasNext) myCurrent = f(self.next).iterator
-        myCurrent
-      }
-      def hasNext = current.hasNext
-      def next = current.next
-    }
-    def ++[B >: A](xs: CanIterate[B]): Iterator[B] = new Iterator[B] {
-      private var myCurrent: Iterator[B] = self
-      private def current = {
-        if (!myCurrent.hasNext && myCurrent.eq(self)) myCurrent = xs.iterator
-        myCurrent
-      }
-      def hasNext = current.hasNext
-      def next = current.next
-    }
+    def map[B](f: A => B): Iterator[B] = Iterator.Map(this, f)
+    def flatMap[B](f: A => CanIterate[B]): Iterator[B] = Iterator.FlatMap(this, f)
+    def ++[B >: A](xs: CanIterate[B]): Iterator[B] = Iterator.Concat(this, xs.iterator)
     def partition(p: A => Boolean): (Iterator[A], Iterator[A]) = {
       val lookaheadTrue, lookaheadFalse = new ListBuffer[A]
-      class PartIterator[+A](buf: ListBuffer[A]) extends Iterator[A] {
-        final def hasNext: Boolean =
-          buf.nonEmpty ||
-            self.hasNext && {
-              val elem = self.next
-              (if (p(elem)) lookaheadTrue else lookaheadFalse) += elem
-              hasNext
-            }
-        final def next =
-          if (hasNext) {
-            val r = buf.head
-            buf.trimStart(1)
-            r
-          }
-          else Iterator.nextOnEmpty
-      }
-      (new PartIterator(lookaheadTrue), new PartIterator(lookaheadFalse))
+      (Iterator.Partition(this, p, lookaheadTrue, lookaheadFalse),
+       Iterator.Partition[A](this, !p(_), lookaheadFalse, lookaheadTrue))
     }
-    def drop(n: Int): Iterator[A] = {
-      if (n <= 0) this
-      else {
-        next
-        drop(n - 1)
-      }
-    }
-    def zip[B](that: CanIterate[B]): Iterator[(A, B)] = new Iterator[(A, B)] {
-      val ti = that.iterator
-      def hasNext = self.hasNext && ti.hasNext
-      def next = (self.next, ti.next)
-    }
+    def drop(n: Int): Iterator[A] = Iterator.Drop(this, n)
+    def zip[B](that: CanIterate[B]): Iterator[(A, B)] = Iterator.Zip(this, that.iterator)
     def reverse: Iterator[A] = {
       var elems: List[A] = Nil
       while (hasNext) elems = Cons(next, elems)
       elems.iterator
     }
+    def underlying: Iterator[_] = this
+    def knownLength = -1
   }
 
   object Iterator {
     val empty: Iterator[Nothing] = new Iterator[Nothing] {
       def hasNext = false
       def next = ???
+      override val knownLength = 0
     }
     def apply[A](xs: A*): Iterator[A] = new RandomAccessIterator[A] {
-      def length = xs.length
+      override val knownLength = xs.length
       def apply(n: Int) = xs(n)
     }
     def nextOnEmpty = throw new NoSuchElementException("next on empty iterator")
+
+    case class Map[A, B](override val underlying: Iterator[A], f: A => B) extends Iterator[B] {
+      def hasNext = underlying.hasNext
+      def next = f(underlying.next)
+      override val knownLength = underlying.knownLength
+    }
+    case class FlatMap[A, B](override val underlying: Iterator[A], f: A => CanIterate[B]) extends Iterator[B] {
+      private var myCurrent: Iterator[B] = Iterator.empty
+      private def current = {
+        while (!myCurrent.hasNext && underlying.hasNext)
+          myCurrent = f(underlying.next).iterator
+        myCurrent
+      }
+      def hasNext = current.hasNext
+      def next = current.next
+    }
+    case class Concat[A](override val underlying: Iterator[A], other: Iterator[A]) extends Iterator[A] {
+      private var myCurrent = underlying
+      private def current = {
+        if (!myCurrent.hasNext && myCurrent.eq(underlying)) myCurrent = other
+        myCurrent
+      }
+      def hasNext = current.hasNext
+      def next = current.next
+      override val knownLength =
+        if (underlying.knownLength > 0 && other.knownLength > 0)
+          underlying.knownLength + other.knownLength
+        else -1
+    }
+    case class Partition[A](override val underlying: Iterator[A], p: A => Boolean, lookahead: ListBuffer[A], dual: ListBuffer[A]) extends Iterator[A] {
+      final def hasNext: Boolean =
+        lookahead.nonEmpty ||
+          underlying.hasNext && {
+            val elem = underlying.next
+            (if (p(elem)) lookahead else dual) += elem
+            hasNext
+          }
+      final def next =
+        if (hasNext) {
+          val r = lookahead.head
+          lookahead.trimStart(1)
+          r
+        } else Iterator.nextOnEmpty
+    }
+    case class Drop[A](override val underlying: Iterator[A], n: Int) extends Iterator[A] {
+      var toSkip = n
+      def hasNext: Boolean = underlying.hasNext && (
+        toSkip == 0 || { underlying.next; toSkip -= 1; hasNext })
+      def next = if (hasNext) underlying.next else nextOnEmpty
+      override val knownLength = (underlying.knownLength - n) max -1
+    }
+    case class Zip[A, B](override val underlying: Iterator[A], other: Iterator[B]) extends Iterator[(A, B)] {
+      def hasNext = underlying.hasNext && other.hasNext
+      def next = (underlying.next, other.next)
+      override val knownLength = underlying.knownLength min other.knownLength
+    }
+    class Reverse[A](underlying: RandomAccessIterator[A]) extends RandomAccessIterator[A] {
+      override val knownLength = underlying.knownLength
+      def apply(n: Int) = underlying.apply(knownLength - 1 - n)
+    }
   }
 
   trait RandomAccessIterator[+A] extends Iterator[A] { self =>
     def apply(n: Int): A
-    def length: Int
-    protected val len = length
+    def knownLength: Int
+    def length: Int = knownLength
     private var cur = 0
-    def hasNext = cur < len
+    def hasNext = cur < knownLength
     def next: A = { val r = this(cur); cur += 1; r }
     override def drop(n: Int): Iterator[A] = { cur += (n max 0); this }
-    override def reverse = new RandomAccessIterator[A] {
-      def length = self.length
-      def apply(n: Int) = apply(len - 1 - n)
-    }
+    override def reverse: Iterator[A] = new Iterator.Reverse(this)
   }
 }
 
