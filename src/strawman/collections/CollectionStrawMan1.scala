@@ -20,9 +20,6 @@ object CollectionStrawMan1 {
     def iterator: Iterator[A]
   }
 
-  /** Iterator guaranteed to be usable multiple times */
-  trait HasIterator[+A] extends CanIterate[A]
-
   /** Base trait for instances that can construct a collection from an iterator */
   trait FromIterator[+C[X] <: Iterable[X]] {
     def fromIterator[B](it: Iterator[B]): C[B]
@@ -35,7 +32,7 @@ object CollectionStrawMan1 {
   }
 
   /** Base trait for generic collections */
-  trait Iterable[+A] extends HasIterator[A] with FromIterator[Iterable]
+  trait Iterable[+A] extends CanIterate[A] with FromIterator[Iterable]
 
   /** Base trait for sequence collections */
   trait Seq[+A] extends Iterable[A] with FromIterator[Seq] {
@@ -55,7 +52,7 @@ object CollectionStrawMan1 {
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
     def view: View[A] = new View(iterator)
-    def collect[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
+    def collectAs[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
   }
 
   /** Transforms returning same collection type */
@@ -213,13 +210,13 @@ object CollectionStrawMan1 {
   }
 
   /** Concrete collection type: View */
-  class View[+A](it: => Iterator[A]) extends HasIterator[A] {
+  class View[+A](it: => Iterator[A]) extends CanIterate[A] {
     def iterator = it
   }
 
   implicit class ViewOps[A](val v: View[A]) extends AnyVal with Ops[A] {
     def iterator = v.iterator
-    def cache = collect(ArrayBuffer).view
+    def cache = collectAs(ArrayBuffer).view
   }
 
   implicit class ViewMonoTransforms[A](val v: View[A])
