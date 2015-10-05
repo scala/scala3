@@ -40,6 +40,8 @@ object CollectionStrawMan1 {
     def length: Int
   }
 
+  type View[A] = () => Iterator[A]
+
   /* ------------ Operations ----------------------------------- */
 
   /** Operations returning types unrelated to current collection */
@@ -51,7 +53,7 @@ object CollectionStrawMan1 {
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
-    def view: View[A] = new View(iterator)
+    def view: View[A] = iterator _
     def collectAs[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
   }
 
@@ -210,9 +212,6 @@ object CollectionStrawMan1 {
   }
 
   /** Concrete collection type: View */
-  class View[+A](it: => Iterator[A]) extends CanIterate[A] {
-    def iterator = it
-  }
 
   implicit class ViewOps[A](val v: View[A]) extends AnyVal with Ops[A] {
     def iterator = v.iterator
@@ -222,13 +221,13 @@ object CollectionStrawMan1 {
   implicit class ViewMonoTransforms[A](val v: View[A])
   extends AnyVal with MonoTransforms[A, View[A]] {
     protected def iter = v.iterator
-    protected def fromIter(it: => Iterator[A]): View[A] = new View(it)
+    protected def fromIter(it: => Iterator[A]): View[A] = it
   }
 
   implicit class ViewPolyTransforms[A](val v: View[A])
   extends AnyVal with PolyTransforms[A, View] {
     protected def iter = v.iterator
-    protected def fromIter[B](it: => Iterator[B]) = new View(it)
+    protected def fromIter[B](it: => Iterator[B]) = it
   }
 
   /** Concrete collection type: String */
