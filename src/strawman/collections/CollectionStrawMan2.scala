@@ -53,8 +53,11 @@ object CollectionStrawMan1 {
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
-    def view: View[A] = iterator _
     def collectAs[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
+  }
+
+  trait Viewable[A] extends Any {
+    def view: View[A]
   }
 
   /** Transforms returning same collection type */
@@ -87,6 +90,11 @@ object CollectionStrawMan1 {
   implicit class IterableOps[A](val c: Iterable[A])
   extends AnyVal with Ops[A] {
     def iterator = c.iterator
+  }
+
+  implicit class IterableIsViewable[A](val c: Iterable[A]) extends Viewable[A]{
+    def iterator: Iterator[A] = c.iterator
+    def view: View[A] = iterator _
   }
 
   /** Implementation of MonoTransforms for all generic collections */
