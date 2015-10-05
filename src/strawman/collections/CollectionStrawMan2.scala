@@ -65,20 +65,22 @@ object CollectionStrawMan1 {
     protected def iter: Iterator[A]
     protected def fromIter(it: => Iterator[A]): Repr
     def partition(p: A => Boolean): (Repr, Repr) = {
-      val (xs, ys) = iter.partition(p)
+      val lookaheadTrue, lookaheadFalse = new ArrayBuffer[A]
+      val xs = Iterator.Partition[A](this, p, lookaheadTrue, lookaheadFalse)
+      val ys = Iterator.Partition[A](this, !p(_), lookaheadFalse, lookaheadTrue)
       (fromIter(xs), fromIter(ys))
     }
-    def drop(n: Int): Repr = fromIter(iter.drop(n))
+    def drop(n: Int): Repr = fromIter(Iterator.Drop(iter, n))
   }
 
   /** Transforms returning same collection type constructor */
   trait PolyTransforms[A, C[X]] extends Any {
     protected def iter: Iterator[A]
     protected def fromIter[B](it: => Iterator[B]): C[B]
-    def map[B](f: A => B): C[B] = fromIter(iter.map(f))
-    def flatMap[B](f: A => CanIterate[B]): C[B] = fromIter(iter.flatMap(f(_)))
-    def ++[B >: A](xs: CanIterate[B]): C[B] = fromIter(iter ++ xs)
-    def zip[B](xs: CanIterate[B]): C[(A, B)] = fromIter(iter.zip(xs.iterator))
+    def map[B](f: A => B): C[B] = fromIter(Iterator.Map(iter, f))
+    def flatMap[B](f: A => CanIterate[B]): C[B] = fromIter(Iterator.FlatMap(iter, f))
+    def ++[B >: A](xs: CanIterate[B]): C[B] = fromIter(Iterator.Concat(iter, xs))
+    def zip[B](xs: CanIterate[B]): C[(A, B)] = fromIter(Iterator.Zip(iter, xs.iterator))
   }
 
   /** Transforms that only apply to Seq */
@@ -285,30 +287,6 @@ object CollectionStrawMan1 {
     def hasNext: Boolean
     def next: A
     def iterator = this
-    def foldLeft[B](z: B)(op: (B, A) => B): B =
-      if (hasNext) foldLeft(op(z, next))(op) else z
-    def foldRight[B](z: B)(op: (A, B) => B): B =
-      if (hasNext) op(next, foldRight(z)(op)) else z
-    def foreach(f: A => Unit): Unit =
-      while (hasNext) f(next)
-    def indexWhere(p: A => Boolean): Int = {
-      var i = 0
-      while (hasNext) {
-        if (p(next)) return i
-        i += 1
-      }
-      -1
-    }
-    def map[B](f: A => B): Iterator[B] = Iterator.Map(this, f)
-    def flatMap[B](f: A => CanIterate[B]): Iterator[B] = Iterator.FlatMap(this, f)
-    def ++[B >: A](xs: CanIterate[B]): Iterator[B] = Iterator.Concat(this, xs.iterator)
-    def partition(p: A => Boolean): (Iterator[A], Iterator[A]) = {
-      val lookaheadTrue, lookaheadFalse = new ArrayBuffer[A]
-      (Iterator.Partition(this, p, lookaheadTrue, lookaheadFalse),
-       Iterator.Partition[A](this, !p(_), lookaheadFalse, lookaheadTrue))
-    }
-    def drop(n: Int): Iterator[A] = Iterator.Drop(this, n)
-    def zip[B](that: CanIterate[B]): Iterator[(A, B)] = Iterator.Zip(this, that.iterator)
     def reverse: Iterator[A] = {
       var elems: List[A] = Nil
       while (hasNext) elems = Cons(next, elems)
