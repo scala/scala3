@@ -52,7 +52,7 @@ object CollectionStrawMan1 {
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
     def view: View[A] = new View(iterator)
-    def collectAs[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
+    def to[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
   }
 
   /** Transforms returning same collection type */
@@ -216,7 +216,7 @@ object CollectionStrawMan1 {
 
   implicit class ViewOps[A](val v: View[A]) extends AnyVal with Ops[A] {
     def iterator = v.iterator
-    def cache = collectAs(ArrayBuffer).view
+    def cache = to(ArrayBuffer).view
   }
 
   implicit class ViewMonoTransforms[A](val v: View[A])

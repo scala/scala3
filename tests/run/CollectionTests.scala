@@ -14,7 +14,7 @@ object Test {
     val y3: Int = x3
     val x4 = xs.head
     val y4: Int = x4
-    val x5 = xs.collectAs(List)
+    val x5 = xs.to(List)
     val y5: List[Int] = x5
     val (xs6, xs7) = xs.partition(_ % 2 == 0)
     val ys6: Seq[Int] = xs6
@@ -65,7 +65,7 @@ object Test {
     val y3: Int = x3
     val x4 = xs.head
     val y4: Int = x4
-    val x5 = xs.collectAs(List)
+    val x5 = xs.to(List)
     val y5: List[Int] = x5
     val (xs6, xs7) = xs.partition(_ % 2 == 0)
     val ys6: View[Int] = xs6
@@ -92,16 +92,16 @@ object Test {
     println(x3)
     println(x4)
     println(x5)
-    println(xs6.collectAs(List))
-    println(xs7.collectAs(List))
-    println(xs8.collectAs(List))
-    println(xs9.collectAs(List))
-    println(xs10.collectAs(List))
-    println(xs11.collectAs(List))
-    println(xs12.collectAs(List))
-    println(xs13.collectAs(List))
-    println(xs14.collectAs(List))
-    println(xs15.collectAs(List))
+    println(xs6.to(List))
+    println(xs7.to(List))
+    println(xs8.to(List))
+    println(xs9.to(List))
+    println(xs10.to(List))
+    println(xs11.to(List))
+    println(xs12.to(List))
+    println(xs13.to(List))
+    println(xs14.to(List))
+    println(xs15.to(List))
   }
 
   def stringOps(xs: String) = {
@@ -113,7 +113,7 @@ object Test {
     val y3: Int = x3
     val x4 = xs.head
     val y4: Int = x4
-    val x5 = xs.collectAs(List)
+    val x5 = xs.to(List)
     val y5: List[Char] = x5
     val (xs6, xs7) = xs.partition(_ % 2 == 0)
     val ys6: String = xs6
@@ -160,7 +160,7 @@ object Test {
 
   def main(args: Array[String]) = {
     val ints = Cons(1, Cons(2, Cons(3, Nil)))
-    val intsBuf = ints.collectAs(ArrayBuffer)
+    val intsBuf = ints.to(ArrayBuffer)
     val intsView = ints.view
     seqOps(ints)
     seqOps(intsBuf)
