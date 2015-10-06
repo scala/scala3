@@ -13,6 +13,8 @@ import scala.reflect.ClassTag
  */
 object CollectionStrawMan1 {
 
+  type LengthType = Long
+
   /* ------------ Base Traits -------------------------------- */
 
   /** Replaces TraversableOnce */
@@ -36,8 +38,8 @@ object CollectionStrawMan1 {
 
   /** Base trait for sequence collections */
   trait Seq[+A] extends Iterable[A] with FromIterator[Seq] {
-    def apply(i: Int): A
-    def length: Int
+    def apply(i: LengthType): A
+    def length: LengthType
   }
 
   type View[A] = () => Iterator[A]
@@ -50,7 +52,7 @@ object CollectionStrawMan1 {
     def foreach(f: A => Unit): Unit = iterator.foreach(f)
     def foldLeft[B](z: B)(op: (B, A) => B): B = iterator.foldLeft(z)(op)
     def foldRight[B](z: B)(op: (A, B) => B): B = iterator.foldRight(z)(op)
-    def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
+    def indexWhere(p: A => Boolean): LengthType = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
     def collectAs[C[X] <: Iterable[X]](fi: FromIterator[C]): C[A] = fi.fromIterator(iterator)
@@ -70,7 +72,7 @@ object CollectionStrawMan1 {
       val ys = Iterator.Partition[A](this, !p(_), lookaheadFalse, lookaheadTrue)
       (fromIter(xs), fromIter(ys))
     }
-    def drop(n: Int): Repr = fromIter(Iterator.Drop(iter, n))
+    def drop(n: LengthType): Repr = fromIter(Iterator.Drop(iter, n))
   }
 
   /** Transforms returning same collection type constructor */
@@ -129,11 +131,11 @@ object CollectionStrawMan1 {
     def tail: List[A]
     def iterator = new ListIterator[A](this)
     def fromIterator[B](it: Iterator[B]): List[B] = List.fromIterator(it)
-    def apply(i: Int): A = {
+    def apply(i: LengthType): A = {
       require(!isEmpty)
       if (i == 0) head else tail.apply(i - 1)
     }
-    def length: Int =
+    def length: LengthType =
       if (isEmpty) 0 else 1 + tail.length
   }
 
@@ -164,12 +166,12 @@ object CollectionStrawMan1 {
   }
 
   /** Concrete collection type: ArrayBuffer */
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: Int) extends Seq[A] with FromIterator[ArrayBuffer] {
+  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: LengthType) extends Seq[A] with FromIterator[ArrayBuffer] {
     def this() = this(new Array[AnyRef](16), 0)
     private var elems: Array[AnyRef] = initElems
-    private var start = 0
-    private var limit = initLength
-    def apply(i: Int) = elems(start + i).asInstanceOf[A]
+    private var start: LengthType = 0
+    private var limit: LengthType = initLength
+    def apply(i: LengthType) = elems(start + i).asInstanceOf[A]
     def length = limit - start
     def iterator = new ArrayBufferIterator[A](elems, start, length)
     def fromIterator[B](it: Iterator[B]): ArrayBuffer[B] =
@@ -191,7 +193,7 @@ object CollectionStrawMan1 {
       limit += 1
       this
     }
-    def trimStart(n: Int): Unit = start += (n max 0)
+    def trimStart(n: LengthType): Unit = start += (n max 0)
     override def toString = s"ArrayBuffer(${elems.slice(start, limit).mkString(", ")})"
   }
 
@@ -216,9 +218,9 @@ object CollectionStrawMan1 {
     }
   }
 
-  class ArrayBufferIterator[A](val elems: Array[AnyRef], initStart: Int, length: Int) extends RandomAccessIterator[A] {
-    val limit = length
-    def apply(n: Int) = elems(initStart + n).asInstanceOf[A]
+  class ArrayBufferIterator[A](val elems: Array[AnyRef], initStart: LengthType, length: LengthType) extends RandomAccessIterator[A] {
+    val limit: LengthType = length
+    def apply(n: LengthType) = elems(initStart + n).asInstanceOf[A]
   }
 
   /** Concrete collection type: View */
@@ -244,7 +246,7 @@ object CollectionStrawMan1 {
   implicit class StringOps(val s: String) extends AnyVal with Ops[Char] {
     def iterator: Iterator[Char] = new RandomAccessIterator[Char] {
       override val limit = s.length
-      def apply(n: Int) = s.charAt(n)
+      def apply(n: LengthType) = s.charAt(n)
     }
   }
 
@@ -312,7 +314,7 @@ object CollectionStrawMan1 {
     }
     def apply[A](xs: A*): Iterator[A] = new RandomAccessIterator[A] {
       override val limit = xs.length
-      def apply(n: Int) = xs(n)
+      def apply(n: LengthType) = xs(n)
     }
     def nextOnEmpty = throw new NoSuchElementException("next on empty iterator")
 
@@ -358,7 +360,7 @@ object CollectionStrawMan1 {
           r
         } else Iterator.nextOnEmpty
     }
-    case class Drop[A](override val underlying: Iterator[A], n: Int) extends Iterator[A] {
+    case class Drop[A](override val underlying: Iterator[A], n: LengthType) extends Iterator[A] {
       var toSkip = n
       def hasNext: Boolean = underlying.hasNext && (
         toSkip == 0 || { underlying.next; toSkip -= 1; hasNext })
@@ -371,19 +373,19 @@ object CollectionStrawMan1 {
       override def remaining = underlying.remaining min other.remaining
     }
     case class Reverse[A](override val underlying: RandomAccessIterator[A]) extends RandomAccessIterator[A] {
-      def apply(n: Int) = underlying.apply(underlying.limit - 1 - n)
+      def apply(n: LengthType) = underlying.apply(underlying.limit - 1 - n)
       def limit = underlying.remaining
     }
   }
 
   trait RandomAccessIterator[+A] extends Iterator[A] { self =>
-    def apply(n: Int): A
-    def limit: Int
+    def apply(n: LengthType): A
+    def limit: LengthType
     var start = 0
     override def remaining = (limit - start) max 0
     def hasNext = start < limit
     def next: A = { val r = this(start); start += 1; r }
-    override def drop(n: Int): Iterator[A] = { start += (n max 0); this }
+    override def drop(n: LengthType): Iterator[A] = { start += (n max 0); this }
     override def reverse: Iterator[A] = new Iterator.Reverse(this)
   }
 }
