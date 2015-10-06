@@ -2884,7 +2884,13 @@ object Types {
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
-          else tp.derivedSelect(this(tp.prefix))
+          else {
+            val saved = variance
+            variance = 0
+            val result = tp.derivedSelect(this(tp.prefix))
+            variance = saved
+            result
+          }
 
         case _: ThisType
           | _: BoundType
