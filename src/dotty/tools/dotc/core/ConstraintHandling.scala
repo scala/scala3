@@ -23,6 +23,7 @@ trait ConstraintHandling {
   implicit val ctx: Context
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean
+  protected def isSameType(tp1: Type, tp2: Type): Boolean
 
   val state: TyperState
   import state.constraint
@@ -104,10 +105,17 @@ trait ConstraintHandling {
     up.forall(addOneBound(_, lo, isUpper = false))
   }
 
-  protected final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
     try isSubType(tp1, tp2)
+    finally frozenConstraint = saved
+  }
+
+  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+    val saved = frozenConstraint
+    frozenConstraint = true
+    try isSameType(tp1, tp2)
     finally frozenConstraint = saved
   }
 

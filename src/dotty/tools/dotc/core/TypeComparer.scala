@@ -154,24 +154,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case tp1: NamedType =>
             val sym1 = tp1.symbol
             (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
-               ctx.erasedTypes || sym1.isStaticOwner ||
-               { // Implements: A # X  <:  B # X
-                 // if either A =:= B (i.e. A <: B and B <: A), or the following three conditions hold:
-                 //  1. X is a class type,
-                 //  2. B is a class type without abstract type members.
-                 //  3. A <: B.
-                 // Dealiasing is taken care of elsewhere.
-                 val pre1 = tp1.prefix
-                 val pre2 = tp2.prefix
-                 isSameType(pre1, pre2) ||
-                   sym1.isClass &&
-                   pre2.classSymbol.exists &&
-                   pre2.abstractTypeMembers.isEmpty &&
-                   isSubType(pre1, pre2)
-              }
+               ctx.erasedTypes || sym1.isStaticOwner || isSubType(tp1.prefix, tp2.prefix)
             else
               (tp1.name eq tp2.name) &&
-              isSameType(tp1.prefix, tp2.prefix) &&
+              isSubType(tp1.prefix, tp2.prefix) &&
               (tp1.signature == tp2.signature) &&
               !tp1.isInstanceOf[WithFixedSym] &&
               !tp2.isInstanceOf[WithFixedSym]
@@ -229,6 +215,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareSuper
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
+    case OrType(tp21, tp22) =>
+      if (tp21.stripTypeVar eq tp22.stripTypeVar) isSubType(tp1, tp21)
+      else secondTry(tp1, tp2)
     case TypeErasure.ErasedValueType(cls2, underlying2) =>
       def compareErasedValueType = tp1 match {
         case TypeErasure.ErasedValueType(cls1, underlying1) =>
@@ -291,6 +280,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
       isSubType(tp1.tpe, tp2)
+    case AndType(tp11, tp12) =>
+      if (tp11.stripTypeVar eq tp12.stripTypeVar) isSubType(tp11, tp2)
+      else thirdTry(tp1, tp2)
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
@@ -353,6 +345,21 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareRefined
     case OrType(tp21, tp22) =>
+      // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
+      // and analogously for T1 <: T21 | (T221 & T222)
+      // `|' types to the right of <: are problematic, because
+      // we have to choose one constraint set or another, which might cut off
+      // solutions. The rewriting delays the point where we have to choose.
+      tp21 match {
+        case AndType(tp211, tp212) =>
+          return isSubType(tp1, OrType(tp211, tp22)) && isSubType(tp1, OrType(tp212, tp22))
+        case _ =>
+      }
+      tp22 match {
+        case AndType(tp221, tp222) =>
+          return isSubType(tp1, OrType(tp21, tp221)) && isSubType(tp1, OrType(tp21, tp222))
+        case _ =>
+      }
       eitherIsSubType(tp1, tp21, tp1, tp22) || fourthTry(tp1, tp2)
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
@@ -454,6 +461,21 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
        isNewSubType(tp1.parent, tp2) ||
          needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _), Nil)
     case AndType(tp11, tp12) =>
+      // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
+      // and analogously for T11 & (T121 | T122) & T12 <: T2
+      // `&' types to the left of <: are problematic, because
+      // we have to choose one constraint set or another, which might cut off
+      // solutions. The rewriting delays the point where we have to choose.
+      tp11 match {
+        case OrType(tp111, tp112) =>
+          return isSubType(AndType(tp111, tp12), tp2) && isSubType(AndType(tp112, tp12), tp2)
+        case _ =>
+      }
+      tp12 match {
+        case OrType(tp121, tp122) =>
+          return isSubType(AndType(tp11, tp121), tp2) && isSubType(AndType(tp11, tp122), tp2)
+        case _ =>
+      }
       eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
       def compareJavaArray = tp2 match {
@@ -693,7 +715,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case formal1 :: rest1 =>
       formals2 match {
         case formal2 :: rest2 =>
-          (isSameType(formal1, formal2)
+          (isSameTypeWhenFrozen(formal1, formal2)
             || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
             || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
           matchingParams(rest1, rest2, isJava1, isJava2)
@@ -1067,7 +1089,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo =>
-          isSubType(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
         case _ =>
           false
       }
@@ -1083,7 +1105,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2 match {
         case tp2: MethodType =>
           def asGoodParams(formals1: List[Type], formals2: List[Type]) =
-            (formals2 corresponds formals1)(isSubType)
+            (formals2 corresponds formals1)(isSubTypeWhenFrozen)
           asGoodParams(tp1.paramTypes, tp2.paramTypes) &&
           (!asGoodParams(tp2.paramTypes, tp1.paramTypes) ||
            isAsGood(tp1.resultType, tp2.resultType))
