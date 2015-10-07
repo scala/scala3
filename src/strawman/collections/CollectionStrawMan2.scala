@@ -1,6 +1,7 @@
 package strawman.collections
 
 import Predef.{augmentString => _, wrapString => _, _}
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 /** A strawman architecture for new collections. It contains some
@@ -13,7 +14,21 @@ import scala.reflect.ClassTag
  */
 object CollectionStrawMan1 {
 
-  type LengthType = Long
+  type LengthTypeUnderlying = Long
+
+  final case class LengthType(u: LengthTypeUnderlying) extends AnyVal {
+    def +(other: LengthType) = LengthType(u + other.u)
+    def -(other: LengthType) = LengthType(u - other.u)
+    def /(other: LengthType) = LengthType(u / other.u)
+    def *(other: LengthType) = LengthType(u * other.u)
+    def <(other: LengthType) = u < other.u
+    def >(other: LengthType) = u > other.u
+    def <=(other: LengthType) = u <= other.u
+    def >=(other: LengthType) = u >= other.u
+  }
+
+  implicit def intToLengthType(x: Int): LengthType = LengthType(x)
+  implicit def lengthTypeToLong(x: LengthType): Long = x.u.toLong
 
   /* ------------ Base Traits -------------------------------- */
 
