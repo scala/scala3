@@ -29,8 +29,14 @@ object typers {
     def g[T](x: T): T = x  // OK!
   }
 
+  type L[X] = scala.collection.immutable.List[X]
+  type M[X, Y] <: scala.collection.immutable.Map[X, Y]
 
-
+  object hk {
+    def f(x: L)  // error: missing type parameter
+    : M =        // error: missing type parameter
+    ??? : M      // error: missing type parameter
+  }
 
   object returns {
 

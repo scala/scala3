@@ -3,7 +3,7 @@ object Test {
 
   type S = scala.Predef.Set
 
-  val z: S = ???
+  val z: S[_] = ???
 
 
   type Pair[T] = (T, T)

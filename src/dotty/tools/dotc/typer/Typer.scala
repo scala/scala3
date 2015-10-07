@@ -369,7 +369,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (untpd.isWildcardStarArg(tree))
           TypeTree(defn.SeqClass.typeRef.appliedTo(pt :: Nil))
         else
-          typedType(tree.tpt)
+          checkSimpleKinded(typedType(tree.tpt))
       val expr1 =
         if (isWildcard) tree.expr withType tpt1.tpe
         else typed(tree.expr, tpt1.tpe)
@@ -917,7 +917,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
-    val tpt1 = typedType(tpt)
+    val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => typedExpr(rhs, tpt1.tpe)
@@ -931,7 +931,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
-    val tpt1 = typedType(tpt)
+    val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
