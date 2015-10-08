@@ -311,6 +311,10 @@ class TreePickler(pickler: TastyPickler) {
           case tp: NamedType if tp.name.isShadowedName => tp.name
           case _ => name
         }
+        println("sel: " + tree)
+        println("sel.tpe: " + tree.tpe)
+        println("sel.tpe.widen: " + tree.tpe.widen)
+        println("sel.tpe.signature: " + tree.tpe.signature)
         val sig = tree.tpe.signature
         if (sig == Signature.NotAMethod) pickleName(realName)
         else pickleNameAndSig(realName, sig)
