@@ -13,6 +13,7 @@ import Decorators._
 import Names._
 import StdNames._
 import Trees._
+import Inferencing._
 import util.Positions._
 import collection.mutable
 
@@ -24,7 +25,8 @@ object EtaExpansion {
     if (isPureExpr(expr)) expr
     else {
       val name = ctx.freshName(prefix).toTermName
-      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe.widen, coord = positionCoord(expr.pos))
+      val liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
+      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, liftedType, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
       ref(sym.valRef)
     }
