@@ -21,6 +21,7 @@ import Flags._
 import Decorators._
 import ErrorReporting._
 import Checking._
+import Inferencing._
 import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
@@ -55,7 +56,7 @@ object Typer {
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Inferencing with Checking {
+class Typer extends Namer with TypeAssigner with Applications with Implicits with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -975,6 +976,47 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // 2. all private type members have consistent bounds
     // 3. Types do not override classes.
     // 4. Polymorphic type defs override nothing.
+  }
+
+  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
+   *  If that's not already the case, add one. The added class type CT is determined as follows.
+   *  First, let C be the unique class such that
+   *  - there is a parent P_i such that P_i derives from C, and
+   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
+   *  Then, let CT be the smallest type which
+   *  - has C as its class symbol, and
+   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
+   */
+  def ensureFirstIsClass(parents: List[Type])(implicit ctx: Context): List[Type] = {
+    def realClassParent(cls: Symbol): ClassSymbol =
+      if (!cls.isClass) defn.ObjectClass
+      else if (!(cls is Trait)) cls.asClass
+      else cls.asClass.classParents match {
+        case parentRef :: _ => realClassParent(parentRef.symbol)
+        case nil => defn.ObjectClass
+      }
+    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
+      val pcls = realClassParent(parent.classSymbol)
+      if (pcls derivesFrom candidate) pcls else candidate
+    }
+    parents match {
+      case p :: _ if p.classSymbol.isRealClass => parents
+      case _ =>
+        val pcls = (defn.ObjectClass /: parents)(improve)
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
+        val ptype = ctx.typeComparer.glb(
+            defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
+        ptype :: parents
+    }
+  }
+
+  /** Ensure that first parent tree refers to a real class. */
+  def ensureFirstIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
+    case p :: ps if p.tpe.classSymbol.isRealClass => parents
+    case _ =>
+      // add synthetic class type
+      val first :: _ = ensureFirstIsClass(parents.tpes)
+      TypeTree(checkFeasible(first, pos, d"\n in inferred parent $first")).withPos(pos) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a
