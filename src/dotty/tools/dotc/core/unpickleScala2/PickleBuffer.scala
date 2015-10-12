@@ -221,7 +221,7 @@ object PickleBuffer {
       FINAL_PKL -> Final,
       METHOD_PKL -> Method,
       INTERFACE_PKL -> NoInitsInterface,
-      MODULE_PKL -> Module,
+      MODULE_PKL -> (Module | Lazy, Module),
       IMPLICIT_PKL -> Implicit,
       SEALED_PKL -> Sealed,
       CASE_PKL -> Case,
@@ -287,7 +287,7 @@ object PickleBuffer {
     val shift = ChunkBits
     val mask = ChunkSize - 1
     assert(6 * ChunkBits == ScalaFlagEnd)
-    val t = FlagSet(
+    FlagSet(
       map(0)((sflags >>> (shift * 0)).toInt & mask) |
       map(1)((sflags >>> (shift * 1)).toInt & mask) |
       map(2)((sflags >>> (shift * 2)).toInt & mask) |
@@ -295,8 +295,5 @@ object PickleBuffer {
       map(4)((sflags >>> (shift * 4)).toInt & mask) |
       map(5)((sflags >>> (shift * 5)).toInt & mask)
     )
-    if (!isType && t.is(Module, Lazy))
-      t | Lazy // scala2 modules do not always set lazy flag. Dotty modules do
-    else t
   }
 }

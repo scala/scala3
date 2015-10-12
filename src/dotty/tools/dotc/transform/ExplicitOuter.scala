@@ -175,7 +175,8 @@ object ExplicitOuter {
   /** Class is always instantiated in the compilation unit where it is defined */
   private def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     // scala2x modules always take an outer pointer(as of 2.11)
-    cls.owner.isTerm || cls.is(Private) || cls.is(Module, Scala2x)
+    // dotty modules are always locally instantiated
+    cls.owner.isTerm || cls.is(Private) || cls.is(Module, butNot = Scala2x)
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context): TermSymbol =
