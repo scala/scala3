@@ -21,6 +21,7 @@ import Names._
 import StdNames._
 import ProtoTypes._
 import EtaExpansion._
+import Inferencing._
 import collection.mutable
 import config.Printers._
 import TypeApplications._

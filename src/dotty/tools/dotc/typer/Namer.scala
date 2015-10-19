@@ -16,6 +16,7 @@ import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Printers._
 import Annotations._
+import Inferencing._
 import transform.ValueClasses._
 import language.implicitConversions
 
