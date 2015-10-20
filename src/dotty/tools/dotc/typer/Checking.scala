@@ -16,6 +16,7 @@ import Trees._
 import ProtoTypes._
 import Constants._
 import Scopes._
+import ErrorReporting.errorTree
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
@@ -347,6 +348,17 @@ trait Checking {
         ctx.error(i"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""".stripMargin, call.pos)
     }
+
+  /** Check that `tpt` does not define a higher-kinded type */
+  def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree =
+    if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
+        // be more lenient with missing type params in Java,
+        // needed to make pos/java-interop/t1196 work.
+      val alias = tpt.tpe.dealias
+      if (alias.isHK) errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
+      else tpt.withType(alias)
+    }
+    else tpt
 }
 
 trait NoChecking extends Checking {
@@ -360,4 +372,5 @@ trait NoChecking extends Checking {
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
+  override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
 }
