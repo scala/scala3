@@ -156,7 +156,6 @@ class tests extends CompilerTest {
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
   @Test def neg_implicitLowerBound = compileFile(negDir, "implicit-lower-bound", xerrors = 1)
-  @Test def neg_partialApplications = compileFile(negDir, "partialApplications", xerrors = 8)
   @Test def neg_validate = compileFile(negDir, "validate", xerrors = 18)
   @Test def neg_validateParsing = compileFile(negDir, "validate-parsing", xerrors = 7)
   @Test def neg_validateRefchecks = compileFile(negDir, "validate-refchecks", xerrors = 2)
