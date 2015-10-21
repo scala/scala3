@@ -145,7 +145,7 @@ object ExplicitOuter {
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
   private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
-    val deferredIfTrait = if (cls.is(Trait)) Deferred else EmptyFlags
+    val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
       Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
