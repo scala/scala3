@@ -1,4 +1,4 @@
-object Test {
+class Test {
   class Base {
     class Inner
   }
