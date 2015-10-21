@@ -1343,7 +1343,7 @@ object Parsers {
     private def flagOfToken(tok: Int): FlagSet = tok match {
       case ABSTRACT  => Abstract
       case FINAL     => Final
-      case IMPLICIT  => Implicit
+      case IMPLICIT  => ImplicitCommon
       case LAZY      => Lazy
       case OVERRIDE  => Override
       case PRIVATE   => Private
@@ -1377,12 +1377,21 @@ object Parsers {
       || flags1.isTypeFlags && flags2.isTypeFlags
     )
 
-    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
-      if (compatible(mods.flags, flag)) mods | flag
-      else {
-        syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
-        mods
+    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
+      def incompatible(kind: String) = {
+        syntaxError(s"modifier(s) `${mods.flags}' not allowed for $kind")
+        Modifiers(flag)
       }
+      if (compatible(mods.flags, flag)) mods | flag
+      else flag match {
+        case Trait => incompatible("trait")
+        case Method => incompatible("method")
+        case Mutable => incompatible("variable")
+        case _ =>
+          syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
+          mods
+      }
+    }
 
     /** AccessQualifier ::= "[" (Id | this) "]"
      */
@@ -1726,6 +1735,7 @@ object Parsers {
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods)
       } else {
+        val mods1 = addFlag(mods, Method)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
@@ -1735,7 +1745,7 @@ object Parsers {
             if (atScala2Brace) tpt = scalaUnit else accept(EQUALS)
             expr()
           } else EmptyTree
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods | Method)
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1)
       }
     }
 
@@ -1792,7 +1802,7 @@ object Parsers {
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = in.token match {
       case TRAIT =>
-        classDef(posMods(start, mods | Trait))
+        classDef(posMods(start, addFlag(mods, Trait)))
       case CLASS =>
         classDef(posMods(start, mods))
       case CASECLASS =>
@@ -2009,7 +2019,7 @@ object Parsers {
     }
 
     def localDef(start: Int, implicitFlag: FlagSet): Tree =
-      defOrDcl(start, defAnnotsMods(localModifierTokens) | implicitFlag)
+      defOrDcl(start, addFlag(defAnnotsMods(localModifierTokens), implicitFlag))
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
      *  BlockStat    ::= Import
@@ -2038,7 +2048,7 @@ object Parsers {
           if (in.token == IMPLICIT) {
             val start = in.skipToken()
             if (isIdent) stats += implicitClosure(start, Location.InBlock)
-            else stats += localDef(start, Implicit)
+            else stats += localDef(start, ImplicitCommon)
           } else {
             stats += localDef(in.offset, EmptyFlags)
           }
