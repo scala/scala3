@@ -117,8 +117,6 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 object ExplicitOuter {
   import ast.tpd._
 
-  private val LocalInstantiationSite = Module | Private
-
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
     //todo: implementing  #165 would simplify this logic
@@ -176,7 +174,9 @@ object ExplicitOuter {
 
   /** Class is always instantiated in the compilation unit where it is defined */
   private def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    cls.owner.isTerm || cls.is(LocalInstantiationSite)
+    // scala2x modules always take an outer pointer(as of 2.11)
+    // dotty modules are always locally instantiated
+    cls.owner.isTerm || cls.is(Private) || cls.is(Module, butNot = Scala2x)
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context): TermSymbol =

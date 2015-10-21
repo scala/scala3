@@ -34,8 +34,6 @@ import util.Stats.{track, record}
 import config.Printers._
 import language.implicitConversions
 
-trait TyperContextOps { ctx: Context => }
-
 object Typer {
 
   /** The precedence of bindings which determines which of several bindings will be
