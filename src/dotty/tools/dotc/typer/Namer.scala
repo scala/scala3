@@ -234,6 +234,18 @@ class Namer { typer: Typer =>
       sym
     }
 
+    def checkFlags(flags: FlagSet) =
+      if (flags.isEmpty) flags
+      else {
+        val (ok, adapted, kind) = tree match {
+          case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
+          case _ => (flags.isTermFlags, flags.toTermFlags, "value")
+        }
+        if (!ok)
+          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
+        adapted
+      }
+
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
       if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode)
@@ -261,14 +273,16 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name.encode).asTypeName
+        val flags = checkFlags(tree.mods.flags &~ Implicit)
         val cls = record(ctx.newClassSymbol(
-          ctx.owner, name, tree.mods.flags | inSuperCall,
+          ctx.owner, name, flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
         val name = checkNoConflict(tree.name.encode)
+        val flags = checkFlags(tree.mods.flags)
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
@@ -291,7 +305,7 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
         record(ctx.newSymbol(
-          ctx.owner, name, tree.mods.flags | deferred | method | higherKinded | inSuperCall1,
+          ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
           adjustIfModule(new Completer(tree)(cctx), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -517,6 +531,7 @@ class Namer { typer: Typer =>
     def completeInCreationContext(denot: SymDenotation): Unit = {
       denot.info = typeSig(denot.symbol)
       addAnnotations(denot)
+      Checking.checkWellFormed(denot.symbol)
     }
   }
 
@@ -585,6 +600,7 @@ class Namer { typer: Typer =>
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
       addAnnotations(denot)
+      Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.setApplicableFlags(
         (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))

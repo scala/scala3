@@ -230,6 +230,49 @@ object Checking {
     }
     checkTree((), refinement)
   }
+
+  /** Check that symbol's definition is well-formed. */
+  def checkWellFormed(sym: Symbol)(implicit ctx: Context): Unit = {
+    //println(i"check wf $sym with flags ${sym.flags}")
+    def fail(msg: String) = ctx.error(msg, sym.pos)
+    def varNote =
+      if (sym.is(Mutable)) "\n(Note that variables need to be initialized to be defined)"
+      else ""
+
+    def checkWithDeferred(flag: FlagSet) =
+      if (sym.is(flag))
+        fail(i"abstract member may not have `$flag' modifier")
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
+      if (sym.is(allOf(flag1, flag2)))
+        fail(i"illegal combination of modifiers: $flag1 and $flag2 for: $sym")
+
+    if (sym.is(ImplicitCommon)) {
+      if (sym.owner.is(Package))
+        fail(i"`implicit' modifier cannot be used for top-level definitions")
+      if (sym.isType)
+        fail(i"`implicit' modifier cannot be used for types or traits")
+    }
+    if (!sym.isClass && sym.is(Abstract))
+      fail(i"`abstract' modifier can be used only for classes; it should be omitted for abstract members")
+    if (sym.is(AbsOverride) && !sym.owner.is(Trait))
+      fail(i"`abstract override' modifier only allowed for members of traits")
+    if (sym.is(Trait) && sym.is(Final))
+      fail(i"$sym may not be `final'")
+    if (sym.hasAnnotation(defn.NativeAnnot))
+      if (sym.is(Deferred)) sym.resetFlag(Deferred)
+      else fail(i"`@native' members may not have implementation")
+    if (sym.is(Deferred, butNot = Param) && !sym.isSelfSym) {
+      if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
+        fail(i"only classes can have declared but undefined members$varNote")
+      checkWithDeferred(Private)
+      checkWithDeferred(Final)
+    }
+    if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
+      fail(i"$sym cannot extend AnyVal")
+    checkNoConflict(Final, Sealed)
+    checkNoConflict(Private, Protected)
+    checkNoConflict(Abstract, Override)
+  }
 }
 
 trait Checking {
