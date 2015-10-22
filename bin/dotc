@@ -24,6 +24,7 @@ SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
 DOTTY_VERSION=$(getLastStringOnLineWith "version in")
 JLINE_VERSION=$(getLastStringOnLineWith "jline")
 bootcp=true
+bootstrapped=false
 default_java_opts="-Xmx768m -Xms768m"
 programName=$(basename "$0")
 # uncomment next line to enable debug output
@@ -44,12 +45,14 @@ ReplMain=test.DottyRepl
 # autodetecting the compiler jar. this is location where sbt 'packages' it
 MAIN_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION.jar
 TEST_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION-tests.jar
+DOTTY_JAR=$DOTTY_ROOT/dotty.jar
+
 function checkjar {
   if [ ! -f "$1" ]
   then
     echo "The script is going to build the required jar file $1 by running \"sbt $2\""
     cd $DOTTY_ROOT
-    sbt $2
+    sbt "$2"
     cd -
     if [ ! -f "$1" ]
     then
@@ -64,7 +67,7 @@ function checkjar {
     then
       echo "new files detected. rebuilding"
       cd $DOTTY_ROOT
-      sbt $2
+      sbt "$2"
       touch "$1"
       cd -
     fi
@@ -189,7 +192,13 @@ trap onExit INT
 # If using the boot classpath, also pass an empty classpath
 # to java to suppress "." from materializing.
 classpathArgs () {
-  toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
+  if [[ -n $bootstrapped ]]; then 
+    checkjar $DOTTY_JAR "test:runMain dotc.build" src
+    toolchain="$DOTTY_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
+  else
+    toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
+  fi
+
   if [[ -n "$cygwin" ]]; then
     if [[ "$OS" = "Windows_NT" ]] && cygpath -m .>/dev/null 2>/dev/null ; then
       format=mixed
@@ -233,6 +242,7 @@ while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
      -h|-help) usage; exit 1 ;;
+     -bootstrapped) bootstrapped=true && shift ;;
   -v|-verbose) verbose=true && shift ;;
     -d|-debug) debug=true && shift ;;
     -q|-quiet) quiet=true && shift ;;
