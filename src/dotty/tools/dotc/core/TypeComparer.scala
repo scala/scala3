@@ -123,7 +123,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
-      assert(!ctx.settings.YnoDeepSubtypes.value)
+      if (ctx.settings.YnoDeepSubtypes.value) throw new Error("deep subtype")
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
@@ -779,8 +779,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             else {
               val t2 = mergeIfSub(tp2, tp1)
               if (t2.exists) t2
-              else andType(tp1, tp2)
-            }
+              else tp1 match {
+                case tp1: SingletonType =>
+                  tp2 match {
+                    case tp2: SingletonType =>
+                      // Make use of the fact that the intersection of two singleton
+                      // types which are not subtypes of each other is empty.
+                      defn.NothingType
+                    case _ => andType(tp1, tp2)
+                  }
+                case _ => andType(tp1, tp2)
+              }
+          }
         }
     }
   }
