@@ -380,18 +380,22 @@ object desugar {
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
-      if (mods is Implicit) {
-        if (ctx.owner is Package)
-          ctx.error("implicit classes may not be toplevel", cdef.pos)
-        if (mods is Case)
-          ctx.error("implicit classes may not case classes", cdef.pos)
-
+      if (!mods.is(Implicit))
+        Nil
+      else if (ctx.owner is Package) {
+        ctx.error("implicit classes may not be toplevel", cdef.pos)
+        Nil
+      }
+      else if (mods is Case) {
+        ctx.error("implicit classes may not be case classes", cdef.pos)
+        Nil
+      }
+      else
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
           .withFlags(Synthetic | Implicit) :: Nil
-      }
-      else Nil
+
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt

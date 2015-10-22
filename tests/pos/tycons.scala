@@ -16,7 +16,7 @@ abstract class Functor[F <: TypeConstructor] {
   def map[A, B](f: F { type TypeArg <: A }): F { type TypeArg <: B }
 }
 
-implicit object ListFunctor extends Functor[List] {
+object ListFunctor extends Functor[List] {
   override def map[A, B](f: List { type TypeArg <: A }): List { type TypeArg <: B } = ???
 }
 

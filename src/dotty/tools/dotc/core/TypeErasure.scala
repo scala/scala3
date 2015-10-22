@@ -401,9 +401,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    ErasedValueType(cls, valueErasure(underlying))
+    if (underlying.exists) ErasedValueType(cls, valueErasure(underlying))
+    else NoType
   }
-
 
   private def eraseNormalClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
@@ -439,36 +439,45 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   /** The name of the type as it is used in `Signature`s.
    *  Need to ensure correspondence with erasure!
    */
-  private def sigName(tp: Type)(implicit ctx: Context): TypeName = tp match {
-    case ErasedValueType(_, underlying) =>
-      sigName(underlying)
-    case tp: TypeRef =>
-      if (!tp.denot.exists) throw new MissingType(tp.prefix, tp.name)
-      val sym = tp.symbol
-      if (!sym.isClass) {
-        val info = tp.info
-        if (!info.exists) assert(false, "undefined: $tp with symbol $sym")
-        sigName(info)
-      }
-      else if (isDerivedValueClass(sym)) sigName(eraseDerivedValueClassRef(tp))
-      else normalizeClass(sym.asClass).fullName.asTypeName
-    case defn.ArrayType(elem) =>
-      sigName(this(tp))
-    case JavaArrayType(elem) =>
-      sigName(elem) ++ "[]"
-    case tp: TermRef =>
-      sigName(tp.widen)
-    case ExprType(rt) =>
-      sigName(defn.FunctionType(Nil, rt))
-    case tp: TypeProxy =>
-      sigName(tp.underlying)
-    case ErrorType | WildcardType =>
-      tpnme.WILDCARD
-    case tp: WildcardType =>
-      sigName(tp.optBounds)
-    case _ =>
-      val erased = this(tp)
-      assert(erased ne tp, tp)
-      sigName(erased)
+  private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
+    tp match {
+      case ErasedValueType(_, underlying) =>
+        sigName(underlying)
+      case tp: TypeRef =>
+        if (!tp.denot.exists) throw new MissingType(tp.prefix, tp.name)
+        val sym = tp.symbol
+        if (!sym.isClass) {
+          val info = tp.info
+          if (!info.exists) assert(false, "undefined: $tp with symbol $sym")
+          return sigName(info)
+        }
+        if (isDerivedValueClass(sym)) {
+          val erasedVCRef = eraseDerivedValueClassRef(tp)
+          if (erasedVCRef.exists) return sigName(erasedVCRef)
+        }
+        normalizeClass(sym.asClass).fullName.asTypeName
+      case defn.ArrayType(elem) =>
+        sigName(this(tp))
+      case JavaArrayType(elem) =>
+        sigName(elem) ++ "[]"
+      case tp: TermRef =>
+        sigName(tp.widen)
+      case ExprType(rt) =>
+        sigName(defn.FunctionType(Nil, rt))
+      case tp: TypeProxy =>
+        sigName(tp.underlying)
+      case ErrorType | WildcardType =>
+        tpnme.WILDCARD
+      case tp: WildcardType =>
+        sigName(tp.optBounds)
+      case _ =>
+        val erased = this(tp)
+        assert(erased ne tp, tp)
+        sigName(erased)
+    }
+  } catch {
+    case ex: AssertionError =>
+      println(s"no sig for $tp")
+      throw ex
   }
 }
