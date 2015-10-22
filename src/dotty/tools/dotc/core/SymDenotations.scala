@@ -736,8 +736,11 @@ object SymDenotations {
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
-      case ClassInfo(_, _, _, _, selfType: TermRef) if this is ModuleClass =>
-        selfType.symbol
+      case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
+        selfType match {
+          case selfType: TermRef => selfType.symbol
+          case selfType: Symbol => selfType.info.asInstanceOf[TermRef].symbol
+        }
       case info: LazyType =>
         info.sourceModule
       case _ =>

@@ -278,7 +278,7 @@ class Namer { typer: Typer =>
         val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-          privateWithinClass(tree.mods), tree.pos, ctx.source.file)SyS, tree)
+          privateWithinClass(tree.mods), tree.pos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
