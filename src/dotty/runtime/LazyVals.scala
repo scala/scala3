@@ -8,8 +8,8 @@ import scala.annotation.tailrec
 object LazyVals {
   private val unsafe = scala.concurrent.util.Unsafe.instance
 
-  final val BITS_PER_LAZY_VAL = 2
-  final val LAZY_VAL_MASK = 3
+  final val BITS_PER_LAZY_VAL = 2L
+  final val LAZY_VAL_MASK = 3L
 
   @inline def STATE(cur: Long, ord: Int) = (cur >> (ord * BITS_PER_LAZY_VAL)) & LAZY_VAL_MASK
   @inline def CAS(t: Object, offset: Long, e: Long, v: Int, ord: Int) = {
