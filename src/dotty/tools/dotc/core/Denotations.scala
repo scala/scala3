@@ -308,7 +308,17 @@ object Denotations {
                   else if (!sym2.exists) sym1
                   else if (preferSym(sym2, sym1)) sym2
                   else sym1
-                new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
+                val jointInfo =
+                  try info1 & info2
+                  catch {
+                    case ex: MergeError =>
+                      if (pre.widen.classSymbol.is(Scala2x))
+                        info1 // follow Scala2 linearization -
+                              // compare with way merge is performed in SymDenotation#computeMembersNamed
+                      else
+                        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
+                  }
+                new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
               }
             }
           } else NoDenotation

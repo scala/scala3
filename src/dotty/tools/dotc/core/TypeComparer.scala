@@ -1057,6 +1057,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     println(TypeComparer.explained { implicit ctx => tp1 <:< tp2})
     assert(false, s"andConflict ${tp1.show} and ${tp2.show}")
     */
+    if (!ctx.isAfterTyper && !ctx.mode.is(Mode.Scala2Unpickling))
+      throw new MergeError(msg)
     ctx.warning(msg, ctx.tree.pos)
     winner
   }
