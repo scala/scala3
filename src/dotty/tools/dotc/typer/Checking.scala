@@ -258,10 +258,11 @@ object Checking {
       fail(i"`abstract override' modifier only allowed for members of traits")
     if (sym.is(Trait) && sym.is(Final))
       fail(i"$sym may not be `final'")
-    if (sym.hasAnnotation(defn.NativeAnnot))
-      if (sym.is(Deferred)) sym.resetFlag(Deferred)
-      else fail(i"`@native' members may not have implementation")
-    if (sym.is(Deferred, butNot = Param) && !sym.isSelfSym) {
+    if (sym.hasAnnotation(defn.NativeAnnot)) {
+      if (!sym.is(Deferred))
+        fail(i"`@native' members may not have implementation")
+    }
+    else if (sym.is(Deferred, butNot = Param) && !sym.isSelfSym) {
       if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
         fail(i"only classes can have declared but undefined members$varNote")
       checkWithDeferred(Private)
