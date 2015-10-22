@@ -84,14 +84,19 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         newDefs += ValDef(outerParamAcc, EmptyTree)
         newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
       }
+
+      for (parentTrait <- cls.mixins) {
+        if (needsOuterIfReferenced(parentTrait)) {
+          val parentTp = cls.denot.thisType.baseTypeRef(parentTrait)
+          val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
+          newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parentTp)))
+        }
+      }
+
       val parents1 =
         for (parent <- impl.parents) yield {
           val parentCls = parent.tpe.classSymbol.asClass
           if (parentCls.is(Trait)) {
-            if (needsOuterIfReferenced(parentCls)) {
-              val outerAccImpl = newOuterAccessor(cls, parentCls).enteredAfter(thisTransformer)
-              newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parent.tpe)))
-            }
             parent
           }
           else parent match { // ensure class parent is a constructor
@@ -145,7 +150,7 @@ object ExplicitOuter {
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
   private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
-    val deferredIfTrait = if (cls.is(Trait)) Deferred else EmptyFlags
+    val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
       Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
