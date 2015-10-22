@@ -216,6 +216,17 @@ class Namer { typer: Typer =>
     }
   }
 
+  /** Record `sym` as the symbol defined by `tree` */
+  def recordSym(sym: Symbol, tree: Tree)(implicit ctx: Context): Symbol = {
+    val refs = tree.attachmentOrElse(References, Nil)
+    if (refs.nonEmpty) {
+      tree.removeAttachment(References)
+      refs foreach (_.pushAttachment(OriginalSymbol, sym))
+    }
+    tree.pushAttachment(SymOfTree, sym)
+    sym
+  }
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -223,16 +234,6 @@ class Namer { typer: Typer =>
 
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
-
-    def record(sym: Symbol): Symbol = {
-      val refs = tree.attachmentOrElse(References, Nil)
-      if (refs.nonEmpty) {
-        tree.removeAttachment(References)
-        refs foreach (_.pushAttachment(OriginalSymbol, sym))
-      }
-      tree.pushAttachment(SymOfTree, sym)
-      sym
-    }
 
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
@@ -274,10 +275,10 @@ class Namer { typer: Typer =>
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name.encode).asTypeName
         val flags = checkFlags(tree.mods.flags &~ Implicit)
-        val cls = record(ctx.newClassSymbol(
+        val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-          privateWithinClass(tree.mods), tree.pos, ctx.source.file))
+          privateWithinClass(tree.mods), tree.pos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -304,13 +305,13 @@ class Namer { typer: Typer =>
         // have no implementation.
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
-        record(ctx.newSymbol(
+        recordSym(ctx.newSymbol(
           ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
           adjustIfModule(new Completer(tree)(cctx), tree),
-          privateWithinClass(tree.mods), tree.pos))
+          privateWithinClass(tree.mods), tree.pos), tree)
       case tree: Import =>
-        record(ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos))
+        recordSym(ctx.newSymbol(
+          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)
       case _ =>
         NoSymbol
     }
@@ -579,7 +580,13 @@ class Namer { typer: Typer =>
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls is Module) cls.owner.thisType select sourceModule
+        else if (cls.is(Module)) {
+          val moduleType = cls.owner.thisType select sourceModule
+          if (self.name == nme.WILDCARD) moduleType
+          else recordSym(
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            self)
+        }
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
