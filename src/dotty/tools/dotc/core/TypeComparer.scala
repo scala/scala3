@@ -1040,7 +1040,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def mergeConflict(tp1: Type, tp2: Type): Type = {
     def showType(tp: Type) = tp match {
       case ClassInfo(_, cls, _, _, _) => cls.showLocated
-      case bounds: TypeBounds => "type bounds" + bounds.show
+      case bounds: TypeBounds => i"type bounds $bounds"
       case _ => tp.show
     }
     throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}")
@@ -1060,10 +1060,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case bounds: TypeBounds => "type bounds" + bounds.show
     case _ => tp.show
   }
-
-  /** The error message kernel for a merge conflict */
-  private def mergeErrorMsg(tp1: Type, tp2: Type)(implicit ctx: Context) =
-    s"cannot merge ${showType(tp1)} with ${showType(tp2)}"
 
   /** A comparison function to pick a winner in case of a merge conflict */
   private def isAsGood(tp1: Type, tp2: Type): Boolean = tp1 match {
