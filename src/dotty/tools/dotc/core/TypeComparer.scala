@@ -874,11 +874,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *    3. Two method or poly types with different (type) parameters but the same
    *       signature are conflicting
    *
-   *  In these cases, one of the types is picked (@see andConflict).
-   *  This is arbitrary, but I believe it is analogous to forming
-   *  infeasible TypeBounds (where low bound is not a subtype of high bound).
-   *  Such TypeBounds can also be arbitrarily instantiated. In both cases we need to
-   *  make sure that such types do not actually arise in source programs.
+   *  In these cases, a MergeError is thrown.
    */
   final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
@@ -943,13 +939,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2 match {
         case tp2: TypeBounds => tp1 & tp2
         case tp2: ClassInfo if tp1 contains tp2.typeRef => tp2
-        case _ => andConflict(tp1, tp2)
+        case _ => mergeConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
         case tp2: TypeBounds if tp2 contains tp1.typeRef => tp1
-        case _ => andConflict(tp1, tp2)
+        case _ => mergeConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
@@ -960,7 +956,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(names1, names2, nme.syntheticParamName),
               formals1, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
-          andConflict(tp1, tp2)
+          mergeConflict(tp1, tp2)
       }
     case tp1: PolyType =>
       tp2 match {
@@ -969,7 +965,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
-          andConflict(tp1, tp2)
+          mergeConflict(tp1, tp2)
       }
     case ExprType(rt1) =>
       tp2 match {
@@ -1002,13 +998,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2 match {
         case tp2: TypeBounds => tp1 | tp2
         case tp2: ClassInfo if tp1 contains tp2.typeRef => tp1
-        case _ => orConflict(tp1, tp2)
+        case _ => mergeConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
         case tp2: TypeBounds if tp2 contains tp1.typeRef => tp2
-        case _ => orConflict(tp1, tp2)
+        case _ => mergeConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
@@ -1019,7 +1015,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(names1, names2, nme.syntheticParamName),
               formals1, tp1.resultType | tp2.resultType.subst(tp2, tp1))
         case _ =>
-          orConflict(tp1, tp2)
+          mergeConflict(tp1, tp2)
       }
     case tp1: PolyType =>
       tp2 match {
@@ -1028,7 +1024,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
         case _ =>
-          orConflict(tp1, tp2)
+          mergeConflict(tp1, tp2)
       }
     case ExprType(rt1) =>
       ExprType(rt1 | tp2.widenExpr)
@@ -1040,30 +1036,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       NoType
   }
 
-  /** Handle `&`-conflict. If `tp2` is strictly better than `tp1` as determined
-   *  by @see `isAsGood`, pick `tp2` as the winner otherwise pick `tp1`.
-   *  Issue a warning and return the winner.
-   */
-  private def andConflict(tp1: Type, tp2: Type): Type = {
-    // println(disambiguated(implicit ctx => TypeComparer.explained(_.typeComparer.isSubType(tp1, tp2)))) !!!DEBUG
-    val winner = if (isAsGood(tp2, tp1) && !isAsGood(tp1, tp2)) tp2 else tp1
-    def msg = disambiguated { implicit ctx =>
-      s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}"
+  /** Handle merge conflict by throwing a `MergeError` exception */
+  private def mergeConflict(tp1: Type, tp2: Type): Type = {
+    def showType(tp: Type) = tp match {
+      case ClassInfo(_, cls, _, _, _) => cls.showLocated
+      case bounds: TypeBounds => i"type bounds $bounds"
+      case _ => tp.show
     }
-    /* !!! DEBUG
-    println("right not a subtype of left because:")
-    println(TypeComparer.explained { implicit ctx => tp2 <:< tp1})
-    println("left not a subtype of right because:")
-    println(TypeComparer.explained { implicit ctx => tp1 <:< tp2})
-    assert(false, s"andConflict ${tp1.show} and ${tp2.show}")
-    */
-    ctx.warning(msg, ctx.tree.pos)
-    winner
+    throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}")
   }
-
-  /** Handle `|`-conflict by raising a `MergeError` exception */
-  private def orConflict(tp1: Type, tp2: Type): Type =
-    throw new MergeError(mergeErrorMsg(tp1, tp2))
 
   /** Merge two lists of names. If names in corresponding positions match, keep them,
    *  otherwise generate new synthetic names.
@@ -1079,10 +1060,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case bounds: TypeBounds => "type bounds" + bounds.show
     case _ => tp.show
   }
-
-  /** The error message kernel for a merge conflict */
-  private def mergeErrorMsg(tp1: Type, tp2: Type)(implicit ctx: Context) =
-    s"cannot merge ${showType(tp1)} with ${showType(tp2)}"
 
   /** A comparison function to pick a winner in case of a merge conflict */
   private def isAsGood(tp1: Type, tp2: Type): Boolean = tp1 match {

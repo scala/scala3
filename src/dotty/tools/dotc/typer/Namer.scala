@@ -575,7 +575,14 @@ class Namer { typer: Typer =>
       def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(ctx.superCallContext)
         if (cls.isRefinementClass) ptype
-        else checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
+        else {
+          val pt = checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
+          if (pt.derivesFrom(cls)) {
+            ctx.error(i"cyclic inheritance: $cls extends itself", parent.pos)
+            defn.ObjectClass.typeRef
+          }
+          else pt
+        }
       }
 
       val selfInfo =

@@ -492,10 +492,8 @@ object Types {
 
       try go(this)
       catch {
-        case ex: MergeError =>
-          throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
         case ex: Throwable =>
-          ctx.println(i"findMember exception for $this member $name")
+          core.println(i"findMember exception for $this member $name")
           throw ex // DEBUG
       }
       finally {
