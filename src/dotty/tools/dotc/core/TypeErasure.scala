@@ -446,17 +446,16 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: TypeRef =>
         if (!tp.denot.exists) throw new MissingType(tp.prefix, tp.name)
         val sym = tp.symbol
-        var edvc: Type = null
-        def dvcErasure: Type = {
-          if (edvc == null) edvc = eraseDerivedValueClassRef(tp)
-          edvc
-        }
         if (!sym.isClass) {
           val info = tp.info
           if (!info.exists) assert(false, "undefined: $tp with symbol $sym")
-          sigName(info)
-        } else if (isDerivedValueClass(sym) && dvcErasure.exists) sigName(dvcErasure)
-        else normalizeClass(sym.asClass).fullName.asTypeName
+          return sigName(info)
+        }
+        if (isDerivedValueClass(sym)) {
+          val erasedVCRef = eraseDerivedValueClassRef(tp)
+          if (erasedVCRef.exists) return sigName(erasedVCRef)
+        }
+        normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayType(elem) =>
         sigName(this(tp))
       case JavaArrayType(elem) =>
