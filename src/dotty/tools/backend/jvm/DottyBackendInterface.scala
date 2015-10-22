@@ -640,7 +640,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
         val original = toDenot(sym).initial
         val validity = original.validFor
         val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).isStatic
+        toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
     def isStaticConstructor: Boolean = isStaticMember && isClassConstructor

@@ -47,7 +47,7 @@ trait TypeTestsCasts {
 
         def transformIsInstanceOf(expr:Tree, argType: Type): Tree = {
           def argCls = argType.classSymbol
-          if (expr.tpe <:< argType)
+          if (false && expr.tpe <:< argType)
             Literal(Constant(true)) withPos tree.pos
           else if (argCls.isPrimitiveValueClass)
             if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls)) withPos tree.pos

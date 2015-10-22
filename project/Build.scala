@@ -42,7 +42,7 @@ object DottyBuild extends Build {
     resolvers += Resolver.sonatypeRepo("releases"),
 
     // get libraries onboard
-    partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20150714-145300-2ad68448c5",
+    partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20151022-113908-7fb0e653fd",
                       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
                       "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
     libraryDependencies ++= partestDeps.value,
@@ -81,7 +81,7 @@ object DottyBuild extends Build {
       val args = Def.spaceDelimited("<arg>").parsed
       val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++
           getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-      val dottyJars  = "-dottyJars " + jars.length + " " + jars.mkString(" ")
+      val dottyJars  = "-dottyJars " + (jars.length + 1) + " dotty.jar" + " " + jars.mkString(" ")
       // Provide the jars required on the classpath of run tests
       runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
     },
@@ -118,8 +118,8 @@ object DottyBuild extends Build {
 
       ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
     }
-  ) ++ addCommandAlias("partest", ";test:package;package;lockPartestFile;test:test;runPartestRunner") ++
-       addCommandAlias("partest-only", ";test:package;package;lockPartestFile;test:test-only dotc.tests;runPartestRunner")
+  ) ++ addCommandAlias("partest", ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
+       addCommandAlias("partest-only", ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
