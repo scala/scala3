@@ -400,7 +400,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
-      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])
+      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])(ctx.withPhase(ctx.erasurePhase))
 
       ntree match {
         case TypeApply(fun, args) =>
