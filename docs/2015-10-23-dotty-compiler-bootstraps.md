@@ -5,7 +5,7 @@ by: Martin Odersky and Dmitry Petrashko
 title: We Got LiftOff! The Dotty Compiler for Scala Bootstraps.
 ---
 
-## We Got Liftoff
+## We Got Liftoff!
 
 The [Dotty project](https://github.com/lampepfl/dotty)
 is a platform to develop new technology for Scala
@@ -41,8 +41,8 @@ Far from it! The compiler is still very rough. A lot more work is
 needed to
 
  - make it more robust, in particular when analyzing incorrect programs,
- - improve the efficiency of generated code,
  - improve error messages and warnings,
+ - improve the efficiency of some of the generated code,
  - embed it in external tools such as sbt, REPL, IDEs,
  - remove restrictions on what Scala code can be compiled,
  - help in migrating Scala code that will have to be changed.
@@ -51,12 +51,12 @@ needed to
 
 Over the coming weeks and months, we plan to work on the following topics:
 
- - Make snapshot releases
- - Get the Scala standard library to compile,
- - Work on SBT integration of the compiler
- - Work on IDE support
- - Investigate best way we can implement a REPL,
- - Work on the build-infrastructure.
+ - Make snapshot releases.
+ - Get the Scala standard library to compile.
+ - Work on SBT integration of the compiler.
+ - Work on IDE support.
+ - Investigate the best way to obtaining a REPL.
+ - Work on the build infrastructure.
 
 If you want to get your hands dirty with any of this, now is a good moment to get involved!
 To get started: <https://github.com/lampepfl/dotty>.
