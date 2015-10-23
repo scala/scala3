@@ -192,7 +192,7 @@ trap onExit INT
 # If using the boot classpath, also pass an empty classpath
 # to java to suppress "." from materializing.
 classpathArgs () {
-  if [[ -n $bootstrapped ]]; then 
+  if [[ "true" == $bootstrapped ]]; then 
     checkjar $DOTTY_JAR "test:runMain dotc.build" src
     toolchain="$DOTTY_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
   else
