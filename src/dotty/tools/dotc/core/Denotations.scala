@@ -193,9 +193,11 @@ object Denotations {
      */
     def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
       disambiguate(p) match {
-        case MissingRef(ownerd, name) =>
-          if (generateStubs)
+        case m @ MissingRef(ownerd, name) =>
+          if (generateStubs) {
+            m.ex.printStackTrace()
             ctx.newStubSymbol(ownerd.symbol, name, source)
+          }
           else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
           throw new TypeError(s"None of the alternatives of $this satisfies required predicate")
@@ -858,7 +860,9 @@ object Denotations {
   /** An error denotation that provides more info about the missing reference.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation
+  case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation {
+    val ex: Exception = new Exception
+  }
 
   /** An error denotation that provides more info about alternatives
    *  that were found but that do not qualify.

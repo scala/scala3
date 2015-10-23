@@ -405,6 +405,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
+              new Exception().printStackTrace()
               ctx.newStubSymbol(owner, name, source)
             }
           }
