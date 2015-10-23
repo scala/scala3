@@ -8,13 +8,13 @@ title: We Got LiftOff! The Dotty Compiler for Scala Bootstraps.
 
 The Dotty project is a platform to develop new technology for Scala
 tooling and to try out concepts of future Scala language versions.
-Its compiler is a completely new design intended to reflect the
+Its compiler is a new design intended to reflect the
 lessons we learned from work with the Scala compiler. A clean redesign
 today will let us iterate faster with new ideas in the future.
 
 Today we reached an important milestone: The Dotty compiler can
 compile itself, and the compiled compiler can act as a drop-in for the
-original one. This is what one calls a "bootstrap".
+original one. This is what one calls a *bootstrap*.
 
 ## Why is this important?
 
