@@ -1,7 +1,7 @@
 dotty
 =====
 
-[![Build Status](https://travis-ci.org/lampepfl/dotty.png?branch=master)](https://travis-ci.org/lampepfl/dotty)
+[![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Dotty is a platform to try out new language concepts and compiler
 technologies for Scala. The focus is mainly on simplification. We
