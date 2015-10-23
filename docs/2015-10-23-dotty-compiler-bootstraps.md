@@ -5,6 +5,7 @@ by: Martin Odersky and Dmitry Petrashko
 title: We Got LiftOff! The Dotty Compiler for Scala Bootstraps.
 ---
 
+## We Got Liftoff
 
 The Dotty project is a platform to develop new technology for Scala
 tooling and to try out concepts of future Scala language versions.
@@ -19,10 +20,9 @@ original one. This is what one calls a *bootstrap*.
 ## Why is this important?
 
 The main reason is that this gives us a some validation of the
-trustworthiness of the compiler itself. Compilers are complex beasts,
+*trustworthiness* of the compiler itself. Compilers are complex beasts,
 and many things can go wrong. By far the worst things that can go
-wrong are bugs where the compiler produces incorrect code for a
-correct program. It's not fun debugging code that looks perfectly
+wrong are bugs where incorrect code is produced. It's not fun debugging code that looks perfectly
 fine, yet gets translated to something subtly wrong by the compiler.
 
 Having the compile compile itself is a good test to demonstrate that
