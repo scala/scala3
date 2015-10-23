@@ -7,7 +7,8 @@ title: We Got LiftOff! The Dotty Compiler for Scala Bootstraps.
 
 ## We Got Liftoff
 
-The Dotty project is a platform to develop new technology for Scala
+The [Dotty project](https://github.com/lampepfl/dotty)
+is a platform to develop new technology for Scala
 tooling and to try out concepts of future Scala language versions.
 Its compiler is a new design intended to reflect the
 lessons we learned from work with the Scala compiler. A clean redesign
@@ -25,7 +26,7 @@ and many things can go wrong. By far the worst things that can go
 wrong are bugs where incorrect code is produced. It's not fun debugging code that looks perfectly
 fine, yet gets translated to something subtly wrong by the compiler.
 
-Having the compile compile itself is a good test to demonstrate that
+Having the compiler compile itself is a good test to demonstrate that
 the generated code has reached a certain level of quality. Not only is
 a compiler a large program (44k lines in the case of dotty), it is
 also one that exercises a large part of the language in quite
@@ -58,4 +59,5 @@ Over the coming weeks and months, we plan to work on the following topics:
  - Work on the build-infrastructure.
 
 If you want to get your hands dirty with any of this, now is a good moment to get involved!
+To get started: <https://github.com/lampepfl/dotty>.
 
