@@ -780,11 +780,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               val t2 = mergeIfSub(tp2, tp1)
               if (t2.exists) t2
               else tp1 match {
-                case tp1: SingletonType =>
+                case tp1: ConstantType =>
                   tp2 match {
-                    case tp2: SingletonType =>
-                      // Make use of the fact that the intersection of two singleton
-                      // types which are not subtypes of each other is empty.
+                    case tp2: ConstantType =>
+                      // Make use of the fact that the intersection of two constant types
+                      // types which are not subtypes of each other is known to be empty.
+                      // Note: The same does not apply to singleton types in general.
+                      // E.g. we could have a pattern match against `x.type & y.type`
+                      // which might succeed if `x` and `y` happen to be the same ref
+                      // at run time. It would not work to replace that with `Nothing`.
+                      // However, maybe we can still apply the replacement to
+                      // types which are not explicitly written.
                       defn.NothingType
                     case _ => andType(tp1, tp2)
                   }
