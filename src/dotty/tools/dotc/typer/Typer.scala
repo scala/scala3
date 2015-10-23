@@ -345,7 +345,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-        val tpt1 = typedType(tree.tpt)
+        var tpt1 = typedType(tree.tpt)
+        if (tpt1.tpe.isHK) {
+          val deAliased = tpt1.tpe.dealias.EtaReduce
+          if (deAliased.exists && deAliased.ne(tpt1.tpe))
+            tpt1 = tpt1.withType(deAliased)
+        }
         checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
