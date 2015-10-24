@@ -141,7 +141,7 @@ object Inferencing {
       if (toTest.isEmpty) acc
       else tree match {
         case Apply(fn, _) =>
-          fn.tpe match {
+          fn.tpe.widen match {
             case mtp: MethodType =>
               val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
               occurring(fn, nocc, occ ::: acc)
