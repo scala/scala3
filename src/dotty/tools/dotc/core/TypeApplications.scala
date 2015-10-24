@@ -235,7 +235,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
 
     /** Same as isHK, except we classify all abstract types as HK,
-     *  (they must be, because the are applied). This avoids some forcing and
+     *  (they must be, because they are applied). This avoids some forcing and
      *  CyclicReference errors of the standard isHK.
      */
     def isKnownHK(tp: Type): Boolean = tp match {

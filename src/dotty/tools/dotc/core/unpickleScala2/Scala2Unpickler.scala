@@ -620,7 +620,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             tp.derivedRefinedType(parent1, name, info)
         }
       case tp @ TypeRef(pre, tpnme.hkApply) =>
-        elim(pre)
+        tp.derivedSelect(elim(pre))
       case _ =>
         tp
     }
