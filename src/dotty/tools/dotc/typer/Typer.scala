@@ -1265,16 +1265,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
-      val isMethodCall =
-        tree.tpe.widen match {
-          case (_: MethodType) | (_: PolyType) if !tree.isDef =>
-            true
-          case _ =>
-            false
-        }
-      if (!isMethodCall) // Delay tvar interpolation in method calls until they're fully applied
-        interpolateUndetVars(tree, if (tree.isDef) tree.symbol else NoSymbol)
-
+      if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
+      else if (!tree.tpe.isInstanceOf[MethodOrPoly]) interpolateUndetVars(tree, NoSymbol)
       tree.overwriteType(tree.tpe.simplified)
       adaptInterpolated(tree, pt, original)
     }
