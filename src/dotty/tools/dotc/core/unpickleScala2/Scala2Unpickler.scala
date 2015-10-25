@@ -450,6 +450,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
 
     def finishSym(sym: Symbol): Symbol = {
+      if (sym.isClass) sym.setFlag(Scala2x)
       val owner = sym.owner
       if (owner.isClass &&
           !(  isUnpickleRoot(sym)
@@ -535,7 +536,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case denot: ClassDenotation =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, selfInfo)
-            denot setFlag Scala2x
           case denot =>
             val tp1 = depoly(tp, denot)
             denot.info =
