@@ -148,27 +148,32 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tpe.info.bounds.hi)
       case tpe: WithFixedSym =>
         val sym = tpe.symbol
+        def pickleRef() =
+          if (tpe.prefix == NoPrefix) {
+            writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+            pickleSymRef(sym)
+          }
+          else {
+            assert(tpe.symbol.isClass)
+            assert(tpe.symbol.is(Flags.Scala2x), tpe.symbol.showLocated)
+            writeByte(TYPEREF) // should be changed to a new entry that keeps track of prefix, symbol & owner
+            pickleName(tpe.name)
+            pickleType(tpe.prefix)
+          }
         if (sym.is(Flags.Package)) {
           writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
           pickleName(qualifiedName(sym))
         }
-        else {
-          assert(tpe.prefix == NoPrefix)
-          def pickleRef() = {
-            writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-            pickleSymRef(sym)
+        else if (sym is Flags.BindDefinedType) {
+          registerDef(sym)
+          writeByte(BIND)
+          withLength {
+            pickleName(sym.name)
+            pickleType(sym.info)
+            pickleRef()
           }
-          if (sym is Flags.BindDefinedType) {
-            registerDef(sym)
-            writeByte(BIND)
-            withLength {
-              pickleName(sym.name)
-              pickleType(sym.info)
-              pickleRef()
-            }
-          }
-          else pickleRef()
         }
+        else pickleRef()
       case tpe: TermRefWithSignature =>
         if (tpe.symbol.is(Flags.Package)) picklePackageRef(tpe.symbol)
         else {

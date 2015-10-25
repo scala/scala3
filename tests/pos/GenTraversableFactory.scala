@@ -219,14 +219,10 @@ extends GenericCompanion[CC] {
     val b = newBuilder[T]
     b sizeHint immutable.NumericRange.count(start, end, step, isInclusive = false)
     var i = start
-
-    {
-    val ord: Ordering[T] = num
-    implicit val ops: T => ord.Ops = ord.mkOrderingOps
-    while (if (step < zero) end < i else i < end) {
+    while (if (/*num.mkOrderingOps*/(step) < zero) end < i else i < end) {
       b += i
       i += step
-    }}
+    }
     b.result()
   }
 

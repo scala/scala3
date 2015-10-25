@@ -686,7 +686,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case _ =>
         }
         val tycon =
-          if (isLocal(sym) || pre == NoPrefix) {
+          if (sym.isClass && sym.is(Scala2x) && !sym.owner.is(Package))
+            // used fixed sym for Scala 2 inner classes, because they might be shadowed
+            TypeRef.withFixedSym(pre, sym.name.asTypeName, sym.asType)
+          else if (isLocal(sym) || pre == NoPrefix) {
             val pre1 = if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre
             pre1 select sym
           }
