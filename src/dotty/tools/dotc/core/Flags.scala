@@ -227,6 +227,8 @@ object Flags {
   /** A trait */
   final val Trait = typeFlag(10, "<trait>")
 
+  final val LazyOrTrait = Lazy.toCommonFlags
+
   /** A value or variable accessor (getter or setter) */
   final val Accessor = termFlag(11, "<accessor>")
 
@@ -315,7 +317,7 @@ object Flags {
   /** An unpickled Scala 2.x class */
   final val Scala2x = typeFlag(26, "<scala-2.x>")
 
-  final val Scala2xOrSuperAccessor = SuperAccessor.toCommonFlags
+  final val SuperAccessorOrScala2x = SuperAccessor.toCommonFlags
 
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
@@ -442,7 +444,7 @@ object Flags {
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
-    Scala2xOrSuperAccessor | SelfNameOrImplClass
+    LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
