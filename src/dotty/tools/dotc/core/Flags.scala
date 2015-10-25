@@ -435,15 +435,20 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
-  /** Flags guaranteed to be set upon symbol creation */
-  final val FromStartFlags =
+  /** Common flags guaranteed to be set upon symbol creation */
+  final val FromStartCommonFlags =
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
     SelfNameOrImplClass
 
-  assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
-  // TODO: Should check that FromStartFlags do not change in completion
+  assert(FromStartCommonFlags.isTermFlags && FromStartCommonFlags.isTypeFlags)
+
+  /** Type flags guaranteed to be set upon symbol creation */
+  final val FromStartTypeFlags = Trait
+  assert(FromStartTypeFlags.isTypeFlags)
+
+  // TODO: Should check that FromStartCommonFlags and FromStartTypeFlags do not change in completion
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method

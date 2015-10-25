@@ -123,26 +123,30 @@ object SymDenotations {
       setFlag(flags & mask)
     }
 
+    /** Are all flags in `fs` guaranteed to be set upon symbol creation? */
+    private def allFlagsFromStart(fs: FlagSet)(implicit ctx: Context): Boolean =
+      fs <= FromStartCommonFlags || (this.isType && fs <= FromStartTypeFlags)
+
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context) = {
-      (if (fs <= FromStartFlags) myFlags else flags) is fs
+      (if (allFlagsFromStart(fs)) myFlags else flags) is fs
     }
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) =
-      (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
+      (if (allFlagsFromStart(fs) && allFlagsFromStart(butNot)) myFlags else flags) is (fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
     final def is(fs: FlagConjunction)(implicit ctx: Context) =
-      (if (fs <= FromStartFlags) myFlags else flags) is fs
+      (if (allFlagsFromStart(fs)) myFlags else flags) is fs
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) =
-      (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
+      (if (allFlagsFromStart(fs) && allFlagsFromStart(butNot)) myFlags else flags) is (fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
