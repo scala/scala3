@@ -123,7 +123,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
-      assert(!ctx.settings.YnoDeepSubtypes.value)
+      if (ctx.settings.YnoDeepSubtypes.value) throw new Error("deep subtype")
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
@@ -779,8 +779,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             else {
               val t2 = mergeIfSub(tp2, tp1)
               if (t2.exists) t2
-              else andType(tp1, tp2)
-            }
+              else tp1 match {
+                case tp1: ConstantType =>
+                  tp2 match {
+                    case tp2: ConstantType =>
+                      // Make use of the fact that the intersection of two constant types
+                      // types which are not subtypes of each other is known to be empty.
+                      // Note: The same does not apply to singleton types in general.
+                      // E.g. we could have a pattern match against `x.type & y.type`
+                      // which might succeed if `x` and `y` happen to be the same ref
+                      // at run time. It would not work to replace that with `Nothing`.
+                      // However, maybe we can still apply the replacement to
+                      // types which are not explicitly written.
+                      defn.NothingType
+                    case _ => andType(tp1, tp2)
+                  }
+                case _ => andType(tp1, tp2)
+              }
+          }
         }
     }
   }
