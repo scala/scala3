@@ -173,8 +173,6 @@ trait Reporting { this: Context =>
         throw ex
     }
   }
-
-  def errorsReported: Boolean = outersIterator exists (_.reporter.hasErrors)
 }
 
 /**
@@ -212,6 +210,11 @@ abstract class Reporter {
   var warningCount = 0
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
+
+  /** Have errors been reported by this reporter, or in the
+   *  case where this is a StoreReporter, by an outer reporter?
+   */
+  def errorsReported = hasErrors
 
   val unreportedWarnings = new mutable.HashMap[String, Int] {
     override def default(key: String) = 0

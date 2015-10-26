@@ -10,7 +10,7 @@ import config.Printers._
 /**
  * This class implements a Reporter that stores all messages
  */
-class StoreReporter extends Reporter {
+class StoreReporter(outer: Reporter) extends Reporter {
 
   private var infos: mutable.ListBuffer[Diagnostic] = null
 
@@ -33,4 +33,6 @@ class StoreReporter extends Reporter {
       infos foreach ctx.reporter.report
       infos = null
     }
+
+  override def errorsReported = hasErrors || outer.errorsReported
 }
