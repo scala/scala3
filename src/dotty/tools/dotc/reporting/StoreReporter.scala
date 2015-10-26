@@ -14,10 +14,11 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   private var infos: mutable.ListBuffer[Diagnostic] = null
 
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
+  def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = {
     typr.println(s">>>> StoredError: ${d.msg}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += d
+    true
   }
 
   override def hasPending: Boolean = infos != null && {
