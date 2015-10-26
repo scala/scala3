@@ -153,7 +153,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     def ok = _ok
     def ok_=(x: Boolean) = {
-      assert(x || ctx.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
+      assert(x || ctx.reporter.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
       _ok = x
     }
 

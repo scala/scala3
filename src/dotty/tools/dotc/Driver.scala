@@ -24,7 +24,7 @@ abstract class Driver extends DotClass {
       catch {
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.typerState.reporter
+          ctx.reporter
       }
     else emptyReporter
 
