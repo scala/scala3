@@ -10,14 +10,15 @@ import config.Printers._
 /**
  * This class implements a Reporter that stores all messages
  */
-class StoreReporter extends Reporter {
+class StoreReporter(outer: Reporter) extends Reporter {
 
   private var infos: mutable.ListBuffer[Diagnostic] = null
 
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
+  def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = {
     typr.println(s">>>> StoredError: ${d.msg}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += d
+    true
   }
 
   override def hasPending: Boolean = infos != null && {
@@ -33,4 +34,6 @@ class StoreReporter extends Reporter {
       infos foreach ctx.reporter.report
       infos = null
     }
+
+  override def errorsReported = hasErrors || outer.errorsReported
 }

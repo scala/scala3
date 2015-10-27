@@ -173,8 +173,6 @@ trait Reporting { this: Context =>
         throw ex
     }
   }
-
-  def errorsReported: Boolean = outersIterator exists (_.reporter.hasErrors)
 }
 
 /**
@@ -183,8 +181,10 @@ trait Reporting { this: Context =>
  */
 abstract class Reporter {
 
-  /** Report a diagnostic */
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit
+  /** Report a diagnostic, unless it is suppressed because it is nonsensical
+   *  @return a diagnostic was reported.
+   */
+  def doReport(d: Diagnostic)(implicit ctx: Context): Boolean
 
  /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -213,20 +213,24 @@ abstract class Reporter {
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
 
+  /** Have errors been reported by this reporter, or in the
+   *  case where this is a StoreReporter, by an outer reporter?
+   */
+  def errorsReported = hasErrors
+
   val unreportedWarnings = new mutable.HashMap[String, Int] {
     override def default(key: String) = 0
   }
 
-  def report(d: Diagnostic)(implicit ctx: Context): Unit = if (!isHidden(d)) {
-    doReport(d)(ctx.addMode(Mode.Printing))
-    d match {
-      case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
-      case d: Warning => warningCount += 1
-      case d: Error => errorCount += 1
-      case d: Info => // nothing to do here
-      // match error if d is something else
-    }
-  }
+  def report(d: Diagnostic)(implicit ctx: Context): Unit =
+    if (!isHidden(d) && doReport(d)(ctx.addMode(Mode.Printing)))
+      d match {
+        case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
+        case d: Warning => warningCount += 1
+        case d: Error => errorCount += 1
+        case d: Info => // nothing to do here
+        // match error if d is something else
+      }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)

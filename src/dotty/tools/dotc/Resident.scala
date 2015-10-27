@@ -47,7 +47,7 @@ class Resident extends Driver {
         nextCtx = rootCtx
         line = getLine()
       }
-      if (line.startsWith(quit)) ctx.typerState.reporter
+      if (line.startsWith(quit)) ctx.reporter
       else loop(line split "\\s+", nextCtx)
     }
     loop(args, rootCtx)

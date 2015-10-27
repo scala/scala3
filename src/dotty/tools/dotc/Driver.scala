@@ -12,7 +12,7 @@ abstract class Driver extends DotClass {
 
   protected def newCompiler(): Compiler
 
-  protected def emptyReporter: Reporter = new StoreReporter
+  protected def emptyReporter: Reporter = new StoreReporter(null)
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty)
@@ -24,7 +24,7 @@ abstract class Driver extends DotClass {
       catch {
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.typerState.reporter
+          ctx.reporter
       }
     else emptyReporter
 

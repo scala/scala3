@@ -146,7 +146,7 @@ object Trees {
      *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
-      if (tpe == ErrorType) assert(ctx.errorsReported)
+      if (tpe == ErrorType) assert(ctx.reporter.errorsReported)
       withTypeUnchecked(tpe)
     }
 

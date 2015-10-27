@@ -40,8 +40,9 @@ class ConsoleReporter(
     }
   }
 
-  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (!d.isSuppressed || !hasErrors) d match {
+  override def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = {
+    val issue = !(d.isSuppressed && hasErrors)
+    if (issue) d match {
       case d: Error =>
         printMessageAndPos(s"error: ${d.msg}", d.pos)
         if (ctx.settings.prompt.value) displayPrompt()
@@ -51,6 +52,8 @@ class ConsoleReporter(
       case _ =>
         printMessageAndPos(d.msg, d.pos)
     }
+    issue
+  }
 
   def displayPrompt(): Unit = {
     writer.print("\na)bort, s)tack, r)esume: ")

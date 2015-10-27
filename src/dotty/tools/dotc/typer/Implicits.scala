@@ -495,7 +495,7 @@ trait Implicits { self: Typer =>
               case _ => false
             }
           }
-        if (ctx.typerState.reporter.hasErrors)
+        if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
                  !shadowing.tpe.isError && !refMatches(shadowing)) {
