@@ -243,15 +243,17 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
-    case AndType(l, r) =>
-      simplify(l, theMap) & simplify(r, theMap)
-    case OrType(l, r) =>
-      simplify(l, theMap) | simplify(r, theMap)
+    case tp: AndOrType =>
+      val l = simplify(tp.tp1, theMap)
+      val r = simplify(tp.tp2, theMap)
+      if (theMap != null && theMap.explicitType) tp.derivedAndOrType(l, r)
+      else if (tp.isAnd) l & r
+      else l | r
     case _ =>
       (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
   }
 
-  class SimplifyMap extends TypeMap {
+  class SimplifyMap(val explicitType: Boolean = false) extends TypeMap {
     def apply(tp: Type) = simplify(tp, this)
   }
 

@@ -825,7 +825,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       }
 
       val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
-      tree.overwriteType(tree.tpe.simplified)
+      simplifyType(tree)
       setPos(start, tree)
     }
 
