@@ -44,8 +44,14 @@ abstract class Driver extends DotClass {
     doCompile(newCompiler(), fileNames)(ctx)
   }
 
+  // We overload `process` instead of using a default argument so that we
+  // can easily call this method using reflection from `RawCompiler` in sbt.
+  def process(args: Array[String]): Reporter = {
+    process(args, initCtx)
+  }
+
   def main(args: Array[String]): Unit =
-    sys.exit(if (process(args, initCtx).hasErrors) 1 else 0)
+    sys.exit(if (process(args).hasErrors) 1 else 0)
 }
 
 class FatalError(msg: String) extends Exception
