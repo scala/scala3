@@ -562,12 +562,12 @@ object desugar {
    *  ==>
    *       x$1 => x$1 match { cases }
    *
-   *  If `nparams` > 1, expand instead to
+   *  If `nparams` != 1, expand instead to
    *
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1}) match { cases }
    */
   def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1)(implicit ctx: Context) = {
-    val params = (1 to (nparams min 1)).toList.map(makeSyntheticParameter(_))
+    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
     Function(params, Match(selector, cases))
   }
