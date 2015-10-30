@@ -22,11 +22,8 @@ import ValueClasses.isDerivedValueClass
 object RefChecks {
   import tpd._
 
-  private def isDefaultGetter(name: Name): Boolean =
-    name.isTermName && name.asTermName.defaultGetterIndex >= 0
-
   private val defaultMethodFilter = new NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = isDefaultGetter(name)
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.isDefaultGetterName
   }
 
   /** Only one overloaded alternative is allowed to define default arguments */
@@ -283,7 +280,7 @@ object RefChecks {
       } else if (other.isEffectivelyFinal) { // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       } else if (!other.is(Deferred) &&
-                 !isDefaultGetter(other.name) &&
+                 !other.name.isDefaultGetterName &&
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
@@ -318,7 +315,7 @@ object RefChecks {
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
         overrideError("cannot be used here - only term macros can override term macros")
-      } else if (member.isTerm && !isDefaultGetter(member.name) && !(memberTp overrides otherTp)) {
+      } else if (member.isTerm && !member.name.isDefaultGetterName && !(memberTp overrides otherTp)) {
         // types don't need to have their bounds in an overriding relationship
         // since we automatically form their intersection when selecting.
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
