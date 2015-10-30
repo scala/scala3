@@ -629,7 +629,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
-        typed(desugar.makeCaseLambda(tree.cases) withPos tree.pos, pt)
+        val arity = pt match {
+          case defn.FunctionType(args, _) => args.length
+          case _ => 1
+        }
+        typed(desugar.makeCaseLambda(tree.cases, arity) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = widenForMatchSelector(

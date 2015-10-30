@@ -556,14 +556,20 @@ object desugar {
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
-  /** Expand partial function
+  /** If `nparams` == 1, expand partial function
+   *
    *       { cases }
    *  ==>
-   *       x$0 => x$0 match { cases }
+   *       x$1 => x$1 match { cases }
+   *
+   *  If `nparams` != 1, expand instead to
+   *
+   *       (x$0, ..., x${n-1}) => (x$0, ..., x${n-1}) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef])(implicit ctx: Context) = {
-    val param = makeSyntheticParameter()
-    Function(param :: Nil, Match(Ident(param.name), cases))
+  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1)(implicit ctx: Context) = {
+    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
+    val selector = makeTuple(params.map(p => Ident(p.name)))
+    Function(params, Match(selector, cases))
   }
 
   /** Add annotation with class `cls` to tree:
