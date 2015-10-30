@@ -200,7 +200,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        */
       def isDefinedInCurrentUnit(denot: Denotation): Boolean = denot match {
         case MultiDenotation(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
-        case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source
+        case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source.file
       }
 
       /** Is `denot` the denotation of a self symbol? */

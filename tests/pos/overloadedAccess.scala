@@ -14,5 +14,4 @@ object overloadedAccess {
     val x = f("abc")
     val y: Int = x
   }
-
 }

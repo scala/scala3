@@ -1,9 +1,3 @@
-package P {
-  object X { val x = 1; val y = 2 }
-}
-package Q {
-  object X { val x = true; val y = "" }
-}
 package P { // `X' bound by package clause
   import Console._ // `println' bound by wildcard import
   object A {
