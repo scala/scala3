@@ -356,7 +356,7 @@ object JavaParsers {
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots: List[Tree] = Nil
-      def addAnnot(sym: ClassSymbol) = annots :+= New(TypeTree(sym.typeRef))
+      def addAnnot(sym: ClassSymbol) = annots :+= New(TypeTree(sym.typeRef)).withPos(Position(in.offset))
 
       while (true) {
         in.token match {
