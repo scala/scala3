@@ -108,6 +108,7 @@ class tests extends CompilerTest {
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 14)(allowDoubleBindings)
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
+  @Test def neg_singletonsLubs = compileFile(negDir, "singletons-lubs", xerrors = 6)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
   @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil, xerrors = 3)
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
