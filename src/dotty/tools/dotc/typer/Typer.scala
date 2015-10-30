@@ -1267,7 +1267,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       if (tree.isDef) interpolateUndetVars(tree, tree.symbol)
       else if (!tree.tpe.widen.isInstanceOf[MethodOrPoly]) interpolateUndetVars(tree, NoSymbol)
-      tree.overwriteType(tree.tpe.simplified)
+      simplifyType(tree)
       adaptInterpolated(tree, pt, original)
     }
   }

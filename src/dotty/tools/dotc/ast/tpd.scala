@@ -808,6 +808,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
+  /** Simplify type of tree */
+  def simplifyType(tree: Tree)(implicit ctx: Context) = {
+    def isExplicitType(tree: Tree) = tree match {
+      case TypeTree(original) => !original.isEmpty
+      case _ => tree.isType
+    }
+    tree.overwriteType(new ctx.SimplifyMap(isExplicitType(tree))(tree.tpe))
+  }
+
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(implicit ctx: Context): Tree = {
     val mname      = ("to" + numericCls.name).toTermName
