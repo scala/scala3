@@ -119,7 +119,7 @@ class VarianceChecker()(implicit ctx: Context) {
     override def traverse(tree: Tree)(implicit ctx: Context) = {
       def sym = tree.symbol
       // No variance check for private/protected[this] methods/values.
-      def skip = !sym.exists || sym.is(Local)
+      def skip = !sym.exists || sym.is(Local) || sym.name.isDefaultGetterName
       tree match {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
@@ -128,7 +128,7 @@ class VarianceChecker()(implicit ctx: Context) {
           traverseChildren(tree)
         case tree: ValDef =>
           checkVariance(sym)
-        case DefDef(_, tparams, vparamss, _, _) =>
+        case DefDef(name, tparams, vparamss, _, _) =>
           checkVariance(sym)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
