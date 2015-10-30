@@ -145,9 +145,9 @@ object JavaParsers {
     // ------------- general parsing ---------------------------
 
     /** skip parent or brace enclosed sequence of things */
-    def skipAhead(): Unit = {
+    def skipAhead(openBraces: Int = 0): Unit = {
       var nparens = 0
-      var nbraces = 0
+      var nbraces = openBraces
       do {
         in.token match {
           case LPAREN =>
