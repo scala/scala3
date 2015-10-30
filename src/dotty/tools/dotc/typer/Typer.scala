@@ -502,6 +502,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int)(implicit ctx: Context): (List[Type], Type) = pt match {
+    case _ if defn.isFunctionType(pt) =>
+      (pt.dealias.argInfos.init, pt.dealias.argInfos.last)
+    case SAMType(meth) =>
+      val mt @ MethodType(_, paramTypes) = meth.info
+      (paramTypes, mt.resultType)
+    case _ =>
+      (List.range(0, defaultArity) map alwaysWildcardType, WildcardType)
+  }
+
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
     val untpd.Function(args, body) = tree
     if (ctx.mode is Mode.Type)
@@ -509,15 +519,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
-      val (protoFormals, protoResult): (List[Type], Type) = pt match {
-        case _ if defn.isFunctionType(pt) =>
-          (pt.dealias.argInfos.init, pt.dealias.argInfos.last)
-        case SAMType(meth) =>
-          val mt @ MethodType(_, paramTypes) = meth.info
-          (paramTypes, mt.resultType)
-        case _ =>
-          (params map alwaysWildcardType, WildcardType)
-      }
+      val (protoFormals, protoResult) = decomposeProtoFunction(pt, params.length)
 
       def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
         case Ident(name) => name == param.name
@@ -629,11 +631,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
-        val arity = pt match {
-          case defn.FunctionType(args, _) => args.length
-          case _ => 1
-        }
-        typed(desugar.makeCaseLambda(tree.cases, arity) withPos tree.pos, pt)
+        val (protoFormals, _) = decomposeProtoFunction(pt, 1)
+        typed(desugar.makeCaseLambda(tree.cases, protoFormals.length) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = widenForMatchSelector(
