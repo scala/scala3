@@ -21,6 +21,8 @@ object build extends tests {
   def main(args: Array[String]): Unit = {
     println("------------  Building dotty  ------------")
     deleteFilesInFolder(new File(defaultOutputDir)) // clear previous output
+    val keepFile = new File(defaultOutputDir + ".keep")
+    keepFile.createNewFile()
     dotty // build output dir
     val p = Runtime.getRuntime.exec(Array("jar", "cf", "dotty.jar", "-C", "out", "."))
     p.waitFor()
