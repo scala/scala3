@@ -111,6 +111,7 @@ class tests extends CompilerTest {
   @Test def neg_abstractOverride() = compileFile(negDir, "abstract-override", xerrors = 2)
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 2)
+  @Test def neg_functionArity() = compileFile(negDir, "function-arity", xerrors = 5)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 3)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)

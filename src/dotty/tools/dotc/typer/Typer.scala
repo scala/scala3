@@ -611,26 +611,44 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (protoFormals.length == params.length) protoFormals(i)
         else errorType(i"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
 
-      val inferredParams: List[untpd.ValDef] =
-        for ((param, i) <- params.zipWithIndex) yield
-          if (!param.tpt.isEmpty) param
-          else cpy.ValDef(param)(
-            tpt = untpd.TypeTree(
-              inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
-
-      // Define result type of closure as the expected type, thereby pushing
-      // down any implicit searches. We do this even if the expected type is not fully
-      // defined, which is a bit of a hack. But it's needed to make the following work
-      // (see typers.scala and printers/PlainPrinter.scala for examples).
-      //
-      //     def double(x: Char): String = s"$x$x"
-      //     "abc" flatMap double
-      //
-      val resultTpt = protoResult match {
-        case WildcardType(_) => untpd.TypeTree()
-        case _ => untpd.TypeTree(protoResult)
+      /** Is `formal` a product type which is elementwise compatible with `params`? */
+      def ptIsCorrectProduct(formal: Type) = {
+        val pclass = defn.ProductNClass(params.length)
+        isFullyDefined(formal, ForceDegree.noBottom) &&
+        formal.derivesFrom(pclass) &&
+        formal.baseArgTypes(pclass).corresponds(params) {
+          (argType, param) =>
+            param.tpt.isEmpty || isCompatible(argType, typedAheadType(param.tpt).tpe)
+        }
       }
-      typed(desugar.makeClosure(inferredParams, fnBody, resultTpt), pt)
+
+      val desugared =
+        if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
+          desugar.makeUnaryCaseLambda(params, fnBody)
+        }
+        else {
+          val inferredParams: List[untpd.ValDef] =
+            for ((param, i) <- params.zipWithIndex) yield
+              if (!param.tpt.isEmpty) param
+              else cpy.ValDef(param)(
+                tpt = untpd.TypeTree(
+                  inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
+
+          // Define result type of closure as the expected type, thereby pushing
+          // down any implicit searches. We do this even if the expected type is not fully
+          // defined, which is a bit of a hack. But it's needed to make the following work
+          // (see typers.scala and printers/PlainPrinter.scala for examples).
+          //
+          //     def double(x: Char): String = s"$x$x"
+          //     "abc" flatMap double
+          //
+          val resultTpt = protoResult match {
+            case WildcardType(_) => untpd.TypeTree()
+            case _ => untpd.TypeTree(protoResult)
+          }
+          desugar.makeClosure(inferredParams, fnBody, resultTpt)
+        }
+      typed(desugared, pt)
     }
   }
 
