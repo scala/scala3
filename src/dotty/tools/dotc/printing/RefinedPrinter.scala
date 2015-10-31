@@ -45,8 +45,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def nameString(name: Name): String = name.decode.toString
 
-  override protected def simpleNameString(sym: Symbol): String =
-    sym.name.decode.toString
+  override protected def simpleNameString(sym: Symbol): String = {
+    val name = sym.originalName
+    nameString(if (sym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
+  }
 
   override protected def fullNameOwner(sym: Symbol) = {
     val owner = super.fullNameOwner(sym)
@@ -86,10 +88,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else {
       val tsym = tp.parent.member(tp.refinedName).symbol
       if (!tsym.exists) super.refinementNameString(tp)
-      else {
-        val name = tsym.originalName
-        nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
-      }
+      else simpleNameString(tsym)
     }
 
   override def toText(tp: Type): Text = controlled {
