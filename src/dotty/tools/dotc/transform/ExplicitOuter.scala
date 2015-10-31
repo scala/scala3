@@ -220,9 +220,14 @@ object ExplicitOuter {
       case id: Ident =>
         id.tpe match {
           case ref @ TermRef(NoPrefix, _) =>
-            ref.symbol.is(Hoistable) && isOuter(id.symbol.owner.enclosingClass)
-            // methods will be placed in enclosing class scope by LambdaLift, so they will get
-            // an outer path then.
+            if (ref.symbol is Hoistable)
+              // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
+              // an outer path then.
+              isOuter(ref.symbol.owner.enclosingClass)
+            else
+              // ref.symbol will get a proxy in immediately enclosing class. If this properly
+              // contains the current class, it needs an outer path.
+              ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
           case _ => false
         }
       case nw: New =>
