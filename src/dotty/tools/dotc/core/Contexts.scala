@@ -615,11 +615,22 @@ object Contexts {
 
   object Context {
 
+    // DO NOT MERGE INTO MASTER; this version is only intended
+    // to demonstrate that partest re-uses the same context base
+    // over multiple threads, which causes all sorts of races.
+    // Each thread in partest needs to start with its own context base.
+    @dotty.tools.sharable
+    private var thread: Thread = null
+
     /** Implicit conversion that injects all printer operations into a context */
     implicit def toPrinter(ctx: Context): Printer = ctx.printer
 
     /** implicit conversion that injects all ContextBase members into a context */
-    implicit def toBase(ctx: Context): ContextBase = ctx.base
+    implicit def toBase(ctx: Context): ContextBase = {
+      if (thread == null) thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
+      ctx.base
+    }
 
     // @sharable val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
   }
