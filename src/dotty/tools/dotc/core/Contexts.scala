@@ -611,6 +611,16 @@ object Contexts {
       superIdOfClass.clear()
       lastSuperId = -1
     }
+
+    // Test that access is single threaded
+
+    /** The thread on which `checkSingleThreaded was invoked last */
+    @sharable private var thread: Thread = null
+
+    /** Check that we are on the same thread as before */
+    def checkSingleThreaded() =
+      if (thread == null) thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
   object Context {
