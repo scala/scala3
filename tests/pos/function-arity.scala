@@ -14,5 +14,7 @@ object Test {
   unary(1, 2, (x: Int, y: Float) => x)
 
   val xs = List(1, 2, 3)
+  def f(x: Int, y: Int) = x * y
   xs.zipWithIndex.map(_ + _)
+  xs.zipWithIndex.map(f)
 }

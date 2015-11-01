@@ -18,5 +18,7 @@ object Test {
 
   unary[(Int, Int)]((x: String, y) => ()) // error
 
-
+  def foo(a: Tuple2[Int, Int] => String): String = ""
+  def foo(a: Any => String) = ()
+  foo((a: Int, b: String) => a + b) // error: none of the overloaded alternatives of method foo match arguments (Int, Int)
 }
