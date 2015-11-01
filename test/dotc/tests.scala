@@ -35,6 +35,7 @@ class tests extends CompilerTest {
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
+  val scala2mode = List("-language:Scala2")
 
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
@@ -90,13 +91,15 @@ class tests extends CompilerTest {
   @Test def pos_valueclasses = compileFiles(posDir + "valueclasses/", twice)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", args = "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping", twice)
-  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
   @Test def pos_companions = compileFile(posDir, "companions", twice)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
+
+  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
+  @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
 
   @Test def new_all = compileFiles(newDir, twice)
 
@@ -132,6 +135,7 @@ class tests extends CompilerTest {
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 5)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
+  @Test def neg_i871_missingReturnType = compileFile(negDir, "i871", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
