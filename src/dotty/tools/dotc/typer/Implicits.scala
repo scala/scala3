@@ -531,11 +531,11 @@ trait Implicits { self: Typer =>
       }
 
       /** If the (result types of) the expected type, and both alternatives
-       *  are all numeric value types, return the alternative which is
-       *  the smaller numeric subtype, if it exists. (This alternative is then
-       *  discarded).
+       *  are all numeric value types, return the alternative which has
+       *  the smaller numeric subtype as result type, if it exists.
+       *  (This alternative is then discarded).
        */
-      def tieBreak(alt1: SearchSuccess, alt2: SearchSuccess): SearchResult = {
+      def numericValueTieBreak(alt1: SearchSuccess, alt2: SearchSuccess): SearchResult = {
         def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
         def isProperSubType(tp1: Type, tp2: Type) =
           tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
@@ -558,7 +558,7 @@ trait Implicits { self: Typer =>
               println(i"ambiguous refs: ${hits map (_.ref) map (_.show) mkString ", "}")
               isAsGood(best.ref, alt.ref, explain = true)(ctx.fresh.withExploreTyperState)
             */
-              tieBreak(best, alt) match {
+              numericValueTieBreak(best, alt) match {
                 case eliminated: SearchSuccess => condense(hits.filter(_ ne eliminated))
                 case _ => new AmbiguousImplicits(best.ref, alt.ref, pt, argument)
               }

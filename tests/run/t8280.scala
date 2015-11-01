@@ -20,7 +20,11 @@ object Moop1 {
     implicit object f1 extends (Int => String) { def apply(x: Int): String = "Int" }
     implicit object f2 extends (Long => String) { def apply(x: Long): String = "Long" }
 
-    println(5: String)
+    // println(5: String)
+      // Dotty deviation. The above fails for Dotty with ambiguity error.
+      // Both f1 and f2 are applicable conversions for Int => String. Neither is better than the other.
+      // Scala2 contains a hack for backwards compatibility, which we are not forced to repeat.
+      // See discussion under SI-8280.
   }
   object ob2 {
     implicit object f1 extends (Int => String) { def apply(x: Int): String = "Int" }
@@ -64,7 +68,7 @@ object Moop3 {
     implicit val f1: Int => String  = _ => "Int"
     implicit object f2 extends (Long => String) { def apply(x: Long): String = "Long" }
 
-    println(5: String)
+    // println(5: String) // Dotty deviation. This fails for Dotty with ambiguity error.
   }
   object ob2 {
     implicit val f1: Int => String  = _ => "Int"
