@@ -4,7 +4,7 @@ baseDir=${WORKSPACE-`pwd`}
 scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
-git log --pretty=format:"%h - %an, %ar : %s" -n 10
+git log --pretty=format:"%h - %an, %aD : %s" -n 10
 
 sbt $sbtArgs update compile "partest-only run --show-diff --verbose"
 

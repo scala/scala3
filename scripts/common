@@ -10,7 +10,7 @@ update() {
   (git fetch "https://github.com/$1/$2.git" $4 && git checkout -fq FETCH_HEAD) #|| git checkout -fq $4 # || fallback is for local testing on tag
   git reset --hard
   echo updated $1/$2:$4 under $3. Last commits:
-  git log --pretty=format:"%h - %an, %ar : %s" -n 10 # show last commits
+  git log --pretty=format:"%h - %an, %aD : %s" -n 10 # show last commits
   cd -
 }
 
