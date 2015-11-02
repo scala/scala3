@@ -606,7 +606,7 @@ object Types {
     }
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
-    def isValueSubType(that: Type)(implicit ctx: Context) = widenExpr match {
+    def isValueSubType(that: Type)(implicit ctx: Context) = widen match {
       case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
         that.widenExpr match {
           case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
@@ -617,6 +617,9 @@ object Types {
       case _ =>
         false
     }
+
+    def relaxed_<:<(that: Type)(implicit ctx: Context) =
+      (this <:< that) || (this isValueSubType that)
 
     /** Is this type a legal type for a member that overrides another
      *  member of type `that`? This is the same as `<:<`, except that
