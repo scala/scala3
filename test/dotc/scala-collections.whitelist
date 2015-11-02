@@ -117,7 +117,12 @@
 ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
 ./scala-scala/src/library/scala/collection/immutable/PagedSeq.scala
 ./scala-scala/src/library/scala/collection/immutable/Queue.scala
-./scala-scala/src/library/scala/collection/immutable/Seq.scala
+
+# https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/immutable/Seq.scala
+#./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
+#./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+
 ./scala-scala/src/library/scala/collection/immutable/Stack.scala
 ./scala-scala/src/library/scala/collection/immutable/StringLike.scala
 ./scala-scala/src/library/scala/collection/immutable/StringOps.scala
@@ -126,8 +131,7 @@
 ./scala-scala/src/library/scala/collection/immutable/WrappedString.scala
 ./scala-scala/src/library/scala/collection/mutable/Builder.scala
 ./scala-scala/src/library/scala/collection/mutable/GrowingBuilder.scala
-./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
-./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+
 ./scala-scala/src/library/scala/collection/mutable/WrappedArray.scala
 ./scala-scala/src/library/scala/collection/mutable/WrappedArrayBuilder.scala
 ./scala-scala/src/library/scala/deprecated.scala
