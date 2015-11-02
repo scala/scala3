@@ -101,7 +101,9 @@
 # https://github.com/lampepfl/dotty/issues/913
 #./scala-scala/src/library/scala/collection/Iterator.scala
 ./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
-./scala-scala/src/library/scala/collection/TraversableOnce.scala
+
+# https://github.com/lampepfl/dotty/issues/914
+#./scala-scala/src/library/scala/collection/TraversableOnce.scala
 ./scala-scala/src/library/scala/collection/generic/Growable.scala
 ./scala-scala/src/library/scala/collection/generic/TraversableForwarder.scala
 ./scala-scala/src/library/scala/collection/immutable/BitSet.scala
