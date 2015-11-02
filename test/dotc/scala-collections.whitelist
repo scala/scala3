@@ -95,8 +95,11 @@
 
 # https://github.com/lampepfl/dotty/issues/912
 # ./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
+
 ./scala-scala/src/library/scala/collection/IterableLike.scala
-./scala-scala/src/library/scala/collection/Iterator.scala
+
+# https://github.com/lampepfl/dotty/issues/913
+#./scala-scala/src/library/scala/collection/Iterator.scala
 ./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
 ./scala-scala/src/library/scala/collection/TraversableOnce.scala
 ./scala-scala/src/library/scala/collection/generic/Growable.scala
