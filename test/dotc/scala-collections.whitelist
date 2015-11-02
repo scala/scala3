@@ -1,0 +1,161 @@
+# no sig for NoType
+#  no sig for ErasedValueType(class RichShort,NoType)
+#  no sig for TypeRef(TermRef(ThisType(TypeRef(NoPrefix,scala)),runtime),RichShort)
+#  failure while taking result signture of (x: Short)runtime.RichShort: runtime.RichShort
+#  cannot take signature of (x: Short)runtime.RichShort
+#  exception occurred while typechecking ./scala-scala/src/library/scala/runtime/RichByte.scala
+#
+#./scala-scala/src/library/scala/runtime/RichBoolean.scala
+#./scala-scala/src/library/scala/runtime/RichByte.scala
+#./scala-scala/src/library/scala/runtime/RichChar.scala
+#./scala-scala/src/library/scala/runtime/RichDouble.scala
+#./scala-scala/src/library/scala/runtime/RichException.scala
+#./scala-scala/src/library/scala/runtime/RichFloat.scala
+#./scala-scala/src/library/scala/runtime/RichInt.scala
+#./scala-scala/src/library/scala/runtime/RichLong.scala
+#./scala-scala/src/library/scala/runtime/RichShort.scala
+
+
+
+#
+# no sig for NoType
+#  no sig for ErasedValueType(class RichShort,NoType)
+#  no sig for TypeRef(TermRef(ThisType(TypeRef(NoPrefix,scala)),runtime),RichShort)
+#  failure while taking result signture of (x: Short)runtime.RichShort: runtime.RichShort
+#  cannot take signature of (x: Short)runtime.RichShort
+#  exception occurred while typechecking ./scala-scala/src/library/scala/Array.scala
+#
+#./scala-scala/src/library/scala/Array.scala
+#./scala-scala/src/library/scala/NotImplementedError.scala
+
+./scala-scala/src/library/scala/AnyValCompanion.scala
+
+# Does not pass refchecks:
+#  method getClass of type ()Class[_ <: AnyVal] cannot override final member method getClass in class Any
+#./scala-scala/src/library/scala/AnyVal.scala
+#./scala-scala/src/library/scala/Boolean.scala
+#./scala-scala/src/library/scala/Byte.scala
+#./scala-scala/src/library/scala/Char.scala
+#./scala-scala/src/library/scala/Double.scala
+#./scala-scala/src/library/scala/Float.scala
+#./scala-scala/src/library/scala/Int.scala
+#./scala-scala/src/library/scala/Long.scala
+#./scala-scala/src/library/scala/Short.scala
+#./scala-scala/src/library/scala/Unit.scala
+
+./scala-scala/src/library/scala/Cloneable.scala
+./scala-scala/src/library/scala/DelayedInit.scala
+./scala-scala/src/library/scala/Dynamic.scala
+./scala-scala/src/library/scala/Equals.scala
+./scala-scala/src/library/scala/Immutable.scala
+./scala-scala/src/library/scala/MatchError.scala
+./scala-scala/src/library/scala/Mutable.scala
+./scala-scala/src/library/scala/NotNull.scala
+
+# https://github.com/lampepfl/dotty/issues/911
+#./scala-scala/src/library/scala/Option.scala
+
+./scala-scala/src/library/scala/PartialFunction.scala
+./scala-scala/src/library/scala/Predef.scala
+
+# Causes data races #907
+# java.lang.AssertionError: assertion failed: data race? overwriting symbol of Product1 / TypeRef(ThisType(TypeRef(NoPrefix,scala)),Product1) / class dotty.tools.dotc.core.Types$CachedTypeRef / 190 / 4820 / module class scala / module class scala / frontend, took 2.154 sec
+#./scala-scala/src/library/scala/Product.scala
+#./scala-scala/src/library/scala/Product1.scala
+#./scala-scala/src/library/scala/Product10.scala
+#./scala-scala/src/library/scala/Product11.scala
+#./scala-scala/src/library/scala/Product12.scala
+#./scala-scala/src/library/scala/Product13.scala
+#./scala-scala/src/library/scala/Product14.scala
+#./scala-scala/src/library/scala/Product15.scala
+#./scala-scala/src/library/scala/Product16.scala
+#./scala-scala/src/library/scala/Product17.scala
+#./scala-scala/src/library/scala/Product18.scala
+#./scala-scala/src/library/scala/Product19.scala
+#./scala-scala/src/library/scala/Product2.scala
+#./scala-scala/src/library/scala/Product20.scala
+#./scala-scala/src/library/scala/Product21.scala
+#./scala-scala/src/library/scala/Product22.scala
+#./scala-scala/src/library/scala/Product3.scala
+#./scala-scala/src/library/scala/Product4.scala
+#./scala-scala/src/library/scala/Product5.scala
+#./scala-scala/src/library/scala/Product6.scala
+#./scala-scala/src/library/scala/Product7.scala
+#./scala-scala/src/library/scala/Product8.scala
+#./scala-scala/src/library/scala/Product9.scala
+
+
+./scala-scala/src/library/scala/Proxy.scala
+./scala-scala/src/library/scala/SerialVersionUID.scala
+./scala-scala/src/library/scala/Serializable.scala
+./scala-scala/src/library/scala/Specializable.scala
+./scala-scala/src/library/scala/Symbol.scala
+./scala-scala/src/library/scala/UninitializedError.scala
+./scala-scala/src/library/scala/UninitializedFieldError.scala
+
+# https://github.com/lampepfl/dotty/issues/912
+# ./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
+
+./scala-scala/src/library/scala/collection/IterableLike.scala
+
+# https://github.com/lampepfl/dotty/issues/913
+#./scala-scala/src/library/scala/collection/Iterator.scala
+./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
+
+# https://github.com/lampepfl/dotty/issues/914
+#./scala-scala/src/library/scala/collection/TraversableOnce.scala
+./scala-scala/src/library/scala/collection/generic/Growable.scala
+./scala-scala/src/library/scala/collection/generic/TraversableForwarder.scala
+./scala-scala/src/library/scala/collection/immutable/BitSet.scala
+./scala-scala/src/library/scala/collection/immutable/DefaultMap.scala
+./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala
+./scala-scala/src/library/scala/collection/immutable/Iterable.scala
+./scala-scala/src/library/scala/collection/immutable/LinearSeq.scala
+
+# https://github.com/lampepfl/dotty/issues/915
+# ./scala-scala/src/library/scala/collection/immutable/List.scala
+./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
+./scala-scala/src/library/scala/collection/immutable/PagedSeq.scala
+./scala-scala/src/library/scala/collection/immutable/Queue.scala
+
+# https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/immutable/Seq.scala
+#./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
+#./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+
+./scala-scala/src/library/scala/collection/immutable/Stack.scala
+./scala-scala/src/library/scala/collection/immutable/StringLike.scala
+./scala-scala/src/library/scala/collection/immutable/StringOps.scala
+./scala-scala/src/library/scala/collection/immutable/Traversable.scala
+./scala-scala/src/library/scala/collection/immutable/Vector.scala
+./scala-scala/src/library/scala/collection/immutable/WrappedString.scala
+./scala-scala/src/library/scala/collection/mutable/Builder.scala
+./scala-scala/src/library/scala/collection/mutable/GrowingBuilder.scala
+
+./scala-scala/src/library/scala/collection/mutable/WrappedArray.scala
+./scala-scala/src/library/scala/collection/mutable/WrappedArrayBuilder.scala
+./scala-scala/src/library/scala/deprecated.scala
+./scala-scala/src/library/scala/deprecatedInheritance.scala
+./scala-scala/src/library/scala/deprecatedName.scala
+./scala-scala/src/library/scala/deprecatedOverriding.scala
+./scala-scala/src/library/scala/inline.scala
+./scala-scala/src/library/scala/language.scala
+./scala-scala/src/library/scala/languageFeature.scala
+./scala-scala/src/library/scala/math/Equiv.scala
+./scala-scala/src/library/scala/math/Fractional.scala
+./scala-scala/src/library/scala/math/Integral.scala
+./scala-scala/src/library/scala/math/Numeric.scala
+./scala-scala/src/library/scala/math/Ordered.scala
+./scala-scala/src/library/scala/math/Ordering.scala
+./scala-scala/src/library/scala/math/PartialOrdering.scala
+./scala-scala/src/library/scala/math/ScalaNumericConversions.scala
+./scala-scala/src/library/scala/math/package.scala
+./scala-scala/src/library/scala/native.scala
+./scala-scala/src/library/scala/noinline.scala
+./scala-scala/src/library/scala/package.scala
+./scala-scala/src/library/scala/remote.scala
+./scala-scala/src/library/scala/specialized.scala
+./scala-scala/src/library/scala/throws.scala
+./scala-scala/src/library/scala/transient.scala
+./scala-scala/src/library/scala/unchecked.scala
+./scala-scala/src/library/scala/volatile.scala

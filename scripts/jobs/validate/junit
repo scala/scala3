@@ -4,5 +4,6 @@ baseDir=${WORKSPACE-`pwd`}
 scriptsDir="$baseDir/scripts"
 . $scriptsDir/common
 
-update scala scala scala-scala
+git log --pretty=format:"%h - %an, %aD : %s" -n 10
+update DarkDimius scala scala-scala dotty-library
 sbt $sbtArgs update compile test

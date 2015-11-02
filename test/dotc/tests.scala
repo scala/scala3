@@ -5,6 +5,8 @@ import dotty.partest._
 import org.junit.Test
 import org.junit.experimental.categories._
 
+import scala.io.Source
+
 
 class tests extends CompilerTest {
 
@@ -163,6 +165,14 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
+  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+   .map(_.trim) // allow identation
+   .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+   .map(_.takeWhile(_ != "#").trim) // allow comments in the end of line
+   .filter(_.nonEmpty)
+   .toList
+
+  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles)
   @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
