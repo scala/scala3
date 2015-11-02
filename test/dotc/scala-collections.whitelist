@@ -40,6 +40,8 @@
 #./scala-scala/src/library/scala/Float.scala
 #./scala-scala/src/library/scala/Int.scala
 #./scala-scala/src/library/scala/Long.scala
+#./scala-scala/src/library/scala/Short.scala
+#./scala-scala/src/library/scala/Unit.scala
 
 ./scala-scala/src/library/scala/Cloneable.scala
 ./scala-scala/src/library/scala/DelayedInit.scala
@@ -82,16 +84,17 @@
 #./scala-scala/src/library/scala/Product8.scala
 #./scala-scala/src/library/scala/Product9.scala
 
+
 ./scala-scala/src/library/scala/Proxy.scala
 ./scala-scala/src/library/scala/SerialVersionUID.scala
 ./scala-scala/src/library/scala/Serializable.scala
-./scala-scala/src/library/scala/Short.scala
 ./scala-scala/src/library/scala/Specializable.scala
 ./scala-scala/src/library/scala/Symbol.scala
 ./scala-scala/src/library/scala/UninitializedError.scala
 ./scala-scala/src/library/scala/UninitializedFieldError.scala
-./scala-scala/src/library/scala/Unit.scala
-./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
+
+# https://github.com/lampepfl/dotty/issues/912
+# ./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
 ./scala-scala/src/library/scala/collection/IterableLike.scala
 ./scala-scala/src/library/scala/collection/Iterator.scala
 ./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
