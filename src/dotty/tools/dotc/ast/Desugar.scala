@@ -236,10 +236,12 @@ object desugar {
     // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
     // go in `constr`, the constructor after desugaring.
 
+    val isCaseClass = mods.is(Case) && !mods.is(Module)
+
     val constrTparams = constr1.tparams map toDefParam
     val constrVparamss =
       if (constr1.vparamss.isEmpty) { // ensure parameter list is non-empty
-        if (mods is Case)
+        if (isCaseClass)
           ctx.error("case class needs to have at least one parameter list", cdef.pos)
         ListOfNil
       }
@@ -287,7 +289,7 @@ object desugar {
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths =
-      if (mods is Case) {
+      if (isCaseClass) {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
@@ -326,9 +328,9 @@ object desugar {
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
 
-    // Case classes get a ProductN parent
+    // Case classes and case objects get a ProductN parent
     var parents1 = parents
-    if ((mods is Case) && arity <= Definitions.MaxTupleArity)
+    if (mods.is(Case) && arity <= Definitions.MaxTupleArity)
       parents1 = parents1 :+ productConstr(arity)
 
     // The thicket which is the desugared version of the companion object
@@ -350,7 +352,7 @@ object desugar {
     //     (T11, ..., T1N) => ... => (TM1, ..., TMN) => C
     // For all other classes, the parent is AnyRef.
     val companions =
-      if (mods is Case) {
+      if (isCaseClass) {
         val parent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
@@ -386,7 +388,7 @@ object desugar {
         ctx.error("implicit classes may not be toplevel", cdef.pos)
         Nil
       }
-      else if (mods is Case) {
+      else if (isCaseClass) {
         ctx.error("implicit classes may not be case classes", cdef.pos)
         Nil
       }
@@ -407,7 +409,7 @@ object desugar {
       val originalTparams = constr1.tparams.toIterator
       val originalVparams = constr1.vparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparams.next.mods))
-      val caseAccessor = if (mods is Case) CaseAccessor else EmptyFlags
+      val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss.flatten.map(_.withMods(originalVparams.next.mods | caseAccessor))
       cpy.TypeDef(cdef)(
         rhs = cpy.Template(impl)(constr, parents1, self1,
@@ -453,7 +455,7 @@ object desugar {
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(clsName, clsTmpl)
-        .withMods(mods.toTypeFlags & AccessOrSynthetic | ModuleClassCreationFlags)
+        .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls))
     }
   }
