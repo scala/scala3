@@ -3,6 +3,8 @@ object Test {
   def test1 = {
     val f = contains("", (_: Int))
     val ff = contains("", ((_: Int)))
+    val g: Int => Boolean = contains("", (_))
+    val gg: Int => Boolean = contains("", ((_)))
     f.apply(0)
     //     sandbox/eta.scala:4: error: type mismatch:
     //  found   : Int => Int
