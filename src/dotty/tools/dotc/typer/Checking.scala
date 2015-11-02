@@ -398,9 +398,7 @@ trait Checking {
     if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
-      val alias = tpt.tpe.dealias
-      if (alias.isHK) errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
-      else tpt.withType(alias)
+      errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
     }
     else tpt
 }

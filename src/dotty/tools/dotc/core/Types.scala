@@ -846,14 +846,16 @@ object Types {
      *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type, resolved: List[Name]): Type = pre.stripTypeVar match {
+      def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           object instantiate extends TypeMap {
             var isSafe = true
             def apply(tp: Type): Type = tp match {
               case TypeRef(RefinedThis(`pre`), name) if name.isLambdaArgName =>
-                val TypeAlias(alias) = member(name).info
-                alias
+                member(name).info match {
+                  case TypeAlias(alias) => alias
+                  case _ => isSafe = false; tp
+                }
               case tp: TypeVar if !tp.inst.exists =>
                 isSafe = false
                 tp
@@ -861,23 +863,37 @@ object Types {
                 mapOver(tp)
             }
           }
-          def betaReduce(tp: Type) = {
-            val lam = pre.parent.LambdaClass(forcing = false)
-            if (lam.exists && lam.typeParams.forall(tparam => resolved.contains(tparam.name))) {
-              val reduced = instantiate(tp)
+          def instArg(tp: Type): Type = tp match {
+            case tp @ TypeAlias(TypeRef(RefinedThis(`pre`), name)) if name.isLambdaArgName =>
+              member(name).info match {
+                case TypeAlias(alias) => tp.derivedTypeAlias(alias) // needed to keep variance
+                case bounds => bounds
+              }
+            case _ =>
+              instantiate(tp)
+          }
+          def instTop(tp: Type): Type = tp.stripTypeVar match {
+            case tp: RefinedType =>
+              tp.derivedRefinedType(instTop(tp.parent), tp.refinedName, instArg(tp.refinedInfo))
+            case _ =>
+              instantiate(tp)
+          }
+          /** Reduce rhs of $hkApply to make it stand alone */
+          def betaReduce(tp: Type) =
+            if (pre.parent.isSafeLambda) {
+              val reduced = instTop(tp)
               if (instantiate.isSafe) reduced else NoType
             }
             else NoType
-          }
           pre.refinedInfo match {
             case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent, pre.refinedName :: resolved)
+              if (pre.refinedName ne name) loop(pre.parent)
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
                 case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2)
               }
-            case _ => loop(pre.parent, resolved)
+            case _ => loop(pre.parent)
           }
         case RefinedThis(binder) =>
           binder.lookupRefined(name)
@@ -887,14 +903,14 @@ object Types {
           WildcardType
         case pre: TypeRef =>
           pre.info match {
-            case TypeAlias(alias) => loop(alias, resolved)
+            case TypeAlias(alias) => loop(alias)
             case _ => NoType
           }
         case _ =>
           NoType
       }
 
-      loop(this, Nil)
+      loop(this)
     }
 
     /** The type <this . name> , reduced if possible */
@@ -1886,6 +1902,10 @@ object Types {
                   s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.LambdaArgIndex).variance}, ${refinedInfo.variance}")
           case _ =>
         }
+      if (Config.checkProjections &&
+          (refinedName == tpnme.hkApply || refinedName.isLambdaArgName) &&
+          parent.noHK)
+        assert(false, s"illegal refinement of first-order type: $this")
       this
     }
 

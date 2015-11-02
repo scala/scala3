@@ -71,7 +71,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
   /** Check bounds of AppliedTypeTrees.
    *  Replace type trees with TypeTree nodes.
    *  Replace constant expressions with Literal nodes.
-   *  Note: Demanding idempotency instead of purityin literalize is strictly speaking too loose.
+   *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
    *  Example
    *
    *    object O { final val x = 42; println("43") }

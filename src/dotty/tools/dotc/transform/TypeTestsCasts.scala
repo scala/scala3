@@ -27,7 +27,6 @@ import ValueClasses._
  * Unfortunately this phase ended up being not Y-checkable unless types are erased. A cast to an ConstantType(3) or x.type
  * cannot be rewritten before erasure.
  */
-
 trait TypeTestsCasts {
   import ast.tpd._
 

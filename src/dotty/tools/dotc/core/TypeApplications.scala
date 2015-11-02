@@ -48,33 +48,43 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a typeref referring to a class, the type parameters of the class.
    *  For a typeref referring to a Lambda class, the type parameters of
    *    its right hand side or upper bound.
-   *  For a refinement type, the type parameters of its parent, unless the refinement
-   *  re-binds the type parameter with a type-alias.
-   *  For any other non-singleton type proxy, the type parameters of its underlying type.
-   *  For any other type, the empty list.
+   *  For a refinement type, the type parameters of its parent, dropping
+   *  any type parameter that is-rebound by the refinement. "Re-bind" means:
+   *  The refinement contains a TypeAlias for the type parameter, or
+   *  it introduces bounds for the type parameter, and we are not in the
+   *  special case of a type Lambda, where a LambdaTrait gets refined
+   *  with the bounds on its hk args. See `LambdaAbstract`, where these
+   *  types get introduced, and see `isBoundedLambda` below for the test.
    */
   final def typeParams(implicit ctx: Context): List[TypeSymbol] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
-      case tp: ClassInfo =>
-        tp.cls.typeParams
-      case tp: TypeRef =>
-        val tsym = tp.typeSymbol
+      case self: ClassInfo =>
+        self.cls.typeParams
+      case self: TypeRef =>
+        val tsym = self.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.typeParams
+        else if (tsym.isAliasType) self.underlying.typeParams
         else {
           val lam = LambdaClass(forcing = false)
           if (lam.exists) lam.typeParams else Nil
         }
-      case tp: RefinedType =>
-        val tparams = tp.parent.typeParams
-        tp.refinedInfo match {
-          case rinfo: TypeAlias => tparams.filterNot(_.name == tp.refinedName)
-          case _ => tparams
+      case self: RefinedType =>
+        def isBoundedLambda(tp: Type): Boolean = tp match {
+          case tp: TypeRef => tp.typeSymbol.isLambdaTrait
+          case tp: RefinedType => tp.refinedName.isLambdaArgName && isBoundedLambda(tp.parent)
+          case _ => false
         }
-      case tp: SingletonType =>
+        val tparams = self.parent.typeParams
+        self.refinedInfo match {
+          case rinfo: TypeBounds if rinfo.isAlias || isBoundedLambda(self) =>
+            tparams.filterNot(_.name == self.refinedName)
+          case _ =>
+            tparams
+        }
+     case self: SingletonType =>
         Nil
-      case tp: TypeProxy =>
-        tp.underlying.typeParams
+      case self: TypeProxy =>
+        self.underlying.typeParams
       case _ =>
         Nil
     }
@@ -91,23 +101,23 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def rawTypeParams(implicit ctx: Context): List[TypeSymbol] = {
     self match {
-      case tp: ClassInfo =>
-        tp.cls.typeParams
-      case tp: TypeRef =>
-        val tsym = tp.typeSymbol
+      case self: ClassInfo =>
+        self.cls.typeParams
+      case self: TypeRef =>
+        val tsym = self.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.rawTypeParams
+        else if (tsym.isAliasType) self.underlying.rawTypeParams
         else Nil
       case _: BoundType | _: SingletonType =>
         Nil
-      case tp: TypeProxy =>
-        tp.underlying.rawTypeParams
+      case self: TypeProxy =>
+        self.underlying.rawTypeParams
       case _ =>
         Nil
     }
   }
 
-  /** If type `tp` is equal, aliased-to, or upperbounded-by a type of the form
+  /** If type `self` is equal, aliased-to, or upperbounded-by a type of the form
    *  `LambdaXYZ { ... }`, the class symbol of that type, otherwise NoSymbol.
    *  symbol of that type, otherwise NoSymbol.
    *  @param forcing  if set, might force completion. If not, never forces
@@ -125,7 +135,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       NoSymbol
   }}
 
-  /** Is type `tp` equal, aliased-to, or upperbounded-by a type of the form
+  /** Is type `self` equal, aliased-to, or upperbounded-by a type of the form
    *  `LambdaXYZ { ... }`?
    */
   def isLambda(implicit ctx: Context): Boolean =
@@ -137,7 +147,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isSafeLambda(implicit ctx: Context): Boolean =
     LambdaClass(forcing = false).exists
 
-  /** Is type `tp` a Lambda with all hk$i fields fully instantiated? */
+  /** Is type `self` a Lambda with all hk$i fields fully instantiated? */
   def isInstantiatedLambda(implicit ctx: Context): Boolean =
     isSafeLambda && typeParams.isEmpty
 
@@ -225,7 +235,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
 
     /** Same as isHK, except we classify all abstract types as HK,
-     *  (they must be, because the are applied). This avoids some forcing and
+     *  (they must be, because they are applied). This avoids some forcing and
      *  CyclicReference errors of the standard isHK.
      */
     def isKnownHK(tp: Type): Boolean = tp match {
