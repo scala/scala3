@@ -322,6 +322,7 @@ object Parsers {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
       case Typed(t1, _) => isWildcard(t1)
       case Annotated(t1, _) => isWildcard(t1)
+      case Parens(t1) => isWildcard(t1)
       case _ => false
     }
 
