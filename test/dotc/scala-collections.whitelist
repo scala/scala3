@@ -1,18 +1,34 @@
-./scala-scala/src/library/scala/runtime/RichBoolean.scala
-./scala-scala/src/library/scala/runtime/RichByte.scala
-./scala-scala/src/library/scala/runtime/RichChar.scala
-./scala-scala/src/library/scala/runtime/RichDouble.scala
-./scala-scala/src/library/scala/runtime/RichException.scala
-./scala-scala/src/library/scala/runtime/RichFloat.scala
-./scala-scala/src/library/scala/runtime/RichInt.scala
-./scala-scala/src/library/scala/runtime/RichLong.scala
-./scala-scala/src/library/scala/runtime/RichShort.scala
-./scala-scala/src/library/scala/AnyVal.scala
+# no sig for NoType
+#  no sig for ErasedValueType(class RichShort,NoType)
+#  no sig for TypeRef(TermRef(ThisType(TypeRef(NoPrefix,scala)),runtime),RichShort)
+#  failure while taking result signture of (x: Short)runtime.RichShort: runtime.RichShort
+#  cannot take signature of (x: Short)runtime.RichShort
+#  exception occurred while typechecking ./scala-scala/src/library/scala/runtime/RichByte.scala
+#
+#./scala-scala/src/library/scala/runtime/RichBoolean.scala
+#./scala-scala/src/library/scala/runtime/RichByte.scala
+#./scala-scala/src/library/scala/runtime/RichChar.scala
+#./scala-scala/src/library/scala/runtime/RichDouble.scala
+#./scala-scala/src/library/scala/runtime/RichException.scala
+#./scala-scala/src/library/scala/runtime/RichFloat.scala
+#./scala-scala/src/library/scala/runtime/RichInt.scala
+#./scala-scala/src/library/scala/runtime/RichLong.scala
+#./scala-scala/src/library/scala/runtime/RichShort.scala
+
+
+
+#
+# no sig for NoType
+#  no sig for ErasedValueType(class RichShort,NoType)
+#  no sig for TypeRef(TermRef(ThisType(TypeRef(NoPrefix,scala)),runtime),RichShort)
+#  failure while taking result signture of (x: Short)runtime.RichShort: runtime.RichShort
+#  cannot take signature of (x: Short)runtime.RichShort
+#  exception occurred while typechecking ./scala-scala/src/library/scala/Array.scala
+#
+#./scala-scala/src/library/scala/Array.scala
+#./scala-scala/src/library/scala/NotImplementedError.scala
+
 ./scala-scala/src/library/scala/AnyValCompanion.scala
-./scala-scala/src/library/scala/Array.scala
-./scala-scala/src/library/scala/Boolean.scala
-./scala-scala/src/library/scala/Byte.scala
-./scala-scala/src/library/scala/Char.scala
 ./scala-scala/src/library/scala/Cloneable.scala
 ./scala-scala/src/library/scala/DelayedInit.scala
 ./scala-scala/src/library/scala/Double.scala
@@ -24,7 +40,6 @@
 ./scala-scala/src/library/scala/Long.scala
 ./scala-scala/src/library/scala/MatchError.scala
 ./scala-scala/src/library/scala/Mutable.scala
-./scala-scala/src/library/scala/NotImplementedError.scala
 ./scala-scala/src/library/scala/NotNull.scala
 ./scala-scala/src/library/scala/Option.scala
 ./scala-scala/src/library/scala/PartialFunction.scala
