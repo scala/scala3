@@ -169,6 +169,7 @@ class tests extends CompilerTest {
    .map(_.trim) // allow identation
    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
    .map(_.takeWhile(_ != "#").trim) // allow comments in the end of line
+   .filter(_.nonEmpty)
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles)
