@@ -53,7 +53,7 @@
 ./scala-scala/src/library/scala/NotNull.scala
 
 # https://github.com/lampepfl/dotty/issues/911
-#./scala-scala/src/library/scala/Option.scala
+./scala-scala/src/library/scala/Option.scala
 
 ./scala-scala/src/library/scala/PartialFunction.scala
 ./scala-scala/src/library/scala/Predef.scala
