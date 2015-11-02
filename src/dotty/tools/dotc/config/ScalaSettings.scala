@@ -18,6 +18,7 @@ class ScalaSettings extends Settings.SettingGroup {
    */
   val dependencyfile = StringSetting("-dependencyfile", "file", "Set dependency tracking file.", ".scala_dependencies")
   val deprecation = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.")
+  val migration = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.")
   val encoding = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding)
   val explaintypes = BooleanSetting("-explaintypes", "Explain type errors in more detail.")
   val feature = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")

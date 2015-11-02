@@ -500,7 +500,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     projection.name == tpnme.hkApply &&
     !other.isHKApply &&
     other.testLifted(projection.prefix.LambdaClass(forcing = true).typeParams,
-      if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
+        { xx => println(i"test lifted with $xx")
+          if (inOrder) isSubType(projection.prefix, xx) else isSubType(xx, projection.prefix)
+        },
       if (inOrder) Nil else classBounds(projection.prefix))
 
   /** The class symbols bounding the type of the `Apply` member of `tp` */
