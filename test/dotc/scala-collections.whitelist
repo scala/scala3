@@ -111,7 +111,9 @@
 ./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/immutable/Iterable.scala
 ./scala-scala/src/library/scala/collection/immutable/LinearSeq.scala
-./scala-scala/src/library/scala/collection/immutable/List.scala
+
+# https://github.com/lampepfl/dotty/issues/915
+# ./scala-scala/src/library/scala/collection/immutable/List.scala
 ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
 ./scala-scala/src/library/scala/collection/immutable/PagedSeq.scala
 ./scala-scala/src/library/scala/collection/immutable/Queue.scala
