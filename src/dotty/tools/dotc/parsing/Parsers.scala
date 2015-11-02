@@ -259,7 +259,7 @@ object Parsers {
     }
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    private def scala2mode(msg: => String, pos: Position = Position(in.offset)) = {
+    private def testScala2Mode(msg: String, pos: Position = Position(in.offset)) = {
       val s2 = ctx.settings.language.value.contains(nme.Scala2.toString)
       if (s2) ctx.migrationWarning(msg, source atPos pos)
       s2
@@ -1731,7 +1731,7 @@ object Parsers {
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
       def scala2ProcedureSyntax =
-        scala2mode("Procedure syntax no longer supported; `=' should be inserted here")
+        testScala2Mode("Procedure syntax no longer supported; `=' should be inserted here")
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
