@@ -192,6 +192,9 @@ class Definitions {
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
 
   lazy val ScalaPredefModule = ctx.requiredModule("scala.Predef")
+
+    lazy val Predef_conforms = ctx.requiredMethod(ScalaPredefModule.moduleClass.asClass, "$conforms")
+
   lazy val ScalaRuntimeModule = ctx.requiredModule("scala.runtime.ScalaRunTime")
   lazy val ScalaRuntimeClass = ScalaRuntimeModule.moduleClass.asClass
 
@@ -210,7 +213,6 @@ class Definitions {
     def newRefArrayMethod = ctx.requiredMethod(DottyArraysModule.moduleClass.asClass, "newRefArray")
 
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
-  lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
 
 //  lazy val FunctionClass: ClassSymbol = ctx.requiredClass("scala.Function")
   lazy val SingletonClass: ClassSymbol =
