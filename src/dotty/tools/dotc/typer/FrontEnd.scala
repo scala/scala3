@@ -28,7 +28,8 @@ class FrontEnd extends Phase {
     unit.untpdTree =
       if (unit.isJava) new JavaParser(unit.source).parse()
       else new Parser(unit.source).parse()
-    typr.println("parsed:\n" + unit.untpdTree.show)
+    val printer = if (ctx.settings.Xprint.value.contains("parser")) default else typr
+    printer.println("parsed:\n" + unit.untpdTree.show)
   }
 
   def enterSyms(implicit ctx: Context) = monitor("indexing") {
