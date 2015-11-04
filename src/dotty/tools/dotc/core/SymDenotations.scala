@@ -176,7 +176,7 @@ object SymDenotations {
       // completions.println(s"completed ${this.debugString}")
     }
 
-    protected[dotc] final def info_=(tp: Type) = {
+    protected[dotc] def info_=(tp: Type) = {
       /* // DEBUG
        def illegal: String = s"illegal type for $this: $tp"
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
@@ -1175,6 +1175,11 @@ object SymDenotations {
       }
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
+    }
+
+    override protected[dotc] final def info_=(tp: Type) = {
+      super.info_=(tp)
+      myTypeParams = null // changing the info might change decls, and with it typeParams
     }
 
     /** The denotations of all parents in this class. */

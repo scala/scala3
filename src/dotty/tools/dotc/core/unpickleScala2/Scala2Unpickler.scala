@@ -130,8 +130,18 @@ object Scala2Unpickler {
     } else {
       registerCompanionPair(scalacCompanion, denot.classSymbol)
     }
+    val declsTypeParams = denot.typeParams
+    val declsInRightOrder =
+      if (declsTypeParams.corresponds(tparams)(_.name == _.name)) decls
+      else { // create new scope with type parameters in right order
+        val decls1 = newScope
+        for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
+        for (sym <- decls) if (!declsTypeParams.contains(sym)) decls1.enter(sym)
+        decls1
+      }
 
-    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
+    denot.info = ClassInfo(
+      denot.owner.thisType, denot.classSymbol, parentRefs, declsInRightOrder, ost)
   }
 }
 
