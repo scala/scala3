@@ -33,6 +33,7 @@ import annotation.tailrec
 import Flags.FlagSet
 import typer.Mode
 import language.implicitConversions
+import scala.util.hashing.{ MurmurHash3 => hashing }
 
 object Types {
 
@@ -2249,11 +2250,13 @@ object Types {
     }
   }
 
-  case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+  abstract case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
     extends CachedGroundType with BindingType with TermType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     val resType = resultTypeExp(this)
+
+    assert(resType ne null)
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2276,13 +2279,26 @@ object Types {
 
     // need to override hashCode and equals to be object identity
     // because paramNames by itself is not discriminatory enough
-    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
-    override def computeHash = identityHash
+    override def equals(other: Any) = other match {
+      case other: PolyType =>
+        other.paramNames == this.paramNames && other.paramBounds == this.paramBounds && other.resType == this.resType
+      case _ => false
+    }
+    override def computeHash = {
+      doHash(paramNames, resType, paramBounds)
+    }
 
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
   }
 
+  class CachedPolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+    extends PolyType(paramNames)(paramBoundsExp, resultTypeExp)
+
   object PolyType {
+    def apply(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
+      unique(new CachedPolyType(paramNames)(paramBoundsExp, resultTypeExp))
+    }
+
     def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
       if (tparams.isEmpty) resultType
       else {
@@ -2358,7 +2374,7 @@ object Types {
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
 
-    override def computeHash = doHash(paramNum, binder)
+    override def computeHash = finishHash(hashing.mix(hashing.mix(hashSeed, paramNum), binder.identityHash), 1)
     override def equals(that: Any) = that match {
       case that: PolyParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
