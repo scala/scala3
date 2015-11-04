@@ -588,9 +588,19 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           sym.info = readType()
           ValDef(sym.asTerm, readRhs(localCtx))
         case TYPEDEF | TYPEPARAM =>
-          if (sym.isClass)
+          def addCompanionMethod(target: Symbol, owner: Symbol) = {
+            val name = if (sym is Flags.ModuleClass) nme.COMPANION_CLASS_METHOD else nme.COMPANION_MODULE_METHOD
+            val companionMethod = ctx.synthesizeCompanionMethod(name, target, owner)
+            if (companionMethod.exists)
+              companionMethod.entered
+          }
+          if (sym.isClass) {
+            val companion = sym.scalacLinkedClass
+            if (companion != NoSymbol) {
+              addCompanionMethod(companion, sym)
+            }
             ta.assignType(untpd.TypeDef(sym.name.asTypeName, readTemplate(localCtx)), sym)
-          else {
+          } else {
             sym.info = readType()
             TypeDef(sym.asType)
           }
