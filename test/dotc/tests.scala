@@ -102,6 +102,7 @@ class tests extends CompilerTest {
 
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
+  @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
 
   @Test def new_all = compileFiles(newDir, twice)
 
@@ -137,6 +138,7 @@ class tests extends CompilerTest {
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 5)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
+  @Test def neg_variancesConstr = compileFile(negDir, "variances-constr", xerrors = 2)
   @Test def neg_i871_missingReturnType = compileFile(negDir, "i871", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
