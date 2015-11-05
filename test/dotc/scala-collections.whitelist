@@ -97,9 +97,7 @@
 # ./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
 
 ./scala-scala/src/library/scala/collection/IterableLike.scala
-
-# https://github.com/lampepfl/dotty/issues/913
-#./scala-scala/src/library/scala/collection/Iterator.scala
+./scala-scala/src/library/scala/collection/Iterator.scala
 ./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
 
 # https://github.com/lampepfl/dotty/issues/914
