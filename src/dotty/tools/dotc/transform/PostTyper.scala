@@ -68,7 +68,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  /** Check bounds of AppliedTypeTrees.
+  /** Check bounds of AppliedTypeTrees and TypeApplys.
    *  Replace type trees with TypeTree nodes.
    *  Replace constant expressions with Literal nodes.
    *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
@@ -113,6 +113,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         val bounds = tparams.map(tparam =>
           tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
         Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
+        norm(tree)
+      case TypeApply(fn, args) =>
+        Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
         norm(tree)
       case _ =>
         norm(tree)
