@@ -131,7 +131,6 @@ class tests extends CompilerTest {
   @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3", xerrors = 2)
 
-  @Test def neg_t1279a = compileFile(negDir, "t1279a", xerrors = 1)
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
