@@ -864,8 +864,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    if (!(lo1.tpe <:< hi1.tpe))
-      ctx.error(d"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
     assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
   }
 

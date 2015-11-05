@@ -9,3 +9,10 @@ object ListMap {
   def empty[X, Y] = new ListMap[X, Y]
   def apply[A1, B2](elems: Tuple2[A1, B2]*): Map[A1, B2] = empty[A1,B2].++(elems.iterator)
 }
+
+class Test[A] {
+
+  def f[B >: A <: AnyRef](x: A): AnyRef = (x: B)
+  def g[B >: String <: Int](x: B): Int = x
+
+}
