@@ -132,7 +132,7 @@ object desugar {
       case tparam @ TypeDef(_, ContextBounds(tbounds, cxbounds)) =>
         for (cxbound <- cxbounds) {
           val paramFlags: FlagSet = if (isPrimaryConstructor) PrivateLocalParamAccessor else Param
-          val epname = (nme.EVIDENCE_PARAM_PREFIX.toString + epbuf.length).toTermName
+          val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
           epbuf += ValDef(epname, cxbound, EmptyTree).withFlags(paramFlags | Implicit)
         }
         cpy.TypeDef(tparam)(rhs = tbounds)

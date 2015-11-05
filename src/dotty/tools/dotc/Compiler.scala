@@ -9,11 +9,10 @@ import Scopes._
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
-import dotty.tools.dotc.transform._
-import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-
+import transform._
+import transform.TreeTransforms.{TreeTransform, TreeTransformer}
+import core.DenotTransformers.DenotTransformer
+import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 
