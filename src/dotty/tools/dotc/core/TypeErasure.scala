@@ -375,7 +375,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   }
 
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
-    val defn.ArrayType(elemtp) = tp
+    val defn.ArrayOf(elemtp) = tp
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
@@ -456,14 +456,14 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
         normalizeClass(sym.asClass).fullName.asTypeName
-      case defn.ArrayType(elem) =>
+      case defn.ArrayOf(elem) =>
         sigName(this(tp))
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
         sigName(tp.widen)
       case ExprType(rt) =>
-        sigName(defn.FunctionType(Nil, rt))
+        sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case ErrorType | WildcardType =>

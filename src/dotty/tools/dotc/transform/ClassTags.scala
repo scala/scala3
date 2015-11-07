@@ -44,7 +44,7 @@ class ClassTags extends MiniPhaseTransform with IdentityDenotTransformer { thisT
       val tp = tree.args.head.tpe
       val defn = ctx.definitions
       val (elemType, ndims) = tp match {
-        case defn.MultiArrayType(elem, ndims) => (elem, ndims)
+        case defn.MultiArrayOf(elem, ndims) => (elem, ndims)
         case _ => (tp, 0)
       }
 

@@ -140,7 +140,9 @@ class Definitions {
    *     }
    */
   lazy val AnyClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
+  def AnyType = AnyClass.typeRef
   lazy val AnyValClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
+  def AnyValType = AnyValClass.typeRef
 
     lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     lazy val Any_!=       = newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
@@ -161,8 +163,10 @@ class Definitions {
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     completeClass(cls)
   }
+  def ObjectType: Type = ObjectClass.typeRef
 
   lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
+  def AnyRefType = AnyRefAlias.typeRef
 
     lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
     lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
@@ -182,7 +186,7 @@ class Definitions {
   /** Dummy method needed by elimByName */
   lazy val dummyApply = newPolyMethod(
       OpsPackageClass, nme.dummyApply, 1,
-      pt => MethodType(List(FunctionType(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
+      pt => MethodType(List(FunctionOf(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
 
   /** Method representing a throw */
   lazy val throwMethod = newMethod(OpsPackageClass, nme.THROWkw,
@@ -190,9 +194,10 @@ class Definitions {
 
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
+  def NothingType = NothingClass.typeRef
   lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
-  lazy val NullTypeRef = NullClass.typeRef
+  def NullType = NullClass.typeRef
 
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule = ScalaPredefModuleRef.symbol
@@ -235,15 +240,16 @@ class Definitions {
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyClass.typeRef), EmptyScope)
 
-  lazy val SeqTypeRef = ctx.requiredClassRef("scala.collection.Seq")
-  def SeqClass = SeqTypeRef.symbol.asClass
+  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  def SeqClass = SeqType.symbol.asClass
+
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply = Seq_applyR.symbol
     lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
     def Seq_head = Seq_headR.symbol
 
-  lazy val ArrayTypeRef = ctx.requiredClassRef("scala.Array")
-  def ArrayClass = ArrayTypeRef.symbol.asClass
+  lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
+  def ArrayClass = ArrayType.symbol.asClass
     lazy val Array_applyR                 = ArrayClass.requiredMethodRef(nme.apply)
     def Array_apply = Array_applyR.symbol
     lazy val Array_updateR                = ArrayClass.requiredMethodRef(nme.update)
@@ -255,10 +261,10 @@ class Definitions {
     lazy val ArrayConstructorR            = ArrayClass.requiredMethodRef(nme.CONSTRUCTOR)
     def ArrayConstructor = ArrayConstructorR.symbol
 
-  lazy val UnitTypeRef = valueTypeRef("scala.Unit", BoxedUnitTypeRef, java.lang.Void.TYPE, UnitEnc)
-  def UnitClass = UnitTypeRef.symbol.asClass
-  lazy val BooleanTypeRef = valueTypeRef("scala.Boolean", BoxedBooleanTypeRef, java.lang.Boolean.TYPE, BooleanEnc)
-  def BooleanClass = BooleanTypeRef.symbol.asClass
+  lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
+  def UnitClass = UnitType.symbol.asClass
+  lazy val BooleanType = valueTypeRef("scala.Boolean", BoxedBooleanType, java.lang.Boolean.TYPE, BooleanEnc)
+  def BooleanClass = BooleanType.symbol.asClass
     lazy val Boolean_notR   = BooleanClass.requiredMethodRef(nme.UNARY_!)
     def Boolean_! = Boolean_notR.symbol
     lazy val Boolean_andR = BooleanClass.requiredMethodRef(nme.ZAND) // ### harmonize required... calls
@@ -266,14 +272,14 @@ class Definitions {
     lazy val Boolean_orR  = BooleanClass.requiredMethodRef(nme.ZOR)
     def Boolean_|| = Boolean_orR.symbol
 
-  lazy val ByteTypeRef = valueTypeRef("scala.Byte", BoxedByteTypeRef, java.lang.Byte.TYPE, ByteEnc)
-  def ByteClass = ByteTypeRef.symbol.asClass
-  lazy val ShortTypeRef = valueTypeRef("scala.Short", BoxedShortTypeRef, java.lang.Short.TYPE, ShortEnc)
-  def ShortClass = ShortTypeRef.symbol.asClass
-  lazy val CharTypeRef = valueTypeRef("scala.Char", BoxedCharTypeRef, java.lang.Character.TYPE, CharEnc)
-  def CharClass = CharTypeRef.symbol.asClass
-  lazy val IntTypeRef = valueTypeRef("scala.Int", BoxedIntTypeRef, java.lang.Integer.TYPE, IntEnc)
-  def IntClass = IntTypeRef.symbol.asClass
+  lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", BoxedByteType, java.lang.Byte.TYPE, ByteEnc)
+  def ByteClass = ByteType.symbol.asClass
+  lazy val ShortType: TypeRef = valueTypeRef("scala.Short", BoxedShortType, java.lang.Short.TYPE, ShortEnc)
+  def ShortClass = ShortType.symbol.asClass
+  lazy val CharType: TypeRef = valueTypeRef("scala.Char", BoxedCharType, java.lang.Character.TYPE, CharEnc)
+  def CharClass = CharType.symbol.asClass
+  lazy val IntType: TypeRef = valueTypeRef("scala.Int", BoxedIntType, java.lang.Integer.TYPE, IntEnc)
+  def IntClass = IntType.symbol.asClass
     lazy val Int_minusR   = IntClass.requiredMethodRef(nme.MINUS, List(IntType))
     def Int_- = Int_minusR.symbol
     lazy val Int_plusR   = IntClass.requiredMethodRef(nme.PLUS, List(IntType))
@@ -288,40 +294,40 @@ class Definitions {
     def Int_>= = Int_geR.symbol
     lazy val Int_leR   = IntClass.requiredMethodRef(nme.LE, List(IntType))
     def Int_<= = Int_leR.symbol
-  lazy val LongTypeRef = valueTypeRef("scala.Long", BoxedLongTypeRef, java.lang.Long.TYPE, LongEnc)
-  def LongClass = LongTypeRef.symbol.asClass
-    lazy val Long_XOR_Long = LongTypeRef.member(nme.XOR).requiredSymbol(
+  lazy val LongType: TypeRef = valueTypeRef("scala.Long", BoxedLongType, java.lang.Long.TYPE, LongEnc)
+  def LongClass = LongType.symbol.asClass
+    lazy val Long_XOR_Long = LongType.member(nme.XOR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
     )
-    lazy val Long_LSR_Int = LongTypeRef.member(nme.LSR).requiredSymbol(
+    lazy val Long_LSR_Int = LongType.member(nme.LSR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
     )
-  lazy val FloatTypeRef = valueTypeRef("scala.Float", BoxedFloatTypeRef, java.lang.Float.TYPE, FloatEnc)
-  def FloatClass = FloatTypeRef.symbol.asClass
-  lazy val DoubleTypeRef = valueTypeRef("scala.Double", BoxedDoubleTypeRef, java.lang.Double.TYPE, DoubleEnc)
-  def DoubleClass = DoubleTypeRef.symbol.asClass
+  lazy val FloatType: TypeRef = valueTypeRef("scala.Float", BoxedFloatType, java.lang.Float.TYPE, FloatEnc)
+  def FloatClass = FloatType.symbol.asClass
+  lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", BoxedDoubleType, java.lang.Double.TYPE, DoubleEnc)
+  def DoubleClass = DoubleType.symbol.asClass
 
-  lazy val BoxedUnitTypeRef = ctx.requiredClassRef("scala.runtime.BoxedUnit")
-  def BoxedUnitClass = BoxedUnitTypeRef.symbol.asClass
+  lazy val BoxedUnitType: TypeRef = ctx.requiredClassRef("scala.runtime.BoxedUnit")
+  def BoxedUnitClass = BoxedUnitType.symbol.asClass
 
     def BoxedUnit_UNIT = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
-  lazy val BoxedBooleanTypeRef = ctx.requiredClassRef("java.lang.Boolean")
-  def BoxedBooleanClass = BoxedBooleanTypeRef.symbol.asClass
-  lazy val BoxedByteTypeRef = ctx.requiredClassRef("java.lang.Byte")
-  def BoxedByteClass = BoxedByteTypeRef.symbol.asClass
-  lazy val BoxedShortTypeRef = ctx.requiredClassRef("java.lang.Short")
-  def BoxedShortClass = BoxedShortTypeRef.symbol.asClass
-  lazy val BoxedCharTypeRef = ctx.requiredClassRef("java.lang.Character")
-  def BoxedCharClass = BoxedCharTypeRef.symbol.asClass
-  lazy val BoxedIntTypeRef = ctx.requiredClassRef("java.lang.Integer")
-  def BoxedIntClass = BoxedIntTypeRef.symbol.asClass
-  lazy val BoxedLongTypeRef = ctx.requiredClassRef("java.lang.Long")
-  def BoxedLongClass = BoxedLongTypeRef.symbol.asClass
-  lazy val BoxedFloatTypeRef = ctx.requiredClassRef("java.lang.Float")
-  def BoxedFloatClass = BoxedFloatTypeRef.symbol.asClass
-  lazy val BoxedDoubleTypeRef = ctx.requiredClassRef("java.lang.Double")
-  def BoxedDoubleClass = BoxedDoubleTypeRef.symbol.asClass
+  lazy val BoxedBooleanType: TypeRef = ctx.requiredClassRef("java.lang.Boolean")
+  def BoxedBooleanClass = BoxedBooleanType.symbol.asClass
+  lazy val BoxedByteType: TypeRef = ctx.requiredClassRef("java.lang.Byte")
+  def BoxedByteClass = BoxedByteType.symbol.asClass
+  lazy val BoxedShortType: TypeRef = ctx.requiredClassRef("java.lang.Short")
+  def BoxedShortClass = BoxedShortType.symbol.asClass
+  lazy val BoxedCharType: TypeRef = ctx.requiredClassRef("java.lang.Character")
+  def BoxedCharClass = BoxedCharType.symbol.asClass
+  lazy val BoxedIntType: TypeRef = ctx.requiredClassRef("java.lang.Integer")
+  def BoxedIntClass = BoxedIntType.symbol.asClass
+  lazy val BoxedLongType: TypeRef = ctx.requiredClassRef("java.lang.Long")
+  def BoxedLongClass = BoxedLongType.symbol.asClass
+  lazy val BoxedFloatType: TypeRef = ctx.requiredClassRef("java.lang.Float")
+  def BoxedFloatClass = BoxedFloatType.symbol.asClass
+  lazy val BoxedDoubleType: TypeRef = ctx.requiredClassRef("java.lang.Double")
+  def BoxedDoubleClass = BoxedDoubleType.symbol.asClass
 
   lazy val BoxedBooleanModule = ctx.requiredModule("java.lang.Boolean")
   lazy val BoxedByteModule    = ctx.requiredModule("java.lang.Byte")
@@ -340,6 +346,7 @@ class Definitions {
 
   // fundamental classes
   lazy val StringClass                = ctx.requiredClass("java.lang.String")
+  def StringType: Type                = StringClass.typeRef
   lazy val StringModule               = StringClass.linkedClass
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
@@ -359,33 +366,33 @@ class Definitions {
 
   // in scalac modified to have Any as parent
 
-  lazy val SerializableTypeRef       = ctx.requiredClassRef("scala.Serializable")
-  def SerializableClass = SerializableTypeRef.symbol.asClass
-  lazy val StringBuilderTypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
-  def StringBuilderClass = StringBuilderTypeRef.symbol.asClass
-  lazy val MatchErrorTypeRef         = ctx.requiredClassRef("scala.MatchError")
-  def MatchErrorClass = MatchErrorTypeRef.symbol.asClass
+  lazy val SerializableType: TypeRef       = ctx.requiredClassRef("scala.Serializable")
+  def SerializableClass = SerializableType.symbol.asClass
+  lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
+  def StringBuilderClass = StringBuilderType.symbol.asClass
+  lazy val MatchErrorType: TypeRef         = ctx.requiredClassRef("scala.MatchError")
+  def MatchErrorClass = MatchErrorType.symbol.asClass
 
-  lazy val StringAddTypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
-  def StringAddClass = StringAddTypeRef.symbol.asClass
+  lazy val StringAddType: TypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
+  def StringAddClass = StringAddType.symbol.asClass
 
     lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+ = StringAdd_plusR.symbol
 
-  lazy val PairTypeRef                    = ctx.requiredClassRef("dotty.Pair")
-  def PairClass = PairTypeRef.symbol.asClass
-  lazy val PartialFunctionTypeRef         = ctx.requiredClassRef("scala.PartialFunction")
-  def PartialFunctionClass = PartialFunctionTypeRef.symbol.asClass
-  lazy val AbstractPartialFunctionTypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
-  def AbstractPartialFunctionClass = AbstractPartialFunctionTypeRef.symbol.asClass
-  lazy val SymbolTypeRef                  = ctx.requiredClassRef("scala.Symbol")
-  def SymbolClass = SymbolTypeRef.symbol.asClass
-  lazy val DynamicTypeRef                 = ctx.requiredClassRef("scala.Dynamic")
-  def DynamicClass = DynamicTypeRef.symbol.asClass
-  lazy val OptionTypeRef                  = ctx.requiredClassRef("scala.Option")
-  def OptionClass = OptionTypeRef.symbol.asClass
-  lazy val ProductTypeRef                 = ctx.requiredClassRef("scala.Product")
-  def ProductClass = ProductTypeRef.symbol.asClass
+  lazy val PairType: TypeRef                    = ctx.requiredClassRef("dotty.Pair")
+  def PairClass = PairType.symbol.asClass
+  lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
+  def PartialFunctionClass = PartialFunctionType.symbol.asClass
+  lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
+  def AbstractPartialFunctionClass = AbstractPartialFunctionType.symbol.asClass
+  lazy val SymbolType: TypeRef                  = ctx.requiredClassRef("scala.Symbol")
+  def SymbolClass = SymbolType.symbol.asClass
+  lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
+  def DynamicClass = DynamicType.symbol.asClass
+  lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")
+  def OptionClass = OptionType.symbol.asClass
+  lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
+  def ProductClass = ProductType.symbol.asClass
     lazy val Product_canEqualR = ProductClass.requiredMethodRef(nme.canEqual_)
     def Product_canEqual = Product_canEqualR.symbol
     lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
@@ -394,7 +401,7 @@ class Definitions {
     def Product_productPrefix = Product_productPrefixR.symbol
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass = LanguageModuleRef.symbol.moduleClass.asClass
-  lazy val NonLocalReturnControlTypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
+  lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
 
   // Annotation base classes
   lazy val AnnotationTypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
@@ -466,28 +473,9 @@ class Definitions {
   def methOfAnyRef(tp: Type) = MethodType(List(ObjectType), tp)
 
   // Derived types
-  def AnyType: Type = AnyClass.typeRef
-  def AnyValType: Type = AnyValClass.typeRef
-  def ObjectType: Type = ObjectClass.typeRef
-  def AnyRefType: Type = AnyRefAlias.typeRef
-  def NothingType: Type = NothingClass.typeRef
-  def NullType: Type = NullClass.typeRef
-  def SeqType: Type = SeqTypeRef
 
-  def UnitType: Type = UnitTypeRef
-  def BooleanType: Type = BooleanTypeRef
-  def ByteType: Type = ByteTypeRef
-  def ShortType: Type = ShortTypeRef
-  def CharType: Type = CharTypeRef
-  def IntType: Type = IntTypeRef
-  def LongType: Type = LongTypeRef
-  def FloatType: Type = FloatTypeRef
-  def DoubleType: Type = DoubleTypeRef
-  def PairType: Type = PairTypeRef
-  def StringType: Type = StringClass.typeRef
   def RepeatedParamType = RepeatedParamClass.typeRef
   def ThrowableType = ThrowableClass.typeRef
-  def OptionType = OptionTypeRef
   def VolatileAnnotType = VolatileAnnotRef
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
@@ -503,9 +491,9 @@ class Definitions {
     //  - .linkedClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeRef
 
-  object FunctionType {
+  object FunctionOf {
     def apply(args: List[Type], resultType: Type)(implicit ctx: Context) =
-      FunctionTypeRef(args.length).appliedTo(args ::: resultType :: Nil)
+      FunctionType(args.length).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context)/*: Option[(List[Type], Type)]*/ = {
       // -language:keepUnions difference: unapply needs result type because inferred type
       // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
@@ -513,28 +501,28 @@ class Definitions {
       lazy val targs = ft.argInfos
       val numArgs = targs.length - 1
       if (numArgs >= 0 && numArgs <= MaxFunctionArity &&
-          (FunctionTypeRef(numArgs).symbol == tsym)) Some(targs.init, targs.last)
+          (FunctionType(numArgs).symbol == tsym)) Some(targs.init, targs.last)
       else None
     }
   }
 
-  object ArrayType {
+  object ArrayOf {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)
-      else ArrayTypeRef.appliedTo(elem :: Nil)
+      else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case at: RefinedType if (at isRef ArrayTypeRef.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head)
+      case at: RefinedType if (at isRef ArrayType.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }
   }
 
-  object MultiArrayType {
+  object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
-      if (ndims == 0) elem else ArrayType(apply(elem, ndims - 1))
+      if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
-      case ArrayType(elemtp) =>
+      case ArrayOf(elemtp) =>
         elemtp match {
-          case MultiArrayType(finalElemTp, n) => Some(finalElemTp, n + 1)
+          case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
           case _ => Some(elemtp, 1)
         }
       case _ =>
@@ -544,19 +532,19 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
-  lazy val AbstractFunctionTypeRef = mkArityArray("scala.runtime.AbstractFunction", MaxFunctionArity, 0)
-  def AbstractFunctionClass = AbstractFunctionTypeRef.map(_.symbol.asClass)
-  lazy val FunctionTypeRef = mkArityArray("scala.Function", MaxFunctionArity, 0)
-  def FunctionClass = FunctionTypeRef.map(_.symbol.asClass)
-    lazy val Function0_applyR = FunctionTypeRef(0).symbol.requiredMethodRef(nme.apply)
+  lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxFunctionArity, 0)
+  def AbstractFunctionClass = AbstractFunctionType.map(_.symbol.asClass)
+  lazy val FunctionType = mkArityArray("scala.Function", MaxFunctionArity, 0)
+  def FunctionClass = FunctionType.map(_.symbol.asClass)
+    lazy val Function0_applyR = FunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply = Function0_applyR.symbol
 
-  lazy val TupleTypeRef = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNTypeRef = mkArityArray("scala.Product", MaxTupleArity, 0)
+  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
 
-  private lazy val FunctionTypeRefs: Set[TypeRef] = FunctionTypeRef.toSet
-  private lazy val TupleTypeRefs: Set[TypeRef] = TupleTypeRef.toSet
-  private lazy val ProductTypeRefs: Set[TypeRef] = ProductNTypeRef.toSet
+  private lazy val FunctionTypes: Set[TypeRef] = FunctionType.toSet
+  private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
+  private lazy val ProductTypes: Set[TypeRef] = ProductNType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -594,19 +582,19 @@ class Definitions {
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
-    arity <= MaxTupleArity && TupleTypeRef(arity) != null && (tp isRef TupleTypeRef(arity).symbol)
+    arity <= MaxTupleArity && TupleType(arity) != null && (tp isRef TupleType(arity).symbol)
   }
 
   def tupleType(elems: List[Type]) = {
-    TupleTypeRef(elems.size).appliedTo(elems)
+    TupleType(elems.size).appliedTo(elems)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
-    (tp derivesFrom ProductTypeRef.symbol) && tp.baseClasses.exists(isProductClass)
+    (tp derivesFrom ProductType.symbol) && tp.baseClasses.exists(isProductClass)
 
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
-    0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionTypeRef(arity).symbol)
+    0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionType(arity).symbol)
   }
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
@@ -691,23 +679,17 @@ class Definitions {
   }
 
   lazy val ScalaNumericValueTypeList = List(
-    ByteTypeRef,
-    ShortTypeRef,
-    CharTypeRef,
-    IntTypeRef,
-    LongTypeRef,
-    FloatTypeRef,
-    DoubleTypeRef)
+    ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
   private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitTypeRef + BooleanTypeRef
-  private lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
+  private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
+  private lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedType(t.name))
 
   val ScalaNumericValueClasses = new SymbolsPerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses        = new SymbolsPerRun(implicit ctx => ScalaValueTypes.map(_.symbol))
-  val ScalaBoxedClasses        = new SymbolsPerRun(implicit ctx => ScalaBoxedTypeRefs.map(_.symbol))
+  val ScalaBoxedClasses        = new SymbolsPerRun(implicit ctx => ScalaBoxedTypes.map(_.symbol))
 
-  private val boxedTypeRef = mutable.Map[TypeName, TypeRef]()
+  private val boxedType = mutable.Map[TypeName, TypeRef]()
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
@@ -716,7 +698,7 @@ class Definitions {
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
-    boxedTypeRef(vcls.name) = boxed
+    boxedType(vcls.name) = boxed
     valueTypeEnc(vcls.name) = enc
 //    unboxedTypeRef(boxed.name) = vcls
 //    javaTypeToValueTypeRef(jtype) = vcls
@@ -725,7 +707,7 @@ class Definitions {
   }
 
   /** The type of the boxed class corresponding to primitive value type `tp`. */
-  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypeRef.apply(scalaClassName(tp))
+  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedType(scalaClassName(tp))
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol

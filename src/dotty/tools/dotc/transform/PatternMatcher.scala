@@ -201,7 +201,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         // catchAll.isEmpty iff no synthetic default case needed (the (last) user-defined case is a default)
         // if the last user-defined case is a default, it will never jump to the next case; it will go immediately to matchEnd
         val catchAllDef = matchFailGen.map { _(scrutSym)}
-          .getOrElse(Throw(New(defn.MatchErrorTypeRef, List(ref(scrutSym)))))
+          .getOrElse(Throw(New(defn.MatchErrorType, List(ref(scrutSym)))))
 
         val matchFail = newSynthCaseLabel(ctx.freshName("matchFail"), MethodType(Nil, restpe))
         val catchAllDefBody = DefDef(matchFail, catchAllDef)
@@ -878,7 +878,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // unlike in scalac SubstOnlyTreeMakers are maintained.
       val casesRebindingPropagated = casesRaw map (propagateRebindings(_, NoRebindings))
 
-      def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorTypeRef, List(ref(arg)))))
+      def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorType, List(ref(arg)))))
 
       ctx.debuglog("combining cases: " + (casesRebindingPropagated.map(_.mkString(" >> ")).mkString("{", "\n", "}")))
 

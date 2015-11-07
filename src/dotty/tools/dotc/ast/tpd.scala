@@ -375,7 +375,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       newArr(elemClass.name.toString)
     else
       newArr("Ref").appliedToTypeTrees(
-        TypeTree(defn.ArrayType(elemType)).withPos(typeArg.pos) :: Nil)
+        TypeTree(defn.ArrayOf(elemType)).withPos(typeArg.pos) :: Nil)
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
@@ -863,14 +863,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val defn = ctx.definitions
         val prefix = args.take(selected.widen.paramTypess.head.size - 1)
         expectedType match {
-          case defn.ArrayType(el) =>
+          case defn.ArrayOf(el) =>
             lastParam.tpe match {
-              case defn.ArrayType(el2) if el2 <:< el =>
+              case defn.ArrayOf(el2) if el2 <:< el =>
                 // we have a JavaSeqLiteral with a more precise type
                 // we cannot construct a tree as JavaSeqLiteral infered to precise type
                 // if we add typed than it would be both type-correct and
                 // will pass Ycheck
-                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayType(el))))
+                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayOf(el))))
               case _ =>
                 ???
             }

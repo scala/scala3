@@ -69,7 +69,7 @@ class DottyPrimitives(ctx: Context) {
     }
 
     def elementType: Type = tpe.widenDealias match {
-      case defn.ArrayType(el) => el
+      case defn.ArrayOf(el) => el
       case JavaArrayType(el) => el
       case _ =>
         ctx.error(s"expected Array $tpe")
