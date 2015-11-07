@@ -24,8 +24,29 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
   val phaseName: String = "capturedVars"
   val treeTransform = new Transform(Set())
 
+  private class RefInfo(implicit ctx: Context) {
+    /** The classes for which a Ref type exists. */
+    val refClassKeys: collection.Set[Symbol] =
+      defn.ScalaNumericValueClasses + defn.BooleanClass + defn.ObjectClass
+
+    val refClass: Map[Symbol, Symbol] =
+      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+
+    val volatileRefClass: Map[Symbol, Symbol] =
+      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+
+    val boxedRefClasses: collection.Set[Symbol] =
+      refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
+  }
+
   class Transform(captured: collection.Set[Symbol]) extends TreeTransform {
     def phase = thisTransform
+
+    private var myRefInfo: RefInfo = null
+    private def refInfo(implicit ctx: Context) = {
+      if (myRefInfo == null) myRefInfo = new RefInfo()
+      myRefInfo
+    }
 
     private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
       private val captured = mutable.HashSet[Symbol]()
@@ -54,19 +75,19 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
     /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
      *  depending on whether the reference should be @volatile
      */
-    def refTypeRef(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): TypeRef = {
-      val refMap = if (isVolatile) defn.volatileRefTypeRef else defn.refTypeRef
+    def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
+      val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
       if (cls.isClass)  {
-        refMap.getOrElse(cls.typeRef, refMap(defn.ObjectClass.typeRef))
+        refMap.getOrElse(cls, refMap(defn.ObjectClass))
       }
-      else refMap(defn.ObjectClass.typeRef)
+      else refMap(defn.ObjectClass)
     }
 
     override def prepareForValDef(vdef: ValDef)(implicit ctx: Context) = {
       val sym = vdef.symbol
       if (captured contains sym) {
         val newd = sym.denot(ctx.withPhase(thisTransform)).copySymDenotation(
-          info = refTypeRef(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)),
+          info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
           initFlags = sym.flags &~ Mutable)
         newd.removeAnnotation(defn.VolatileAnnot)
         newd.installAfter(thisTransform)
@@ -112,13 +133,11 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
      *  drop the cast.
      */
     override def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      def isBoxedRefType(sym: Symbol) =
-        sym.isClass && defn.boxedRefTypeRefs.exists(_.symbol == sym)
       def recur(lhs: Tree): Tree = lhs match {
         case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
           val Select(_, nme.elem) = qual
           recur(qual)
-        case Select(_, nme.elem) if isBoxedRefType(lhs.symbol.maybeOwner) =>
+        case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
           val tempDef = transformFollowing(SyntheticValDef(ctx.freshName("ev$").toTermName, tree.rhs))
           transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
         case _ =>
