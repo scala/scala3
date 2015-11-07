@@ -588,8 +588,8 @@ class Definitions {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
-  lazy val isPolymorphicAfterErasure = // ### Can't be a lazy val, because of newRefArrayMethod!
-    Set[Symbol](Any_isInstanceOf, Any_asInstanceOf, newRefArrayMethod)
+  def isPolymorphicAfterErasure(sym: Symbol) =
+     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq newRefArrayMethod)
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
