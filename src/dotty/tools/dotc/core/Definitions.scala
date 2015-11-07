@@ -716,18 +716,6 @@ class Definitions {
     vcls
   }
 
-  /** The classes for which a Ref type exists. */
-  lazy val refTypeKeys: collection.Set[TypeRef] = ScalaNumericValueTypes + BooleanTypeRef + ObjectClass.typeRef
-
-  lazy val refTypeRef: Map[TypeRef, TypeRef] =
-    refTypeKeys.map(rc => rc -> ctx.requiredClassRef(s"scala.runtime.${rc.name}Ref")).toMap
-
-  lazy val volatileRefTypeRef: Map[TypeRef, TypeRef] =
-    refTypeKeys.map(rc => rc -> ctx.requiredClassRef(s"scala.runtime.Volatile${rc.name}Ref")).toMap
-
-  lazy val boxedRefTypeRefs: collection.Set[TypeRef] =
-    refTypeKeys.flatMap(k => Set(refTypeRef(k), volatileRefTypeRef(k)))
-
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
     if (cls.isPrimitiveValueClass) nme.wrapXArray(cls.name)
