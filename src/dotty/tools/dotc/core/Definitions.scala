@@ -693,29 +693,29 @@ class Definitions {
   lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitTypeRef + BooleanTypeRef
   def ScalaValueClasses = ScalaValueTypes.map(_.symbol)
 
-  lazy val ScalaBoxedTypeRefs = ScalaValueTypes map boxedTypeRef
+  lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
   def ScalaBoxedClasses = ScalaBoxedTypeRefs.map(_.symbol)
 
-  private[this] val _boxedTypeRef = mutable.Map[TypeRef, TypeRef]() // ### Maps over typerefs are not robust!
-  private[this] val _unboxedTypeRef = mutable.Map[TypeRef, TypeRef]()
+  private[this] val _boxedTypeRef = mutable.Map[TypeName, TypeRef]()
+  private[this] val _unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 
   private[this] val _javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-  private[this] val _valueTypeRefToJavaType = mutable.Map[TypeRef, Class[_]]()
-  private[this] val _valueTypeEnc = mutable.Map[TypeRef, Int]()
+  private[this] val _valueTypeRefToJavaType = mutable.Map[TypeName, Class[_]]()
+  private[this] val _valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
 
-  val boxedTypeRef: collection.Map[TypeRef, TypeRef] = _boxedTypeRef
-  val unboxedTypeRef: collection.Map[TypeRef, TypeRef] = _boxedTypeRef
+  val boxedTypeRef: collection.Map[TypeName, TypeRef] = _boxedTypeRef
+  val unboxedTypeRef: collection.Map[TypeName, TypeRef] = _unboxedTypeRef
   val javaTypeToValueTypeRef: collection.Map[Class[_], TypeRef] = _javaTypeToValueTypeRef
-  val valueTypeRefToJavaType: collection.Map[TypeRef, Class[_]] = _valueTypeRefToJavaType
-  val valueTypeEnc: collection.Map[TypeRef, Int] = _valueTypeEnc
+  val valueTypeRefToJavaType: collection.Map[TypeName, Class[_]] = _valueTypeRefToJavaType
+  val valueTypeEnc: collection.Map[TypeName, Int] = _valueTypeEnc
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
-    _unboxedTypeRef(boxed) = vcls
-    _boxedTypeRef(vcls) = boxed
+    _unboxedTypeRef(boxed.name) = vcls
+    _boxedTypeRef(vcls.name) = boxed
     _javaTypeToValueTypeRef(jtype) = vcls
-    _valueTypeRefToJavaType(vcls) = jtype
-    _valueTypeEnc(vcls) = enc
+    _valueTypeRefToJavaType(vcls.name) = jtype
+    _valueTypeEnc(vcls.name) = enc
     vcls
   }
 
@@ -738,6 +738,8 @@ class Definitions {
     else nme.genericWrapArray
   }
 
+  type PrimitiveClassEnc = Int
+
   val ByteEnc = 2
   val ShortEnc = ByteEnc * 3
   val CharEnc = 5
@@ -748,8 +750,8 @@ class Definitions {
   val BooleanEnc = 17
   val UnitEnc = 19
 
-  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: Context) = // ### Not stable!
-    valueTypeEnc(tref2) % valueTypeEnc(tref1) == 0
+  def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: Context) =
+    valueTypeEnc(tref2.name) % valueTypeEnc(tref1.name) == 0
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
     isValueSubType(sym1.typeRef, sym2.typeRef)
 

@@ -50,7 +50,7 @@ trait TypeTestsCasts {
             Literal(Constant(true)) withPos tree.pos
           else if (argCls.isPrimitiveValueClass)
             if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls)) withPos tree.pos
-            else transformIsInstanceOf(expr, defn.boxedTypeRef(argCls.typeRef)) // ### unstable
+            else transformIsInstanceOf(expr, defn.boxedTypeRef(argCls.asClass.name)) // ### unstable
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
