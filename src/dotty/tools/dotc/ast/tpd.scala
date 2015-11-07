@@ -794,7 +794,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case tpnme.Long => TYPE(defn.BoxedLongModule)
         case tpnme.Float => TYPE(defn.BoxedFloatModule)
         case tpnme.Double => TYPE(defn.BoxedDoubleModule)
-        case tpnme.Unit => TYPE(defn.BoxedVoidModule)
+        case tpnme.Unit => TYPE(defn.BoxedUnitModule)
         case _ => default
       }
     }

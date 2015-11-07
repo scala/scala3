@@ -256,8 +256,6 @@ class Definitions {
     lazy val ArrayConstructorR            = ctx.requiredMethodRef(ArrayTypeRef, nme.CONSTRUCTOR)
     def ArrayConstructor = ArrayConstructorR.symbol
 
-  lazy val uncheckedStableClassRef: TypeRef = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedStable") // ### roll into annotations
-
   lazy val UnitTypeRef = valueTypeRef("scala.Unit", BoxedUnitTypeRef, java.lang.Void.TYPE, UnitEnc)
   def UnitClass = UnitTypeRef.symbol.asClass
   lazy val BooleanTypeRef = valueTypeRef("scala.Boolean", BoxedBooleanTypeRef, java.lang.Boolean.TYPE, BooleanEnc)
@@ -307,7 +305,7 @@ class Definitions {
   lazy val BoxedUnitTypeRef = ctx.requiredClassRef("scala.runtime.BoxedUnit")
   def BoxedUnitClass = BoxedUnitTypeRef.symbol.asClass
 
-    lazy val BoxedUnit_UNIT = BoxedUnitTypeRef.symbol.linkedClass.requiredValue("UNIT") // ### replace with BoxedUnitModule?
+    lazy val BoxedUnit_UNIT = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
   lazy val BoxedBooleanTypeRef = ctx.requiredClassRef("java.lang.Boolean")
   def BoxedBooleanClass = BoxedBooleanTypeRef.symbol.asClass
@@ -334,7 +332,7 @@ class Definitions {
   lazy val BoxedLongModule    = ctx.requiredModule("java.lang.Long")
   lazy val BoxedFloatModule   = ctx.requiredModule("java.lang.Float")
   lazy val BoxedDoubleModule  = ctx.requiredModule("java.lang.Double")
-  lazy val BoxedVoidModule    = ctx.requiredModule("java.lang.Void")
+  lazy val BoxedUnitModule    = ctx.requiredModule("java.lang.Void")
 
   lazy val ByNameParamClass2x     = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
