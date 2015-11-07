@@ -78,43 +78,43 @@ class DottyPrimitives(ctx: Context) {
 
     code match {
 
-      case APPLY => // ### unstable, use names?
-        elementType match {
-          case defn.BooleanTypeRef    => ZARRAY_GET
-          case defn.ByteTypeRef       => BARRAY_GET
-          case defn.ShortTypeRef      => SARRAY_GET
-          case defn.CharTypeRef       => CARRAY_GET
-          case defn.IntTypeRef        => IARRAY_GET
-          case defn.LongTypeRef       => LARRAY_GET
-          case defn.FloatTypeRef      => FARRAY_GET
-          case defn.DoubleTypeRef     => DARRAY_GET
-          case _                    => OARRAY_GET
+      case APPLY =>
+        defn.scalaClassName(elementType) match {
+          case tpnme.Boolean    => ZARRAY_GET
+          case tpnme.Byte       => BARRAY_GET
+          case tpnme.Short      => SARRAY_GET
+          case tpnme.Char       => CARRAY_GET
+          case tpnme.Int        => IARRAY_GET
+          case tpnme.Long       => LARRAY_GET
+          case tpnme.Float      => FARRAY_GET
+          case tpnme.Double     => DARRAY_GET
+          case _                => OARRAY_GET
         }
 
       case UPDATE =>
-        elementType match {
-          case defn.BooleanTypeRef    => ZARRAY_SET
-          case defn.ByteTypeRef       => BARRAY_SET
-          case defn.ShortTypeRef      => SARRAY_SET
-          case defn.CharTypeRef       => CARRAY_SET
-          case defn.IntTypeRef        => IARRAY_SET
-          case defn.LongTypeRef       => LARRAY_SET
-          case defn.FloatTypeRef      => FARRAY_SET
-          case defn.DoubleTypeRef     => DARRAY_SET
-          case _                    => OARRAY_SET
+        defn.scalaClassName(elementType) match {
+          case tpnme.Boolean    => ZARRAY_SET
+          case tpnme.Byte       => BARRAY_SET
+          case tpnme.Short      => SARRAY_SET
+          case tpnme.Char       => CARRAY_SET
+          case tpnme.Int        => IARRAY_SET
+          case tpnme.Long       => LARRAY_SET
+          case tpnme.Float      => FARRAY_SET
+          case tpnme.Double     => DARRAY_SET
+          case _                => OARRAY_SET
         }
 
       case LENGTH =>
-        elementType match {
-          case defn.BooleanTypeRef    => ZARRAY_LENGTH
-          case defn.ByteTypeRef       => BARRAY_LENGTH
-          case defn.ShortTypeRef      => SARRAY_LENGTH
-          case defn.CharTypeRef       => CARRAY_LENGTH
-          case defn.IntTypeRef        => IARRAY_LENGTH
-          case defn.LongTypeRef       => LARRAY_LENGTH
-          case defn.FloatTypeRef      => FARRAY_LENGTH
-          case defn.DoubleTypeRef     => DARRAY_LENGTH
-          case _                    => OARRAY_LENGTH
+        defn.scalaClassName(elementType) match {
+          case tpnme.Boolean    => ZARRAY_LENGTH
+          case tpnme.Byte       => BARRAY_LENGTH
+          case tpnme.Short      => SARRAY_LENGTH
+          case tpnme.Char       => CARRAY_LENGTH
+          case tpnme.Int        => IARRAY_LENGTH
+          case tpnme.Long       => LARRAY_LENGTH
+          case tpnme.Float      => FARRAY_LENGTH
+          case tpnme.Double     => DARRAY_LENGTH
+          case _                => OARRAY_LENGTH
         }
 
       case _ =>
