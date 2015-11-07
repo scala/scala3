@@ -755,7 +755,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         def expectedWide            = expectedTp.widen
         def isAnyRef                = testedWide <:< defn.AnyRefType
         def isAsExpected            = testedWide <:< expectedTp
-        def isExpectedPrimitiveType = isAsExpected && defn.ScalaValueClasses.contains(expectedTp.classSymbol)
+        def isExpectedPrimitiveType = isAsExpected && expectedTp.classSymbol.isPrimitiveValueClass
         def isExpectedReferenceType = isAsExpected && (expectedTp <:< defn.AnyRefType)
         def mkNullTest              = nonNullTest(testedBinder)
         def mkOuterTest             = outerTest(testedBinder, expectedTp)

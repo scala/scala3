@@ -607,9 +607,9 @@ object Types {
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
     def isValueSubType(that: Type)(implicit ctx: Context) = widen match {
-      case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
+      case self: TypeRef if self.symbol.isPrimitiveValueClass =>
         that.widenExpr match {
-          case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
+          case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false

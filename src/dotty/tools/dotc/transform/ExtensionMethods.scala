@@ -76,9 +76,8 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
 
             val underlyingCls = underlying.classSymbol
             val underlyingClsName =
-              if (defn.ScalaNumericValueClasses.contains(underlyingCls) ||
-                underlyingCls == defn.BooleanClass) underlyingCls.name else nme.Object
-
+              if (underlyingCls.isNumericValueClass || underlyingCls == defn.BooleanClass) underlyingCls.name
+              else nme.Object
 
             val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingClsName}Companion").asClass
 
