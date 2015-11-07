@@ -554,9 +554,9 @@ class Definitions {
   lazy val TupleTypeRef = mkArityArray("scala.Tuple", MaxTupleArity, 2)
   lazy val ProductNTypeRef = mkArityArray("scala.Product", MaxTupleArity, 0)
 
-  lazy val FunctionTypeRefs: Set[TypeRef] = FunctionTypeRef.toSet
-  lazy val TupleTypeRefs: Set[TypeRef] = TupleTypeRef.toSet
-  lazy val ProductTypeRefs: Set[TypeRef] = ProductNTypeRef.toSet
+  private lazy val FunctionTypeRefs: Set[TypeRef] = FunctionTypeRef.toSet
+  private lazy val TupleTypeRefs: Set[TypeRef] = TupleTypeRef.toSet
+  private lazy val ProductTypeRefs: Set[TypeRef] = ProductNTypeRef.toSet
 
   /** If type refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = {
@@ -685,9 +685,9 @@ class Definitions {
     FloatTypeRef,
     DoubleTypeRef)
 
-  lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
+  private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   def ScalaNumericValueClasses = ScalaNumericValueTypes.map(_.symbol)
-  lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitTypeRef + BooleanTypeRef
+  private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitTypeRef + BooleanTypeRef
   def ScalaValueClasses = ScalaValueTypes.map(_.symbol)
 
   lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
