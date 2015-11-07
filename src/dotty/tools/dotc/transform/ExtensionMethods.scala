@@ -98,9 +98,9 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
           moduleClassSym
       }
     case ref: SymDenotation
-    if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnotationClass) =>
+    if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnot) =>
       val ref1 = ref.copySymDenotation()
-      ref1.removeAnnotation(defn.TailrecAnnotationClass)
+      ref1.removeAnnotation(defn.TailrecAnnot)
       ref1
     case _ =>
       ref
