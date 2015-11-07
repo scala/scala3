@@ -693,28 +693,25 @@ class Definitions {
   lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
   def ScalaBoxedClasses = ScalaBoxedTypeRefs.map(_.symbol)
 
-  private[this] val _boxedTypeRef = mutable.Map[TypeName, TypeRef]()
-  private[this] val _unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
+  private val boxedTypeRef = mutable.Map[TypeName, TypeRef]()
+  private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
 
-  private[this] val _javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-  private[this] val _valueTypeRefToJavaType = mutable.Map[TypeName, Class[_]]()
-  private[this] val _valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
-
-  val boxedTypeRef: collection.Map[TypeName, TypeRef] = _boxedTypeRef
-  val unboxedTypeRef: collection.Map[TypeName, TypeRef] = _unboxedTypeRef
-  val javaTypeToValueTypeRef: collection.Map[Class[_], TypeRef] = _javaTypeToValueTypeRef
-  val valueTypeRefToJavaType: collection.Map[TypeName, Class[_]] = _valueTypeRefToJavaType
-  val valueTypeEnc: collection.Map[TypeName, Int] = _valueTypeEnc
+//  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
+//  private val javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
+//  private val valueTypeNameToJavaType = mutable.Map[TypeName, Class[_]]()
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
-    _unboxedTypeRef(boxed.name) = vcls
-    _boxedTypeRef(vcls.name) = boxed
-    _javaTypeToValueTypeRef(jtype) = vcls
-    _valueTypeRefToJavaType(vcls.name) = jtype
-    _valueTypeEnc(vcls.name) = enc
+    boxedTypeRef(vcls.name) = boxed
+    valueTypeEnc(vcls.name) = enc
+//    unboxedTypeRef(boxed.name) = vcls
+//    javaTypeToValueTypeRef(jtype) = vcls
+//    valueTypeNameToJavaType(vcls.name) = jtype
     vcls
   }
+
+  /** The type of the boxed class corresponding to primitive value type `tp`. */
+  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypeRef.apply(scalaClassName(tp))
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
