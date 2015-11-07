@@ -393,8 +393,8 @@ class Definitions {
     def Product_productArity = Product_productArityR.symbol
     lazy val Product_productPrefixR = ProductTypeRef.symbol.requiredMethod(nme.productPrefix)
     def Product_productPrefix = Product_productPrefixR.symbol
-  lazy val LanguageModuleTypeRef          = ctx.requiredModule("dotty.language").moduleClass.asClass
-  def LanguageModuleClass = LanguageModuleTypeRef.symbol.asClass // ### Needed? Maube just keep LanguageModule?
+  lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
+  def LanguageModuleClass = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlTypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
 
   // Annotation base classes
@@ -565,7 +565,7 @@ class Definitions {
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
   }
 
-  def isVarArityClass(cls: Symbol, prefix: Name) = // ### use scalaClassName
+  def isVarArityClass(cls: Symbol, prefix: Name) =
     cls.owner == ScalaPackageClass && cls.name.startsWith(prefix) &&
     cls.name.drop(prefix.length).forall(_.isDigit)
 
