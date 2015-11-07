@@ -339,8 +339,12 @@ trait Symbols { this: Context =>
   def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Package).asTerm
 
+  def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
+
   def requiredClass(path: PreName): ClassSymbol =
     base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+
+  def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
@@ -351,8 +355,15 @@ trait Symbols { this: Context =>
   def requiredModule(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 
-  def requiredMethod(cls: ClassSymbol, name: PreName): TermSymbol =
-    cls.info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
+
+  def requiredMethod(pre: TypeRef, name: PreName): TermSymbol = // ### replace with method in Denotations?
+    pre.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredMethod(pre: TermRef, name: PreName): TermSymbol =
+    requiredMethod(pre.symbol.moduleClass.typeRef, name)
+
+  def requiredMethodRef(pre: TypeRef, name: PreName): TermRef = requiredMethod(pre, name).termRef
+  def requiredMethodRef(pre: TermRef, name: PreName): TermRef = requiredMethod(pre, name).termRef
 }
 
 object Symbols {

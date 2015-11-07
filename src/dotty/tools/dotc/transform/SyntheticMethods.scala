@@ -77,7 +77,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisTransformer).asTerm
 
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
-        ref(defn.runtimeMethod("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
       def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody
@@ -161,20 +161,17 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
     }
 
     /** The hashCode implementation for given symbol `sym`. */
-    def hashImpl(sym: Symbol)(implicit ctx: Context): Tree = {
-      val d = defn
-      import d._
-      sym.info.finalResultType.typeSymbol match {
-        case UnitClass | NullClass              => Literal(Constant(0))
-        case BooleanClass                       => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
-        case IntClass                           => ref(sym)
-        case ShortClass | ByteClass | CharClass => ref(sym).select(nme.toInt)
-        case LongClass                          => ref(staticsMethod("longHash")).appliedTo(ref(sym))
-        case DoubleClass                        => ref(staticsMethod("doubleHash")).appliedTo(ref(sym))
-        case FloatClass                         => ref(staticsMethod("floatHash")).appliedTo(ref(sym))
-        case _                                  => ref(staticsMethod("anyHash")).appliedTo(ref(sym))
+    def hashImpl(sym: Symbol)(implicit ctx: Context): Tree =
+      defn.scalaClassName(sym.info.finalResultType) match {
+        case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
+        case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
+        case tpnme.Int                             => ref(sym)
+        case tpnme.Short | tpnme.Byte | tpnme.Char => ref(sym).select(nme.toInt)
+        case tpnme.Long                            => ref(defn.staticsMethod("longHash")).appliedTo(ref(sym))
+        case tpnme.Double                          => ref(defn.staticsMethod("doubleHash")).appliedTo(ref(sym))
+        case tpnme.Float                           => ref(defn.staticsMethod("floatHash")).appliedTo(ref(sym))
+        case _                                     => ref(defn.staticsMethod("anyHash")).appliedTo(ref(sym))
       }
-    }
 
     /** The class
      *

@@ -99,9 +99,6 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val nme_PACKAGE: Name = StdNames.nme.PACKAGE
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
-  val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
-  val BoxesRunTimeClass      = toDenot(BoxesRunTimeModule).moduleClass.asClass
-
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
   override lazy val LambdaMetaFactory = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
   override lazy val MethodHandle      = ctx.requiredClass("java.lang.invoke.MethodHandle")
@@ -133,17 +130,17 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   val hashMethodSym: Symbol = NoSymbol // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
-  val externalEqualsNumNum: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumNum)
-  lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumChar) // this method is private
-  val externalEqualsNumObject: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumObject)
-  val externalEquals: Symbol = BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
+  val externalEqualsNumNum: Symbol = ctx.requiredMethod(defn.BoxesRunTimeModuleRef, nme.equalsNumNum)
+  lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+  val externalEqualsNumObject: Symbol = ctx.requiredMethod(defn.BoxesRunTimeModuleRef, nme.equalsNumObject)
+  val externalEquals: Symbol = defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   val MaxFunctionArity: Int = Definitions.MaxFunctionArity
   val FunctionClass: Array[Symbol] = defn.FunctionClass.asInstanceOf[Array[Symbol]]
   val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClass.asInstanceOf[Array[Symbol]]
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
-  lazy val Predef_classOf: Symbol = ctx.requiredMethod(toDenot(defn.ScalaPredefModule).moduleClass.asClass, nme.classOf)
+  lazy val Predef_classOf: Symbol = ctx.requiredMethod(defn.ScalaPredefModuleRef, nme.classOf)
 
   lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
   lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")

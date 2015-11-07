@@ -5,6 +5,7 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
+import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
@@ -111,8 +112,8 @@ class Compiler {
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, rootReporter(ctx), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
-    def addImport(ctx: Context, symf: () => Symbol) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(symf)(ctx))
+    def addImport(ctx: Context, refFn: () => TermRef) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
   }
 

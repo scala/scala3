@@ -54,16 +54,19 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
     /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
      *  depending on whether the reference should be @volatile
      */
-    def refCls(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
-      val refMap = if (isVolatile) defn.volatileRefClass else defn.refClass
-      refMap.getOrElse(cls, refMap(defn.ObjectClass))
+    def refTypeRef(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): TypeRef = {
+      val refMap = if (isVolatile) defn.volatileRefTypeRef else defn.refTypeRef
+      if (cls.isClass)  {
+        refMap.getOrElse(cls.typeRef, refMap(defn.ObjectClass.typeRef))
+      }
+      else refMap(defn.ObjectClass.typeRef)
     }
 
     override def prepareForValDef(vdef: ValDef)(implicit ctx: Context) = {
       val sym = vdef.symbol
       if (captured contains sym) {
         val newd = sym.denot(ctx.withPhase(thisTransform)).copySymDenotation(
-          info = refCls(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
+          info = refTypeRef(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)),
           initFlags = sym.flags &~ Mutable)
         newd.removeAnnotation(defn.VolatileAnnot)
         newd.installAfter(thisTransform)
@@ -109,11 +112,13 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
      *  drop the cast.
      */
     override def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree = {
+      def isBoxedRefType(sym: Symbol) =
+        sym.isClass && defn.boxedRefTypeRefs.exists(_.symbol == sym)
       def recur(lhs: Tree): Tree = lhs match {
         case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
           val Select(_, nme.elem) = qual
           recur(qual)
-        case Select(_, nme.elem) if defn.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
+        case Select(_, nme.elem) if isBoxedRefType(lhs.symbol.maybeOwner) =>
           val tempDef = transformFollowing(SyntheticValDef(ctx.freshName("ev$").toTermName, tree.rhs))
           transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
         case _ =>

@@ -31,9 +31,9 @@ class ClassTags extends MiniPhaseTransform with IdentityDenotTransformer { thisT
 
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    val predefClass = defn.DottyPredefModule.moduleClass.asClass
-    classTagCache = ctx.requiredMethod(predefClass, nme.classTag)
-    typeTagCache = ctx.requiredMethod(predefClass, nme.typeTag)
+    val dottyPredef = defn.DottyPredefModuleRef
+    classTagCache = ctx.requiredMethod(dottyPredef, nme.classTag)
+    typeTagCache = ctx.requiredMethod(dottyPredef, nme.typeTag)
     scala2ClassTagModule = ctx.requiredModule("scala.reflect.ClassTag")
     this
   }

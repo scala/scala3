@@ -78,42 +78,42 @@ class DottyPrimitives(ctx: Context) {
 
     code match {
 
-      case APPLY =>
-        elementType.classSymbol match {
-          case defn.BooleanClass    => ZARRAY_GET
-          case defn.ByteClass       => BARRAY_GET
-          case defn.ShortClass      => SARRAY_GET
-          case defn.CharClass       => CARRAY_GET
-          case defn.IntClass        => IARRAY_GET
-          case defn.LongClass       => LARRAY_GET
-          case defn.FloatClass      => FARRAY_GET
-          case defn.DoubleClass     => DARRAY_GET
+      case APPLY => // ### unstable, use names?
+        elementType match {
+          case defn.BooleanTypeRef    => ZARRAY_GET
+          case defn.ByteTypeRef       => BARRAY_GET
+          case defn.ShortTypeRef      => SARRAY_GET
+          case defn.CharTypeRef       => CARRAY_GET
+          case defn.IntTypeRef        => IARRAY_GET
+          case defn.LongTypeRef       => LARRAY_GET
+          case defn.FloatTypeRef      => FARRAY_GET
+          case defn.DoubleTypeRef     => DARRAY_GET
           case _                    => OARRAY_GET
         }
 
       case UPDATE =>
-        elementType.classSymbol match {
-          case defn.BooleanClass    => ZARRAY_SET
-          case defn.ByteClass       => BARRAY_SET
-          case defn.ShortClass      => SARRAY_SET
-          case defn.CharClass       => CARRAY_SET
-          case defn.IntClass        => IARRAY_SET
-          case defn.LongClass       => LARRAY_SET
-          case defn.FloatClass      => FARRAY_SET
-          case defn.DoubleClass     => DARRAY_SET
+        elementType match {
+          case defn.BooleanTypeRef    => ZARRAY_SET
+          case defn.ByteTypeRef       => BARRAY_SET
+          case defn.ShortTypeRef      => SARRAY_SET
+          case defn.CharTypeRef       => CARRAY_SET
+          case defn.IntTypeRef        => IARRAY_SET
+          case defn.LongTypeRef       => LARRAY_SET
+          case defn.FloatTypeRef      => FARRAY_SET
+          case defn.DoubleTypeRef     => DARRAY_SET
           case _                    => OARRAY_SET
         }
 
       case LENGTH =>
-        elementType.classSymbol match {
-          case defn.BooleanClass    => ZARRAY_LENGTH
-          case defn.ByteClass       => BARRAY_LENGTH
-          case defn.ShortClass      => SARRAY_LENGTH
-          case defn.CharClass       => CARRAY_LENGTH
-          case defn.IntClass        => IARRAY_LENGTH
-          case defn.LongClass       => LARRAY_LENGTH
-          case defn.FloatClass      => FARRAY_LENGTH
-          case defn.DoubleClass     => DARRAY_LENGTH
+        elementType match {
+          case defn.BooleanTypeRef    => ZARRAY_LENGTH
+          case defn.ByteTypeRef       => BARRAY_LENGTH
+          case defn.ShortTypeRef      => SARRAY_LENGTH
+          case defn.CharTypeRef       => CARRAY_LENGTH
+          case defn.IntTypeRef        => IARRAY_LENGTH
+          case defn.LongTypeRef       => LARRAY_LENGTH
+          case defn.FloatTypeRef      => FARRAY_LENGTH
+          case defn.DoubleTypeRef     => DARRAY_LENGTH
           case _                    => OARRAY_LENGTH
         }
 

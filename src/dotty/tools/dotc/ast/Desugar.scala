@@ -323,7 +323,7 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def productConstr(n: Int) = {
-      val tycon = ref(defn.ProductNClass(n).typeRef)
+      val tycon = ref(defn.ProductNTypeRef(n))
       val targs = constrVparamss.head map (_.tpt)
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
@@ -825,15 +825,15 @@ object desugar {
         }
         else {
           val arity = ts.length
-          def tupleClass = defn.TupleClass(arity)
+          def tupleTypeRef = defn.TupleTypeRef(arity)
           if (arity > Definitions.MaxTupleArity) {
             ctx.error(s"tuple too long (max allowed: ${Definitions.MaxTupleArity})", tree.pos)
             unitLiteral
           }
           else if (arity == 1) ts.head
-          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeRef), ts)
+          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
           else if (arity == 0) unitLiteral
-          else Apply(ref(tupleClass.companionModule.valRef), ts)
+          else Apply(ref(tupleTypeRef.classSymbol.companionModule.valRef), ts)
         }
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
