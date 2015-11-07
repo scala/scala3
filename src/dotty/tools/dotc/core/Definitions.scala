@@ -228,7 +228,6 @@ class Definitions {
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule = NilModuleRef.symbol
 
-//  lazy val FunctionClass: ClassSymbol = ctx.requiredClass("scala.Function")
   lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
@@ -305,7 +304,7 @@ class Definitions {
   lazy val BoxedUnitTypeRef = ctx.requiredClassRef("scala.runtime.BoxedUnit")
   def BoxedUnitClass = BoxedUnitTypeRef.symbol.asClass
 
-    lazy val BoxedUnit_UNIT = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+    def BoxedUnit_UNIT = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
   lazy val BoxedBooleanTypeRef = ctx.requiredClassRef("java.lang.Boolean")
   def BoxedBooleanClass = BoxedBooleanTypeRef.symbol.asClass
