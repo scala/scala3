@@ -120,7 +120,7 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     else tree
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionType(Nil, rt)
+    case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionOf(Nil, rt)
     case _ => tp
   }
 

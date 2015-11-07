@@ -19,13 +19,11 @@ class JavaPlatform extends Platform {
   }
 
   // The given symbol is a method with the right name and signature to be a runnable java program.
-  def isJavaMainMethod(sym: SymDenotation)(implicit ctx: Context) = {
-    val dn = defn
+  def isJavaMainMethod(sym: SymDenotation)(implicit ctx: Context) =
     (sym.name == nme.main) && (sym.info match {
-      case t@MethodType(_, dn.ArrayType(el) :: Nil) => el =:= defn.StringType && (t.resultType isRef defn.UnitClass)
+      case t@MethodType(_, defn.ArrayOf(el) :: Nil) => el =:= defn.StringType && (t.resultType isRef defn.UnitClass)
       case _ => false
     })
-  }
 
   // The given class has a main method.
   def hasJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =

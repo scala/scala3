@@ -808,7 +808,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type =
-    (defn.AnyType /: tps)(glb)
+    ((defn.AnyType: Type) /: tps)(glb)
 
   /** The least upper bound of two types
    *  @note  We do not admit singleton types in or-types as lubs.
@@ -837,7 +837,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    (defn.NothingType /: tps)(lub)
+    ((defn.NothingType: Type) /: tps)(lub)
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */

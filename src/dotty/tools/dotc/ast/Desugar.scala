@@ -323,7 +323,7 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def productConstr(n: Int) = {
-      val tycon = ref(defn.ProductNTypeRef(n))
+      val tycon = ref(defn.ProductNType(n))
       val targs = constrVparamss.head map (_.tpt)
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
@@ -825,7 +825,7 @@ object desugar {
         }
         else {
           val arity = ts.length
-          def tupleTypeRef = defn.TupleTypeRef(arity)
+          def tupleTypeRef = defn.TupleType(arity)
           if (arity > Definitions.MaxTupleArity) {
             ctx.error(s"tuple too long (max allowed: ${Definitions.MaxTupleArity})", tree.pos)
             unitLiteral

@@ -324,7 +324,7 @@ class ClassfileParser(
           if (elemtp.typeSymbol.isAbstractType && !(elemtp.derivesFrom(defn.ObjectClass))) {
             elemtp = AndType(elemtp, defn.ObjectType)
           }
-          defn.ArrayType(elemtp)
+          defn.ArrayOf(elemtp)
         case '(' =>
           // we need a method symbol. given in line 486 by calling getType(methodSym, ..)
           val paramtypes = new ListBuffer[Type]()
@@ -614,7 +614,7 @@ class ClassfileParser(
         addConstr(paramTypes)
         if (paramTypes.nonEmpty)
           paramTypes.last match {
-            case defn.ArrayType(elemtp) =>
+            case defn.ArrayOf(elemtp) =>
               addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
             case _ =>
         }
