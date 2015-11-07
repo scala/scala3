@@ -100,7 +100,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
       DefDef(ddef.symbol.asTerm,
-        _ => ref(defn.Sys_error).withPos(ddef.pos)
+        _ => ref(defn.Sys_errorR).withPos(ddef.pos)
           .appliedTo(Literal(Constant("native method stub"))))
     } else ddef
   }

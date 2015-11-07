@@ -1102,8 +1102,8 @@ trait Applications extends Compatibility { self: Typer =>
     }
     val clss = numericClasses(ts, Set())
     if (clss.size > 1) {
-      val lub = defn.ScalaNumericValueClassList.find(lubCls =>
-        clss.forall(defn.isValueSubClass(_, lubCls))).get.typeRef
+      val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
+        clss.forall(cls => defn.isValueSubType(cls.typeRef, lubTpe))).get
       ts.mapConserve(adapt(_, lub))
     }
     else ts
