@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -558,15 +558,17 @@ class Definitions {
   private lazy val TupleTypeRefs: Set[TypeRef] = TupleTypeRef.toSet
   private lazy val ProductTypeRefs: Set[TypeRef] = ProductNTypeRef.toSet
 
-  /** If type refers to a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = {
-    val cls = ref.classSymbol
+  /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
+  def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
-  }
 
-  def isVarArityClass(cls: Symbol, prefix: Name) =
-    cls.owner == ScalaPackageClass && cls.name.startsWith(prefix) &&
-    cls.name.drop(prefix.length).forall(_.isDigit)
+  /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
+  def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
+
+  private def isVarArityClass(cls: Symbol, prefix: Name) = {
+    val name = scalaClassName(cls)
+    name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
+  }
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
@@ -676,6 +678,18 @@ class Definitions {
 
   // ----- primitive value class machinery ------------------------------------------
 
+  class SymbolsPerRun(generate: Context => collection.Set[Symbol]) {
+    private var current: RunId = NoRunId
+    private var syms: collection.Set[Symbol] = _
+    def apply()(implicit ctx: Context) = {
+      if (current != ctx.runId) {
+        syms = generate(ctx)
+        current = ctx.runId
+      }
+      syms
+    }
+  }
+
   lazy val ScalaNumericValueTypeList = List(
     ByteTypeRef,
     ShortTypeRef,
@@ -686,12 +700,12 @@ class Definitions {
     DoubleTypeRef)
 
   private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  def ScalaNumericValueClasses = ScalaNumericValueTypes.map(_.symbol)
   private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitTypeRef + BooleanTypeRef
-  def ScalaValueClasses = ScalaValueTypes.map(_.symbol)
+  private lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
 
-  lazy val ScalaBoxedTypeRefs = ScalaValueTypes map (t => boxedTypeRef(t.name))
-  def ScalaBoxedClasses = ScalaBoxedTypeRefs.map(_.symbol)
+  val ScalaNumericValueClasses = new SymbolsPerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
+  val ScalaValueClasses        = new SymbolsPerRun(implicit ctx => ScalaValueTypes.map(_.symbol))
+  val ScalaBoxedClasses        = new SymbolsPerRun(implicit ctx => ScalaBoxedTypeRefs.map(_.symbol))
 
   private val boxedTypeRef = mutable.Map[TypeName, TypeRef]()
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
@@ -735,7 +749,7 @@ class Definitions {
   def isValueSubType(tref1: TypeRef, tref2: TypeRef)(implicit ctx: Context) =
     valueTypeEnc(tref2.name) % valueTypeEnc(tref1.name) == 0
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
-    isValueSubType(sym1.typeRef, sym2.typeRef)
+    valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
   // ----- Initialization ---------------------------------------------------
 
@@ -757,13 +771,13 @@ class Definitions {
     lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+)
 
   private[this] var _isInitialized = false
-  def isInitialized = _isInitialized
+  private def isInitialized = _isInitialized
 
   def init(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
       _isInitialized = true
     }
   }

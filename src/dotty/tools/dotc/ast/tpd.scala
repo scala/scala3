@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
-import dotty.tools.dotc.transform.ExplicitOuter
+import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
@@ -13,7 +13,6 @@ import config.Printers._
 import typer.Mode
 import collection.mutable
 import typer.ErrorReporting._
-import transform.Erasure
 
 import scala.annotation.tailrec
 

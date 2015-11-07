@@ -119,10 +119,10 @@ object Erasure extends TypeTestsCasts{
   object Boxing {
 
     def isUnbox(sym: Symbol)(implicit ctx: Context) =
-      sym.name == nme.unbox && (defn.ScalaValueClasses contains sym.owner.linkedClass)
+      sym.name == nme.unbox && sym.owner.linkedClass.isPrimitiveValueClass
 
     def isBox(sym: Symbol)(implicit ctx: Context) =
-      sym.name == nme.box && (defn.ScalaValueClasses contains sym.owner.linkedClass)
+      sym.name == nme.box && sym.owner.linkedClass.isPrimitiveValueClass
 
     def boxMethod(cls: ClassSymbol)(implicit ctx: Context) =
       cls.linkedClass.info.member(nme.box).symbol
@@ -138,7 +138,7 @@ object Erasure extends TypeTestsCasts{
      */
     private def safelyRemovableUnboxArg(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case Apply(fn, arg :: Nil)
-      if isUnbox(fn.symbol) && (defn.ScalaBoxedClasses contains arg.tpe.widen.typeSymbol) =>
+      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.widen.typeSymbol) =>
         arg
       case _ =>
         EmptyTree

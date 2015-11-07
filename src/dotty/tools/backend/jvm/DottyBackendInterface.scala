@@ -148,11 +148,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
   lazy val JavaAnnotationClass = ctx.requiredClass("java.lang.annotation.Annotation")
 
-
-  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x =>
+  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
-  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
   private val mkArrayNames: Set[Name] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short", "Ref").map{ x=>
     ("new" + x + "Array").toTermName

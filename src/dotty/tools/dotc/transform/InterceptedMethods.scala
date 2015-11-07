@@ -51,7 +51,7 @@ class InterceptedMethods extends MiniPhaseTransform {
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     this.Any_## = defn.Any_##
-    primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses.map(x => x.requiredMethod(nme.getClass_))
+    primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses().map(x => x.requiredMethod(nme.getClass_))
     this
   }
 
@@ -86,7 +86,7 @@ class InterceptedMethods extends MiniPhaseTransform {
       def alt2 = defn.ScalaRuntimeModule.info.member(nme.hash_)
         .suchThat(_.info.firstParamTypes.head.typeSymbol == defn.AnyClass)
 
-      Ident((if (defn.ScalaNumericValueClasses contains s) alt1 else alt2).termRef)
+      Ident((if (s.isNumericValueClass) alt1 else alt2).termRef)
         .appliedTo(tree)
     }
   }
