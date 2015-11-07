@@ -130,9 +130,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   val hashMethodSym: Symbol = NoSymbol // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
-  val externalEqualsNumNum: Symbol = ctx.requiredMethod(defn.BoxesRunTimeModuleRef, nme.equalsNumNum)
+  val externalEqualsNumNum: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
   lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
-  val externalEqualsNumObject: Symbol = ctx.requiredMethod(defn.BoxesRunTimeModuleRef, nme.equalsNumObject)
+  val externalEqualsNumObject: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   val externalEquals: Symbol = defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   val MaxFunctionArity: Int = Definitions.MaxFunctionArity
   val FunctionClass: Array[Symbol] = defn.FunctionClass.asInstanceOf[Array[Symbol]]
@@ -140,7 +140,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
-  lazy val Predef_classOf: Symbol = ctx.requiredMethod(defn.ScalaPredefModuleRef, nme.classOf)
+  lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
   lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
   lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")

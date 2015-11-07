@@ -356,14 +356,6 @@ trait Symbols { this: Context =>
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
-
-  def requiredMethod(pre: TypeRef, name: PreName): TermSymbol = // ### replace with method in Denotations?
-    pre.member(name.toTermName).requiredSymbol(_ is Method).asTerm
-  def requiredMethod(pre: TermRef, name: PreName): TermSymbol =
-    requiredMethod(pre.symbol.moduleClass.typeRef, name)
-
-  def requiredMethodRef(pre: TypeRef, name: PreName): TermRef = requiredMethod(pre, name).termRef
-  def requiredMethodRef(pre: TermRef, name: PreName): TermRef = requiredMethod(pre, name).termRef
 }
 
 object Symbols {

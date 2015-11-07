@@ -5,7 +5,7 @@ import ast.tpd
 import core.Constants.Constant
 import core.Contexts.Context
 import core.StdNames.nme
-import core.Symbols.TermSymbol
+import core.Symbols.{defn,TermSymbol}
 import core.TypeErasure
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 
@@ -24,8 +24,7 @@ class ClassOf extends MiniPhaseTransform {
   private var classOfMethod: TermSymbol = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    val predefModule = ctx.definitions.ScalaPredefModuleRef
-    classOfMethod = ctx.requiredMethod(predefModule, nme.classOf)
+    classOfMethod = defn.ScalaPredefModule.requiredMethod(nme.classOf)
     this
   }
 

@@ -114,7 +114,7 @@ class Definitions {
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules
   lazy val SysPackage = ctx.requiredModule("scala.sys.package")
-    lazy val Sys_errorR = ctx.requiredMethodRef(SysPackage.moduleClass.typeRef, nme.error)
+    lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error = Sys_errorR.symbol
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
@@ -197,14 +197,14 @@ class Definitions {
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule = ScalaPredefModuleRef.symbol
 
-    lazy val Predef_conformsR = ctx.requiredMethodRef(ScalaPredefModuleRef, "$conforms")
+    lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
     def Predef_conforms = Predef_conformsR.symbol
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule = ScalaRuntimeModuleRef.symbol
   def ScalaRuntimeClass = ScalaRuntimeModule.moduleClass.asClass
 
-    def runtimeMethodRef(name: PreName) = ctx.requiredMethodRef(ScalaRuntimeModuleRef, name)
+    def runtimeMethodRef(name: PreName) = ScalaRuntimeModule.requiredMethodRef(name)
     def ScalaRuntime_dropR = runtimeMethodRef(nme.drop)
     def ScalaRuntime_drop = ScalaRuntime_dropR.symbol
 
@@ -215,15 +215,15 @@ class Definitions {
   def ScalaStaticsModule = ScalaStaticsModuleRef.symbol
   def ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
 
-    def staticsMethodRef(name: PreName) = ctx.requiredMethodRef(ScalaStaticsModuleRef, name)
-    def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsModuleRef, name)
+    def staticsMethodRef(name: PreName) = ScalaStaticsModule.requiredMethodRef(name)
+    def staticsMethod(name: PreName) = ScalaStaticsModule.requiredMethod(name)
 
   lazy val DottyPredefModuleRef = ctx.requiredModuleRef("dotty.DottyPredef")
   def DottyPredefModule = DottyPredefModuleRef.symbol
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule = DottyArraysModuleRef.symbol
 
-    def newRefArrayMethod = ctx.requiredMethod(DottyArraysModuleRef, "newRefArray")
+    def newRefArrayMethod = DottyArraysModule.requiredMethod("newRefArray")
 
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule = NilModuleRef.symbol
@@ -238,33 +238,33 @@ class Definitions {
 
   lazy val SeqTypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass = SeqTypeRef.symbol.asClass
-    lazy val Seq_applyR = ctx.requiredMethodRef(SeqTypeRef, nme.apply)
+    lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply = Seq_applyR.symbol
-    lazy val Seq_headR = ctx.requiredMethodRef(SeqTypeRef, nme.head)
+    lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
     def Seq_head = Seq_headR.symbol
 
   lazy val ArrayTypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass = ArrayTypeRef.symbol.asClass
-    lazy val Array_applyR                 = ctx.requiredMethodRef(ArrayTypeRef, nme.apply)
+    lazy val Array_applyR                 = ArrayClass.requiredMethodRef(nme.apply)
     def Array_apply = Array_applyR.symbol
-    lazy val Array_updateR                = ctx.requiredMethodRef(ArrayTypeRef, nme.update)
+    lazy val Array_updateR                = ArrayClass.requiredMethodRef(nme.update)
     def Array_update = Array_updateR.symbol
-    lazy val Array_lengthR                = ctx.requiredMethodRef(ArrayTypeRef, nme.length)
+    lazy val Array_lengthR                = ArrayClass.requiredMethodRef(nme.length)
     def Array_length = Array_lengthR.symbol
-    lazy val Array_cloneR                 = ctx.requiredMethodRef(ArrayTypeRef, nme.clone_)
+    lazy val Array_cloneR                 = ArrayClass.requiredMethodRef(nme.clone_)
     def Array_clone = Array_cloneR.symbol
-    lazy val ArrayConstructorR            = ctx.requiredMethodRef(ArrayTypeRef, nme.CONSTRUCTOR)
+    lazy val ArrayConstructorR            = ArrayClass.requiredMethodRef(nme.CONSTRUCTOR)
     def ArrayConstructor = ArrayConstructorR.symbol
 
   lazy val UnitTypeRef = valueTypeRef("scala.Unit", BoxedUnitTypeRef, java.lang.Void.TYPE, UnitEnc)
   def UnitClass = UnitTypeRef.symbol.asClass
   lazy val BooleanTypeRef = valueTypeRef("scala.Boolean", BoxedBooleanTypeRef, java.lang.Boolean.TYPE, BooleanEnc)
   def BooleanClass = BooleanTypeRef.symbol.asClass
-    lazy val Boolean_notR   = BooleanTypeRef.symbol.requiredMethodRef(nme.UNARY_!)
+    lazy val Boolean_notR   = BooleanClass.requiredMethodRef(nme.UNARY_!)
     def Boolean_! = Boolean_notR.symbol
-    lazy val Boolean_andR = BooleanTypeRef.symbol.requiredMethodRef(nme.ZAND) // ### harmonize required... calls
+    lazy val Boolean_andR = BooleanClass.requiredMethodRef(nme.ZAND) // ### harmonize required... calls
     def Boolean_&& = Boolean_andR.symbol
-    lazy val Boolean_orR  = BooleanTypeRef.symbol.requiredMethodRef(nme.ZOR)
+    lazy val Boolean_orR  = BooleanClass.requiredMethodRef(nme.ZOR)
     def Boolean_|| = Boolean_orR.symbol
 
   lazy val ByteTypeRef = valueTypeRef("scala.Byte", BoxedByteTypeRef, java.lang.Byte.TYPE, ByteEnc)
@@ -275,19 +275,19 @@ class Definitions {
   def CharClass = CharTypeRef.symbol.asClass
   lazy val IntTypeRef = valueTypeRef("scala.Int", BoxedIntTypeRef, java.lang.Integer.TYPE, IntEnc)
   def IntClass = IntTypeRef.symbol.asClass
-    lazy val Int_minusR   = IntTypeRef.symbol.requiredMethodRef(nme.MINUS, List(IntType))
+    lazy val Int_minusR   = IntClass.requiredMethodRef(nme.MINUS, List(IntType))
     def Int_- = Int_minusR.symbol
-    lazy val Int_plusR   = IntTypeRef.symbol.requiredMethodRef(nme.PLUS, List(IntType))
+    lazy val Int_plusR   = IntClass.requiredMethodRef(nme.PLUS, List(IntType))
     def Int_+ = Int_plusR.symbol
-    lazy val Int_divR   = IntTypeRef.symbol.requiredMethodRef(nme.DIV, List(IntType))
+    lazy val Int_divR   = IntClass.requiredMethodRef(nme.DIV, List(IntType))
     def Int_/ = Int_divR.symbol
-    lazy val Int_mulR   = IntTypeRef.symbol.requiredMethodRef(nme.MUL, List(IntType))
+    lazy val Int_mulR   = IntClass.requiredMethodRef(nme.MUL, List(IntType))
     def Int_* = Int_mulR.symbol
-    lazy val Int_eqR   = IntTypeRef.symbol.requiredMethodRef(nme.EQ, List(IntType))
+    lazy val Int_eqR   = IntClass.requiredMethodRef(nme.EQ, List(IntType))
     def Int_== = Int_eqR.symbol
-    lazy val Int_geR   = IntTypeRef.symbol.requiredMethodRef(nme.GE, List(IntType))
+    lazy val Int_geR   = IntClass.requiredMethodRef(nme.GE, List(IntType))
     def Int_>= = Int_geR.symbol
-    lazy val Int_leR   = IntTypeRef.symbol.requiredMethodRef(nme.LE, List(IntType))
+    lazy val Int_leR   = IntClass.requiredMethodRef(nme.LE, List(IntType))
     def Int_<= = Int_leR.symbol
   lazy val LongTypeRef = valueTypeRef("scala.Long", BoxedLongTypeRef, java.lang.Long.TYPE, LongEnc)
   def LongClass = LongTypeRef.symbol.asClass
@@ -370,7 +370,7 @@ class Definitions {
   lazy val StringAddTypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
   def StringAddClass = StringAddTypeRef.symbol.asClass
 
-    lazy val StringAdd_plusR = StringAddTypeRef.symbol.requiredMethodRef(nme.raw.PLUS)
+    lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+ = StringAdd_plusR.symbol
 
   lazy val PairTypeRef                    = ctx.requiredClassRef("dotty.Pair")
@@ -387,11 +387,11 @@ class Definitions {
   def OptionClass = OptionTypeRef.symbol.asClass
   lazy val ProductTypeRef                 = ctx.requiredClassRef("scala.Product")
   def ProductClass = ProductTypeRef.symbol.asClass
-    lazy val Product_canEqualR = ProductTypeRef.symbol.requiredMethodRef(nme.canEqual_)
+    lazy val Product_canEqualR = ProductClass.requiredMethodRef(nme.canEqual_)
     def Product_canEqual = Product_canEqualR.symbol
-    lazy val Product_productArityR = ProductTypeRef.symbol.requiredMethod(nme.productArity)
+    lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
     def Product_productArity = Product_productArityR.symbol
-    lazy val Product_productPrefixR = ProductTypeRef.symbol.requiredMethod(nme.productPrefix)
+    lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix = Product_productPrefixR.symbol
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass = LanguageModuleRef.symbol.moduleClass.asClass
