@@ -683,13 +683,13 @@ class Definitions {
 
   private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
-  private lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedType(t.name))
+  private lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedTypes(t.name))
 
   val ScalaNumericValueClasses = new SymbolsPerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses        = new SymbolsPerRun(implicit ctx => ScalaValueTypes.map(_.symbol))
   val ScalaBoxedClasses        = new SymbolsPerRun(implicit ctx => ScalaBoxedTypes.map(_.symbol))
 
-  private val boxedType = mutable.Map[TypeName, TypeRef]()
+  private val boxedTypes = mutable.Map[TypeName, TypeRef]()
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
@@ -698,7 +698,7 @@ class Definitions {
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
-    boxedType(vcls.name) = boxed
+    boxedTypes(vcls.name) = boxed
     valueTypeEnc(vcls.name) = enc
 //    unboxedTypeRef(boxed.name) = vcls
 //    javaTypeToValueTypeRef(jtype) = vcls
@@ -707,7 +707,7 @@ class Definitions {
   }
 
   /** The type of the boxed class corresponding to primitive value type `tp`. */
-  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedType(scalaClassName(tp))
+  def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
