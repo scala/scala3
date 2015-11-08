@@ -86,7 +86,7 @@ class ReTyper extends Typer {
     case _ =>
       super.handleUnexpectedFunType(tree, fun)
   }
-
+/*
   override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context) =
     try super.typedUnadapted(tree, pt)
     catch {
@@ -94,6 +94,6 @@ class ReTyper extends Typer {
         println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }
-
+*/
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
 }
