@@ -4,17 +4,20 @@ package typer
 import core._
 import Phases._
 import Contexts._
+import Symbols._
 import dotty.tools.dotc.parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import config.Printers._
 import util.Stats._
 import scala.util.control.NonFatal
+import ast.Trees._
 import util.FreshNameCreator
 
 class FrontEnd extends Phase {
 
   override def phaseName = "frontend"
   override def isTyper = true
+  import ast.tpd
 
   def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
     try body
@@ -47,6 +50,16 @@ class FrontEnd extends Phase {
     record("retainedTypedTrees", unit.tpdTree.treeSize)
   }
 
+  private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
+    case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
+    case Import(_, _) :: defs        => firstTopLevelDef(defs)
+    case (tree @ TypeDef(_, _)) :: _ => tree.symbol
+    case _ => NoSymbol
+  }
+
+  private def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
+    unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
+
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = for (unit <- units) yield
       ctx.fresh.setCompilationUnit(unit).setFreshNames(new FreshNameCreator.Default)
@@ -55,7 +68,7 @@ class FrontEnd extends Phase {
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
     record("totalTrees", ast.Trees.ntrees)
-    unitContexts.map(_.compilationUnit).filter(!_.isJava)
+    unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
 
   override def run(implicit ctx: Context): Unit = {
