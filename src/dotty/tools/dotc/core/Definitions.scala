@@ -529,15 +529,27 @@ class Definitions {
     }
   }
 
+  /** An extractor for multi-dimensional arrays.
+   *  Note that this will also extract the high bound if an
+   *  element type is a wildcard. E.g.
+   *
+   *     Array[_ <: Array[_ <: Number]]
+   *
+   *  would match
+   *
+   *     MultiArrayOf(<Number>, 2)
+   */
   object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
-        elemtp match {
+        def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
+          case TypeBounds(lo, hi) => recur(hi)
           case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
           case _ => Some(elemtp, 1)
         }
+        recur(elemtp)
       case _ =>
         None
     }

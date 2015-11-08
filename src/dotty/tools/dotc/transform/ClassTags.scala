@@ -51,13 +51,17 @@ class ClassTags extends MiniPhaseTransform with IdentityDenotTransformer { thisT
       val claz = tp.classSymbol
       val elemClaz = elemType.classSymbol
       assert(!claz.isPrimitiveValueClass) // should be inserted by typer
-      val elemTag = if (elemClaz.isPrimitiveValueClass || elemClaz == defn.NothingClass || elemClaz == defn.NullClass)
+      val elemTag = 
+        if (elemClaz.isPrimitiveValueClass || elemClaz == defn.NothingClass || elemClaz == defn.NullClass)
           ref(defn.DottyPredefModule).select(s"${elemClaz.name}ClassTag".toTermName)
-        else if (ValueClasses.isDerivedValueClass(elemClaz)) ref(claz.companionModule)
-        else if (elemClaz eq defn.AnyClass) ref(scala2ClassTagModule).select(nme.Any)
+        else if (ValueClasses.isDerivedValueClass(elemClaz)) 
+          ref(claz.companionModule)
+        else if (elemClaz eq defn.AnyClass) 
+          ref(scala2ClassTagModule).select(nme.Any)
         else {
           val erazedTp = TypeErasure.erasure(elemType).classSymbol.typeRef
-          ref(scala2ClassTagModule).select(nme.apply).appliedToType(erazedTp).appliedTo(Literal(Constant(erazedTp)))
+          ref(scala2ClassTagModule).select(nme.apply)
+            .appliedToType(erazedTp).appliedTo(Literal(Constant(erazedTp)))
         }
       (1 to ndims).foldLeft(elemTag)((arr, level) => Select(arr, nme.wrap).ensureApplied).ensureConforms(tree.tpe)
     } else tree
