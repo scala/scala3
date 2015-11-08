@@ -30,18 +30,16 @@
 
 ./scala-scala/src/library/scala/AnyValCompanion.scala
 
-# Does not pass refchecks:
-#  method getClass of type ()Class[_ <: AnyVal] cannot override final member method getClass in class Any
-#./scala-scala/src/library/scala/AnyVal.scala
-#./scala-scala/src/library/scala/Boolean.scala
-#./scala-scala/src/library/scala/Byte.scala
-#./scala-scala/src/library/scala/Char.scala
-#./scala-scala/src/library/scala/Double.scala
-#./scala-scala/src/library/scala/Float.scala
-#./scala-scala/src/library/scala/Int.scala
-#./scala-scala/src/library/scala/Long.scala
-#./scala-scala/src/library/scala/Short.scala
-#./scala-scala/src/library/scala/Unit.scala
+./scala-scala/src/library/scala/AnyVal.scala
+./scala-scala/src/library/scala/Boolean.scala
+./scala-scala/src/library/scala/Byte.scala
+./scala-scala/src/library/scala/Char.scala
+./scala-scala/src/library/scala/Double.scala
+./scala-scala/src/library/scala/Float.scala
+./scala-scala/src/library/scala/Int.scala
+./scala-scala/src/library/scala/Long.scala
+./scala-scala/src/library/scala/Short.scala
+./scala-scala/src/library/scala/Unit.scala
 
 ./scala-scala/src/library/scala/Cloneable.scala
 ./scala-scala/src/library/scala/DelayedInit.scala
