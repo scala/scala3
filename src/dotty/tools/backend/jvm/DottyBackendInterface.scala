@@ -135,8 +135,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val externalEqualsNumObject: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   val externalEquals: Symbol = defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   val MaxFunctionArity: Int = Definitions.MaxFunctionArity
-  val FunctionClass: Array[Symbol] = defn.FunctionClass.asInstanceOf[Array[Symbol]]
-  val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClass.asInstanceOf[Array[Symbol]]
+  val FunctionClass: Array[Symbol] = defn.FunctionClassPerRun()
+  val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClassPerRun()
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
