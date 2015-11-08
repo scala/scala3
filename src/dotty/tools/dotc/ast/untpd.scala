@@ -201,7 +201,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     TypedSplice(tpd.ref(tp))
 
-  def scalaUnit(implicit ctx: Context) = ref(defn.UnitType)
+  def rootDot(name: Name) = Select(Ident(nme.ROOTPKG), name)
+  def scalaDot(name: Name) = Select(rootDot(nme.scala_), name)
+  def scalaUnit = scalaDot(tpnme.Unit)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)

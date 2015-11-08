@@ -1387,7 +1387,7 @@ object Types {
         (lastSymbol.infoOrCompleter == ErrorType ||
         sym.owner.derivesFrom(lastSymbol.owner) && sym.owner != lastSymbol.owner
       ),
-        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase}")
+        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase} at run ${ctx.runId}")
 
     protected def sig: Signature = Signature.NotAMethod
 

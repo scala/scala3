@@ -70,7 +70,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
-  private def _scala(name: Name)            = Select(Select(Ident(nme.ROOTPKG), nme.scala_), name)
+  private def _scala(name: Name)            = scalaDot(name)
   private def _scala_xml(name: Name)        = Select(_scala(_xml), name)
 
   private def _scala_xml_Comment            = _scala_xml(_Comment)
