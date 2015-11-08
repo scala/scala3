@@ -964,7 +964,7 @@ object Types {
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
-      case _ => defn.AnyClass.typeRef
+      case _ => defn.AnyType
     }
 
     /** the self type of the underlying classtype */

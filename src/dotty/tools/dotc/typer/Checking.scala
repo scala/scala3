@@ -310,7 +310,7 @@ trait Checking {
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.
    *  Stability checking is disabled in phases after RefChecks.
-   *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
+   *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
@@ -320,7 +320,7 @@ trait Checking {
         tp
       case _ =>
         ctx.error(d"$tp is not a class type", pos)
-        defn.ObjectClass.typeRef
+        defn.ObjectType
   }
 
   /** Check that a non-implicit parameter making up the first parameter section of an

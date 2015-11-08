@@ -163,7 +163,7 @@ class Definitions {
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     completeClass(cls)
   }
-  def ObjectType: Type = ObjectClass.typeRef
+  def ObjectType = ObjectClass.typeRef
 
   lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType = AnyRefAlias.typeRef
@@ -404,12 +404,12 @@ class Definitions {
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
 
   // Annotation base classes
-  lazy val AnnotationTypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
-  def AnnotationClass = AnnotationTypeRef.symbol.asClass
-  lazy val ClassfileAnnotationTypeRef     = ctx.requiredClassRef("scala.annotation.ClassfileAnnotation")
-  def ClassfileAnnotationClass = ClassfileAnnotationTypeRef.symbol.asClass
-  lazy val StaticAnnotationTypeRef        = ctx.requiredClassRef("scala.annotation.StaticAnnotation")
-  def StaticAnnotationClass = StaticAnnotationTypeRef.symbol.asClass
+  lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
+  def AnnotationClass = AnnotationType.symbol.asClass
+  lazy val ClassfileAnnotationType     = ctx.requiredClassRef("scala.annotation.ClassfileAnnotation")
+  def ClassfileAnnotationClass = ClassfileAnnotationType.symbol.asClass
+  lazy val StaticAnnotationType        = ctx.requiredClassRef("scala.annotation.StaticAnnotation")
+  def StaticAnnotationClass = StaticAnnotationType.symbol.asClass
 
   // Annotation classes
   lazy val AliasAnnotRef = ctx.requiredClassRef("dotty.annotation.internal.Alias")

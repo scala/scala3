@@ -100,7 +100,7 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
-    if (parentRefs.isEmpty) parentRefs = defn.ObjectClass.typeRef :: Nil
+    if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
@@ -852,7 +852,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
-      defn.SeqType.appliedTo(defn.AnnotationClass.typeRef :: Nil),
+      defn.SeqType.appliedTo(defn.AnnotationType :: Nil),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 
