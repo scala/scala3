@@ -104,7 +104,7 @@ class ClassfileParser(
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
-      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
+      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationType }
                       else pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
       var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
@@ -115,7 +115,7 @@ class ClassfileParser(
         // is found. If we treat constant subtyping specially, we might be able
         // to do something there. But in any case, the until should be more efficient.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
+      if (isAnnotation) ifaces = defn.ClassfileAnnotationType :: ifaces
       superType :: ifaces
     }
 

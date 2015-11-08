@@ -71,7 +71,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
     def newCompanion(name: TermName, forClass: Symbol): Thicket = {
       val modul = ctx.newCompleteModuleSymbol(ctx.owner, name, Synthetic, Synthetic,
-        defn.ObjectClass.typeRef :: Nil, Scopes.newScope)
+        defn.ObjectType :: Nil, Scopes.newScope)
       val mc = modul.moduleClass
       if (ctx.owner.isClass) modul.enteredAfter(thisTransformer)
       ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc).enteredAfter(thisTransformer)

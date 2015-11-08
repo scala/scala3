@@ -803,10 +803,10 @@ object desugar {
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
-          val seqClass = if (ctx.compilationUnit.isJava) defn.ArrayClass else defn.SeqClass
+          val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil),
-            AppliedTypeTree(ref(seqClass.typeRef), t))
+            New(ref(defn.RepeatedAnnotRef), Nil :: Nil),
+            AppliedTypeTree(ref(seqType), t))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
           Select(t, op)
@@ -818,7 +818,7 @@ object desugar {
       case Tuple(ts) =>
         if (unboxedPairs) {
           def PairTypeTree(l: Tree, r: Tree) =
-            AppliedTypeTree(ref(defn.PairClass.typeRef), l :: r :: Nil)
+            AppliedTypeTree(ref(defn.PairType), l :: r :: Nil)
           if (ctx.mode is Mode.Type) ts.reduceRight(PairTypeTree)
           else if (ts.isEmpty) unitLiteral
           else ts.reduceRight(Pair(_, _))

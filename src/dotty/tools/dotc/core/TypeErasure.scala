@@ -176,7 +176,7 @@ object TypeErasure {
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
-        MethodType(Nil, defn.BoxedUnitClass.typeRef)
+        MethodType(Nil, defn.BoxedUnitType)
       case einfo =>
         einfo
     }
@@ -360,7 +360,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else classParents.mapConserve(eraseTypeRef) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
-              val tr1 = if (cls is Trait) defn.ObjectClass.typeRef else tr
+              val tr1 = if (cls is Trait) defn.ObjectType else tr
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
           }
