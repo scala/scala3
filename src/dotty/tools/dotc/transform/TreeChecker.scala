@@ -23,6 +23,7 @@ import ast.{tpd, untpd}
 import util.SourcePosition
 import collection.mutable
 import ProtoTypes._
+import config.Printers
 import java.lang.AssertionError
 import scala.util.control.NonFatal
 
@@ -125,6 +126,9 @@ class TreeChecker extends Phase with SymTransformer {
       case NonFatal(ex) =>
         implicit val ctx: Context = checkingCtx
         ctx.println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
+        ctx.println(ex.toString)
+        ctx.println(ex.getStackTrace.take(30).deep.mkString("\n"))
+        ctx.println("<<<")
         throw ex
     }
   }
