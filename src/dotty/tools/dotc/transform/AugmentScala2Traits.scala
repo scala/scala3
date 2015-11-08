@@ -53,7 +53,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
         owner = mixin.owner,
         name = mixin.name.implClassName,
         flags = Abstract | Scala2x,
-        parents = defn.ObjectClass.typeRef :: Nil,
+        parents = defn.ObjectType :: Nil,
         assocFile = mixin.assocFile).enteredAfter(thisTransform)
 
       def implMethod(meth: TermSymbol): Symbol = {

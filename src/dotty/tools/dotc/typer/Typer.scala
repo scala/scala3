@@ -371,7 +371,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def regularTyped(isWildcard: Boolean) = {
       val tpt1 =
         if (untpd.isWildcardStarArg(tree))
-          TypeTree(defn.SeqClass.typeRef.appliedTo(pt :: Nil))
+          TypeTree(defn.SeqType.appliedTo(pt :: Nil))
         else
           checkSimpleKinded(typedType(tree.tpt))
       val expr1 =
@@ -864,8 +864,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    if (!(lo1.tpe <:< hi1.tpe))
-      ctx.error(d"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
     assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
   }
 
@@ -891,7 +889,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
-    typed(annot, defn.AnnotationClass.typeRef)
+    typed(annot, defn.AnnotationType)
   }
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
@@ -1034,7 +1032,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = typedExpr(tree.annot, defn.AnnotationType)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(annot1, arg1), annot1, arg1)

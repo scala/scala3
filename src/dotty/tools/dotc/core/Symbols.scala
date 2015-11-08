@@ -339,8 +339,12 @@ trait Symbols { this: Context =>
   def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Package).asTerm
 
+  def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
+
   def requiredClass(path: PreName): ClassSymbol =
     base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+
+  def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
@@ -351,8 +355,7 @@ trait Symbols { this: Context =>
   def requiredModule(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 
-  def requiredMethod(cls: ClassSymbol, name: PreName): TermSymbol =
-    cls.info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 }
 
 object Symbols {
@@ -575,6 +578,12 @@ object Symbols {
 
   /** The Definitions object */
   def defn(implicit ctx: Context): Definitions = ctx.definitions
+
+  /** Return the symbol represented in this run by the SymbolPerRun argument
+   *  Note: Once we have implicit function types, this can be represented directly, does
+   *  not need this conversion.
+   */
+  implicit def symbolThisRun(spr: Definitions.SymbolPerRun)(implicit ctx: Context): Symbol = spr.symbol
 
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass

@@ -607,9 +607,9 @@ object Types {
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
     def isValueSubType(that: Type)(implicit ctx: Context) = widenExpr match {
-      case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
+      case self: TypeRef if self.symbol.isPrimitiveValueClass =>
         that.widenExpr match {
-          case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
+          case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false
@@ -961,7 +961,7 @@ object Types {
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
-      case _ => defn.AnyClass.typeRef
+      case _ => defn.AnyType
     }
 
     /** the self type of the underlying classtype */
@@ -1098,7 +1098,7 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
-        defn.FunctionType(
+        defn.FunctionOf(
             formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
     }
 

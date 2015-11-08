@@ -369,7 +369,7 @@ object ProtoTypes {
             if (pt.isInstanceOf[ApplyingProto])
               mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
             else {
-              val ft = defn.FunctionType(mt.paramTypes, rt)
+              val ft = defn.FunctionOf(mt.paramTypes, rt)
               if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
             }
           }

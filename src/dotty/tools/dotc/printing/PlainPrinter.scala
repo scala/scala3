@@ -245,10 +245,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  protected def isOmittablePrefix(sym: Symbol) =
-    (defn.UnqualifiedOwners contains sym) || isEmptyPrefix(sym)
+  protected def isOmittablePrefix(sym: Symbol): Boolean =
+    defn.UnqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
 
-  protected def isEmptyPrefix(sym: Symbol) =
+  protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
 
   /** String representation of a definition's type following its name,

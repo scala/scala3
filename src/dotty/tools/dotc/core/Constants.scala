@@ -54,17 +54,17 @@ object Constants {
     def isAnyVal              = UnitTag <= tag && tag <= DoubleTag
 
     def tpe(implicit ctx: Context): Type = tag match {
-      case UnitTag    => defn.UnitClass.typeRef
-      case BooleanTag => defn.BooleanClass.typeRef
-      case ByteTag    => defn.ByteClass.typeRef
-      case ShortTag   => defn.ShortClass.typeRef
-      case CharTag    => defn.CharClass.typeRef
-      case IntTag     => defn.IntClass.typeRef
-      case LongTag    => defn.LongClass.typeRef
-      case FloatTag   => defn.FloatClass.typeRef
-      case DoubleTag  => defn.DoubleClass.typeRef
-      case StringTag  => defn.StringClass.typeRef
-      case NullTag    => defn.NullClass.typeRef
+      case UnitTag    => defn.UnitType
+      case BooleanTag => defn.BooleanType
+      case ByteTag    => defn.ByteType
+      case ShortTag   => defn.ShortType
+      case CharTag    => defn.CharType
+      case IntTag     => defn.IntType
+      case LongTag    => defn.LongType
+      case FloatTag   => defn.FloatType
+      case DoubleTag  => defn.DoubleType
+      case StringTag  => defn.StringType
+      case NullTag    => defn.NullType
       case ClazzTag   => defn.ClassType(typeValue)
       case EnumTag    => defn.EnumType(symbolValue)
     }

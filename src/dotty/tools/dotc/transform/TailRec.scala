@@ -85,7 +85,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
     tree match {
       case dd@DefDef(name, tparams, vparamss0, tpt, _)
         if (sym.isEffectivelyFinal) && !((sym is Flags.Accessor) || (dd.rhs eq EmptyTree) || (sym is Flags.Label)) =>
-        val mandatory = sym.hasAnnotation(defn.TailrecAnnotationClass)
+        val mandatory = sym.hasAnnotation(defn.TailrecAnnot)
         atGroupEnd { implicit ctx: Context =>
 
           cpy.DefDef(dd)(rhs = {
@@ -121,10 +121,10 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             }
           })
         }
-      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnotationClass) =>
+      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) =>
         ctx.error("TailRec optimisation not applicable, method is neither private nor final so can be overridden", d.pos)
         d
-      case d if d.symbol.hasAnnotation(defn.TailrecAnnotationClass) =>
+      case d if d.symbol.hasAnnotation(defn.TailrecAnnot) =>
         ctx.error("TailRec optimisation not applicable, not a method", d.pos)
         d
       case _ => tree
