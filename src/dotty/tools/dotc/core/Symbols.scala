@@ -579,6 +579,12 @@ object Symbols {
   /** The Definitions object */
   def defn(implicit ctx: Context): Definitions = ctx.definitions
 
+  /** Return the symbol represented in this run by the SymbolPerRun argument
+   *  Note: Once we have implicit function types, this can be represented directly, does
+   *  not need this conversion.
+   */
+  implicit def symbolThisRun(spr: Definitions.SymbolPerRun)(implicit ctx: Context): Symbol = spr.symbol
+
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 

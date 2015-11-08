@@ -13,6 +13,9 @@ import scala.reflect.api.{ Universe => ApiUniverse }
 
 object Definitions {
   val MaxFunctionArity, MaxTupleArity = 22
+  class SymbolPerRun(ref: NamedType) {
+    def symbol(implicit ctx: Context): Symbol = ref.symbol
+  }
 }
 
 /** A class defining symbols and types of standard definitions */
@@ -88,6 +91,19 @@ class Definitions {
     arr
   }
 
+  private def requiredModule(path: String) = new SymbolPerRun(ctx.requiredModuleRef(path))
+
+  private def requiredClass(path: String) = {
+    val ref = ctx.requiredClassRef(path)
+    (new SymbolPerRun(ref), ref)
+  }
+
+  private def requiredMethod(cls: Symbol, name: PreName) =
+    new SymbolPerRun(cls.requiredMethodRef(name))
+
+  private def requiredMethod(cls: Symbol, name: PreName, args: List[Type]) =
+    new SymbolPerRun(cls.requiredMethodRef(name, args))
+
   private def completeClass(cls: ClassSymbol): ClassSymbol = {
     ensureConstructor(cls, EmptyScope)
     if (cls.linkedClass.exists) cls.linkedClass.info = NoType
@@ -114,8 +130,7 @@ class Definitions {
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
   // fundamental modules
   lazy val SysPackage = ctx.requiredModule("scala.sys.package")
-    lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
-    def Sys_error = Sys_errorR.symbol
+    lazy val Sys_error = requiredMethod(SysPackage.moduleClass, nme.error)
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -201,9 +216,7 @@ class Definitions {
 
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule = ScalaPredefModuleRef.symbol
-
-    lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
-    def Predef_conforms = Predef_conformsR.symbol
+    lazy val Predef_conforms = requiredMethod(ScalaPredefModule, "$conforms")
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule = ScalaRuntimeModuleRef.symbol
@@ -242,35 +255,24 @@ class Definitions {
 
   lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass = SeqType.symbol.asClass
-
-    lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
-    def Seq_apply = Seq_applyR.symbol
-    lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
-    def Seq_head = Seq_headR.symbol
+    lazy val Seq_apply = requiredMethod(SeqClass, nme.apply)
+    lazy val Seq_head = requiredMethod(SeqClass, nme.head)
 
   lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass = ArrayType.symbol.asClass
-    lazy val Array_applyR                 = ArrayClass.requiredMethodRef(nme.apply)
-    def Array_apply = Array_applyR.symbol
-    lazy val Array_updateR                = ArrayClass.requiredMethodRef(nme.update)
-    def Array_update = Array_updateR.symbol
-    lazy val Array_lengthR                = ArrayClass.requiredMethodRef(nme.length)
-    def Array_length = Array_lengthR.symbol
-    lazy val Array_cloneR                 = ArrayClass.requiredMethodRef(nme.clone_)
-    def Array_clone = Array_cloneR.symbol
-    lazy val ArrayConstructorR            = ArrayClass.requiredMethodRef(nme.CONSTRUCTOR)
-    def ArrayConstructor = ArrayConstructorR.symbol
+    lazy val Array_apply = requiredMethod(ArrayClass, nme.apply)
+    lazy val Array_update = requiredMethod(ArrayClass, nme.update)
+    lazy val Array_length = requiredMethod(ArrayClass, nme.length)
+    lazy val Array_clone = requiredMethod(ArrayClass, nme.clone_)
+    lazy val ArrayConstructor = requiredMethod(ArrayClass, nme.CONSTRUCTOR)
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
   def UnitClass = UnitType.symbol.asClass
   lazy val BooleanType = valueTypeRef("scala.Boolean", BoxedBooleanType, java.lang.Boolean.TYPE, BooleanEnc)
   def BooleanClass = BooleanType.symbol.asClass
-    lazy val Boolean_notR   = BooleanClass.requiredMethodRef(nme.UNARY_!)
-    def Boolean_! = Boolean_notR.symbol
-    lazy val Boolean_andR = BooleanClass.requiredMethodRef(nme.ZAND) // ### harmonize required... calls
-    def Boolean_&& = Boolean_andR.symbol
-    lazy val Boolean_orR  = BooleanClass.requiredMethodRef(nme.ZOR)
-    def Boolean_|| = Boolean_orR.symbol
+    lazy val Boolean_! = requiredMethod(BooleanClass, nme.UNARY_!)
+    lazy val Boolean_&& = requiredMethod(BooleanClass, nme.ZAND) // ### harmonize required... calls
+    lazy val Boolean_|| = requiredMethod(BooleanClass, nme.ZOR)
 
   lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", BoxedByteType, java.lang.Byte.TYPE, ByteEnc)
   def ByteClass = ByteType.symbol.asClass
@@ -280,20 +282,13 @@ class Definitions {
   def CharClass = CharType.symbol.asClass
   lazy val IntType: TypeRef = valueTypeRef("scala.Int", BoxedIntType, java.lang.Integer.TYPE, IntEnc)
   def IntClass = IntType.symbol.asClass
-    lazy val Int_minusR   = IntClass.requiredMethodRef(nme.MINUS, List(IntType))
-    def Int_- = Int_minusR.symbol
-    lazy val Int_plusR   = IntClass.requiredMethodRef(nme.PLUS, List(IntType))
-    def Int_+ = Int_plusR.symbol
-    lazy val Int_divR   = IntClass.requiredMethodRef(nme.DIV, List(IntType))
-    def Int_/ = Int_divR.symbol
-    lazy val Int_mulR   = IntClass.requiredMethodRef(nme.MUL, List(IntType))
-    def Int_* = Int_mulR.symbol
-    lazy val Int_eqR   = IntClass.requiredMethodRef(nme.EQ, List(IntType))
-    def Int_== = Int_eqR.symbol
-    lazy val Int_geR   = IntClass.requiredMethodRef(nme.GE, List(IntType))
-    def Int_>= = Int_geR.symbol
-    lazy val Int_leR   = IntClass.requiredMethodRef(nme.LE, List(IntType))
-    def Int_<= = Int_leR.symbol
+    lazy val Int_- = requiredMethod(IntClass, nme.MINUS, List(IntType))
+    lazy val Int_+ = requiredMethod(IntClass, nme.PLUS, List(IntType))
+    lazy val Int_/ = requiredMethod(IntClass, nme.DIV, List(IntType))
+    lazy val Int_* = requiredMethod(IntClass, nme.MUL, List(IntType))
+    lazy val Int_== = requiredMethod(IntClass, nme.EQ, List(IntType))
+    lazy val Int_>= = requiredMethod(IntClass, nme.GE, List(IntType))
+    lazy val Int_<= = requiredMethod(IntClass, nme.LE, List(IntType))
   lazy val LongType: TypeRef = valueTypeRef("scala.Long", BoxedLongType, java.lang.Long.TYPE, LongEnc)
   def LongClass = LongType.symbol.asClass
     lazy val Long_XOR_Long = LongType.member(nme.XOR).requiredSymbol(
@@ -375,9 +370,7 @@ class Definitions {
 
   lazy val StringAddType: TypeRef          = ctx.requiredClassRef("scala.runtime.StringAdd")
   def StringAddClass = StringAddType.symbol.asClass
-
-    lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
-    def StringAdd_+ = StringAdd_plusR.symbol
+    lazy val StringAdd_+ = requiredMethod(StringAddClass, nme.raw.PLUS)
 
   lazy val PairType: TypeRef                    = ctx.requiredClassRef("dotty.Pair")
   def PairClass = PairType.symbol.asClass
@@ -393,12 +386,9 @@ class Definitions {
   def OptionClass = OptionType.symbol.asClass
   lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
   def ProductClass = ProductType.symbol.asClass
-    lazy val Product_canEqualR = ProductClass.requiredMethodRef(nme.canEqual_)
-    def Product_canEqual = Product_canEqualR.symbol
-    lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
-    def Product_productArity = Product_productArityR.symbol
-    lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
-    def Product_productPrefix = Product_productPrefixR.symbol
+    lazy val Product_canEqual = requiredMethod(ProductClass, nme.canEqual_)
+    lazy val Product_productArity = requiredMethod(ProductClass, nme.productArity)
+    lazy val Product_productPrefix = requiredMethod(ProductClass, nme.productPrefix)
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
