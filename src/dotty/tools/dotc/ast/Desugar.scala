@@ -805,7 +805,7 @@ object desugar {
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            New(ref(defn.RepeatedAnnotRef), Nil :: Nil),
+            New(ref(defn.RepeatedAnnotType), Nil :: Nil),
             AppliedTypeTree(ref(seqType), t))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
