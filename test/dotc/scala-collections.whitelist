@@ -235,3 +235,10 @@
 # https://github.com/lampepfl/dotty/issues/939
 #./scala-scala/src/library/scala/collection/immutable/IntMap.scala
 
+
+# tailrec bug
+#./scala-scala/src/library/scala/collection/immutable/ListMap.scala
+
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/immutable/ListSet.scala
+
