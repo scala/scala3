@@ -268,3 +268,7 @@
 # https://github.com/lampepfl/dotty/issues/942
 # ./scala-scala/src/library/scala/collection/immutable/SortedMap.scala
 #./scala-scala/src/library/scala/collection/immutable/SortedSet.scala
+
+# https://github.com/lampepfl/dotty/issues/941
+#./scala-scala/src/library/scala/collection/immutable/Stream.scala
+#./scala-scala/src/library/scala/collection/immutable/StreamView.scala
