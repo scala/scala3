@@ -19,3 +19,9 @@ object Test {
   }
 }
 
+class CC[+A] {
+  class Inner {
+    def this(a: A) = this()
+  }
+}
+

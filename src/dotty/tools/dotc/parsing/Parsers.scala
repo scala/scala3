@@ -1736,7 +1736,7 @@ object Parsers {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
         val rhs = {
-          if (!scala2ProcedureSyntax || in.token != LBRACE) accept(EQUALS)
+          if (!(in.token == LBRACE && scala2ProcedureSyntax)) accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods)
