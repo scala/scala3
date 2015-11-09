@@ -193,5 +193,10 @@
 #./scala-scala/src/library/scala/collection/SeqExtractors.scala
 #./scala-scala/src/library/scala/collection/SeqLike.scala
 #./scala-scala/src/library/scala/collection/SeqProxy.scala
+
+./scala-scala/src/library/scala/collection/SeqProxyLike.scala
+
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/Set.scala
 # https://github.com/lampepfl/dotty/issues/938
 #./scala-scala/src/library/scala/collection/TraversableLike.scala
