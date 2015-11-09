@@ -296,3 +296,7 @@
 ./scala-scala/src/library/scala/collection/generic/GenericOrderedCompanion.scala
 ./scala-scala/src/library/scala/collection/generic/GenericOrderedTraversableTemplate.scala
 ./scala-scala/src/library/scala/collection/generic/GenericParCompanion.scala
+
+# cyclic ref
+#./scala-scala/src/library/scala/collection/generic/GenericParTemplate.scala
+
