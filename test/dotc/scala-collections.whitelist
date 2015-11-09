@@ -140,4 +140,13 @@
 ./scala-scala/src/library/scala/collection/GenSeq.scala
 ./scala-scala/src/library/scala/collection/GenSeqLike.scala
 
+./scala-scala/src/library/scala/collection/BitSet.scala
+./scala-scala/src/library/scala/collection/BitSetLike.scala
+./scala-scala/src/library/scala/collection/BufferedIterator.scala
+./scala-scala/src/library/scala/collection/CustomParallelizable.scala
+./scala-scala/src/library/scala/collection/DefaultMap.scala
+./scala-scala/src/library/scala/collection/GenIterable.scala
+./scala-scala/src/library/scala/collection/GenIterableLike.scala
+./scala-scala/src/library/scala/collection/GenMap.scala
+./scala-scala/src/library/scala/collection/GenMapLike.scala
 
