@@ -23,7 +23,7 @@ object build extends tests {
     deleteFilesInFolder(new File(defaultOutputDir)) // clear previous output
     val keepFile = new File(defaultOutputDir + ".keep")
     keepFile.createNewFile()
-    dotty // build output dir
+    //dotty // build output dir
     val p = Runtime.getRuntime.exec(Array("jar", "cf", "dotty.jar", "-C", "out", "."))
     p.waitFor()
     p
