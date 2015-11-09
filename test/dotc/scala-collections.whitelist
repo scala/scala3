@@ -149,3 +149,7 @@
 ./scala-scala/src/library/scala/collection/GenIterableLike.scala
 ./scala-scala/src/library/scala/collection/GenMap.scala
 ./scala-scala/src/library/scala/collection/GenMapLike.scala
+
+# cyclic reference
+./scala-scala/src/library/scala/collection/GenSeq.scala
+./scala-scala/src/library/scala/collection/GenSeqLike.scala
