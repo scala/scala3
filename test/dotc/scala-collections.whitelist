@@ -248,3 +248,5 @@
 ./scala-scala/src/library/scala/collection/immutable/Map.scala
 ./scala-scala/src/library/scala/collection/immutable/MapLike.scala
 
+# https://github.com/lampepfl/dotty/issues/940
+# ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
