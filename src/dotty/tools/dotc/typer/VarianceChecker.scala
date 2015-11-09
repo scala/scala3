@@ -110,16 +110,20 @@ class VarianceChecker()(implicit ctx: Context) {
   private object Traverser extends TreeTraverser {
     def checkVariance(sym: Symbol) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
-        ctx.error(
-          i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym",
-          sym.pos)
+        def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
+        if (ctx.scala2Mode && sym.owner.isConstructor)
+          ctx.migrationWarning(s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg", sym.pos)
+        else ctx.error(msg, sym.pos)
       case None =>
     }
 
     override def traverse(tree: Tree)(implicit ctx: Context) = {
       def sym = tree.symbol
       // No variance check for private/protected[this] methods/values.
-      def skip = !sym.exists || sym.is(Local)
+      def skip =
+        !sym.exists ||
+        sym.is(Local) || // !!! watch out for protected local!
+        sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
       tree match {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")

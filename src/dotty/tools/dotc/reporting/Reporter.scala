@@ -66,6 +66,9 @@ object Reporter {
   class DeprecationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
   }
+  class MigrationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+    def enablingOption(implicit ctx: Context) = ctx.settings.migration
+  }
 }
 
 import Reporter._
@@ -81,6 +84,9 @@ trait Reporting { this: Context =>
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new DeprecationWarning(msg, pos))
+
+  def migrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(new MigrationWarning(msg, pos))
 
   def uncheckedWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new UncheckedWarning(msg, pos))
