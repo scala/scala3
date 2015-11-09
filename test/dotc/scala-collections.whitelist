@@ -300,3 +300,6 @@
 # cyclic ref
 #./scala-scala/src/library/scala/collection/generic/GenericParTemplate.scala
 
+#cyclic ref
+#./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
+#./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
