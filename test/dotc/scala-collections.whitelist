@@ -201,5 +201,26 @@
 
 # cyclic reference involving trait Set
 #./scala-scala/src/library/scala/collection/SetLike.scala
+
+./scala-scala/src/library/scala/collection/SetProxy.scala
+./scala-scala/src/library/scala/collection/SetProxyLike.scala
+./scala-scala/src/library/scala/collection/SortedMap.scala
+./scala-scala/src/library/scala/collection/SortedMapLike.scala
+./scala-scala/src/library/scala/collection/SortedSet.scala
+./scala-scala/src/library/scala/collection/SortedSetLike.scala
+./scala-scala/src/library/scala/collection/Traversable.scala
+
 # https://github.com/lampepfl/dotty/issues/938
 #./scala-scala/src/library/scala/collection/TraversableLike.scala
+
+./scala-scala/src/library/scala/collection/TraversableProxy.scala
+./scala-scala/src/library/scala/collection/TraversableProxyLike.scala
+./scala-scala/src/library/scala/collection/package.scala
+
+## those classes use early initialisers.
+#./scala-scala/src/library/scala/collection/IterableView.scala
+#./scala-scala/src/library/scala/collection/IterableViewLike.scala
+#./scala-scala/src/library/scala/collection/SeqView.scala
+#./scala-scala/src/library/scala/collection/SeqViewLike.scala
+#./scala-scala/src/library/scala/collection/TraversableView.scala
+#./scala-scala/src/library/scala/collection/TraversableViewLike.scala
