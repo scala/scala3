@@ -99,6 +99,12 @@ object Scala2Unpickler {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
     }
+    val ost =
+      if ((selfInfo eq NoType) && (denot is ModuleClass))
+        denot.owner.thisType select denot.sourceModule
+      else selfInfo
+
+    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, decls, ost) // first rough info to avoid CyclicReferences
     var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
     if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
     for (tparam <- tparams) {
@@ -106,10 +112,8 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    val ost =
-      if ((selfInfo eq NoType) && (denot is ModuleClass))
-        denot.owner.thisType select denot.sourceModule
-      else selfInfo
+    denot.info = ClassInfo(
+      denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost) // more refined infowith parents
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
@@ -140,7 +144,7 @@ object Scala2Unpickler {
         decls1
       }
 
-    denot.info = ClassInfo(
+    denot.info = ClassInfo( // final info
       denot.owner.thisType, denot.classSymbol, parentRefs, declsInRightOrder, ost)
   }
 }

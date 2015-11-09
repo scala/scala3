@@ -64,7 +64,6 @@
 ./scala-scala/src/library/scala/Product8.scala
 ./scala-scala/src/library/scala/Product9.scala
 
-
 ./scala-scala/src/library/scala/Proxy.scala
 ./scala-scala/src/library/scala/SerialVersionUID.scala
 ./scala-scala/src/library/scala/Serializable.scala
@@ -136,3 +135,9 @@
 ./scala-scala/src/library/scala/transient.scala
 ./scala-scala/src/library/scala/unchecked.scala
 ./scala-scala/src/library/scala/volatile.scala
+
+# cyclic reference
+./scala-scala/src/library/scala/collection/GenSeq.scala
+./scala-scala/src/library/scala/collection/GenSeqLike.scala
+
+

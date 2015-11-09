@@ -1883,5 +1883,5 @@ object SymDenotations {
 
   private val AccessorOrLabel = Accessor | Label
 
-  private var indent = 0 // for completions printing
+  @sharable private var indent = 0 // for completions printing
 }
