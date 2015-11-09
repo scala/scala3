@@ -225,6 +225,7 @@
 #./scala-scala/src/library/scala/collection/TraversableView.scala
 #./scala-scala/src/library/scala/collection/TraversableViewLike.scala
 #./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
+#./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
