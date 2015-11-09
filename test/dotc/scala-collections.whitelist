@@ -264,3 +264,7 @@
 #./scala-scala/src/library/scala/collection/immutable/Set.scala
 
 ./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
+
+# https://github.com/lampepfl/dotty/issues/942
+# ./scala-scala/src/library/scala/collection/immutable/SortedMap.scala
+#./scala-scala/src/library/scala/collection/immutable/SortedSet.scala
