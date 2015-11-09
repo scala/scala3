@@ -335,3 +335,15 @@
 #./scala-scala/src/library/scala/collection/generic/SortedMapFactory.scala
 #./scala-scala/src/library/scala/collection/generic/SortedSetFactory.scala
 #./scala-scala/src/library/scala/collection/generic/SetFactory.scala
+
+
+./scala-scala/src/library/scala/collection/generic/OrderedTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/SeqForwarder.scala
+./scala-scala/src/library/scala/collection/generic/Shrinkable.scala
+./scala-scala/src/library/scala/collection/generic/Signalling.scala
+./scala-scala/src/library/scala/collection/generic/Sizing.scala
+./scala-scala/src/library/scala/collection/generic/SliceInterval.scala
+./scala-scala/src/library/scala/collection/generic/Sorted.scala
+./scala-scala/src/library/scala/collection/generic/Subtractable.scala
+./scala-scala/src/library/scala/collection/generic/TraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/package.scala
