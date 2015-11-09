@@ -17,7 +17,7 @@ object DottyBuild extends Build {
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
-  val defaults = Defaults.defaultSettings ++ Seq(
+  val defaults = Defaults.coreDefaultSettings ++ Seq(
     scalaVersion in Global := "2.11.5",
     version in Global := "0.1-SNAPSHOT",
     organization in Global := "org.scala-lang",
@@ -123,7 +123,7 @@ object DottyBuild extends Build {
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
-  lazy val benchmarkSettings = Defaults.defaultSettings ++ Seq(
+  lazy val benchmarkSettings = Defaults.coreDefaultSettings ++ Seq(
 
     // to get Scala 2.11
     resolvers += Resolver.sonatypeRepo("releases"),
