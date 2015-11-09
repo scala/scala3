@@ -250,3 +250,17 @@
 
 # https://github.com/lampepfl/dotty/issues/940
 # ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
+
+./scala-scala/src/library/scala/collection/immutable/NumericRange.scala
+./scala-scala/src/library/scala/collection/immutable/Range.scala
+
+
+# tailrec bug
+#./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
+
+./scala-scala/src/library/scala/collection/immutable/Seq.scala
+
+# uses refinements that dotty does not support
+#./scala-scala/src/library/scala/collection/immutable/Set.scala
+
+./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
