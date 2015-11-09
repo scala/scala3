@@ -163,6 +163,11 @@ object SymDenotations {
     }
 
     private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
+      if (completions ne noPrinter) {
+        completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+        indent += 1
+      }
+      indent += 1
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
@@ -173,6 +178,11 @@ object SymDenotations {
           completions.println(s"error while completing ${this.debugString}")
           throw ex
       }
+      finally
+        if (completions ne noPrinter) {
+          indent -= 1
+          completions.println(i"${"  " * indent}completed $name in $owner")
+        }
       // completions.println(s"completed ${this.debugString}")
     }
 
@@ -1872,4 +1882,6 @@ object SymDenotations {
   }
 
   private val AccessorOrLabel = Accessor | Label
+
+  private var indent = 0 // for completions printing
 }
