@@ -186,3 +186,10 @@
 ./scala-scala/src/library/scala/collection/Parallelizable.scala
 # tailrec bug
 #./scala-scala/src/library/scala/collection/Searching.scala
+
+
+# cyclic reference involving trait Seq
+#./scala-scala/src/library/scala/collection/Seq.scala
+#./scala-scala/src/library/scala/collection/SeqExtractors.scala
+#./scala-scala/src/library/scala/collection/SeqLike.scala
+#./scala-scala/src/library/scala/collection/SeqProxy.scala
