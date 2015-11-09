@@ -61,7 +61,7 @@
 # Causes data races #907
 # java.lang.AssertionError: assertion failed: data race? overwriting symbol of Product1 / TypeRef(ThisType(TypeRef(NoPrefix,scala)),Product1) / class dotty.tools.dotc.core.Types$CachedTypeRef / 190 / 4820 / module class scala / module class scala / frontend, took 2.154 sec
 #./scala-scala/src/library/scala/Product.scala
-#./scala-scala/src/library/scala/Product1.scala
+./scala-scala/src/library/scala/Product1.scala
 #./scala-scala/src/library/scala/Product10.scala
 #./scala-scala/src/library/scala/Product11.scala
 #./scala-scala/src/library/scala/Product12.scala
