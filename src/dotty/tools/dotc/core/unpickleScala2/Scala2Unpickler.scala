@@ -383,6 +383,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           if (sym.exists || owner.ne(defn.ObjectClass)) sym else declIn(defn.AnyClass)
       }
 
+      def slowSearch(name: Name): Symbol =
+        owner.info.decls.find(_.name == name).getOrElse(NoSymbol)
+
       def nestedObjectSymbol: Symbol = {
         // If the owner is overloaded (i.e. a method), it's not possible to select the
         // right member, so return NoSymbol. This can only happen when unpickling a tree.
@@ -414,13 +417,16 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         fromName(name.toTermName.expandedName(owner)) orElse {
           // (3) Try as a nested object symbol.
           nestedObjectSymbol orElse {
-            //              // (4) Call the mirror's "missing" hook.
+            // (4) Call the mirror's "missing" hook.
             adjust(ctx.base.missingHook(owner, name)) orElse {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
               System.err.println(i"***** missing reference, looking for $name in $owner")
               System.err.println(i"decls = ${owner.info.decls}")
+              owner.info.decls.checkConsistent()
+              if (slowSearch(name).exists)
+                System.err.println(i"**** slow search found: ${slowSearch(name)}")
               new Exception().printStackTrace()
               ctx.newStubSymbol(owner, name, source)
             }
