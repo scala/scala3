@@ -125,7 +125,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>
         implicit val ctx: Context = checkingCtx
-        ctx.println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
+        ctx.println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
         ctx.println(ex.toString)
         ctx.println(ex.getStackTrace.take(30).deep.mkString("\n"))
         ctx.println("<<<")
