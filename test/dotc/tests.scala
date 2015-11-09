@@ -51,7 +51,7 @@ class tests extends CompilerTest {
   val toolsDir  = dottyDir + "tools/"
   val dotcDir   = toolsDir + "dotc/"
   val coreDir   = dotcDir + "core/"
-
+  /*
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
 // This directory doesn't exist anymore
 // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
@@ -170,7 +170,7 @@ class tests extends CompilerTest {
   @Test def neg_validateRefchecks = compileFile(negDir, "validate-refchecks", xerrors = 2)
 
   @Test def run_all = runFiles(runDir)
-
+   */
   val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
    .map(_.trim) // allow identation
    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
@@ -179,7 +179,7 @@ class tests extends CompilerTest {
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
-  @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
+ /* @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -223,4 +223,5 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
+  */
 }
