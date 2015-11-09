@@ -185,7 +185,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
         val receiverIsSame = enclosingClass.typeRef.widenDealias =:= recvWiden
         val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recvWiden
-        val receiverIsThis = recv.tpe =:= thisType
+        val receiverIsThis = recv.tpe =:= thisType || recv.tpe.widen =:= thisType
 
         val isRecursiveCall = (method eq sym)
 
