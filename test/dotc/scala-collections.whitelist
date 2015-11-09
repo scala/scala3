@@ -245,3 +245,6 @@
 # https://github.com/lampepfl/dotty/issues/939
 #./scala-scala/src/library/scala/collection/immutable/LongMap.scala
 
+./scala-scala/src/library/scala/collection/immutable/Map.scala
+./scala-scala/src/library/scala/collection/immutable/MapLike.scala
+
