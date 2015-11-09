@@ -314,3 +314,10 @@
 #./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
 #./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
 
+./scala-scala/src/library/scala/collection/generic/ImmutableSortedMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableSortedSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/IndexedSeqFactory.scala
+./scala-scala/src/library/scala/collection/generic/IsSeqLike.scala
+./scala-scala/src/library/scala/collection/generic/IsTraversableLike.scala
+./scala-scala/src/library/scala/collection/generic/IsTraversableOnce.scala
+./scala-scala/src/library/scala/collection/generic/IterableForwarder.scala
