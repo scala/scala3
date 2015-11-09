@@ -746,7 +746,8 @@ object Types {
      */
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
-        tp.info match {
+        if (tp.symbol.isClass) tp
+        else tp.info match {
           case TypeAlias(tp) => tp.dealias
           case _ => tp
         }
@@ -3258,7 +3259,7 @@ object Types {
       val ex = new CyclicReference(denot)
       if (!(ctx.mode is typer.Mode.CheckCyclic)) {
         cyclicErrors.println(ex.getMessage)
-        for (elem <- ex.getStackTrace take 50)
+        for (elem <- ex.getStackTrace take 200)
           cyclicErrors.println(elem.toString)
       }
       ex
