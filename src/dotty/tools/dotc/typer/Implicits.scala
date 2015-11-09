@@ -44,19 +44,19 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
 
-      def refMatches(ref: TermRef)(implicit ctx: Context) = {
+      def refMatches(ref: TermRef)(implicit ctx: Context) = /*ctx.traceIndented(i"refMatches $ref $pt")*/ {
 
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
             mt.isImplicit ||
             mt.paramTypes.length != 1 ||
-            !(argType <:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
+            !(argType relaxed_<:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
           case poly: PolyType =>
             poly.resultType match {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramTypes.length != 1 ||
-                !(argType <:< wildApprox(mt.paramTypes.head)(ctx.fresh.setExploreTyperState))
+                !(argType relaxed_<:< wildApprox(mt.paramTypes.head)(ctx.fresh.setExploreTyperState))
               case rtp =>
                 discardForView(wildApprox(rtp), argType)
             }
@@ -532,6 +532,25 @@ trait Implicits { self: Typer =>
         case nil => acc
       }
 
+      /** If the (result types of) the expected type, and both alternatives
+       *  are all numeric value types, return the alternative which has
+       *  the smaller numeric subtype as result type, if it exists.
+       *  (This alternative is then discarded).
+       */
+      def numericValueTieBreak(alt1: SearchSuccess, alt2: SearchSuccess): SearchResult = {
+        def isNumeric(tp: Type) = tp.typeSymbol.isNumericValueClass
+        def isProperSubType(tp1: Type, tp2: Type) =
+          tp1.isValueSubType(tp2) && !tp2.isValueSubType(tp1)
+        val rpt = pt.resultType
+        val rt1 = alt1.ref.widen.resultType
+        val rt2 = alt2.ref.widen.resultType
+        if (isNumeric(rpt) && isNumeric(rt1) && isNumeric(rt2))
+          if (isProperSubType(rt1, rt2)) alt1
+          else if (isProperSubType(rt2, rt1)) alt2
+          else NoImplicitMatches
+        else NoImplicitMatches
+      }
+
       /** Convert a (possibly empty) list of search successes into a single search result */
       def condense(hits: List[SearchSuccess]): SearchResult = hits match {
         case best :: alts =>
@@ -541,7 +560,10 @@ trait Implicits { self: Typer =>
               println(i"ambiguous refs: ${hits map (_.ref) map (_.show) mkString ", "}")
               isAsGood(best.ref, alt.ref, explain = true)(ctx.fresh.withExploreTyperState)
             */
-              new AmbiguousImplicits(best.ref, alt.ref, pt, argument)
+              numericValueTieBreak(best, alt) match {
+                case eliminated: SearchSuccess => condense(hits.filter(_ ne eliminated))
+                case _ => new AmbiguousImplicits(best.ref, alt.ref, pt, argument)
+              }
             case None =>
               ctx.runInfo.useCount(best.ref) += 1
               best
