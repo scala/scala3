@@ -305,3 +305,7 @@
 #cyclic ref
 #./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 #./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
+
+./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
+./scala-scala/src/library/scala/collection/generic/HasNewCombiner.scala
+
