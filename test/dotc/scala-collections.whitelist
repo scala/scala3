@@ -198,5 +198,8 @@
 
 # seems https://github.com/lampepfl/dotty/issues/916
 #./scala-scala/src/library/scala/collection/Set.scala
+
+# cyclic reference involving trait Set
+#./scala-scala/src/library/scala/collection/SetLike.scala
 # https://github.com/lampepfl/dotty/issues/938
 #./scala-scala/src/library/scala/collection/TraversableLike.scala
