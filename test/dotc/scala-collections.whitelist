@@ -161,5 +161,28 @@
 #./scala-scala/src/library/scala/collection/GenSetLike.scala
 
 # breaks genMapLike https://github.com/lampepfl/dotty/issues/937
-./scala-scala/src/library/scala/collection/GenTraversable.scala
-./scala-scala/src/library/scala/collection/GenTraversableLike.scala
+#./scala-scala/src/library/scala/collection/GenTraversable.scala
+#./scala-scala/src/library/scala/collection/GenTraversableLike.scala
+
+./scala-scala/src/library/scala/collection/GenTraversableOnce.scala
+./scala-scala/src/library/scala/collection/IndexedSeq.scala
+./scala-scala/src/library/scala/collection/IndexedSeqLike.scala
+./scala-scala/src/library/scala/collection/Iterable.scala
+./scala-scala/src/library/scala/collection/IterableProxy.scala
+./scala-scala/src/library/scala/collection/IterableProxyLike.scala
+
+./scala-scala/src/library/scala/collection/JavaConversions.scala
+./scala-scala/src/library/scala/collection/JavaConverters.scala
+./scala-scala/src/library/scala/collection/LinearSeq.scala
+
+# tailrec bug
+#./scala-scala/src/library/scala/collection/LinearSeqLike.scala
+
+./scala-scala/src/library/scala/collection/Map.scala
+./scala-scala/src/library/scala/collection/MapLike.scala
+./scala-scala/src/library/scala/collection/MapProxy.scala
+./scala-scala/src/library/scala/collection/MapProxyLike.scala
+./scala-scala/src/library/scala/collection/Parallel.scala
+./scala-scala/src/library/scala/collection/Parallelizable.scala
+# tailrec bug
+#./scala-scala/src/library/scala/collection/Searching.scala
