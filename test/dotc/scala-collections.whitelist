@@ -276,3 +276,23 @@
 
 ./scala-scala/src/library/scala/collection/immutable/TreeMap.scala
 ./scala-scala/src/library/scala/collection/immutable/TreeSet.scala
+
+
+
+./scala-scala/src/library/scala/collection/generic/BitOperations.scala
+./scala-scala/src/library/scala/collection/generic/BitSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/CanBuildFrom.scala
+./scala-scala/src/library/scala/collection/generic/CanCombineFrom.scala
+./scala-scala/src/library/scala/collection/generic/ClassTagTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/Clearable.scala
+./scala-scala/src/library/scala/collection/generic/FilterMonadic.scala
+./scala-scala/src/library/scala/collection/generic/GenMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenericClassTagCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericClassTagTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericOrderedCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericOrderedTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericParCompanion.scala
