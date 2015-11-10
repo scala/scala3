@@ -272,6 +272,7 @@
 ./scala-scala/src/library/scala/collection/generic/GenericSeqCompanion.scala
 ./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 
+# deep subtype
 #./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
 
 ./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
