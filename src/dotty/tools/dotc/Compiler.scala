@@ -52,6 +52,7 @@ class Compiler {
       List(new PatternMatcher,
            new ExplicitOuter,
            new ExplicitSelf,
+           new CrossCastAnd,
            new Splitter),
       List(new VCInlineMethods,
            new SeqLiterals,
