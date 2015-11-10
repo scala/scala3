@@ -88,6 +88,10 @@ trait Hashable {
   protected final def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
+
+  protected final def doHash(x1: Int, x2: Int): Int =
+    finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
+
   protected final def addDelta(hc: Int, delta: Int) = avoidNotCached(hc + delta)
 
   private def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h

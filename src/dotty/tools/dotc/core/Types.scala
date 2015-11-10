@@ -2374,7 +2374,8 @@ object Types {
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
 
-    override def computeHash = finishHash(hashing.mix(hashing.mix(hashSeed, paramNum), binder.identityHash), 1)
+    override def computeHash = doHash(paramNum, binder.identityHash)
+
     override def equals(that: Any) = that match {
       case that: PolyParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
