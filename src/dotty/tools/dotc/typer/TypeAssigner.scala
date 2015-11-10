@@ -365,7 +365,7 @@ trait TypeAssigner {
     tree.withType(left.tpe & right.tpe)
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(left.tpe | right.tpe)
+    tree.withType(ctx.typeComparer.lub(left.tpe, right.tpe, keepSingletons = true))
 
   // RefinedTypeTree is missing, handled specially in Typer and Unpickler.
 

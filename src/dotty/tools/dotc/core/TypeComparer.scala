@@ -811,9 +811,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     (defn.AnyType /: tps)(glb)
 
   /** The least upper bound of two types
-   *  @note  We do not admit singleton types in or-types as lubs.
+   *  @param keepSingletons If true, do not widen singletons when forming an OrType
    */
-  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, keepSingletons: Boolean = false): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show}, $keepSingletons)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
@@ -826,8 +826,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         val t2 = mergeIfSuper(tp2, tp1)
         if (t2.exists) t2
         else {
-          val tp1w = tp1.widen
-          val tp2w = tp2.widen
+          val tp1w = if (keepSingletons) tp1.widenExpr else tp1.widen
+          val tp2w = if (keepSingletons) tp2.widenExpr else tp2.widen
           if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
           else orType(tp1w, tp2w) // no need to check subtypes again
         }
@@ -837,7 +837,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    (defn.NothingType /: tps)(lub)
+    (defn.NothingType /: tps)(lub(_, _))
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
@@ -1205,9 +1205,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.hasMatchingMember(name, tp1, tp2)
     }
 
-  override def lub(tp1: Type, tp2: Type) =
-    traceIndented(s"lub(${show(tp1)}, ${show(tp2)})") {
-      super.lub(tp1, tp2)
+  override def lub(tp1: Type, tp2: Type, keepSingletons: Boolean = false) =
+    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, $keepSingletons)") {
+      super.lub(tp1, tp2, keepSingletons)
     }
 
   override def glb(tp1: Type, tp2: Type) =

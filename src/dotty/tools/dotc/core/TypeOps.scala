@@ -247,7 +247,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     case AndType(l, r) =>
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) =>
-      simplify(l, theMap) | simplify(r, theMap)
+      ctx.typeComparer.lub(simplify(l, theMap), simplify(r, theMap), keepSingletons = true)
     case _ =>
       (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
   }
