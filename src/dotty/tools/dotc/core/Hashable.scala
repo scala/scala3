@@ -28,7 +28,7 @@ object Hashable {
 trait Hashable {
   import Hashable._
 
-  protected def hashSeed: Int = getClass.hashCode
+  protected def hashSeed: Int = getClass.getSimpleName.hashCode
 
   private def finishHash(hashCode: Int, arity: Int): Int =
     avoidNotCached(hashing.finalizeHash(hashCode, arity))
