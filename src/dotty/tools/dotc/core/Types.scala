@@ -607,9 +607,9 @@ object Types {
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
     def isValueSubType(that: Type)(implicit ctx: Context) = widen match {
-      case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
+      case self: TypeRef if self.symbol.isPrimitiveValueClass =>
         that.widenExpr match {
-          case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
+          case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false
@@ -746,7 +746,8 @@ object Types {
      */
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
-        tp.info match {
+        if (tp.symbol.isClass) tp
+        else tp.info match {
           case TypeAlias(tp) => tp.dealias
           case _ => tp
         }
@@ -964,7 +965,7 @@ object Types {
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
-      case _ => defn.AnyClass.typeRef
+      case _ => defn.AnyType
     }
 
     /** the self type of the underlying classtype */
@@ -1101,7 +1102,7 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
-        defn.FunctionType(
+        defn.FunctionOf(
             formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
     }
 
@@ -1387,7 +1388,7 @@ object Types {
         (lastSymbol.infoOrCompleter == ErrorType ||
         sym.owner.derivesFrom(lastSymbol.owner) && sym.owner != lastSymbol.owner
       ),
-        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase}")
+        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase} at run ${ctx.runId}")
 
     protected def sig: Signature = Signature.NotAMethod
 
@@ -3258,7 +3259,7 @@ object Types {
       val ex = new CyclicReference(denot)
       if (!(ctx.mode is typer.Mode.CheckCyclic)) {
         cyclicErrors.println(ex.getMessage)
-        for (elem <- ex.getStackTrace take 50)
+        for (elem <- ex.getStackTrace take 200)
           cyclicErrors.println(elem.toString)
       }
       ex

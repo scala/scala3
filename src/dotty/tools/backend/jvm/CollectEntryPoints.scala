@@ -49,13 +49,10 @@ class CollectEntryPoints extends MiniPhaseTransform {
 
 object CollectEntryPoints{
   def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
-    val d = ctx.definitions
-    val StringType = d.StringType
-
     (sym.name == nme.main) && (sym.info match {
-      case r@MethodType(_, List(d.ArrayType(t))) =>
-        (t.widenDealias =:= StringType) && (
-        r.resultType.widenDealias =:= d.UnitType)
+      case r@MethodType(_, List(defn.ArrayOf(t))) =>
+        (t.widenDealias =:= defn.StringType) && (
+        r.resultType.widenDealias =:= defn.UnitType)
       case _ => false
     })
   }

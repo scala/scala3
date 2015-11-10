@@ -949,7 +949,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionType(args map Function.const(defn.AnyType), typeShape(body))
+        defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
       case _ =>
         defn.NothingType
     }
@@ -1068,7 +1068,7 @@ trait Applications extends Compatibility { self: Typer =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs)
 
-      case defn.FunctionType(args, resultType) =>
+      case defn.FunctionOf(args, resultType) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1102,8 +1102,8 @@ trait Applications extends Compatibility { self: Typer =>
     }
     val clss = numericClasses(ts, Set())
     if (clss.size > 1) {
-      val lub = defn.ScalaNumericValueClassList.find(lubCls =>
-        clss.forall(defn.isValueSubClass(_, lubCls))).get.typeRef
+      val lub = defn.ScalaNumericValueTypeList.find(lubTpe =>
+        clss.forall(cls => defn.isValueSubType(cls.typeRef, lubTpe))).get
       ts.mapConserve(adapt(_, lub))
     }
     else ts

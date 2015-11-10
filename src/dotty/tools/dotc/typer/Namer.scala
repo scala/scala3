@@ -579,7 +579,7 @@ class Namer { typer: Typer =>
           val pt = checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
           if (pt.derivesFrom(cls)) {
             ctx.error(i"cyclic inheritance: $cls extends itself", parent.pos)
-            defn.ObjectClass.typeRef
+            defn.ObjectType
           }
           else pt
         }

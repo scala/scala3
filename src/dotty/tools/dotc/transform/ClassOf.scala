@@ -5,7 +5,7 @@ import ast.tpd
 import core.Constants.Constant
 import core.Contexts.Context
 import core.StdNames.nme
-import core.Symbols.TermSymbol
+import core.Symbols.{defn,TermSymbol}
 import core.TypeErasure
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 
@@ -24,30 +24,14 @@ class ClassOf extends MiniPhaseTransform {
   private var classOfMethod: TermSymbol = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    val predefModule = ctx.definitions.ScalaPredefModule
-    classOfMethod = ctx.requiredMethod(predefModule.moduleClass.asClass, nme.classOf)
+    classOfMethod = defn.ScalaPredefModule.requiredMethod(nme.classOf)
     this
   }
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     if (tree.symbol eq classOfMethod) {
-      val tp = tree.args.head.tpe
-      val defn = ctx.definitions
-      val claz = tp.classSymbol
-
-      def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_).ensureConforms(tree.tpe)
-      claz match {
-        case defn.BooleanClass => TYPE(defn.BoxedBooleanModule)
-        case defn.ByteClass    => TYPE(defn.BoxedByteModule)
-        case defn.ShortClass   => TYPE(defn.BoxedShortModule)
-        case defn.CharClass    => TYPE(defn.BoxedCharModule)
-        case defn.IntClass     => TYPE(defn.BoxedIntModule)
-        case defn.LongClass    => TYPE(defn.BoxedLongModule)
-        case defn.FloatClass   => TYPE(defn.BoxedFloatModule)
-        case defn.DoubleClass  => TYPE(defn.BoxedDoubleModule)
-        case defn.UnitClass    => TYPE(defn.BoxedVoidModule)
-        case _                 => Literal(Constant(TypeErasure.erasure(tp)))
-      }
-    } else tree
-  }
+      val targ = tree.args.head.tpe
+      tree.clsOf(targ, Literal(Constant(TypeErasure.erasure(targ))))
+    }
+    else tree
 }

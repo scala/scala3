@@ -99,17 +99,21 @@ object Scala2Unpickler {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
     }
+    val ost =
+      if ((selfInfo eq NoType) && (denot is ModuleClass))
+        denot.owner.thisType select denot.sourceModule
+      else selfInfo
+
+    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, decls, ost) // first rough info to avoid CyclicReferences
     var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
-    if (parentRefs.isEmpty) parentRefs = defn.ObjectClass.typeRef :: Nil
+    if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    val ost =
-      if ((selfInfo eq NoType) && (denot is ModuleClass))
-        denot.owner.thisType select denot.sourceModule
-      else selfInfo
+    denot.info = ClassInfo(
+      denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost) // more refined infowith parents
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
@@ -140,7 +144,7 @@ object Scala2Unpickler {
         decls1
       }
 
-    denot.info = ClassInfo(
+    denot.info = ClassInfo( // final info
       denot.owner.thisType, denot.classSymbol, parentRefs, declsInRightOrder, ost)
   }
 }
@@ -379,6 +383,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           if (sym.exists || owner.ne(defn.ObjectClass)) sym else declIn(defn.AnyClass)
       }
 
+      def slowSearch(name: Name): Symbol =
+        owner.info.decls.find(_.name == name).getOrElse(NoSymbol)
+
       def nestedObjectSymbol: Symbol = {
         // If the owner is overloaded (i.e. a method), it's not possible to select the
         // right member, so return NoSymbol. This can only happen when unpickling a tree.
@@ -410,13 +417,16 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         fromName(name.toTermName.expandedName(owner)) orElse {
           // (3) Try as a nested object symbol.
           nestedObjectSymbol orElse {
-            //              // (4) Call the mirror's "missing" hook.
+            // (4) Call the mirror's "missing" hook.
             adjust(ctx.base.missingHook(owner, name)) orElse {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
-              println(i"***** missing reference, looking for $name in $owner")
-              println(i"decls = ${owner.info.decls}")
+              System.err.println(i"***** missing reference, looking for $name in $owner")
+              System.err.println(i"decls = ${owner.info.decls}")
+              owner.info.decls.checkConsistent()
+              if (slowSearch(name).exists)
+                System.err.println(i"**** slow search found: ${slowSearch(name)}")
               new Exception().printStackTrace()
               ctx.newStubSymbol(owner, name, source)
             }
@@ -852,7 +862,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
-      defn.SeqType.appliedTo(defn.AnnotationClass.typeRef :: Nil),
+      defn.SeqType.appliedTo(defn.AnnotationType :: Nil),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 

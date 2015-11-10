@@ -104,7 +104,7 @@ class ClassfileParser(
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
-      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
+      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationType }
                       else pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
       var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
@@ -115,7 +115,7 @@ class ClassfileParser(
         // is found. If we treat constant subtyping specially, we might be able
         // to do something there. But in any case, the until should be more efficient.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
+      if (isAnnotation) ifaces = defn.ClassfileAnnotationType :: ifaces
       superType :: ifaces
     }
 
@@ -324,7 +324,7 @@ class ClassfileParser(
           if (elemtp.typeSymbol.isAbstractType && !(elemtp.derivesFrom(defn.ObjectClass))) {
             elemtp = AndType(elemtp, defn.ObjectType)
           }
-          defn.ArrayType(elemtp)
+          defn.ArrayOf(elemtp)
         case '(' =>
           // we need a method symbol. given in line 486 by calling getType(methodSym, ..)
           val paramtypes = new ListBuffer[Type]()
@@ -614,7 +614,7 @@ class ClassfileParser(
         addConstr(paramTypes)
         if (paramTypes.nonEmpty)
           paramTypes.last match {
-            case defn.ArrayType(elemtp) =>
+            case defn.ArrayOf(elemtp) =>
               addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
             case _ =>
         }

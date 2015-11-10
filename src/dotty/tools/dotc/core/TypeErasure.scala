@@ -176,7 +176,7 @@ object TypeErasure {
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
-        MethodType(Nil, defn.BoxedUnitClass.typeRef)
+        MethodType(Nil, defn.BoxedUnitType)
       case einfo =>
         einfo
     }
@@ -360,7 +360,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else classParents.mapConserve(eraseTypeRef) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), cls)
-              val tr1 = if (cls is Trait) defn.ObjectClass.typeRef else tr
+              val tr1 = if (cls is Trait) defn.ObjectType else tr
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
           }
@@ -375,7 +375,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   }
 
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
-    val defn.ArrayType(elemtp) = tp
+    val defn.ArrayOf(elemtp) = tp
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
@@ -456,14 +456,14 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
         normalizeClass(sym.asClass).fullName.asTypeName
-      case defn.ArrayType(elem) =>
+      case defn.ArrayOf(elem) =>
         sigName(this(tp))
       case JavaArrayType(elem) =>
         sigName(elem) ++ "[]"
       case tp: TermRef =>
         sigName(tp.widen)
       case ExprType(rt) =>
-        sigName(defn.FunctionType(Nil, rt))
+        sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case ErrorType | WildcardType =>

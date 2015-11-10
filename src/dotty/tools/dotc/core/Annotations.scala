@@ -91,12 +91,12 @@ object Annotations {
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
       deferred(defn.ChildAnnot,
-        implicit ctx => New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil))
+        implicit ctx => New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil))
   }
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {
     val tref = cls.typeRef
-    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
+    Annotation(defn.ThrowsAnnotType.appliedTo(tref), Ident(tref))
   }
 
   /** A decorator that provides queries for specific annotations

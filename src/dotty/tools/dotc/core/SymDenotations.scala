@@ -163,6 +163,11 @@ object SymDenotations {
     }
 
     private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
+      if (completions ne noPrinter) {
+        completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+        indent += 1
+      }
+      indent += 1
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
@@ -173,6 +178,11 @@ object SymDenotations {
           completions.println(s"error while completing ${this.debugString}")
           throw ex
       }
+      finally
+        if (completions ne noPrinter) {
+          indent -= 1
+          completions.println(i"${"  " * indent}completed $name in $owner")
+        }
       // completions.println(s"completed ${this.debugString}")
     }
 
@@ -417,10 +427,12 @@ object SymDenotations {
       name.toTermName == nme.EVT2U
 
     /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
+    def isPrimitiveValueClass(implicit ctx: Context) =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(symbol)
 
     /** Is symbol a primitive numeric value class? */
-    def isNumericValueClass(implicit ctx: Context) = defn.ScalaNumericValueClasses contains symbol
+    def isNumericValueClass(implicit ctx: Context) =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
 
     /** Is symbol a phantom class for which no runtime representation exists? */
     def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
@@ -1870,4 +1882,6 @@ object SymDenotations {
   }
 
   private val AccessorOrLabel = Accessor | Label
+
+  @sharable private var indent = 0 // for completions printing
 }

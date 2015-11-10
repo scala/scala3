@@ -11,9 +11,9 @@ import Decorators.StringInterpolators
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(sym: () => Symbol)(implicit ctx: Context) = {
+  def rootImport(refFn: () => TermRef)(implicit ctx: Context) = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
-    def expr = tpd.Ident(sym().valRef)
+    def expr = tpd.Ident(refFn())
     def imp = tpd.Import(expr, selectors)
     new ImportInfo(imp.symbol, selectors, isRootImport = true)
   }
@@ -101,7 +101,7 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
       case Pair(_, Ident(nme.WILDCARD)) => true
       case _ => false
     }
-    if ((defn.RootImports contains sym) && hasMaskingSelector) sym else NoSymbol
+    if ((defn.RootImportTypes exists (_.symbol == sym)) && hasMaskingSelector) sym else NoSymbol
   }
 
   override def toString = {

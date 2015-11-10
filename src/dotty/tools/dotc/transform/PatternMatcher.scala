@@ -134,7 +134,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // for name-based matching, but this was an expedient route for the basics.
       def drop(tgt: Tree)(n: Int): Tree = {
         def callDirect   = tgt.select(nme.drop).appliedTo(Literal(Constant(n)))
-        def callRuntime  = ref(defn.traversableDropMethod).appliedTo(tgt, Literal(Constant(n)))
+        def callRuntime  = ref(defn.ScalaRuntime_drop).appliedTo(tgt, Literal(Constant(n)))
 
         def needsRuntime = !(tgt.tpe derivesFrom defn.SeqClass) /*typeOfMemberNamedDrop(tgt.tpe) == NoType*/
 
@@ -755,7 +755,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         def expectedWide            = expectedTp.widen
         def isAnyRef                = testedWide <:< defn.AnyRefType
         def isAsExpected            = testedWide <:< expectedTp
-        def isExpectedPrimitiveType = isAsExpected && defn.ScalaValueClasses.contains(expectedTp.classSymbol)
+        def isExpectedPrimitiveType = isAsExpected && expectedTp.classSymbol.isPrimitiveValueClass
         def isExpectedReferenceType = isAsExpected && (expectedTp <:< defn.AnyRefType)
         def mkNullTest              = nonNullTest(testedBinder)
         def mkOuterTest             = outerTest(testedBinder, expectedTp)

@@ -81,7 +81,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .select(nme.seqToArray)
         .appliedToType(elemType)
         .appliedTo(tree, Literal(Constant(elemClass.typeRef)))
-        .ensureConforms(defn.ArrayType(elemType))
+        .ensureConforms(defn.ArrayOf(elemType))
           // Because of phantomclasses, the Java array's type might not conform to the return type
   }
 

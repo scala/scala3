@@ -92,12 +92,10 @@ object JavaParsers {
 
     // --------- tree building -----------------------------
 
-    def rootId(name: Name)             = Select(Ident(nme.ROOTPKG), name)
-    def scalaDot(name: Name)           = Select(Ident(nme.scala_), name)
     def scalaAnnotationDot(name: Name) = Select(scalaDot(nme.annotation), name)
 
     def javaDot(name: Name): Tree =
-      Select(rootId(nme.java), name)
+      Select(rootDot(nme.java), name)
 
     def javaLangDot(name: Name): Tree =
       Select(javaDot(nme.lang), name)

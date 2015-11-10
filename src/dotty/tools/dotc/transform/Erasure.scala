@@ -119,10 +119,10 @@ object Erasure extends TypeTestsCasts{
   object Boxing {
 
     def isUnbox(sym: Symbol)(implicit ctx: Context) =
-      sym.name == nme.unbox && (defn.ScalaValueClasses contains sym.owner.linkedClass)
+      sym.name == nme.unbox && sym.owner.linkedClass.isPrimitiveValueClass
 
     def isBox(sym: Symbol)(implicit ctx: Context) =
-      sym.name == nme.box && (defn.ScalaValueClasses contains sym.owner.linkedClass)
+      sym.name == nme.box && sym.owner.linkedClass.isPrimitiveValueClass
 
     def boxMethod(cls: ClassSymbol)(implicit ctx: Context) =
       cls.linkedClass.info.member(nme.box).symbol
@@ -138,7 +138,7 @@ object Erasure extends TypeTestsCasts{
      */
     private def safelyRemovableUnboxArg(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case Apply(fn, arg :: Nil)
-      if isUnbox(fn.symbol) && (defn.ScalaBoxedClasses contains arg.tpe.widen.typeSymbol) =>
+      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.widen.typeSymbol) =>
         arg
       case _ =>
         EmptyTree
@@ -218,7 +218,7 @@ object Erasure extends TypeTestsCasts{
         case (JavaArrayType(treeElem), JavaArrayType(ptElem))
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
-          cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
+          cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
         case (_, ErasedValueType(cls, _)) =>
           ref(u2evt(cls)).appliedTo(tree)
         case _ =>
@@ -388,10 +388,10 @@ object Erasure extends TypeTestsCasts{
       }
 
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
-      val meth = defn.runtimeMethod(name)
-      val followingParams = meth.info.firstParamTypes.drop(args.length)
+      val meth = defn.runtimeMethodRef(name)
+      val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
       val followingArgs = protoArgs(pt).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
-      ref(defn.runtimeMethod(name)).appliedToArgs(args.toList ++ followingArgs)
+      ref(meth).appliedToArgs(args.toList ++ followingArgs)
     }
 
     private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
