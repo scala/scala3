@@ -7,10 +7,8 @@
 ./scala-scala/src/library/scala/runtime/RichInt.scala
 ./scala-scala/src/library/scala/runtime/RichLong.scala
 ./scala-scala/src/library/scala/runtime/RichShort.scala
-
 ./scala-scala/src/library/scala/Array.scala
 ./scala-scala/src/library/scala/NotImplementedError.scala
-
 ./scala-scala/src/library/scala/AnyValCompanion.scala
 
 # AnyVal is a synthesized class in Dotty, cannot be compiled from source.
@@ -25,7 +23,6 @@
 ./scala-scala/src/library/scala/Long.scala
 ./scala-scala/src/library/scala/Short.scala
 ./scala-scala/src/library/scala/Unit.scala
-
 ./scala-scala/src/library/scala/Cloneable.scala
 ./scala-scala/src/library/scala/DelayedInit.scala
 ./scala-scala/src/library/scala/Dynamic.scala
@@ -34,12 +31,9 @@
 ./scala-scala/src/library/scala/MatchError.scala
 ./scala-scala/src/library/scala/Mutable.scala
 ./scala-scala/src/library/scala/NotNull.scala
-
 ./scala-scala/src/library/scala/Option.scala
-
 ./scala-scala/src/library/scala/PartialFunction.scala
 ./scala-scala/src/library/scala/Predef.scala
-
 ./scala-scala/src/library/scala/Product.scala
 ./scala-scala/src/library/scala/Product1.scala
 ./scala-scala/src/library/scala/Product10.scala
@@ -100,7 +94,6 @@
 ./scala-scala/src/library/scala/collection/immutable/WrappedString.scala
 ./scala-scala/src/library/scala/collection/mutable/Builder.scala
 ./scala-scala/src/library/scala/collection/mutable/GrowingBuilder.scala
-
 ./scala-scala/src/library/scala/collection/mutable/WrappedArray.scala
 ./scala-scala/src/library/scala/collection/mutable/WrappedArrayBuilder.scala
 ./scala-scala/src/library/scala/deprecated.scala
@@ -248,9 +241,6 @@
 
 ./scala-scala/src/library/scala/collection/immutable/TreeMap.scala
 ./scala-scala/src/library/scala/collection/immutable/TreeSet.scala
-
-
-
 ./scala-scala/src/library/scala/collection/generic/BitOperations.scala
 ./scala-scala/src/library/scala/collection/generic/BitSetFactory.scala
 ./scala-scala/src/library/scala/collection/generic/CanBuildFrom.scala
