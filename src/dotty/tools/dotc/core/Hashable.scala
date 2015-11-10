@@ -30,24 +30,24 @@ trait Hashable {
 
   protected def hashSeed: Int = getClass.hashCode
 
-  private def finishHash(hashCode: Int, arity: Int): Int =
+  protected final def finishHash(hashCode: Int, arity: Int): Int =
     avoidNotCached(hashing.finalizeHash(hashCode, arity))
 
   final def identityHash = avoidNotCached(System.identityHashCode(this))
 
-  private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
+  protected def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = tp.hash
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1)
   }
 
-  private def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
+  protected def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
     val elemHash = tp1.hash
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1, tp2)
   }
 
-  private def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
+  protected def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
     var h = seed
     var xs = tps
     var len = arity
@@ -61,7 +61,7 @@ trait Hashable {
     finishHash(h, len)
   }
 
-  private def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
+  protected def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
     val elemHash = tp.hash
     if (elemHash == NotCached) return NotCached
     finishHash(hashing.mix(seed, elemHash), arity + 1, tps)
@@ -87,6 +87,10 @@ trait Hashable {
 
   protected final def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
+
+
+  protected final def doHash(x1: Int, x2: Int): Int =
+    finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 
   protected final def addDelta(hc: Int, delta: Int) = avoidNotCached(hc + delta)
 
