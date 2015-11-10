@@ -39,7 +39,7 @@ class CrossCastAnd extends MiniPhaseTransform { thisTransform =>
 
           val tp = findType(t)
           if (l eq tp) tree
-          else tree.qualifier.asInstance(AndType(tp, t)).select(tree.symbol)
+          else tree.qualifier.asInstance(AndType(tp, tree.qualifier.tpe)).select(tree.symbol)
         case _ => tree
       }
     }
