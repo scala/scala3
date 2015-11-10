@@ -268,14 +268,10 @@
 ./scala-scala/src/library/scala/collection/generic/GenericOrderedCompanion.scala
 ./scala-scala/src/library/scala/collection/generic/GenericOrderedTraversableTemplate.scala
 ./scala-scala/src/library/scala/collection/generic/GenericParCompanion.scala
-
-# cyclic ref
-#./scala-scala/src/library/scala/collection/generic/GenericParTemplate.scala
-
+./scala-scala/src/library/scala/collection/generic/GenericParTemplate.scala
 ./scala-scala/src/library/scala/collection/generic/GenericSeqCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 
-#cyclic ref
-#./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 #./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
 
 ./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
