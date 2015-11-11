@@ -14,14 +14,8 @@ abstract class Set[T >: Null] {
 
   def iterator: Iterator[T]
 
-  def foreach[U](f: T => U): Unit = iterator foreach f
-
-  def apply(x: T): Boolean = contains(x)
-
   def contains(x: T): Boolean =
     findEntry(x) != null
-
-  def toList = iterator.toList
 
   def clear: Unit
 }
