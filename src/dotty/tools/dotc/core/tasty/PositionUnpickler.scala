@@ -9,7 +9,7 @@ import collection.mutable
 import TastyBuffer.Addr
 
 object PositionUnpickler {
-  type AddrToPosition = mutable.HashMap[Addr, Position]
+  type AddrToPosition = mutable.LinkedHashMap[Addr, Position]
 }
 
 /** Unpickler for tree positions */
@@ -18,7 +18,7 @@ class PositionUnpickler(reader: TastyReader) {
   import reader._
 
   def unpickle(): (Position, AddrToPosition) = {
-    val positions = new mutable.HashMap[Addr, Position] // Dotty deviation: Can't use new AddrToPosition here. TODO: fix this!
+    val positions = new mutable.LinkedHashMap[Addr, Position] // Dotty deviation: Can't use new AddrToPosition here. TODO: fix this!
     val sourceLength = readNat()
     def readDelta() = if (isAtEnd) 0 else readInt()
     var curIndex: Addr = Addr(readDelta())

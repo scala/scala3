@@ -10,8 +10,8 @@ object Disambiguation {
 
   private class State {
     var hasConflicts = false
-    val symString = new mutable.HashMap[Symbol, String]
-    val variants = new mutable.HashMap[String, mutable.ListBuffer[Symbol]]
+    val symString = new mutable.LinkedHashMap[Symbol, String]
+    val variants = new mutable.LinkedHashMap[String, mutable.ListBuffer[Symbol]]
   }
 
   def newPrinter: Context => Printer = {

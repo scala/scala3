@@ -26,7 +26,7 @@ class Pickler extends Phase {
     s.close
   }
 
-  private val beforePickling = new mutable.HashMap[ClassSymbol, String]
+  private val beforePickling = new mutable.LinkedHashMap[ClassSymbol, String]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {

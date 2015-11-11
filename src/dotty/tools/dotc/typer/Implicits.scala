@@ -367,7 +367,7 @@ trait ImplicitRunInfo { self: RunInfo =>
   }
 
   /** A map that counts the number of times an implicit ref was picked */
-  val useCount = new mutable.HashMap[TermRef, Int] {
+  val useCount = new mutable.LinkedHashMap[TermRef, Int] {
     override def default(key: TermRef) = 0
   }
 

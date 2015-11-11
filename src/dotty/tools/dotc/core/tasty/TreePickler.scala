@@ -17,8 +17,8 @@ class TreePickler(pickler: TastyPickler) {
   import pickler.nameBuffer.{nameIndex, fullNameIndex}
   import ast.tpd._
 
-  private val symRefs = new mutable.HashMap[Symbol, Addr]
-  private val forwardSymRefs = new mutable.HashMap[Symbol, List[Addr]]
+  private val symRefs = new mutable.LinkedHashMap[Symbol, Addr]
+  private val forwardSymRefs = new mutable.LinkedHashMap[Symbol, List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
 
   private def withLength(op: => Unit) = {

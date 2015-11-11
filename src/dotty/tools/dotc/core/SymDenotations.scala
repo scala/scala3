@@ -1294,7 +1294,7 @@ object SymDenotations {
     /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
-        baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+        baseTypeRefCache = new java.util.LinkedHashMap[CachedType, Type]
         myBaseClasses = null
         mySuperClassBits = null
         baseTypeRefValid = ctx.runId
@@ -1538,7 +1538,7 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
+    private[this] var baseTypeRefCache: java.util.LinkedHashMap[CachedType, Type] = null
     private[this] var baseTypeRefValid: RunId = NoRunId
 
     /** Compute tp.baseTypeRef(this) */

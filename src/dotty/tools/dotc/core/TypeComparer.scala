@@ -120,7 +120,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   private def monitoredIsSubType(tp1: Type, tp2: Type) = {
     if (pendingSubTypes == null) {
-      pendingSubTypes = new mutable.HashSet[(Type, Type)]
+      pendingSubTypes = new mutable.LinkedHashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
       if (ctx.settings.YnoDeepSubtypes.value) throw new Error("deep subtype")

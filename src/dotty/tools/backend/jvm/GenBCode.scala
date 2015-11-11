@@ -33,7 +33,7 @@ import scala.tools.nsc.backend.jvm.opt.LocalOpt
 
 class GenBCode extends Phase {
   def phaseName: String = "genBCode"
-  private val entryPoints = new mutable.HashSet[Symbol]()
+  private val entryPoints = new mutable.LinkedHashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
 

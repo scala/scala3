@@ -14,7 +14,7 @@ import collection.mutable
 
   @volatile private var stack: List[String] = Nil
 
-  val hits = new mutable.HashMap[String, Int] {
+  val hits = new mutable.LinkedHashMap[String, Int] {
     override def default(key: String): Int = 0
   }
 

@@ -41,8 +41,8 @@ class TreeChecker extends Phase with SymTransformer {
   import ast.tpd._
 
 
-  private val seenClasses = collection.mutable.HashMap[String, Symbol]()
-  private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
+  private val seenClasses = collection.mutable.LinkedHashMap[String, Symbol]()
+  private val seenModuleVals = collection.mutable.LinkedHashMap[String, Symbol]()
 
   def isValidJVMName(name: Name) =
       !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
@@ -135,8 +135,8 @@ class TreeChecker extends Phase with SymTransformer {
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
 
-    val nowDefinedSyms = new mutable.HashSet[Symbol]
-    val everDefinedSyms = new mutable.HashMap[Symbol, Tree]
+    val nowDefinedSyms = new mutable.LinkedHashSet[Symbol]
+    val everDefinedSyms = new mutable.LinkedHashMap[Symbol, Tree]
 
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
       case tree: DefTree =>

@@ -224,7 +224,7 @@ abstract class Reporter {
    */
   def errorsReported = hasErrors
 
-  val unreportedWarnings = new mutable.HashMap[String, Int] {
+  val unreportedWarnings = new mutable.LinkedHashMap[String, Int] {
     override def default(key: String) = 0
   }
 

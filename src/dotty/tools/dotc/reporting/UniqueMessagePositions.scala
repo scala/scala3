@@ -13,7 +13,7 @@ import core.Contexts.Context
  */
 trait UniqueMessagePositions extends Reporter {
 
-  private val positions = new mutable.HashMap[(SourceFile, Int), Int]
+  private val positions = new mutable.LinkedHashMap[(SourceFile, Int), Int]
 
   /** Logs a position and returns true if it was already logged.
    *  @note  Two positions are considered identical for logging if they have the same point.

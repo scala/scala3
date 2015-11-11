@@ -349,7 +349,7 @@ trait Checking {
 
   /** Check that class does not define same symbol twice */
   def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
-    val seen = new mutable.HashMap[Name, List[Symbol]] {
+    val seen = new mutable.LinkedHashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
     typr.println(i"check no double defs $cls")
