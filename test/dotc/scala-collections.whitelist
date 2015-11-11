@@ -181,7 +181,7 @@
 ./scala-scala/src/library/scala/collection/SortedMap.scala
 ./scala-scala/src/library/scala/collection/SortedMapLike.scala
 ./scala-scala/src/library/scala/collection/SortedSet.scala
-./scala-scala/src/library/scala/collection/SortedSetLike.scala
+##./scala-scala/src/library/scala/collection/SortedSetLike.scala
 ./scala-scala/src/library/scala/collection/Traversable.scala
 
 # https://github.com/lampepfl/dotty/issues/938
@@ -202,7 +202,7 @@
 #./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 
-./scala-scala/src/library/scala/collection/immutable/HashMap.scala
+##./scala-scala/src/library/scala/collection/immutable/HashMap.scala
 
 # seems https://github.com/lampepfl/dotty/issues/916
 #./scala-scala/src/library/scala/collection/immutable/HashSet.scala
@@ -222,7 +222,7 @@
 ./scala-scala/src/library/scala/collection/immutable/Map.scala
 ./scala-scala/src/library/scala/collection/immutable/MapLike.scala
 ./scala-scala/src/library/scala/collection/immutable/NumericRange.scala
-./scala-scala/src/library/scala/collection/immutable/Range.scala
+##./scala-scala/src/library/scala/collection/immutable/Range.scala
 ./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
 ./scala-scala/src/library/scala/collection/immutable/Seq.scala
 
