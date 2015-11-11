@@ -524,21 +524,28 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** Convert a type constructor `TC` with type parameters `T1, ..., Tn` to
+  /** Convert a type constructor `TC` which has type parameters `T1, ..., Tn`
+   *  in a context where type parameters `U1,...,Un` are expected to
    *
    *     LambdaXYZ { Apply = TC[hk$0, ..., hk$n] }
    *
-   *  where XYZ is a corresponds to the variances of the type parameters.
+   *  Here, XYZ corresponds to the variances of
+   *   - `U1,...,Un` if the variances of `T1,...,Tn` are pairwise compatible with `U1,...,Un`,
+   *   - `T1,...,Tn` otherwise.
+   *  v1 is compatible with v2, if v1 = v2 or v2 is non-variant.
    */
-  def EtaExpand(implicit ctx: Context): Type = {
-    val tparams = typeParams
-    self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
+  def EtaExpand(tparams: List[Symbol])(implicit ctx: Context): Type = {
+    def varianceCompatible(actual: Symbol, formal: Symbol) =
+      formal.variance == 0 || actual.variance == formal.variance
+    val tparamsToUse =
+      if (typeParams.corresponds(tparams)(varianceCompatible)) tparams else typeParams
+    self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparamsToUse)
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
   /** Eta expand if `bound` is a higher-kinded type */
   def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type =
-    if (bound.isHK && !isHK && self.typeSymbol.isClass && typeParams.nonEmpty) EtaExpand
+    if (bound.isHK && !isHK && self.typeSymbol.isClass && typeParams.nonEmpty) EtaExpand(bound.typeParams)
     else self
 
   /** Eta expand the prefix in front of any refinements. */
@@ -546,7 +553,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: RefinedType =>
       self.derivedRefinedType(self.parent.EtaExpandCore, self.refinedName, self.refinedInfo)
     case _ =>
-      self.EtaExpand
+      self.EtaExpand(self.typeParams)
   }
 
   /** If `self` is a (potentially partially instantiated) eta expansion of type T, return T,
@@ -645,7 +652,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           param2.variance == param2.variance || param2.variance == 0
         if (classBounds.exists(tycon.derivesFrom(_)) &&
             tycon.typeParams.corresponds(tparams)(variancesMatch)) {
-          val expanded = tycon.EtaExpand
+          val expanded = tycon.EtaExpand(tparams)
           val lifted = (expanded /: targs) { (partialInst, targ) =>
             val tparam = partialInst.typeParams.head
             RefinedType(partialInst, tparam.name, targ.bounds.withVariance(tparam.variance))
@@ -659,7 +666,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         false
     }
     tparams.nonEmpty &&
-      (typeParams.nonEmpty && p(EtaExpand) ||
+      (typeParams.hasSameLengthAs(tparams) && p(EtaExpand(tparams)) ||
        classBounds.nonEmpty && tryLift(self.baseClasses))
   }
 }
