@@ -7,10 +7,8 @@
 ./scala-scala/src/library/scala/runtime/RichInt.scala
 ./scala-scala/src/library/scala/runtime/RichLong.scala
 ./scala-scala/src/library/scala/runtime/RichShort.scala
-
 ./scala-scala/src/library/scala/Array.scala
 ./scala-scala/src/library/scala/NotImplementedError.scala
-
 ./scala-scala/src/library/scala/AnyValCompanion.scala
 
 # AnyVal is a synthesized class in Dotty, cannot be compiled from source.
@@ -25,7 +23,6 @@
 ./scala-scala/src/library/scala/Long.scala
 ./scala-scala/src/library/scala/Short.scala
 ./scala-scala/src/library/scala/Unit.scala
-
 ./scala-scala/src/library/scala/Cloneable.scala
 ./scala-scala/src/library/scala/DelayedInit.scala
 ./scala-scala/src/library/scala/Dynamic.scala
@@ -34,12 +31,9 @@
 ./scala-scala/src/library/scala/MatchError.scala
 ./scala-scala/src/library/scala/Mutable.scala
 ./scala-scala/src/library/scala/NotNull.scala
-
 ./scala-scala/src/library/scala/Option.scala
-
 ./scala-scala/src/library/scala/PartialFunction.scala
 ./scala-scala/src/library/scala/Predef.scala
-
 ./scala-scala/src/library/scala/Product.scala
 ./scala-scala/src/library/scala/Product1.scala
 ./scala-scala/src/library/scala/Product10.scala
@@ -63,7 +57,6 @@
 ./scala-scala/src/library/scala/Product7.scala
 ./scala-scala/src/library/scala/Product8.scala
 ./scala-scala/src/library/scala/Product9.scala
-
 ./scala-scala/src/library/scala/Proxy.scala
 ./scala-scala/src/library/scala/SerialVersionUID.scala
 ./scala-scala/src/library/scala/Serializable.scala
@@ -71,15 +64,10 @@
 ./scala-scala/src/library/scala/Symbol.scala
 ./scala-scala/src/library/scala/UninitializedError.scala
 ./scala-scala/src/library/scala/UninitializedFieldError.scala
-
-# https://github.com/lampepfl/dotty/issues/912
-# ./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
-
+./scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
 ./scala-scala/src/library/scala/collection/IterableLike.scala
 ./scala-scala/src/library/scala/collection/Iterator.scala
 ./scala-scala/src/library/scala/collection/LinearSeqOptimized.scala
-
-# https://github.com/lampepfl/dotty/issues/914
 ./scala-scala/src/library/scala/collection/TraversableOnce.scala
 ./scala-scala/src/library/scala/collection/generic/Growable.scala
 ./scala-scala/src/library/scala/collection/generic/TraversableForwarder.scala
@@ -88,7 +76,6 @@
 ./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/immutable/Iterable.scala
 ./scala-scala/src/library/scala/collection/immutable/LinearSeq.scala
-
 ./scala-scala/src/library/scala/collection/immutable/List.scala
 ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
 ./scala-scala/src/library/scala/collection/immutable/PagedSeq.scala
@@ -107,7 +94,6 @@
 ./scala-scala/src/library/scala/collection/immutable/WrappedString.scala
 ./scala-scala/src/library/scala/collection/mutable/Builder.scala
 ./scala-scala/src/library/scala/collection/mutable/GrowingBuilder.scala
-
 ./scala-scala/src/library/scala/collection/mutable/WrappedArray.scala
 ./scala-scala/src/library/scala/collection/mutable/WrappedArrayBuilder.scala
 ./scala-scala/src/library/scala/deprecated.scala
@@ -135,9 +121,188 @@
 ./scala-scala/src/library/scala/transient.scala
 ./scala-scala/src/library/scala/unchecked.scala
 ./scala-scala/src/library/scala/volatile.scala
-
-# cyclic reference
+./scala-scala/src/library/scala/collection/BitSet.scala
+./scala-scala/src/library/scala/collection/BitSetLike.scala
+./scala-scala/src/library/scala/collection/BufferedIterator.scala
+./scala-scala/src/library/scala/collection/CustomParallelizable.scala
+./scala-scala/src/library/scala/collection/DefaultMap.scala
+./scala-scala/src/library/scala/collection/GenIterable.scala
+./scala-scala/src/library/scala/collection/GenIterableLike.scala
+./scala-scala/src/library/scala/collection/GenMap.scala
+./scala-scala/src/library/scala/collection/GenMapLike.scala
 ./scala-scala/src/library/scala/collection/GenSeq.scala
 ./scala-scala/src/library/scala/collection/GenSeqLike.scala
 
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/GenSet.scala
 
+./scala-scala/src/library/scala/collection/GenSetLike.scala
+
+# breaks genMapLike https://github.com/lampepfl/dotty/issues/937
+#./scala-scala/src/library/scala/collection/GenTraversable.scala
+#./scala-scala/src/library/scala/collection/GenTraversableLike.scala
+
+./scala-scala/src/library/scala/collection/GenTraversableOnce.scala
+./scala-scala/src/library/scala/collection/IndexedSeq.scala
+./scala-scala/src/library/scala/collection/IndexedSeqLike.scala
+./scala-scala/src/library/scala/collection/Iterable.scala
+./scala-scala/src/library/scala/collection/IterableProxy.scala
+./scala-scala/src/library/scala/collection/IterableProxyLike.scala
+./scala-scala/src/library/scala/collection/JavaConversions.scala
+./scala-scala/src/library/scala/collection/JavaConverters.scala
+./scala-scala/src/library/scala/collection/LinearSeq.scala
+./scala-scala/src/library/scala/collection/LinearSeqLike.scala
+./scala-scala/src/library/scala/collection/Map.scala
+./scala-scala/src/library/scala/collection/MapLike.scala
+./scala-scala/src/library/scala/collection/MapProxy.scala
+./scala-scala/src/library/scala/collection/MapProxyLike.scala
+./scala-scala/src/library/scala/collection/Parallel.scala
+./scala-scala/src/library/scala/collection/Parallelizable.scala
+./scala-scala/src/library/scala/collection/Searching.scala
+
+
+# cyclic reference involving trait Seq
+#./scala-scala/src/library/scala/collection/Seq.scala
+
+./scala-scala/src/library/scala/collection/SeqExtractors.scala
+
+# https://github.com/lampepfl/dotty/issues/945
+#./scala-scala/src/library/scala/collection/SeqLike.scala
+
+./scala-scala/src/library/scala/collection/SeqProxy.scala
+./scala-scala/src/library/scala/collection/SeqProxyLike.scala
+
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/Set.scala
+
+./scala-scala/src/library/scala/collection/SetLike.scala
+./scala-scala/src/library/scala/collection/SetProxy.scala
+./scala-scala/src/library/scala/collection/SetProxyLike.scala
+./scala-scala/src/library/scala/collection/SortedMap.scala
+./scala-scala/src/library/scala/collection/SortedMapLike.scala
+./scala-scala/src/library/scala/collection/SortedSet.scala
+./scala-scala/src/library/scala/collection/SortedSetLike.scala
+./scala-scala/src/library/scala/collection/Traversable.scala
+
+# https://github.com/lampepfl/dotty/issues/938
+#./scala-scala/src/library/scala/collection/TraversableLike.scala
+
+./scala-scala/src/library/scala/collection/TraversableProxy.scala
+./scala-scala/src/library/scala/collection/TraversableProxyLike.scala
+./scala-scala/src/library/scala/collection/package.scala
+
+## those classes use early initialisers.
+#./scala-scala/src/library/scala/collection/IterableView.scala
+#./scala-scala/src/library/scala/collection/IterableViewLike.scala
+#./scala-scala/src/library/scala/collection/SeqView.scala
+#./scala-scala/src/library/scala/collection/SeqViewLike.scala
+#./scala-scala/src/library/scala/collection/TraversableView.scala
+#./scala-scala/src/library/scala/collection/TraversableViewLike.scala
+#./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
+#./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
+
+
+./scala-scala/src/library/scala/collection/immutable/HashMap.scala
+
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/immutable/HashSet.scala
+
+# https://github.com/lampepfl/dotty/issues/939
+#./scala-scala/src/library/scala/collection/immutable/IntMap.scala
+
+
+./scala-scala/src/library/scala/collection/immutable/ListMap.scala
+
+# seems https://github.com/lampepfl/dotty/issues/916
+#./scala-scala/src/library/scala/collection/immutable/ListSet.scala
+
+# https://github.com/lampepfl/dotty/issues/939
+#./scala-scala/src/library/scala/collection/immutable/LongMap.scala
+
+./scala-scala/src/library/scala/collection/immutable/Map.scala
+./scala-scala/src/library/scala/collection/immutable/MapLike.scala
+./scala-scala/src/library/scala/collection/immutable/NumericRange.scala
+./scala-scala/src/library/scala/collection/immutable/Range.scala
+./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
+./scala-scala/src/library/scala/collection/immutable/Seq.scala
+
+# uses refinements that dotty does not support
+#./scala-scala/src/library/scala/collection/immutable/Set.scala
+
+./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
+
+# https://github.com/lampepfl/dotty/issues/942
+# ./scala-scala/src/library/scala/collection/immutable/SortedMap.scala
+#./scala-scala/src/library/scala/collection/immutable/SortedSet.scala
+
+# https://github.com/lampepfl/dotty/issues/941
+#./scala-scala/src/library/scala/collection/immutable/Stream.scala
+#./scala-scala/src/library/scala/collection/immutable/StreamView.scala
+
+./scala-scala/src/library/scala/collection/immutable/TreeMap.scala
+./scala-scala/src/library/scala/collection/immutable/TreeSet.scala
+./scala-scala/src/library/scala/collection/generic/BitOperations.scala
+./scala-scala/src/library/scala/collection/generic/BitSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/CanBuildFrom.scala
+./scala-scala/src/library/scala/collection/generic/CanCombineFrom.scala
+./scala-scala/src/library/scala/collection/generic/ClassTagTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/Clearable.scala
+./scala-scala/src/library/scala/collection/generic/FilterMonadic.scala
+./scala-scala/src/library/scala/collection/generic/GenMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/GenericClassTagCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericClassTagTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericOrderedCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericOrderedTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericParCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericParTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericSeqCompanion.scala
+./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
+
+# deep subtype
+#./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
+
+./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
+./scala-scala/src/library/scala/collection/generic/HasNewCombiner.scala
+
+# https://github.com/lampepfl/dotty/issues/943
+# [error] Test dotc.tests.compileStdLib failed: java.lang.Error: deep subtype, took 6.462 sec
+#./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
+#./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
+
+./scala-scala/src/library/scala/collection/generic/ImmutableSortedMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableSortedSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/IndexedSeqFactory.scala
+./scala-scala/src/library/scala/collection/generic/IsSeqLike.scala
+./scala-scala/src/library/scala/collection/generic/IsTraversableLike.scala
+./scala-scala/src/library/scala/collection/generic/IsTraversableOnce.scala
+./scala-scala/src/library/scala/collection/generic/IterableForwarder.scala
+
+# [error] Test dotc.tests.compileStdLib failed: java.lang.Error: deep subtype
+# fails if any of those classes are added:
+#./scala-scala/src/library/scala/collection/generic/MapFactory.scala
+#./scala-scala/src/library/scala/collection/generic/MutableMapFactory.scala
+#./scala-scala/src/library/scala/collection/generic/MutableSetFactory.scala
+#./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
+#./scala-scala/src/library/scala/collection/generic/ParFactory.scala
+#./scala-scala/src/library/scala/collection/generic/ParMapFactory.scala
+#./scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
+#./scala-scala/src/library/scala/collection/generic/SeqFactory.scala
+#./scala-scala/src/library/scala/collection/generic/SortedMapFactory.scala
+#./scala-scala/src/library/scala/collection/generic/SortedSetFactory.scala
+#./scala-scala/src/library/scala/collection/generic/SetFactory.scala
+
+
+./scala-scala/src/library/scala/collection/generic/OrderedTraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/SeqForwarder.scala
+./scala-scala/src/library/scala/collection/generic/Shrinkable.scala
+./scala-scala/src/library/scala/collection/generic/Signalling.scala
+./scala-scala/src/library/scala/collection/generic/Sizing.scala
+./scala-scala/src/library/scala/collection/generic/SliceInterval.scala
+./scala-scala/src/library/scala/collection/generic/Sorted.scala
+./scala-scala/src/library/scala/collection/generic/Subtractable.scala
+./scala-scala/src/library/scala/collection/generic/TraversableFactory.scala
+./scala-scala/src/library/scala/collection/generic/package.scala
