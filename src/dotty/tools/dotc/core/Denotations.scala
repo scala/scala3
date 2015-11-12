@@ -216,8 +216,16 @@ object Denotations {
           println(s"*** missing method: ${name.toString} in $this")
           info.decls.checkConsistent()
           println(i"decls = ${info.decls}")
-          if (slowSearch(name.toTermName).exists)
+          if (slowSearch(name.toTermName).exists) {
             System.err.println(i"**** slow search found: ${slowSearch(name.toTermName)}")
+            System.err.println("scope entries found:")
+            var e = info.decls.lastEntry
+            while (e != null) {
+              println(e.name)
+              e = e.prev
+            }
+            System.err.println("no more entries found")
+          }
           throw new TypeError(s"Missing method: $this . $name")
         }
       }
