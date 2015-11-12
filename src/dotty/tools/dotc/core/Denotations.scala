@@ -206,7 +206,17 @@ object Denotations {
       }
 
     def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+      if (info.exists) {
+        val meth = info.member(name.toTermName)
+        if (meth.exists) meth.requiredSymbol(_ is Method).asTerm
+        else { // Heisenbughunt
+          println(s"*** missing method: $name in $this")
+          println(info.decls)
+          throw new TypeError(s"Missing method: $this . $name")
+        }
+      }
+      else throw new TypeError(s"Missing module: $this")
+
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
 
