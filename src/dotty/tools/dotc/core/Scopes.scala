@@ -153,7 +153,7 @@ object Scopes {
    *  SynchronizedScope as mixin.
    */
   class MutableScope protected[Scopes](initElems: ScopeEntry, initSize: Int, val nestingLevel: Int = 0)
-      extends Scope {
+      extends Scope with util.CheckedSingleThreaded {
 
     protected[Scopes] def this(base: Scope)(implicit ctx: Context) = {
       this(base.lastEntry, base.size, base.nestingLevel + 1)
@@ -208,8 +208,10 @@ object Scopes {
     }
 
     /** create and enter a scope entry */
-    protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry =
+    protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry = {
+      checkSingleThreaded()
       newScopeEntry(sym.name, sym)
+    }
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
       val idx = e.name.hashCode & (hashTable.length - 1)
@@ -310,6 +312,7 @@ object Scopes {
     /** Lookup a symbol entry matching given name.
      */
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+      checkSingleThreaded()
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
@@ -339,6 +342,7 @@ object Scopes {
      *  Does _not_ include the elements of inherited scopes.
      */
     override final def toList: List[Symbol] = {
+      checkSingleThreaded()
       if (elemsCache eq null) {
         elemsCache = Nil
         var e = lastEntry
