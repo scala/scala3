@@ -112,8 +112,6 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    denot.info = ClassInfo(
-      denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost) // more refined infowith parents
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
