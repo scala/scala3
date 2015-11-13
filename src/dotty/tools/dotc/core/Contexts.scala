@@ -16,7 +16,7 @@ import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
 import ast.untpd
-import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
+import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource, CheckedSingleThreaded}
 import typer._
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -615,16 +615,6 @@ object Contexts {
       superIdOfClass.clear()
       lastSuperId = -1
     }
-
-    // Test that access is single threaded
-
-    /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private var thread: Thread = null
-
-    /** Check that we are on the same thread as before */
-    def checkSingleThreaded() =
-      if (thread == null) thread = Thread.currentThread()
-      else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
   object Context {

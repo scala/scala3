@@ -364,7 +364,8 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with printing.Showable {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int)
+  extends DotClass with printing.Showable with util.CheckedSingleThreaded {
 
     type ThisName <: Name
 
@@ -381,6 +382,8 @@ object Symbols {
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
       if (!(denot.validFor contains ctx.period)) {
+        if (denot.exists)
+          checkSingleThreaded()
         denot = denot.current.asInstanceOf[SymDenotation]
         lastDenot = denot
       }
