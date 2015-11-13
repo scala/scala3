@@ -178,6 +178,14 @@ object Scopes {
      */
     private var elemsCache: List[Symbol] = null
 
+    private def bucketIdx(name: Name) = {
+      val module = hashTable.length - 1
+      val res = name.hashCode % module
+      if (res < 0) // typenames have negative hashcodes
+        res + module
+      else res
+    }
+
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
      */
     def cloneScope(implicit ctx: Context): MutableScope = {
@@ -212,7 +220,7 @@ object Scopes {
       newScopeEntry(sym.name, sym)
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
-      val idx = e.name.hashCode & (hashTable.length - 1)
+      val idx = bucketIdx(e.name)
       e.tail = hashTable(idx)
       assert(e.tail != e)
       hashTable(idx) = e
@@ -272,7 +280,7 @@ object Scopes {
         e1.prev = e.prev
       }
       if (hashTable ne null) {
-        val index = e.name.hashCode & (hashTable.length - 1)
+        val index = bucketIdx(e.name)
         var e1 = hashTable(index)
         if (e1 == e)
           hashTable(index) = e.tail
@@ -312,7 +320,7 @@ object Scopes {
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
       var e: ScopeEntry = null
       if (hashTable ne null) {
-        e = hashTable(name.hashCode & (hashTable.length - 1))
+        e = hashTable(bucketIdx(name))
         while ((e ne null) && e.name != name) {
           e = e.tail
         }
