@@ -149,7 +149,7 @@ object SymDenotations {
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(implicit ctx: Context): Type = {
-      checkSingleThreaded()
+      if (exists) checkSingleThreaded()
       myInfo match {
       case myInfo: LazyType => completeFrom(myInfo); info
       case _ => myInfo
@@ -1536,7 +1536,7 @@ object SymDenotations {
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
-      checkSingleThreaded()
+      if (exists) checkSingleThreaded()
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
