@@ -100,9 +100,11 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   }
 
   private def checkTread: Unit = {
-    if (thread == null)
-      thread = Thread.currentThread()
-    else assert(thread == Thread.currentThread())
+    synchronized {
+      if (thread == null)
+        thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread())
+    }
   }
 
   /** Privileged access: Find first entry with given hashcode */

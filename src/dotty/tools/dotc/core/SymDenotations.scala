@@ -1400,8 +1400,18 @@ object SymDenotations {
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
+    private var thread: Thread = null
+
+    private def checkSingleThreaded = {
+      this.synchronized {
+        if (thread == null)
+          thread = Thread.currentThread()
+        else assert(thread == Thread.currentThread())
+      }
+    }
 
     private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
+      checkSingleThreaded
       if (myMemberCachePeriod != ctx.period) {
         myMemberCache = new LRUCache
         myMemberCachePeriod = ctx.period
@@ -1416,6 +1426,7 @@ object SymDenotations {
      *                 If this is EmptyScope, the scope is `decls`.
      */
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+      checkSingleThreaded
       val mscope = scope match {
         case scope: MutableScope =>
           // if enter gets a scope as an argument,
