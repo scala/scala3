@@ -28,14 +28,15 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
   }
 
-  def compile(fileNames: List[String]): Unit = /*try*/ {
+  def compile(fileNames: List[String]): Unit = try {
     val sources = fileNames map getSource
     compileSources(sources)
-  } /*catch {
+  } catch {
     case NonFatal(ex) =>
+      ex.printStackTrace()
       ctx.println(i"exception occurred while compiling $units%, %")
       throw ex
-  }*/
+  }
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `squash`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop

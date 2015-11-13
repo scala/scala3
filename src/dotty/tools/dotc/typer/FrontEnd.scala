@@ -20,12 +20,13 @@ class FrontEnd extends Phase {
   import ast.tpd
 
   def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
-    /*try*/ body
-    /*catch {
+    try body
+    catch {
       case NonFatal(ex) =>
+        ex.printStackTrace()
         ctx.println(s"exception occurred while $doing ${ctx.compilationUnit}")
         throw ex
-    }*/
+    }
 
   def parse(implicit ctx: Context) = monitor("parsing") {
     val unit = ctx.compilationUnit
