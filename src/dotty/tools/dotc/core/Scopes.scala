@@ -142,6 +142,8 @@ object Scopes {
     def openForMutations: MutableScope = unsupported("openForMutations")
 
     final def toText(printer: Printer): Text = printer.toText(this)
+
+    def checkConsistent()(implicit ctx: Context) = ()
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -240,6 +242,7 @@ object Scopes {
       else {
         hashTable = new Array[ScopeEntry](tableSize)
         enterAllInHash(lastEntry)
+        // checkConsistent() // DEBUG
       }
 
     private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit = {
@@ -378,6 +381,17 @@ object Scopes {
     }
 
     override def openForMutations: MutableScope = this
+
+    /** Check that all symbols in this scope are in their correct hashtable buckets. */
+    override def checkConsistent()(implicit ctx: Context) = {
+      var e = lastEntry
+      while (e != null) {
+        var e1 = lookupEntry(e.name)
+        while (e1 != e && e1 != null) e1 = lookupNextEntry(e1)
+        assert(e1 == e, s"PANIC: Entry ${e.name} is badly linked")
+        e = e.prev
+      }
+    }
   }
 
   /** Create a new scope */

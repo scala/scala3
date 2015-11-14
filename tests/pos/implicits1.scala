@@ -36,6 +36,8 @@ object Implicits {
 
   val d: Int = z.foo("abc")
 
+  val x: X = Byte.MinValue
+
   //import X.BarDeco
 
   println(z.bar)
@@ -49,5 +51,7 @@ object Implicits {
   implicit def stringNode(v: String): Modifier = new Modifier {}
 
   val s: Modifier = Some("rd").getOrElse("")
+
+  val xx: Int = (1: Byte)
 
 }

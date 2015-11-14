@@ -5,15 +5,15 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
+import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
-import dotty.tools.dotc.transform._
-import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-
+import transform._
+import transform.TreeTransforms.{TreeTransform, TreeTransformer}
+import core.DenotTransformers.DenotTransformer
+import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 
@@ -53,6 +53,7 @@ class Compiler {
       List(new PatternMatcher,
            new ExplicitOuter,
            new ExplicitSelf,
+           new CrossCastAnd,
            new Splitter),
       List(new VCInlineMethods,
            new SeqLiterals,
@@ -112,8 +113,8 @@ class Compiler {
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, rootReporter(ctx), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
-    def addImport(ctx: Context, symf: () => Symbol) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(symf)(ctx))
+    def addImport(ctx: Context, refFn: () => TermRef) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
   }
 

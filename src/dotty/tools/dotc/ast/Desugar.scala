@@ -132,7 +132,7 @@ object desugar {
       case tparam @ TypeDef(_, ContextBounds(tbounds, cxbounds)) =>
         for (cxbound <- cxbounds) {
           val paramFlags: FlagSet = if (isPrimaryConstructor) PrivateLocalParamAccessor else Param
-          val epname = (nme.EVIDENCE_PARAM_PREFIX.toString + epbuf.length).toTermName
+          val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
           epbuf += ValDef(epname, cxbound, EmptyTree).withFlags(paramFlags | Implicit)
         }
         cpy.TypeDef(tparam)(rhs = tbounds)
@@ -236,10 +236,12 @@ object desugar {
     // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
     // go in `constr`, the constructor after desugaring.
 
+    val isCaseClass = mods.is(Case) && !mods.is(Module)
+
     val constrTparams = constr1.tparams map toDefParam
     val constrVparamss =
       if (constr1.vparamss.isEmpty) { // ensure parameter list is non-empty
-        if (mods is Case)
+        if (isCaseClass)
           ctx.error("case class needs to have at least one parameter list", cdef.pos)
         ListOfNil
       }
@@ -287,7 +289,7 @@ object desugar {
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths =
-      if (mods is Case) {
+      if (isCaseClass) {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
@@ -321,14 +323,14 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def productConstr(n: Int) = {
-      val tycon = ref(defn.ProductNClass(n).typeRef)
+      val tycon = scalaDot((tpnme.Product.toString + n).toTypeName)
       val targs = constrVparamss.head map (_.tpt)
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
 
-    // Case classes get a ProductN parent
+    // Case classes and case objects get a ProductN parent
     var parents1 = parents
-    if ((mods is Case) && arity <= Definitions.MaxTupleArity)
+    if (mods.is(Case) && arity <= Definitions.MaxTupleArity)
       parents1 = parents1 :+ productConstr(arity)
 
     // The thicket which is the desugared version of the companion object
@@ -350,7 +352,7 @@ object desugar {
     //     (T11, ..., T1N) => ... => (TM1, ..., TMN) => C
     // For all other classes, the parent is AnyRef.
     val companions =
-      if (mods is Case) {
+      if (isCaseClass) {
         val parent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
@@ -380,18 +382,22 @@ object desugar {
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
-      if (mods is Implicit) {
-        if (ctx.owner is Package)
-          ctx.error("implicit classes may not be toplevel", cdef.pos)
-        if (mods is Case)
-          ctx.error("implicit classes may not case classes", cdef.pos)
-
+      if (!mods.is(Implicit))
+        Nil
+      else if (ctx.owner is Package) {
+        ctx.error("implicit classes may not be toplevel", cdef.pos)
+        Nil
+      }
+      else if (isCaseClass) {
+        ctx.error("implicit classes may not be case classes", cdef.pos)
+        Nil
+      }
+      else
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
           .withFlags(Synthetic | Implicit) :: Nil
-      }
-      else Nil
+
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
@@ -403,7 +409,7 @@ object desugar {
       val originalTparams = constr1.tparams.toIterator
       val originalVparams = constr1.vparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparams.next.mods))
-      val caseAccessor = if (mods is Case) CaseAccessor else EmptyFlags
+      val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss.flatten.map(_.withMods(originalVparams.next.mods | caseAccessor))
       cpy.TypeDef(cdef)(
         rhs = cpy.Template(impl)(constr, parents1, self1,
@@ -449,7 +455,7 @@ object desugar {
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(clsName, clsTmpl)
-        .withMods(mods.toTypeFlags & AccessOrSynthetic | ModuleClassCreationFlags)
+        .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls))
     }
   }
@@ -552,14 +558,20 @@ object desugar {
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
-  /** Expand partial function
+  /** If `nparams` == 1, expand partial function
+   *
    *       { cases }
    *  ==>
-   *       x$0 => x$0 match { cases }
+   *       x$1 => x$1 match { cases }
+   *
+   *  If `nparams` != 1, expand instead to
+   *
+   *       (x$1, ..., x$n) => (x$0, ..., x${n-1}) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef])(implicit ctx: Context) = {
-    val param = makeSyntheticParameter()
-    Function(param :: Nil, Match(Ident(param.name), cases))
+  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1)(implicit ctx: Context) = {
+    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
+    val selector = makeTuple(params.map(p => Ident(p.name)))
+    Function(params, Match(selector, cases))
   }
 
   /** Add annotation with class `cls` to tree:
@@ -791,10 +803,10 @@ object desugar {
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
-          val seqClass = if (ctx.compilationUnit.isJava) defn.ArrayClass else defn.SeqClass
+          val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil),
-            AppliedTypeTree(ref(seqClass.typeRef), t))
+            New(ref(defn.RepeatedAnnotType), Nil :: Nil),
+            AppliedTypeTree(ref(seqType), t))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
           Select(t, op)
@@ -806,22 +818,22 @@ object desugar {
       case Tuple(ts) =>
         if (unboxedPairs) {
           def PairTypeTree(l: Tree, r: Tree) =
-            AppliedTypeTree(ref(defn.PairClass.typeRef), l :: r :: Nil)
+            AppliedTypeTree(ref(defn.PairType), l :: r :: Nil)
           if (ctx.mode is Mode.Type) ts.reduceRight(PairTypeTree)
           else if (ts.isEmpty) unitLiteral
           else ts.reduceRight(Pair(_, _))
         }
         else {
           val arity = ts.length
-          def tupleClass = defn.TupleClass(arity)
+          def tupleTypeRef = defn.TupleType(arity)
           if (arity > Definitions.MaxTupleArity) {
             ctx.error(s"tuple too long (max allowed: ${Definitions.MaxTupleArity})", tree.pos)
             unitLiteral
           }
           else if (arity == 1) ts.head
-          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeRef), ts)
+          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
           else if (arity == 0) unitLiteral
-          else Apply(ref(tupleClass.companionModule.valRef), ts)
+          else Apply(ref(tupleTypeRef.classSymbol.companionModule.valRef), ts)
         }
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }

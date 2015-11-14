@@ -99,9 +99,6 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val nme_PACKAGE: Name = StdNames.nme.PACKAGE
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
-  val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
-  val BoxesRunTimeClass      = toDenot(BoxesRunTimeModule).moduleClass.asClass
-
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
   override lazy val LambdaMetaFactory = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
   override lazy val MethodHandle      = ctx.requiredClass("java.lang.invoke.MethodHandle")
@@ -133,17 +130,17 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   val hashMethodSym: Symbol = NoSymbol // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
-  val externalEqualsNumNum: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumNum)
-  lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumChar) // this method is private
-  val externalEqualsNumObject: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumObject)
-  val externalEquals: Symbol = BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
+  val externalEqualsNumNum: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
+  lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+  val externalEqualsNumObject: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
+  val externalEquals: Symbol = defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   val MaxFunctionArity: Int = Definitions.MaxFunctionArity
-  val FunctionClass: Array[Symbol] = defn.FunctionClass.asInstanceOf[Array[Symbol]]
-  val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClass.asInstanceOf[Array[Symbol]]
+  val FunctionClass: Array[Symbol] = defn.FunctionClassPerRun()
+  val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClassPerRun()
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
-  lazy val Predef_classOf: Symbol = ctx.requiredMethod(toDenot(defn.ScalaPredefModule).moduleClass.asClass, nme.classOf)
+  lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
   lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
   lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
@@ -151,11 +148,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
   lazy val JavaAnnotationClass = ctx.requiredClass("java.lang.annotation.Annotation")
 
-
-  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x =>
+  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
-  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
   private val mkArrayNames: Set[Name] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short", "Ref").map{ x=>
     ("new" + x + "Array").toTermName
@@ -640,7 +636,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
         val original = toDenot(sym).initial
         val validity = original.validFor
         val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).isStatic
+        toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
     def isStaticConstructor: Boolean = isStaticMember && isClassConstructor

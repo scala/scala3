@@ -163,6 +163,11 @@ object SymDenotations {
     }
 
     private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
+      if (completions ne noPrinter) {
+        completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+        indent += 1
+      }
+      indent += 1
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
@@ -173,10 +178,15 @@ object SymDenotations {
           completions.println(s"error while completing ${this.debugString}")
           throw ex
       }
+      finally
+        if (completions ne noPrinter) {
+          indent -= 1
+          completions.println(i"${"  " * indent}completed $name in $owner")
+        }
       // completions.println(s"completed ${this.debugString}")
     }
 
-    protected[dotc] final def info_=(tp: Type) = {
+    protected[dotc] def info_=(tp: Type) = {
       /* // DEBUG
        def illegal: String = s"illegal type for $this: $tp"
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
@@ -417,10 +427,12 @@ object SymDenotations {
       name.toTermName == nme.EVT2U
 
     /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
+    def isPrimitiveValueClass(implicit ctx: Context) =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(symbol)
 
     /** Is symbol a primitive numeric value class? */
-    def isNumericValueClass(implicit ctx: Context) = defn.ScalaNumericValueClasses contains symbol
+    def isNumericValueClass(implicit ctx: Context) =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
 
     /** Is symbol a phantom class for which no runtime representation exists? */
     def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
@@ -736,8 +748,11 @@ object SymDenotations {
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
-      case ClassInfo(_, _, _, _, selfType: TermRef) if this is ModuleClass =>
-        selfType.symbol
+      case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
+        selfType match {
+          case selfType: TermRef => selfType.symbol
+          case selfType: Symbol => selfType.info.asInstanceOf[TermRef].symbol
+        }
       case info: LazyType =>
         info.sourceModule
       case _ =>
@@ -1172,6 +1187,11 @@ object SymDenotations {
       }
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
+    }
+
+    override protected[dotc] final def info_=(tp: Type) = {
+      super.info_=(tp)
+      myTypeParams = null // changing the info might change decls, and with it typeParams
     }
 
     /** The denotations of all parents in this class. */
@@ -1862,4 +1882,6 @@ object SymDenotations {
   }
 
   private val AccessorOrLabel = Accessor | Label
+
+  @sharable private var indent = 0 // for completions printing
 }

@@ -16,6 +16,7 @@ import Trees._
 import ProtoTypes._
 import Constants._
 import Scopes._
+import ErrorReporting.errorTree
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
@@ -39,6 +40,13 @@ object Checking {
       ctx.error(
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
+
+  /** Check that type arguments `args` conform to corresponding bounds in `poly`
+   *  Note: This does not check the bounds of AppliedTypeTrees. These
+   *  are handled by method checkBounds in FirstTransform
+   */
+  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
+    checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
@@ -229,6 +237,50 @@ object Checking {
     }
     checkTree((), refinement)
   }
+
+  /** Check that symbol's definition is well-formed. */
+  def checkWellFormed(sym: Symbol)(implicit ctx: Context): Unit = {
+    //println(i"check wf $sym with flags ${sym.flags}")
+    def fail(msg: String) = ctx.error(msg, sym.pos)
+    def varNote =
+      if (sym.is(Mutable)) "\n(Note that variables need to be initialized to be defined)"
+      else ""
+
+    def checkWithDeferred(flag: FlagSet) =
+      if (sym.is(flag))
+        fail(i"abstract member may not have `$flag' modifier")
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
+      if (sym.is(allOf(flag1, flag2)))
+        fail(i"illegal combination of modifiers: $flag1 and $flag2 for: $sym")
+
+    if (sym.is(ImplicitCommon)) {
+      if (sym.owner.is(Package))
+        fail(i"`implicit' modifier cannot be used for top-level definitions")
+      if (sym.isType)
+        fail(i"`implicit' modifier cannot be used for types or traits")
+    }
+    if (!sym.isClass && sym.is(Abstract))
+      fail(i"`abstract' modifier can be used only for classes; it should be omitted for abstract members")
+    if (sym.is(AbsOverride) && !sym.owner.is(Trait))
+      fail(i"`abstract override' modifier only allowed for members of traits")
+    if (sym.is(Trait) && sym.is(Final))
+      fail(i"$sym may not be `final'")
+    if (sym.hasAnnotation(defn.NativeAnnot)) {
+      if (!sym.is(Deferred))
+        fail(i"`@native' members may not have implementation")
+    }
+    else if (sym.is(Deferred, butNot = Param) && !sym.isSelfSym) {
+      if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
+        fail(i"only classes can have declared but undefined members$varNote")
+      checkWithDeferred(Private)
+      checkWithDeferred(Final)
+    }
+    if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
+      fail(i"$sym cannot extend AnyVal")
+    checkNoConflict(Final, Sealed)
+    checkNoConflict(Private, Protected)
+    checkNoConflict(Abstract, Override)
+  }
 }
 
 trait Checking {
@@ -250,13 +302,6 @@ trait Checking {
     tree
   }
 
-  /** Check that type arguments `args` conform to corresponding bounds in `poly`
-   *  Note: This does not check the bounds of AppliedTypeTrees. These
-   *  are handled by method checkBounds in FirstTransform
-   */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
-    Checking.checkBounds(args, poly.paramBounds, _.substParams(poly, _))
-
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable && !tp.isErroneous)
@@ -265,7 +310,7 @@ trait Checking {
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.
    *  Stability checking is disabled in phases after RefChecks.
-   *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
+   *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
@@ -275,7 +320,7 @@ trait Checking {
         tp
       case _ =>
         ctx.error(d"$tp is not a class type", pos)
-        defn.ObjectClass.typeRef
+        defn.ObjectType
   }
 
   /** Check that a non-implicit parameter making up the first parameter section of an
@@ -347,17 +392,26 @@ trait Checking {
         ctx.error(i"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""".stripMargin, call.pos)
     }
+
+  /** Check that `tpt` does not define a higher-kinded type */
+  def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree =
+    if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
+        // be more lenient with missing type params in Java,
+        // needed to make pos/java-interop/t1196 work.
+      errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
+    }
+    else tpt
 }
 
 trait NoChecking extends Checking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
+  override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
 }

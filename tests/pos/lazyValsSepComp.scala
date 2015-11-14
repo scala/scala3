@@ -12,5 +12,5 @@ import dotty.tools.dotc.core.Contexts._
 object Foo {
   val definitions: Definitions = null
   def defn = definitions
-  def go = defn.FunctionClass(0)
+  def go = defn.FunctionType(0)
 }

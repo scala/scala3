@@ -1,6 +1,5 @@
-object Test { 
+object Test {
   type T = String
-  type U
 
 /*  val a /* : Class[T]                  */ = classOf[T]                        // [Ljava/lang/String;
   println(a)
@@ -14,7 +13,7 @@ object Test {
   val f /* : ClassTag[Array[T with U]] */ = reflect.classTag[Array[T with U]] // ClassTag(arrayClass(classOf[java.lang.String]))
   println(f)
   val g /* : Class[Meter]              */ = classOf[Meter]                    // [LMeter;
-  println(g) 
+  println(g)
   val h /* : ClassTag[Meter]           */ = reflect.classTag[Meter]           // ClassTag(classOf[Meter])
   println(h)
 */

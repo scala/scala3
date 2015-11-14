@@ -30,3 +30,8 @@ classes/
 tests/partest-generated/
 tests/locks/
 /test-classes/
+
+
+# Ignore output files but keep the directory
+out/
+!out/.keep

@@ -27,7 +27,6 @@ import ValueClasses._
  * Unfortunately this phase ended up being not Y-checkable unless types are erased. A cast to an ConstantType(3) or x.type
  * cannot be rewritten before erasure.
  */
-
 trait TypeTestsCasts {
   import ast.tpd._
 
@@ -47,11 +46,11 @@ trait TypeTestsCasts {
 
         def transformIsInstanceOf(expr:Tree, argType: Type): Tree = {
           def argCls = argType.classSymbol
-          if (expr.tpe <:< argType)
+          if ((expr.tpe <:< argType) && isPureExpr(expr))
             Literal(Constant(true)) withPos tree.pos
           else if (argCls.isPrimitiveValueClass)
             if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls)) withPos tree.pos
-            else transformIsInstanceOf(expr, defn.boxedClass(argCls).typeRef)
+            else transformIsInstanceOf(expr, defn.boxedType(argCls.typeRef))
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
@@ -69,9 +68,9 @@ trait TypeTestsCasts {
                     }
                 }
               }
-            case defn.MultiArrayType(elem, ndims) if isUnboundedGeneric(elem) =>
+            case defn.MultiArrayOf(elem, ndims) if isUnboundedGeneric(elem) =>
               def isArrayTest(arg: Tree) =
-                ref(defn.runtimeMethod(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
+                ref(defn.runtimeMethodRef(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
                 derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe) and isArrayTest(qual1)

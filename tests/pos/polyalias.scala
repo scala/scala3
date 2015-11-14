@@ -3,7 +3,7 @@ object Test {
 
   type S = scala.Predef.Set
 
-  val z: S = ???
+  val z: S[_] = ???
 
 
   type Pair[T] = (T, T)
@@ -22,5 +22,11 @@ object Test {
 
   val rm: RMap[Int, String] = Map[String, Int]()
   val rrm: RRMap[Int, String] = Map[Int, String]()
+
+  val zz: RMap[_, Int] = Map[Int, String]()
+  val m = Map[Int, String]()
+  val ts: RMap[_, Int] = m
+  val us: RMap[String, _] = m
+  val vs: RMap[_, _] = m
 
 }

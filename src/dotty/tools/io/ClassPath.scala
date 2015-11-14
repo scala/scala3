@@ -25,13 +25,16 @@ import language.postfixOps
  *  @author Stepan Koltsov
  */
 object ClassPath {
+
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
     val wildSuffix = File.separator + "*"
 
     /** Get all subdirectories, jars, zips out of a directory. */
-    def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list filter (x => filt(x.name) && (x.isDirectory || isJarOrZip(x))) map (_.path) toList
+    def lsDir(dir: Directory, filt: String => Boolean = _ => true) = {
+      val files = synchronized(dir.list)
+      files filter (x => filt(x.name) && (x.isDirectory || isJarOrZip(x))) map (_.path) toList
+    }
 
     def basedir(s: String) =
       if (s contains File.separator) s.substring(0, s.lastIndexOf(File.separator))

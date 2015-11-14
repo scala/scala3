@@ -92,12 +92,10 @@ object JavaParsers {
 
     // --------- tree building -----------------------------
 
-    def rootId(name: Name)             = Select(Ident(nme.ROOTPKG), name)
-    def scalaDot(name: Name)           = Select(Ident(nme.scala_), name)
     def scalaAnnotationDot(name: Name) = Select(scalaDot(nme.annotation), name)
 
     def javaDot(name: Name): Tree =
-      Select(rootId(nme.java), name)
+      Select(rootDot(nme.java), name)
 
     def javaLangDot(name: Name): Tree =
       Select(javaDot(nme.lang), name)
@@ -114,7 +112,7 @@ object JavaParsers {
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean) = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
-        case (meth: DefDef) :: rest if meth.name.isConstructorName => (meth, rest)
+        case (meth: DefDef) :: rest if meth.name == CONSTRUCTOR => (meth, rest)
         case first :: rest =>
           val (constr, tail) = pullOutFirstConstr(rest)
           (constr, first :: tail)
@@ -356,7 +354,7 @@ object JavaParsers {
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots: List[Tree] = Nil
-      def addAnnot(sym: ClassSymbol) = annots :+= New(TypeTree(sym.typeRef))
+      def addAnnot(sym: ClassSymbol) = annots :+= New(TypeTree(sym.typeRef)).withPos(Position(in.offset))
 
       while (true) {
         in.token match {

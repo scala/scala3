@@ -98,7 +98,7 @@ extends TyperState(r) {
 
 
   override def fresh(isCommittable: Boolean): TyperState =
-    new MutableTyperState(this, new StoreReporter, isCommittable)
+    new MutableTyperState(this, new StoreReporter(reporter), isCommittable)
 
   override def withReporter(reporter: Reporter) =
     new MutableTyperState(this, reporter, isCommittable)
@@ -169,7 +169,7 @@ extends TyperState(r) {
    *  found a better solution.
    */
   override def tryWithFallback[T](op: => T)(fallback: => T)(implicit ctx: Context): T = {
-    val storeReporter = new StoreReporter
+    val storeReporter = new StoreReporter(myReporter)
     val savedReporter = myReporter
     myReporter = storeReporter
     val savedConstraint = myConstraint

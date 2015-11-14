@@ -12,7 +12,7 @@ abstract class Driver extends DotClass {
 
   protected def newCompiler(): Compiler
 
-  protected def emptyReporter: Reporter = new StoreReporter
+  protected def emptyReporter: Reporter = new StoreReporter(null)
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty)
@@ -24,7 +24,7 @@ abstract class Driver extends DotClass {
       catch {
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.typerState.reporter
+          ctx.reporter
       }
     else emptyReporter
 
@@ -44,8 +44,14 @@ abstract class Driver extends DotClass {
     doCompile(newCompiler(), fileNames)(ctx)
   }
 
+  // We overload `process` instead of using a default argument so that we
+  // can easily call this method using reflection from `RawCompiler` in sbt.
+  def process(args: Array[String]): Reporter = {
+    process(args, initCtx)
+  }
+
   def main(args: Array[String]): Unit =
-    sys.exit(if (process(args, initCtx).hasErrors) 1 else 0)
+    sys.exit(if (process(args).hasErrors) 1 else 0)
 }
 
 class FatalError(msg: String) extends Exception

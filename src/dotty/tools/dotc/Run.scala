@@ -50,6 +50,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
 
   protected def compileUnits() = Stats.monitorHeartBeat {
+    ctx.checkSingleThreaded()
     val phases = ctx.squashPhases(ctx.phasePlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
     ctx.usePhases(phases)
@@ -84,7 +85,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   /** Print summary; return # of errors encountered */
   def printSummary(): Reporter = {
     ctx.runInfo.printMaxConstraint()
-    val r = ctx.typerState.reporter
+    val r = ctx.reporter
     r.printSummary
     r
   }

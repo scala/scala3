@@ -193,9 +193,11 @@ object Denotations {
      */
     def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
       disambiguate(p) match {
-        case MissingRef(ownerd, name) =>
-          if (generateStubs)
+        case m @ MissingRef(ownerd, name) =>
+          if (generateStubs) {
+            m.ex.printStackTrace()
             ctx.newStubSymbol(ownerd.symbol, name, source)
+          }
           else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
           throw new TypeError(s"None of the alternatives of $this satisfies required predicate")
@@ -205,14 +207,20 @@ object Denotations {
 
     def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+    def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredMethod(name).termRef
 
     def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(x=>
         (x is Method) && x.info.paramTypess == List(argTypes)
       ).asTerm
+    def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
+      requiredMethod(name, argTypes).termRef
 
     def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+    def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredValue(name).termRef
 
     def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
       info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
@@ -308,7 +316,17 @@ object Denotations {
                   else if (!sym2.exists) sym1
                   else if (preferSym(sym2, sym1)) sym2
                   else sym1
-                new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
+                val jointInfo =
+                  try info1 & info2
+                  catch {
+                    case ex: MergeError =>
+                      if (pre.widen.classSymbol.is(Scala2x))
+                        info1 // follow Scala2 linearization -
+                              // compare with way merge is performed in SymDenotation#computeMembersNamed
+                      else
+                        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
+                  }
+                new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
               }
             }
           } else NoDenotation
@@ -848,7 +866,9 @@ object Denotations {
   /** An error denotation that provides more info about the missing reference.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation
+  case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation {
+    val ex: Exception = new Exception
+  }
 
   /** An error denotation that provides more info about alternatives
    *  that were found but that do not qualify.

@@ -16,6 +16,7 @@ import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Printers._
 import Annotations._
+import Inferencing._
 import transform.ValueClasses._
 import language.implicitConversions
 
@@ -215,6 +216,17 @@ class Namer { typer: Typer =>
     }
   }
 
+  /** Record `sym` as the symbol defined by `tree` */
+  def recordSym(sym: Symbol, tree: Tree)(implicit ctx: Context): Symbol = {
+    val refs = tree.attachmentOrElse(References, Nil)
+    if (refs.nonEmpty) {
+      tree.removeAttachment(References)
+      refs foreach (_.pushAttachment(OriginalSymbol, sym))
+    }
+    tree.pushAttachment(SymOfTree, sym)
+    sym
+  }
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -223,15 +235,17 @@ class Namer { typer: Typer =>
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
-    def record(sym: Symbol): Symbol = {
-      val refs = tree.attachmentOrElse(References, Nil)
-      if (refs.nonEmpty) {
-        tree.removeAttachment(References)
-        refs foreach (_.pushAttachment(OriginalSymbol, sym))
+    def checkFlags(flags: FlagSet) =
+      if (flags.isEmpty) flags
+      else {
+        val (ok, adapted, kind) = tree match {
+          case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
+          case _ => (flags.isTermFlags, flags.toTermFlags, "value")
+        }
+        if (!ok)
+          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
+        adapted
       }
-      tree.pushAttachment(SymOfTree, sym)
-      sym
-    }
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
@@ -260,14 +274,16 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name.encode).asTypeName
-        val cls = record(ctx.newClassSymbol(
-          ctx.owner, name, tree.mods.flags | inSuperCall,
+        val flags = checkFlags(tree.mods.flags &~ Implicit)
+        val cls = recordSym(ctx.newClassSymbol(
+          ctx.owner, name, flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-          privateWithinClass(tree.mods), tree.pos, ctx.source.file))
+          privateWithinClass(tree.mods), tree.pos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
         val name = checkNoConflict(tree.name.encode)
+        val flags = checkFlags(tree.mods.flags)
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
@@ -289,13 +305,13 @@ class Namer { typer: Typer =>
         // have no implementation.
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
-        record(ctx.newSymbol(
-          ctx.owner, name, tree.mods.flags | deferred | method | higherKinded | inSuperCall1,
+        recordSym(ctx.newSymbol(
+          ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
           adjustIfModule(new Completer(tree)(cctx), tree),
-          privateWithinClass(tree.mods), tree.pos))
+          privateWithinClass(tree.mods), tree.pos), tree)
       case tree: Import =>
-        record(ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos))
+        recordSym(ctx.newSymbol(
+          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)
       case _ =>
         NoSymbol
     }
@@ -516,6 +532,7 @@ class Namer { typer: Typer =>
     def completeInCreationContext(denot: SymDenotation): Unit = {
       denot.info = typeSig(denot.symbol)
       addAnnotations(denot)
+      Checking.checkWellFormed(denot.symbol)
     }
   }
 
@@ -558,12 +575,25 @@ class Namer { typer: Typer =>
       def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(ctx.superCallContext)
         if (cls.isRefinementClass) ptype
-        else checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
+        else {
+          val pt = checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
+          if (pt.derivesFrom(cls)) {
+            ctx.error(i"cyclic inheritance: $cls extends itself", parent.pos)
+            defn.ObjectType
+          }
+          else pt
+        }
       }
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls is Module) cls.owner.thisType select sourceModule
+        else if (cls.is(Module)) {
+          val moduleType = cls.owner.thisType select sourceModule
+          if (self.name == nme.WILDCARD) moduleType
+          else recordSym(
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            self)
+        }
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
@@ -584,6 +614,7 @@ class Namer { typer: Typer =>
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
       addAnnotations(denot)
+      Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.setApplicableFlags(
         (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))

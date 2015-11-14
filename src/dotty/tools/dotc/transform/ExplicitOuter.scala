@@ -84,14 +84,19 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         newDefs += ValDef(outerParamAcc, EmptyTree)
         newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
       }
+
+      for (parentTrait <- cls.mixins) {
+        if (needsOuterIfReferenced(parentTrait)) {
+          val parentTp = cls.denot.thisType.baseTypeRef(parentTrait)
+          val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
+          newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parentTp)))
+        }
+      }
+
       val parents1 =
         for (parent <- impl.parents) yield {
           val parentCls = parent.tpe.classSymbol.asClass
           if (parentCls.is(Trait)) {
-            if (needsOuterIfReferenced(parentCls)) {
-              val outerAccImpl = newOuterAccessor(cls, parentCls).enteredAfter(thisTransformer)
-              newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parent.tpe)))
-            }
             parent
           }
           else parent match { // ensure class parent is a constructor
@@ -116,8 +121,6 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
 object ExplicitOuter {
   import ast.tpd._
-
-  private val LocalInstantiationSite = Module | Private
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
@@ -147,7 +150,7 @@ object ExplicitOuter {
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
   private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
-    val deferredIfTrait = if (cls.is(Trait)) Deferred else EmptyFlags
+    val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
       Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
@@ -176,7 +179,9 @@ object ExplicitOuter {
 
   /** Class is always instantiated in the compilation unit where it is defined */
   private def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    cls.owner.isTerm || cls.is(LocalInstantiationSite)
+    // scala2x modules always take an outer pointer(as of 2.11)
+    // dotty modules are always locally instantiated
+    cls.owner.isTerm || cls.is(Private) || cls.is(Module, butNot = Scala2x)
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context): TermSymbol =
@@ -215,9 +220,14 @@ object ExplicitOuter {
       case id: Ident =>
         id.tpe match {
           case ref @ TermRef(NoPrefix, _) =>
-            ref.symbol.is(Hoistable) && isOuter(id.symbol.owner.enclosingClass)
-            // methods will be placed in enclosing class scope by LambdaLift, so they will get
-            // an outer path then.
+            if (ref.symbol is Hoistable)
+              // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
+              // an outer path then.
+              isOuter(ref.symbol.owner.enclosingClass)
+            else
+              // ref.symbol will get a proxy in immediately enclosing class. If this properly
+              // contains the current class, it needs an outer path.
+              ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
           case _ => false
         }
       case nw: New =>

@@ -153,6 +153,14 @@ object Contexts {
     protected def gadt_=(gadt: GADTMap) = _gadt = gadt
     def gadt: GADTMap = _gadt
 
+    /**The current fresh name creator */
+    private[this] var _freshNames: FreshNameCreator = _
+    protected def freshNames_=(freshNames: FreshNameCreator) = _freshNames = freshNames
+    def freshNames: FreshNameCreator = _freshNames
+
+    def freshName(prefix: String = ""): String = freshNames.newName(prefix)
+    def freshName(prefix: Name): String = freshName(prefix.toString)
+
     /** A map in which more contextual properties can be stored */
     private var _moreProperties: Map[String, Any] = _
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
@@ -423,6 +431,7 @@ object Contexts {
     def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
+    def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
     def setMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
 
     def setProperty(prop: (String, Any)): this.type = setMoreProperties(moreProperties + prop)
@@ -468,6 +477,7 @@ object Contexts {
     typeAssigner = TypeAssigner
     runInfo = new RunInfo(this)
     diagnostics = None
+    freshNames = new FreshNameCreator.Default
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
@@ -497,12 +507,6 @@ object Contexts {
 
     /** The platform */
     val platform: Platform = new JavaPlatform
-
-    /** The standard fresh name creator */
-    val freshNames = new FreshNameCreator.Default
-
-    def freshName(prefix: String = ""): String = freshNames.newName(prefix)
-    def freshName(prefix: Name): String = freshName(prefix.toString)
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
@@ -611,6 +615,16 @@ object Contexts {
       superIdOfClass.clear()
       lastSuperId = -1
     }
+
+    // Test that access is single threaded
+
+    /** The thread on which `checkSingleThreaded was invoked last */
+    @sharable private var thread: Thread = null
+
+    /** Check that we are on the same thread as before */
+    def checkSingleThreaded() =
+      if (thread == null) thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
   object Context {

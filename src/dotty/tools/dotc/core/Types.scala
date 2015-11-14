@@ -33,6 +33,7 @@ import annotation.tailrec
 import Flags.FlagSet
 import typer.Mode
 import language.implicitConversions
+import scala.util.hashing.{ MurmurHash3 => hashing }
 
 object Types {
 
@@ -492,10 +493,8 @@ object Types {
 
       try go(this)
       catch {
-        case ex: MergeError =>
-          throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
         case ex: Throwable =>
-          ctx.println(i"findMember exception for $this member $name")
+          core.println(i"findMember exception for $this member $name")
           throw ex // DEBUG
       }
       finally {
@@ -608,10 +607,10 @@ object Types {
     }
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
-    def isValueSubType(that: Type)(implicit ctx: Context) = widenExpr match {
-      case self: TypeRef if defn.ScalaValueClasses contains self.symbol =>
+    def isValueSubType(that: Type)(implicit ctx: Context) = widen match {
+      case self: TypeRef if self.symbol.isPrimitiveValueClass =>
         that.widenExpr match {
-          case that: TypeRef if defn.ScalaValueClasses contains that.symbol =>
+          case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false
@@ -619,6 +618,9 @@ object Types {
       case _ =>
         false
     }
+
+    def relaxed_<:<(that: Type)(implicit ctx: Context) =
+      (this <:< that) || (this isValueSubType that)
 
     /** Is this type a legal type for a member that overrides another
      *  member of type `that`? This is the same as `<:<`, except that
@@ -745,7 +747,8 @@ object Types {
      */
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
-        tp.info match {
+        if (tp.symbol.isClass) tp
+        else tp.info match {
           case TypeAlias(tp) => tp.dealias
           case _ => tp
         }
@@ -848,14 +851,16 @@ object Types {
      *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type, resolved: List[Name]): Type = pre.stripTypeVar match {
+      def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           object instantiate extends TypeMap {
             var isSafe = true
             def apply(tp: Type): Type = tp match {
               case TypeRef(RefinedThis(`pre`), name) if name.isLambdaArgName =>
-                val TypeAlias(alias) = member(name).info
-                alias
+                member(name).info match {
+                  case TypeAlias(alias) => alias
+                  case _ => isSafe = false; tp
+                }
               case tp: TypeVar if !tp.inst.exists =>
                 isSafe = false
                 tp
@@ -863,23 +868,37 @@ object Types {
                 mapOver(tp)
             }
           }
-          def betaReduce(tp: Type) = {
-            val lam = pre.parent.LambdaClass(forcing = false)
-            if (lam.exists && lam.typeParams.forall(tparam => resolved.contains(tparam.name))) {
-              val reduced = instantiate(tp)
+          def instArg(tp: Type): Type = tp match {
+            case tp @ TypeAlias(TypeRef(RefinedThis(`pre`), name)) if name.isLambdaArgName =>
+              member(name).info match {
+                case TypeAlias(alias) => tp.derivedTypeAlias(alias) // needed to keep variance
+                case bounds => bounds
+              }
+            case _ =>
+              instantiate(tp)
+          }
+          def instTop(tp: Type): Type = tp.stripTypeVar match {
+            case tp: RefinedType =>
+              tp.derivedRefinedType(instTop(tp.parent), tp.refinedName, instArg(tp.refinedInfo))
+            case _ =>
+              instantiate(tp)
+          }
+          /** Reduce rhs of $hkApply to make it stand alone */
+          def betaReduce(tp: Type) =
+            if (pre.parent.isSafeLambda) {
+              val reduced = instTop(tp)
               if (instantiate.isSafe) reduced else NoType
             }
             else NoType
-          }
           pre.refinedInfo match {
             case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent, pre.refinedName :: resolved)
+              if (pre.refinedName ne name) loop(pre.parent)
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
                 case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2)
               }
-            case _ => loop(pre.parent, resolved)
+            case _ => loop(pre.parent)
           }
         case RefinedThis(binder) =>
           binder.lookupRefined(name)
@@ -889,14 +908,14 @@ object Types {
           WildcardType
         case pre: TypeRef =>
           pre.info match {
-            case TypeAlias(alias) => loop(alias, resolved)
+            case TypeAlias(alias) => loop(alias)
             case _ => NoType
           }
         case _ =>
           NoType
       }
 
-      loop(this, Nil)
+      loop(this)
     }
 
     /** The type <this . name> , reduced if possible */
@@ -947,7 +966,7 @@ object Types {
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
-      case _ => defn.AnyClass.typeRef
+      case _ => defn.AnyType
     }
 
     /** the self type of the underlying classtype */
@@ -1084,7 +1103,7 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
-        defn.FunctionType(
+        defn.FunctionOf(
             formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
     }
 
@@ -1370,7 +1389,7 @@ object Types {
         (lastSymbol.infoOrCompleter == ErrorType ||
         sym.owner.derivesFrom(lastSymbol.owner) && sym.owner != lastSymbol.owner
       ),
-        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase}")
+        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase} at run ${ctx.runId}")
 
     protected def sig: Signature = Signature.NotAMethod
 
@@ -1888,6 +1907,10 @@ object Types {
                   s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.LambdaArgIndex).variance}, ${refinedInfo.variance}")
           case _ =>
         }
+      if (Config.checkProjections &&
+          (refinedName == tpnme.hkApply || refinedName.isLambdaArgName) &&
+          parent.noHK)
+        assert(false, s"illegal refinement of first-order type: $this")
       this
     }
 
@@ -2231,11 +2254,13 @@ object Types {
     }
   }
 
-  case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+  abstract case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
     extends CachedGroundType with BindingType with TermType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     val resType = resultTypeExp(this)
+
+    assert(resType ne null)
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2258,13 +2283,26 @@ object Types {
 
     // need to override hashCode and equals to be object identity
     // because paramNames by itself is not discriminatory enough
-    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
-    override def computeHash = identityHash
+    override def equals(other: Any) = other match {
+      case other: PolyType =>
+        other.paramNames == this.paramNames && other.paramBounds == this.paramBounds && other.resType == this.resType
+      case _ => false
+    }
+    override def computeHash = {
+      doHash(paramNames, resType, paramBounds)
+    }
 
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
   }
 
+  class CachedPolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+    extends PolyType(paramNames)(paramBoundsExp, resultTypeExp)
+
   object PolyType {
+    def apply(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
+      unique(new CachedPolyType(paramNames)(paramBoundsExp, resultTypeExp))
+    }
+
     def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
       if (tparams.isEmpty) resultType
       else {
@@ -2340,7 +2378,8 @@ object Types {
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
 
-    override def computeHash = doHash(paramNum, binder)
+    override def computeHash = doHash(paramNum, binder.identityHash)
+
     override def equals(that: Any) = that match {
       case that: PolyParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
@@ -3237,7 +3276,7 @@ object Types {
       val ex = new CyclicReference(denot)
       if (!(ctx.mode is typer.Mode.CheckCyclic)) {
         cyclicErrors.println(ex.getMessage)
-        for (elem <- ex.getStackTrace take 50)
+        for (elem <- ex.getStackTrace take 200)
           cyclicErrors.println(elem.toString)
       }
       ex

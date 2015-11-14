@@ -5,6 +5,7 @@ package core
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._, Denotations.Denotation
 import config.Printers._
+import util.Positions._
 import Decorators._
 import StdNames._
 import util.SimpleMap
@@ -480,7 +481,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
       case ErrorType =>
-        defn.AnyClass.typeRef
+        defn.AnyType
       case AnnotatedType(_, tpe) =>
         normalizeToRef(tpe)
       case _ =>
@@ -572,6 +573,15 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Is auto-tupling enabled? */
   def canAutoTuple =
     !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
+
+  def scala2Mode =
+    featureEnabled(defn.LanguageModuleClass, nme.Scala2)
+
+  def testScala2Mode(msg: String, pos: Position) = {
+    if (scala2Mode) migrationWarning(msg, pos)
+    scala2Mode
+  }
+
 }
 
 object TypeOps {

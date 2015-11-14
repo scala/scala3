@@ -20,7 +20,7 @@ import config.Printers._
 import annotation.tailrec
 import collection.mutable
 
-trait Inferencing { this: Checking =>
+object Inferencing {
 
   import tpd._
 
@@ -82,7 +82,7 @@ trait Inferencing { this: Checking =>
         force.appliesTo(tvar) && {
           val direction = instDirection(tvar.origin)
           if (direction != 0) {
-            if (direction > 0) println(s"inst $tvar dir = up")
+            //if (direction > 0) println(s"inst $tvar dir = up")
             instantiate(tvar, direction < 0)
           }
           else {
@@ -141,7 +141,7 @@ trait Inferencing { this: Checking =>
       if (toTest.isEmpty) acc
       else tree match {
         case Apply(fn, _) =>
-          fn.tpe match {
+          fn.tpe.widen match {
             case mtp: MethodType =>
               val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
               occurring(fn, nocc, occ ::: acc)
@@ -196,47 +196,6 @@ trait Inferencing { this: Checking =>
         else NoType
       case _ => NoType
     }
-
-  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
-   *  If that's not already the case, add one. The added class type CT is determined as follows.
-   *  First, let C be the unique class such that
-   *  - there is a parent P_i such that P_i derives from C, and
-   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
-   *  Then, let CT be the smallest type which
-   *  - has C as its class symbol, and
-   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
-   */
-  def ensureFirstIsClass(parents: List[Type])(implicit ctx: Context): List[Type] = {
-    def realClassParent(cls: Symbol): ClassSymbol =
-      if (!cls.isClass) defn.ObjectClass
-      else if (!(cls is Trait)) cls.asClass
-      else cls.asClass.classParents match {
-        case parentRef :: _ => realClassParent(parentRef.symbol)
-        case nil => defn.ObjectClass
-      }
-    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
-      val pcls = realClassParent(parent.classSymbol)
-      if (pcls derivesFrom candidate) pcls else candidate
-    }
-    parents match {
-      case p :: _ if p.classSymbol.isRealClass => parents
-      case _ =>
-        val pcls = (defn.ObjectClass /: parents)(improve)
-        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
-        val ptype = ctx.typeComparer.glb(
-            defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
-        ptype :: parents
-    }
-  }
-
-  /** Ensure that first parent tree refers to a real class. */
-  def ensureFirstIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
-    case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ =>
-      // add synthetic class type
-      val first :: _ = ensureFirstIsClass(parents.tpes)
-      TypeTree(checkFeasible(first, pos, d"\n in inferred parent $first")).withPos(pos) :: parents
-  }
 
   /** Interpolate those undetermined type variables in the widened type of this tree
    *  which are introduced by type application contained in the tree.

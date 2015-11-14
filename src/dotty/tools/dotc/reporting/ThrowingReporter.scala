@@ -11,7 +11,7 @@ import Reporter._
  * info to the underlying reporter.
  */
 class ThrowingReporter(reportInfo: Reporter) extends Reporter {
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
+  def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = d match {
     case _: Error => throw d
     case _ => reportInfo.doReport(d)
   }

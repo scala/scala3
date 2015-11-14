@@ -221,7 +221,7 @@ object PickleBuffer {
       FINAL_PKL -> Final,
       METHOD_PKL -> Method,
       INTERFACE_PKL -> NoInitsInterface,
-      MODULE_PKL -> Module,
+      MODULE_PKL -> (Module | Lazy, Module),
       IMPLICIT_PKL -> Implicit,
       SEALED_PKL -> Sealed,
       CASE_PKL -> Case,

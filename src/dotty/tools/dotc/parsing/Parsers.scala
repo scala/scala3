@@ -259,7 +259,11 @@ object Parsers {
     }
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    private def scala2mode = ctx.settings.language.value.contains(nme.Scala2.toString)
+    private def testScala2Mode(msg: String, pos: Position = Position(in.offset)) = {
+      val s2 = ctx.settings.language.value.contains(nme.Scala2.toString)
+      if (s2) ctx.migrationWarning(msg, source atPos pos)
+      s2
+    }
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
@@ -322,6 +326,7 @@ object Parsers {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
       case Typed(t1, _) => isWildcard(t1)
       case Annotated(t1, _) => isWildcard(t1)
+      case Parens(t1) => isWildcard(t1)
       case _ => false
     }
 
@@ -1343,7 +1348,7 @@ object Parsers {
     private def flagOfToken(tok: Int): FlagSet = tok match {
       case ABSTRACT  => Abstract
       case FINAL     => Final
-      case IMPLICIT  => Implicit
+      case IMPLICIT  => ImplicitCommon
       case LAZY      => Lazy
       case OVERRIDE  => Override
       case PRIVATE   => Private
@@ -1377,12 +1382,21 @@ object Parsers {
       || flags1.isTypeFlags && flags2.isTypeFlags
     )
 
-    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
-      if (compatible(mods.flags, flag)) mods | flag
-      else {
-        syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
-        mods
+    def addFlag(mods: Modifiers, flag: FlagSet): Modifiers = {
+      def incompatible(kind: String) = {
+        syntaxError(s"modifier(s) `${mods.flags}' not allowed for $kind")
+        Modifiers(flag)
       }
+      if (compatible(mods.flags, flag)) mods | flag
+      else flag match {
+        case Trait => incompatible("trait")
+        case Method => incompatible("method")
+        case Mutable => incompatible("variable")
+        case _ =>
+          syntaxError(s"illegal modifier combination: ${mods.flags} and $flag")
+          mods
+      }
+    }
 
     /** AccessQualifier ::= "[" (Id | this) "]"
      */
@@ -1716,26 +1730,40 @@ object Parsers {
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
-      def atScala2Brace = scala2mode && in.token == LBRACE
+      def scala2ProcedureSyntax =
+        testScala2Mode("Procedure syntax no longer supported; `=' should be inserted here")
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
         val rhs = {
-          if (!atScala2Brace) accept(EQUALS)
+          if (!(in.token == LBRACE && scala2ProcedureSyntax)) accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods)
       } else {
+        val mods1 = addFlag(mods, Method)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
         var tpt = fromWithinReturnType(typedOpt())
         val rhs =
-          if (tpt.isEmpty || in.token == EQUALS) {
-            if (atScala2Brace) tpt = scalaUnit else accept(EQUALS)
+          if (in.token == EQUALS) {
+            in.nextToken()
+            expr
+          }
+          else if (!tpt.isEmpty)
+            EmptyTree
+          else if (scala2ProcedureSyntax) {
+            tpt = scalaUnit
+            if (in.token == LBRACE) expr()
+            else EmptyTree
+          }
+          else {
+            if (!isExprIntro) syntaxError("missing return type", in.lastOffset)
+            accept(EQUALS)
             expr()
-          } else EmptyTree
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods | Method)
+          }
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1)
       }
     }
 
@@ -1792,7 +1820,7 @@ object Parsers {
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = in.token match {
       case TRAIT =>
-        classDef(posMods(start, mods | Trait))
+        classDef(posMods(start, addFlag(mods, Trait)))
       case CLASS =>
         classDef(posMods(start, mods))
       case CASECLASS =>
@@ -2009,7 +2037,7 @@ object Parsers {
     }
 
     def localDef(start: Int, implicitFlag: FlagSet): Tree =
-      defOrDcl(start, defAnnotsMods(localModifierTokens) | implicitFlag)
+      defOrDcl(start, addFlag(defAnnotsMods(localModifierTokens), implicitFlag))
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
      *  BlockStat    ::= Import
@@ -2038,7 +2066,7 @@ object Parsers {
           if (in.token == IMPLICIT) {
             val start = in.skipToken()
             if (isIdent) stats += implicitClosure(start, Location.InBlock)
-            else stats += localDef(start, Implicit)
+            else stats += localDef(start, ImplicitCommon)
           } else {
             stats += localDef(in.offset, EmptyFlags)
           }

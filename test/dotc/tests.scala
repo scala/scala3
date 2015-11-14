@@ -5,6 +5,8 @@ import dotty.partest._
 import org.junit.Test
 import org.junit.experimental.categories._
 
+import scala.io.Source
+
 
 class tests extends CompilerTest {
 
@@ -35,6 +37,7 @@ class tests extends CompilerTest {
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
+  val scala2mode = List("-language:Scala2")
 
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
@@ -53,6 +56,7 @@ class tests extends CompilerTest {
 // This directory doesn't exist anymore
 // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
+  @Test def pickle_inf = compileFile(posDir, "pickleinf", testPickling)
 
   //@Test def pickle_core = compileDir(dotcDir, "core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
@@ -76,7 +80,7 @@ class tests extends CompilerTest {
   @Test def pos_desugar() = compileFile(posDir, "desugar", twice)
   @Test def pos_sigs() = compileFile(posDir, "sigs", twice)
   @Test def pos_typers() = compileFile(posDir, "typers", twice)
-  @Test def pos_typedidents() = compileFile(posDir, "typedIdents", twice)
+  @Test def pos_typedIdents() = compileDir(posDir, "typedIdents", twice)
   @Test def pos_assignments() = compileFile(posDir, "assignments", twice)
   @Test def pos_packageobject() = compileFile(posDir, "packageobject", twice)
   @Test def pos_overloaded() = compileFile(posDir, "overloaded", twice)
@@ -89,7 +93,6 @@ class tests extends CompilerTest {
   @Test def pos_valueclasses = compileFiles(posDir + "valueclasses/", twice)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", args = "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping", twice)
-  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
@@ -97,19 +100,24 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
+  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
+  @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
+  @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
+
   @Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_abstractOverride() = compileFile(negDir, "abstract-override", xerrors = 2)
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
+  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
-  @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
+  @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
-  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)(allowDoubleBindings)
+  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 14)(allowDoubleBindings)
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
-  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil, xerrors = 4)
-  @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 4)
+  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil, xerrors = 3)
+  @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
   @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 11)
@@ -125,16 +133,17 @@ class tests extends CompilerTest {
   @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3", xerrors = 2)
 
-  @Test def neg_t1279a = compileFile(negDir, "t1279a", xerrors = 1)
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 5)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
+  @Test def neg_variancesConstr = compileFile(negDir, "variances-constr", xerrors = 2)
+  @Test def neg_i871_missingReturnType = compileFile(negDir, "i871", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
-  @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
+  @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 3)
   @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
@@ -144,21 +153,32 @@ class tests extends CompilerTest {
   @Test def neg_i583 = compileFile(negDir, "i0583-skolemize", xerrors = 2)
   @Test def neg_finalSealed = compileFile(negDir, "final-sealed", xerrors = 2)
   @Test def neg_i705 = compileFile(negDir, "i705-inner-value-class", xerrors = 7)
+  @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 6)
-  @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 4)
-  @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 5)
+  @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 3)
+  @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
   @Test def neg_implicitLowerBound = compileFile(negDir, "implicit-lower-bound", xerrors = 1)
-  @Test def neg_partialApplications = compileFile(negDir, "partialApplications", xerrors = 8)
+  @Test def neg_validate = compileFile(negDir, "validate", xerrors = 18)
+  @Test def neg_validateParsing = compileFile(negDir, "validate-parsing", xerrors = 7)
+  @Test def neg_validateRefchecks = compileFile(negDir, "validate-refchecks", xerrors = 2)
 
   @Test def run_all = runFiles(runDir)
 
+  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+   .map(_.trim) // allow identation
+   .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+   .map(_.takeWhile(_ != "#").trim) // allow comments in the end of line
+   .filter(_.nonEmpty)
+   .toList
+
+  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
   @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
