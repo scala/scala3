@@ -3,6 +3,8 @@
 *.log
 *~
 
+*.sublime*
+
 # sbt specific
 dist/*
 target/
