@@ -1211,6 +1211,7 @@ object SymDenotations {
 
     /** The denotation is fully completed: all attributes are fully defined.
      *  ClassDenotations compiled from source are first completed, then fully completed.
+     *  Packages are never fully completed since members can be added at any time.
      *  @see Namer#ClassCompleter
      */
     private def isFullyCompleted(implicit ctx: Context): Boolean = {
@@ -1218,11 +1219,11 @@ object SymDenotations {
         case d: ClassDenotation => d.isFullyCompleted
         case _ => false
       }
-      def isLocallyFullyCompleted =
-        if (classParents.isEmpty) is(Package) || symbol.eq(defn.AnyClass)
+      def testFullyCompleted =
+        if (classParents.isEmpty) !is(Package) && symbol.eq(defn.AnyClass)
         else classParents.forall(isFullyCompletedRef)
       flagsUNSAFE.is(FullyCompleted) ||
-        isCompleted && isLocallyFullyCompleted && { setFlag(FullyCompleted); true }
+        isCompleted && testFullyCompleted && { setFlag(FullyCompleted); true }
     }
 
     // ------ syncing inheritance-related info -----------------------------
