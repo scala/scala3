@@ -320,7 +320,7 @@ object Denotations {
                   try info1 & info2
                   catch {
                     case ex: MergeError =>
-                      if (pre.widen.classSymbol.is(Scala2x))
+                      if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
                         info1 // follow Scala2 linearization -
                               // compare with way merge is performed in SymDenotation#computeMembersNamed
                       else

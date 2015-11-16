@@ -47,6 +47,8 @@ class ConsoleReporter(
         printMessageAndPos(s"error: ${d.msg}", d.pos)
         if (ctx.settings.prompt.value) displayPrompt()
       case d: ConditionalWarning if !d.enablingOption.value =>
+      case d: MigrationWarning =>
+        printMessageAndPos(s"migration warning: ${d.msg}", d.pos)
       case d: Warning =>
         printMessageAndPos(s"warning: ${d.msg}", d.pos)
       case _ =>
