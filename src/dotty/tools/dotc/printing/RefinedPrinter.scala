@@ -617,7 +617,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   override def toText(denot: Denotation): Text = denot match {
-    case denot: MultiDenotation => denot.toString
+    case denot: MultiDenotation => Text(denot.alternatives.map(dclText), " <and> ")
     case NoDenotation => "NoDenotation"
     case _ =>
       if (denot.symbol.exists) toText(denot.symbol)
