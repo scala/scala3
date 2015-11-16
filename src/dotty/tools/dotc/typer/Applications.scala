@@ -33,7 +33,7 @@ object Applications {
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
 
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx:Context) = {
-    val ref = tp member name
+    val ref = tp.member(name).suchThat(_.info.isParameterless)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
     else if (ref.info.isInstanceOf[PolyType])
