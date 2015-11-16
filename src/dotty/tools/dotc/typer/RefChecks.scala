@@ -288,7 +288,7 @@ object RefChecks {
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
-        if (member.name == nme.isDefined && member.is(Synthetic)) // isDefined methods are added automatially, can't have an override preset.
+        if (member.is(Synthetic) && desugar.isDesugaredCaseClassMethodName(member.name)) // such names are added automatically, can't have an override preset.
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(

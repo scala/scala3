@@ -81,6 +81,7 @@ object NameOps {
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
+    def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
