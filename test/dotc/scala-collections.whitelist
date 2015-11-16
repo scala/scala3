@@ -186,7 +186,7 @@
 ./scala-scala/src/library/scala/collection/SortedSetLike.scala
 ./scala-scala/src/library/scala/collection/Traversable.scala
 
-# https://github.com/lampepfl/dotty/issues/938
+# https://github.com/lampepfl/dotty/issues/938 (but relies also on #937 being fixed)
 #./scala-scala/src/library/scala/collection/TraversableLike.scala
 
 ./scala-scala/src/library/scala/collection/TraversableProxy.scala
