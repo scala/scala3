@@ -909,6 +909,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
+    // for secondary constructors we need to use that their type parameters
+    // are aliases of the class type parameters. See pos/i941.scala
+    if (sym.isConstructor && !sym.isPrimaryConstructor)
+      (sym.owner.typeParams, tparams1).zipped.foreach {(tparam, tdef) =>
+        tdef.symbol.info = TypeAlias(tparam.typeRef)
+       }
+
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     val tpt1 = checkSimpleKinded(typedType(tpt))
