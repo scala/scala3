@@ -1051,8 +1051,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
-    typed(tree, if (defn.isFunctionType(pt)) pt else AnyFunctionProto)
+  def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+    val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
+    var res = typed(tree, pt1)
+    if (pt1.eq(AnyFunctionProto) && !defn.isFunctionType(res.tpe)) {
+      def msg = "not a function; cannot be followed by `_'"
+      if (ctx.scala2Mode) {
+        ctx.migrationWarning(msg, tree.pos)
+        res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
+      }
+      else ctx.error(msg, tree.pos)
+    }
+    res
+  }
 
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
