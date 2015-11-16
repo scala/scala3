@@ -488,7 +488,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ => tp2 isRef ObjectClass
       }
       compareJavaArray
-    case tp1: ExprType if ctx.phase.id >= ctx.gettersPhase.id =>
+    case tp1: ExprType if ctx.phase.id > ctx.gettersPhase.id =>
       // getters might have converted T to => T, need to compensate.
       isSubType(tp1.widenExpr, tp2)
     case _ =>
