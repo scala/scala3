@@ -141,7 +141,7 @@
 ./scala-scala/src/library/scala/collection/GenSetLike.scala
 
 # breaks genMapLike https://github.com/lampepfl/dotty/issues/937
-#./scala-scala/src/library/scala/collection/GenTraversable.scala
+./scala-scala/src/library/scala/collection/GenTraversable.scala
 ./scala-scala/src/library/scala/collection/GenTraversableLike.scala
 
 ./scala-scala/src/library/scala/collection/GenTraversableOnce.scala
