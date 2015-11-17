@@ -23,6 +23,7 @@ class FrontEnd extends Phase {
     try body
     catch {
       case NonFatal(ex) =>
+        ex.printStackTrace()
         ctx.println(s"exception occurred while $doing ${ctx.compilationUnit}")
         throw ex
     }

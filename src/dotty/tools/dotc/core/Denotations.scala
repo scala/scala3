@@ -205,8 +205,32 @@ object Denotations {
           denot.symbol
       }
 
+    def slowSearch(name: Name)(implicit ctx: Context): Symbol =
+      info.decls.find(_.name == name).getOrElse(NoSymbol)
+
     def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+      if (info.exists) {
+        val meth = info.member(name.toTermName)
+        if (meth.exists) meth.requiredSymbol(_ is Method).asTerm
+        else { // Heisenbughunt
+          println(s"*** missing method: ${name.toString} in $this")
+          info.decls.checkConsistent()
+          println(i"decls = ${info.decls}")
+          if (slowSearch(name.toTermName).exists) {
+            System.err.println(i"**** slow search found: ${slowSearch(name.toTermName)}")
+            System.err.println("scope entries found:")
+            var e = info.decls.lastEntry
+            while (e != null) {
+              println(e.name)
+              e = e.prev
+            }
+            System.err.println("no more entries found")
+          }
+          throw new TypeError(s"Missing method: $this . $name")
+        }
+      }
+      else throw new TypeError(s"M  issing module: $this")
+
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
 

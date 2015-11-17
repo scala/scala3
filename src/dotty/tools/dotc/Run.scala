@@ -33,6 +33,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
+      ex.printStackTrace()
       ctx.println(i"exception occurred while compiling $units%, %")
       throw ex
   }
@@ -50,7 +51,6 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
 
   protected def compileUnits() = Stats.monitorHeartBeat {
-    ctx.checkSingleThreaded()
     val phases = ctx.squashPhases(ctx.phasePlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
     ctx.usePhases(phases)

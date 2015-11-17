@@ -70,7 +70,7 @@ object SymDenotations {
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
+    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) with util.CheckedSingleThreaded {
 
     //assert(symbol.id != 4940, name)
 
@@ -148,10 +148,12 @@ object SymDenotations {
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
-    final def info(implicit ctx: Context): Type = myInfo match {
+    final def info(implicit ctx: Context): Type = {
+      if (exists) checkSingleThreaded()
+      myInfo match {
       case myInfo: LazyType => completeFrom(myInfo); info
       case _ => myInfo
-    }
+    }}
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter = myInfo
@@ -1549,6 +1551,7 @@ object SymDenotations {
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+      if (exists) checkSingleThreaded()
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }

@@ -1174,7 +1174,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     try adapt(typedUnadapted(tree, pt), pt, tree)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
-      case ex: TypeError => errorTree(tree, ex.getMessage)
+      case ex: TypeError =>
+        ex.printStackTrace() // debug
+        errorTree(tree, ex.getMessage)
     }
   }
 
