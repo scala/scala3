@@ -7,6 +7,7 @@ import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 import util.DotClass
 import DenotTransformers._
 import Denotations._
+import Decorators._
 import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
@@ -121,10 +122,9 @@ object Phases {
               phase
             }
           squashedPhases += phaseToAdd
-          val shouldAddYCheck = YCheckAfter.exists(nm => phaseToAdd.phaseName.contains(nm)) || YCheckAll
+          val shouldAddYCheck = YCheckAfter.containsPhase(phaseToAdd) || YCheckAll
           if (shouldAddYCheck) {
             val checker = new TreeChecker
-
             squashedPhases += checker
           }
         }
