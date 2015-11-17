@@ -82,9 +82,9 @@
 ./scala-scala/src/library/scala/collection/immutable/Queue.scala
 
 # https://github.com/lampepfl/dotty/issues/916
-#./scala-scala/src/library/scala/collection/immutable/Seq.scala
-#./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
-#./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+./scala-scala/src/library/scala/collection/immutable/Seq.scala
+./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
+./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
 
 ./scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
 
@@ -142,7 +142,7 @@
 
 # breaks genMapLike https://github.com/lampepfl/dotty/issues/937
 #./scala-scala/src/library/scala/collection/GenTraversable.scala
-#./scala-scala/src/library/scala/collection/GenTraversableLike.scala
+./scala-scala/src/library/scala/collection/GenTraversableLike.scala
 
 ./scala-scala/src/library/scala/collection/GenTraversableOnce.scala
 ./scala-scala/src/library/scala/collection/IndexedSeq.scala
@@ -226,7 +226,6 @@
 ./scala-scala/src/library/scala/collection/immutable/NumericRange.scala
 ./scala-scala/src/library/scala/collection/immutable/Range.scala
 ./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
-./scala-scala/src/library/scala/collection/immutable/Seq.scala
 
 # uses refinements that dotty does not support
 #./scala-scala/src/library/scala/collection/immutable/Set.scala
