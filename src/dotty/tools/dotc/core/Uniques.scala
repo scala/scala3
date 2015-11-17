@@ -92,7 +92,7 @@ object Uniques {
   }
 
   final class RefinedUniques extends HashSet[RefinedType](Config.initialUniquesCapacity) with Hashable {
-    override val hashSeed = "CachedRefinedType".hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
+    override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
     override def hash(x: RefinedType): Int = x.hash
 
     private def findPrevious(h: Int, parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
