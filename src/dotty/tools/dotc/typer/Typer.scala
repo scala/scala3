@@ -253,8 +253,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
         return tree.withType(pt)
-      if (isVarPattern(tree))
-        return typed(untpd.Bind(name, untpd.Ident(nme.WILDCARD)).withPos(tree.pos), pt)
+      if (isVarPattern(tree) && name.isTermName)
+        return typed(desugar.patternVar(tree), pt)
     }
 
     val saved = importedFromRoot
@@ -848,7 +848,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         args = args.take(tparams.length)
       }
       def typedArg(arg: untpd.Tree, tparam: Symbol) = {
-        val arg1 = typed(arg, if (ctx.mode is Mode.Pattern) tparam.info else WildcardType)
+        val (desugaredArg, argPt) =
+          if (ctx.mode is Mode.Pattern)
+            (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.info)
+          else
+            (arg, WildcardType)
+        val arg1 = typed(desugaredArg, argPt)
         adaptTypeArg(arg1, if (tparam.isCompleted) tparam.info else WildcardType)
       }
       val args1 = args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
