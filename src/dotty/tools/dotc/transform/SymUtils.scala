@@ -99,4 +99,13 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.addAnnotations(from.annotationsCarrying(meta))
     self
   }
+
+  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context) = {
+    if (!self.unforcedDecls.lookup(name).exists) {
+      val companionMethod = ctx.synthesizeCompanionMethod(name, target, self)
+      if (companionMethod.exists) {
+        companionMethod.entered
+      }
+    }
+  }
 }
