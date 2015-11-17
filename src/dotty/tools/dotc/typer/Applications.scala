@@ -848,11 +848,19 @@ trait Applications extends Compatibility { self: Typer =>
       else (sym1 is Module) && isDerived(sym1.companionClass, sym2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
-     *  `alt2` with type `tp2` ? This is the case if
+     *  `alt2` with type `tp2` ?
      *
-     *    1. `tp2` is a method or poly type but `tp1` isn't, or `tp1` is nullary.
-     *    2. `tp2` and `tp1` are method or poly types and `tp2` can be applied to the parameters of `tp1`.
-     *    3. Neither `tp1` nor `tp2` are method or poly types and `tp1` is compatible with `tp2`.
+     *    1. A method `alt1` of type (p1: T1, ..., pn: Tn)U is as specific as `alt2`
+     *       if `alt2` is applicable to arguments (p1, ..., pn) of types T1,...,Tn
+     *       or if `alt1` is nullary.
+     *    2. A polymorphic member of type [a1 >: L1 <: U1, ..., an >: Ln <: Un]T is as
+     *       specific as `alt2` of type `tp2` if T is as specific as `tp2` under the
+     *       assumption that for i = 1,...,n each ai is an abstract type name bounded
+     *       from below by Li and from above by Ui.
+     *    3. A member of any other type `tp1` is:
+     *       a. always as specific as a method or a polymorphic method.
+     *       b. as specific as a member of any other type `tp2` if `tp1` is compatible
+     *          with `tp2`.
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: PolyType =>
@@ -870,8 +878,17 @@ trait Applications extends Compatibility { self: Typer =>
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>
         tp2 match {
-          case tp2: MethodOrPoly => true
-          case _ => isCompatible(tp1, tp2)
+          case tp2: MethodType => true
+          case tp2: PolyType if tp2.isPolymorphicMethodType => true
+          case tp2: PolyType =>
+            val nestedCtx = ctx.fresh.setExploreTyperState
+
+            {
+              implicit val ctx: Context = nestedCtx
+              isCompatible(tp1, constrained(tp2).resultType)
+            }
+          case _ =>
+            isCompatible(tp1, tp2)
         }
     }}
 

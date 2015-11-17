@@ -2266,6 +2266,11 @@ object Types {
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
+    def isPolymorphicMethodType: Boolean = resType match {
+      case _: MethodType => true
+      case _ => false
+    }
+
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       resultType.substParams(this, argTypes)
 
