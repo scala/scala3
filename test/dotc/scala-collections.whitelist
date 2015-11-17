@@ -167,7 +167,7 @@
 ./scala-scala/src/library/scala/collection/SeqExtractors.scala
 
 # https://github.com/lampepfl/dotty/issues/945
-#./scala-scala/src/library/scala/collection/SeqLike.scala
+./scala-scala/src/library/scala/collection/SeqLike.scala
 
 ./scala-scala/src/library/scala/collection/SeqProxy.scala
 ./scala-scala/src/library/scala/collection/SeqProxyLike.scala
