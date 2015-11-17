@@ -16,4 +16,10 @@ object implicits2 {
 
   val x: scala.collection.immutable.WrappedString = "abc"
 
+  implicit val (xx: String, y: Int) = ("a", 22)
+
+  def main(args: Array[String]) = {
+    println(implicitly[String])
+    println(implicitly[Int])
+  }
 }

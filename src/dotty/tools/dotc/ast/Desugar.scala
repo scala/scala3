@@ -517,6 +517,12 @@ object desugar {
       }
   }
 
+  /** Expand variable identifier x to x @ _ */
+  def patternVar(tree: Tree)(implicit ctx: Context) = {
+    val Ident(name) = tree
+    Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
+  }
+
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
     case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
