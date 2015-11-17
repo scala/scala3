@@ -1487,10 +1487,8 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
-      if (myMemberFingerPrint != FingerPrint.unknown)
-        computeMemberFingerPrint
-      if (myMemberCache != null)
-        myMemberCache invalidate sym.name
+      myMemberFingerPrint = FingerPrint.unknown
+      if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
     /** All members of this class that have the given name.
