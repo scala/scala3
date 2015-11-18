@@ -863,10 +863,7 @@ trait Applications extends Compatibility { self: Typer =>
      *          with `tp2`.
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
-      case tp1: PolyType =>
-        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
-        isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
-      case tp1: MethodType =>
+      case tp1: MethodType => // (1)
         def repeatedToSingle(tp: Type): Type = tp match {
           case tp @ ExprType(tp1) => tp.derivedExprType(repeatedToSingle(tp1))
           case _ => if (tp.isRepeatedParam) tp.argTypesHi.head else tp
@@ -876,18 +873,21 @@ trait Applications extends Compatibility { self: Typer =>
           else tp1.paramTypes
         isApplicable(alt2, formals1, WildcardType) ||
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
-      case _ =>
+      case tp1: PolyType => // (2)
+        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
+        isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
+      case _ => // (3)
         tp2 match {
-          case tp2: MethodType => true
-          case tp2: PolyType if tp2.isPolymorphicMethodType => true
-          case tp2: PolyType =>
+          case tp2: MethodType => true // (3a)
+          case tp2: PolyType if tp2.isPolymorphicMethodType => true // (3a)
+          case tp2: PolyType => // (3b)
             val nestedCtx = ctx.fresh.setExploreTyperState
 
             {
               implicit val ctx: Context = nestedCtx
               isCompatible(tp1, constrained(tp2).resultType)
             }
-          case _ =>
+          case _ => // (3b)
             isCompatible(tp1, tp2)
         }
     }}
