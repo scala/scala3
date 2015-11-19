@@ -40,9 +40,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     this.positions = positions
   }
 
-  private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
-  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
-  private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
+  private val symAtAddr  = new mutable.LinkedHashMap[Addr, Symbol]
+  private val treeAtAddr = new mutable.LinkedHashMap[Addr, Tree]
+  private val typeAtAddr = new mutable.LinkedHashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
   private var stubs: Set[Symbol] = Set()
 
   private var roots: Set[SymDenotation] = null

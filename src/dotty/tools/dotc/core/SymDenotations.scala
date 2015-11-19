@@ -1304,7 +1304,7 @@ object SymDenotations {
     /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
-        baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+        baseTypeRefCache = new java.util.LinkedHashMap[CachedType, Type]
         myBaseClasses = null
         mySuperClassBits = null
         baseTypeRefValid = ctx.runId
@@ -1417,8 +1417,18 @@ object SymDenotations {
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
+    private var thread: Thread = null
+
+    private def checkSingleThreaded = {
+      this.synchronized {
+        if (thread == null)
+          thread = Thread.currentThread()
+        else assert(thread == Thread.currentThread())
+      }
+    }
 
     private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
+      checkSingleThreaded
       if (myMemberCachePeriod != ctx.period) {
         myMemberCache = new LRUCache
         myMemberCachePeriod = ctx.period
@@ -1433,6 +1443,7 @@ object SymDenotations {
      *                 If this is EmptyScope, the scope is `decls`.
      */
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+      checkSingleThreaded
       val mscope = scope match {
         case scope: MutableScope =>
           // if enter gets a scope as an argument,
@@ -1553,7 +1564,7 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
+    private[this] var baseTypeRefCache: java.util.LinkedHashMap[CachedType, Type] = null
     private[this] var baseTypeRefValid: RunId = NoRunId
 
     /** Compute tp.baseTypeRef(this) */

@@ -61,17 +61,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private val called = new LinkedHashMap[Symbol, SymSet]
 
     /** Symbols that are called from an inner class. */
-    private val calledFromInner = new HashSet[Symbol]
+    private val calledFromInner = new LinkedHashSet[Symbol]
 
     /** A map from local methods and classes to the owners to which they will be lifted as members.
      *  For methods and classes that do not have any dependencies this will be the enclosing package.
      *  symbols with packages as lifted owners will subsequently represented as static
      *  members of their toplevel class, unless their enclosing class was already static.
      */
-    private val liftedOwner = new HashMap[Symbol, Symbol]
+    private val liftedOwner = new mutable.LinkedHashMap[Symbol, Symbol]
 
     /** Buffers for lifted out classes and methods, indexed by owner */
-    private val liftedDefs = new HashMap[Symbol, mutable.ListBuffer[Tree]]
+    private val liftedDefs = new mutable.LinkedHashMap[Symbol, mutable.ListBuffer[Tree]]
 
     /** A flag to indicate whether new free variables have been found */
     private var changedFreeVars: Boolean = _

@@ -64,7 +64,7 @@ object OverridingPairs {
     }
 
     private val subParents = {
-      val subParents = new mutable.HashMap[Symbol, BitSet]
+      val subParents = new mutable.LinkedHashMap[Symbol, BitSet]
       for (bc <- base.info.baseClasses)
         subParents(bc) = BitSet(parents.indices.filter(parents(_).derivesFrom(bc)): _*)
       subParents
@@ -77,7 +77,7 @@ object OverridingPairs {
      *  (maybe excluded because of hasCommonParentAsSubclass).
      *  These will not appear as overriding
      */
-    private val visited = new mutable.HashSet[Symbol]
+    private val visited = new mutable.LinkedHashSet[Symbol]
 
     /** The current entry candidate for overriding
      */

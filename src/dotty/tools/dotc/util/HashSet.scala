@@ -14,6 +14,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
 
   private def allocate(size: Int) = {
     table = new Array[AnyRef](size)
+    checkTread
     limit = (size * loadFactor).toInt
   }
 
@@ -47,6 +48,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   private def addEntryAt(idx: Int, x: T) = {
     table(idx) = x
     used += 1
+    checkTread
     if (used > limit) growTable()
     x
   }
@@ -63,6 +65,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   }
 
   private var rover: Int = -1
+  private var thread: Thread = null
 
   /** Add entry `x` to set */
   def addEntry(x: T): Unit = {
@@ -75,6 +78,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
     }
     table(h) = x
     used += 1
+    checkTread
     if (used > (table.length >> 2)) growTable()
   }
 
@@ -95,8 +99,17 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
       else null
   }
 
+  private def checkTread: Unit = {
+    synchronized {
+      if (thread == null)
+        thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread())
+    }
+  }
+
   /** Privileged access: Find first entry with given hashcode */
   protected def findEntryByHash(hashCode: Int): T = {
+    checkTread
     rover = index(hashCode)
     nextEntryByHash(hashCode)
   }
@@ -107,6 +120,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   protected def nextEntryByHash(hashCode: Int): T = {
     var entry = table(rover)
     while (entry ne null) {
+      checkTread
       rover = index(rover + 1)
       if (hash(entry.asInstanceOf[T]) == hashCode) return entry.asInstanceOf[T]
       entry = table(rover)
@@ -124,6 +138,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.2
   private def addOldEntry(x: T): Unit = {
     var h = index(hash(x))
     var entry = table(h)
+    checkTread
     while (entry ne null) {
       h = index(h + 1)
       entry = table(h)

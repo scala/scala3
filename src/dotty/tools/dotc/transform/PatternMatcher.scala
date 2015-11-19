@@ -465,7 +465,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         if (!emitVars) in
         else {
           // binders in `subPatBindersStored` that are referenced by tree `in`
-          val usedBinders = new collection.mutable.HashSet[Symbol]()
+          val usedBinders = new collection.mutable.LinkedHashSet[Symbol]()
           // all potentially stored subpat binders
           val potentiallyStoredBinders = stored.unzip._1.toSet
           // compute intersection of all symbols in the tree `in` and all potentially stored subpat binders

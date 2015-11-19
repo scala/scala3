@@ -583,7 +583,7 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying = new mutable.HashSet[Type]
+    private[core] val pendingUnderlying = new mutable.LinkedHashSet[Type]
 
 
     private[core] var phasesPlan: List[List[Phase]] = _
@@ -623,8 +623,10 @@ object Contexts {
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded() =
+    synchronized {
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
+    }
   }
 
   object Context {

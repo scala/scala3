@@ -51,6 +51,16 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
     lookupNext(last, first, next)
   }
 
+  private var thread: Thread = null
+
+  private def checkSingleThreaded = {
+    this.synchronized {
+      if (thread == null)
+        thread = Thread.currentThread()
+      else assert(thread == Thread.currentThread())
+    }
+  }
+
   /** Enter key/value in cache at position `last`.
    *  As a side effect, sets `last` to `lastButOne`.
    *  If `lastButOne` was set by a preceding unsuccessful `lookup`
@@ -59,6 +69,7 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
    *  is inserted at a random position in the queue.
    */
   def enter(key: Key, value: Value): Unit = {
+    checkSingleThreaded
     keys(last) = key
     values(last) = value
     last = lastButOne
@@ -67,11 +78,13 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   /** Invalidate key. The invalidated element becomes
    *  the last in the queue.
    */
-  def invalidate(key: Key): Unit =
+  def invalidate(key: Key): Unit = {
+    checkSingleThreaded
     if (lookup(key) != null) {
       keys(first) = null
       last = first
     }
+  }
 
   def indices: Iterator[Int] = Iterator.iterate(first)(next.apply)
 

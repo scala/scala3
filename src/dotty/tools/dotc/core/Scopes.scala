@@ -174,6 +174,16 @@ object Scopes {
      */
     private var hashTable: Array[ScopeEntry] = null
 
+    private var thread: Thread = null
+
+    private def checkSingleThreaded = {
+      this.synchronized {
+        if (thread == null)
+          thread = Thread.currentThread()
+        else assert(thread == Thread.currentThread())
+      }
+    }
+
     /** a cache for all elements, to be used by symbol iterator.
      */
     private var elemsCache: List[Symbol] = null
@@ -197,6 +207,7 @@ object Scopes {
 
     /** create and enter a scope entry with given name and symbol */
     protected def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry = {
+      checkSingleThreaded
       ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
       val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
@@ -212,6 +223,7 @@ object Scopes {
       newScopeEntry(sym.name, sym)
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
+      checkSingleThreaded
       val idx = e.name.hashCode & (hashTable.length - 1)
       e.tail = hashTable(idx)
       assert(e.tail != e)
@@ -247,6 +259,7 @@ object Scopes {
 
     private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit = {
       if (e ne null) {
+        checkSingleThreaded
         if (n < MaxRecursions) {
           enterAllInHash(e.prev, n + 1)
           enterInHash(e)
@@ -264,6 +277,7 @@ object Scopes {
 
     /** Remove entry from this scope (which is required to be present) */
     final def unlink(e: ScopeEntry)(implicit ctx: Context): Unit = {
+      checkSingleThreaded
       if (lastEntry == e) {
         lastEntry = e.prev
       } else {
@@ -298,6 +312,7 @@ object Scopes {
      *  @pre `prev` and `replacement` have the same name.
      */
     final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+      checkSingleThreaded
       require(prev.name == replacement.name)
       var e = lookupEntry(prev.name)
       while (e ne null) {

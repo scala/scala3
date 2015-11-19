@@ -22,7 +22,7 @@ class TastyUnpickler(reader: TastyReader) {
 
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 
-  private val sectionReader = new mutable.HashMap[String, TastyReader]
+  private val sectionReader = new mutable.LinkedHashMap[String, TastyReader]
   val tastyName = new TastyName.Table
 
   def check(cond: Boolean, msg: => String) =
