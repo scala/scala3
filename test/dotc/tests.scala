@@ -224,4 +224,11 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
+
+  @Test def tasty_new_all = compileFiles(newDir, testPickling)
+  @Test def tasty_dotc_config = compileDir(dotcDir, "config", testPickling)
+  @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
+  @Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
+  @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
+  @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
 }
