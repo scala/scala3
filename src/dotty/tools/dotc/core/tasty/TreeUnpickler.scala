@@ -199,7 +199,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
                 else 0
               TypeAlias(alias, variance)
             case ANNOTATED =>
-              AnnotatedType(Annotation(readTerm()), readType())
+              val annot = Annotation(readTerm())
+              AnnotatedType(readType(), annot)
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>

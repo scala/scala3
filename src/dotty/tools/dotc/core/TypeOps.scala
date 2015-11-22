@@ -482,7 +482,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         normalizeToRef(tp1)
       case ErrorType =>
         defn.AnyType
-      case AnnotatedType(_, tpe) =>
+      case AnnotatedType(tpe, _) =>
         normalizeToRef(tpe)
       case _ =>
         throw new TypeError(s"unexpected parent type: $tp")

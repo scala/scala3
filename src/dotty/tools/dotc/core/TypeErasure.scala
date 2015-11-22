@@ -44,7 +44,7 @@ object TypeErasure {
       true
     case JavaArrayType(elem) =>
       isErasedType(elem)
-    case AnnotatedType(_, tp) =>
+    case AnnotatedType(tp, _) =>
       isErasedType(tp)
     case ThisType(tref) =>
       isErasedType(tref)

@@ -1051,7 +1051,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(annot1, arg1), annot1, arg1)
     else {
-      val tpt = TypeTree(AnnotatedType(Annotation(annot1), arg1.tpe.widen))
+      val tpt = TypeTree(AnnotatedType(arg1.tpe.widen, Annotation(annot1)))
       assignType(cpy.Typed(tree)(arg1, tpt), tpt)
     }
   }
