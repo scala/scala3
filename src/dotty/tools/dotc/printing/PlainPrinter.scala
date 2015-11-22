@@ -158,7 +158,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case PolyParam(pt, n) =>
         toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
-      case AnnotatedType(annot, tpe) =>
+      case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)

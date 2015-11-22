@@ -83,8 +83,8 @@ object Variances {
       varianceInType(restpe)(tparam)
     case tp @ PolyType(_) =>
       flip(varianceInTypes(tp.paramBounds)(tparam)) & varianceInType(tp.resultType)(tparam)
-    case AnnotatedType(annot, tp) =>
-      varianceInAnnot(annot)(tparam) & varianceInType(tp)(tparam)
+    case AnnotatedType(tp, annot) =>
+      varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
     case tp: AndOrType =>
       varianceInType(tp.tp1)(tparam) & varianceInType(tp.tp2)(tparam)
     case _ =>

@@ -404,7 +404,7 @@ trait TypeAssigner {
     tree.withType(sym.nonMemberTermRef)
 
   def assignType(tree: untpd.Annotated, annot: Tree, arg: Tree)(implicit ctx: Context) =
-    tree.withType(AnnotatedType(Annotation(annot), arg.tpe))
+    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.valRef)

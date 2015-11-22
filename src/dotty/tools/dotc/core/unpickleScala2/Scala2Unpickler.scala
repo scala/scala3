@@ -800,10 +800,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val boundSyms = until(end, readSymbolRef)
         elimExistentials(boundSyms, restpe)
       case ANNOTATEDtpe =>
-        val tp = readTypeRef()
-        // no annotation self type is supported, so no test whether this is a symbol ref
-        val annots = until(end, readAnnotationRef)
-        AnnotatedType.make(annots, tp)
+        AnnotatedType.make(readTypeRef(), until(end, readAnnotationRef))
       case _ =>
         noSuchTypeTag(tag, end)
     }

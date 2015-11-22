@@ -843,7 +843,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
          * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
          * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
          */
-        case a @ AnnotatedType(_, t) =>
+        case a @ AnnotatedType(t, _) =>
           debuglog(s"typeKind of annotated type $a")
           t.toTypeKind(ct)(storage)
 

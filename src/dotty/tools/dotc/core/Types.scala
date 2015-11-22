@@ -176,7 +176,7 @@ object Types {
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
-      case AnnotatedType(annot, tp) => (annot matches cls) || (tp hasAnnotation cls)
+      case AnnotatedType(tp, annot) => (annot matches cls) || (tp hasAnnotation cls)
       case _ => false
     }
 
@@ -758,7 +758,7 @@ object Types {
       case tp: LazyRef =>
         tp.ref.dealias
       case tp: AnnotatedType =>
-        tp.derivedAnnotatedType(tp.annot, tp.tpe.dealias)
+        tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
       case tp => tp
     }
 
@@ -2197,7 +2197,7 @@ object Types {
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def translateRepeated(tp: Type): Type = tp match {
         case tp @ ExprType(tp1) => tp.derivedExprType(translateRepeated(tp1))
-        case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
+        case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
           val typeSym = tp.typeSymbol.asClass
           assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
           tp.translateParameterized(typeSym, defn.RepeatedParamClass)
@@ -2787,23 +2787,22 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(annot: Annotation, tpe: Type)
+  case class AnnotatedType(tpe: Type, annot: Annotation)
       extends UncachedProxyType with ValueType {
     // todo: cache them? but this makes only sense if annotations and trees are also cached.
     override def underlying(implicit ctx: Context): Type = tpe
-    def derivedAnnotatedType(annot: Annotation, tpe: Type) =
-      if ((annot eq this.annot) && (tpe eq this.tpe)) this
-      else AnnotatedType(annot, tpe)
+    def derivedAnnotatedType(tpe: Type, annot: Annotation) =
+      if ((tpe eq this.tpe) && (annot eq this.annot)) this
+      else AnnotatedType(tpe, annot)
 
     override def stripTypeVar(implicit ctx: Context): Type =
-      derivedAnnotatedType(annot, tpe.stripTypeVar)
+      derivedAnnotatedType(tpe.stripTypeVar, annot)
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
   object AnnotatedType {
-    def make(annots: List[Annotation], underlying: Type) =
-      if (annots.isEmpty) underlying
-      else (underlying /: annots)((tp, ann) => AnnotatedType(ann, tp))
+    def make(underlying: Type, annots: List[Annotation]) =
+      (underlying /: annots)(AnnotatedType(_, _))
   }
 
   // Special type objects and classes -----------------------------------------------------
@@ -2997,9 +2996,9 @@ object Types {
         case tp: SkolemType =>
           tp.derivedSkolemType(this(tp.info))
 
-        case tp @ AnnotatedType(annot, underlying) =>
+        case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp else tp.derivedAnnotatedType(mapOver(annot), underlying1)
+          if (underlying1 eq underlying) tp else tp.derivedAnnotatedType(underlying1, mapOver(annot))
 
         case tp @ WildcardType =>
           tp.derivedWildcardType(mapOver(tp.optBounds))
@@ -3139,7 +3138,7 @@ object Types {
       case tp: SkolemType =>
         this(x, tp.info)
 
-      case AnnotatedType(annot, underlying) =>
+      case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)
 
       case tp: TypeVar =>

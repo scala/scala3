@@ -190,7 +190,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {
-              case AnnotatedType(annot, tpe) => AnnotatedType(transformAnnot(annot), tpe)
+              case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))
               case tpe => tpe
             }
           )

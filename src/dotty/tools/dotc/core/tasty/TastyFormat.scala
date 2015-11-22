@@ -131,7 +131,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
                   TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
-                  ANNOTATED      Length fullAnnotation_Term underlying_Type
+                  ANNOTATED      Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
                   BIND           Length boundName_NameRef bounds_Type
