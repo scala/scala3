@@ -152,7 +152,12 @@ trait Reporting { this: Context =>
       case _ => String.valueOf(res)
     }
     if (printer eq config.Printers.noPrinter) op
-    else traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
+    else {
+      // Avoid evaluating question multiple time, since each evaluation
+      // may cause some extra logging output.
+      val q: String = question
+      traceIndented[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
+    }
   }
 
   def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T =
