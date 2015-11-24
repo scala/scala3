@@ -144,8 +144,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case info2: TypeAlias => isSubType(tp1, info2.alias)
         case _ => info1 match {
           case info1: TypeAlias => isSubType(info1.alias, tp2)
-          case NoType => secondTry(tp1, tp2)
-          case _ => thirdTryNamed(tp1, tp2)
+          case _ => false
         }
       }
       def compareNamed = {
@@ -153,6 +152,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         tp1 match {
           case tp1: NamedType =>
             val sym1 = tp1.symbol
+            compareAlias(tp1.info) ||
             (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
                ctx.erasedTypes || sym1.isStaticOwner || isSubType(tp1.prefix, tp2.prefix)
             else
@@ -164,10 +164,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             ) ||
             compareHK(tp1, tp2, inOrder = true) ||
             compareHK(tp2, tp1, inOrder = false) ||
-            compareAlias(tp1.info)
+            thirdTryNamed(tp1, tp2)
           case _ =>
             compareHK(tp2, tp1, inOrder = false) ||
-            compareAlias(NoType)
+            compareAlias(NoType) ||
+            secondTry(tp1, tp2)
         }
       }
       compareNamed

@@ -263,16 +263,13 @@
 ./scala-scala/src/library/scala/collection/generic/GenericSeqCompanion.scala
 ./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 
-# deep subtype
-#./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
 
 ./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
 ./scala-scala/src/library/scala/collection/generic/HasNewCombiner.scala
 
-# https://github.com/lampepfl/dotty/issues/943
-# [error] Test dotc.tests.compileStdLib failed: java.lang.Error: deep subtype, took 6.462 sec
-#./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
 
 ./scala-scala/src/library/scala/collection/generic/ImmutableSortedMapFactory.scala
 ./scala-scala/src/library/scala/collection/generic/ImmutableSortedSetFactory.scala
