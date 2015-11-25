@@ -41,11 +41,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   }
 
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  private val unpickledSyms = new mutable.HashSet[Symbol]
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
   private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
   private var stubs: Set[Symbol] = Set()
 
   private var roots: Set[SymDenotation] = null
+
+  private def registerSym(addr: Addr, sym: Symbol) = {
+    symAtAddr(addr) = sym
+    unpickledSyms += sym
+  }
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
@@ -206,7 +212,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               OrType(readType(), readType())
             case BIND =>
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
-              symAtAddr(start) = sym
+              registerSym(start, sym)
               TypeRef.withFixedSym(NoPrefix, sym.name, sym)
             case POLYtype =>
               val (names, paramReader) = readNamesSkipParams[TypeName]
@@ -404,7 +410,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         } // TODO set position
       sym.annotations = annots
       ctx.enter(sym)
-      symAtAddr(start) = sym
+      registerSym(start, sym)
       if (isClass) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
@@ -590,7 +596,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
             val companion = sym.scalacLinkedClass
-            if (companion != NoSymbol) {
+            if (companion != NoSymbol && unpickledSyms.contains(companion)) {
               import transform.SymUtils._
               if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
@@ -809,7 +815,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               val name = readName()
               val info = readType()
               val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, info)
-              symAtAddr(start) = sym
+              registerSym(start, sym)
               Bind(sym, readTerm())
             case ALTERNATIVE =>
               Alternative(until(end)(readTerm()))
