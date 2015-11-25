@@ -263,16 +263,13 @@
 ./scala-scala/src/library/scala/collection/generic/GenericSeqCompanion.scala
 ./scala-scala/src/library/scala/collection/generic/GenericSetTemplate.scala
 
-# deep subtype
-#./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
+./scala-scala/src/library/scala/collection/generic/GenericTraversableTemplate.scala
 
 ./scala-scala/src/library/scala/collection/generic/HasNewBuilder.scala
 ./scala-scala/src/library/scala/collection/generic/HasNewCombiner.scala
 
-# https://github.com/lampepfl/dotty/issues/943
-# [error] Test dotc.tests.compileStdLib failed: java.lang.Error: deep subtype, took 6.462 sec
-#./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/ImmutableSetFactory.scala
 
 ./scala-scala/src/library/scala/collection/generic/ImmutableSortedMapFactory.scala
 ./scala-scala/src/library/scala/collection/generic/ImmutableSortedSetFactory.scala
@@ -282,20 +279,23 @@
 ./scala-scala/src/library/scala/collection/generic/IsTraversableOnce.scala
 ./scala-scala/src/library/scala/collection/generic/IterableForwarder.scala
 
-# [error] Test dotc.tests.compileStdLib failed: java.lang.Error: deep subtype
-# fails if any of those classes are added:
-#./scala-scala/src/library/scala/collection/generic/MapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/MutableMapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/MutableSetFactory.scala
-#./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
-#./scala-scala/src/library/scala/collection/generic/ParFactory.scala
-#./scala-scala/src/library/scala/collection/generic/ParMapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
-#./scala-scala/src/library/scala/collection/generic/SeqFactory.scala
-#./scala-scala/src/library/scala/collection/generic/SortedMapFactory.scala
-#./scala-scala/src/library/scala/collection/generic/SortedSetFactory.scala
-#./scala-scala/src/library/scala/collection/generic/SetFactory.scala
+./scala-scala/src/library/scala/collection/generic/MapFactory.scala
+./scala-scala/src/library/scala/collection/generic/MutableMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/MutableSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/ParMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/SeqFactory.scala
+./scala-scala/src/library/scala/collection/generic/SortedMapFactory.scala
+./scala-scala/src/library/scala/collection/generic/SortedSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/SetFactory.scala
 
+# deep subtype
+#./scala-scala/src/library/scala/collection/generic/ParFactory.scala
+
+# https://github.com/lampepfl/dotty/issues/974
+#./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
+
+# cyclic reference, maybe related to #974
+#./scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 
 ./scala-scala/src/library/scala/collection/generic/OrderedTraversableFactory.scala
 ./scala-scala/src/library/scala/collection/generic/SeqForwarder.scala
