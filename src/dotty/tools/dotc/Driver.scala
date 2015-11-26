@@ -50,8 +50,13 @@ abstract class Driver extends DotClass {
     process(args, initCtx)
   }
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
+    // Preload scala.util.control.NonFatal. Otherwise, when trying to catch a StackOverflowError,
+    // we may try to load it but fail with another StackOverflowError and lose the original exception,
+    // see <https://groups.google.com/forum/#!topic/scala-user/kte6nak-zPM>.
+    val _ = NonFatal
     sys.exit(if (process(args).hasErrors) 1 else 0)
+  }
 }
 
 class FatalError(msg: String) extends Exception
