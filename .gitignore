@@ -32,7 +32,7 @@ classes/
 tests/partest-generated/
 tests/locks/
 /test-classes/
-
+scala-scala
 
 # Ignore output files but keep the directory
 out/
