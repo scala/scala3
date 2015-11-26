@@ -331,17 +331,23 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
       comparePolyParam
     case tp2: RefinedType =>
+      def compareRefinedSlow: Boolean = {
+        val name2 = tp2.refinedName
+        isSubType(tp1, tp2.parent) &&
+          (name2 == nme.WILDCARD || hasMatchingMember(name2, tp1, tp2))
+      }
       def compareRefined: Boolean = {
         val tp1w = tp1.widen
         val skipped2 = skipMatching(tp1w, tp2)
         if ((skipped2 eq tp2) || !Config.fastPathForRefinedSubtype) {
-          val name2 = tp2.refinedName
-          val normalPath =
-            isSubType(tp1, tp2.parent) &&
-              (  name2 == nme.WILDCARD
-              || hasMatchingMember(name2, tp1, tp2)
-              || fourthTry(tp1, tp2)
-              )
+          val normalPath = tp1 match {
+            case tp1: AndType =>
+              // Delay calling `compareRefinedSlow` because looking up a member
+              // of an `AndType` can lead to a cascade of subtyping checks
+              fourthTry(tp1, tp2) || compareRefinedSlow
+            case _ =>
+              compareRefinedSlow || fourthTry(tp1, tp2)
+          }
           normalPath ||
             needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2), classBounds(tp2))
         }

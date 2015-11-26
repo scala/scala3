@@ -287,9 +287,7 @@
 ./scala-scala/src/library/scala/collection/generic/SortedMapFactory.scala
 ./scala-scala/src/library/scala/collection/generic/SortedSetFactory.scala
 ./scala-scala/src/library/scala/collection/generic/SetFactory.scala
-
-# deep subtype
-#./scala-scala/src/library/scala/collection/generic/ParFactory.scala
+./scala-scala/src/library/scala/collection/generic/ParFactory.scala
 
 # https://github.com/lampepfl/dotty/issues/974
 #./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
