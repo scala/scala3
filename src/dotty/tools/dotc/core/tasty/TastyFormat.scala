@@ -172,6 +172,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SCALA2X                           // Imported from Scala2.x
                   DEFAULTparameterized  // Method with default params
                   INSUPERCALL           // defined in the argument of a constructor supercall
+                  STABLE                // Method that is assumed to be stable
                   Annotation
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
 
@@ -220,7 +221,7 @@ object TastyFormat {
   final val DEFAULTGETTER = 7
   final val SHADOWED = 8
 
-// AST tags
+  // AST tags
 
   final val UNITconst = 2
   final val FALSEconst = 3
@@ -252,6 +253,7 @@ object TastyFormat {
   final val SCALA2X = 29
   final val DEFAULTparameterized = 30
   final val INSUPERCALL = 31
+  final val STABLE = 32
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -362,6 +364,7 @@ object TastyFormat {
        | SCALA2X
        | DEFAULTparameterized
        | INSUPERCALL
+       | STABLE
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -409,6 +412,7 @@ object TastyFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case INSUPERCALL => "INSUPERCALL"
+    case STABLE => "STABLE"
 
     case SHARED => "SHARED"
     case TERMREFdirect => "TERMREFdirect"

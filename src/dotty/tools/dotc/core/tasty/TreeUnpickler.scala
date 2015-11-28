@@ -465,6 +465,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case SCALA2X => addFlag(Scala2x)
           case DEFAULTparameterized => addFlag(DefaultParameterized)
           case INSUPERCALL => addFlag(InSuperCall)
+          case STABLE => addFlag(Stable)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readType().typeSymbol

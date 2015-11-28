@@ -534,6 +534,7 @@ class TreePickler(pickler: TastyPickler) {
         if (flags is Accessor) writeByte(FIELDaccessor)
         if (flags is CaseAccessor) writeByte(CASEaccessor)
         if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
+        if (flags is Stable) writeByte(STABLE)
       } else {
         if (flags is Sealed) writeByte(SEALED)
         if (flags is Abstract) writeByte(ABSTRACT)
