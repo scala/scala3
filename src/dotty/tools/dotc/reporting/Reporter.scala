@@ -155,7 +155,7 @@ trait Reporting { this: Context =>
     else {
       // Avoid evaluating question multiple time, since each evaluation
       // may cause some extra logging output.
-      val q: String = question
+      lazy val q: String = question
       traceIndented[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
     }
   }
