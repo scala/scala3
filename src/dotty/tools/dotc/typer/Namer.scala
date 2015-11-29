@@ -848,7 +848,7 @@ class Namer { typer: Typer =>
     def apply(tp: Type): Type = {
       tp match {
         case tp: RefinedType =>
-          val args = tp.argInfos(interpolate = false).mapconserve(this)
+          val args = tp.argInfos.mapconserve(this)
           if (args.nonEmpty) {
             val tycon = tp.withoutArgs(args)
             val tparams = tycon.typeParams

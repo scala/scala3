@@ -286,7 +286,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
     if (self derivesFrom base)
-      base.typeParams map (param => self.member(param.name).info.argInfo(param))
+      base.typeParams map (param => self.member(param.name).info.argInfo)
     else
       Nil
 
@@ -311,7 +311,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The first type argument of the base type instance wrt `base` of this type */
   final def firstBaseArgInfo(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
     case param :: _ if self derivesFrom base =>
-      self.member(param.name).info.argInfo(param)
+      self.member(param.name).info.argInfo
     case _ =>
       NoType
   }
@@ -371,7 +371,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    *  @param interpolate   See argInfo
    */
-  final def argInfos(interpolate: Boolean)(implicit ctx: Context): List[Type] = {
+  final def argInfos(implicit ctx: Context): List[Type] = {
     var tparams: List[TypeSymbol] = null
     def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp.stripTypeVar match {
       case tp @ RefinedType(tycon, name) =>
@@ -381,7 +381,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (tparams == null) tparams = tycon.typeParams
           if (buf.size < tparams.length) {
             val tparam = tparams(buf.size)
-            if (name == tparam.name) buf += tp.refinedInfo.argInfo(tparam, interpolate)
+            if (name == tparam.name) buf += tp.refinedInfo.argInfo
             else null
           } else null
         }
@@ -392,8 +392,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     val buf = recur(self, 0)
     if (buf == null) Nil else buf.toList
   }
-
-  final def argInfos(implicit ctx: Context): List[Type] = argInfos(interpolate = true)
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(implicit ctx: Context) = argInfos mapConserve noBounds
@@ -428,18 +426,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *                       for a contravariant type-parameter becomes L.
    */
-  final def argInfo(tparam: Symbol, interpolate: Boolean = true)(implicit ctx: Context): Type = self match {
+  final def argInfo(implicit ctx: Context): Type = self match {
     case self: TypeAlias => self.alias
-    case TypeBounds(lo, hi) =>
-      if (interpolate) {
-        val v = tparam.variance
-        if (v > 0 && (lo isRef defn.NothingClass)) hi
-        else if (v < 0 && (hi isRef defn.AnyClass)) lo
-        else self
-      }
-      else self
-    case _ =>
-      NoType
+    case self: TypeBounds => self
+    case _ => NoType
   }
 
   /** The element type of a sequence or array */

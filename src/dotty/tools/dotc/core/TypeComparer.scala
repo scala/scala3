@@ -140,14 +140,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   private def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
-      def compareNamed = {
+      def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
         implicit val ctx: Context = this.ctx
         tp2.info match {
           case info2: TypeAlias => firstTry(tp1, info2.alias)
           case _ => tp1 match {
             case tp1: NamedType =>
               tp1.info match {
-                case info1: TypeAlias => firstTry(info1.alias, tp2)
+                case info1: TypeAlias => compareNamed(info1.alias, tp2)
                 case _ =>
                   val sym1 = tp1.symbol
                   (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
@@ -171,7 +171,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
         }
       }
-      compareNamed
+      compareNamed(tp1, tp2)
     case tp2: ProtoType =>
       isMatchedByProto(tp2, tp1)
     case tp2: BoundType =>

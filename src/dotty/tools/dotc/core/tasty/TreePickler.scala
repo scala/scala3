@@ -211,7 +211,7 @@ class TreePickler(pickler: TastyPickler) {
       case tpe: SkolemType =>
         pickleType(tpe.info)
       case tpe: RefinedType =>
-        val args = tpe.argInfos(interpolate = false)
+        val args = tpe.argInfos
         if (args.isEmpty) {
           writeByte(REFINEDtype)
           withLength {
