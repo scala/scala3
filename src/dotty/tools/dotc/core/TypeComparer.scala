@@ -140,35 +140,35 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   private def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
-      def compareAlias(info1: Type) = tp2.info match {
-        case info2: TypeAlias => isSubType(tp1, info2.alias)
-        case _ => info1 match {
-          case info1: TypeAlias => isSubType(info1.alias, tp2)
-          case _ => false
-        }
-      }
       def compareNamed = {
-        implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
-        tp1 match {
-          case tp1: NamedType =>
-            val sym1 = tp1.symbol
-            compareAlias(tp1.info) ||
-            (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
-               ctx.erasedTypes || sym1.isStaticOwner || isSubType(tp1.prefix, tp2.prefix)
-            else
-              (tp1.name eq tp2.name) &&
-              isSubType(tp1.prefix, tp2.prefix) &&
-              (tp1.signature == tp2.signature) &&
-              !tp1.isInstanceOf[WithFixedSym] &&
-              !tp2.isInstanceOf[WithFixedSym]
-            ) ||
-            compareHK(tp1, tp2, inOrder = true) ||
-            compareHK(tp2, tp1, inOrder = false) ||
-            thirdTryNamed(tp1, tp2)
-          case _ =>
-            compareHK(tp2, tp1, inOrder = false) ||
-            compareAlias(NoType) ||
-            secondTry(tp1, tp2)
+        implicit val ctx: Context = this.ctx
+        tp2.info match {
+          case info2: TypeAlias => firstTry(tp1, info2.alias)
+          case _ => tp1 match {
+            case tp1: NamedType =>
+              tp1.info match {
+                case info1: TypeAlias => firstTry(info1.alias, tp2)
+                case _ =>
+                  val sym1 = tp1.symbol
+                  (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
+                     ctx.erasedTypes ||
+                     sym1.isStaticOwner ||
+                     isSubType(tp1.prefix, tp2.prefix) ||
+                     thirdTryNamed(tp1, tp2)
+                   else
+                     (tp1.name eq tp2.name) &&
+                     isSubType(tp1.prefix, tp2.prefix) &&
+                     (tp1.signature == tp2.signature) &&
+                     !tp1.isInstanceOf[WithFixedSym] &&
+                     !tp2.isInstanceOf[WithFixedSym] ||
+                     compareHK(tp1, tp2, inOrder = true) ||
+                     compareHK(tp2, tp1, inOrder = false) ||
+                     thirdTryNamed(tp1, tp2))
+              }
+            case _ =>
+              compareHK(tp2, tp1, inOrder = false) ||
+              secondTry(tp1, tp2)
+          }
         }
       }
       compareNamed
