@@ -100,7 +100,7 @@ object Types {
       case _ => false
     }
 
-    /** Is this type a (possibly aliased and/or partially applied) type reference
+    /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
      *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
      *        It makes no sense for it to be an alias type because isRef would always
@@ -113,8 +113,7 @@ object Types {
           case _ =>  this1.symbol eq sym
         }
       case this1: RefinedType =>
-        // make sure all refinements are type arguments
-        this1.parent.isRef(sym) && this.argInfos.nonEmpty
+        this1.parent.isRef(sym)
       case _ =>
         false
     }
