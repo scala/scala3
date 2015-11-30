@@ -412,8 +412,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
   }
 
-  /** If this is the image of a type argument to type parameter `tparam`,
-   *  recover the type argument, otherwise NoType.
+  /** If this is the image of a type argument; recover the type argument,
+   *  otherwise NoType.
    */
   final def argInfo(implicit ctx: Context): Type = self match {
     case self: TypeAlias => self.alias
