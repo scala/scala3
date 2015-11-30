@@ -369,7 +369,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If this is an encoding of a (partially) applied type, return its arguments,
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
-   *  @param interpolate   See argInfo
    */
   final def argInfos(implicit ctx: Context): List[Type] = {
     var tparams: List[TypeSymbol] = null
@@ -415,16 +414,6 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If this is the image of a type argument to type parameter `tparam`,
    *  recover the type argument, otherwise NoType.
-   *  @param interpolate   If true, replace type bounds as arguments corresponding to
-   *                       variant type parameters by their dominating element. I.e. an argument
-   *
-   *                           T <: U
-   *
-   *                       for a covariant type-parameter becomes U, and an argument
-   *
-   *                           T >: L
-   *
-   *                       for a contravariant type-parameter becomes L.
    */
   final def argInfo(implicit ctx: Context): Type = self match {
     case self: TypeAlias => self.alias
