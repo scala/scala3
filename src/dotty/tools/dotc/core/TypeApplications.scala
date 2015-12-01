@@ -389,7 +389,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         else new mutable.ListBuffer[Type]
     }
     val buf = recur(self, 0)
-    if (buf == null) Nil else buf.toList
+    if (buf == null || buf.size != tparams.length) Nil else buf.toList
   }
 
   /** Argument types where existential types in arguments are disallowed */
