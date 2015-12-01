@@ -69,18 +69,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (lam.exists) lam.typeParams else Nil
         }
       case self: RefinedType =>
-        def isBoundedLambda(tp: Type): Boolean = tp match {
-          case tp: TypeRef => tp.typeSymbol.isLambdaTrait
-          case tp: RefinedType => tp.refinedName.isLambdaArgName && isBoundedLambda(tp.parent)
-          case _ => false
-        }
-        val tparams = self.parent.typeParams
-        self.refinedInfo match {
-          case rinfo: TypeBounds if rinfo.isAlias || isBoundedLambda(self) =>
-            tparams.filterNot(_.name == self.refinedName)
-          case _ =>
-            tparams
-        }
+        self.parent.typeParams.filterNot(_.name == self.refinedName)
      case self: SingletonType =>
         Nil
       case self: TypeProxy =>

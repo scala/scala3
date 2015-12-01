@@ -158,6 +158,7 @@ class tests extends CompilerTest {
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
+  @Test def neg_partialApplications = compileFile(negDir, "partialApplications", xerrors = 3)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 6)
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 3)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)

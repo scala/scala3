@@ -27,20 +27,3 @@ object Test {
   val ss: RMap[Float, Int] = rs
 
 }
-
-object Test2 {
-  type Histogram = Map[_, Int]
-
-  type StringlyHistogram = Histogram[_ >: String]
-
-  val xs: Histogram[String] = Map[String, Int]()
-
-  val ys: StringlyHistogram[String] = xs
-
-  val zs: StringlyHistogram = xs
-
-  val xs1 = xs
-  val ys1 = ys
-  val zs1 = zs
-
-}
