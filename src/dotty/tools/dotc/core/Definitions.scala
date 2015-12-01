@@ -56,7 +56,10 @@ class Definitions {
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
 
-  private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: Type*): ClassSymbol = {
+  // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
+  // implemented in Dotty and not in Scala 2.
+  // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
+  private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -353,10 +356,10 @@ class Definitions {
   lazy val BoxedDoubleModule  = ctx.requiredModule("java.lang.Double")
   lazy val BoxedUnitModule    = ctx.requiredModule("java.lang.Void")
 
-  lazy val ByNameParamClass2x     = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
-  lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
+  lazy val ByNameParamClass2x = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
+  lazy val EqualsPatternClass = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
-  lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, ObjectType, SeqType)
+  lazy val RepeatedParamClass = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
   // fundamental classes
   lazy val StringClass                = ctx.requiredClass("java.lang.String")
