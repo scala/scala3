@@ -228,7 +228,7 @@ class tests extends CompilerTest {
   @Test def tasty_new_all = compileFiles(newDir, testPickling)
   @Test def tasty_dotc_config = compileDir(dotcDir, "config", testPickling)
   @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
-  @Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
+  //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
