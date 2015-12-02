@@ -7,7 +7,7 @@ import org.junit.experimental.categories._
 
 import scala.io.Source
 
-
+// tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
 class tests extends CompilerTest {
 
   def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
