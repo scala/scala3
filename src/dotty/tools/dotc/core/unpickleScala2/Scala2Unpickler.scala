@@ -21,6 +21,7 @@ import typer.Mode
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
+import TypeApplications._
 import classfile.ClassfileParser
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
@@ -141,51 +142,6 @@ object Scala2Unpickler {
 
     denot.info = ClassInfo( // final info
       denot.owner.thisType, denot.classSymbol, parentRefs, declsInRightOrder, ost)
-  }
-
-  /** Adapt arguments to type parameters so that variance of type lambda arguments
-   *  agrees with variance of corresponding higherkinded type parameters. Example:
-   *
-   *     class Companion[+CC[X]]
-   *     Companion[List]
-   *
-   *  with adaptArgs, this will expand to
-   *
-   *     Companion[[X] => List[X]]
-   *
-   *  instead of
-   *
-   *      Companion[[+X] => List[X]]
-   *
-   *  even though `List` is covariant. This adaptation is necessary to ignore conflicting
-   *  variances in overriding members that have types of hk-type parameters such as `Companion[GenTraversable]`
-   *  or `Companion[ListBuffer]`. Without the adaptation we would end up with
-   *
-   *      Companion[[+X] => GenTraversable[X]]
-   *      Companion[[X] => List[X]]
-   *
-   *  and the second is not a subtype of the first. So if we have overridding memebrs of the two
-   *  types we get an error.
-   */
-  def adaptArgs(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] = tparams match {
-    case tparam :: tparams1 =>
-      val boundLambda = tparam.infoOrCompleter match {
-        case TypeBounds(_, hi) => hi.LambdaClass(forcing = false)
-        case _ => NoSymbol
-      }
-      def adaptArg(arg: Type): Type = arg match {
-        case arg: TypeRef if arg.symbol.isLambdaTrait =>
-          assert(arg.symbol.typeParams.length == boundLambda.typeParams.length)
-          arg.prefix.select(boundLambda)
-        case arg: RefinedType =>
-          arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
-        case _ =>
-          arg
-      }
-      val arg = args.head
-      val adapted = if (boundLambda.exists) adaptArg(arg) else arg
-      adapted :: adaptArgs(tparams1, args.tail)
-    case nil => args
   }
 }
 

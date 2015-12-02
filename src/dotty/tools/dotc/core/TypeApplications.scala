@@ -169,7 +169,8 @@ object TypeApplications {
   /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
    */
   def adaptArgs(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
-    args.zipWithConserve(tparams)((arg, tparam) => arg.adaptIfHK(tparam.infoOrCompleter))
+    if (tparams.isEmpty) args
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.adaptIfHK(tparam.infoOrCompleter))
 
   def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
@@ -234,18 +235,13 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def paramBounds(implicit ctx: Context): List[TypeBounds] =
     typeParams.map(self.memberInfo(_).bounds)
 
-  def LambdaTrait(implicit ctx: Context) = {
-    def skipArgs(tp: Type): Type = tp match {
-      case RefinedType(parent, pname) if pname.isHkArgName => skipArgs(parent)
-      case _ => tp
-    }
-    self.stripTypeVar match {
-      case RefinedType(parent, tpnme.hkApply) => skipArgs(parent).stripTypeVar match {
-        case ref @ TypeRef(_, lam) if lam.isLambdaTraitName => ref.symbol
-        case _ => NoSymbol
-      }
-      case _ => NoSymbol
-    }
+  /** The Lambda trait underlying a type lambda */
+  def LambdaTrait(implicit ctx: Context): Symbol = self.stripTypeVar match {
+    case RefinedType(parent, tpnme.hkApply) =>
+      val sym = self.classSymbol
+      if (sym.isLambdaTrait) sym else NoSymbol
+    case TypeBounds(lo, hi) => hi.LambdaTrait
+    case _ => NoSymbol
   }
 
   def isEtaExpandable(implicit ctx: Context) = self match {
