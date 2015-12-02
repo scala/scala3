@@ -50,8 +50,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
         case _ =>
-          val tp1 = tp.simplifyApply
+          tp
+          /*val tp1 = tp.simplifyApply
           if (tp1 eq tp) tp else homogenize(tp1)
+          */
       }
     else tp
 
@@ -344,7 +346,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(sym.flagsUNSAFE.flagStrings map stringToText, " ")
 
   /** String representation of symbol's variance or "" if not applicable */
-  protected def varianceString(sym: Symbol): String = sym.variance match {
+  protected def varianceString(sym: Symbol): String = varianceString(sym.variance)
+
+  protected def varianceString(v: Int): String = v match {
     case -1 => "-"
     case 1 => "+"
     case _ => ""

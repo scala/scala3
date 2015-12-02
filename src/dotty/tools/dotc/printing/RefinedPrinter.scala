@@ -10,6 +10,8 @@ import ast.{Trees, untpd, tpd}
 import typer.Namer
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
+import TypeApplications._
+import Decorators._
 import scala.annotation.switch
 import language.implicitConversions
 
@@ -108,26 +110,23 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         argStr ~ " => " ~ toText(args.last)
       }
     homogenize(tp) match {
-      case tp: RefinedType =>
-        val args = tp.argInfos
-        if (args.nonEmpty) {
-          val tycon = tp.unrefine
-          val cls = tycon.typeSymbol
-          if (cls.typeParams.length == args.length) {
-            if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-            if (defn.isFunctionClass(cls)) return toTextFunction(args)
-            if (defn.isTupleClass(cls)) return toTextTuple(args)
-          }
-          return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
-        }
-        if (tp.isSafeLambda) {
-          val (prefix, body, bindings) = decomposeHKApply(tp)
-          prefix match {
-            case prefix: TypeRef if prefix.symbol.isLambdaTrait && body.exists =>
-              return typeLambdaText(prefix.symbol, body, bindings)
-            case _ =>
+      case AppliedType(tycon, args) =>
+        val cls = tycon.typeSymbol
+        if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
+        if (defn.isFunctionClass(cls)) return toTextFunction(args)
+        if (defn.isTupleClass(cls)) return toTextTuple(args)
+        return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
+      case TypeLambda(variances, argBoundss, body) =>
+        val paramNames = variances.indices.toList.map("X" + _)
+        val instantiate = new TypeMap {
+          def apply(tp: Type): Type = tp match {
+            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && rt.eq(tp) =>
+              TypeRef(NoPrefix, paramNames(name.hkArgIndex).toTypeName)
+            case _ => mapOver(tp)
           }
         }
+        return typeLambdaText(paramNames, variances, argBoundss,
+            instantiate(body).argInfo)
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
@@ -167,71 +166,23 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     "{" ~ toText(trees, "\n") ~ "}"
 
-  /** If type `tp` represents a potential type Lambda of the form
-   *
-   *     parent { type Apply = body; argBindings? }
-   *
-   *  split it into
-   *
-   *   - the `parent`
-   *   - the simplified `body`
-   *   - the bindings HK$ members, if there are any
-   *
-   *  The body is simplified  as follows
-   *   - if it is a TypeAlias, follow it
-   *   - replace all references to of the form <refined-this>.HK$i by references
-   *     without a prefix, because the latter print nicer.
-   *
-   */
-  def decomposeHKApply(tp: Type): (Type, Type, List[(Name, Type)]) = tp.stripTypeVar match {
-    case tp @ RefinedType(parent, name) =>
-      if (name == tpnme.hkApply) {
-        // simplify arguments so that parameters just print HK$i and not
-        // LambdaI{...}.HK$i
-        val simplifyArgs = new TypeMap {
-          override def apply(tp: Type) = tp match {
-            case tp @ TypeRef(RefinedThis(_), name) if name.isHkArgName =>
-              TypeRef(NoPrefix, tp.symbol.asType)
-            case _ =>
-              mapOver(tp)
-          }
-        }
-        (parent, simplifyArgs(tp.refinedInfo.followTypeAlias), Nil)
-      } else if (name.isHkArgName) {
-        val (prefix, body, argBindings) = decomposeHKApply(parent)
-        (prefix, body, (name, tp.refinedInfo) :: argBindings)
-      } else (tp, NoType, Nil)
-    case _ =>
-      (tp, NoType, Nil)
-  }
-
   /** The text for a TypeLambda
    *
-   *     LambdaXYZ { type Apply = body'; bindings? }
+   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
    *
    *  where
-   *  @param  lambdaCls   The class symbol for `LambdaXYZ`
-   *  @param  body        The simplified lambda body
-   *  @param  bindings    The bindings of any HK$i arguments
-   *
-   *  @return A text of the form
-   *
-   *    [HK$0, ..., HK$n] => body
-   *
-   *  possibly followed by bindings
-   *
-   *    [HK$i = arg_i, ..., HK$k = arg_k]
+   *  @param  paramNames  = p_1, ..., p_n
+   *  @param  variances   = v_1, ..., v_n
+   *  @param  argBoundss  = B_1, ..., B_n
+   *  @param  body        = T
    */
-  def typeLambdaText(lambdaCls: Symbol, body: Type, bindings: List[(Name, Type)]): Text = {
-    def lambdaParamText(tparam: Symbol): Text = {
-      varianceString(tparam) ~ nameString(tparam.name)
+  def typeLambdaText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
+    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
+      varianceString(variance) ~ name ~ toText(bounds)
+    changePrec(GlobalPrec) {
+      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
+      "] -> " ~ toTextGlobal(body)
     }
-    def lambdaText = changePrec(GlobalPrec) {
-      "[" ~ Text(lambdaCls.typeParams.map(lambdaParamText), ", ") ~ "] => " ~ toTextGlobal(body)
-    }
-    def bindingText(binding: (Name, Type)) = binding._1.toString ~ toTextGlobal(binding._2)
-    if (bindings.isEmpty) lambdaText
-    else atPrec(DotPrec)(lambdaText) ~ "[" ~ Text(bindings.map(bindingText), ", ") ~ "]"
   }
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
