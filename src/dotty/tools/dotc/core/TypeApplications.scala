@@ -287,30 +287,18 @@ class TypeApplications(val self: Type) extends AnyVal {
     else self match {
       case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
         EtaExpansion(self).adaptIfHK(bound)
-      case arg: TypeRef
-      if arg.symbol.isLambdaTrait &&
-         !arg.symbol.typeParams.corresponds(boundLambda.typeParams)(_.variance == _.variance) =>
-        arg.prefix.select(boundLambda)
       case _ =>
-        self
-      }
-  }
-
-  final def rawTypeParams(implicit ctx: Context): List[TypeSymbol] = {
-    self match {
-      case self: ClassInfo =>
-        self.cls.typeParams
-      case self: TypeRef =>
-        val tsym = self.typeSymbol
-        if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) self.underlying.rawTypeParams
-        else Nil
-      case _: BoundType | _: SingletonType =>
-        Nil
-      case self: TypeProxy =>
-        self.underlying.rawTypeParams
-      case _ =>
-        Nil
+        def adaptArg(arg: Type): Type = arg match {
+          case arg: TypeRef
+          if arg.symbol.isLambdaTrait &&
+             !arg.symbol.typeParams.corresponds(boundLambda.typeParams)(_.variance == _.variance) =>
+            arg.prefix.select(boundLambda)
+          case arg: RefinedType =>
+            arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
+          case _ =>
+            arg
+        }
+        adaptArg(self)
     }
   }
 
