@@ -883,12 +883,10 @@ object Types {
               instantiate(tp)
           }
           /** Reduce rhs of $hkApply to make it stand alone */
-          def betaReduce(tp: Type) =
-            if (pre.parent.isSafeLambda) {
-              val reduced = instTop(tp)
-              if (instantiate.isSafe) reduced else NoType
-            }
-            else NoType
+          def betaReduce(tp: Type) = {
+            val reduced = instTop(tp)
+            if (instantiate.isSafe) reduced else NoType
+          }
           pre.refinedInfo match {
             case TypeAlias(alias) =>
               if (pre.refinedName ne name) loop(pre.parent)
