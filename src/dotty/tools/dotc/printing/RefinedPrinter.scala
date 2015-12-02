@@ -119,10 +119,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeLambda(variances, argBoundss, body) =>
         val paramNames = variances.indices.toList.map("X" + _)
         val instantiate = new TypeMap {
-          def apply(tp: Type): Type = tp match {
+          def apply(t: Type): Type = t match {
             case TypeRef(RefinedThis(rt), name) if name.isHkArgName && rt.eq(tp) =>
-              TypeRef(NoPrefix, paramNames(name.hkArgIndex).toTypeName)
-            case _ => mapOver(tp)
+              TypeRef.withFixedSym(
+                NoPrefix, paramNames(name.hkArgIndex).toTypeName, defn.AnyClass)
+            case _ => mapOver(t)
           }
         }
         return typeLambdaText(paramNames, variances, argBoundss,
