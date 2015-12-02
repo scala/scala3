@@ -36,6 +36,140 @@ object TypeApplications {
     case tp: TypeBounds => tp.hi
     case _ => tp
   }
+
+  /** Extractor for
+   *
+   *    [v1 X1: B1, ..., vn Xn: Bn] -> T
+   *    ==>
+   *    Lambda$_v1...vn { type $hk_i: B_i, type $Apply = [X_i := this.$Arg_i] T }
+   */
+  object TypeLambda {
+    def apply(variances: List[Int],
+              argBoundss: List[TypeBounds],
+              bodyFn: RefinedType => Type)(implicit ctx: Context): Type = {
+      def argRefinements(parent: Type, i: Int, bs: List[TypeBounds]): Type = bs match {
+        case b :: bs1 =>
+          argRefinements(RefinedType(parent, tpnme.hkArg(i), b), i + 1, bs1)
+        case nil =>
+          parent
+      }
+      RefinedType(
+        argRefinements(defn.LambdaTrait(variances).typeRef, 0, argBoundss),
+        tpnme.hkApply, rt => bodyFn(rt).bounds)
+    }
+
+    def unapply(tp: Type)(implicit ctx: Context): Option[(List[Int], List[TypeBounds], Type)] = tp match {
+      case app @ RefinedType(prefix, tpnme.hkApply) =>
+        val cls = prefix.classSymbol
+        val variances = cls.typeParams.map(_.variance)
+        val argBounds = prefix.argInfos.map(_.bounds)
+        Some((variances, argBounds, app.refinedInfo))
+      case TypeBounds(lo, hi) =>
+        unapply(hi)
+      case _ =>
+        None
+    }
+  }
+
+  /** Extractor for
+   *
+   *    [v1 X1: B1, ..., vn Xn: Bn] -> C[X1, ..., Xn]
+   *
+   *  where v1, ..., vn and B1, ..., Bn are the variances and bounds of the type parameters
+   *  of the class C.
+   *
+   *  @param tycon     C
+   */
+  object EtaExpansion {
+    def apply(tycon: TypeRef)(implicit ctx: Context) = {
+      assert(tycon.isEtaExpandable)
+      val tparams = tycon.typeParams
+      val variances = tycon.typeParams.map(_.variance)
+      TypeLambda(tparams.map(_.variance), tycon.paramBounds,
+        rt => tycon.appliedTo(tparams.map(RefinedThis(rt).select(_))))
+    }
+
+    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
+      def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
+        case TypeRef(RefinedThis(rt), sel) :: args1 =>
+          rt.eq(tp) && sel == tpnme.hkArg(n) && argsAreForwarders(args1, n - 1)
+        case nil =>
+          n == 0
+      }
+      tp match {
+        case TypeLambda(_, argBounds, AppliedType(fn: TypeRef, args))
+        if argsAreForwarders(args, tp.typeParams.length - 1) => Some(fn)
+        case _ => None
+      }
+    }
+  }
+
+  /** Extractor for type application T[U_1, ..., U_n]. This is the refined type
+   *
+   *     T { type p_1 v_1= U_1; ...; type p_n v_n= U_n }
+   *
+   *  where v_i, p_i are the variances and names of the type parameters of T,
+   *  If `T`'s class symbol is a lambda trait, follow the refined type with a
+   *  projection
+   *
+   *      T { ... } # $Apply
+   */
+  object AppliedType {
+    def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = {
+      def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
+        case arg :: args1 =>
+          try {
+            val tparam :: tparams1 = tparams
+            matchParams(RefinedType(tp, tparam.name, arg.toBounds(tparam)), tparams1, args1)
+          } catch {
+            case ex: MatchError =>
+              println(s"applied type mismatch: $tp $args, typeParams = ${tp.typeSymbol.typeParams}") // !!! DEBUG
+              println(s"precomplete decls = ${tp.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
+              throw ex
+          }
+        case nil => tp
+      }
+      assert(args.nonEmpty)
+      val cls = tp.classSymbol
+      val refined = matchParams(tp, cls.typeParams, args)
+      if (cls.isLambdaTrait) TypeRef(refined, tpnme.hkApply) else refined
+    }
+
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
+      case TypeRef(prefix, tpnme.hkApply) => unapp(prefix)
+      case _ => unapp(tp)
+    }
+
+    private def unapp(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
+      case _: RefinedType =>
+        val tparams = tp.typeSymbol.typeParams
+        if (tparams.isEmpty) None
+        else {
+          val argBuf = new mutable.ListBuffer[Type]
+          def stripArgs(tp: Type, n: Int): Type =
+            if (n == 0) tp
+            else tp match {
+              case tp @ RefinedType(parent, pname) if pname == tparams(n - 1).name =>
+                val res = stripArgs(parent, n - 1)
+                if (res.exists) argBuf += tp.refinedInfo.argInfo
+                res
+              case _ =>
+                NoType
+            }
+          val res = stripArgs(tp, tparams.length)
+          if (res.exists) Some((res, argBuf.toList)) else None
+        }
+      case _ => None
+    }
+  }
+
+  /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
+   */
+  def adaptArgs(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
+    args.zipWithConserve(tparams)((arg, tparam) => arg.adaptIfHK(tparam.infoOrCompleter))
+
+  def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
+    List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
 }
 
 import TypeApplications._
@@ -88,6 +222,77 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Third, it won't return abstract higher-kinded type parameters, i.e. the type parameters of
    *  an abstract type are always empty.
    */
+  final def hkTypeParams(implicit ctx: Context): List[TypeSymbol] = self match {
+    case TypeLambda(_, _, body) => self.typeSymbol.typeParams.head :: body.hkTypeParams
+    case TypeBounds(lo, hi) => hi.hkTypeParams
+    case _ => Nil
+  }
+
+  final def paramBounds(implicit ctx: Context): List[TypeBounds] =
+    typeParams.map(self.memberInfo(_).bounds)
+
+  def LambdaTrait(implicit ctx: Context) = {
+    def skipArgs(tp: Type): Type = tp match {
+      case RefinedType(parent, pname) if pname.isHkArgName => skipArgs(parent)
+      case _ => tp
+    }
+    self.stripTypeVar match {
+      case RefinedType(parent, tpnme.hkApply) => skipArgs(parent).stripTypeVar match {
+        case ref @ TypeRef(_, lam) if lam.isLambdaTraitName => ref.symbol
+        case _ => NoSymbol
+      }
+      case _ => NoSymbol
+    }
+  }
+
+  def isEtaExpandable(implicit ctx: Context) = self match {
+    case self: TypeRef => self.symbol.isClass && !self.name.isLambdaTraitName
+    case _ => false
+  }
+
+  /** Adapt argument A to type parameter P in the case P is higher-kinded.
+   *  This means:
+   *  (1) Make sure that A is a type lambda, if necessary by eta-expanding it.
+   *  (2) Make sure the variances of the type lambda
+   *  agrees with variances of corresponding higherkinded type parameters. Example:
+   *
+   *     class Companion[+CC[X]]
+   *     Companion[List]
+   *
+   *  with adaptArgs, this will expand to
+   *
+   *     Companion[[X] => List[X]]
+   *
+   *  instead of
+   *
+   *      Companion[[+X] => List[X]]
+   *
+   *  even though `List` is covariant. This adaptation is necessary to ignore conflicting
+   *  variances in overriding members that have types of hk-type parameters such as `Companion[GenTraversable]`
+   *  or `Companion[ListBuffer]`. Without the adaptation we would end up with
+   *
+   *      Companion[[+X] => GenTraversable[X]]
+   *      Companion[[X] => List[X]]
+   *
+   *  and the second is not a subtype of the first. So if we have overridding memebrs of the two
+   *  types we get an error.
+   */
+  def adaptIfHK(bound: Type)(implicit ctx: Context): Type = {
+    val boundLambda = bound.LambdaTrait
+    val hkParams = boundLambda.typeParams
+    if (hkParams.isEmpty) self
+    else self match {
+      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
+        EtaExpansion(self).adaptIfHK(bound)
+      case arg: TypeRef
+      if arg.symbol.isLambdaTrait &&
+         !arg.symbol.typeParams.corresponds(boundLambda.typeParams)(_.variance == _.variance) =>
+        arg.prefix.select(boundLambda)
+      case _ =>
+        self
+      }
+  }
+
   final def rawTypeParams(implicit ctx: Context): List[TypeSymbol] = {
     self match {
       case self: ClassInfo =>
