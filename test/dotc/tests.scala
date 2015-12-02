@@ -230,6 +230,19 @@ class tests extends CompilerTest {
   @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
   //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
+  @Test def tasty_core = compileList("tasty_core", List(
+      "Annotations.scala", "Constants.scala", "Constraint.scala", "ConstraintHandling.scala",
+      "ConstraintRunInfo.scala", "Contexts.scala", "Decorators.scala", "Definitions.scala",
+      "DenotTransformers.scala", "Denotations.scala", "Flags.scala", "Hashable.scala",
+      "NameOps.scala", "Names.scala", "OrderingConstraint.scala", "Periods.scala",
+      "Phases.scala", "Scopes.scala", "Signature.scala", "StdNames.scala",
+      "Substituters.scala", "SymDenotations.scala", "SymbolLoaders.scala", "Symbols.scala",
+      "TypeApplications.scala", "TypeComparer.scala", "TypeErasure.scala", "TypeOps.scala",
+      "TyperState.scala", "Uniques.scala"
+    ) map (coreDir + _), testPickling)
+  @Test def tasty_tasty = compileDir(coreDir, "tasty", testPickling)
+  @Test def tasty_classfile = compileDir(coreDir, "classfile", testPickling)
+  @Test def tasty_unpickleScala2 = compileDir(coreDir, "unpickleScala2", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 }
