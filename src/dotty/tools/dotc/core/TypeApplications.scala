@@ -62,7 +62,6 @@ object TypeApplications {
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(List[Int], List[TypeBounds], Type)] = tp match {
       case app @ RefinedType(prefix, tpnme.hkApply) =>
-        println(s"type lam $tp")
         val cls = prefix.typeSymbol
         val variances = cls.typeParams.map(_.variance)
         val argBounds = prefix.argInfos.map(_.bounds)
@@ -89,7 +88,7 @@ object TypeApplications {
       val tparams = tycon.typeParams
       val variances = tycon.typeParams.map(_.variance)
       TypeLambda(tparams.map(_.variance), tycon.paramBounds,
-        rt => tycon.appliedTo(tparams.map(RefinedThis(rt).select(_))))
+        rt => tycon.appliedTo(argRefs(rt, tparams.length)))
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
