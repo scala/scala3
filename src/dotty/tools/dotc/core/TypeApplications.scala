@@ -125,7 +125,7 @@ object TypeApplications {
             matchParams(RefinedType(tp, tparam.name, arg.toBounds(tparam)), tparams1, args1)
           } catch {
             case ex: MatchError =>
-              println(s"applied type mismatch: $tp $args, typeParams = ${tp.typeSymbol.typeParams}") // !!! DEBUG
+              println(s"applied type mismatch: $tp $args, typeParams = ${tp.classSymbol.typeParams}") // !!! DEBUG
               println(s"precomplete decls = ${tp.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
               throw ex
           }
@@ -144,7 +144,7 @@ object TypeApplications {
 
     private def unapp(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
       case _: RefinedType =>
-        val tparams = tp.typeSymbol.typeParams
+        val tparams = tp.classSymbol.typeParams
         if (tparams.isEmpty) None
         else {
           val argBuf = new mutable.ListBuffer[Type]
