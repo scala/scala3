@@ -190,14 +190,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         // LambdaI{...}.HK$i
         val simplifyArgs = new TypeMap {
           override def apply(tp: Type) = tp match {
-            case tp @ TypeRef(RefinedThis(_), name) if name.isLambdaArgName =>
+            case tp @ TypeRef(RefinedThis(_), name) if name.isHkArgName =>
               TypeRef(NoPrefix, tp.symbol.asType)
             case _ =>
               mapOver(tp)
           }
         }
         (parent, simplifyArgs(tp.refinedInfo.followTypeAlias), Nil)
-      } else if (name.isLambdaArgName) {
+      } else if (name.isHkArgName) {
         val (prefix, body, argBindings) = decomposeHKApply(parent)
         (prefix, body, (name, tp.refinedInfo) :: argBindings)
       } else (tp, NoType, Nil)

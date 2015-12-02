@@ -143,7 +143,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Is receiver type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
-    case RefinedType(_, name) => name == tpnme.hkApply || name.isLambdaArgName
+    case RefinedType(_, name) => name == tpnme.hkApply || name.isHkArgName
     case TypeBounds(_, hi) => hi.isHK
     case _ => false
   }
@@ -465,7 +465,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val lambda = defn.LambdaTrait(boundSyms.map(_.variance))
       def toHK(tp: Type) = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
-          RefinedThis(rt).select(tpnme.LambdaArgName(i)))
+          RefinedThis(rt).select(tpnme.hkArg(i)))
         val substituted =
           if (cycleParanoid) new ctx.SafeSubstMap(boundSyms, argRefs).apply(tp)
           else tp.subst(boundSyms, argRefs)
@@ -576,8 +576,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         new TypeMap {
           def apply(tp: Type): Type = tp match {
             case TypeRef(RefinedThis(binder), name) if binder eq self =>
-              assert(name.isLambdaArgName)
-              RefinedThis(reduced).select(reduced.typeParams.apply(name.LambdaArgIndex))
+              assert(name.isHkArgName)
+              RefinedThis(reduced).select(reduced.typeParams.apply(name.hkArgIndex))
             case _ =>
               mapOver(tp)
           }

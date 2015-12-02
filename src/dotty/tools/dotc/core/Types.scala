@@ -855,7 +855,7 @@ object Types {
           object instantiate extends TypeMap {
             var isSafe = true
             def apply(tp: Type): Type = tp match {
-              case TypeRef(RefinedThis(`pre`), name) if name.isLambdaArgName =>
+              case TypeRef(RefinedThis(`pre`), name) if name.isHkArgName =>
                 member(name).info match {
                   case TypeAlias(alias) => alias
                   case _ => isSafe = false; tp
@@ -868,7 +868,7 @@ object Types {
             }
           }
           def instArg(tp: Type): Type = tp match {
-            case tp @ TypeAlias(TypeRef(RefinedThis(`pre`), name)) if name.isLambdaArgName =>
+            case tp @ TypeAlias(TypeRef(RefinedThis(`pre`), name)) if name.isHkArgName =>
               member(name).info match {
                 case TypeAlias(alias) => tp.derivedTypeAlias(alias) // needed to keep variance
                 case bounds => bounds
@@ -1899,15 +1899,15 @@ object Types {
     private def checkInst(implicit ctx: Context): this.type = {
       if (Config.checkLambdaVariance)
         refinedInfo match {
-          case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
+          case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isHkArgName =>
             val cls = parent.LambdaClass(forcing = false)
             if (cls.exists)
-              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.LambdaArgIndex).variance,
-                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.LambdaArgIndex).variance}, ${refinedInfo.variance}")
+              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.hkArgIndex).variance,
+                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.hkArgIndex).variance}, ${refinedInfo.variance}")
           case _ =>
         }
       if (Config.checkProjections &&
-          (refinedName == tpnme.hkApply || refinedName.isLambdaArgName) &&
+          (refinedName == tpnme.hkApply || refinedName.isHkArgName) &&
           parent.noHK)
         assert(false, s"illegal refinement of first-order type: $this")
       this

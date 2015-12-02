@@ -669,7 +669,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def needsEtaLift(tp: Type, target: RefinedType): Boolean = {
     // if (tp.isLambda != tp.isHK) println(i"discrepancy for $tp, isLambda = ${tp.isLambda}, isHK = ${tp.isHK}")
     val name = target.refinedName
-    (name.isLambdaArgName || (name eq tpnme.hkApply)) &&
+    (name.isHkArgName || (name eq tpnme.hkApply)) &&
     tp.exists && !tp.isLambda // we do encounter Lambda classes without any arguments here
   }
 
