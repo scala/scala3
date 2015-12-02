@@ -173,8 +173,6 @@ object StdNames {
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
-    final val LAMBDA_ARG_PREFIX: N              = "hk$"
-    final val LAMBDA_ARG_PREFIXhead: Char       = LAMBDA_ARG_PREFIX.head
 
     final val AbstractFunction: N    = "AbstractFunction"
     final val Any: N                 = "Any"
@@ -314,7 +312,6 @@ object StdNames {
 
     val AnnotatedType: N        = "AnnotatedType"
     val AppliedTypeTree: N      = "AppliedTypeTree"
-    val hkApply: N              = "$apply"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
@@ -322,7 +319,6 @@ object StdNames {
     val Flag : N                = "Flag"
     val Ident: N                = "Ident"
     val Import: N               = "Import"
-    val LambdaPrefix: N         = "Lambda$"
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
     val Modifiers: N            = "Modifiers"
@@ -530,8 +526,13 @@ object StdNames {
     val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
     val nullRuntimeClass: N     = "scala.runtime.Null$"
 
-
     val synthSwitch: N          = "$synthSwitch"
+
+    val hkApply: N              = "$Apply"
+    val hkArgPrefix: N          = "$hk"
+    val hkLambdaPrefix: N       = "Lambda$"
+    val hkArgPrefixHead: Char   = hkArgPrefix.head
+    val hkArgPrefixLength: Int  = hkArgPrefix.length
 
     // unencoded operators
     object raw {
@@ -742,14 +743,13 @@ object StdNames {
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
 
-    def LambdaTraitName(vcs: List[Int]): TypeName = LambdaPrefix ++ vcs.map(varianceSuffix).mkString
-    def LambdaArgName(n: Int) = LAMBDA_ARG_PREFIX ++ n.toString
-
-    final val Conforms = encode("<:<")
+    def hkLambda(vcs: List[Int]): TypeName = hkLambdaPrefix ++ vcs.map(varianceSuffix).mkString
+    def hkArg(n: Int): TypeName = hkArgPrefix ++ n.toString
 
     def varianceSuffix(v: Int): Char = varianceSuffixes.charAt(v + 1)
-
     val varianceSuffixes = "NIP"
+
+    final val Conforms = encode("<:<")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {
