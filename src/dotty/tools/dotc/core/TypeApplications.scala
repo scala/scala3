@@ -204,7 +204,9 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (lam.exists) lam.typeParams else Nil
         }
       case self: RefinedType =>
-        self.parent.typeParams.filterNot(_.name == self.refinedName)
+        val hkParams = self.hkTypeParams
+        if (hkParams.nonEmpty) hkParams
+        else self.parent.typeParams.filterNot(_.name == self.refinedName)
      case self: SingletonType =>
         Nil
       case self: TypeProxy =>
