@@ -65,7 +65,7 @@ object TypeApplications {
         val cls = prefix.typeSymbol
         val variances = cls.typeParams.map(_.variance)
         val argBounds = prefix.argInfos.map(_.bounds)
-        Some((variances, argBounds, app.refinedInfo))
+        Some((variances, argBounds, app.refinedInfo.argInfo))
       case _ =>
         None
     }
@@ -91,14 +91,22 @@ object TypeApplications {
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
       def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
-        case TypeRef(RefinedThis(rt), sel) :: args1 =>
-          rt.eq(tp) && sel == tpnme.hkArg(n) && argsAreForwarders(args1, n - 1)
-        case nil =>
+        case Nil =>
           n == 0
+        case TypeRef(RefinedThis(rt), sel) :: args1 =>
+          rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
+        case _ =>
+          false
       }
       tp match {
         case TypeLambda(_, argBounds, AppliedType(fn: TypeRef, args))
-        if argsAreForwarders(args, tp.typeParams.length - 1) => Some(fn)
+        if argsAreForwarders(args, tp.typeParams.length) => Some(fn)
+        //case TypeLambda(_, argBounds, AppliedType(fn: TypeRef, args)) =>
+        //  println(i"eta expansion failed because args $args are not forwarders for ${tp.toString}")
+        //  None
+        //case TypeLambda(_, argBounds, _) =>
+        //  println(i"eta expansion failed because body is not applied type")
+        //  None
         case _ => None
       }
     }
