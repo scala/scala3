@@ -66,8 +66,6 @@ object TypeApplications {
         val variances = cls.typeParams.map(_.variance)
         val argBounds = prefix.argInfos.map(_.bounds)
         Some((variances, argBounds, app.refinedInfo))
-      case TypeBounds(lo, hi) =>
-        unapply(hi)
       case _ =>
         None
     }
