@@ -57,7 +57,7 @@ object TypeApplications {
       assert(argBoundss.length == variances.length)
       RefinedType(
         argRefinements(defn.LambdaTrait(variances).typeRef, 0, argBoundss),
-        tpnme.hkApply, rt => bodyFn(rt).bounds)
+        tpnme.hkApply, rt => TypeAlias(bodyFn(rt), 1))
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(List[Int], List[TypeBounds], Type)] = tp match {
