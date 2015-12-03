@@ -22,13 +22,13 @@ object Printers {
   val implicitsDetailed: Printer = noPrinter
   val subtyping: Printer = noPrinter
   val unapp: Printer = noPrinter
-  val gadts = noPrinter
-  val hk = noPrinter
-  val variances = noPrinter
-  val incremental = noPrinter
-  val config = noPrinter
-  val transforms = noPrinter
-  val completions = noPrinter
-  val cyclicErrors = noPrinter
-  val pickling = noPrinter
+  val gadts: Printer = noPrinter
+  val hk: Printer = noPrinter
+  val variances: Printer = noPrinter
+  val incremental: Printer = noPrinter
+  val config: Printer = noPrinter
+  val transforms: Printer = noPrinter
+  val completions: Printer = noPrinter
+  val cyclicErrors: Printer = noPrinter
+  val pickling: Printer = noPrinter
 }
