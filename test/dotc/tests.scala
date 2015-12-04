@@ -51,6 +51,7 @@ class tests extends CompilerTest {
   val toolsDir  = dottyDir + "tools/"
   val dotcDir   = toolsDir + "dotc/"
   val coreDir   = dotcDir + "core/"
+  val typerDir  = dotcDir + "typer/"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
 // This directory doesn't exist anymore
@@ -240,6 +241,12 @@ class tests extends CompilerTest {
       "TypeApplications.scala", "TypeComparer.scala", "TypeErasure.scala", "TypeOps.scala",
       "TyperState.scala", "Uniques.scala"
     ) map (coreDir + _), testPickling)
+  @Test def tasty_typer = compileList("tasty_typer", List(
+      "Applications.scala", "Checking.scala", "ConstFold.scala", "ErrorReporting.scala",
+      "EtaExpansion.scala", "FrontEnd.scala", "Implicits.scala", "ImportInfo.scala",
+      "Inferencing.scala", "Mode.scala", "ProtoTypes.scala", "ReTyper.scala", "RefChecks.scala",
+      "TypeAssigner.scala", "Typer.scala", "VarianceChecker.scala", "Variances.scala"
+    ) map (typerDir + _), testPickling)
   @Test def tasty_tasty = compileDir(coreDir, "tasty", testPickling)
   @Test def tasty_classfile = compileDir(coreDir, "classfile", testPickling)
   @Test def tasty_unpickleScala2 = compileDir(coreDir, "unpickleScala2", testPickling)
