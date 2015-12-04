@@ -232,6 +232,16 @@ trait ConstraintHandling {
     }
   }
 
+  /** Instantiate `param` to `tp` if the constraint stays satisfiable */
+  protected def tryInstantiate(param: PolyParam, tp: Type): Boolean = {
+    val saved = constraint
+    constraint =
+      if (addConstraint(param, tp, fromBelow = true) &&
+          addConstraint(param, tp, fromBelow = false)) constraint.replace(param, tp)
+      else saved
+    constraint ne saved
+  }
+
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {

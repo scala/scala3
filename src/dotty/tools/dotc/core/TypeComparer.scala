@@ -12,6 +12,7 @@ import util.{Stats, DotClass, SimpleMap}
 import config.Config
 import config.Printers._
 import TypeErasure.{erasedLub, erasedGlb}
+import TypeApplications._
 import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
@@ -150,20 +151,21 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 case info1: TypeAlias => compareNamed(info1.alias, tp2)
                 case _ =>
                   val sym1 = tp1.symbol
-                  (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
-                     ctx.erasedTypes ||
-                     sym1.isStaticOwner ||
-                     isSubType(tp1.prefix, tp2.prefix) ||
-                     thirdTryNamed(tp1, tp2)
-                   else
-                     (tp1.name eq tp2.name) &&
-                     isSubType(tp1.prefix, tp2.prefix) &&
-                     (tp1.signature == tp2.signature) &&
-                     !tp1.isInstanceOf[WithFixedSym] &&
-                     !tp2.isInstanceOf[WithFixedSym] ||
-                     compareHK(tp1, tp2, inOrder = true) ||
-                     compareHK(tp2, tp1, inOrder = false) ||
-                     thirdTryNamed(tp1, tp2))
+                  if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
+                    ctx.erasedTypes ||
+                    sym1.isStaticOwner ||
+                    isSubType(tp1.prefix, tp2.prefix) ||
+                    thirdTryNamed(tp1, tp2)
+                  else
+                    (  (tp1.name eq tp2.name)
+                    && isSubType(tp1.prefix, tp2.prefix)
+                    && tp1.signature == tp2.signature
+                    && !tp1.isInstanceOf[WithFixedSym]
+                    && !tp2.isInstanceOf[WithFixedSym]
+                    ) ||
+                    compareHK(tp1, tp2, inOrder = true) ||
+                    compareHK(tp2, tp1, inOrder = false) ||
+                    thirdTryNamed(tp1, tp2)
               }
             case _ =>
               compareHK(tp2, tp1, inOrder = false) ||
@@ -239,9 +241,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: NamedType =>
       tp1.info match {
         case info1: TypeAlias => isSubType(info1.alias, tp2)
-        case _ => compareHK(tp1, tp2, inOrder = true) || thirdTry(tp1, tp2)
-          // Note: If we change the order here, doing compareHK first and following aliases second,
-          // we get a -Ycheck error when compiling dotc/transform. Need to investigate.
+        case _ =>
+          compareHK(tp1, tp2, inOrder = true) ||
+          thirdTry(tp1, tp2)
       }
     case tp1: PolyParam =>
       def flagNothingBound = {
@@ -344,12 +346,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case tp1: AndType =>
               // Delay calling `compareRefinedSlow` because looking up a member
               // of an `AndType` can lead to a cascade of subtyping checks
+              // This twist is needed to make collection/generic/ParFactory.scala compile
               fourthTry(tp1, tp2) || compareRefinedSlow
             case _ =>
               compareRefinedSlow || fourthTry(tp1, tp2)
           }
+          def etaExpandedSubType(tp1: Type) =
+            isSubType(tp1.typeConstructor.EtaExpand(tp2.typeParams), tp2)
           normalPath ||
-            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2), classBounds(tp2))
+            needsEtaLift(tp1, tp2) &&
+            testLifted(tp1, tp2, tp2.typeParams, etaExpandedSubType)
         }
         else // fast path, in particular for refinements resulting from parameterization.
           isSubType(tp1, skipped2) &&
@@ -471,7 +477,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
        isNewSubType(tp1.parent, tp2) ||
-         needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _), Nil)
+         needsEtaLift(tp2, tp1) &&
+         tp2.typeParams.length == tp1.typeParams.length &&
+         isSubType(tp1, tp2.EtaExpand(tp1.typeParams))
     case AndType(tp11, tp12) =>
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
@@ -502,19 +510,89 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       false
   }
 
-  /** If `projection` is a hk projection T#$apply
-   *  and `other` is not a hk projection, then convert `other` to a hk projection `U`, and
-   *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
+  /** Does `tp` need to be eta lifted to be comparable to `target`?
+   *  This is the case if:
+   *   - target is a type lambda, and
+   *   - `tp` is eta-expandable (i.e. is a non-lambda class ref)
    */
-  def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
-    projection.name == tpnme.hkApply &&
-    !other.isHKApply &&
-    other.testLifted(projection.prefix.LambdaClass(forcing = true).typeParams,
-      if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix),
-      if (inOrder) Nil else classBounds(projection.prefix))
+  private def needsEtaLift(tp: Type, target: RefinedType): Boolean =
+    target.refinedName == tpnme.hkApply && tp.isEtaExpandable
 
-  /** The class symbols bounding the type of the `Apply` member of `tp` */
-  private def classBounds(tp: Type) = tp.member(tpnme.hkApply).info.classSymbols
+  /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
+   *   - `B` derives from one of the class symbols of `tp2`,
+   *   - the type parameters of `B` match one-by-one the variances of `tparams`,
+   *   - `B` satisfies predicate `p`.
+   */
+  private def testLifted[T](tp1: Type, tp2: Type, tparams: List[TypeSymbol], p: Type => Boolean): Boolean = {
+    val classBounds = tp2.member(tpnme.hkApply).info.classSymbols
+    def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
+      case bc :: bcs1 =>
+        val baseRef = tp1.baseTypeRef(bc)
+        (classBounds.exists(bc.derivesFrom) &&
+         variancesConform(baseRef.typeParams, tparams) &&
+         p(baseRef.appliedTo(tp1.baseArgInfos(bc)))
+         ||
+         recur(bcs1))
+      case nil =>
+        false
+    }
+    recur(tp1.baseClasses)
+  }
+
+  /** If `projection` is a hk projection T#$apply with a constrainable poly param
+   *  as type constructor and `other` is not a hk projection, then perform the following
+   *  steps:
+   *
+   *   (1) If not `inOrder` then perform the next steps until they all succeed
+   *       for each base type of other which
+   *        - derives from a class bound of `projection`,
+   *        - has the same number of type parameters than `projection`
+   *        - has type parameter variances which conform to those of `projection`.
+   *       If `inOrder` then perform the same steps on the original `other` type.
+   *
+   *   (2) Try to eta expand the constructor of `other`.
+   *
+   *   (3a) In mode `TypeVarsMissConetxt` replace the projection's hk constructor parameter
+   *        by the eta expansion of step (2) reapplied to the projection's arguments.
+   *   (3b) In normal mode, try to unify the projection's hk constructor parameter with
+   *        the eta expansion of step(2)
+   *
+   *   (4) If `inOrder`, test `projection <: other` else test `other <: projection`.
+   */
+  def compareHK(projection: NamedType, other: Type, inOrder: Boolean): Boolean = {
+    def tryInfer(tp: Type): Boolean = ctx.traceIndented(i"compareHK($projection, $other, inOrder = $inOrder, constr = $tp)", subtyping) {
+      tp match {
+        case tp: TypeVar => tryInfer(tp.underlying)
+        case param: PolyParam if canConstrain(param) =>
+
+          def unifyWith(liftedOther: Type): Boolean = {
+            subtyping.println(i"unify with $liftedOther")
+            liftedOther.typeConstructor.widen match {
+              case tycon: TypeRef if tycon.isEtaExpandable && tycon.typeParams.nonEmpty =>
+                val (ok, projection1) =
+                  if (ctx.mode.is(Mode.TypevarsMissContext))
+                    (true, EtaExpansion(tycon).appliedTo(projection.argInfos))
+                  else
+                    (tryInstantiate(param, EtaExpansion(tycon)), projection)
+                ok &&
+                (if (inOrder) isSubType(projection1, other) else isSubType(other, projection1)) // ### move out?
+              case _ =>
+                false
+            }
+          }
+          val hkTypeParams = param.typeParams
+          subtyping.println(i"classBounds = ${projection.prefix.member(tpnme.hkApply).info.classSymbols}")
+          subtyping.println(i"base classes = ${other.baseClasses}")
+          subtyping.println(i"type params = $hkTypeParams")
+          if (inOrder) unifyWith(other)
+          else testLifted(other, projection.prefix, hkTypeParams, unifyWith)
+        case _ =>
+          false
+      }
+    }
+    projection.name == tpnme.hkApply && !other.isHKApply &&
+    tryInfer(projection.prefix.typeConstructor.dealias)
+  }
 
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
    *  to keep the constraint as wide as possible. Specifically, if
@@ -663,14 +741,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false
-  }
-
-  /** Does `tp` need to be eta lifted to be comparable to `target`? */
-  private def needsEtaLift(tp: Type, target: RefinedType): Boolean = {
-    // if (tp.isLambda != tp.isHK) println(i"discrepancy for $tp, isLambda = ${tp.isLambda}, isHK = ${tp.isHK}")
-    val name = target.refinedName
-    (name.isHkArgName || (name eq tpnme.hkApply)) &&
-    tp.exists && !tp.isLambda // we do encounter Lambda classes without any arguments here
   }
 
   /** Narrow gadt.bounds for the type parameter referenced by `tr` to include

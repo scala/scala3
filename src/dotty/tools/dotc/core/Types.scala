@@ -893,7 +893,7 @@ object Types {
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2)
+                case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2) // ### use TypeApplication's betaReduce
               }
             case _ => loop(pre.parent)
           }
@@ -1513,7 +1513,12 @@ object Types {
       else {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
-        else if (name == tpnme.hkApply && prefix.noHK) derivedSelect(prefix.EtaExpandCore)
+        else if (name == tpnme.hkApply && prefix.classNotLambda) {
+          // After substitution we might end up with a type like
+          // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
+          // where C is a class. In that case we eta expand `C`.
+          derivedSelect(prefix.EtaExpandCore)
+        }
         else newLikeThis(prefix)
       }
 
@@ -1753,8 +1758,8 @@ object Types {
 
   object TypeRef {
     def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) =
-      if (name == tpnme.hkApply && prefix.noHK)
-        assert(false, s"bad type : $prefix.$name should not be $$applied")
+      if (name == tpnme.hkApply && prefix.classNotLambda)
+        assert(false, s"bad type : $prefix.$name does not allow $$Apply projection")
 
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef = {
@@ -1894,22 +1899,7 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
-    private def checkInst(implicit ctx: Context): this.type = {
-      if (Config.checkLambdaVariance)
-        refinedInfo match {
-          case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isHkArgName =>
-            val cls = parent.LambdaClass(forcing = false)
-            if (cls.exists)
-              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.hkArgIndex).variance,
-                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.hkArgIndex).variance}, ${refinedInfo.variance}")
-          case _ =>
-        }
-      if (Config.checkProjections &&
-          (refinedName == tpnme.hkApply || refinedName.isHkArgName) &&
-          parent.noHK)
-        assert(false, s"illegal refinement of first-order type: $this")
-      this
-    }
+    private def checkInst(implicit ctx: Context): this.type = this
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
@@ -2743,9 +2733,9 @@ object Types {
 
   abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
     /** pre: this is a type alias */
-    def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if ((lo eq tp) && (variance == this.variance)) this
-      else TypeAlias(tp, variance)
+    def derivedTypeAlias(alias: Type, variance: Int = this.variance)(implicit ctx: Context) =
+      if ((alias eq this.alias) && (variance == this.variance)) this
+      else TypeAlias(alias, variance)
 
     override def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that

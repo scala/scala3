@@ -53,7 +53,7 @@ object Scala2Unpickler {
     case TempPolyType(tparams, restpe) =>
       if (denot.isType) {
         assert(!denot.isClass)
-        restpe.LambdaAbstract(tparams, cycleParanoid = true)
+        restpe.LambdaAbstract(tparams)
       }
       else
         PolyType.fromSymbols(tparams, restpe)
@@ -715,8 +715,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
-        else if (args.isEmpty && sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
-        else tycon.appliedTo(adaptArgs(sym.typeParams, args))
+        else if (args.nonEmpty) tycon.safeAppliedTo(adaptArgs(sym.typeParams, args))
+        else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
+        else tycon
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>

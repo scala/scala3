@@ -614,10 +614,10 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree = {
-    val was = tree.tpe.EtaExpandIfHK(bound)
+    //val was = tree.tpe.EtaExpandIfHK(bound)
     //val now = tree.tpe.adaptIfHK(bound) // ###
     //if (was != now) println(i"diff adapt ${tree.tpe} to $bound, was: $was, now: $now")
-    tree.withType(was)//tree.tpe.adaptIfHK(bound))
+    tree.withType(tree.tpe.adaptIfHK(bound))
   }
 
   /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
