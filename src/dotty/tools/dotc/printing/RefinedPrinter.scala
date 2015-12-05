@@ -19,7 +19,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private var enclosingDef: untpd.Tree = untpd.EmptyTree
-
+  private var lambdaNestingLevel: Int = 0
   private var myCtx: Context = _ctx
   override protected[this] implicit def ctx: Context = myCtx
 
@@ -116,18 +116,35 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isFunctionClass(cls)) return toTextFunction(args)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
-      case TypeLambda(variances, argBoundss, body) =>
-        val paramNames = variances.indices.toList.map("X" + _)
+      case tp @ TypeLambda(variances, argBoundss, body) =>
+        val prefix = ((('X' - 'A') + lambdaNestingLevel) % 26 + 'A').toChar
+        val paramNames = variances.indices.toList.map(prefix.toString + _)
         val instantiate = new TypeMap {
+          def contains(tp1: Type, tp2: Type): Boolean =
+            tp1.eq(tp2) || {
+              tp1.stripTypeVar match {
+                case RefinedType(parent, _) => contains(parent, tp2)
+                case _ => false
+              }
+            }
           def apply(t: Type): Type = t match {
-            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && rt.eq(tp) =>
-              TypeRef.withFixedSym(
-                NoPrefix, paramNames(name.hkArgIndex).toTypeName, defn.AnyClass)
-            case _ => mapOver(t)
+            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
+              // Make up a name that prints as "Xi". Need to be careful we do not
+              // accidentally unique-hash to something else. That's why we can't
+              // use prefix = NoPrefix or a WithFixedSym instance.
+              TypeRef.withSymAndName(
+                defn.EmptyPackageClass.thisType, defn.AnyClass,
+                paramNames(name.hkArgIndex).toTypeName)
+            case _ =>
+              mapOver(t)
           }
         }
-        return typeLambdaText(paramNames, variances, argBoundss,
-            instantiate(body).argInfo)
+        val instArgs = argBoundss.map(instantiate).asInstanceOf[List[TypeBounds]]
+        val instBody = instantiate(body).dropAlias
+        lambdaNestingLevel += 1
+        try
+          return typeLambdaText(paramNames, variances, instArgs, instBody)
+        finally lambdaNestingLevel -=1
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
