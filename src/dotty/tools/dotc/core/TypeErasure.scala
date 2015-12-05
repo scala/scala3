@@ -126,9 +126,11 @@ object TypeErasure {
     erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
-    val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
     val normTp =
-      if (tp.isRepeatedParam) tp.translateParameterized(defn.RepeatedParamClass, seqClass)
+      if (tp.isRepeatedParam) {
+        val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
+        tp.translateParameterized(defn.RepeatedParamClass, seqClass)
+      }
       else tp
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(erasureCtx)

@@ -584,7 +584,7 @@ object desugar {
    *      tree @cls
    */
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(TypedSplice(tpd.New(cls.typeRef, Nil)), tree)
+    Annotated(untpd.New(untpd.TypeTree(cls.typeRef), Nil), tree)
 
   private def derivedValDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
     ValDef(named.name.asTermName, tpt, rhs).withMods(mods).withPos(named.pos)
