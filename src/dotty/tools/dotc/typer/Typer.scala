@@ -1415,7 +1415,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
-          if (args.exists(_.isEmpty)) { assert(constr eq ctx.typerState.constraint); tree }
+          if (args.exists(_.isEmpty)) {
+            // If there are several arguments, some arguments might already
+            // have influenced the context, binfing variables, but later ones
+            // might fail. In that case the constraint needs to be reset.
+            ctx.typerState.constraint = constr
+            tree
+          }
           else adapt(tpd.Apply(tree, args), pt)
         }
         if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
