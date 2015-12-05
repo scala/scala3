@@ -54,18 +54,18 @@ object TypeApplications {
    */
   object TypeLambda {
     def apply(variances: List[Int],
-              argBoundss: List[TypeBounds],
+              argBoundsFns: List[RefinedType => TypeBounds],
               bodyFn: RefinedType => Type)(implicit ctx: Context): Type = {
-      def argRefinements(parent: Type, i: Int, bs: List[TypeBounds]): Type = bs match {
+      def argRefinements(parent: Type, i: Int, bs: List[RefinedType => TypeBounds]): Type = bs match {
         case b :: bs1 =>
           argRefinements(RefinedType(parent, tpnme.hkArg(i), b), i + 1, bs1)
         case nil =>
           parent
       }
       assert(variances.nonEmpty)
-      assert(argBoundss.length == variances.length)
+      assert(argBoundsFns.length == variances.length)
       RefinedType(
-        argRefinements(defn.LambdaTrait(variances).typeRef, 0, argBoundss),
+        argRefinements(defn.LambdaTrait(variances).typeRef, 0, argBoundsFns),
         tpnme.hkApply, bodyFn(_).bounds.withVariance(1))
     }
 
@@ -94,7 +94,9 @@ object TypeApplications {
       assert(tycon.isEtaExpandable)
       val tparams = tycon.typeParams
       val variances = tycon.typeParams.map(_.variance)
-      TypeLambda(tparams.map(_.variance), tycon.paramBounds,
+      TypeLambda(
+        tparams.map(_.variance),
+        tycon.paramBounds.map(internalize(_, tycon.typeParams)),
         rt => tycon.appliedTo(argRefs(rt, tparams.length)))
     }
 
@@ -162,7 +164,11 @@ object TypeApplications {
     }
   }
 
-  /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
+  private def internalize[T <: Type](tp: T, tparams: List[Symbol])(implicit ctx: Context) =
+    (rt: RefinedType) =>
+      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length)).apply(tp).asInstanceOf[T]
+
+   /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
    */
   def adaptArgs(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
@@ -257,8 +263,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
     def expand(tp: Type) = {
-      TypeLambda(tparams.map(_.variance), tparams.map(_.info.bounds),
-        rt => new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length)).apply(tp))
+      TypeLambda(
+        tparams.map(_.variance),
+        tparams.map(tparam => internalize(tparam.info.bounds, tparams)),
+        internalize(tp, tparams))
     }
     self match {
       case self: TypeAlias =>
