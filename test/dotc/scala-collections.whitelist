@@ -226,8 +226,7 @@
 ./scala-scala/src/library/scala/collection/immutable/Range.scala
 ./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
 
-# uses refinements that dotty does not support
-#./scala-scala/src/library/scala/collection/immutable/Set.scala
+./scala-scala/src/library/scala/collection/immutable/Set.scala
 
 ./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
 

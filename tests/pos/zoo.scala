@@ -1,41 +1,40 @@
 object Test {
-trait FoodStuff
-trait Meat extends FoodStuff {
+type Meat = {
   type IsMeat = Any
 }
-trait Grass extends FoodStuff {
+type Grass = {
   type IsGrass = Any
 }
 trait Animal {
-  type Food <: FoodStuff
+  type Food
   def eats(food: Food): Unit
   def gets: Food
 }
-trait Cow extends Animal {
+type Cow = Animal {
   type IsMeat = Any
   type Food <: Grass
-  def eats(food: Grass): Unit
-  def gets: Food
 }
-trait Lion extends Animal {
+type Lion = Animal {
   type Food = Meat
-  def eats(food: Meat): Unit
-  def gets: Meat
 }
-def newMeat: Meat = new Meat {
+def newMeat: Meat = new {
+  type IsMeat = Any
 }
-def newGrass: Grass = new Grass {
+def newGrass: Grass = new {
+  type IsGrass = Any
 }
-def newCow: Cow = new Cow {
+def newCow: Cow = new Animal {
+  type IsMeat = Any
   type Food = Grass
   def eats(food: Grass) = ()
   def gets = newGrass
 }
-def newLion: Lion = new Lion {
+def newLion: Lion = new Animal {
+  type Food = Meat
   def eats(food: Meat) = ()
   def gets = newMeat
 }
 val milka = newCow
 val leo = newLion
-//leo.eats(milka) // structural select not supported
+leo.eats(milka)
 }
