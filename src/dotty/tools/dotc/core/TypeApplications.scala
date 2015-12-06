@@ -92,12 +92,7 @@ object TypeApplications {
   object EtaExpansion {
     def apply(tycon: TypeRef)(implicit ctx: Context) = {
       assert(tycon.isEtaExpandable)
-      val tparams = tycon.typeParams
-      val variances = tycon.typeParams.map(_.variance)
-      TypeLambda(
-        tparams.map(_.variance),
-        tycon.paramBounds.map(internalize(_, tycon.typeParams)),
-        rt => tycon.appliedTo(argRefs(rt, tparams.length)))
+      tycon.EtaExpand(tycon.typeParams)
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
@@ -163,10 +158,6 @@ object TypeApplications {
       case _ => None
     }
   }
-
-  private def internalize[T <: Type](tp: T, tparams: List[Symbol])(implicit ctx: Context) =
-    (rt: RefinedType) =>
-      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length)).apply(tp).asInstanceOf[T]
 
    /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
    */
@@ -235,9 +226,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def hkTypeParams(implicit ctx: Context): List[TypeSymbol] =
     self.LambdaTrait.typeParams
 
-  final def paramBounds(implicit ctx: Context): List[TypeBounds] =
-    typeParams.map(self.memberInfo(_).bounds)
-
   /** The Lambda trait underlying a type lambda */
   def LambdaTrait(implicit ctx: Context): Symbol = self.stripTypeVar match {
     case RefinedType(parent, tpnme.hkApply) =>
@@ -262,11 +250,15 @@ class TypeApplications(val self: Type) extends AnyVal {
    *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> _ <: U)
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
+    def internalize[T <: Type](tp: T) =
+      (rt: RefinedType) =>
+        new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
+          .apply(tp).asInstanceOf[T]
     def expand(tp: Type) = {
       TypeLambda(
         tparams.map(_.variance),
-        tparams.map(tparam => internalize(tparam.info.bounds, tparams)),
-        internalize(tp, tparams))
+        tparams.map(tparam => internalize(self.memberInfo(tparam).bounds)),
+        internalize(tp))
     }
     self match {
       case self: TypeAlias =>
