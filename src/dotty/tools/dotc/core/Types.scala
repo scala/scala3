@@ -1899,7 +1899,17 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
-    private def checkInst(implicit ctx: Context): this.type = this
+    private def badInst =
+      throw new AssertionError(s"bad instantiation: $this")
+
+    def checkInst(implicit ctx: Context): this.type = {
+      if (refinedName == tpnme.hkApply)
+        parent.stripTypeVar match {
+          case RefinedType(_, name) if name.isHkArgName => // ok
+          case _ => badInst
+        }
+      this
+    }
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this

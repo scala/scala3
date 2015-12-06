@@ -133,7 +133,13 @@ object TypeApplications {
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
       case TypeRef(prefix, tpnme.hkApply) => unapp(prefix)
-      case _ => unapp(tp)
+      case _ =>
+        unapp(tp) match {
+          case Some((tycon: TypeRef, _)) if tycon.symbol.isLambdaTrait =>
+            // We are seeing part of a lambda abstraction, not an applied type
+            None
+          case x => x
+        }
     }
 
     private def unapp(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
