@@ -4,7 +4,7 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -49,11 +49,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
+        case tp @ TypeRef(_, tpnme.hkApply) =>
+          val tp1 = tp.reduceProjection
+          if (tp1 eq tp) tp else homogenize(tp1)
         case _ =>
           tp
-          /*val tp1 = tp.simplifyApply
-          if (tp1 eq tp) tp else homogenize(tp1)
-          */
       }
     else tp
 
