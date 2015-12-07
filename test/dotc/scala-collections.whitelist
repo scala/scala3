@@ -174,14 +174,17 @@
 ./scala-scala/src/library/scala/collection/TraversableProxyLike.scala
 ./scala-scala/src/library/scala/collection/package.scala
 
+./scala-scala/src/library/scala/collection/IterableView.scala
+./scala-scala/src/library/scala/collection/SeqView.scala
+./scala-scala/src/library/scala/collection/TraversableView.scala
+
 ## those classes use early initialisers.
-#./scala-scala/src/library/scala/collection/IterableView.scala
 #./scala-scala/src/library/scala/collection/IterableViewLike.scala
-#./scala-scala/src/library/scala/collection/SeqView.scala
 #./scala-scala/src/library/scala/collection/SeqViewLike.scala
-#./scala-scala/src/library/scala/collection/TraversableView.scala
 #./scala-scala/src/library/scala/collection/TraversableViewLike.scala
 #./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
+
+## This class causes a crash in backend.
 #./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 
@@ -202,7 +205,7 @@
 ./scala-scala/src/library/scala/collection/immutable/Range.scala
 ./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
 
-# had a variance error
+# had a variance error, now fixed.
 ./scala-scala/src/library/scala/collection/immutable/Set.scala
 
 ./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
