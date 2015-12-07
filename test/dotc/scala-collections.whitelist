@@ -80,8 +80,6 @@
 ./scala-scala/src/library/scala/collection/immutable/MapProxy.scala
 ./scala-scala/src/library/scala/collection/immutable/PagedSeq.scala
 ./scala-scala/src/library/scala/collection/immutable/Queue.scala
-
-# https://github.com/lampepfl/dotty/issues/916
 ./scala-scala/src/library/scala/collection/immutable/Seq.scala
 ./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
@@ -134,13 +132,8 @@
 ./scala-scala/src/library/scala/collection/GenMapLike.scala
 ./scala-scala/src/library/scala/collection/GenSeq.scala
 ./scala-scala/src/library/scala/collection/GenSeqLike.scala
-
-# seems https://github.com/lampepfl/dotty/issues/916
-#./scala-scala/src/library/scala/collection/GenSet.scala
-
+./scala-scala/src/library/scala/collection/GenSet.scala
 ./scala-scala/src/library/scala/collection/GenSetLike.scala
-
-# breaks genMapLike https://github.com/lampepfl/dotty/issues/937
 ./scala-scala/src/library/scala/collection/GenTraversable.scala
 ./scala-scala/src/library/scala/collection/GenTraversableLike.scala
 
@@ -161,21 +154,12 @@
 ./scala-scala/src/library/scala/collection/Parallel.scala
 ./scala-scala/src/library/scala/collection/Parallelizable.scala
 ./scala-scala/src/library/scala/collection/Searching.scala
-
-
 ./scala-scala/src/library/scala/collection/Seq.scala
-
 ./scala-scala/src/library/scala/collection/SeqExtractors.scala
-
-# https://github.com/lampepfl/dotty/issues/945
 ./scala-scala/src/library/scala/collection/SeqLike.scala
-
 ./scala-scala/src/library/scala/collection/SeqProxy.scala
 ./scala-scala/src/library/scala/collection/SeqProxyLike.scala
-
-# seems https://github.com/lampepfl/dotty/issues/916
-#./scala-scala/src/library/scala/collection/Set.scala
-
+./scala-scala/src/library/scala/collection/Set.scala
 ./scala-scala/src/library/scala/collection/SetLike.scala
 ./scala-scala/src/library/scala/collection/SetProxy.scala
 ./scala-scala/src/library/scala/collection/SetProxyLike.scala
@@ -184,9 +168,7 @@
 ./scala-scala/src/library/scala/collection/SortedSet.scala
 ./scala-scala/src/library/scala/collection/SortedSetLike.scala
 ./scala-scala/src/library/scala/collection/Traversable.scala
-
-# https://github.com/lampepfl/dotty/issues/938 (but relies also on #937 being fixed)
-#./scala-scala/src/library/scala/collection/TraversableLike.scala
+./scala-scala/src/library/scala/collection/TraversableLike.scala
 
 ./scala-scala/src/library/scala/collection/TraversableProxy.scala
 ./scala-scala/src/library/scala/collection/TraversableProxyLike.scala
@@ -204,18 +186,12 @@
 
 
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
-
-# seems https://github.com/lampepfl/dotty/issues/916
-#./scala-scala/src/library/scala/collection/immutable/HashSet.scala
+./scala-scala/src/library/scala/collection/immutable/HashSet.scala
 
 # https://github.com/lampepfl/dotty/issues/939
 #./scala-scala/src/library/scala/collection/immutable/IntMap.scala
-
-
 ./scala-scala/src/library/scala/collection/immutable/ListMap.scala
-
-# seems https://github.com/lampepfl/dotty/issues/916
-#./scala-scala/src/library/scala/collection/immutable/ListSet.scala
+./scala-scala/src/library/scala/collection/immutable/ListSet.scala
 
 # https://github.com/lampepfl/dotty/issues/939
 #./scala-scala/src/library/scala/collection/immutable/LongMap.scala
@@ -226,8 +202,8 @@
 ./scala-scala/src/library/scala/collection/immutable/Range.scala
 ./scala-scala/src/library/scala/collection/immutable/RedBlackTree.scala
 
-# uses refinements that dotty does not support
-#./scala-scala/src/library/scala/collection/immutable/Set.scala
+# had a variance error
+./scala-scala/src/library/scala/collection/immutable/Set.scala
 
 ./scala-scala/src/library/scala/collection/immutable/SetProxy.scala
 
