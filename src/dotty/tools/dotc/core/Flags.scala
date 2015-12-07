@@ -306,10 +306,12 @@ object Flags {
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
-  /** An type parameter which is an alias for some other (non-visible) type parameter */
-  final val TypeArgument = typeFlag(25, "<type-param-inst>")
+  /** A binding for a type parameter of a base class or trait.
+   *  TODO: Replace with combination of isType, ExpandedName, and Override?
+   */
+  final val BaseTypeArg = typeFlag(25, "<basetypearg>")
 
-  final val CaseAccessorOrTypeArgument = CaseAccessor.toCommonFlags
+  final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
 
   /** A super accessor */
   final val SuperAccessor = termFlag(26, "<superaccessor>")
@@ -446,7 +448,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
+    CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
     LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
@@ -545,7 +547,7 @@ object Flags {
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
 
   /** If symbol of a type alias has these flags, prefer the alias */
-  final val AliasPreferred = TypeParam | TypeArgument | ExpandedName
+  final val AliasPreferred = TypeParam | BaseTypeArg | ExpandedName
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
