@@ -84,7 +84,7 @@ class VarianceChecker()(implicit ctx: Context) {
         case tp: TypeRef =>
           val sym = tp.symbol
           if (sym.variance != 0 && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
-          else if (sym.isAliasType) this(status, sym.info)
+          else if (sym.isAliasType) this(status, sym.info.bounds.hi)
           else foldOver(status, tp)
         case tp: MethodType =>
           this(status, tp.resultType) // params will be checked in their TypeDef nodes.
