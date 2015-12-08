@@ -167,7 +167,6 @@ object SymDenotations {
         completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
       }
-      indent += 1
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
