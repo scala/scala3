@@ -368,7 +368,7 @@ object Symbols {
 
     type ThisName <: Name
 
-    //assert(_id != 30214)
+    //assert(id != 4285)
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
