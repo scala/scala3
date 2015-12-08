@@ -541,27 +541,27 @@ trait Applications extends Compatibility { self: Typer =>
       // a modified tree but this would be more convoluted and less efficient.
       if (proto.isTupled) proto = proto.tupled
 
-      methPart(fun1).tpe match {
-        case funRef: TermRef =>
-          tryEither { implicit ctx =>
-            val app =
-              if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-              else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx)
-            val result = app.result
-            convertNewArray(ConstFold(result))
-          } { (failedVal, failedState) =>
-            val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
-            if (fun1 eq fun2) {
-              failedState.commit()
-              failedVal
-            } else typedApply(
-              cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
-          }
-        case _ =>
-          fun1.tpe match {
-            case ErrorType => tree.withType(ErrorType)
-            case tp => handleUnexpectedFunType(tree, fun1)
-          }
+      fun1.tpe match {
+        case ErrorType => tree.withType(ErrorType)
+        case _ => methPart(fun1).tpe match {
+          case funRef: TermRef =>
+            tryEither { implicit ctx =>
+              val app =
+                if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx)
+              val result = app.result
+              convertNewArray(ConstFold(result))
+            } { (failedVal, failedState) =>
+              val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
+              if (fun1 eq fun2) {
+                failedState.commit()
+                failedVal
+              } else typedApply(
+                cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
+            }
+          case _ =>
+            handleUnexpectedFunType(tree, fun1)
+        }
       }
     }
 
