@@ -789,9 +789,36 @@ class Namer { typer: Typer =>
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
     val DefDef(name, tparams, vparamss, _, _) = ddef
-    completeParams(tparams)
-    vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR
+
+    // The following 3 lines replace what was previously just completeParams(tparams).
+    // But that can cause bad bounds being computed, as witnessed by
+    // tests/pos/paramcycle.scala. The problematic sequence is this:
+    //   0. Class constructor gets completed.
+    //   1. Type parameter CP of constructor gets completed
+    //   2. As a first step CP's bounds are set to Nothing..Any.
+    //   3. CP's real type bound demands the completion of corresponding type parameter DP
+    //      of enclosing class.
+    //   4. Type parameter DP has a rhs a DerivedFromParam tree, as installed by
+    //      desugar.classDef
+    //   5. The completion of DP then copies the current bounds of CP, which are still Nothing..Any.
+    //   6. The completion of CP finishes installing the real type bounds.
+    // Consequence: CP ends up with the wrong bounds!
+    // To avoid this we always complete type parameters of a class before the type parameters
+    // of the class constructor, but after having indexed the constructor parameters (because
+    // indexing is needed to provide a symbol to copy for DP's completion.
+    // With the patch, we get instead the following sequence:
+    //   0. Class constructor gets completed.
+    //   1. Class constructor parameter CP is indexed.
+    //   2. Class parameter DP starts completion.
+    //   3. Info of CP is computed (to be copied to DP).
+    //   4. CP is completed.
+    //   5. Info of CP is copied to DP and DP is completed.
+    index(tparams)
+    if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
+    for (tparam <- tparams) typedAheadExpr(tparam)
+
+    vparamss foreach completeParams
     def typeParams = tparams map symbolOfTree
     val paramSymss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
@@ -834,8 +861,11 @@ class Namer { typer: Typer =>
       case bounds: TypeBounds => bounds
       case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
     }
-    sym.info = NoCompleter
-    sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    if (isDerived) sym.info = unsafeInfo
+    else {
+      sym.info = NoCompleter
+      sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+    }
     etaExpandArgs.apply(sym.info)
   }
 
