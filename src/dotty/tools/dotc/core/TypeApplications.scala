@@ -16,6 +16,8 @@ import util.Positions.Position
 import config.Printers._
 import collection.mutable
 import java.util.NoSuchElementException
+import ast.untpd.TypeDef
+import typer.Namer
 
 object TypeApplications {
 
@@ -63,7 +65,14 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef =>
         val tsym = self.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) self.underlying.typeParams
+        else if (tsym.isAliasType) {
+          tsym.infoOrCompleter match {
+            case c: Namer#Completer =>
+              c.typeParams(tsym)
+            case _ =>
+              self.underlying.typeParams
+          }
+        }
         else {
           val lam = LambdaClass(forcing = false)
           if (lam.exists) lam.typeParams else Nil
@@ -200,6 +209,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil => tp
     }
 
+    def canForce(sym: Symbol) = sym.infoOrCompleter match {
+      case c: Namer#Completer =>
+        !sym.isAliasType
+      case _ =>
+        true
+    }
+
     /** Instantiate type `tp` with `args`.
      *  @param original  The original type for which we compute the type parameters
      *                   This makes a difference for refinement types, because
@@ -209,7 +225,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     def instantiate(tp: Type, original: Type): Type = tp match {
       case tp: TypeRef =>
         val tsym = tp.symbol
-        if (tsym.isAliasType) tp.underlying.appliedTo(args)
+        if (tsym.isAliasType && canForce(tsym)) tp.underlying.appliedTo(args)
         else {
           val safeTypeParams =
             if (tsym.isClass || !tp.typeSymbol.isCompleting) original.typeParams
@@ -242,7 +258,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym.isLambdaTrait
-        else !sym.isAliasType || isKnownHK(tp.info)
+        else !sym.isAliasType || !canForce(sym) || isKnownHK(tp.info)
       case tp: TypeProxy => isKnownHK(tp.underlying)
       case _ => false
     }

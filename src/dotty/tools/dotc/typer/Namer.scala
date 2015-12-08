@@ -478,6 +478,8 @@ class Namer { typer: Typer =>
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
+    var completedParams: Boolean = false
+    var nestedCtx: Context = null
 
     protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 
@@ -491,7 +493,9 @@ class Namer { typer: Typer =>
         typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
       case original: TypeDef =>
         assert(!original.isClassDef)
-        typeDefSig(original, sym)(localContext(sym).setNewScope)
+        if (nestedCtx == null)
+          nestedCtx = localContext(sym).setNewScope
+        typeDefSig(original, sym, completedParams)(nestedCtx)
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
@@ -500,6 +504,21 @@ class Namer { typer: Typer =>
           case ex: CyclicReference =>
             typr.println(s"error while completing ${imp.expr}")
             throw ex
+        }
+    }
+
+    def typeParams(sym: Symbol) = original match {
+      case tdef: TypeDef =>
+        if (nestedCtx == null)
+          nestedCtx = localContext(sym).setNewScope
+
+        {
+          implicit val ctx: Context = nestedCtx
+          if (!completedParams) {
+            completeParams(tdef.tparams)
+            completedParams = true
+          }
+          tdef.tparams map (symbolOfTree(_).asType)
         }
     }
 
@@ -807,8 +826,9 @@ class Namer { typer: Typer =>
     else valOrDefDefSig(ddef, sym, typeParams, paramSymss, wrapMethType)
   }
 
-  def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
-    completeParams(tdef.tparams)
+  def typeDefSig(tdef: TypeDef, sym: Symbol, completedParams: Boolean)(implicit ctx: Context): Type = {
+    if (!completedParams)
+      completeParams(tdef.tparams)
     val tparamSyms = tdef.tparams map symbolOfTree
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
     //val toParameterize = tparamSyms.nonEmpty && !isDerived
