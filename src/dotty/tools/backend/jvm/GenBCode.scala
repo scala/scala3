@@ -23,6 +23,7 @@ import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
+import java.io.{ File => JFile }
 import scala.tools.asm
 import scala.tools.asm.tree._
 import dotty.tools.dotc.util.{Positions, DotClass}
@@ -46,6 +47,8 @@ class GenBCode extends Phase {
 class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry{
 
   var tree: Tree = _
+
+  val sourceJFile: JFile = ctx.compilationUnit.source.file.file
 
   final class PlainClassBuilder(cunit: CompilationUnit) extends SyncAndTryBuilder(cunit)
 
@@ -300,6 +303,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       bytecodeWriter.close()
       // Statistics.stopTimer(BackendStats.bcodeTimer, bcodeStart)
 
+      if (ctx.compilerCallback != null)
+        ctx.compilerCallback.onSourceCompiled(sourceJFile)
+
       /* TODO Bytecode can be verified (now that all classfiles have been written to disk)
        *
        * (1) asm.util.CheckAdapter.verify()
@@ -363,6 +369,11 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               if (outFolder == null) null
               else getFileForClassfile(outFolder, jclassName, ".class")
             bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, outFile)
+
+            val outJFile = outFile.file
+            val className = jclassName.replace('/', '.')
+            if (ctx.compilerCallback != null)
+              ctx.compilerCallback.onClassGenerated(sourceJFile, outJFile, className)
           }
           catch {
             case e: FileConflictException =>
