@@ -585,6 +585,9 @@ object Flags {
   /** A private[this] parameter accessor */
   final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
 
+  /** A parameter forwarder */
+  final val ParamForwarder = allOf(Method, Stable, ParamAccessor)
+
   /** A private[this] parameter */
   final val PrivateLocalParam = allOf(Private, Local, Param)
 

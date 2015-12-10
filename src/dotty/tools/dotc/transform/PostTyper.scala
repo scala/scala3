@@ -157,10 +157,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: Ident =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
-            case _ => tree
+            case _ => paramFwd.adaptRef(tree)
           }
         case tree: Select =>
-          transformSelect(tree, Nil)
+          transformSelect(paramFwd.adaptRef(tree), Nil)
         case tree @ TypeApply(sel: Select, args) =>
           val args1 = transform(args)
           val sel1 = transformSelect(sel, args1)
@@ -170,11 +170,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: Template =>
           val saved = parentNews
           parentNews ++= tree.parents.flatMap(newPart)
-          try
+          try {
+            val templ1 = paramFwd.forwardParamAccessors(tree)
             synthMth.addSyntheticMethods(
-              paramFwd.forwardParamAccessors(
-                superAcc.wrapTemplate(tree)(
-                  super.transform(_).asInstanceOf[Template])))
+                superAcc.wrapTemplate(templ1)(
+                  super.transform(_).asInstanceOf[Template]))
+          }
           finally parentNews = saved
         case tree: DefDef =>
           transformAnnots(tree)
