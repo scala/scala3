@@ -15,6 +15,7 @@ import TreeTransforms._
 import util.DotClass
 import scala.util.{Try, Success, Failure}
 import config.{ScalaVersion, NoScalaVersion}
+import Decorators._
 import typer.ErrorReporting._
 import DenotTransformers._
 import ValueClasses.isDerivedValueClass
@@ -340,10 +341,20 @@ object RefChecks {
           }*/
     }
 
-    val opc = new OverridingPairs.Cursor(clazz)
-    while (opc.hasNext) {
-      checkOverride(opc.overriding, opc.overridden)
-      opc.next()
+    try {
+      val opc = new OverridingPairs.Cursor(clazz)
+      while (opc.hasNext) {
+        checkOverride(opc.overriding, opc.overridden)
+        opc.next()
+      }
+    } catch {
+      case ex: MergeError =>
+        val addendum = ex.tp1 match {
+          case tp1: ClassInfo =>
+            "\n(Note that having same-named member classes in types of a mixin composition is no longer allowed)"
+          case _ => ""
+        }
+        ctx.error(ex.getMessage + addendum, clazz.pos)
     }
     printMixinOverrideErrors()
 
