@@ -403,7 +403,7 @@ trait TypeAssigner {
   private def symbolicIfNeeded(sym: Symbol)(implicit ctx: Context) = {
     val owner = sym.owner
     owner.infoOrCompleter match {
-      case info: ClassInfo if !owner.is(Package) && info.givenSelfType.exists =>
+      case info: ClassInfo if info.givenSelfType.exists =>
         // In that case a simple typeRef/termWithWithSig could return a member of
         // the self type, not the symbol itself. To avoid this, we make the reference
         // symbolic. In general it seems to be faster to keep the non-symblic
