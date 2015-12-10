@@ -1168,7 +1168,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case bounds: TypeBounds => i"type bounds $bounds"
       case _ => tp.show
     }
-    throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}")
+    throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
   }
 
   /** Merge two lists of names. If names in corresponding positions match, keep them,

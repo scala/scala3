@@ -324,7 +324,7 @@ object Denotations {
                         info1 // follow Scala2 linearization -
                               // compare with way merge is performed in SymDenotation#computeMembersNamed
                       else
-                        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
+                        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}", ex.tp1, ex.tp2)
                   }
                 new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
               }
