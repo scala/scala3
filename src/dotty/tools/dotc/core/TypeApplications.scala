@@ -70,10 +70,18 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(List[Int], List[TypeBounds], Type)] = tp match {
-      case app @ RefinedType(prefix, tpnme.hkApply) =>
-        val cls = prefix.typeSymbol
+      case app @ RefinedType(parent, tpnme.hkApply) =>
+        val cls = parent.typeSymbol
         val variances = cls.typeParams.map(_.variance)
-        val argBounds = prefix.argInfos.map(_.bounds)
+        def collectBounds(t: Type, acc: List[TypeBounds]): List[TypeBounds] = t match {
+          case t @ RefinedType(p, rname) =>
+            assert(rname.isHkArgName)
+            collectBounds(p, t.refinedInfo.bounds :: acc)
+          case TypeRef(_, lname) =>
+            assert(lname.isLambdaTraitName)
+            acc
+        }
+        val argBounds = collectBounds(parent, Nil)
         Some((variances, argBounds, app.refinedInfo.argInfo))
       case _ =>
         None
