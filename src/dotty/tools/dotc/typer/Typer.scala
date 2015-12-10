@@ -332,7 +332,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
-    assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+    pt match {
+      case pt: SelectionProto if pt.name.isTypeName =>
+        qual1 // don't do super references for types; they are meaningless anyway
+      case _ =>
+        assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+    }
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
