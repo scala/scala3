@@ -1387,7 +1387,7 @@ object Types {
     }
 
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) = {
-      def ownerSelfType = sym.owner.info match {
+      def selfTypeOf(sym: Symbol) = sym.owner.info match {
         case info: ClassInfo => info.givenSelfType
         case _ => NoType
       }
@@ -1404,8 +1404,13 @@ object Types {
         (lastSymbol.infoOrCompleter == ErrorType ||
         sym.owner != lastSymbol.owner &&
         (sym.owner.derivesFrom(lastSymbol.owner) ||
-         ownerSelfType.derivesFrom(lastSymbol.owner))),
-        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${lastSymbol.owner} / ${sym.owner} / ${ctx.phase} at run ${ctx.runId}")
+         selfTypeOf(sym).derivesFrom(lastSymbol.owner) ||
+         selfTypeOf(lastSymbol).derivesFrom(sym.owner))),
+        s"""data race? overwriting symbol of type ${this.show},
+           |long form = $this of class ${this.getClass},
+           |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
+           |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
+           |period = ${ctx.phase} at run ${ctx.runId}""".stripMargin)
     }
 
     protected def sig: Signature = Signature.NotAMethod
