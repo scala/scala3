@@ -332,7 +332,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
-    assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+    pt match {
+      case pt: SelectionProto if pt.name.isTypeName =>
+        qual1 // don't do super references for types; they are meaningless anyway
+      case _ =>
+        assignType(cpy.Super(tree)(qual1, tree.mix), qual1, inConstrCall)
+    }
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
@@ -348,10 +353,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
-        if (tpt1.tpe.isHK) {
-          val deAliased = tpt1.tpe.dealias.EtaReduce
-          if (deAliased.exists && deAliased.ne(tpt1.tpe))
-            tpt1 = tpt1.withType(deAliased)
+        tpt1.tpe.dealias match {
+          case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
+          case _ =>
         }
         checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
@@ -1416,7 +1420,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
-          if (args.exists(_.isEmpty)) { assert(constr eq ctx.typerState.constraint); tree }
+          if (args.exists(_.isEmpty)) {
+            // If there are several arguments, some arguments might already
+            // have influenced the context, binfing variables, but later ones
+            // might fail. In that case the constraint needs to be reset.
+            ctx.typerState.constraint = constr
+            tree
+          }
           else adapt(tpd.Apply(tree, args), pt)
         }
         if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs

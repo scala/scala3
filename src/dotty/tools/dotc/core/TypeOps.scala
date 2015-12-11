@@ -61,18 +61,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
-      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-        if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
-          theMap.unstable = true
-        pre match {
-          case SuperType(thispre, _) => thispre
-          case _ => pre
-        }
+      else pre match {
+        case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
+        case _ =>
+          if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
+            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
+              theMap.unstable = true
+            pre
+          }
+          else if ((pre.termSymbol is Package) && !(thiscls is Package))
+            toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
+          else
+            toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
       }
-      else if ((pre.termSymbol is Package) && !(thiscls is Package))
-        toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
-      else
-        toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
     /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
@@ -384,10 +385,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         denot.info = info
       }
     }
-    val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
     val sym = ctx.newSymbol(
       cls, formal.name,
-      formal.flagsUNSAFE & RetainedTypeArgFlags | typeArgFlag | Override,
+      formal.flagsUNSAFE & RetainedTypeArgFlags | BaseTypeArg | Override,
       lazyInfo,
       coord = cls.coord)
     cls.enter(sym, decls)
@@ -463,14 +463,20 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
         for (pref <- prefs)
           for (argSym <- pref.decls)
-            if (argSym is TypeArgument)
+            if (argSym is BaseTypeArg)
               forwardRef(argSym, from, to, cls, decls)
       case _ =>
     }
 
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
+
+    // A map consolidating all refinements arising from parent type parameters
     var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
-    var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty
+
+    // A map of all formal type parameters of base classes that get refined
+    var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty // A map of all formal parent parameter
+
+    // Strip all refinements from parent type, populating `refinements` and `formals` maps.
     def normalizeToRef(tp: Type): TypeRef = tp.dealias match {
       case tp: TypeRef =>
         tp
@@ -488,13 +494,17 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         throw new TypeError(s"unexpected parent type: $tp")
     }
     val parentRefs = parents map normalizeToRef
+
+    // Enter all refinements into current scope.
     refinements foreachBinding { (name, refinedInfo) =>
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
       enterArgBinding(formals(name), refinedInfo, cls, decls)
     }
-    // These two loops cannot be fused because second loop assumes that
-    // all arguments have been entered in `decls`.
+    // Forward definitions in super classes that have one of the refined paramters
+    // as aliases directly to the refined info.
+    // Note that this cannot be fused bwith the previous loop because we now
+    // assume that all arguments have been entered in `decls`.
     refinements foreachBinding { (name, refinedInfo) =>
       forwardRefs(formals(name), refinedInfo, parentRefs)
     }

@@ -10,7 +10,7 @@ object collections {
   val s = Set(1, 2, 3)
   val ss = s map (_ + 1)
 
-  val cbf: CanBuildFrom[List, Int, List[Int]] = scala.collection.immutable.List.canBuildFrom
+  val cbf: CanBuildFrom[List[_], Int, List[Int]] = scala.collection.immutable.List.canBuildFrom
 
   val nil = Nil
   val ints1 = 1 :: Nil

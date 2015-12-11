@@ -4,7 +4,7 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -49,9 +49,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case _ =>
-          val tp1 = tp.simplifyApply
+        case tp @ TypeRef(_, tpnme.hkApply) =>
+          val tp1 = tp.reduceProjection
           if (tp1 eq tp) tp else homogenize(tp1)
+        case _ =>
+          tp
       }
     else tp
 
@@ -264,12 +266,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match {
       case tp @ TypeBounds(lo, hi) =>
         if (lo eq hi) {
-        val eql =
-          if (tp.variance == 1) " =+ "
-          else if (tp.variance == -1) " =- "
-          else " = "
+          val eql =
+            if (tp.variance == 1) " =+ "
+            else if (tp.variance == -1) " =- "
+            else " = "
           eql ~ toText(lo)
-        } else
+        }
+        else
           (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
             (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
@@ -344,7 +347,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(sym.flagsUNSAFE.flagStrings map stringToText, " ")
 
   /** String representation of symbol's variance or "" if not applicable */
-  protected def varianceString(sym: Symbol): String = sym.variance match {
+  protected def varianceString(sym: Symbol): String = varianceString(sym.variance)
+
+  protected def varianceString(v: Int): String = v match {
     case -1 => "-"
     case 1 => "+"
     case _ => ""

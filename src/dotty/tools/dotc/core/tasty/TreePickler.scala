@@ -9,6 +9,7 @@ import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annot
 import collection.mutable
 import NameOps._
 import TastyBuffer._
+import TypeApplications._
 
 class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
@@ -142,6 +143,9 @@ class TreePickler(pickler: TastyPickler) {
     }
 
     def pickleNewType(tpe: Type, richTypes: Boolean): Unit = try { tpe match {
+      case AppliedType(tycon, args) =>
+        writeByte(APPLIEDtype)
+        withLength { pickleType(tycon); args.foreach(pickleType(_)) }
       case ConstantType(value) =>
         pickleConstant(value)
       case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
@@ -181,17 +185,16 @@ class TreePickler(pickler: TastyPickler) {
           pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
         }
       case tpe: NamedType =>
-        if (tpe.name == tpnme.hkApply && tpe.prefix.argInfos.nonEmpty && tpe.prefix.isInstantiatedLambda)
-          // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will
-          // be reconstituted when unpickling.
-          pickleType(tpe.prefix)
-        else if (isLocallyDefined(tpe.symbol)) {
-          writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-          pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
-        }
-        else {
-          writeByte(if (tpe.isType) TYPEREF else TERMREF)
-          pickleName(tpe.name); pickleType(tpe.prefix)
+        tpe match {
+          case _ =>
+            if (isLocallyDefined(tpe.symbol)) {
+              writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
+              pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
+            }
+            else {
+              writeByte(if (tpe.isType) TYPEREF else TERMREF)
+              pickleName(tpe.name); pickleType(tpe.prefix)
+            }
         }
       case tpe: ThisType =>
         if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
@@ -211,18 +214,11 @@ class TreePickler(pickler: TastyPickler) {
       case tpe: SkolemType =>
         pickleType(tpe.info)
       case tpe: RefinedType =>
-        val args = tpe.argInfos
-        if (args.isEmpty) {
-          writeByte(REFINEDtype)
-          withLength {
-            pickleType(tpe.parent)
-            pickleName(tpe.refinedName)
-            pickleType(tpe.refinedInfo, richTypes = true)
-          }
-        }
-        else {
-          writeByte(APPLIEDtype)
-          withLength { pickleType(tpe.withoutArgs(args)); args.foreach(pickleType(_)) }
+        writeByte(REFINEDtype)
+        withLength {
+          pickleType(tpe.parent)
+          pickleName(tpe.refinedName)
+          pickleType(tpe.refinedInfo, richTypes = true)
         }
       case tpe: TypeAlias =>
         writeByte(TYPEALIAS)

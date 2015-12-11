@@ -1,22 +1,3 @@
-  abstract class FooA {
-    type A <: Ax;
-    abstract class Ax;
-    abstract class InnerA {
-      type B <: A;
-      def doB : B;
-    }
-  }
-  trait FooB extends FooA {
-    type A <: Ax;
-    trait Ax extends super.Ax { def xxx : Int; }
-    abstract class InnerB extends InnerA {
-      // type B <: A;
-      val a : A = doB;
-      a.xxx;
-      doB.xxx;
-    }
-  }
-
 package p1 {
   abstract class T1 {
     protected def bug(p: Int = 1): Int // without 'protected' compiles fine
@@ -31,7 +12,7 @@ package p2 { // all being in the same package compiles fine
   }
 
   abstract class T3 extends T2 {
-    class A {
+    class A {   // error: classes cannot be overridden
       bug()
     }
   }
@@ -45,7 +26,7 @@ class A[T] {
 
 class B extends A[Int] {
 
-  def f(x: Int)(y: Int) = y
+  def f(x: Int)(y: Int) = y // error: needs `override' modifier
 
   f(2)()
 
@@ -55,7 +36,7 @@ class X {
   def f: A[Int] = ???
 }
 class Y extends X {
-  def f: A[Int] = ???
+  def f: A[Int] = ??? // error: needs `override' modifier
 }
 
 
@@ -66,18 +47,18 @@ class X1 {
   def f(): A1 = ???
 }
 class Y1 extends X1 {
-  override def f(): B1 = ???
+  override def f(): B1 = ??? // error: has incompatible type
 }
 
 class X2 {
   type T = A1
 }
 class Y2 extends X2 {
-  type T = B1
+  type T = B1 // error: needs `override' modifier
 }
 
 class X3 {
-  override type T = A1
+  override type T = A1 // error: overrides nothing
 }
 
 package p3 {
@@ -97,14 +78,14 @@ trait TOverrider { this: TCommon =>
   override def f = "in TOverrider"   // The overridden self-type member...
 }
 
-class C2 extends C1 with TOverrider  // ... fails to override, here.
+class C2 extends C1 with TOverrider  // ... fails to override, here. // error: accidental override
 
 }
 
 package p4 {
 
   abstract class C[T] { def head: T }
-  case class D[T](head: Int) extends C[T]
+  case class D[T](head: Int) extends C[T] // error: has incompatible type
 
 }
 
@@ -114,10 +95,10 @@ class A {
 }
 
 class B extends A {
-  override val m: Int = 42
+  override val m: Int = 42 // error: has incompatible type
 }
 
 class C extends A {
-  override def m: Int = 42
+  override def m: Int = 42 // error: has incompatible type
 }
 }
