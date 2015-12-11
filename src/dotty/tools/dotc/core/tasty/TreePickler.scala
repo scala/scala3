@@ -185,16 +185,12 @@ class TreePickler(pickler: TastyPickler) {
           pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
         }
       case tpe: NamedType =>
-        tpe match {
-          case _ =>
-            if (isLocallyDefined(tpe.symbol)) {
-              writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-              pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
-            }
-            else {
-              writeByte(if (tpe.isType) TYPEREF else TERMREF)
-              pickleName(tpe.name); pickleType(tpe.prefix)
-            }
+        if (isLocallyDefined(tpe.symbol)) {
+          writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
+          pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
+        } else {
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
         if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
