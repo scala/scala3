@@ -185,19 +185,18 @@
 ./scala-scala/src/library/scala/collection/mutable/IndexedSeqView.scala
 ./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
 
-## This class causes a crash in backend.
+## This class causes a crash in backend -> @darkdimius
 #./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
-
 
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
 ./scala-scala/src/library/scala/collection/immutable/HashSet.scala
 
-# https://github.com/lampepfl/dotty/issues/939
+# https://github.com/lampepfl/dotty/issues/939 -> @darkdimius
 #./scala-scala/src/library/scala/collection/immutable/IntMap.scala
 ./scala-scala/src/library/scala/collection/immutable/ListMap.scala
 ./scala-scala/src/library/scala/collection/immutable/ListSet.scala
 
-# https://github.com/lampepfl/dotty/issues/939
+# https://github.com/lampepfl/dotty/issues/939 -> @darkdimius
 #./scala-scala/src/library/scala/collection/immutable/LongMap.scala
 
 ./scala-scala/src/library/scala/collection/immutable/Map.scala
@@ -268,10 +267,10 @@
 ./scala-scala/src/library/scala/collection/generic/SetFactory.scala
 ./scala-scala/src/library/scala/collection/generic/ParFactory.scala
 
-# https://github.com/lampepfl/dotty/issues/974
+# https://github.com/lampepfl/dotty/issues/974 -> @smarter
 #./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
 
-# cyclic reference, maybe related to #974
+# cyclic reference, maybe related to #974 -> @smarter
 #./scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 
 ./scala-scala/src/library/scala/collection/generic/OrderedTraversableFactory.scala
