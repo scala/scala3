@@ -613,12 +613,8 @@ trait Applications extends Compatibility { self: Typer =>
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
-  def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree = {
-    //val was = tree.tpe.EtaExpandIfHK(bound)
-    //val now = tree.tpe.adaptIfHK(bound) // ###
-    //if (was != now) println(i"diff adapt ${tree.tpe} to $bound, was: $was, now: $now")
+  def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
     tree.withType(tree.tpe.adaptIfHK(bound))
-  }
 
   /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
   def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {

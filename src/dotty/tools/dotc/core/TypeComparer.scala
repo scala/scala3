@@ -550,7 +550,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *   (2) Try to eta expand the constructor of `other`.
    *
-   *   (3a) In mode `TypeVarsMissConetxt` replace the projection's hk constructor parameter
+   *   (3a) In mode `TypevarsMissConetxt` replace the projection's hk constructor parameter
    *        by the eta expansion of step (2) reapplied to the projection's arguments.
    *   (3b) In normal mode, try to unify the projection's hk constructor parameter with
    *        the eta expansion of step(2)
@@ -573,7 +573,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                   else
                     (tryInstantiate(param, EtaExpansion(tycon)), projection)
                 ok &&
-                (if (inOrder) isSubType(projection1, other) else isSubType(other, projection1)) // ### move out?
+                (if (inOrder) isSubType(projection1, other) else isSubType(other, projection1))
               case _ =>
                 false
             }

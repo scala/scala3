@@ -845,7 +845,6 @@ class Namer { typer: Typer =>
    *  of arguments in F-bounds, because the recursive type was initialized with
    *  TypeBounds.empty.
    */
-  // ### Check whether this is still needed!
   def etaExpandArgs(implicit ctx: Context) = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: RefinedType =>
