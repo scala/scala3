@@ -190,6 +190,16 @@ object Types {
     def isRepeatedParam(implicit ctx: Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
+    /** Does this type carry an UnsafeNonvariant annotation? */
+    final def isUnsafeNonvariant(implicit ctx: Context): Boolean = this match {
+      case AnnotatedType(_, annot) => annot.symbol == defn.UnsafeNonvariantAnnot
+      case _ => false
+    }
+
+    /** Does this type have an UnsafeNonvariant annotation on one of its parts? */
+    final def hasUnsafeNonvariant(implicit ctx: Context): Boolean =
+      new HasUnsafeNonAccumulator().apply(false, this)
+
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
@@ -752,6 +762,12 @@ object Types {
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case _ => this
+    }
+
+    /** If this is a skolem, its underlying type, otherwise the type itself */
+    final def widenSkolem(implicit ctx: Context): Type = this match {
+      case tp: SkolemType => tp.underlying
       case _ => this
     }
 
@@ -3237,6 +3253,10 @@ object Types {
   class ForeachAccumulator(p: Type => Unit)(implicit ctx: Context) extends TypeAccumulator[Unit] {
     override def stopAtStatic = false
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
+  }
+
+  class HasUnsafeNonAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+    def apply(x: Boolean, tp: Type) = x || tp.isUnsafeNonvariant || foldOver(x, tp)
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {

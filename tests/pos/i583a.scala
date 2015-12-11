@@ -1,3 +1,15 @@
+object Test {
+
+  class C {
+    type T
+    val f: T = ???
+    def foo(x: T): T = x
+  }
+
+  var x = new C
+  val y = x.foo(???)
+
+}
 object Test1 {
 
   class Box[B](x: B)

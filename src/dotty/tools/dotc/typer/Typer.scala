@@ -282,12 +282,35 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkValue(tree1, pt)
   }
 
+  private def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(implicit ctx: Context): Select =
+    healNonvariant(
+      checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt),
+      pt)
+
+  /** Let `tree = p.n` where `p: T`. If tree's type is an unsafe instantiation
+   *  (see TypeOps#asSeenFrom for how this can happen), rewrite the prefix `p`
+   *  to `(p: <unknown skolem of type T>)` and try again with the new (stable)
+   *  prefix. If the result has another unsafe instantiation, raise an error.
+   */
+  private def healNonvariant[T <: Tree](tree: T, pt: Type)(implicit ctx: Context): T  =
+    if (ctx.unsafeNonvariant == ctx.runId && tree.tpe.widen.hasUnsafeNonvariant)
+      tree match {
+        case tree @ Select(qual, _) if !qual.tpe.isStable =>
+          val alt = typedSelect(tree, pt, Typed(qual, TypeTree(SkolemType(qual.tpe.widen))))
+          /*typr.*/println(d"healed type: ${tree.tpe} --> $alt")
+          alt.asInstanceOf[T]
+        case _ =>
+          ctx.error(d"unsafe instantiation of type ${tree.tpe}", tree.pos)
+          tree
+      }
+    else tree
+
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
     def asSelect(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-      checkValue(assignType(cpy.Select(tree)(qual1, tree.name), qual1), pt)
-    }
+      typedSelect(tree, pt, qual1)
+   }
 
     def asJavaSelectFromTypeTree(implicit ctx: Context): Tree = {
       // Translate names in Select/Ident nodes to type names.
@@ -382,7 +405,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           checkSimpleKinded(typedType(tree.tpt))
       val expr1 =
         if (isWildcard) tree.expr withType tpt1.tpe
-        else typed(tree.expr, tpt1.tpe)
+        else typed(tree.expr, tpt1.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
     tree.expr match {
@@ -438,9 +461,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 val setter = pre.member(setterName)
                 lhsCore match {
                   case lhsCore: RefTree if setter.exists =>
-                    val setterTypeRaw = pre select (setterName, setter)
+                    val setterTypeRaw = pre.select(setterName, setter)
                     val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
-                    val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
+                    val lhs2 = healNonvariant(
+                      untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
                     typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                   case _ =>
                     reassignmentToVal

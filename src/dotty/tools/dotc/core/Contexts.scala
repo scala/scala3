@@ -600,10 +600,16 @@ object Contexts {
      *  of underlying during a controlled operation exists. */
     private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
+    /** A flag that some unsafe nonvariant instantiation was encountered
+     *  in this run. Used as a shortcut to a avoid scans of types in
+     *  Typer.typedSelect.
+     */
+    private[dotty] var unsafeNonvariant: RunId = NoRunId
+
+    // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = _
 
-    // Phases state
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
