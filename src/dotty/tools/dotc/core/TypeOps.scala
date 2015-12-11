@@ -61,18 +61,19 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
-      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-        if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
-          theMap.unstable = true
-        pre match {
-          case SuperType(thispre, _) => thispre
-          case _ => pre
-        }
+      else pre match {
+        case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
+        case _ =>
+          if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
+            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
+              theMap.unstable = true
+            pre
+          }
+          else if ((pre.termSymbol is Package) && !(thiscls is Package))
+            toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
+          else
+            toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
       }
-      else if ((pre.termSymbol is Package) && !(thiscls is Package))
-        toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
-      else
-        toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
     /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
