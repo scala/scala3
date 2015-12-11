@@ -179,10 +179,11 @@
 ./scala-scala/src/library/scala/collection/TraversableView.scala
 
 ## those classes use early initialisers.
-#./scala-scala/src/library/scala/collection/IterableViewLike.scala
-#./scala-scala/src/library/scala/collection/SeqViewLike.scala
 ./scala-scala/src/library/scala/collection/TraversableViewLike.scala
-#./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
+./scala-scala/src/library/scala/collection/IterableViewLike.scala
+./scala-scala/src/library/scala/collection/SeqViewLike.scala
+./scala-scala/src/library/scala/collection/mutable/IndexedSeqView.scala
+./scala-scala/src/library/scala/collection/immutable/StreamViewLike.scala
 
 ## This class causes a crash in backend.
 #./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
