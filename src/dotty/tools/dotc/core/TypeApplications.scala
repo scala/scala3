@@ -328,10 +328,14 @@ class TypeApplications(val self: Type) extends AnyVal {
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
-  /** Eta expand the prefix in front of any refinements. */
-  def EtaExpandCore(implicit ctx: Context): Type = self.stripTypeVar match {
+  /** Eta expand the prefix in front of any refinements.
+   *  @param  tparamsForBottom   Type parameters to use if core is a bottom type
+   */
+  def EtaExpandCore(tparamsForBottom: List[TypeSymbol])(implicit ctx: Context): Type = self.stripTypeVar match {
     case self: RefinedType =>
-      self.derivedRefinedType(self.parent.EtaExpandCore, self.refinedName, self.refinedInfo)
+      self.derivedRefinedType(self.parent.EtaExpandCore(tparamsForBottom), self.refinedName, self.refinedInfo)
+    case tp: TypeRef if defn.isBottomClass(tp.symbol) =>
+      self.LambdaAbstract(tparamsForBottom)
     case _ =>
       self.EtaExpand(self.typeParams)
   }

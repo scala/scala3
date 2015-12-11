@@ -1517,7 +1517,7 @@ object Types {
           // After substitution we might end up with a type like
           // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
           // where C is a class. In that case we eta expand `C`.
-          derivedSelect(prefix.EtaExpandCore)
+          derivedSelect(prefix.EtaExpandCore(this.prefix.typeConstructor.typeParams))
         }
         else newLikeThis(prefix)
       }
