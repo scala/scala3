@@ -579,7 +579,12 @@ class Namer { typer: Typer =>
         else {
           val pt = checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
           if (pt.derivesFrom(cls)) {
-            ctx.error(i"cyclic inheritance: $cls extends itself", parent.pos)
+            val addendum = parent match {
+              case Select(qual: Super, _) if ctx.scala2Mode =>
+                "\n(Note that inheriting a class of the same name is no longer allowed)"
+              case _ => ""
+            }
+            ctx.error(i"cyclic inheritance: $cls extends itself$addendum", parent.pos)
             defn.ObjectType
           }
           else pt
