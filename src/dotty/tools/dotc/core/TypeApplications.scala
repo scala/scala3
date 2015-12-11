@@ -166,10 +166,10 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** True if it can be determined without forcing that the class symbol
-   *  of this application exists and is not a lambda trait.
+   *  of this application exists and is not a lambda trait or Nothing.
    *  Equivalent to
    *
-   *    self.classSymbol.exists && !self.classSymbol.isLambdaTrait
+   *    self.classSymbol.exists && !self.classSymbol.isLambdaTrait && !self.isRef(defn.NothingClass)
    *
    *  but without forcing anything.
    */
@@ -179,7 +179,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeRef =>
       (self.denot.exists) && {
         val sym = self.symbol
-        if (sym.isClass) !sym.isLambdaTrait
+        if (sym.isClass) !sym.isLambdaTrait && !sym.eq(defn.NothingClass)
         else sym.isCompleted && self.info.isAlias && self.info.bounds.hi.noHK
       }
     case _ =>
