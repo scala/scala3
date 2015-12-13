@@ -141,20 +141,23 @@ object Types {
     }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
-      case tp: TypeProxy =>
-        tp.underlying.derivesFrom(cls)
-      case tp: AndType =>
-        tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
-      case tp: OrType =>
-        tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
-      case tp: JavaArrayType =>
-        cls == defn.ObjectClass
-      case _ =>
-        false
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = {
+      def loop(tp: Type) = tp match {
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
+        case tp: TypeProxy =>
+          tp.underlying.derivesFrom(cls)
+        case tp: AndType =>
+          tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
+        case tp: OrType =>
+          tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+        case tp: JavaArrayType =>
+          cls == defn.ObjectClass
+        case _ =>
+          false
+      }
+      cls == defn.AnyClass || loop(this)
     }
 
     /** Is this type guaranteed not to have `null` as a value?
