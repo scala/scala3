@@ -447,7 +447,18 @@ object Types {
             if (rinfo.isAlias) rinfo
             else if (pdenot.info.isAlias) pdenot.info
             else if (ctx.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
-            else pdenot.info & rinfo
+            else
+              try pdenot.info & rinfo
+              catch {
+                case ex: CyclicReference =>
+                  // happens for tests/pos/sets.scala. findMember is called from baseTypeRef.
+                  // The & causes a subtype check which calls baseTypeRef again with the same
+                  // superclass. In the observed case, the superclass was Any, and
+                  // the special shortcut for Any in derivesFrom was as yet absent. To reproduce,
+                  // remove the special treatment of Any in derivesFrom and compile
+                  // sets.scala.
+                  safeAnd(pdenot.info, rinfo)
+              }
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else
           pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
@@ -1562,6 +1573,15 @@ object Types {
       case _ =>
         false
     }
+
+    /* A version of toString which also prints aliases. Can be used for debugging
+    override def toString =
+      if (isTerm) s"TermRef($prefix, $name)"
+      else s"TypeRef($prefix, $name)${
+        if (lastDenotation != null && lastDenotation.infoOrCompleter.isAlias)
+          s"@@@ ${lastDenotation.infoOrCompleter.asInstanceOf[TypeAlias].hi}"
+        else ""}"
+    */
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
