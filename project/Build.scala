@@ -48,6 +48,8 @@ object DottyBuild extends Build with CIBuild with DebugBuild {
   lazy val dotty = Project(id = "dotty", base = file("."),
     settings = defaults)
 
+  // Note: This version number is being picked up by the stand-alone
+  //       dottyc script.
   def scalaCompilerVersion = "2.11.5-20151022-113908-7fb0e653fd"
 
   lazy val defaults = Defaults.coreDefaultSettings ++ Seq(
@@ -98,7 +100,6 @@ object DottyBuild extends Build with CIBuild with DebugBuild {
     // enable improved incremental compilation algorithm
     incOptions := incOptions.value.withNameHashing(true),
 
-    // Adjust classpath for running dotty
     mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
 
     // --- Various test tasks and options ---
@@ -143,8 +144,8 @@ object DottyBuild extends Build with CIBuild with DebugBuild {
     fork in Test := true,
     parallelExecution in Test := false,
 
-    // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/
-    //   sbt-setting-jvm-boot-paramaters-for-scala
+    // Adjust classpath for running dotty
+    // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
     javaOptions <++=
       (managedClasspath in Runtime, packageBin in Compile) map {
         (attList, bin) =>

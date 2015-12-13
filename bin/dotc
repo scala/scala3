@@ -20,7 +20,7 @@ function getLastStringOnLineWith {
 # Configuration
 SCALA_VERSION=$(getLastStringOnLineWith "scalaVersion in")
 SCALA_BINARY_VERSION=2.11
-SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
+SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scalaCompilerVersion")
 DOTTY_VERSION=$(getLastStringOnLineWith "version in")
 JLINE_VERSION=$(getLastStringOnLineWith "jline")
 bootcp=true
