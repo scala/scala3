@@ -353,29 +353,35 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** If argument A and type parameter P are higher-kinded, adapt the variances
-   *  of A to those of P, ensuring that  the variances of the type lambda A
-   *  agree with the variances of corresponding higherkinded type parameters of P. Example:
+   *  of A to those of P, ensuring that the variances of the type lambda A
+   *  agree with the variances of corresponding higher-kinded type parameters of P. Example:
    *
-   *     class Companion[+CC[X]]
-   *     Companion[List]
+   *     class GenericCompanion[+CC[X]]
+   *     GenericCompanion[List]
    *
-   *  with adaptArgs, this will expand to
+   *  with adaptHkVariances, the argument `List` will expand to
    *
-   *     Companion[[X] => List[X]]
+   *     [X] => List[X]
    *
    *  instead of
    *
-   *      Companion[[+X] => List[X]]
+   *     [+X] => List[X]
    *
    *  even though `List` is covariant. This adaptation is necessary to ignore conflicting
-   *  variances in overriding members that have types of hk-type parameters such as `Companion[GenTraversable]`
-   *  or `Companion[ListBuffer]`. Without the adaptation we would end up with
+   *  variances in overriding members that have types of hk-type parameters such as
+   *  `GenericCompanion[GenTraversable]` or `GenericCompanion[ListBuffer]`.
+   *  When checking overriding, we need to validate the subtype relationship
    *
-   *      Companion[[+X] => GenTraversable[X]]
-   *      Companion[[X] => List[X]]
+   *      GenericCompanion[[X] -> ListBuffer[X]] <: GenericCompanion[[+X] -> GenTraversable[X]]
    *
-   *  and the second is not a subtype of the first. So if we have overridding memebrs of the two
-   *  types we get an error.
+   *   Without adaptation, this would be false, and hence an overriding error would
+   *   result. But with adaptation, the rhs argument will be adapted to
+   *
+   *     [X] -> GenTraversable[X]
+   *
+   *   which makes the subtype test succeed. The crucial point here is that, since
+   *   GenericCompanion only expects a non-variant CC, the fact that GenTraversable
+   *   is covariant is irrelevant, so can be ignored.
    */
   def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
     val boundLambda = bound.LambdaTrait
