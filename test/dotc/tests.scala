@@ -100,6 +100,7 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
+  @Test def pos_sets = compileFile(posSpecialDir, "sets")(allowDeepSubtypes)
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
   @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
@@ -182,7 +183,7 @@ class tests extends CompilerTest {
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
-  @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -191,7 +192,7 @@ class tests extends CompilerTest {
 // This directory doesn't exist anymore
 //  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
 
-  @Test def dotc_transform = compileDir(dotcDir, "transform")// twice omitted to make tests run faster
+  @Test def dotc_transform = compileDir(dotcDir, "transform")(allowDeepSubtypes)// twice omitted to make tests run faster
 
   @Test def dotc_parsing = compileDir(dotcDir, "parsing") // twice omitted to make tests run faster
 
