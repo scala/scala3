@@ -167,11 +167,11 @@ object TypeApplications {
     }
   }
 
-   /** Adapt all arguments to possible higher-kinded type parameters using adaptIfHK
+   /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def adaptArgs(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
+  def etaExpandIfHK(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.adaptIfHK(tparam.infoOrCompleter))
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.infoOrCompleter))
 
   def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
@@ -340,11 +340,21 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.EtaExpand(self.typeParams)
   }
 
-   /** Adapt argument A to type parameter P in the case P is higher-kinded.
-   *  This means:
-   *  (1) Make sure that A is a type lambda, if necessary by eta-expanding it.
-   *  (2) Make sure the variances of the type lambda
-   *  agrees with variances of corresponding higherkinded type parameters. Example:
+  /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
+  def etaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
+    val boundLambda = bound.LambdaTrait
+    val hkParams = boundLambda.typeParams
+    if (hkParams.isEmpty) self
+    else self match {
+      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
+        EtaExpansion(self)
+      case _ => self
+    }
+  }
+
+  /** If argument A and type parameter P are higher-kinded, adapt the variances
+   *  of A to those of P, ensuring that  the variances of the type lambda A
+   *  agree with the variances of corresponding higherkinded type parameters of P. Example:
    *
    *     class Companion[+CC[X]]
    *     Companion[List]
@@ -367,25 +377,26 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  and the second is not a subtype of the first. So if we have overridding memebrs of the two
    *  types we get an error.
    */
-  def adaptIfHK(bound: Type)(implicit ctx: Context): Type = {
+  def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
     val boundLambda = bound.LambdaTrait
     val hkParams = boundLambda.typeParams
     if (hkParams.isEmpty) self
-    else self match {
-      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
-        EtaExpansion(self).adaptIfHK(bound)
-      case _ =>
-        def adaptArg(arg: Type): Type = arg match {
-          case arg: TypeRef
-          if arg.symbol.isLambdaTrait &&
-             !arg.symbol.typeParams.corresponds(boundLambda.typeParams)(_.variance == _.variance) =>
-            arg.prefix.select(boundLambda)
-          case arg: RefinedType =>
-            arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
-          case _ =>
-            arg
-        }
-        adaptArg(self)
+    else {
+      def adaptArg(arg: Type): Type = arg match {
+        case arg: TypeRef if arg.symbol.isLambdaTrait &&
+          !arg.symbol.typeParams.corresponds(hkParams)(_.variance == _.variance) &&
+          arg.symbol.typeParams.corresponds(hkParams)(varianceConforms) =>
+          arg.prefix.select(boundLambda)
+        case arg: RefinedType =>
+          arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
+        case arg @ TypeAlias(alias) =>
+          arg.derivedTypeAlias(adaptArg(alias))
+        case arg @ TypeBounds(lo, hi) =>
+          arg.derivedTypeBounds(lo, adaptArg(hi))
+        case _ =>
+          arg
+      }
+      adaptArg(self)
     }
   }
 

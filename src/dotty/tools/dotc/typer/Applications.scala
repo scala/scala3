@@ -614,7 +614,7 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
-    tree.withType(tree.tpe.adaptIfHK(bound))
+    tree.withType(tree.tpe.etaExpandIfHK(bound))
 
   /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
   def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
