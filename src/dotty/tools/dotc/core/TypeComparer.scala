@@ -144,11 +144,29 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
         implicit val ctx: Context = this.ctx
         tp2.info match {
-          case info2: TypeAlias => firstTry(tp1, info2.alias)
+          case info2: TypeAlias if tp2.prefix.isStable =>
+            // If prefix is not stable (i.e. is not a path), then we have a true
+            // projection `T # A` which is treated as the existential type
+            // `ex(x: T)x.A`. We need to deal with the existential first before
+            // following the alias. If we did follow the alias we could be
+            // unsound as well as incomplete. An example of this was discovered in Iter2.scala.
+            // It failed to validate the subtype test
+            //
+            //   (([+X] -> Seq[X]) & C)[SA] <: C[SA]
+            //
+            // Both sides are projections of $Apply. The left $Apply does have an
+            // aliased info, namely, Seq[SA]. But that is not a subtype of C[SA].
+            // The problem is that, with the prefix not being a path, an aliased info
+            // does not necessarily give all of the information of the original projection.
+            // So we can't follow the alias without a backup strategy. If the alias
+            // would appear on the right then I believe this can be turned into a case
+            // of unsoundness.
+            isSubType(tp1, info2.alias)
           case _ => tp1 match {
             case tp1: NamedType =>
               tp1.info match {
-                case info1: TypeAlias => compareNamed(info1.alias, tp2)
+                case info1: TypeAlias if tp1.prefix.isStable =>
+                  isSubType(info1.alias, tp2)
                 case _ =>
                   val sym1 = tp1.symbol
                   if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol))
