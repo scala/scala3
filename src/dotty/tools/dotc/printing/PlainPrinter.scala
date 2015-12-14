@@ -170,7 +170,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           val bounds =
             if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
             else TypeBounds.empty
-          "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
+          if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
+          else toText(tp.origin)
         }
       case tp: LazyRef =>
         "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")"
