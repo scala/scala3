@@ -1,3 +1,20 @@
+class Foo {
+  type A = Int
+  type B >: Int <: Int
+  def get: A = 42
+}
+class Bar extends Foo {
+  override type A = Any   // error
+  type B >: String <: Any  // error
+  override def get: A = "bar"
+}
+object Test {
+  def main(args: Array[String]): Unit = {
+    val foo: Foo = new Bar
+    val i: Int = foo.get
+  }
+}
+
 package p1 {
   abstract class T1 {
     protected def bug(p: Int = 1): Int // without 'protected' compiles fine
@@ -102,3 +119,4 @@ class C extends A {
   override def m: Int = 42 // error: has incompatible type
 }
 }
+
