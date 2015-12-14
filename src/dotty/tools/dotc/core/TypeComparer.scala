@@ -434,8 +434,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           (tp2.variance > 0 && tp1.variance >= 0 || (lo2 eq NothingType) || isSubType(lo2, lo1)) &&
           (tp2.variance < 0 && tp1.variance <= 0 || (hi2 eq AnyType) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
-          val tt = tp1.typeRef
-          isSubType(lo2, tt) && isSubType(tt, hi2)
+          tp2 contains tp1
         case _ =>
           false
       }
@@ -1063,13 +1062,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 & tp2
-        case tp2: ClassInfo if tp1 contains tp2.typeRef => tp2
+        case tp2: ClassInfo if tp1 contains tp2 => tp2
         case _ => mergeConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-        case tp2: TypeBounds if tp2 contains tp1.typeRef => tp1
+        case tp2: TypeBounds if tp2 contains tp1 => tp1
         case _ => mergeConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>
@@ -1122,13 +1121,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 | tp2
-        case tp2: ClassInfo if tp1 contains tp2.typeRef => tp1
+        case tp2: ClassInfo if tp1 contains tp2 => tp1
         case _ => mergeConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-        case tp2: TypeBounds if tp2 contains tp1.typeRef => tp2
+        case tp2: TypeBounds if tp2 contains tp1 => tp2
         case _ => mergeConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>

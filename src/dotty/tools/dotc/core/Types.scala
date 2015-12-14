@@ -2663,10 +2663,12 @@ object Types {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (typeRefCache == null)
         typeRefCache =
-          if ((cls is PackageClass) || cls.owner.isTerm) prefix select cls
-          else prefix select (cls.name, clsDenot)
+          if ((cls is PackageClass) || cls.owner.isTerm) symbolicTypeRef
+          else TypeRef(prefix, cls.name, clsDenot)
       typeRefCache
     }
+
+    def symbolicTypeRef(implicit ctx: Context): Type = TypeRef(prefix, cls)
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
@@ -2732,8 +2734,12 @@ object Types {
       case _ => this
     }
 
-    def contains(tp: Type)(implicit ctx: Context) = tp match {
+    def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
+      case tp: ClassInfo =>
+        // Note: Taking a normal typeRef does not work here. A normal ref might contain
+        // also other information about the named type (e.g. bounds).
+        contains(tp.symbolicTypeRef)
       case _ => lo <:< tp && tp <:< hi
     }
 
