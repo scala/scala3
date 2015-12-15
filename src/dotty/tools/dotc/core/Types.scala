@@ -1550,23 +1550,23 @@ object Types {
       else {
         if (Config.splitProjections && isType)
           prefix match {
-          case prefix: AndType =>
-            def isMissing(tp: Type) = tp match {
-              case tp: TypeRef => !tp.info.exists
-              case _ => false
-            }
-            val derived1 = derivedSelect(prefix.tp1)
-            val derived2 = derivedSelect(prefix.tp2)
-            return (
-              if (isMissing(derived1)) derived2
-              else if (isMissing(derived2)) derived1
-              else prefix.derivedAndType(derived1, derived2))
-          case prefix: OrType =>
-            val derived1 = derivedSelect(prefix.tp1)
-            val derived2 = derivedSelect(prefix.tp2)
-            return prefix.derivedOrType(derived1, derived2)
-          case _ =>
-        }
+            case prefix: AndType =>
+              def isMissing(tp: Type) = tp match {
+                case tp: TypeRef => !tp.info.exists
+                case _ => false
+              }
+              val derived1 = derivedSelect(prefix.tp1)
+              val derived2 = derivedSelect(prefix.tp2)
+              return (
+                if (isMissing(derived1)) derived2
+                else if (isMissing(derived2)) derived1
+                else prefix.derivedAndType(derived1, derived2))
+            case prefix: OrType =>
+              val derived1 = derivedSelect(prefix.tp1)
+              val derived2 = derivedSelect(prefix.tp2)
+              return prefix.derivedOrType(derived1, derived2)
+            case _ =>
+          }
         val res = prefix.lookupRefined(name)
         if (res.exists) res
         else if (name == tpnme.hkApply && prefix.classNotLambda) {
