@@ -100,8 +100,6 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
-  @Test def pos_sets = compileFile(posSpecialDir, "sets")(allowDeepSubtypes)
-  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
   @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
 
