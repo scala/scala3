@@ -232,7 +232,7 @@ object RefChecks {
       def compatibleTypes =
         if (member.isType) { // intersection of bounds to refined types must be nonempty
           member.is(BaseTypeArg) ||
-          (memberTp <:< otherTp) || {
+          memberTp.overrides(otherTp) || {
             val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
             jointBounds.lo <:< jointBounds.hi
           }
