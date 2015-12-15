@@ -845,15 +845,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, expectedType, typer)
-    val alts = receiver.tpe.member(method).alternatives.map(_.termRef)
-
-    val alternatives = ctx.typer.resolveOverloaded(alts, proto, Nil)
-    assert(alternatives.size == 1,
-      i"multiple overloads available for $method on ${receiver.tpe.widenDealias} with targs: $targs, args: $args and expectedType: $expectedType." +
-        i" isAnnotConstructor = $isAnnotConstructor.\n" +
-        i"alternatives: $alternatives") // this is parsed from bytecode tree. there's nothing user can do about it
-
-    val selected = alternatives.head
+    val denot = receiver.tpe.member(method)
+    assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
+    val selected =
+      if (denot.isOverloaded) {
+        val allAlts = denot.alternatives.map(_.termRef)
+        val alternatives =
+          ctx.typer.resolveOverloaded(allAlts, proto, Nil)
+        assert(alternatives.size == 1,
+          i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
+          i"$method on ${receiver.tpe.widenDealias} with targs: $targs, args: $args and expectedType: $expectedType." +
+          i" isAnnotConstructor = $isAnnotConstructor.\n" +
+          i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
+          i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
+        alternatives.head
+      }
+      else denot.asSingleDenotation.termRef
     val fun = receiver
       .select(TermRef.withSig(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)

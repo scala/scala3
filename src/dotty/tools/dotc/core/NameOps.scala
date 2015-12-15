@@ -81,6 +81,7 @@ object NameOps {
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
+    def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
@@ -99,19 +100,22 @@ object NameOps {
     }
 
     /** Is this the name of a higher-kinded type parameter of a Lambda? */
-    def isLambdaArgName =
+    def isHkArgName =
       name.length > 0 &&
-      name.head == tpnme.LAMBDA_ARG_PREFIXhead &&
-      name.startsWith(tpnme.LAMBDA_ARG_PREFIX) && {
-        val digits = name.drop(tpnme.LAMBDA_ARG_PREFIX.length)
+      name.head == tpnme.hkArgPrefixHead &&
+      name.startsWith(tpnme.hkArgPrefix) && {
+        val digits = name.drop(tpnme.hkArgPrefixLength)
         digits.length <= 4 && digits.forall(_.isDigit)
       }
 
     /** The index of the higher-kinded type parameter with this name.
      *  Pre: isLambdaArgName.
      */
-    def LambdaArgIndex: Int =
-      name.drop(tpnme.LAMBDA_ARG_PREFIX.length).toString.toInt
+    def hkArgIndex: Int =
+      name.drop(tpnme.hkArgPrefixLength).toString.toInt
+
+    def isLambdaTraitName(implicit ctx: Context): Boolean =
+      name.startsWith(tpnme.hkLambdaPrefix)
 
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.

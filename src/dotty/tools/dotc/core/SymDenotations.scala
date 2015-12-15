@@ -167,7 +167,6 @@ object SymDenotations {
         completions.println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
       }
-      indent += 1
       if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
@@ -446,7 +445,7 @@ object SymDenotations {
 
     /** is this symbol a trait representing a type lambda? */
     final def isLambdaTrait(implicit ctx: Context): Boolean =
-      isClass && name.startsWith(tpnme.LambdaPrefix) && owner == defn.ScalaPackageClass
+      isClass && name.startsWith(tpnme.hkLambdaPrefix) && owner == defn.ScalaPackageClass
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {

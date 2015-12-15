@@ -21,6 +21,13 @@ object desugar {
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
+  /** Names of methods that are added unconditionally to case classes */
+  def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context) =
+    name == nme.isDefined ||
+    name == nme.copy ||
+    name == nme.productArity ||
+    name.isSelectorName
+
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree extends DerivedTypeTree {

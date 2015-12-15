@@ -401,6 +401,17 @@ trait Checking {
       errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
     }
     else tpt
+
+  def checkLowerNotHK(sym: Symbol, tparams: List[Symbol], pos: Position)(implicit ctx: Context) =
+    if (tparams.nonEmpty)
+      sym.info match {
+        case info: TypeAlias => // ok
+        case TypeBounds(lo, _) =>
+          for (tparam <- tparams)
+            if (tparam.typeRef.occursIn(lo))
+              ctx.error(i"type parameter ${tparam.name} may not occur in lower bound $lo", pos)
+        case _ =>
+      }
 }
 
 trait NoChecking extends Checking {
@@ -414,4 +425,5 @@ trait NoChecking extends Checking {
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
+  override def checkLowerNotHK(sym: Symbol, tparams: List[Symbol], pos: Position)(implicit ctx: Context) = ()
 }

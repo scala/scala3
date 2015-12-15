@@ -100,6 +100,7 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
+  @Test def pos_sets = compileFile(posSpecialDir, "sets")(allowDeepSubtypes)
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
   @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
@@ -120,7 +121,8 @@ class tests extends CompilerTest {
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
-  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 11)
+  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 12)
+  @Test def neg_overrideClass = compileFile(negDir, "overrideClass", List("-language:Scala2"), xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 2)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 6)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
@@ -147,6 +149,7 @@ class tests extends CompilerTest {
   @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
+  @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 3)
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
@@ -158,8 +161,9 @@ class tests extends CompilerTest {
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
+  @Test def neg_partialApplications = compileFile(negDir, "partialApplications", xerrors = 3)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 6)
-  @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 3)
+  @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 2)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
@@ -180,7 +184,7 @@ class tests extends CompilerTest {
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
-  @Test def dotty = compileDir(dottyDir, ".", "-deep" :: "-Ycheck-reentrant" :: allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -189,7 +193,7 @@ class tests extends CompilerTest {
 // This directory doesn't exist anymore
 //  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
 
-  @Test def dotc_transform = compileDir(dotcDir, "transform")// twice omitted to make tests run faster
+  @Test def dotc_transform = compileDir(dotcDir, "transform")(allowDeepSubtypes)// twice omitted to make tests run faster
 
   @Test def dotc_parsing = compileDir(dotcDir, "parsing") // twice omitted to make tests run faster
 

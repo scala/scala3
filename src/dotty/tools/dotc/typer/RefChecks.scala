@@ -15,6 +15,7 @@ import TreeTransforms._
 import util.DotClass
 import scala.util.{Try, Success, Failure}
 import config.{ScalaVersion, NoScalaVersion}
+import Decorators._
 import typer.ErrorReporting._
 import DenotTransformers._
 import ValueClasses.isDerivedValueClass
@@ -171,8 +172,8 @@ object RefChecks {
       val sym1 = sym.underlyingSymbol
       def info = self.memberInfo(sym1)
       i"${if (showLocation) sym1.showLocated else sym1}${
-        if (sym1.isAliasType) i", which equals $info"
-        else if (sym1.isAbstractType) i" with bounds $info"
+        if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
+        else if (sym1.isAbstractType) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
@@ -227,6 +228,18 @@ object RefChecks {
         overrideError("has weaker access privileges; it should be " +
           (if (otherAccess == "") "public" else "at least " + otherAccess))
       }
+
+      def compatibleTypes =
+        if (member.isType) { // intersection of bounds to refined types must be nonempty
+          member.is(BaseTypeArg) ||
+          (memberTp frozen_<:< otherTp) || {
+            val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+            jointBounds.lo frozen_<:< jointBounds.hi
+          }
+        }
+        else
+          isDefaultGetter(member.name) || // default getters are not checked for compatibility
+          memberTp.overrides(otherTp)
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
@@ -287,7 +300,7 @@ object RefChecks {
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
-        if (member.name == nme.isDefined && member.is(Synthetic)) // isDefined methods are added automatially, can't have an override preset.
+        if (member.is(Synthetic) && desugar.isDesugaredCaseClassMethodName(member.name)) // such names are added automatically, can't have an override preset.
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
@@ -320,9 +333,7 @@ object RefChecks {
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
         overrideError("cannot be used here - only term macros can override term macros")
-      } else if (member.isTerm && !isDefaultGetter(member.name) && !(memberTp overrides otherTp)) {
-        // types don't need to have their bounds in an overriding relationship
-        // since we automatically form their intersection when selecting.
+      } else if (!compatibleTypes) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
       } else {
         checkOverrideDeprecated()
@@ -340,10 +351,20 @@ object RefChecks {
           }*/
     }
 
-    val opc = new OverridingPairs.Cursor(clazz)
-    while (opc.hasNext) {
-      checkOverride(opc.overriding, opc.overridden)
-      opc.next()
+    try {
+      val opc = new OverridingPairs.Cursor(clazz)
+      while (opc.hasNext) {
+        checkOverride(opc.overriding, opc.overridden)
+        opc.next()
+      }
+    } catch {
+      case ex: MergeError =>
+        val addendum = ex.tp1 match {
+          case tp1: ClassInfo =>
+            "\n(Note that having same-named member classes in types of a mixin composition is no longer allowed)"
+          case _ => ""
+        }
+        ctx.error(ex.getMessage + addendum, clazz.pos)
     }
     printMixinOverrideErrors()
 

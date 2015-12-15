@@ -99,7 +99,8 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
       val clazz = sup.symbol.asClass
 
-      if ((sym.isTerm) && !(sym is Method) || (sym is Accessor))
+      if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.is(ParamForwarder))
+        // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
         ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.pos)
       else if (isDisallowed(sym))
         ctx.error(s"super not allowed here: use this.${sel.name.decode} instead", sel.pos)
