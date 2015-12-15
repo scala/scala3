@@ -1106,18 +1106,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       NoType
   }
 
-  /** Try to distribute `|` inside type, detect and handle conflicts */
+  /** Try to distribute `|` inside type, detect and handle conflicts.
+   *  Note that, unlike for `&`, a disjunction cannot be pushed into
+   *  a refined or applied type. Example:
+   *
+   *     List[T] | List[U] is not the same as List[T | U].
+   *
+   *  The rhs is a proper supertype of the lhs.
+   */
   private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1: RefinedType =>
-      tp2 match {
-        case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(
-              tp1.parent | tp2.parent,
-              tp1.refinedName,
-              tp1.refinedInfo | tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
-        case _ =>
-          NoType
-      }
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 | tp2
