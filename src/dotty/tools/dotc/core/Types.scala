@@ -1533,9 +1533,40 @@ object Types {
       ctx.underlyingRecursions -= 1
     }
 
+    /** A selection of the same kind, but with potentially a differet prefix.
+     *  The following normalizations are performed for type selections T#A:
+     *
+     *  1. If Config.splitProjections is true:
+     *
+     *     (S & T)#A --> S#A & T#A
+     *     (S | T)#A --> S#A | T#A
+     *
+     *  2. If A is bound to an alias `= B` in T
+     *
+     *     T#A --> B
+     */
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else {
+        if (Config.splitProjections && isType)
+          prefix match {
+          case prefix: AndType =>
+            def isMissing(tp: Type) = tp match {
+              case tp: TypeRef => !tp.info.exists
+              case _ => false
+            }
+            val derived1 = derivedSelect(prefix.tp1)
+            val derived2 = derivedSelect(prefix.tp2)
+            return (
+              if (isMissing(derived1)) derived2
+              else if (isMissing(derived2)) derived1
+              else prefix.derivedAndType(derived1, derived2))
+          case prefix: OrType =>
+            val derived1 = derivedSelect(prefix.tp1)
+            val derived2 = derivedSelect(prefix.tp2)
+            return prefix.derivedOrType(derived1, derived2)
+          case _ =>
+        }
         val res = prefix.lookupRefined(name)
         if (res.exists) res
         else if (name == tpnme.hkApply && prefix.classNotLambda) {
@@ -1543,8 +1574,7 @@ object Types {
           // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
           // where C is a class. In that case we eta expand `C`.
           derivedSelect(prefix.EtaExpandCore(this.prefix.typeConstructor.typeParams))
-        }
-        else newLikeThis(prefix)
+        } else newLikeThis(prefix)
       }
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.

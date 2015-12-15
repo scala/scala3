@@ -87,6 +87,15 @@ object Config {
   /** Check that certain types cannot be created in erasedTypes phases */
   final val checkUnerased = true
 
+  /** In `derivedSelect`, rewrite
+   *
+   *      (S & T)#A  -->  S#A & T#A
+   *      (S | T)#A  -->  S#A | T#A
+   *
+   *  Not sure whether this is useful. Preliminary measurements show a slowdown of about
+   *  7% for the build when this option is enabled.
+   */
+  final val splitProjections = false
 
   /** Initial size of superId table */
   final val InitialSuperIdsSize = 4096
