@@ -254,7 +254,7 @@ object Erasure extends TypeTestsCasts{
         case MethodType(Nil, _) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
-          if (pt.isInstanceOf[ProtoType] || (!isNonJVMBottomType(tree.tpe) && (tree.tpe <:< pt)))
+          if (pt.isInstanceOf[ProtoType] || ((!pt.isValueType || !isNonJVMBottomType(tree.tpe)) && (tree.tpe <:< pt)))
             tree
           else if (tpw.isErasedValueType)
             adaptToType(box(tree), pt)
