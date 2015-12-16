@@ -15,7 +15,7 @@ import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.backend.jvm.{BottomTypes, LabelDefs, GenBCode}
 
 class Compiler {
 
@@ -82,6 +82,7 @@ class Compiler {
       List(/*new PrivateToStatic,*/
            new ExpandPrivate,
            new CollectEntryPoints,
+           new BottomTypes,
            new LabelDefs),
       List(new GenBCode)
     )
