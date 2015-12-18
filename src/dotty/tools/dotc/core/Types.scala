@@ -1536,19 +1536,24 @@ object Types {
     /** A selection of the same kind, but with potentially a differet prefix.
      *  The following normalizations are performed for type selections T#A:
      *
-     *  1. If Config.splitProjections is true:
+     *     T#A --> B                if A is bound to an alias `= B` in T
      *
-     *     (S & T)#A --> S#A & T#A
+     *     (S & T)#A --> S#A        if T does not have a member namd A
+     *               --> T#A        if S does not have a member namd A
+     *               --> S#A & T#A  otherwise
      *     (S | T)#A --> S#A | T#A
-     *
-     *  2. If A is bound to an alias `= B` in T
-     *
-     *     T#A --> B
      */
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
-      else {
-        if (Config.splitProjections && isType)
+      else if (isType) {
+        val res = prefix.lookupRefined(name)
+        if (res.exists) res
+        else if (name == tpnme.hkApply && prefix.classNotLambda)
+          // After substitution we might end up with a type like
+          // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
+          // where C is a class. In that case we eta expand `C`.
+          derivedSelect(prefix.EtaExpandCore(this.prefix.typeConstructor.typeParams))
+        else if (Config.splitProjections)
           prefix match {
             case prefix: AndType =>
               def isMissing(tp: Type) = tp match {
@@ -1566,16 +1571,11 @@ object Types {
               val derived2 = derivedSelect(prefix.tp2)
               return prefix.derivedOrType(derived1, derived2)
             case _ =>
+              newLikeThis(prefix)
           }
-        val res = prefix.lookupRefined(name)
-        if (res.exists) res
-        else if (name == tpnme.hkApply && prefix.classNotLambda) {
-          // After substitution we might end up with a type like
-          // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
-          // where C is a class. In that case we eta expand `C`.
-          derivedSelect(prefix.EtaExpandCore(this.prefix.typeConstructor.typeParams))
-        } else newLikeThis(prefix)
+        else newLikeThis(prefix)
       }
+      else newLikeThis(prefix)
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
@@ -2804,7 +2804,7 @@ object Types {
     }
 
     override def toString =
-      if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
+      if (lo eq hi) s"TypeAlias($lo, $variance)" else s"TypeBounds($lo, $hi)"
   }
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
