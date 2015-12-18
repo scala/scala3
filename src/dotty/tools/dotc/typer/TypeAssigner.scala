@@ -282,7 +282,7 @@ trait TypeAssigner {
       else if (!mix.isEmpty) findMixinSuper(cls.info)
       else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
       else {
-        val ps = cls.info.parents
+        val ps = cls.classInfo.instantiatedParents
         if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
       }
     tree.withType(SuperType(cls.thisType, owntype))

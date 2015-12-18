@@ -173,8 +173,45 @@ object TypeApplications {
     if (tparams.isEmpty) args
     else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.infoOrCompleter))
 
+  /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
   def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
+
+  /** Merge `tp1` and `tp2` under a common lambda, combining them with `op`.
+   *  @param tparams1   The type parameters of `tp1`
+   *  @param tparams2   The type parameters of `tp2`
+   *  Produces the type lambda
+   *
+   *     [v1 X1 B1, ..., vn Xn Bn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
+   *
+   *  where
+   *
+   *   - variances `vi` are the variances of corresponding type parameters for `tp1`
+   *     or `tp2`, or are 0 of the latter disagree.
+   *   - bounds `Bi` are the intersection of the corresponding type parameter bounds
+   *     of `tp1` and `tp2`.
+   */
+  def hkCombine(tp1: Type, tp2: Type,
+      tparams1: List[TypeSymbol], tparams2: List[TypeSymbol], op: (Type, Type) => Type)
+      (implicit ctx: Context): Type = {
+    val variances = (tparams1, tparams2).zipped.map { (tparam1, tparam2) =>
+      val v1 = tparam1.variance
+      val v2 = tparam2.variance
+      if (v1 == v2) v1 else 0
+    }
+    val bounds: List[RefinedType => TypeBounds] =
+      (tparams1, tparams2).zipped.map { (tparam1, tparam2) =>
+        val b1: RefinedType => TypeBounds =
+          tp1.memberInfo(tparam1).bounds.internalizeFrom(tparams1)
+        val b2: RefinedType => TypeBounds =
+          tp2.memberInfo(tparam2).bounds.internalizeFrom(tparams2)
+        (rt: RefinedType) => b1(rt) & b2(rt)
+      }
+    val app1: RefinedType => Type = rt => tp1.appliedTo(argRefs(rt, tparams1.length))
+    val app2: RefinedType => Type = rt => tp2.appliedTo(argRefs(rt, tparams2.length))
+    val body = (rt: RefinedType) => op(app1(rt), app2(rt))
+    TypeLambda(variances, bounds, body)
+  }
 }
 
 import TypeApplications._
@@ -272,6 +309,14 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       false
   }
+
+  /** Replace references to type parameters with references to hk arguments `this.$hk_i`
+   * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
+   */
+  private[TypeApplications] def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
+    (rt: RefinedType) =>
+      new ctx.SafeSubstMap(tparams , argRefs(rt, tparams.length))
+        .apply(self).asInstanceOf[T]
 
   /** Lambda abstract `self` with given type parameters. Examples:
    *
