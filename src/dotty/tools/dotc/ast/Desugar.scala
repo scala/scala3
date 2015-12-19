@@ -403,7 +403,8 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
-          .withFlags(Synthetic | Implicit) :: Nil
+          .withFlags(Synthetic | Implicit)
+          .withPos(cdef.pos) :: Nil
 
 
     val self1 = {
