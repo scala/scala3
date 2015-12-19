@@ -1156,7 +1156,8 @@ object Parsers {
      */
     def block(): Tree = {
       val stats = blockStatSeq()
-      if (stats.nonEmpty && !stats.last.isDef) Block(stats.init, stats.last)
+      def isExpr(stat: Tree) = !(stat.isDef || stat.isInstanceOf[Import])
+      if (stats.nonEmpty && isExpr(stats.last)) Block(stats.init, stats.last)
       else Block(stats, EmptyTree)
     }
 
