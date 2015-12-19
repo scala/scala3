@@ -211,7 +211,7 @@ object RefChecks {
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
-          if (member.owner == clazz) ctx.error(fullmsg, member.pos)
+          if (member.owner == clazz) ctx.error(fullmsg+", member = $member", member.pos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
@@ -220,6 +220,11 @@ object RefChecks {
         if (noErrorType)
           emitOverrideError(overrideErrorMsg(msg))
       }
+
+      def autoOverride(sym: Symbol) =
+        sym.is(Synthetic) && (
+          desugar.isDesugaredCaseClassMethodName(member.name) || // such names are added automatically, can't have an override preset.
+          sym.is(Module)) // synthetic companion
 
       def overrideAccessError() = {
         ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
@@ -300,7 +305,7 @@ object RefChecks {
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
-        if (member.is(Synthetic) && desugar.isDesugaredCaseClassMethodName(member.name)) // such names are added automatically, can't have an override preset.
+        if (autoOverride(member))
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
