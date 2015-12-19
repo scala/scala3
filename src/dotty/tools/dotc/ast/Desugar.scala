@@ -801,7 +801,7 @@ object desugar {
     tree match {
       case SymbolLit(str) =>
         Apply(
-          Select(ref(defn.SymbolClass.companionModule.termRef), nme.apply),
+          ref(defn.SymbolClass.companionModule.termRef),
           Literal(Constant(str)) :: Nil)
       case InterpolatedString(id, strs, elems) =>
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
