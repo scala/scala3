@@ -112,7 +112,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           ctx.error(
               i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
               sel.pos)
-        else println(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
+        else ctx.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
       }
       else if (mix == tpnme.EMPTY && !(sym.owner is Trait))
         // SI-4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
