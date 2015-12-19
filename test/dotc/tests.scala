@@ -148,6 +148,7 @@ class tests extends CompilerTest {
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
   @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 3)
+  @Test def neg_Iter2 = compileFile(negDir, "Iter2", xerrors = 2)
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
