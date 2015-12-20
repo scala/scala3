@@ -218,7 +218,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             val cls1 = tp1.cls
             cls1.classInfo.selfType.derivesFrom(cls2) &&
             cls2.classInfo.selfType.derivesFrom(cls1)
-          case tp1: TermRef if cls2.is(Module) && cls2.eq(tp1.widen.typeSymbol) =>
+          case tp1: NamedType if cls2.is(Module) && cls2.eq(tp1.widen.typeSymbol) =>
             cls2.isStaticOwner ||
             isSubType(tp1.prefix, cls2.owner.thisType) ||
             secondTry(tp1, tp2)
