@@ -1,3 +1,4 @@
+// Invalid because structural types are not supported.
 class A {
   (new { def field = 0; def field_=(i: Int) = () }).field = 5 // compiles as expected
   (new { def field(implicit i: Int) = 0; def field_=(i: Int) = () }).field = 5 // compiles even with implicit params on getter

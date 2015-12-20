@@ -1,3 +1,4 @@
+// Type arguments on infix operators are not supported by the syntax
 class A {
   def fn1 = List apply 1
   def fn2 = List apply[Int] 2

@@ -1,3 +1,4 @@
+// Invalid because nested hk type parameters are no longer allowed
 trait Box[ K[A[x]] ]
 
 object Box {

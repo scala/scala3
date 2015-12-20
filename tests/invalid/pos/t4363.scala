@@ -1,3 +1,4 @@
+// Invalid because lambdas can no longer be tenmplate statements.
 object Test {
   trait Suite { def bar() = () }
 

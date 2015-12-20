@@ -8,12 +8,12 @@ trait Test {
   }
   abstract class ParensImpl extends BracesImpl {
     type Brace <: Singleton with BraceImpl;
-    trait BraceImpl extends super.BraceImpl;
+    trait BraceImpl2 extends super.BraceImpl;
   }
   val parens : ParensImpl;
   abstract class BracksImpl extends BracesImpl {
     type Brace <: Singleton with BraceImpl;
-    trait BraceImpl extends super.BraceImpl;
+    trait BraceImpl2 extends super.BraceImpl;
   }
   val bracks : BracksImpl;
   trait File {

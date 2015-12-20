@@ -1,3 +1,4 @@
+// This relies on the naming of the transformed classes which will have to change in the new stdlib.
 import scala.collection._
 
 trait Foo[+A,
@@ -6,12 +7,12 @@ trait Foo[+A,
 extends Seq[A] with SeqLike[A, This] with IterableView[A, Coll] with IterableViewLike[A, Coll, This] {
 self =>
 
-  trait Transformed[+B] extends SeqView[B, Coll] with super.Transformed[B] {
+  trait TransformedFoo[+B] extends SeqView[B, Coll] with super.Transformed[B] {
     def length: Int
     def apply(idx: Int): B
     override def toString = viewToString
   }
-  trait Reversed extends Transformed[A] {
+  trait Reversed extends TransformedFoo[A] {
     override def iterator: Iterator[A] = createReversedIterator
     def length: Int = self.length
     def apply(idx: Int): A = self.apply(length - 1 - idx)

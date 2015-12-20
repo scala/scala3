@@ -3,10 +3,9 @@
 * ... Or Will It?
 *
 */
-
 object Crash {
-  trait UpdateType[+A]
-  case class StateUpdate[+A](updateType : UpdateType[A], value : A)
+  trait UpdateType[A]
+  case class StateUpdate[A](updateType : UpdateType[A], value : A)
   case object IntegerUpdateType extends UpdateType[Integer]
 
   //However this method will cause a crash

@@ -5,6 +5,9 @@ case class C2(checks: Check[_]*);
 object C {
   def m(x : C2): Any = (null: Any) match {
     case C2(_, rest : _*) => {
+    // Invalid: Vararg pattern cannot be split between normal and :_* patterns.
+    // This split also does not work for vararg arguments, so there's no
+    // good argument it should work for patterns
       rest.map(_.value)
     }
   }

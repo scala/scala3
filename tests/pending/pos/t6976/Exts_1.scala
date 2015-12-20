@@ -6,5 +6,5 @@ object Exts {
 
 trait Exts {
   import language.implicitConversions
-  implicit def AnyExts[T](o: T) = Exts.AnyExts(o)
+  implicit def AnyExts[T](o: T): Exts.AnyExts[T] = Exts.AnyExts(o)
 }

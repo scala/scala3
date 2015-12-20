@@ -1,3 +1,4 @@
+// Invalid because nested hk type parameters are no longer allowed
 import language.higherKinds
 
 trait P  [N1, +E1[X <: N1]]
