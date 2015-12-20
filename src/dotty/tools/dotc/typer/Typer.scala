@@ -165,7 +165,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                   tree.pos)
           found
         }
-        val Name = name.toTermName
+        val Name = name.toTermName.decode
         selectors match {
           case Pair(Ident(from), Ident(Name)) :: rest =>
             val selName = if (name.isTypeName) from.toTypeName else from
