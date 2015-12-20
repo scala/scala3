@@ -327,7 +327,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
           case _ =>
-            for (part <- tp.namedPartsWith(_.isType))
+            for (part <- tp.namedPartsWith(_.isType, excludeLowerBounds = true))
               comps ++= iscopeRefs(part)
         }
         comps

@@ -247,9 +247,14 @@ object Types {
 
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
+     *
+     *  @param p                   The predicate to satisfy
+     *  @param excludeLowerBounds  If set to true, the lower bounds of abstract
+     *                             types will be ignored.
      */
-    def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
-      new NamedPartsAccumulator(p).apply(mutable.LinkedHashSet(), this)
+    def namedPartsWith(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
+      (implicit ctx: Context): collection.Set[NamedType] =
+      new NamedPartsAccumulator(p, excludeLowerBounds).apply(mutable.LinkedHashSet(), this)
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
@@ -3209,7 +3214,8 @@ object Types {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
-  class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
+  class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
+    (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     override def stopAtStatic = false
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
     val seen: mutable.Set[Type] = mutable.Set()
@@ -3222,7 +3228,8 @@ object Types {
             apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
           case tp: TypeRef =>
             foldOver(maybeAdd(x, tp), tp)
-          case TypeBounds(_, hi) =>
+          case TypeBounds(lo, hi) =>
+            if (!excludeLowerBounds) apply(x, lo)
             apply(x, hi)
           case tp: ThisType =>
             apply(x, tp.underlying)
@@ -3232,6 +3239,18 @@ object Types {
             apply(x, tp.underlying)
           case tp: PolyParam =>
             apply(x, tp.underlying)
+          case tp: TypeVar =>
+            val inst = tp.instanceOpt
+            if (inst.exists) apply(x, inst)
+            else {
+              ctx.typerState.ephemeral = true
+              val bounds =
+                if (ctx.typerState.constraint.contains(tp))
+                  ctx.typerState.constraint.fullBounds(tp.origin)
+                else
+                  tp.origin
+              apply(x, bounds)
+            }
           case _ =>
             foldOver(x, tp)
         }
