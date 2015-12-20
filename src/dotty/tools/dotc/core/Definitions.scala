@@ -589,10 +589,7 @@ class Definitions {
   }
 
   def isBottomClass(cls: Symbol) = cls == NothingClass || cls == NullClass
-  def isBottomType(tp: Type) = tp match {
-    case tp: TypeRef => isBottomClass(tp.symbol)
-    case _ => false
-  }
+  def isBottomType(tp: Type) = tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
