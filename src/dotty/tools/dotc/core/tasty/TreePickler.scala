@@ -541,12 +541,17 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
+    trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
+    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
+  }
+
+  def compactify() = {
+    buf.compactify()
+    assert(forwardSymRefs.isEmpty, s"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
+
     def updateMapWithDeltas[T](mp: collection.mutable.Map[T, Addr]) =
       for (key <- mp.keysIterator.toBuffer[T]) mp(key) = adjusted(mp(key))
 
-    trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
-    compactify()
     updateMapWithDeltas(symRefs)
   }
 }
