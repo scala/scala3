@@ -6,6 +6,7 @@ package tasty
 import Contexts._, SymDenotations._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
+import dotty.tools.dotc.core.tasty.DottyUnpickler.{SourceFileUnpickler, TreeSectionUnpickler, PositionsSectionUnpickler}
 import util.Positions._
 import util.{SourceFile, NoSource}
 import PositionUnpickler._
@@ -15,6 +16,21 @@ object DottyUnpickler {
 
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
+
+  class SourceFileUnpickler extends SectionUnpickler[SourceFile]("Sourcefile") {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
+      new SourceFile(tastyName(reader.readNameRef()).toString, Seq())
+  }
+
+  class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
+      new TreeUnpickler(reader, tastyName)
+  }
+
+  class PositionsSectionUnpickler extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
+      new PositionUnpickler(reader).unpickle()
+  }
 }
 
 /** A class for unpickling Tasty trees and symbols.
@@ -23,7 +39,7 @@ object DottyUnpickler {
 class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   import tpd._
 
-  private val unpickler = new TastyUnpickler(bytes)
+  val unpickler = new TastyUnpickler(bytes)
   private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler).get
 
   /** Enter all toplevel classes and objects into their scopes
@@ -41,20 +57,5 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
       for ((totalRange, positions) <- unpickler.unpickle(new PositionsSectionUnpickler))
         treeUnpickler.usePositions(totalRange, positions)
     (treeUnpickler.unpickle(), source)
-  }
-
-  private class SourceFileUnpickler extends SectionUnpickler[SourceFile]("Sourcefile") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new SourceFile(tastyName(reader.readNameRef()).toString, Seq())
-  }
-
-  private class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new TreeUnpickler(reader, tastyName)
-  }
-
-  private class PositionsSectionUnpickler extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new PositionUnpickler(reader).unpickle()
   }
 }
