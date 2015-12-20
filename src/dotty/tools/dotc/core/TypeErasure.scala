@@ -39,7 +39,7 @@ object TypeErasure {
     case _: ErasedValueType =>
       true
     case tp: TypeRef =>
-      tp.symbol.isClass && tp.symbol != defn.AnyClass
+      tp.symbol.isClass && tp.symbol != defn.AnyClass && tp.symbol != defn.ArrayClass
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
