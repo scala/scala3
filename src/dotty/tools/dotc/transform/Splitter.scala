@@ -47,7 +47,10 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
       if (!mbr.isOverloaded) mbr.asSingleDenotation
       else tree.tpe match {
         case tref: TermRefWithSignature => mbr.atSignature(tref.sig)
-        case _ => ctx.error(s"cannot disambiguate overloaded member $mbr"); NoDenotation
+        case _ =>
+          def alts = mbr.alternatives.map(alt => i"$alt: ${alt.info}").mkString(", ")
+          ctx.error(s"cannot disambiguate overloaded members $alts", tree.pos)
+          NoDenotation
       }
     }
 
