@@ -109,7 +109,11 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
   }
 
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit =
-    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
+    if (tp.typeSymbol == defn.ArrayClass &&
+        ctx.compilationUnit.source.file.name == "Array.scala") {} // ok
+    else
+      assert(isErasedType(tp),
+        i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
 }
 
 object Erasure extends TypeTestsCasts{
