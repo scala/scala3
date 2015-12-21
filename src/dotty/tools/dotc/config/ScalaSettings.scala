@@ -173,7 +173,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ypatmatdebug = BooleanSetting("-Ypatmat-debug", "Trace pattern matching translation.")
   val Yexplainlowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
-  val YshowVarBounds = BooleanSetting("-YshowVarBounds", "Print type variables with their bounds")
+  val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
 
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"
 
