@@ -2,6 +2,7 @@ package dotty.tools.dotc
 
 import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
+import dotty.tools.dotc.callbacks.{ReportingCallback, CompilerCallback}
 import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
@@ -36,7 +37,7 @@ abstract class Driver extends DotClass {
     val summary = CompilerCommand.distill(args)(rootCtx)
     // FIXME: We should reuse rootCtx instead of creating newCtx, but this
     // makes some tests fail with "denotation module _root_ invalid in run 2."
-    val newCtx = initCtx.setCompilerCallback(rootCtx.compilerCallback)
+    val newCtx = initCtx.setCompilerCallback(rootCtx.compilerCallback).setReportingCallback(rootCtx.reportingCallback)
     implicit val ctx: Context = newCtx.fresh.setSettings(summary.sstate)
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
     (fileNames, ctx)
@@ -47,8 +48,8 @@ abstract class Driver extends DotClass {
     doCompile(newCompiler(), fileNames)(ctx)
   }
 
-  def process(args: Array[String], callback: CompilerCallback): Reporter = {
-    process(args, initCtx.setCompilerCallback(callback))
+  def process(args: Array[String], callback: CompilerCallback, reportingCallback: ReportingCallback): Reporter = {
+    process(args, initCtx.setCompilerCallback(callback).setReportingCallback(reportingCallback))
   }
 
   // We overload `process` instead of using a default argument so that we
