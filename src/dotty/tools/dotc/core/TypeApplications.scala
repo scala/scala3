@@ -180,6 +180,7 @@ object TypeApplications {
   /** Merge `tp1` and `tp2` under a common lambda, combining them with `op`.
    *  @param tparams1   The type parameters of `tp1`
    *  @param tparams2   The type parameters of `tp2`
+   *  @pre tparams1.length == tparams2.length
    *  Produces the type lambda
    *
    *     [v1 X1 B1, ..., vn Xn Bn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
