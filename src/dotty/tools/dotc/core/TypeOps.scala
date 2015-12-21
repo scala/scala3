@@ -8,6 +8,7 @@ import config.Printers._
 import util.Positions._
 import Decorators._
 import StdNames._
+import Annotations._
 import util.SimpleMap
 import collection.mutable
 import ast.tpd._
@@ -23,31 +24,29 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *
    *  and an expression `e` of type `C`. Then computing the type of `e.f` leads
    *  to the query asSeenFrom(`C`, `(x: T)T`). What should its result be? The
-   *  naive answer `(x: C.T)C.T` is incorrect given that we treat `C.T` as the existential
+   *  naive answer `(x: C#T)C#T` is incorrect given that we treat `C#T` as the existential
    *  `exists(c: C)c.T`. What we need to do instead is to skolemize the existential. So
    *  the answer would be `(x: c.T)c.T` for some (unknown) value `c` of type `C`.
    *  `c.T` is expressed in the compiler as a skolem type `Skolem(C)`.
    *
    *  Now, skolemization is messy and expensive, so we want to do it only if we absolutely
-   *  must. We must skolemize if an unstable prefix is used in nonvariant or
-   *  contravariant position of the return type of asSeenFrom.
+   *  must. Also, skolemizing immediately would mean that asSeenFrom was no longer
+   *  idempotent - each call would return a type with a different skolem.
+   *  Instead we produce an annotated type that marks the prefix as unsafe:
    *
-   *  In the implementation of asSeenFrom, we first try to run asSeenFrom without
-   *  skolemizing. If that would be incorrect we will be told by the fact that
-   *  `unstable` is set in the passed AsSeenFromMap. In that case we run asSeenFrom
-   *  again with a skolemized prefix.
+   *     (x: (C @ UnsafeNonvariant)#T)C#T
+   
+   *  We also set a global state flag `unsafeNonvariant` to the current run.
+   *  When typing a Select node, typer will check that flag, and if it
+   *  points to the current run will scan the result type of the select for
+   *  @UnsafeNonvariant annotations. If it finds any, it will introduce a skolem
+   *  constant for the prefix and try again.
    *
-   *  In the interest of speed we want to avoid creating an AsSeenFromMap every time
-   *  asSeenFrom is called. So we do this here only if the prefix is unstable
-   *  (because then we need the map as a container for the unstable field). For
-   *  stable prefixes the map is `null`; it might however be instantiated later
-   *  for more complicated types.
+   *  The scheme is efficient in particular because we expect that unsafe situations are rare;
+   *  most compiles would contain none, so no scanning would be necessary.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type = {
-    val m = if (isLegalPrefix(pre)) null else new AsSeenFromMap(pre, cls)
-    var res = asSeenFrom(tp, pre, cls, m)
-    if (m != null && m.unstable) asSeenFrom(tp, SkolemType(pre), cls) else res
-  }
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol): Type =
+    asSeenFrom(tp, pre, cls, null)
 
   /** Helper method, taking a map argument which is instantiated only for more
    *  complicated cases of asSeenFrom.
@@ -65,9 +64,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
         case _ =>
           if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
-            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre))
-              theMap.unstable = true
-            pre
+            if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
+              ctx.base.unsafeNonvariant = ctx.runId
+              AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+            }
+            else pre
           }
           else if ((pre.termSymbol is Package) && !(thiscls is Package))
             toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -82,17 +83,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           val sym = tp.symbol
           if (sym.isStatic) tp
           else {
-            val prevStable = theMap == null || !theMap.unstable
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (theMap != null && theMap.unstable && prevStable) {
+            if (pre1.isUnsafeNonvariant)
               pre1.member(tp.name).info match {
                 case TypeAlias(alias) =>
                   // try to follow aliases of this will avoid skolemization.
-                  theMap.unstable = false
                   return alias
                 case _ =>
               }
-            }
             tp.derivedSelect(pre1)
           }
         case tp: ThisType =>
@@ -122,11 +120,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
     /** A method to export the current variance of the map */
     def currentVariance = variance
-
-    /** A field which indicates whether an unstable argument in nonvariant
-     *  or contravariant position was encountered.
-     */
-    var unstable = false
   }
 
   /** Approximate a type `tp` with a type that does not contain skolem types.
