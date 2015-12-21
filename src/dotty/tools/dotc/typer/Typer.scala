@@ -297,7 +297,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       tree match {
         case tree @ Select(qual, _) if !qual.tpe.isStable =>
           val alt = typedSelect(tree, pt, Typed(qual, TypeTree(SkolemType(qual.tpe.widen))))
-          /*typr.*/println(d"healed type: ${tree.tpe} --> $alt")
+          typr.println(d"healed type: ${tree.tpe} --> $alt")
           alt.asInstanceOf[T]
         case _ =>
           ctx.error(d"unsafe instantiation of type ${tree.tpe}", tree.pos)
