@@ -209,7 +209,7 @@ object TypeApplications {
       }
     val app1: RefinedType => Type = rt => tp1.appliedTo(argRefs(rt, tparams1.length))
     val app2: RefinedType => Type = rt => tp2.appliedTo(argRefs(rt, tparams2.length))
-    val body = (rt: RefinedType) => op(app1(rt), app2(rt))
+    val body: RefinedType => Type = rt => op(app1(rt), app2(rt))
     TypeLambda(variances, bounds, body)
   }
 }
