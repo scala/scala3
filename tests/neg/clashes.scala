@@ -1,6 +1,6 @@
 object Test {
   class C
-  type C
+  type C   // error
 }
 
-object Test
+object Test  // error
