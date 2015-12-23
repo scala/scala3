@@ -158,7 +158,7 @@ object Positions {
     }
     def toPosition = {
       assert(isPosition)
-      if (this == NoCoord) NoPosition else Position(1 - encoding)
+      if (this == NoCoord) NoPosition else Position(-1 - encoding)
     }
   }
 
