@@ -141,8 +141,9 @@ object EtaExpansion {
       else mt.paramTypes map TypeTree
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, TypeTree(tpe), EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos))
-    val ids = mt.paramNames map (name =>
-      Ident(name).withPos(tree.pos))
+    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos))
+    if (mt.paramTypes.nonEmpty && mt.paramTypes.last.isRepeatedParam)
+      ids = ids.init :+ repeated(ids.last)
     val body = Apply(lifted, ids)
     val fn = untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map untpd.TypedSplice, fn) else fn

@@ -1,3 +1,4 @@
+// This does not currently work because it mixes higher-kinded types and raw type constructors.
 package dotty.collection
 package immutable
 

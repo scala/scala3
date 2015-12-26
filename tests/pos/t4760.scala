@@ -32,3 +32,4 @@ class Test {
     case 1 => import scala.concurrent._
   }
 }
+

@@ -129,7 +129,7 @@ grammar.
                       |  `_'
   ExprInParens      ::=  PostfixExpr `:' Type
                       |  Expr
-  BlockResult       ::=  (FunParams | [`implicit'] id `:' InfixType) => Block
+  BlockResult       ::=  (FunParams | [`implicit'] id `:' InfixType) `=>' Block
                       |  Expr1
   Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]         If(Parens(cond), thenp, elsep?)
                       |  `if' Expr `then' Expr [[semi] else Expr]               If(cond, thenp, elsep?)

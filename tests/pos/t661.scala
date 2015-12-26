@@ -9,7 +9,7 @@ object test {
   }
   trait B extends A {
     type N;
-    trait C extends super.C {
+    trait CC extends super.C {
       type M = N;
       override def foo(n : M) : Unit = super.foo(n);
     }

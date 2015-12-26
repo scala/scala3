@@ -124,7 +124,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
-      if (ctx.settings.YnoDeepSubtypes.value) throw new Error("deep subtype")
+      assert(!ctx.settings.YnoDeepSubtypes.value) //throw new Error("deep subtype")
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
@@ -598,7 +598,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       other.isInstanceOf[TypeRef] &&
       args.length == other.typeParams.length && {
         val applied = other.appliedTo(argRefs(rt, args.length))
-        if (inOrder) isSubType(body, applied) else isSubType(applied, body)
+        if (inOrder) isSubType(body, applied)
+        else body match {
+          case body: TypeBounds => body.contains(applied)
+          case _ => isSubType(applied, body)
+        }
       }
     case _ =>
       false
@@ -1233,7 +1237,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    ctx.println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
+    println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
     def explainPoly(tp: Type) = tp match {
       case tp: PolyParam => ctx.println(s"polyparam ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
@@ -1323,10 +1327,17 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def compareHkApply(projection: NamedType, other: Type, inOrder: Boolean) =
     if (projection.name == tpnme.hkApply)
-      traceIndented(i"compareHK $projection, $other, $inOrder") {
+      traceIndented(i"compareHkApply $projection, $other, $inOrder") {
         super.compareHkApply(projection, other, inOrder)
       }
     else super.compareHkApply(projection, other, inOrder)
+
+  override def compareHkLambda(rt: RefinedType, other: Type, inOrder: Boolean) =
+    if (rt.refinedName == tpnme.hkApply)
+      traceIndented(i"compareHkLambda $rt, $other, $inOrder") {
+        super.compareHkLambda(rt, other, inOrder)
+      }
+    else super.compareHkLambda(rt, other, inOrder)
 
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }

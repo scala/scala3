@@ -1,3 +1,4 @@
+// Invalid because it relies on internal traits of views that will change their names.
 import scala.collection._
 
 trait SeqViewLike[+A,

@@ -1,3 +1,4 @@
+// Invalid because hk type parameters may not appear in lower bounds
 trait VectorLike[+T, +V[A] <: Vector[A]] {
   def +[S, VResult[S] >: V[S]](v: VResult[S]): Unit
 }

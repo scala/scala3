@@ -23,12 +23,15 @@ object Test1 {
     case object Up extends Base {
     }
 
+    locally {
+
     (d1: Base, d2: Base) =>
       (d1, d2) match {
         case (Up, Up) | (Down, Down) => false
         case (Down, Up)              => true
         case (Up, Down)              => false
       }
+    }
   }
 }
 
@@ -42,10 +45,12 @@ object Test2 {
     case object Up extends Base {
     }
 
+    locally {
     (d1: Base, d2: Base) =>
       (d1) match {
         case Up | Down => false
       }
+    }
   }
 }
 
@@ -55,10 +60,12 @@ object Test3 {
   object Base {
     case object Down extends Base
 
+    locally {
     (d1: Base, d2: Base) =>
       (d1, d2) match {
         case (Down, Down) => false
       }
+    }
   }
 }
 
@@ -74,10 +81,12 @@ object Test4 {
 
   }
   import Test4.Base._
+  locally {
   (d1: Base, d2: Base) =>
     (d1, d2) match {
       case (Up, Up) | (Down, Down) => false
       case (Down, Test4.Base.Up)   => true
       case (Up, Down)              => false
     }
+  }
 }

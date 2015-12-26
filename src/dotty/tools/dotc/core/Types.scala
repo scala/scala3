@@ -1554,8 +1554,10 @@ object Types {
      *
      *     T#A --> B                if A is bound to an alias `= B` in T
      *
-     *     (S & T)#A --> S#A        if T does not have a member namd A
-     *               --> T#A        if S does not have a member namd A
+     *  If Config.splitProjections is set:
+     *
+     *     (S & T)#A --> S#A        if T does not have a member named A
+     *               --> T#A        if S does not have a member named A
      *               --> S#A & T#A  otherwise
      *     (S | T)#A --> S#A | T#A
      */
@@ -1564,11 +1566,13 @@ object Types {
       else if (isType) {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
-        else if (name == tpnme.hkApply && prefix.classNotLambda)
+        else if (name == tpnme.hkApply && prefix.classNotLambda) {
           // After substitution we might end up with a type like
           // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
           // where C is a class. In that case we eta expand `C`.
-          derivedSelect(prefix.EtaExpandCore(this.prefix.typeConstructor.typeParams))
+          if (defn.isBottomType(prefix)) prefix.classSymbol.typeRef
+          else derivedSelect(prefix.EtaExpandCore)
+        }
         else if (Config.splitProjections)
           prefix match {
             case prefix: AndType =>
