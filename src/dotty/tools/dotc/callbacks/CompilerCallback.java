@@ -51,4 +51,16 @@ public interface CompilerCallback {
     /** Called to show progress of the compilation process
      */
     void advance(int currentProgress, int totalProgress);
+
+    //Methods to pass compiler and debug messages and exceptions
+
+    void info(String msg, Position pos);
+
+    void warning(String msg, Position pos);
+
+    void error(String msg, Position pos);
+
+    void debug(String msg);
+
+    void trace(Throwable exception);
 }
