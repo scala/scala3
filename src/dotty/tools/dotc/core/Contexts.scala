@@ -13,7 +13,7 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Flags.ParamAccessor
-import dotty.tools.dotc.callbacks.{CompilerCallback, ReportingCallback}
+import callbacks.CompilerCallback
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -76,11 +76,6 @@ object Contexts {
     /** Set the compiler callback, shared by all contexts with the same `base` */
     def setCompilerCallback(callback: CompilerCallback): this.type = {
       base.compilerCallback = callback; this
-    }
-
-    /** Set the reporting callback, shared by all contexts with the same `base` */
-    def setReportingCallback(callback: ReportingCallback): this.type = {
-      base.reportingCallback = callback; this
     }
 
     /** The outer context */
@@ -545,8 +540,6 @@ object Contexts {
 
     /** The compiler callback implementation, or null if unset */
     var compilerCallback: CompilerCallback = _
-
-    var reportingCallback: ReportingCallback = _
 
     // Symbols state
 

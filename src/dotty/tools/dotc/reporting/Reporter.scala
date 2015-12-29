@@ -268,14 +268,14 @@ abstract class Reporter {
   }
 
   private def doCallbackReport(d: Diagnostic)(implicit ctx: Context): Unit = {
-    val reportingCallback = ctx.reportingCallback
-    if (reportingCallback != null) {
+    val callback = ctx.compilerCallback
+    if (callback != null) {
       val position = if (d.pos.exists) new CallbackPositionAdapter(d.pos) else null
       d match {
-        case d: ConditionalWarning if d.enablingOption.value => reportingCallback.warning(d.msg, position)
-        case d: Warning => reportingCallback.warning(d.msg, position)
-        case d: Error => reportingCallback.error(d.msg, position)
-        case d: Info => reportingCallback.info(d.msg, position)
+        case d: ConditionalWarning if d.enablingOption.value => callback.warning(d.msg, position)
+        case d: Warning => callback.warning(d.msg, position)
+        case d: Error => callback.error(d.msg, position)
+        case d: Info => callback.info(d.msg, position)
       }
     }
   }
