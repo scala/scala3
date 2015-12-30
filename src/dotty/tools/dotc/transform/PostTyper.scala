@@ -68,7 +68,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  /** Check bounds of AppliedTypeTrees and TypeApplys.
+  /** Check bounds of AppliedTypeTrees.
    *  Replace type trees with TypeTree nodes.
    *  Replace constant expressions with Literal nodes.
    *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
@@ -97,29 +97,17 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    *  Revisit this issue once we have implemented `inline`. Then we can demand
    *  purity of the prefix unless the selection goes to an inline val.
    */
-  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = {
-    def literalize(tp: Type): Tree = tp.widenTermRefExpr match {
-      case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
-      case _ => tree
-    }
-    def norm(tree: Tree) =
-      if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos)
-      else literalize(tree.tpe)
-    tree match {
-      case tree: TypeTree =>
-        tree
-      case AppliedTypeTree(tycon, args) =>
-        val tparams = tycon.tpe.typeSymbol.typeParams
-        val bounds = tparams.map(tparam =>
-          tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
-        Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
-        norm(tree)
-      case TypeApply(fn, args) =>
-        Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-        norm(tree)
-      case _ =>
-        norm(tree)
-    }
+  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case tree: TypeTree => tree
+    case _ =>
+      if (tree.isType) {
+        Checking.boundsChecker.traverse(tree)
+        TypeTree(tree.tpe).withPos(tree.pos)
+      }
+      else tree.tpe.widenTermRefExpr match {
+        case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
+        case _ => tree
+      }
   }
 
   class PostTyperTransformer extends Transformer {
@@ -161,10 +149,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
         case tree: Select =>
           transformSelect(paramFwd.adaptRef(tree), Nil)
-        case tree @ TypeApply(sel: Select, args) =>
-          val args1 = transform(args)
-          val sel1 = transformSelect(sel, args1)
-          if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree)(sel1, args1)
+        case tree @ TypeApply(fn, args) =>
+          Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+          fn match {
+            case sel: Select =>
+              val args1 = transform(args)
+              val sel1 = transformSelect(sel, args1)
+              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree)(sel1, args1)
+            case _ =>
+              super.transform(tree)
+          }
         case tree @ Assign(sel: Select, _) =>
           superAcc.transformAssign(super.transform(tree))
         case tree: Template =>
@@ -186,6 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           val tree1 =
             if (sym.isClass) tree
             else {
+              Checking.boundsChecker.traverse(tree.rhs)
               cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
             }
           super.transform(tree1)
