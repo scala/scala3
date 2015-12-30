@@ -180,6 +180,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: DefDef =>
           transformAnnots(tree)
           superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
+        case tree: TypeDef =>
+          transformAnnots(tree)
+          val sym = tree.symbol
+          val tree1 =
+            if (sym.isClass) tree
+            else {
+              cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
+            }
+          super.transform(tree1)
         case tree: MemberDef =>
           transformAnnots(tree)
           super.transform(tree)
