@@ -961,8 +961,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeDef(name, rhs) = tdef
     checkLowerNotHK(sym, tdef.tparams.map(symbolOfTree), tdef.pos)
     completeAnnotations(tdef, sym)
-    val _ = typedType(rhs) // unused, typecheck only to remove from typedTree
-    assignType(cpy.TypeDef(tdef)(name, TypeTree(sym.info), Nil), sym)
+    assignType(cpy.TypeDef(tdef)(name, typedType(rhs), Nil), sym)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {

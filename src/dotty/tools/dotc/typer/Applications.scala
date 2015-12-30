@@ -607,7 +607,6 @@ trait Applications extends Compatibility { self: Typer =>
       case pt: PolyType =>
         if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
-        Checking.checkBounds(typedArgs, pt)
       case _ =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
