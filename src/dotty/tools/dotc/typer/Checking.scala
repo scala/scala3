@@ -48,6 +48,18 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
+  /** Check all AppliedTypeTree nodes in this tree for legal bounds */
+  val boundsChecker = new TreeTraverser {
+    def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+      case AppliedTypeTree(tycon, args) =>
+        val tparams = tycon.tpe.typeSymbol.typeParams
+        val bounds = tparams.map(tparam =>
+          tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
+        checkBounds(args, bounds, _.substDealias(tparams, _))
+      case _ => traverseChildren(tree)
+    }
+  }
+
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
