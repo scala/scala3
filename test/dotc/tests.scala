@@ -186,7 +186,7 @@ class tests extends CompilerTest {
    .filter(_.nonEmpty)
    .toList
 
-  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)(allowDeepSubtypes)
+  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
   @Test def compileMixed = compileLine(
       """tests/pos/B.scala
         |./scala-scala/src/library/scala/collection/immutable/Seq.scala

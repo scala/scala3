@@ -259,11 +259,12 @@ object Denotations {
      *
      *  If there is no preferred accessible denotation, return a JointRefDenotation
      *  with one of the operand symbols (unspecified which one), and an info which
-     *  is intersection (&) of the infos of the operand denotations.
+     *  is the intersection (using `&` or `safe_&` if `safeIntersection` is true)
+     *  of the infos of the operand denotations.
      *
      *  If SingleDenotations with different signatures are joined, return NoDenotation.
      */
-    def & (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
+    def & (that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
 
       /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
@@ -317,7 +318,11 @@ object Denotations {
                   else if (preferSym(sym2, sym1)) sym2
                   else sym1
                 val jointInfo =
-                  try info1 & info2
+                  try
+                    if (safeIntersection)
+                      info1 safe_& info2
+                    else
+                      info1 & info2
                   catch {
                     case ex: MergeError =>
                       if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
