@@ -102,7 +102,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeAlias if theMap == null => // if theMap exists, need to do the variance calculation
+        case tp: TypeAlias if tp.variance == 1 => // if variance != 1, need to do the variance calculation
           tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
