@@ -39,7 +39,7 @@ object TypeErasure {
     case _: ErasedValueType =>
       true
     case tp: TypeRef =>
-      tp.symbol.isClass && tp.symbol != defn.AnyClass
+      tp.symbol.isClass && tp.symbol != defn.AnyClass && tp.symbol != defn.ArrayClass
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -321,6 +321,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val sym = tp.symbol
       if (!sym.isClass) this(tp.info)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
+      else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent
