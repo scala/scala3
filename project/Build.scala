@@ -34,6 +34,14 @@ object DottyBuild extends Build {
     unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
     unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
 
+    // Generate compiler.properties, used by sbt
+    resourceGenerators in Compile += Def.task {
+      val file = (resourceManaged in Compile).value / "compiler.properties"
+      val contents = s"version.number=${version.value}"
+      IO.write(file, contents)
+      Seq(file)
+    }.taskValue,
+
     // include sources in eclipse (downloads source code for all dependencies)
     //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
     com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
