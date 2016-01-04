@@ -151,7 +151,7 @@ onExit () {
 
 # Get debug set early
 for arg in "$@"; do
-  [[ $arg == "-d" ]] && debug=true
+  [[ $arg == "-debug" ]] && debug=true
 done
 
 # to reenable echo if we are interrupted before completing.
@@ -244,7 +244,7 @@ case "$1" in
      -h|-help) usage; exit 1 ;;
      -bootstrapped) bootstrapped=true && shift ;;
   -v|-verbose) verbose=true && shift ;;
-    -d|-debug) debug=true && shift ;;
+    -debug) debug=true && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
