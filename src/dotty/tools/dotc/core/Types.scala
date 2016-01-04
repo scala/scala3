@@ -1695,8 +1695,9 @@ object Types {
     override def computeHash = unsupported("computeHash")
   }
 
-  final class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
-  final class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
+  // Those classes are non final as Linker extends them.
+  class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
+  class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
