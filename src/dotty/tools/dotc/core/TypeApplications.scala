@@ -246,7 +246,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           // abstract type. We can't access the bounds of the symbol yet because that
           // would cause a cause a cyclic reference. So we return `Nil` instead
           // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
-          // for reading a TypeRef show what's neeed.
+          // for reading a TypeRef show what's need.
           Nil
         else tsym.info.typeParams
       case self: RefinedType =>
@@ -541,8 +541,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
     case _ =>
       val v = tparam.variance
+      /* Not neeeded.
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
+      else
+      */
       else TypeAlias(self, v)
   }
 
