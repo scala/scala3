@@ -13,13 +13,13 @@ import ast.tpd
 class TastyPickler {
 
   private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
+  val uuid = UUID.randomUUID()
 
   private val headerBuffer = {
     val buf = new TastyBuffer(24)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(MajorVersion)
     buf.writeNat(MinorVersion)
-    val uuid = UUID.randomUUID()
     buf.writeUncompressedLong(uuid.getMostSignificantBits)
     buf.writeUncompressedLong(uuid.getLeastSignificantBits)
     buf
@@ -31,6 +31,7 @@ class TastyPickler {
     sections += ((nameBuffer.nameIndex(name), buf))
 
   def assembleParts(): Array[Byte] = {
+    treePkl.compactify()
     def lengthWithLength(buf: TastyBuffer) = {
       buf.assemble()
       buf.length + natSize(buf.length)
@@ -67,4 +68,6 @@ class TastyPickler {
    * so one can reliably use this function only dirrectly after `pickler`
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
+
+  val treePkl = new TreePickler(this)
 }

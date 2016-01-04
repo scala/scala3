@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyPickler}
+import dotty.tools.dotc.core.tasty.{TastyUnpickler, TastyBuffer, TastyPickler}
 import util.SourceFile
 import ast.{tpd, untpd}
 import dotty.tools.dotc.core.Symbols._
@@ -23,4 +23,6 @@ class CompilationUnit(val source: SourceFile) {
    * Subsequent phases can add new sections.
    */
   var picklers: Map[ClassSymbol, TastyPickler] = Map()
+
+  var unpicklers: Map[ClassSymbol, TastyUnpickler] = Map()
 }

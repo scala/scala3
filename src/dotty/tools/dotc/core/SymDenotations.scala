@@ -69,7 +69,7 @@ object SymDenotations {
     ownerIfExists: Symbol,
     final val name: Name,
     initFlags: FlagSet,
-    initInfo: Type,
+    final val initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
     //assert(symbol.id != 4940, name)

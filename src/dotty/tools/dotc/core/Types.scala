@@ -1011,6 +1011,14 @@ object Types {
       case _ => Nil
     }
 
+    /** The parameter names of a PolyType or MethodType, Empty list for others */
+    final def paramNamess(implicit ctx: Context): List[List[TermName]] = this match {
+      case mt: MethodType => mt.paramNames :: mt.resultType.paramNamess
+      case pt: PolyType => pt.resultType.paramNamess
+      case _ => Nil
+    }
+
+
     /** The parameter types in the first parameter section of a PolyType or MethodType, Empty list for others */
     final def firstParamTypes(implicit ctx: Context): List[Type] = this match {
       case mt: MethodType => mt.paramTypes
