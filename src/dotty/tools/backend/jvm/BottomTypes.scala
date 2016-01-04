@@ -44,7 +44,7 @@ class BottomTypes extends MiniPhaseTransform {
 
 
   def adaptBottom(treeOfBottomType: tpd.Tree, expectedType: Type)(implicit ctx: Context) = {
-    if (Erasure.Boxing.isNonJVMBottomType(treeOfBottomType.tpe) && (treeOfBottomType.tpe ne expectedType))
+    if (defn.isBottomType(treeOfBottomType.tpe) && (treeOfBottomType.tpe ne expectedType))
       Erasure.Boxing.adaptToType(treeOfBottomType, expectedType)
     else treeOfBottomType
   }
@@ -68,7 +68,7 @@ class BottomTypes extends MiniPhaseTransform {
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val fun = tree.fun
     val newArgs: List[tpd.Tree] = tree.args.zip(fun.tpe.dealias.firstParamTypes).map(x => adaptBottom(x._1, x._2))
-    val changeNeeded = tree.args == newArgs // cpy.Apply does not check if elements are the same,
+    val changeNeeded = tree.args != newArgs // cpy.Apply does not check if elements are the same,
                                             // it only does `eq` on lists as whole
     if (changeNeeded) cpy.Apply(tree)(fun = fun, args = newArgs)
     else tree

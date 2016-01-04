@@ -246,7 +246,7 @@ object Erasure extends TypeTestsCasts{
      *    e -> unbox(e, PT)  otherwise, if `PT` is an erased value type
      *    e -> box(e)        if `e` is of primitive type and `PT` is not a primitive type
      *    e -> unbox(e, PT)  if `PT` is a primitive type and `e` is not of primitive type
-     *    e -> cast(e, PT)   otherwise
+     *    e -> cast(e, PT)   otherwise, including if `PT` is a bottom type.
      */
     def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       if (pt.isInstanceOf[FunProto]) tree
@@ -254,7 +254,7 @@ object Erasure extends TypeTestsCasts{
         case MethodType(Nil, _) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
-          if (pt.isInstanceOf[ProtoType] || ((!pt.isValueType || !isNonJVMBottomType(tree.tpe)) && (tree.tpe <:< pt)))
+          if (pt.isInstanceOf[ProtoType] || ((!pt.isValueType || !defn.isBottomType(tree.tpe)) && (tree.tpe <:< pt)))
             tree
           else if (tpw.isErasedValueType)
             adaptToType(box(tree), pt)
@@ -268,11 +268,6 @@ object Erasure extends TypeTestsCasts{
             cast(tree, pt)
       }
 
-
-    /** Is `tpe` a type which is a bottom type for Dotty, but not a bottom type for JVM */
-    def isNonJVMBottomType(tpe: Type)(implicit ctx: Context): Boolean = {
-      tpe.derivesFrom(ctx.definitions.NothingClass) || tpe.derivesFrom(ctx.definitions.NullClass)
-    }
   }
 
   class Typer extends typer.ReTyper with NoChecking {
