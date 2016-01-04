@@ -548,8 +548,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
     case _ =>
       val v = tparam.variance
+      /* Not neeeded.
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
+      else
+      */
       else TypeAlias(self, v)
   }
 
