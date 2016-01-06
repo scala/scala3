@@ -60,7 +60,7 @@ object DottyBuild extends Build {
                                 "jline" % "jline" % "2.12"),
 
     // scalac options
-    scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
+    scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:existentials,higherKinds,implicitConversions"),
 
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
@@ -144,7 +144,7 @@ object DottyBuild extends Build {
     testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
 
     // scalac options
-    scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
+    scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:existentials,higherKinds,implicitConversions"),
 
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
