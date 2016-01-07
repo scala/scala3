@@ -1493,7 +1493,7 @@ object Parsers {
             atPos(modStart, in.offset) {
               if (in.token == TYPE) {
                 in.nextToken()
-                mods | Param
+                mods | Param | ParamAccessor
               } else {
                 if (mods.hasFlags) syntaxError("`type' expected")
                 mods | Param | PrivateLocal
