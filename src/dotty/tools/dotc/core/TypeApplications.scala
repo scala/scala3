@@ -546,7 +546,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
       else
       */
-      else TypeAlias(self, v)
+      TypeAlias(self, v)
   }
 
   /** The type arguments of this type's base type instance wrt. `base`.
