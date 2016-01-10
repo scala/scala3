@@ -4,7 +4,6 @@ package typer
 
 import core._
 import ast._
-import ast.Trees._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import util.Positions._
@@ -375,7 +374,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
     def refineNamed(tycon: Type, arg: Tree) = arg match {
-      case NamedArg(name, argtpt) =>
+      case ast.Trees.NamedArg(name, argtpt) =>
         val tparam = tparams.find(_.name == name) match {
           case Some(tparam) => tparam
           case none =>
