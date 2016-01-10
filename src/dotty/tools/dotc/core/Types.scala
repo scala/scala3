@@ -860,11 +860,9 @@ object Types {
         else NoType
       case tp: AnnotatedType => tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
-        if (refinementOK) tp.underlying.underlyingClassRef(refinementOK)
-        else {
-          val tycon = tp.withoutArgs(tp.argInfos)
-          if (tycon eq tp) NoType else tycon.underlyingClassRef(refinementOK)
-        }
+        def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
+        if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
+        else NoType
       case _ => NoType
     }
 
