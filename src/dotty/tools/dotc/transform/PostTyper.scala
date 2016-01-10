@@ -68,7 +68,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  /** Check bounds of AppliedTypeTrees.
+  /** Check bounds of AppliedTypeTrees and TypeApplys.
    *  Replace type trees with TypeTree nodes.
    *  Replace constant expressions with Literal nodes.
    *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
@@ -99,6 +99,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    */
   private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: TypeTree => tree
+    case TypeApply(fn, args) =>
+      Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+      tree
     case _ =>
       if (tree.isType) {
         Checking.typeChecker.traverse(tree)
