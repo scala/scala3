@@ -1,10 +1,10 @@
 package namedparams
 
-abstract class C[type Elem, type Value](val elem: Elem) {
+class C[type Elem, type Value](val elem: Elem) {
   def toVal: Elem = ???
 }
 
-
+class D[type Elem, V](elem: Elem) extends C[Elem, V](elem)
 
 object Test {
   val c = new C[String, String]("A") {
