@@ -520,7 +520,7 @@ object SymDenotations {
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) = {
-      val isUnstable =
+      def isUnstable =
         (this is UnstableValue) ||
         ctx.isVolatile(info) && !hasAnnotation(defn.UncheckedStableAnnot)
       (this is Stable) || isType || {
