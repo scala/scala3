@@ -221,8 +221,8 @@ abstract class CompilerTest extends DottyTest {
       case ExistsSame => // nothing else to do
       case ExistsDifferent =>
         val nextDest = dest.parent / (dest match {
-          case f: SFile => SFile(replaceVersion(f.stripExtension, nr)).addExtension(f.extension)
           case d: Directory => Directory(replaceVersion(d.name, nr))
+          case f => SFile(replaceVersion(f.stripExtension, nr)).addExtension(f.extension)
         })
         computeDestAndCopyFiles(source, nextDest, kind, flags, nerr, nr + 1, partestOutput)
     }
