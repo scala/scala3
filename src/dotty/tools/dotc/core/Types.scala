@@ -3450,7 +3450,7 @@ object Types {
           case TypeBounds(_, hi) =>
             apply(x, hi)
           case tp: ThisType =>
-            apply(x, tp.underlying)
+            apply(x, tp.tref)
           case tp: ConstantType =>
             apply(x, tp.underlying)
           case tp: MethodParam =>
