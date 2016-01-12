@@ -122,17 +122,16 @@ class TreeChecker extends Phase with SymTransformer {
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.reporter)))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
-    catch {/*
+    catch {
       case NonFatal(ex) =>
-
         implicit val ctx: Context = checkingCtx
         ctx.println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
         ctx.println(ex.toString)
         ctx.println(ex.getStackTrace.take(30).deep.mkString("\n"))
         ctx.println("<<<")
-        throw ex*/
+        throw ex
       case ex: Throwable =>
-        println("@@@@@" + ex)
+        println("!!!!!!" + ex)
         throw ex
     }
   }
