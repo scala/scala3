@@ -1,21 +1,22 @@
-class Foo[T <: U, U <: T] // error: cycle
+class Foo[T <: U, U <: T] // error: illegal cyclic reference: upper bound U of type T refers back to the type itself
 
-class Bar[T >: T] // error: cycle
+class Bar[T >: T] // error: illegal cyclic reference: lower bound T of type T refers back to the type itself
+
 
 class A {
   val x: T = ???
-  type T <: x.type // error: cycle
+  type T <: x.type // error: cyclic reference involving value x
 }
 
 class B {
-  type T <: x.type // error: cycle
-  final val x: T = ???
+  type T <: x.type // error: illegal cyclic reference: upper bound B.this.T(B.this.x) of type T refers back to the type itself
+  val x: T = ???
 }
 
 class C {
   final val x: D#T = ???
   class D {
-    type T <: x.type // error: cycle
+    type T <: x.type // error: cyclic reference involving value x
     val z: x.type = ???
   }
 }
