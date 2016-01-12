@@ -1732,7 +1732,7 @@ object Parsers {
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
       def scala2ProcedureSyntax =
-        testScala2Mode("Procedure syntax no longer supported; `=' should be inserted here")
+        testScala2Mode("Procedure syntax no longer supported; `: Unit =' should be inserted here")
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
