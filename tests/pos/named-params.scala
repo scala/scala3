@@ -18,3 +18,15 @@ object Test {
   val c4 = new C[Elem = String]("C")
   val x2: c2.Elem = c2.elem
 }
+
+// Adapated from i94-nada
+trait Test1 {
+  trait Monad[type Elem] {
+    def unit: Elem
+  }
+  sealed abstract class Either[A,B]
+  case class Left[A,B](unit: A) extends Either[A,B] with Monad[A]
+  case class Right[A,B](unit: B) extends Either[A,B] with Monad[B]
+  def flatMap[X,Y,M <: Monad](m: M[Elem = X], f: X => M[Elem = Y]): M[Elem = Y] = f(m.unit)
+  println(flatMap(Left(1), {x: Int => Left(x)}))
+}
