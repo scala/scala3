@@ -287,7 +287,7 @@ trait ImplicitRunInfo { self: RunInfo =>
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
-            AndType(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
+            AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
           val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
