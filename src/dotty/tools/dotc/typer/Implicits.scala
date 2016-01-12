@@ -338,8 +338,6 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
     }
 
-    def ofTypeImplicits(comps: TermRefSet) = new OfTypeImplicits(tp, comps)(ctx)
-
    /** The implicit scope of type `tp`
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
@@ -349,9 +347,12 @@ trait ImplicitRunInfo { self: RunInfo =>
         ctx.typerState.ephemeral = false
         try {
           val liftedTp = if (isLifted) tp else liftToClasses(tp)
-          val result =
-            if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
-            else ofTypeImplicits(collectCompanions(tp))
+          val refs =
+            if (liftedTp ne tp)
+              iscope(liftedTp, isLifted = true).companionRefs
+            else
+              collectCompanions(tp)
+          val result = new OfTypeImplicits(tp, refs)(ctx)
           if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
           else if (cacheResult) implicitScopeCache(tp) = result
           result
