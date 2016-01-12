@@ -110,12 +110,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         tree
       case AppliedTypeTree(tycon, args) =>
         // If `args` is a list of named argiments, return corresponding type parameters,
-        // otherwise return type parameters unchanged
-        def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[TypeSymbol] = args match {
-          case Nil => Nil
-          case NamedArg(name, arg) :: args1 =>
-            val (matchingParam :: Nil, others) = tparams.partition(_.name == name)
-            matchingParam :: matchNamed(others, args1)
+        // or abstract types otherwise return type parameters unchanged
+        def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] = args match {
+          case (arg: NamedArg) :: _ =>
+            for (NamedArg(name, arg) <- args) yield tycon.tpe.member(name).symbol
           case _ =>
             tparams
         }
