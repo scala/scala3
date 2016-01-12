@@ -119,6 +119,7 @@ class tests extends CompilerTest {
   @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil, xerrors = 3)
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
+  @Test def namedParams = compileFile(negDir, "named-params", xerrors = 3)
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
   @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 12)
   @Test def neg_overrideClass = compileFile(negDir, "overrideClass", List("-language:Scala2"), xerrors = 1)
