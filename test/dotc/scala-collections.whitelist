@@ -189,13 +189,11 @@
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
 ./scala-scala/src/library/scala/collection/immutable/HashSet.scala
 
-# https://github.com/lampepfl/dotty/issues/939 -> @darkdimius
-#./scala-scala/src/library/scala/collection/immutable/IntMap.scala
+
+./scala-scala/src/library/scala/collection/immutable/IntMap.scala
 ./scala-scala/src/library/scala/collection/immutable/ListMap.scala
 ./scala-scala/src/library/scala/collection/immutable/ListSet.scala
-
-# https://github.com/lampepfl/dotty/issues/939 -> @darkdimius
-#./scala-scala/src/library/scala/collection/immutable/LongMap.scala
+./scala-scala/src/library/scala/collection/immutable/LongMap.scala
 
 ./scala-scala/src/library/scala/collection/immutable/Map.scala
 ./scala-scala/src/library/scala/collection/immutable/MapLike.scala
