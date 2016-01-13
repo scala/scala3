@@ -127,7 +127,8 @@ object DottyBuild extends Build {
       ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
     }
   ) ++ addCommandAlias("partest", ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
-       addCommandAlias("partest-only", ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner")
+       addCommandAlias("partest-only",             ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
+       addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 

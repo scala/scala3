@@ -7,5 +7,5 @@ scriptsDir="$baseDir/scripts"
 git log --pretty=format:"%h - %an, %aD : %s" -n 10
 
 update DarkDimius scala scala-scala dotty-library
-sbt $sbtArgs update compile "partest-only-no-bootstrap --show-diff --verbose"
+sbt $sbtArgs update compile "partest-only --show-diff --verbose"
 
