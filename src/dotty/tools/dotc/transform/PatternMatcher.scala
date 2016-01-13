@@ -787,7 +787,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         //  - Scala's arrays are invariant (so we don't drop type tests unsoundly)
         if (extractorArgTypeTest) mkDefault
         else expectedTp match {
-          case ThisType(tref) if tref.symbol.flags is Flags.Module            => and(mkEqualsTest(ref(tref.symbol)), mkTypeTest) // must use == to support e.g. List() == Nil
+          case ThisType(tref) if tref.symbol.flags is Flags.Module            =>
+            and(mkEqualsTest(ref(tref.symbol.companionModule)), mkTypeTest) // must use == to support e.g. List() == Nil
           case ConstantType(Constant(null)) if isAnyRef => mkEqTest(expTp(Literal(Constant(null))))
           case ConstantType(const)                      => mkEqualsTest(expTp(Literal(const)))
           case t:SingletonType                          => mkEqTest(singleton(expectedTp)) // SI-4577, SI-4897
