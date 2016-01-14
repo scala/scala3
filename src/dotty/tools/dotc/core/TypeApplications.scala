@@ -246,7 +246,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           // abstract type. We can't access the bounds of the symbol yet because that
           // would cause a cause a cyclic reference. So we return `Nil` instead
           // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
-          // for reading a TypeRef show what's neeed.
+          // for reading a TypeRef show what's need.
           Nil
         else tsym.info.typeParams
       case self: RefinedType =>
@@ -541,9 +541,12 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
     case _ =>
       val v = tparam.variance
+      /* Not neeeded.
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
-      else TypeAlias(self, v)
+      else
+      */
+      TypeAlias(self, v)
   }
 
   /** The type arguments of this type's base type instance wrt. `base`.
@@ -695,11 +698,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       case RefinedThis(tp) =>
         tp eq target
       case tp: NamedType =>
-        if (tp.symbol.isClass) !tp.symbol.isStatic && recur(tp.prefix)
-        else tp.info match {
-          case TypeAlias(alias) => recur(alias)
-          case _ => recur(tp.prefix)
-        }
+        if (tp.denotationIsCurrent)
+          if (tp.symbol.isClass) !tp.symbol.isStatic && recur(tp.prefix)
+          else tp.info match {
+            case TypeAlias(alias) => recur(alias)
+            case _ => recur(tp.prefix)
+          }
+        else recur(tp.prefix)
       case tp: RefinedType =>
         recur(tp.refinedInfo) || recur(tp.parent)
       case tp: TypeBounds =>

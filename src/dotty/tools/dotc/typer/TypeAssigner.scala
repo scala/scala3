@@ -179,8 +179,11 @@ trait TypeAssigner {
             ErrorType
           }
         }
-        else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
-          ensureAccessible(d.info.bounds.hi, superAccess, pos)
+        else if (d.symbol is TypeParamAccessor)
+          if (d.info.isAlias)
+            ensureAccessible(d.info.bounds.hi, superAccess, pos)
+          else // It's a named parameter, use the non-symbolic representation to pick up inherited versions as well
+            d.symbol.owner.thisType.select(d.symbol.name)
         else
           ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
@@ -370,8 +373,24 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
+    def refineNamed(tycon: Type, arg: Tree) = arg match {
+      case ast.Trees.NamedArg(name, argtpt) =>
+        val tparam = tparams.find(_.name == name) match {
+          case Some(tparam) => tparam
+          case none =>
+            val sym = tycon.member(name).symbol
+            if (sym.isAbstractType) sym
+            else if (sym.is(ParamAccessor)) sym.info.dealias.typeSymbol
+            else NoSymbol
+        }
+        if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
+        else errorType(s"$tycon does not have a parameter or abstract type member named $name", arg.pos)
+      case _ =>
+        errorType(s"named and positional type arguments may not be mixed", arg.pos)
+    }
     val ownType =
-      if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
+      if (args.head.isInstanceOf[NamedArg]) (tycon.tpe /: args)(refineNamed)
+      else if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
       else errorType(d"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
     tree.withType(ownType)
   }

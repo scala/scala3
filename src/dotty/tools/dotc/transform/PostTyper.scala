@@ -109,7 +109,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       case tree: TypeTree =>
         tree
       case AppliedTypeTree(tycon, args) =>
-        val tparams = tycon.tpe.typeSymbol.typeParams
+        // If `args` is a list of named argiments, return corresponding type parameters,
+        // or abstract types otherwise return type parameters unchanged
+        def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] = args match {
+          case (arg: NamedArg) :: _ =>
+            for (NamedArg(name, arg) <- args) yield tycon.tpe.member(name).symbol
+          case _ =>
+            tparams
+        }
+        val tparams = matchNamed(tycon.tpe.typeSymbol.typeParams, args)
         val bounds = tparams.map(tparam =>
           tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
         Checking.checkBounds(args, bounds, _.substDealias(tparams, _))

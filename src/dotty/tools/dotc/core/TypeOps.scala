@@ -35,7 +35,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  Instead we produce an annotated type that marks the prefix as unsafe:
    *
    *     (x: (C @ UnsafeNonvariant)#T)C#T
-   
+
    *  We also set a global state flag `unsafeNonvariant` to the current run.
    *  When typing a Select node, typer will check that flag, and if it
    *  points to the current run will scan the result type of the select for
@@ -474,10 +474,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case tp: TypeRef =>
         tp
       case tp @ RefinedType(tp1, name: TypeName) =>
-        val prevInfo = refinements(name)
-        refinements = refinements.updated(name,
-            if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
-        formals = formals.updated(name, tp1.typeParamNamed(name))
+        tp.refinedInfo match {
+          case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
+            // Don't record refinements of the form X = this.X (These can arise using named parameters).
+            typr.println(s"dropping refinement $tp")
+          case _ =>
+            val prevInfo = refinements(name)
+            refinements = refinements.updated(name,
+              if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
+            formals = formals.updated(name, tp1.typeParamNamed(name))
+        }
         normalizeToRef(tp1)
       case ErrorType =>
         defn.AnyType
