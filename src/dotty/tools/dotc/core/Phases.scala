@@ -265,15 +265,18 @@ object Phases {
 
     def run(implicit ctx: Context): Unit
 
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
-      units.map { unit =>
+    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+      val numberOfUnits = units.size
+      units.zipWithIndex.map { case (unit, idx) =>
+        val phaseId = s"${idx + 1} of $numberOfUnits"
         if (ctx.compilerCallback != null)
-          ctx.compilerCallback.startUnit(phaseName, unit.source.file.path)
+          ctx.compilerCallback.startUnit(phaseId, unit.source.file.path)
 
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
         unitCtx.compilationUnit
       }
+    }
 
     def description: String = phaseName
 
