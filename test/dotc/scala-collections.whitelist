@@ -266,7 +266,7 @@
 ./scala-scala/src/library/scala/collection/generic/ParFactory.scala
 
 # https://github.com/lampepfl/dotty/issues/974 -> @smarter
-#./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
+./scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
 
 # cyclic reference, maybe related to #974 -> @smarter
 #./scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
