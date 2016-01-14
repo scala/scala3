@@ -130,6 +130,9 @@ class TreeChecker extends Phase with SymTransformer {
         ctx.println(ex.getStackTrace.take(30).deep.mkString("\n"))
         ctx.println("<<<")
         throw ex
+      case ex: Throwable =>
+        println("!!!!!!" + ex)
+        throw ex
     }
   }
 
