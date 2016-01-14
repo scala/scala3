@@ -1782,6 +1782,9 @@ object SymDenotations {
     def apply(sym: Symbol) = this
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
 
+    /** The type parameters computed by the completer before completion has finished */
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = Nil
+
     private var myDecls: Scope = EmptyScope
     private var mySourceModuleFn: Context => Symbol = NoSymbolFn
     private var myModuleClassFn: Context => Symbol = NoSymbolFn
