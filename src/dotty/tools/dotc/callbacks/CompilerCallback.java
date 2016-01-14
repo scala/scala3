@@ -5,7 +5,8 @@ import java.io.File;
 /** This interface contains methods that can be implemented to execute code during the
  *  compilation process.
  *
- *  NOTE: This trait is experimental and may be subject to arbitrary changes.
+ *  NOTE: This interface is used for integration of Dotty compiler with Intellij IDEA.
+ *  If you want to change it please contact Scala Plugin team.
  *
  *  Example usage:
  *  {{{
@@ -43,7 +44,7 @@ public interface CompilerCallback {
 
     /** Called when compilation phase starts on a given source
      *
-     *  @param phase          Name of the current phase
+     *  @param phase          Name (or other identifier) of the current phase
      *  @param sourcePath     Path to the processed file
      */
     void startUnit(String phase, String sourcePath);
