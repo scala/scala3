@@ -1802,6 +1802,14 @@ object SymDenotations {
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
   }
 
+  /** A subclass of LazyTypes where type parameters can be completed independently of
+   *  the info.
+   */
+  abstract class TypeParamsCompleter extends LazyType {
+    /** The type parameters computed by the completer before completion has finished */
+    def completerTypeParams(sym: Symbol): List[TypeSymbol]
+  }
+
   val NoSymbolFn = (ctx: Context) => NoSymbol
 
   /** A missing completer */
