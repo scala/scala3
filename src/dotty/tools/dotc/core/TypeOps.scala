@@ -35,7 +35,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  Instead we produce an annotated type that marks the prefix as unsafe:
    *
    *     (x: (C @ UnsafeNonvariant)#T)C#T
-   
+
    *  We also set a global state flag `unsafeNonvariant` to the current run.
    *  When typing a Select node, typer will check that flag, and if it
    *  points to the current run will scan the result type of the select for

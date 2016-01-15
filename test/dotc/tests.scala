@@ -158,6 +158,7 @@ class tests extends CompilerTest {
   @Test def neg_finalSealed = compileFile(negDir, "final-sealed", xerrors = 2)
   @Test def neg_i705 = compileFile(negDir, "i705-inner-value-class", xerrors = 7)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
+  @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
@@ -185,6 +186,15 @@ class tests extends CompilerTest {
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
+  @Test def compileMixed = compileLine(
+      """tests/pos/B.scala
+        |./scala-scala/src/library/scala/collection/immutable/Seq.scala
+        |./scala-scala/src/library/scala/package.scala
+        |./scala-scala/src/library/scala/collection/GenSeqLike.scala
+        |./scala-scala/src/library/scala/collection/SeqLike.scala
+        |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
+  @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
+
   @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
