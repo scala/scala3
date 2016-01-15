@@ -138,9 +138,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedType => false
-              // Note: it's important not to visit parents of RefinedTypes,
-              // since otherwise spurious #Apply projections might be inserted.
+            case _: RefinedType => true
             case _ => false
           }
           // If prefix is interesting, check info of typeref recursively, marking the referred symbol
@@ -148,10 +146,12 @@ object Checking {
           // is hit again. Without this precaution we could stackoverflow here.
           if (isInteresting(pre)) {
             val info = tp.info
-            val symInfo = tp.symbol.info
-            if (tp.symbol.exists) tp.symbol.info = SymDenotations.NoCompleter
+            val sym = tp.symbol
+            if (sym.infoOrCompleter == SymDenotations.NoCompleter) throw CyclicReference(sym)
+            val symInfo = sym.info
+            if (sym.exists) sym.info = SymDenotations.NoCompleter
             try checkInfo(info)
-            finally if (tp.symbol.exists) tp.symbol.info = symInfo
+            finally if (sym.exists) sym.info = symInfo
           }
           tp
         } catch {
