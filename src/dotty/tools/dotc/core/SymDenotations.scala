@@ -1782,9 +1782,6 @@ object SymDenotations {
     def apply(sym: Symbol) = this
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
 
-    /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = Nil
-
     private var myDecls: Scope = EmptyScope
     private var mySourceModuleFn: Context => Symbol = NoSymbolFn
     private var myModuleClassFn: Context => Symbol = NoSymbolFn
@@ -1803,6 +1800,14 @@ object SymDenotations {
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+  }
+
+  /** A subclass of LazyTypes where type parameters can be completed independently of
+   *  the info.
+   */
+  abstract class TypeParamsCompleter extends LazyType {
+    /** The type parameters computed by the completer before completion has finished */
+    def completerTypeParams(sym: Symbol): List[TypeSymbol]
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol

@@ -478,14 +478,14 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
+  class Completer(val original: Tree)(implicit ctx: Context) extends TypeParamsCompleter {
 
     protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 
     private var myTypeParams: List[TypeSymbol] = null
     private var nestedCtx: Context = null
 
-    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
+    def completerTypeParams(sym: Symbol): List[TypeSymbol] = {
       if (myTypeParams == null) {
         //println(i"completing type params of $sym in ${sym.owner}")
         myTypeParams = original match {
