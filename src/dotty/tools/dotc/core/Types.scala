@@ -942,7 +942,35 @@ object Types {
           NoType
       }
 
-      loop(this)
+      /** Reduce C[hki = Argi] # Apply where C is a non-lambda class
+       *  to  C[Argi], renaming references as necessary */
+      def betaReduceCls(cls: Symbol, tp: Type): Type = tp.stripTypeVar match {
+        case tp @ RefinedType(parent, rname) =>
+          val parent1 = betaReduceCls(cls, parent)
+          def paramName(hkArgName: TypeName): TypeName =
+            cls.typeParams.apply(rname.hkArgIndex).name
+          def mapArg(rt: RefinedType) = new TypeMap {
+            def apply(t: Type): Type = t match {
+              case TypeRef(RefinedThis(`tp`), name) if name.isHkArgName =>
+                TypeRef(RefinedThis(rt), paramName(name))
+              case _ =>
+                mapOver(t)
+            }
+          }
+          if (rname.isHkArgName)
+            RefinedType(parent1, paramName(rname.asTypeName), mapArg(_)(tp.refinedInfo))
+          else parent1
+        case _ =>
+          tp
+      }
+
+      if (name == tpnme.hkApply) {
+        val cref = underlyingClassRef(refinementOK = true)
+        val cls = cref.typeSymbol
+        if (cref.isEtaExpandable && !defn.isBottomClass(cls)) betaReduceCls(cls, this)
+        else loop(this)
+      }
+      else loop(this)
     }
 
     /** The type <this . name> , reduced if possible */

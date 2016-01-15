@@ -186,6 +186,8 @@ class tests extends CompilerTest {
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
+  @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
+
   @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
