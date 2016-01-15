@@ -4,6 +4,7 @@ package core
 import Types._
 import Contexts._
 import Symbols._
+import SymDenotations.TypeParamsCompleter
 import Decorators._
 import util.Stats._
 import util.common._
@@ -240,15 +241,21 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) self.underlying.typeParams
-        else if (tsym.isCompleting)
-          // We are facing a problem when computing the type parameters of an uncompleted
-          // abstract type. We can't access the bounds of the symbol yet because that
-          // would cause a cause a cyclic reference. So we return `Nil` instead
-          // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
-          // for reading a TypeRef show what's neeed.
-          Nil
-        else tsym.info.typeParams
+        else tsym.infoOrCompleter match {
+          case completer: TypeParamsCompleter =>
+            val tparams = completer.completerTypeParams(tsym)
+            if (tsym.isClass) tparams
+            else defn.LambdaTrait(tparams.map(_.variance)).typeParams
+          case _ =>
+            if (!tsym.isCompleting || tsym.isAliasType) tsym.info.typeParams
+            else
+              // We are facing a problem when computing the type parameters of an uncompleted
+              // abstract type. We can't access the bounds of the symbol yet because that
+              // would cause a cause a cyclic reference. So we return `Nil` instead
+              // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
+              // for reading a TypeRef show what's needed.
+              Nil
+        }
       case self: RefinedType =>
         // inlined and optimized version of
         //   val sym = self.LambdaTrait
