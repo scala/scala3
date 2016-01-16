@@ -34,7 +34,10 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
         runner.genFail(s"compilation failed with ${reporter.errorCount} errors")
       }
     } catch {
-      case t: Throwable => runner.genCrash(t)
+      case t: Throwable =>
+        t.printStackTrace
+        t.printStackTrace(clogWriter)
+        runner.genCrash(t)
     } finally {
       clogFWriter.close
       clogWriter.close
