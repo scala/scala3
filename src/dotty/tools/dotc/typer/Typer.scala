@@ -882,7 +882,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           else
             (arg, WildcardType)
         val arg1 = typed(desugaredArg, argPt)
-        adaptTypeArg(arg1, if (tparam.isCompleted) tparam.info else WildcardType)
+        adaptTypeArg(arg1, tparam.info)
       }
       val args1 = args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       // check that arguments conform to bounds is done in phase PostTyper

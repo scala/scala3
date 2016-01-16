@@ -193,7 +193,7 @@ class tests extends CompilerTest {
         |./scala-scala/src/library/scala/collection/GenSeqLike.scala
         |./scala-scala/src/library/scala/collection/SeqLike.scala
         |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
-  // @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
+  @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
   @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
 
