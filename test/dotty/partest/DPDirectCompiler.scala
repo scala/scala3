@@ -35,7 +35,9 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
       }
     } catch {
       case t: Throwable =>
-        t.printStackTrace
+        if (t.isInstanceOf[java.lang.OutOfMemoryError])
+          println(s"total memory = "+ Runtime.getRuntime().totalMemory / (1024*1024) +"mb")
+        t.printStackTrace()
         t.printStackTrace(clogWriter)
         runner.genCrash(t)
     } finally {
