@@ -57,8 +57,8 @@ object Checking {
           // If `args` is a list of named arguments, return corresponding type parameters,
           // otherwise return type parameters unchanged
           def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] = args match {
-            case (arg: NamedArg) :: _ =>
-              for (NamedArg(name, arg) <- args) yield tycon.tpe.member(name).symbol
+            case (_: NamedArg) :: _ =>
+              for (NamedArg(name, _) <- args) yield tycon.tpe.member(name).symbol
             case _ =>
               tparams
           }

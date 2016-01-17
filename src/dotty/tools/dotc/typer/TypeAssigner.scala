@@ -375,6 +375,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
+        // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
         val tparam = tparams.find(_.name == name) match {
           case Some(tparam) => tparam
           case none =>
