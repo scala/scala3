@@ -6,9 +6,7 @@ import scala.reflect.io.Path
 
 object DottyBuild extends Build {
 
-  // Currently, this cannot be increased without hitting the maximum amount of memory
-  // available on the Jenkins VMs
-  val travisMemLimit = List("-Xmx1100m")
+  val travisMemLimit = List("-Xmx1500m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
 
