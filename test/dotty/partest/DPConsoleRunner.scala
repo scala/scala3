@@ -68,8 +68,15 @@ class DPSuiteRunner(testSourcePath: String, // relative path, like "files", or "
   scalacExtraArgs: Seq[String] = Seq.empty)
 extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPath, javacCmdPath, scalacExtraArgs) {
 
+  val isJenkins = sys.props.isDefinedAt("dotty.jenkins.build")
+  val numCores = Runtime.getRuntime.availableProcessors
+
   if (!DPConfig.runTestsInParallel)
     sys.props("partest.threads") = "1"
+  else if (isJenkins)
+    sys.props("partest.threads") = (numCores / 2).toString
+  else
+    sys.props("partest.threads") = numCores.toString
 
   sys.props("partest.root") = "."
 
