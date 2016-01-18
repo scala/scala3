@@ -1491,10 +1491,7 @@ object SymDenotations {
         val decls1 = newScope
         for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
         for (sym <- decls) if (!typeParams.contains(sym)) decls1.enter(sym)
-        val ci = classInfo
-        // dotty deviation; overloading resolution on next line fails if prefix `ci` is not a value.
-        // See test pending/pos/overloaddefault.scala
-        info = ci.derivedClassInfo(decls = decls1)
+        info = classInfo.derivedClassInfo(decls = decls1)
         myTypeParams = null
       }
 
