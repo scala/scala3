@@ -57,7 +57,7 @@ object DottyBuild extends Build {
                       "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
     libraryDependencies ++= partestDeps.value,
     libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
-                                "org.scala-lang.modules" %% "scala-partest" % "1.0.5" % "test",
+                                "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                 "com.novocode" % "junit-interface" % "0.11" % "test",
                                 "jline" % "jline" % "2.12"),
 
