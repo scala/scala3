@@ -5,4 +5,8 @@ object Test {
     g("foo")
     new C("bar")
   }
+  def baz[X >: Y, Y <: String](x: X, y: Y) = (x, y)
+
+  baz[Int, String](1, "abc")
+
 }

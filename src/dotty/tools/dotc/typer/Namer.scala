@@ -869,7 +869,9 @@ class Namer { typer: Typer =>
       if (tparamSyms.nonEmpty && !isDerived) tp.LambdaAbstract(tparamSyms)
       //else if (toParameterize) tp.parameterizeWith(tparamSyms)
       else tp
-    sym.info = abstracted(TypeBounds.empty)
+
+    val dummyInfo = abstracted(TypeBounds.empty)
+    sym.info = dummyInfo
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
       // This is done to avoid cyclic reference errors for F-bounds.
       // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
@@ -890,6 +892,19 @@ class Namer { typer: Typer =>
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
     }
+
+    // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
+    // We need to compensate by invalidating caches in references that might
+    // still contain the TypeBounds.empty. If we do not do this, stdlib factories
+    // fail with a bounds error in PostTyper.
+    def ensureUpToDate(tp: Type, outdated: Type) = tp match {
+      case tref: TypeRef if tref.info == outdated && sym.info != outdated =>
+        tref.uncheckedSetSym(null)
+      case _ =>
+    }
+    ensureUpToDate(sym.typeRef, dummyInfo)
+    ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
+
     etaExpandArgs.apply(sym.info)
   }
 

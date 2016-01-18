@@ -108,8 +108,8 @@ class tests extends CompilerTest {
 
   @Test def neg_abstractOverride() = compileFile(negDir, "abstract-override", xerrors = 2)
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
-  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 2)
-  @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
+  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 3)
+  @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 3)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 14)(allowDoubleBindings)
@@ -167,6 +167,7 @@ class tests extends CompilerTest {
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 2)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
+  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 2)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
@@ -175,6 +176,7 @@ class tests extends CompilerTest {
   @Test def neg_validateParsing = compileFile(negDir, "validate-parsing", xerrors = 7)
   @Test def neg_validateRefchecks = compileFile(negDir, "validate-refchecks", xerrors = 2)
   @Test def neg_skolemize = compileFile(negDir, "skolemize", xerrors = 2)
+  @Test def neg_nested_bounds = compileFile(negDir, "nested_bounds", xerrors = 1)
 
   @Test def run_all = runFiles(runDir)
 

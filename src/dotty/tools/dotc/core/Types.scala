@@ -459,7 +459,7 @@ object Types {
           val jointInfo =
             if (rinfo.isAlias) rinfo
             else if (pdenot.info.isAlias) pdenot.info
-            else if (ctx.pendingMemberSearches.contains(name)) safeAnd(pdenot.info, rinfo)
+            else if (ctx.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
             else
               try pdenot.info & rinfo
               catch {
@@ -470,11 +470,15 @@ object Types {
                   // the special shortcut for Any in derivesFrom was as yet absent. To reproduce,
                   // remove the special treatment of Any in derivesFrom and compile
                   // sets.scala.
-                  safeAnd(pdenot.info, rinfo)
+                  pdenot.info safe_& rinfo
               }
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
-        } else
-          pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
+        } else {
+          pdenot & (
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
+            pre,
+            safeIntersection = ctx.pendingMemberSearches.contains(name))
+        }
       }
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
@@ -501,12 +505,10 @@ object Types {
             go(next)
         }
       }
-      def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
-      def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
-      def safeAnd(tp1: Type, tp2: Type): Type = (tp1, tp2) match {
-        case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(lo1 | lo2, AndType(hi1, hi2))
-        case _ => tp1 & tp2
+      def goAnd(l: Type, r: Type) = {
+        go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
+      def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
 
       { val recCount = ctx.findMemberCount + 1
         ctx.findMemberCount = recCount
@@ -703,6 +705,19 @@ object Types {
 
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
+    }
+
+    /** Safer version of `&`.
+     *
+     *  This version does not simplify the upper bound of the intersection of
+     *  two TypeBounds. The simplification done by `&` requires subtyping checks
+     *  which may end up calling `&` again, in most cases this should be safe
+     *  but because of F-bounded types, this can result in an infinite loop
+     *  (which will be masked unless `-Yno-deep-subtypes` is enabled).
+     */
+    def safe_& (that: Type)(implicit ctx: Context): Type = (this, that) match {
+      case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) => TypeBounds(lo1 | lo2, AndType(hi1, hi2))
+      case _ => this & that
     }
 
     def | (that: Type)(implicit ctx: Context): Type = track("|") {
