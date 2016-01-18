@@ -594,6 +594,7 @@ object Flags {
   /** A private parameter accessor */
   final val PrivateParamAccessor = allOf(Private, ParamAccessor)
 
+  /** A type parameter introduced with [type ... ] */
   final val NamedTypeParam = allOf(TypeParam, ParamAccessor)
 
   /** A local parameter */
