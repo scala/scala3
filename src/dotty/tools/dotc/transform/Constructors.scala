@@ -246,7 +246,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     // Drop accessors that are not retained from class scope
     if (dropped.nonEmpty) {
-      val clsInfo = cls.classInfo // TODO investigate: expand clsInfo to cls.info => dotty type error
+      val clsInfo = cls.classInfo
       cls.copy(
         info = clsInfo.derivedClassInfo(
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))

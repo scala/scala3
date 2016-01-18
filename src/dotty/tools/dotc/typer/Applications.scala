@@ -262,8 +262,13 @@ trait Applications extends Compatibility { self: Typer =>
       val receiver: Tree = methPart(normalizedFun) match {
         case Select(receiver, _) => receiver
         case mr => mr.tpe.normalizedPrefix match {
-          case mr: TermRef => ref(mr)
-          case _ => EmptyTree
+          case mr: TermRef =>
+            ref(mr)
+          case mr: TypeRef if this.isInstanceOf[TestApplication[_]] =>
+            // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
+            ref(mr.narrow)
+          case _ =>
+            EmptyTree
         }
       }
       val getterPrefix =
