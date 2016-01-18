@@ -244,8 +244,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         else tsym.infoOrCompleter match {
           case completer: TypeParamsCompleter =>
             val tparams = completer.completerTypeParams(tsym)
-            if (tsym.isClass) tparams
-            else defn.LambdaTrait(tparams.map(_.variance)).typeParams
+            defn.LambdaTrait(tparams.map(_.variance)).typeParams
           case _ =>
             if (!tsym.isCompleting || tsym.isAliasType) tsym.info.typeParams
             else
