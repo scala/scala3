@@ -262,13 +262,13 @@ trait Applications extends Compatibility { self: Typer =>
       val receiver: Tree = methPart(normalizedFun) match {
         case Select(receiver, _) => receiver
         case mr => mr.tpe.normalizedPrefix match {
-          case mr: TermRef =>
-            ref(mr)
-          case mr: TypeRef if this.isInstanceOf[TestApplication[_]] =>
-            // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
-            ref(mr.narrow)
-          case _ =>
-            EmptyTree
+          case mr: TermRef => ref(mr)
+          case mr =>
+            if (this.isInstanceOf[TestApplication[_]])
+              // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
+              ref(mr.narrow)
+            else
+              EmptyTree
         }
       }
       val getterPrefix =
@@ -1105,10 +1105,13 @@ trait Applications extends Compatibility { self: Typer =>
         // the arguments (which are constants) to be adapted to Byte. If we had picked
         // `candidates` instead, no solution would have been found.
       case alts =>
-//      overload.println(i"ambiguous $alts%, %")
-        val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-        else alts
+        val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+        if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
+        else {
+          val deepPt = pt.deepenProto
+          if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+          else alts
+        }
     }
   }
 
