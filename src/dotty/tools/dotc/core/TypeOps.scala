@@ -269,9 +269,28 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
     else tp match {
       case tp: OrType =>
-        val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
-        val doms = dominators(commonBaseClasses, Nil)
-        doms.map(tp.baseTypeWithArgs).reduceLeft(AndType.apply)
+        def isClassRef(tp: Type): Boolean = tp match {
+          case tp: TypeRef => tp.symbol.isClass
+          case tp: RefinedType => isClassRef(tp.parent)
+          case _ => false
+        }
+        def next(tp: TypeProxy) = tp.underlying match {
+          case TypeBounds(_, hi) => hi
+          case nx => nx
+        }
+        tp.tp1 match {
+          case tp1: TypeProxy if !isClassRef(tp1) =>
+            approximateUnion(next(tp1) | tp.tp2)
+          case _ =>
+            tp.tp2 match {
+              case tp2: TypeProxy if !isClassRef(tp2) =>
+                approximateUnion(tp.tp1 | next(tp2))
+              case _ =>
+                val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+                val doms = dominators(commonBaseClasses, Nil)
+                doms.map(tp.baseTypeWithArgs).reduceLeft(AndType.apply)
+            }
+        }
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
       case tp: RefinedType =>
