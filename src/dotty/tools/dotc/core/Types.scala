@@ -406,13 +406,16 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member") /*<|<*/ {
-      findMember(name, widenIfUnstable, EmptyFlags)
+      memberExcluding(name, EmptyFlags)
     }
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
-      findMember(name, widenIfUnstable, Flags.Private)
+      memberExcluding(name, Flags.Private)
     }
+
+    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation =
+      findMember(name, widenIfUnstable, excluding)
 
     /** Find member of this type with given name and
      *  produce a denotation that contains the type of the member
