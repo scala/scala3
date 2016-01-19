@@ -1250,8 +1250,8 @@ object SymDenotations {
       if (parentIsYounger) {
         incremental.println(s"parents of $this are invalid; symbol id = ${symbol.id}, copying ...\n")
         invalidateInheritedInfo()
-        firstRunId = ctx.runId
       }
+      firstRunId = ctx.runId
       this
     }
 
