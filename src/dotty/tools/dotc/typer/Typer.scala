@@ -1460,7 +1460,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         val arity =
-          if (defn.isFunctionType(pt)) defn.functionArity(pt)
+          if (defn.isFunctionType(pt))
+            if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
+              // if method type is fully defined, but expected type is not,
+              // prioritize method parameter types as parameter types of the eta-expanded closure
+              0
+            else defn.functionArity(pt)
           else if (pt eq AnyFunctionProto) wtp.paramTypes.length
           else -1
         if (arity >= 0 && !tree.symbol.isConstructor)
