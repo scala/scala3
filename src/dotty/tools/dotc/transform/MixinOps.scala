@@ -34,9 +34,14 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     //sup.select(target)
   }
 
-  /** Is `sym` a member of implementing class `cls`? */
-  def isCurrent(sym: Symbol) = cls.info.member(sym.name).hasAltWith(_.symbol == sym)
-
+  /** Is `sym` a member of implementing class `cls`?
+   *  The test is performed at phase `thisTransform`.
+   */
+  def isCurrent(sym: Symbol) =
+    ctx.atPhase(thisTransform) { implicit ctx =>
+      cls.info.member(sym.name).hasAltWith(_.symbol == sym)
+    }
+    
   def needsForwarder(meth: Symbol): Boolean = {
     lazy val overridenSymbols = meth.allOverriddenSymbols
     def needsDisambiguation = !overridenSymbols.forall(_ is Deferred)

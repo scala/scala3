@@ -1250,8 +1250,8 @@ object SymDenotations {
       if (parentIsYounger) {
         incremental.println(s"parents of $this are invalid; symbol id = ${symbol.id}, copying ...\n")
         invalidateInheritedInfo()
-        firstRunId = ctx.runId
       }
+      firstRunId = ctx.runId
       this
     }
 
@@ -1384,7 +1384,7 @@ object SymDenotations {
       var fp = FingerPrint()
       var e = info.decls.lastEntry
       while (e != null) {
-        fp.include(e.sym.name)
+        fp.include(e.name)
         e = e.prev
       }
       var ps = classParents
