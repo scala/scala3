@@ -17,6 +17,7 @@ import SymDenotations._
 import Annotations._
 import Names._
 import NameOps._
+import Applications._
 import Flags._
 import Decorators._
 import ErrorReporting._
@@ -872,7 +873,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     else {
       var args = tree.args
       val args1 =
-        if (args.head.isInstanceOf[untpd.NamedArg])
+        if (hasNamedArg(args))
           for (arg @ NamedArg(id, argtpt) <- args) yield {
             val argtpt1 = typedType(argtpt)
             cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)

@@ -390,7 +390,7 @@ trait TypeAssigner {
         errorType(s"named and positional type arguments may not be mixed", arg.pos)
     }
     val ownType =
-      if (args.head.isInstanceOf[NamedArg]) (tycon.tpe /: args)(refineNamed)
+      if (hasNamedArg(args)) (tycon.tpe /: args)(refineNamed)
       else if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
       else errorType(d"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
     tree.withType(ownType)

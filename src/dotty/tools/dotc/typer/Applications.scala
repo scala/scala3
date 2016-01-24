@@ -29,8 +29,6 @@ import language.implicitConversions
 
 object Applications {
   import tpd._
-  private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
-  def hasNamedArg(args: List[Any]) = args exists isNamedArg
 
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx:Context) = {
     val ref = tp.member(name).suchThat(_.info.isParameterless)
@@ -1061,10 +1059,8 @@ trait Applications extends Compatibility { self: Typer =>
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
           if (normArgs exists (_.isInstanceOf[untpd.Function]))
-            if (args exists (_.isInstanceOf[Trees.NamedArg[_]]))
-              narrowByTrees(alts, args map treeShape, resultType)
-            else
-              narrowByTypes(alts, normArgs map typeShape, resultType)
+            if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
+            else narrowByTypes(alts, normArgs map typeShape, resultType)
           else
             alts
         }
