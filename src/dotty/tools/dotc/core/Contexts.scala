@@ -13,6 +13,7 @@ import NameOps._
 import Uniques._
 import SymDenotations._
 import Flags.ParamAccessor
+import callbacks.CompilerCallback
 import util.Positions._
 import ast.Trees._
 import ast.untpd

@@ -71,7 +71,7 @@ object Reporter {
   }
 }
 
-import Reporter._
+import dotty.tools.dotc.reporting.Reporter._
 
 trait Reporting { this: Context =>
 
@@ -234,7 +234,8 @@ abstract class Reporter {
   }
 
   def report(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (!isHidden(d) && doReport(d)(ctx.addMode(Mode.Printing)))
+    if (!isHidden(d) && doReport(d)(ctx.addMode(Mode.Printing))) {
+      doCallbackReport(d)
       d match {
         case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
         case d: Warning => warningCount += 1
@@ -242,6 +243,7 @@ abstract class Reporter {
         case d: Info => // nothing to do here
         // match error if d is something else
       }
+    }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
@@ -263,6 +265,19 @@ abstract class Reporter {
     case 3 => "three " + elements + "s"
     case 4 => "four " + elements + "s"
     case _ => n + " " + elements + "s"
+  }
+
+  private def doCallbackReport(d: Diagnostic)(implicit ctx: Context): Unit = {
+    val callback = ctx.compilerCallback
+    if (callback != null) {
+      val position = if (d.pos.exists) new CallbackPositionAdapter(d.pos) else null
+      d match {
+        case d: ConditionalWarning if d.enablingOption.value => callback.warning(d.msg, position)
+        case d: Warning => callback.warning(d.msg, position)
+        case d: Error => callback.error(d.msg, position)
+        case d: Info => callback.info(d.msg, position)
+      }
+    }
   }
 
   /** Should this diagnostic not be reported at all? */

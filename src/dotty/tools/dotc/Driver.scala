@@ -2,6 +2,7 @@ package dotty.tools.dotc
 
 import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
+import callbacks.CompilerCallback
 import util.DotClass
 import reporting._
 import scala.util.control.NonFatal

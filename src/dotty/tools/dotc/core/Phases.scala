@@ -267,6 +267,9 @@ object Phases {
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map { unit =>
+        if (ctx.compilerCallback != null)
+          ctx.compilerCallback.startUnit(phaseName, unit.source.file.path)
+
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
         unitCtx.compilationUnit
