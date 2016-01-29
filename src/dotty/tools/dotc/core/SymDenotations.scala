@@ -522,7 +522,9 @@ object SymDenotations {
     final def isStable(implicit ctx: Context) = {
       val isUnstable =
         (this is UnstableValue) ||
-        is(Lazy) && ctx.isVolatile(info) && !hasAnnotation(defn.UncheckedStableAnnot)
+          is(Lazy, butNot = Module) &&
+          !(info.isRealizable || ctx.scala2Mode) &&
+          !hasAnnotation(defn.UncheckedStableAnnot)
       (this is Stable) || isType || {
         if (isUnstable) false
         else { setFlag(Stable); true }

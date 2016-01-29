@@ -146,7 +146,7 @@ class tests extends CompilerTest {
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
-  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
+  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 9)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
   @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 3)

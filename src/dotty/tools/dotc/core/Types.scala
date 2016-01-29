@@ -127,6 +127,23 @@ object Types {
         false
     }
 
+    /** Is this type realizable in all contexts? */
+    def isRealizable(implicit ctx: Context): Boolean = dealias match {
+      case tp: TermRef => tp.symbol.isStable
+      case tp: SingletonType => true
+      case tp =>
+        def isConcrete(tp: Type): Boolean = tp.dealias match {
+          case tp: TypeRef => tp.symbol.isClass
+          case tp: TypeProxy => isConcrete(tp.underlying)
+          case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
+          case _ => false
+        }
+        isConcrete(tp) && tp.abstractTypeMembers.forall { m =>
+          val bounds = m.info.bounds
+          bounds.lo <:< bounds.hi
+        }
+    }
+
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
      */
