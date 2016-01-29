@@ -143,6 +143,41 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       }
     }
 
+    private def normalizeTypeArgs(tree: TypeApply)(implicit ctx: Context): TypeApply = tree.tpe match {
+      case pt: PolyType => // wait for more arguments coming
+        tree
+      case _ =>
+        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
+          case fun: TypeApply =>
+            val (tycon, args) = decompose(fun)
+            (tycon, args ++ tree.args)
+          case _ =>
+            (tree.fun, tree.args)
+        }
+        def reorderArgs(pnames: List[Name], namedArgs: List[NamedArg], otherArgs: List[Tree]): List[Tree] = pnames match {
+          case pname :: pnames1 =>
+            namedArgs.partition(_.name == pname) match {
+              case (NamedArg(_, arg) :: _, namedArgs1) =>
+                arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
+              case _ =>
+                val otherArg :: otherArgs1 = otherArgs
+                otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
+            }
+          case nil =>
+            assert(namedArgs.isEmpty && otherArgs.isEmpty)
+            Nil
+        }
+        val (tycon, args) = decompose(tree)
+        tycon.tpe.widen match {
+          case PolyType(pnames) =>
+            val (namedArgs, otherArgs) = args.partition(isNamedArg)
+            val args1 = reorderArgs(pnames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
+            TypeApply(tycon, args1).withPos(tree.pos).withType(tree.tpe)
+          case _ =>
+            tree
+        }
+    }
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try normalizeTree(tree) match {
         case tree: Ident =>
@@ -152,15 +187,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
         case tree: Select =>
           transformSelect(paramFwd.adaptRef(tree), Nil)
-        case tree @ TypeApply(fn, args) =>
+        case tree: TypeApply =>
+          val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
           fn match {
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
-              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree)(sel1, args1)
+              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
-              super.transform(tree)
+              super.transform(tree1)
           }
         case tree @ Assign(sel: Select, _) =>
           superAcc.transformAssign(super.transform(tree))

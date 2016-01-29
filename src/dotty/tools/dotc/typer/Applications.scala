@@ -603,12 +603,19 @@ trait Applications extends Compatibility { self: Typer =>
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
     throw new Error(s"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
 
+  def typedNamedArgs(args: List[untpd.Tree])(implicit ctx: Context) =
+    for (arg @ NamedArg(id, argtpt) <- args) yield {
+      val argtpt1 = typedType(argtpt)
+      cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
+    }
+
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
-    var typedArgs = tree.args mapconserve (typedType(_))
+    val isNamed = hasNamedArg(tree.args)
+    var typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>
-        if (typedArgs.length <= pt.paramBounds.length)
+        if (typedArgs.length <= pt.paramBounds.length && !isNamed)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
       case _ =>
     }

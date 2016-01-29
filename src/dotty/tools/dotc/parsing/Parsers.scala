@@ -1075,7 +1075,7 @@ object Parsers {
      *                 |  Path
      *                 |  `(' [ExprsInParens] `)'
      *                 |  SimpleExpr `.' Id
-     *                 |  SimpleExpr TypeArgs
+     *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      */
     def simpleExpr(): Tree = {
@@ -1124,7 +1124,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selector(t), canApply = true)
         case LBRACKET =>
-          val tapp = atPos(t.pos.start, in.offset) { TypeApply(t, typeArgs()) }
+          val tapp = atPos(t.pos.start, in.offset) { TypeApply(t, typeArgs(namedOK = true)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE if canApply =>
           val app = atPos(t.pos.start, in.offset) { Apply(t, argumentExprs()) }

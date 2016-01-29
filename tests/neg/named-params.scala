@@ -19,4 +19,16 @@ object Test {
   val c3 = new C[Elem = String, Value = Int]("B")
   val c4 = new C[Elem = String]("C")
   val x2: c2.Elem = c2.elem
+
+  val c5 = new C[Elem1 = String, Value0 = Int]("B") // error // error
+
+  def d2[E, V](x: E) = new C[Elem = E, Value = V](x)
+
+  val dup = d2[E = Int, V = String, E = Boolean](2) // error
+  val z1 = d2[Elem = Int, Value = String](1) // error // error
+  val z2 = d2[Value = String, Elem = Int](1) // error // error
+  val z3 = d2[Elem = Int](1) // error
+  val z4 = d2[Value = Int]("AAA") // error
+  val z5 = d2[Elem = Int][Value = String](1) //error // error
+
 }
