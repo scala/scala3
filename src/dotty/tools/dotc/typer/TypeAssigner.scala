@@ -8,6 +8,8 @@ import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, 
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import util.Positions._
 import config.Printers._
+import ast.Trees._
+import collection.mutable
 
 trait TypeAssigner {
   import tpd._
@@ -305,9 +307,44 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case pt: PolyType =>
-        val argTypes = args.tpes
-        if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
-        else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+        val paramNames = pt.paramNames
+        if (hasNamedArg(args)) {
+          val argMap = new mutable.HashMap[Name, Type]
+          for (NamedArg(name, arg) <- args)
+            if (argMap.contains(name))
+              ctx.error("duplicate name", arg.pos)
+            else if (!paramNames.contains(name))
+              ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
+            else
+              argMap(name) = arg.tpe
+          val gapBuf = new mutable.ListBuffer[Int]
+          def nextPoly = {
+            val idx = gapBuf.length
+            gapBuf += idx
+            PolyParam(pt, idx)
+          }
+          val normArgs = paramNames.map(pname => argMap.getOrElse(pname, nextPoly))
+          val transform = new TypeMap {
+            def apply(t: Type) = t match {
+              case PolyParam(`pt`, idx) => normArgs(idx)
+              case _ => mapOver(t)
+            }
+          }
+          val resultType1 = transform(pt.resultType)
+          if (gapBuf.isEmpty) resultType1
+          else {
+            val gaps = gapBuf.toList
+            pt.derivedPolyType(
+              gaps.map(paramNames.filterNot(argMap.contains)),
+              gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
+              resultType1)
+          }
+        }
+        else {
+          val argTypes = args.tpes
+          if (sameLength(argTypes, paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
+          else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+        }
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }

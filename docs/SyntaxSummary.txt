@@ -162,7 +162,7 @@ grammar.
                       |  `_'
                       |  `(' ExprsInParens `)'                                  Parens(exprs)
                       |  SimpleExpr `.' id                                      Select(expr, id)
-                      |  SimpleExpr TypeArgs                                    TypeApply(expr, args)
+                      |  SimpleExpr (TypeArgs | NamedTypeArgs)                  TypeApply(expr, args)
                       |  SimpleExpr1 ArgumentExprs                              Apply(expr, args)
                       |  XmlExpr
   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}

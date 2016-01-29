@@ -873,11 +873,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     else {
       var args = tree.args
       val args1 =
-        if (hasNamedArg(args))
-          for (arg @ NamedArg(id, argtpt) <- args) yield {
-            val argtpt1 = typedType(argtpt)
-            cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
-          }
+        if (hasNamedArg(args)) typedNamedArgs(args)
         else {
           if (args.length != tparams.length) {
             ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
