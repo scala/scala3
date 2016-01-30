@@ -138,10 +138,12 @@ object Types {
           case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
           case _ => false
         }
-        isConcrete(tp) && tp.abstractTypeMembers.forall { m =>
+        isConcrete(tp) &&
+        tp.abstractTypeMembers.forall { m =>
           val bounds = m.info.bounds
           bounds.lo <:< bounds.hi
-        }
+        } ||
+        ctx.scala2Mode
     }
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
