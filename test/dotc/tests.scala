@@ -161,6 +161,7 @@ class tests extends CompilerTest {
   @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
+  @Test def neg_i1050 = compileFile(negDir, "i1050", xerrors = 2)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)

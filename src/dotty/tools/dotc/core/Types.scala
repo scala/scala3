@@ -139,7 +139,7 @@ object Types {
           case _ => false
         }
         isConcrete(tp) &&
-        tp.abstractTypeMembers.forall { m =>
+        tp.nonClassTypeMembers.forall { m =>
           val bounds = m.info.bounds
           bounds.lo <:< bounds.hi
         } ||
@@ -589,6 +589,12 @@ object Types {
     /** The set of abstract type members of this type. */
     final def abstractTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTypeMembers") {
       memberDenots(abstractTypeNameFilter,
+          (name, buf) => buf += member(name).asSingleDenotation)
+    }
+
+    /** The set of abstract type members of this type. */
+    final def nonClassTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("nonClassTypeMembers") {
+      memberDenots(nonClassTypeNameFilter,
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
@@ -3384,6 +3390,15 @@ object Types {
       name.isTypeName && {
         val mbr = pre.member(name)
         (mbr.symbol is Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
+      }
+  }
+
+  /** A filter for names of abstract types of a given type */
+  object nonClassTypeNameFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      name.isTypeName && {
+        val mbr = pre.member(name)
+        mbr.symbol.isType && !mbr.symbol.isClass
       }
   }
 
