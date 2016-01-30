@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._, Denotations.Denotation
+import SymDenotations._, Denotations.SingleDenotation
 import config.Printers._
 import util.Positions._
 import Decorators._
@@ -14,6 +14,7 @@ import collection.mutable
 import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
+  import TypeOps._
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means. Called very often, so the code is optimized heavily.
@@ -427,8 +428,34 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case OrType(l, r) =>
         DNF(l) | DNF(r)
       case tp =>
-        TypeOps.emptyDNF
+        emptyDNF
     }
+  }
+
+  /** The realizability status of given type `tp`*/
+  def realizability(tp: Type): Realizability = tp.dealias match {
+    case tp: TermRef =>
+      if (tp.symbol.isRealizable) Realizable else NotStable
+    case _: SingletonType | NoPrefix =>
+      Realizable
+    case tp =>
+      def isConcrete(tp: Type): Boolean = tp.dealias match {
+        case tp: TypeRef => tp.symbol.isClass
+        case tp: TypeProxy => isConcrete(tp.underlying)
+        case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
+        case _ => false
+      }
+      if (!isConcrete(tp)) NotConcrete
+      else {
+        def hasBadBounds(mbr: SingleDenotation) = {
+          val bounds = mbr.info.bounds
+          !(bounds.lo <:< bounds.hi)
+        }
+        tp.nonClassTypeMembers.find(hasBadBounds) match {
+          case Some(mbr) => new HasProblemBounds(mbr)
+          case _ => Realizable
+        }
+      }
   }
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
@@ -650,4 +677,17 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 object TypeOps {
   val emptyDNF = (Nil, Set[Name]()) :: Nil
   @sharable var track = false // !!!DEBUG
+
+  // ----- Realizibility Status -----------------------------------------------------
+
+  abstract class Realizability(val msg: String)
+
+  object Realizable extends Realizability("")
+
+  object NotConcrete extends Realizability("is not a concrete type")
+
+  object NotStable extends Realizability("is not a stable reference")
+
+  class HasProblemBounds(mbr: SingleDenotation)(implicit ctx: Context)
+  extends Realizability(i"has a member $mbr with possibly empty bounds ${mbr.info.bounds.lo} .. ${mbr.info.bounds.hi}")
 }
