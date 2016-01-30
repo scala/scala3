@@ -318,9 +318,18 @@ trait Checking {
   }
 
   /** Check that type `tp` is stable. */
-  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable && !tp.isErroneous)
-      ctx.error(d"$tp is not stable", pos)
+  def checkStableAndRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
+    else checkRealizable(tp, pos)
+
+  /** Check that type `tp` is realizable. */
+  def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = tp.realizability
+    if (rstatus ne Realizable) {
+      def msg = d"$tp is not a legal path since it ${rstatus.msg}"
+      if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
+    }
+  }
 
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.
@@ -330,7 +339,7 @@ trait Checking {
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
+        if (ctx.phase <= ctx.refchecksPhase) checkStableAndRealizable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
         tp
       case _ =>
@@ -433,7 +442,8 @@ trait NoChecking extends Checking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkStableAndRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp

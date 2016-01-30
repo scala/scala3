@@ -127,10 +127,12 @@ object Types {
         false
     }
 
-    /** Is this type realizable in all contexts? */
-    def isRealizable(implicit ctx: Context): Boolean = dealias match {
-      case tp: TermRef => tp.symbol.isStable
-      case tp: SingletonType => true
+    /** The realizibility status of this type */
+    def realizability(implicit ctx: Context): Realizability = dealias match {
+      case tp: TermRef =>
+        if (tp.symbol.isRealizable) Realizable else NotStable
+      case _: SingletonType | NoPrefix =>
+        Realizable
       case tp =>
         def isConcrete(tp: Type): Boolean = tp.dealias match {
           case tp: TypeRef => tp.symbol.isClass
@@ -138,12 +140,17 @@ object Types {
           case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
           case _ => false
         }
-        isConcrete(tp) &&
-        tp.nonClassTypeMembers.forall { m =>
-          val bounds = m.info.bounds
-          bounds.lo <:< bounds.hi
-        } ||
-        ctx.scala2Mode
+        if (!isConcrete(tp)) NotConcrete
+        else {
+          def hasBadBounds(mbr: SingleDenotation) = {
+            val bounds = mbr.info.bounds
+            !(bounds.lo <:< bounds.hi)
+          }
+          tp.nonClassTypeMembers.find(hasBadBounds) match {
+            case Some(mbr) => new HasProblemBounds(mbr)
+            case _ => Realizable
+          }
+        }
     }
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
@@ -3428,6 +3435,19 @@ object Types {
      */
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = true
   }
+
+  // ----- Realizibility Status -----------------------------------------------------
+
+  abstract class Realizability(val msg: String)
+
+  object Realizable extends Realizability("")
+
+  object NotConcrete extends Realizability("is not a concrete type")
+
+  object NotStable extends Realizability("is not a stable reference")
+
+  class HasProblemBounds(mbr: SingleDenotation)(implicit ctx: Context)
+  extends Realizability(i"has a member $mbr with possibly empty bounds ${mbr.info.bounds.lo} .. ${mbr.info.bounds.hi}")
 
   // ----- Exceptions -------------------------------------------------------------
 

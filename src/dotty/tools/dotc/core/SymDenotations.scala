@@ -519,15 +519,15 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) = {
-      val isUnstable =
-        (this is UnstableValue) ||
-          is(Lazy, butNot = Module) && !info.isRealizable && !hasAnnotation(defn.UncheckedStableAnnot)
-      (this is Stable) || isType || {
-        if (isUnstable) false
-        else { setFlag(Stable); true }
+    final def isStable(implicit ctx: Context) =
+      isType || !is(UnstableValue, butNot = Stable)
+
+    /** Is this a denotation of a realizable term (or an arbitrary type)? */
+    final def isRealizable(implicit ctx: Context) =
+      is(Stable) || isType || {
+        val isRealizable = !is(Lazy, butNot = Module) || info.realizability == Realizable
+        isRealizable && { setFlag(Stable); true }
       }
-    }
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
