@@ -527,7 +527,7 @@ object SymDenotations {
       is(Stable) || isType || {
         val isRealizable =
           !is(Lazy, butNot = Module) ||
-          is(Final) && ctx.realizability(info) == TypeOps.Realizable
+          isEffectivelyFinal && ctx.realizability(info) == TypeOps.Realizable
         isRealizable && { setFlag(Stable); true }
       }
 
