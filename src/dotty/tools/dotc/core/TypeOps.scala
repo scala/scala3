@@ -674,7 +674,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     if (scala2Mode) migrationWarning(msg, pos)
     scala2Mode
   }
-
 }
 
 object TypeOps {
@@ -687,16 +686,16 @@ object TypeOps {
 
   object Realizable extends Realizability("")
 
-  object NotConcrete extends Realizability("it is not a concrete type")
+  object NotConcrete extends Realizability(" is not a concrete type")
 
-  object NotStable extends Realizability("it is not a stable reference")
+  object NotStable extends Realizability(" is not a stable reference")
 
   class NotFinal(sym: Symbol)(implicit ctx: Context)
-  extends Realizability(i"it refers to nonfinal $sym")
+  extends Realizability(i" refers to nonfinal $sym")
 
   class HasProblemBounds(mbr: SingleDenotation)(implicit ctx: Context)
-  extends Realizability(i"it has a member $mbr with possibly conflicting bounds ${mbr.info.bounds.lo} <: ... <: ${mbr.info.bounds.hi}")
+  extends Realizability(i" has a member $mbr with possibly conflicting bounds ${mbr.info.bounds.lo} <: ... <: ${mbr.info.bounds.hi}")
 
   class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
-  extends Realizability(i"its underlying type ${tp} ${problem.msg}")
+  extends Realizability(i"s underlying type ${tp}${problem.msg}")
 }

@@ -63,6 +63,22 @@ object Tiark2 {
     val v = new V {}
     v.brand("boom!"): Nothing
 }
+object Tiark3 {
+    trait A { type L <: Nothing }
+    trait B { type L >: Any}
+    trait U {
+      type X <: B
+      def p2: X
+      final lazy val p: X = p2
+      def brand(x: Any): p.L = x
+    }
+    trait V extends U {
+      type X = B with A
+      def p2: X = ???
+    }
+    val v = new V {}
+    v.brand("boom!"): Nothing
+}
 /*
 object Import {
     trait A { type L <: Nothing }

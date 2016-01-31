@@ -325,7 +325,7 @@ trait Checking {
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = ctx.realizability(tp)
     if (rstatus ne TypeOps.Realizable) {
-      def msg = d"$tp is not a legal path since ${rstatus.msg}"
+      def msg = d"$tp is not a legal path since it${rstatus.msg}"
       if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
     }
   }
