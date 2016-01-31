@@ -274,6 +274,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     val tree1 = ownType match {
       case ownType: NamedType if !prefixIsElidable(ownType) =>
+        checkRealizable(ownType.prefix, tree.pos)
         ref(ownType).withPos(tree.pos)
       case _ =>
         tree.withType(ownType)
@@ -991,6 +992,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
+    if (!cls.is(AbstractOrTrait)) checkRealizableBounds(cls.typeRef, cdef.pos)
     assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
 
     // todo later: check that

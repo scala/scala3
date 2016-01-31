@@ -40,7 +40,7 @@ object Tiark1 {
     trait B { type L >: Any}
     trait U {
       lazy val p: B
-      def brand(x: Any): p.L = x // error: not final
+      def brand(x: Any): p.L = x // error: nonfinal lazy
     }
     trait V extends U {
       lazy val p: A & B = ???
@@ -54,7 +54,7 @@ object Tiark2 {
     trait U {
       type X <: B
       lazy val p: X
-      def brand(x: Any): p.L = x // error: not final
+      def brand(x: Any): p.L = x // error: nonfinal lazy
     }
     trait V extends U {
       type X = B & A
@@ -70,7 +70,7 @@ object Tiark3 {
       type X <: B
       def p2: X
       final lazy val p: X = p2
-      def brand(x: Any): p.L = x
+      def brand(x: Any): p.L = x // error: underlying not concrete
     }
     trait V extends U {
       type X = B with A
@@ -79,20 +79,18 @@ object Tiark3 {
     val v = new V {}
     v.brand("boom!"): Nothing
 }
-/*
 object Import {
     trait A { type L <: Nothing }
     trait B { type L >: Any}
     trait U {
-      val p: B
-      def brand(x: Any): p.L = x // error: not final
-      locally { import p._
+      lazy val p: B
+      locally { val x: p.L = ??? } // error: nonfinal lazy
+      locally {
+        import p._
+        val x: L = ??? // error: nonfinal lazy
       }
     }
     trait V extends U {
       lazy val p: A & B = ???
-    }
-    val v = new V {}
-    v.brand("boom!")
 }
-*/
+
