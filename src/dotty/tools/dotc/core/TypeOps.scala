@@ -449,16 +449,21 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case _ => false
       }
       if (!isConcrete(tp)) NotConcrete
-      else {
-        def hasBadBounds(mbr: SingleDenotation) = {
-          val bounds = mbr.info.bounds
-          !(bounds.lo <:< bounds.hi)
-        }
-        tp.nonClassTypeMembers.find(hasBadBounds) match {
-          case Some(mbr) => new HasProblemBounds(mbr)
-          case _ => Realizable
-        }
-      }
+      else boundsRealizability(tp)
+  }
+
+  /** `Realizable` is `tp` has good bounds, a `HasProblemBounds` instance
+   *  pointing to a bad bounds member otherwise.
+   */
+  def boundsRealizability(tp: Type)(implicit ctx: Context) = {
+    def hasBadBounds(mbr: SingleDenotation) = {
+      val bounds = mbr.info.bounds
+      !(bounds.lo <:< bounds.hi)
+    }
+    tp.nonClassTypeMembers.find(hasBadBounds) match {
+      case Some(mbr) => new HasProblemBounds(mbr)
+      case _ => Realizable
+    }
   }
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {

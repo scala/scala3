@@ -79,6 +79,21 @@ object Tiark3 {
     val v = new V {}
     v.brand("boom!"): Nothing
 }
+object Tiark4 {
+    trait U {
+      type Y
+      trait X { type L = Y }
+      def compute: X
+      final lazy val p: X = compute
+      def brand(x: Y): p.L = x
+    }
+    trait V extends U {
+      type Y >: Any <: Nothing
+      def compute: X = ???
+    }
+    val v = new V {} // error: cannot be instantiated
+    v.brand("boom!")
+}
 object Import {
     trait A { type L <: Nothing }
     trait B { type L >: Any}
@@ -90,7 +105,7 @@ object Import {
         val x: L = ??? // error: nonfinal lazy
       }
     }
-    trait V extends U {
-      lazy val p: A & B = ???
 }
-
+object V { // error: cannot be instantiated
+  type Y >: Any <: Nothing  // error: only classes can have declared but undefined members
+}

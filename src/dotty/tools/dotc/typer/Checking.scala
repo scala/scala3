@@ -330,6 +330,13 @@ trait Checking {
     }
   }
 
+  /** Check that all type members of `tp` have realizable bounds */
+  def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = ctx.boundsRealizability(tp)
+    if (rstatus ne TypeOps.Realizable)
+      ctx.error(i"$tp cannot be instantiated since it${rstatus.msg}", pos)
+  }
+
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.
    *  Stability checking is disabled in phases after RefChecks.
