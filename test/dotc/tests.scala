@@ -110,7 +110,7 @@ class tests extends CompilerTest {
 
   @Test def neg_abstractOverride() = compileFile(negDir, "abstract-override", xerrors = 2)
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
-  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 3)
+  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 3)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
@@ -150,7 +150,7 @@ class tests extends CompilerTest {
   @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 9)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
-  @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 3)
+  @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 4)
   @Test def neg_Iter2 = compileFile(negDir, "Iter2", xerrors = 2)
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
