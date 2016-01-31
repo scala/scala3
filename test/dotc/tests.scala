@@ -42,6 +42,7 @@ class tests extends CompilerTest {
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
+  val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
@@ -101,8 +102,8 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
-  @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
-  @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
+  @Test def pos_scala2_all = compileFiles(posScala2Dir, scala2mode)
+
   @Test def pos_859 = compileFile(posSpecialDir, "i859", scala2mode)(allowDeepSubtypes)
 
   @Test def new_all = compileFiles(newDir, twice)
@@ -137,7 +138,7 @@ class tests extends CompilerTest {
 
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
-  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
+  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 5)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 5)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
   @Test def neg_variancesConstr = compileFile(negDir, "variances-constr", xerrors = 2)
@@ -161,7 +162,7 @@ class tests extends CompilerTest {
   @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
-  @Test def neg_i1050 = compileFile(negDir, "i1050", xerrors = 2)
+  @Test def neg_i1050 = compileFile(negDir, "i1050", xerrors = 3)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
@@ -170,7 +171,7 @@ class tests extends CompilerTest {
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 2)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
-  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 2)
+  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 10)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)

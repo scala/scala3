@@ -318,15 +318,14 @@ trait Checking {
   }
 
   /** Check that type `tp` is stable. */
-  def checkStableAndRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
-    else checkRealizable(tp, pos)
 
   /** Check that type `tp` is realizable. */
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = ctx.realizability(tp)
     if (rstatus ne TypeOps.Realizable) {
-      def msg = d"$tp is not a legal path since it ${rstatus.msg}"
+      def msg = d"$tp is not a legal path since ${rstatus.msg}"
       if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
     }
   }
@@ -339,7 +338,7 @@ trait Checking {
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (ctx.phase <= ctx.refchecksPhase) checkStableAndRealizable(tref.prefix, pos)
+        if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
         tp
       case _ =>
@@ -442,7 +441,7 @@ trait NoChecking extends Checking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkStableAndRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()

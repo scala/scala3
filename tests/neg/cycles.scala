@@ -9,11 +9,11 @@ class A {
 
 class B {
   type T <: x.type // error: cycle
-  val x: T = ???
+  final val x: T = ???
 }
 
 class C {
-  val x: D#T = ???
+  final val x: D#T = ??? // error: conflicting bounds
   class D {
     type T <: x.type // error: cycle
     val z: x.type = ???
@@ -25,7 +25,7 @@ class E {
     type T <: x.type // error: not stable
     val z: x.type = ??? // error: not stable
   }
-  lazy val x: F#T = ???
+  lazy val x: F#T = ??? // error: conflicting bounds
 }
 
 class T1 {
@@ -37,6 +37,6 @@ class T2 {
   type U = X | Int
 }
 object T12 {
-  ??? : (T1 {})#U
-  ??? : (T2 {})#U
+  ??? : (T1 {})#U // error: conflicting bounds
+  ??? : (T2 {})#U // error: conflicting bounds
 }

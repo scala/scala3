@@ -17,8 +17,8 @@ trait S2[x <: Term, y <: Term] extends Term {
   type eval = S2[x, y]
 }
 trait S3[x <: Term, y <: Term, z <: Term] extends Term {
-  type ap[v <: Term] = eval#ap[v]
-  type eval = x#ap[z]#ap[y#ap[z]]#eval
+  type ap[v <: Term] = eval#ap[v] // error
+  type eval = x#ap[z]#ap[y#ap[z]]#eval // error // error
 }
 
 // The K combinator
@@ -31,8 +31,8 @@ trait K1[x <: Term] extends Term {
   type eval = K1[x]
 }
 trait K2[x <: Term, y <: Term] extends Term {
-  type ap[z <: Term] = eval#ap[z]
-  type eval = x#eval
+  type ap[z <: Term] = eval#ap[z] // error
+  type eval = x#eval // error
 }
 
 // The I combinator
@@ -41,8 +41,8 @@ trait I extends Term {
   type eval = I
 }
 trait I1[x <: Term] extends Term {
-  type ap[y <: Term] = eval#ap[y]
-  type eval = x#eval
+  type ap[y <: Term] = eval#ap[y] // error
+  type eval = x#eval // error
 }
 
 // Constants
@@ -64,9 +64,9 @@ case class Equals[A >: B <:B , B]()
 
 object Test {
   type T1 = Equals[Int, Int]     // compiles fine
-  type T2 = Equals[String, Int]  // error
+  type T2 = Equals[String, Int]  // was error, now masked
   type T3 = Equals[I#ap[c]#eval, c]
-  type T3a = Equals[I#ap[c]#eval, d]// error
+  type T3a = Equals[I#ap[c]#eval, d] // was error, now masked
 
   // Ic -> c
   type T4 = Equals[I#ap[c]#eval, c]
@@ -106,11 +106,11 @@ object Test {
     type eval = A0
   }
   trait A1 extends Term {
-    type ap[x <: Term] = x#ap[A0]#eval
+    type ap[x <: Term] = x#ap[A0]#eval // error
     type eval = A1
   }
   trait A2 extends Term {
-    type ap[x <: Term] = x#ap[A1]#eval
+    type ap[x <: Term] = x#ap[A1]#eval // error
     type eval = A2
   }
 
@@ -126,7 +126,7 @@ object Test {
   type T15 = Equals[NN3#eval, c]
 
   trait An extends Term {
-    type ap[x <: Term] = x#ap[An]#eval
+    type ap[x <: Term] = x#ap[An]#eval // error
     type eval = An
   }
 

@@ -308,7 +308,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
     def asSelect(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-      if (tree.name.isTypeName) checkStableAndRealizable(qual1.tpe, qual1.pos)
+      if (tree.name.isTypeName) {
+        checkStable(qual1.tpe, qual1.pos)
+        checkRealizable(qual1.tpe, qual1.pos)
+      }
       typedSelect(tree, pt, qual1)
    }
 
@@ -342,7 +345,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
     val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
-    //checkRealizable(qual1.tpe, qual1.pos)
+    checkRealizable(qual1.tpe, qual1.pos)
     assignType(cpy.SelectFromTypeTree(tree)(qual1, tree.name), qual1)
   }
 
@@ -823,7 +826,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStableAndRealizable(ref1.tpe, tree.pos)
+    checkStable(ref1.tpe, tree.pos)
+    checkRealizable(ref1.tpe, tree.pos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
@@ -920,8 +924,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.tree)
-    // necessary in order to mark the typed ahead annotations as definitiely typed:
-    untpd.modsDeco(mdef).mods.annotations.mapconserve(typedAnnotation)
+    // necessary in order to mark the typed ahead annotations as definitely typed:
+    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation)
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
@@ -1057,7 +1061,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkStableAndRealizable(expr1.tpe, imp.expr.pos)
+    checkStable(expr1.tpe, imp.expr.pos)
     assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
   }
 

@@ -435,7 +435,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
-      if (tp.symbol.isRealizable) Realizable else NotStable
+      if (tp.symbol.isRealizable) Realizable
+      else if (!tp.symbol.isStable) NotStable
+      else if (!tp.symbol.isEffectivelyFinal) new NotFinal(tp.symbol)
+      else new ProblemInUnderlying(tp.info, realizability(tp.info))
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
@@ -684,10 +687,16 @@ object TypeOps {
 
   object Realizable extends Realizability("")
 
-  object NotConcrete extends Realizability("is not a concrete type")
+  object NotConcrete extends Realizability("it is not a concrete type")
 
-  object NotStable extends Realizability("is not a stable reference")
+  object NotStable extends Realizability("it is not a stable reference")
+
+  class NotFinal(sym: Symbol)(implicit ctx: Context)
+  extends Realizability(i"it refers to nonfinal $sym")
 
   class HasProblemBounds(mbr: SingleDenotation)(implicit ctx: Context)
-  extends Realizability(i"has a member $mbr with possibly empty bounds ${mbr.info.bounds.lo} .. ${mbr.info.bounds.hi}")
+  extends Realizability(i"it has a member $mbr with possibly conflicting bounds ${mbr.info.bounds.lo} <: ... <: ${mbr.info.bounds.hi}")
+
+  class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
+  extends Realizability(i"its underlying type ${tp} ${problem.msg}")
 }
