@@ -816,14 +816,11 @@ object SymDenotations {
       enclClass(symbol, false)
     }
 
-    final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
-      (this.flags is Flags.PrivateOrFinal) || (!this.owner.isClass) ||
-        ((this.owner.flags is (Flags.ModuleOrFinal)) && (!this.flags.is(Flags.MutableOrLazy))) ||
-        (this.owner.isAnonymousClass)
-    }
+    /** A symbol is effectively final if it cannot be overridden in a subclass */
+    final def isEffectivelyFinal(implicit ctx: Context): Boolean =
+      is(PrivateOrFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
 
-    /** The class containing this denotation which has the given effective name.
-     */
+    /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
       if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)
