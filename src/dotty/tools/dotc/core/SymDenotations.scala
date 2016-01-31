@@ -525,7 +525,9 @@ object SymDenotations {
     /** Is this a denotation of a realizable term (or an arbitrary type)? */
     final def isRealizable(implicit ctx: Context) =
       is(Stable) || isType || {
-        val isRealizable = !is(Lazy, butNot = Module) || ctx.realizability(info) == TypeOps.Realizable
+        val isRealizable =
+          !is(Lazy, butNot = Module) ||
+          is(Final) && ctx.realizability(info) == TypeOps.Realizable
         isRealizable && { setFlag(Stable); true }
       }
 

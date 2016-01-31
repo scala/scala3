@@ -39,7 +39,7 @@ object Tiark1 {
     trait A { type L <: Nothing }
     trait B { type L >: Any}
     trait U {
-      val p: B
+      lazy val p: B
       def brand(x: Any): p.L = x // error: not final
     }
     trait V extends U {
@@ -53,7 +53,7 @@ object Tiark2 {
     trait B { type L >: Any}
     trait U {
       type X <: B
-      val p: X
+      lazy val p: X
       def brand(x: Any): p.L = x // error: not final
     }
     trait V extends U {
