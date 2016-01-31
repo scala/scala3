@@ -3,10 +3,16 @@ class Foo {
   type B >: Int <: Int
   def get: A = 42
 }
-class Bar extends Foo {
+trait T {
+  lazy val x: Int
+  val y: Int
+}
+class Bar extends Foo with T {
   override type A = Any   // error
   type B >: String <: Any  // error
   override def get: A = "bar"
+  val x = 2  // error
+  lazy val y = 3 // error
 }
 object Test {
   def main(args: Array[String]): Unit = {
