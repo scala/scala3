@@ -342,10 +342,31 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
+  /** Is this type a path with some part that is initialized on use? */
+  def isLateInitialized(tp: Type): Boolean = tp.dealias match {
+    case tp: TermRef =>
+      tp.symbol.isLateInitialized || isLateInitialized(tp.prefix)
+    case _: SingletonType | NoPrefix =>
+      false
+    case tp: TypeRef =>
+      true
+    case tp: TypeProxy =>
+      isLateInitialized(tp.underlying)
+    case tp: AndOrType =>
+      isLateInitialized(tp.tp1) || isLateInitialized(tp.tp2)
+    case _ =>
+      true
+  }
+
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
-      if (tp.symbol.isRealizable) Realizable
+      if (tp.symbol.isRealizable)
+        if (tp.symbol.isLateInitialized || // we already checked realizability of info in that case
+            !isLateInitialized(tp.prefix)) // symbol was definitely constructed in that case
+          Realizable
+        else
+          realizability(tp.info)
       else if (!tp.symbol.isStable) NotStable
       else if (!tp.symbol.isEffectivelyFinal) new NotFinal(tp.symbol)
       else new ProblemInUnderlying(tp.info, realizability(tp.info))
@@ -375,6 +396,18 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case _ => Realizable
     }
   }
+
+  /* Might need at some point in the future
+  def memberRealizability(tp: Type)(implicit ctx: Context) = {
+    println(i"check member rel of $tp")
+    def isUnrealizable(fld: SingleDenotation) =
+      !fld.symbol.is(Lazy) && realizability(fld.info) != Realizable
+    tp.fields.find(isUnrealizable) match {
+      case Some(fld) => new HasProblemField(fld)
+      case _ => Realizable
+    }
+  }
+  */
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
@@ -608,9 +641,14 @@ object TypeOps {
   class NotFinal(sym: Symbol)(implicit ctx: Context)
   extends Realizability(i" refers to nonfinal $sym")
 
-  class HasProblemBounds(mbr: SingleDenotation)(implicit ctx: Context)
-  extends Realizability(i" has a member $mbr with possibly conflicting bounds ${mbr.info.bounds.lo} <: ... <: ${mbr.info.bounds.hi}")
+  class HasProblemBounds(typ: SingleDenotation)(implicit ctx: Context)
+  extends Realizability(i" has a member $typ with possibly conflicting bounds ${typ.info.bounds.lo} <: ... <: ${typ.info.bounds.hi}")
 
+  /* Might need at some point in the future
+  class HasProblemField(fld: SingleDenotation)(implicit ctx: Context)
+  extends Realizability(i" has a member $fld which is uneligible as a path since ${fld.symbol.name}${ctx.realizability(fld.info)}")
+  */
+  
   class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
   extends Realizability(i"s underlying type ${tp}${problem.msg}")
 }
