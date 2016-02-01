@@ -342,96 +342,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
-  /** A type is volatile if its DNF contains an alternative of the form
-   *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
-   *  Nj are refinement names, and one the 4 following conditions is met:
-   *
-   *  1. At least two of the parents Pi are abstract types.
-   *  2. One of the parents Pi is an abstract type, and one other type Pj,
-   *     j != i has an abstract member which has the same name as an
-   *     abstract member of the whole type.
-   *  3. One of the parents Pi is an abstract type, and one of the refinement
-   *     names Nj refers to an abstract member of the whole type.
-   *  4. One of the parents Pi is an an alias type with a volatile alias
-   *     or an abstract type with a volatile upper bound.
-   *
-   *  Lazy values are not allowed to have volatile type, as otherwise
-   *  unsoundness can result.
-   */
-  final def isVolatile(tp: Type): Boolean = {
-
-    /** Pre-filter to avoid expensive DNF computation
-     *  If needsChecking returns false it is guaranteed that
-     *  DNF does not contain intersections, or abstract types with upper
-     *  bounds that themselves need checking.
-     */
-    def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
-      case tp: TypeRef =>
-        tp.info match {
-          case TypeAlias(alias) =>
-            needsChecking(alias, isPart)
-          case TypeBounds(lo, hi) =>
-            isPart || tp.controlled(isVolatile(hi))
-          case _ => false
-        }
-      case tp: RefinedType =>
-        needsChecking(tp.parent, true)
-      case tp: TypeProxy =>
-        needsChecking(tp.underlying, isPart)
-      case tp: AndType =>
-        true
-      case tp: OrType =>
-        isPart || needsChecking(tp.tp1, isPart) && needsChecking(tp.tp2, isPart)
-      case _ =>
-        false
-    }
-
-    needsChecking(tp, false) && {
-      DNF(tp) forall { case (parents, refinedNames) =>
-        val absParents = parents filter (_.symbol is Deferred)
-        absParents.nonEmpty && {
-          absParents.lengthCompare(2) >= 0 || {
-            val ap = absParents.head
-            ((parents exists (p =>
-              (p ne ap)
-              || p.memberNames(abstractTypeNameFilter, tp).nonEmpty
-              || p.memberNames(abstractTermNameFilter, tp).nonEmpty))
-            || (refinedNames & tp.memberNames(abstractTypeNameFilter, tp)).nonEmpty
-            || (refinedNames & tp.memberNames(abstractTermNameFilter, tp)).nonEmpty
-            || isVolatile(ap))
-          }
-        }
-      }
-    }
-  }
-
-  /** The disjunctive normal form of this type.
-   *  This collects a set of alternatives, each alternative consisting
-   *  of a set of typerefs and a set of refinement names. Both sets are represented
-   *  as lists, to obtain a deterministic order. Collected are
-   *  all type refs reachable by following aliases and type proxies, and
-   *  collecting the elements of conjunctions (&) and disjunctions (|).
-   *  The set of refinement names in each alternative
-   *  are the set of names in refinement types encountered during the collection.
-   */
-  final def DNF(tp: Type): List[(List[TypeRef], Set[Name])] = ctx.traceIndented(s"DNF($this)", checks) {
-    tp.dealias match {
-      case tp: TypeRef =>
-        (tp :: Nil, Set[Name]()) :: Nil
-      case RefinedType(parent, name) =>
-        for ((ps, rs) <- DNF(parent)) yield (ps, rs + name)
-      case tp: TypeProxy =>
-        DNF(tp.underlying)
-      case AndType(l, r) =>
-        for ((lps, lrs) <- DNF(l); (rps, rrs) <- DNF(r))
-          yield (lps | rps, lrs | rrs)
-      case OrType(l, r) =>
-        DNF(l) | DNF(r)
-      case tp =>
-        emptyDNF
-    }
-  }
-
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
@@ -452,7 +362,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       else boundsRealizability(tp)
   }
 
-  /** `Realizable` is `tp` has good bounds, a `HasProblemBounds` instance
+  /** `Realizable` if `tp` has good bounds, a `HasProblemBounds` instance
    *  pointing to a bad bounds member otherwise.
    */
   def boundsRealizability(tp: Type)(implicit ctx: Context) = {
