@@ -526,10 +526,16 @@ object SymDenotations {
     final def isRealizable(implicit ctx: Context) =
       is(Stable) || isType || {
         val isRealizable =
-          !is(Lazy, butNot = Module) ||
+          !isLateInitialized ||
           isEffectivelyFinal && ctx.realizability(info) == TypeOps.Realizable
         isRealizable && { setFlag(Stable); true }
       }
+
+    /** Field is initialized on use, not on definition;
+     *  we do not count modules as fields here.
+     */
+    final def isLateInitialized(implicit ctx: Context) =
+      is(Lazy, butNot = Module) || is(Param) && info.isInstanceOf[ExprType]
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
