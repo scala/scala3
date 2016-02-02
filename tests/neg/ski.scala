@@ -64,9 +64,9 @@ case class Equals[A >: B <:B , B]()
 
 object Test {
   type T1 = Equals[Int, Int]     // compiles fine
-  type T2 = Equals[String, Int]  // was error, now masked
+  type T2 = Equals[String, Int]  // error
   type T3 = Equals[I#ap[c]#eval, c]
-  type T3a = Equals[I#ap[c]#eval, d] // was error, now masked
+  type T3a = Equals[I#ap[c]#eval, d] // error
 
   // Ic -> c
   type T4 = Equals[I#ap[c]#eval, c]

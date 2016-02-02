@@ -14,7 +14,6 @@ import collection.mutable
 import ast.tpd._
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
-  import TypeOps._
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means. Called very often, so the code is optimized heavily.
@@ -342,73 +341,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
   }
 
-  /** Is this type a path with some part that is initialized on use? */
-  def isLateInitialized(tp: Type): Boolean = tp.dealias match {
-    case tp: TermRef =>
-      tp.symbol.isLateInitialized || isLateInitialized(tp.prefix)
-    case _: SingletonType | NoPrefix =>
-      false
-    case tp: TypeRef =>
-      true
-    case tp: TypeProxy =>
-      isLateInitialized(tp.underlying)
-    case tp: AndOrType =>
-      isLateInitialized(tp.tp1) || isLateInitialized(tp.tp2)
-    case _ =>
-      true
-  }
-
-  /** The realizability status of given type `tp`*/
-  def realizability(tp: Type): Realizability = tp.dealias match {
-    case tp: TermRef =>
-      if (tp.symbol.isRealizable)
-        if (tp.symbol.isLateInitialized || // we already checked realizability of info in that case
-            !isLateInitialized(tp.prefix)) // symbol was definitely constructed in that case
-          Realizable
-        else
-          realizability(tp.info)
-      else if (!tp.symbol.isStable) NotStable
-      else if (!tp.symbol.isEffectivelyFinal) new NotFinal(tp.symbol)
-      else new ProblemInUnderlying(tp.info, realizability(tp.info))
-    case _: SingletonType | NoPrefix =>
-      Realizable
-    case tp =>
-      def isConcrete(tp: Type): Boolean = tp.dealias match {
-        case tp: TypeRef => tp.symbol.isClass
-        case tp: TypeProxy => isConcrete(tp.underlying)
-        case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
-        case _ => false
-      }
-      if (!isConcrete(tp)) NotConcrete
-      else boundsRealizability(tp)
-  }
-
-  /** `Realizable` if `tp` has good bounds, a `HasProblemBounds` instance
-   *  pointing to a bad bounds member otherwise.
-   */
-  def boundsRealizability(tp: Type)(implicit ctx: Context) = {
-    def hasBadBounds(mbr: SingleDenotation) = {
-      val bounds = mbr.info.bounds
-      !(bounds.lo <:< bounds.hi)
-    }
-    tp.nonClassTypeMembers.find(hasBadBounds) match {
-      case Some(mbr) => new HasProblemBounds(mbr)
-      case _ => Realizable
-    }
-  }
-
-  /* Might need at some point in the future
-  def memberRealizability(tp: Type)(implicit ctx: Context) = {
-    println(i"check member rel of $tp")
-    def isUnrealizable(fld: SingleDenotation) =
-      !fld.symbol.is(Lazy) && realizability(fld.info) != Realizable
-    tp.fields.find(isUnrealizable) match {
-      case Some(fld) => new HasProblemField(fld)
-      case _ => Realizable
-    }
-  }
-  */
-
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
@@ -625,30 +557,5 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 }
 
 object TypeOps {
-  val emptyDNF = (Nil, Set[Name]()) :: Nil
   @sharable var track = false // !!!DEBUG
-
-  // ----- Realizibility Status -----------------------------------------------------
-
-  abstract class Realizability(val msg: String)
-
-  object Realizable extends Realizability("")
-
-  object NotConcrete extends Realizability(" is not a concrete type")
-
-  object NotStable extends Realizability(" is not a stable reference")
-
-  class NotFinal(sym: Symbol)(implicit ctx: Context)
-  extends Realizability(i" refers to nonfinal $sym")
-
-  class HasProblemBounds(typ: SingleDenotation)(implicit ctx: Context)
-  extends Realizability(i" has a member $typ with possibly conflicting bounds ${typ.info.bounds.lo} <: ... <: ${typ.info.bounds.hi}")
-
-  /* Might need at some point in the future
-  class HasProblemField(fld: SingleDenotation)(implicit ctx: Context)
-  extends Realizability(i" has a member $fld which is uneligible as a path since ${fld.symbol.name}${ctx.realizability(fld.info)}")
-  */
-  
-  class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
-  extends Realizability(i"s underlying type ${tp}${problem.msg}")
 }

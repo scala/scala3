@@ -1,0 +1,140 @@
+package dotty.tools
+package dotc
+package core
+
+import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
+import SymDenotations._, Denotations.SingleDenotation
+import config.Printers._
+import util.Positions._
+import Decorators._
+import StdNames._
+import Annotations._
+import collection.mutable
+import ast.tpd._
+
+/** Realizability status */
+object CheckRealizable {
+
+  abstract class Realizability(val msg: String) {
+    def andAlso(other: => Realizability) =
+      if (this == Realizable) other else this
+    def mapError(f: Realizability => Realizability) =
+      if (this == Realizable) this else f(this)
+  }
+
+  object Realizable extends Realizability("")
+
+  object NotConcrete extends Realizability(" is not a concrete type")
+
+  object NotStable extends Realizability(" is not a stable reference")
+
+  class NotFinal(sym: Symbol)(implicit ctx: Context)
+  extends Realizability(i" refers to nonfinal $sym")
+
+  class HasProblemBounds(typ: SingleDenotation)(implicit ctx: Context)
+  extends Realizability(i" has a member $typ with possibly conflicting bounds ${typ.info.bounds.lo} <: ... <: ${typ.info.bounds.hi}")
+
+  class HasProblemField(fld: SingleDenotation, problem: Realizability)(implicit ctx: Context)
+  extends Realizability(i" has a member $fld which is not a legal path\n since ${fld.symbol.name}: ${fld.info}${problem.msg}")
+
+  class ProblemInUnderlying(tp: Type, problem: Realizability)(implicit ctx: Context)
+  extends Realizability(i"s underlying type ${tp}${problem.msg}") {
+    assert(problem != Realizable)
+  }
+
+  def realizability(tp: Type)(implicit ctx: Context) =
+    new CheckRealizable().realizability(tp)
+
+  def boundsRealizability(tp: Type)(implicit ctx: Context) =
+    new CheckRealizable().boundsRealizability(tp)
+}
+
+/** Compute realizability status */
+class CheckRealizable(implicit ctx: Context) {
+  import CheckRealizable._
+
+  /** A set of all fields that have already been checked. Used
+   *  to avoid infinite recursions when analyzing recursive types.
+   */
+  private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet[Symbol]()
+
+  /** Is this type a path with some part that is initialized on use? */
+  private def isLateInitialized(tp: Type): Boolean = tp.dealias match {
+    case tp: TermRef =>
+      tp.symbol.isLateInitialized || isLateInitialized(tp.prefix)
+    case _: SingletonType | NoPrefix =>
+      false
+    case tp: TypeRef =>
+      true
+    case tp: TypeProxy =>
+      isLateInitialized(tp.underlying)
+    case tp: AndOrType =>
+      isLateInitialized(tp.tp1) || isLateInitialized(tp.tp2)
+    case _ =>
+      true
+  }
+
+  /** The realizability status of given type `tp`*/
+  def realizability(tp: Type): Realizability = tp.dealias match {
+    case tp: TermRef =>
+      val sym = tp.symbol
+      if (sym.is(Stable)) realizability(tp.prefix)
+      else {
+        val r =
+          if (!sym.isStable) NotStable
+          else if (!sym.isLateInitialized) realizability(tp.prefix)
+          else if (!sym.isEffectivelyFinal) new NotFinal(sym)
+          else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
+        if (r == Realizable) sym.setFlag(Stable)
+        r
+      }
+    case _: SingletonType | NoPrefix =>
+      Realizable
+    case tp =>
+      def isConcrete(tp: Type): Boolean = tp.dealias match {
+        case tp: TypeRef => tp.symbol.isClass
+        case tp: TypeProxy => isConcrete(tp.underlying)
+        case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
+        case _ => false
+      }
+      if (!isConcrete(tp)) NotConcrete
+      else boundsRealizability(tp).andAlso(memberRealizability(tp))
+  }
+
+  /** `Realizable` if `tp` has good bounds, a `HasProblemBounds` instance
+   *  pointing to a bad bounds member otherwise.
+   */
+  private def boundsRealizability(tp: Type) = {
+    def hasBadBounds(mbr: SingleDenotation) = {
+      val bounds = mbr.info.bounds
+      !(bounds.lo <:< bounds.hi)
+    }
+    tp.nonClassTypeMembers.find(hasBadBounds) match {
+      case Some(mbr) => new HasProblemBounds(mbr)
+      case _ => Realizable
+    }
+  }
+
+  /** `Realizable` if `tp` all of `tp`'s non-struct fields have realizable types,
+   *  a `HasProblemField` instance pointing to a bad field otherwise.
+   */
+  private def memberRealizability(tp: Type) = {
+    def checkField(sofar: Realizability, fld: SingleDenotation): Realizability =
+      sofar andAlso {
+        if (checkedFields.contains(fld.symbol) || fld.symbol.is(Private | Mutable | Lazy))
+          Realizable
+        else {
+          checkedFields += fld.symbol
+          realizability(fld.info).mapError(r => new HasProblemField(fld, r))
+        }
+      }
+    if (ctx.settings.strict.value)
+      // check fields only under strict mode for now.
+      // Reason: We do track nulls, so an embedded field could well be nullable
+      // which means it is not a path and need not be checked; but we cannot recognize
+      // this situation until we have a typesystem that tracks nullability.
+      ((Realizable: Realizability) /: tp.fields)(checkField)
+    else
+      Realizable
+  }
+}

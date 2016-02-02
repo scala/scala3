@@ -125,7 +125,7 @@ class tests extends CompilerTest {
   @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 14)
   @Test def neg_overrideClass = compileFile(negDir, "overrideClass", List("-language:Scala2"), xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 2)
-  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 5)
+  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 3)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
 
   val negTailcallDir = negDir + "tailcall/"
@@ -138,7 +138,7 @@ class tests extends CompilerTest {
 
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
-  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 5)
+  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 5)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
   @Test def neg_variancesConstr = compileFile(negDir, "variances-constr", xerrors = 2)
@@ -147,7 +147,7 @@ class tests extends CompilerTest {
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
-  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 9)
+  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 7)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
   @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 4)
@@ -162,8 +162,9 @@ class tests extends CompilerTest {
   @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
-  @Test def neg_i1050 = compileFile(negDir, "i1050", xerrors = 14)
+  @Test def neg_i1050 = compileFile(negDir, "i1050", List("-strict"), xerrors = 13)
   @Test def neg_i1050a = compileFile(negDir, "i1050a", xerrors = 2)
+  @Test def neg_i1050c = compileFile(negDir, "i1050c", xerrors = 4)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
@@ -172,7 +173,7 @@ class tests extends CompilerTest {
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 2)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
-  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 10)
+  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 12)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
@@ -202,7 +203,7 @@ class tests extends CompilerTest {
         |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
-  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")

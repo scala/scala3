@@ -12,6 +12,7 @@ import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
+import CheckRealizable._
 import typer.Mode
 import util.SimpleMap
 import util.Stats
@@ -521,15 +522,6 @@ object SymDenotations {
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) =
       isType || !is(UnstableValue, butNot = Stable)
-
-    /** Is this a denotation of a realizable term (or an arbitrary type)? */
-    final def isRealizable(implicit ctx: Context) =
-      is(Stable) || isType || {
-        val isRealizable =
-          !isLateInitialized ||
-          isEffectivelyFinal && ctx.realizability(info) == TypeOps.Realizable
-        isRealizable && { setFlag(Stable); true }
-      }
 
     /** Field is initialized on use, not on definition;
      *  we do not count modules as fields here.

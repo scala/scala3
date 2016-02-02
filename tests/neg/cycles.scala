@@ -13,7 +13,7 @@ class B {
 }
 
 class C {
-  final val x: D#T = ??? // error: conflicting bounds
+  final val x: D#T = ???
   class D {
     type T <: x.type // error: cycle
     val z: x.type = ???
@@ -25,7 +25,7 @@ class E {
     type T <: x.type // error: not stable
     val z: x.type = ??? // error: not stable
   }
-  lazy val x: F#T = ??? // error: conflicting bounds
+  lazy val x: F#T = ???
 }
 
 class T1 {

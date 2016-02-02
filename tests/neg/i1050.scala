@@ -1,3 +1,4 @@
+// i1050 checks failing at posttyper
 trait A { type L <: Nothing }
 trait B { type L >: Any}
 object Test {
@@ -79,36 +80,6 @@ object Tiark3 {
     val v = new V {}
     v.brand("boom!"): Nothing
 }
-object Tiark4 {
-    trait U {
-      type Y
-      trait X { type L = Y }
-      def compute: X
-      final lazy val p: X = compute
-      def brand(x: Y): p.L = x
-    }
-    trait V extends U {
-      type Y >: Any <: Nothing
-      def compute: X = ???
-    }
-    val v = new V {} // error: cannot be instantiated
-    v.brand("boom!")
-}
-object Import {
-    trait A { type L <: Nothing }
-    trait B { type L >: Any}
-    trait U {
-      lazy val p: B
-      locally { val x: p.L = ??? } // error: nonfinal lazy
-      locally {
-        import p._
-        val x: L = ??? // error: nonfinal lazy
-      }
-    }
-}
-object V { // error: cannot be instantiated
-  type Y >: Any <: Nothing  // error: only classes can have declared but undefined members
-}
 object Tiark5 {
     trait A { type L <: Nothing }
     trait B { type L >: Any }
@@ -135,4 +106,92 @@ object Tiark6 {
     }
     val v = new U {}
     v.brand("boom!"): Nothing
+}
+
+object Indirect {
+    trait B { type L >: Any }
+    trait A { type L <: Nothing }
+    trait U {
+      trait X {
+        val q: A & B = ???
+        type M = q.L
+      }
+      final lazy val p: X = ???
+      def brand(x: Any): p.M = x // error: conflicting bounds
+    }
+  def main(args: Array[String]): Unit = {
+    val v = new U {}
+    v.brand("boom!"): Nothing
+  }
+}
+object Indirect2 {
+    trait B { type L >: Any }
+    trait A { type L <: Nothing }
+    trait U {
+      trait Y {
+        val r: A & B = ???
+      }
+      trait X {
+        val q: Y = ???
+        type M = q.r.L
+      }
+      final lazy val p: X = ???
+      def brand(x: Any): p.M = x // error: conflicting bounds
+    }
+  def main(args: Array[String]): Unit = {
+    val v = new U {}
+    v.brand("boom!"): Nothing
+  }
+}
+object Rec1 {
+    trait B { type L >: Any }
+    trait A { type L <: Nothing }
+    trait U {
+      trait Y {
+        type L = Int
+        val r: Y
+      }
+      trait X {
+        val q: Y = ???
+        type M = q.r.L  // if we are not careful we get a stackoverflow here
+      }
+    }
+}
+object Rec2 {
+    trait B { type L >: Any }
+    trait A { type L <: Nothing }
+    trait U {
+      trait Y {
+        val r: A & B & Y
+      }
+      trait X {
+        val q: Y = ???
+        type M = q.r.L
+      }
+      final lazy val p: X = ???
+      def brand(x: Any): p.M = x // error: conflicting bounds
+    }
+  def main(args: Array[String]): Unit = {
+    val v = new U {}
+    v.brand("boom!"): Nothing
+  }
+}
+object Indirect3 {
+    trait B { type L >: Any }
+    trait A { type L <: Nothing }
+    trait U {
+      trait Y {
+        val r: Y & A & B = ???
+      }
+      trait X {
+        val q: Y = ???
+        type M = q.r.L
+      }
+      final lazy val p: X = ???
+      def brand(x: Any): p.M = x // error: conflicting bounds
+    }
+  def main(args: Array[String]): Unit = {
+    val v = new U {}
+    v.brand("boom!"): Nothing
+  }
 }

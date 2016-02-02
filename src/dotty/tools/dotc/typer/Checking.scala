@@ -16,6 +16,7 @@ import Trees._
 import ProtoTypes._
 import Constants._
 import Scopes._
+import CheckRealizable._
 import ErrorReporting.errorTree
 import annotation.unchecked
 import util.Positions._
@@ -49,7 +50,7 @@ object Checking {
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Check all AppliedTypeTree nodes in this tree for legal bounds */
-  val boundsChecker = new TreeTraverser {
+  val typeChecker = new TreeTraverser {
     def traverse(tree: Tree)(implicit ctx: Context) = {
       tree match {
         case AppliedTypeTree(tycon, args) =>
@@ -57,6 +58,12 @@ object Checking {
           val bounds = tparams.map(tparam =>
             tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
           checkBounds(args, bounds, _.substDealias(tparams, _))
+        case Select(qual, name) if name.isTypeName =>
+          checkRealizable(qual.tpe, qual.pos)
+        case SelectFromTypeTree(qual, name) if name.isTypeName =>
+          checkRealizable(qual.tpe, qual.pos)
+        case SingletonTypeTree(ref) =>
+          checkRealizable(ref.tpe, ref.pos)
         case _ =>
       }
       traverseChildren(tree)
@@ -82,6 +89,15 @@ object Checking {
         }
       case _ =>
     }
+
+  /** Check that type `tp` is realizable. */
+  def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = realizability(tp)
+    if (rstatus ne Realizable) {
+      def msg = d"$tp is not a legal path\n since it${rstatus.msg}"
+      if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
+    }
+  }
 
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
@@ -321,19 +337,10 @@ trait Checking {
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
 
-  /** Check that type `tp` is realizable. */
-  def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
-    val rstatus = ctx.realizability(tp)
-    if (rstatus ne TypeOps.Realizable) {
-      def msg = d"$tp is not a legal path since it${rstatus.msg}"
-      if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
-    }
-  }
-
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
-    val rstatus = ctx.boundsRealizability(tp)
-    if (rstatus ne TypeOps.Realizable)
+    val rstatus = boundsRealizability(tp)
+    if (rstatus ne Realizable)
       ctx.error(i"$tp cannot be instantiated since it${rstatus.msg}", pos)
   }
 
@@ -449,7 +456,6 @@ trait NoChecking extends Checking {
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
-  override def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
