@@ -521,13 +521,7 @@ object SymDenotations {
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) =
-      isType || !is(UnstableValue, butNot = Stable)
-
-    /** Field is initialized on use, not on definition;
-     *  we do not count modules as fields here.
-     */
-    final def isLateInitialized(implicit ctx: Context) =
-      is(Lazy, butNot = Module) || is(Param) && info.isInstanceOf[ExprType]
+      isType || is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType])
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor

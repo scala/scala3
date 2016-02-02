@@ -58,10 +58,12 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet[Symbol]()
 
-  /** Is this type a path with some part that is initialized on use? */
+  /** Is this type a path with some part that is initialized on use?
+   *  (note we exclude modules here, because their realizability is ensured separately).
+   */
   private def isLateInitialized(tp: Type): Boolean = tp.dealias match {
     case tp: TermRef =>
-      tp.symbol.isLateInitialized || isLateInitialized(tp.prefix)
+      tp.symbol.is(Lazy, butNot = Module) || isLateInitialized(tp.prefix)
     case _: SingletonType | NoPrefix =>
       false
     case tp: TypeRef =>
@@ -130,8 +132,8 @@ class CheckRealizable(implicit ctx: Context) {
       }
     if (ctx.settings.strict.value)
       // check fields only under strict mode for now.
-      // Reason: We do track nulls, so an embedded field could well be nullable
-      // which means it is not a path and need not be checked; but we cannot recognize
+      // Reason: An embedded field could well be nullable, which means it
+      // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.
       ((Realizable: Realizability) /: tp.fields)(checkField)
     else

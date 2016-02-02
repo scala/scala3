@@ -80,20 +80,6 @@ object Tiark3 {
     val v = new V {}
     v.brand("boom!"): Nothing
 }
-object Tiark5 {
-    trait A { type L <: Nothing }
-    trait B { type L >: Any }
-    def f(x: => A & B)(y: Any):Nothing = (y:x.L) // error: underlying conflicting bounds
-    f(???)("boom!")
-}
-object Tiark5Inherited {
-    trait A { type L <: Nothing }
-    trait B { type L >: Any }
-    trait A2 extends A
-    trait B2 extends B
-    def f(x: => A2 & B2)(y: Any):Nothing = (y:x.L) // error: underlying conflicting bounds
-    f(???)("boom!")
-}
 object Tiark6 {
     trait B { type L >: Any }
     trait A { type L <: Nothing }

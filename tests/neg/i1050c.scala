@@ -29,3 +29,24 @@ object Tiark4 {
 object V { // error: cannot be instantiated
   type Y >: Any <: Nothing  // error: only classes can have declared but undefined members
 }
+object Tiark5 {
+    trait A { type L <: Nothing }
+    trait B { type L >: Any }
+    def f(x: => A & B)(y: Any):Nothing = (y:x.L) // error: underlying conflicting bounds
+    f(???)("boom!")
+}
+object Tiark5Inherited {
+    trait A { type L <: Nothing }
+    trait B { type L >: Any }
+    trait A2 extends A
+    trait B2 extends B
+    def f(x: => A2 & B2)(y: Any):Nothing = (y:x.L) // error: underlying conflicting bounds
+    f(???)("boom!")
+}
+object Tiark7 {
+    trait A { type L <: Nothing }
+    trait B { type L >: Any }
+    def f(x: => B)(y: Any):x.L = y // error: x is not stable
+    def f1(x: => A & B)(y: Any):Nothing = f(x)(y) // error: type mismatch
+    f1(???)("boom!"): Nothing
+}
