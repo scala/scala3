@@ -58,12 +58,16 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet[Symbol]()
 
+  /** Is symbol's definitition a lazy val?
+   *  (note we exclude modules here, because their realizability is ensured separately)
+   */
+  private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
+
   /** Is this type a path with some part that is initialized on use?
-   *  (note we exclude modules here, because their realizability is ensured separately).
    */
   private def isLateInitialized(tp: Type): Boolean = tp.dealias match {
     case tp: TermRef =>
-      tp.symbol.is(Lazy, butNot = Module) || isLateInitialized(tp.prefix)
+      isLateInitialized(tp.symbol) || isLateInitialized(tp.prefix)
     case _: SingletonType | NoPrefix =>
       false
     case tp: TypeRef =>
@@ -84,7 +88,7 @@ class CheckRealizable(implicit ctx: Context) {
       else {
         val r =
           if (!sym.isStable) NotStable
-          else if (!sym.isLateInitialized) realizability(tp.prefix)
+          else if (!isLateInitialized(sym)) realizability(tp.prefix)
           else if (!sym.isEffectivelyFinal) new NotFinal(sym)
           else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
         if (r == Realizable) sym.setFlag(Stable)
