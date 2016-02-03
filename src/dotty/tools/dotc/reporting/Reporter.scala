@@ -247,12 +247,23 @@ abstract class Reporter {
     incompleteHandler(d)(ctx)
 
 
-  /** Print a summary */
-  def printSummary(implicit ctx: Context): Unit = {
-    if (warningCount > 0) ctx.println(countString(warningCount, "warning") + " found")
-    if (errorCount > 0) ctx.println(countString(errorCount, "error") + " found")
+  /** Summary of warnings and errors */
+  def summary: String = {
+    val b = new mutable.ListBuffer[String]
+    if (warningCount > 0)
+      b += countString(warningCount, "warning") + " found"
+    if (errorCount > 0)
+      b += countString(errorCount, "error") + " found"
     for ((settingName, count) <- unreportedWarnings)
-      ctx.println(s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details")
+      b += s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details"
+    b.mkString("\n")
+  }
+
+  /** Print the summary of warnings and errors */
+  def printSummary(implicit ctx: Context): Unit = {
+    val s = summary
+    if (s != "")
+      ctx.println(s)
   }
 
   /** Returns a string meaning "n elements". */
