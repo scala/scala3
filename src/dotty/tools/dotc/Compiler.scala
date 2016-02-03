@@ -118,7 +118,7 @@ class Compiler {
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
   }
 
-  protected def rootReporter(implicit ctx: Context): Reporter = new ConsoleReporter()(ctx)
+  protected def rootReporter(implicit ctx: Context): Reporter = new ConsoleReporter()
 
   def reset()(implicit ctx: Context): Unit = {
     ctx.base.reset()
