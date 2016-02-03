@@ -427,6 +427,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.withReporter(reporter))
     def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
     def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }

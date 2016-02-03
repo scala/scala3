@@ -13,20 +13,14 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
     val clogWriter = new PrintWriter(clogFWriter, true)
     clogWriter.println("\ncompiling " + sources.mkString(" ") + "\noptions: " + opts0.mkString(" "))
 
-    implicit val ctx: dotty.tools.dotc.core.Contexts.Context = {
-      val base = new dotty.tools.dotc.core.Contexts.ContextBase
-      base.initialCtx.fresh
-    }
-
     try {
       val processor =
         if (opts0.exists(_.startsWith("#"))) dotty.tools.dotc.Bench else dotty.tools.dotc.Main
       val clogger = new ConsoleReporter(writer = clogWriter)
-      val logCtx = ctx.fresh.setTyperState(ctx.typerState.withReporter(clogger))
-      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, logCtx)
+      val reporter = processor.process((sources.map(_.toString) ::: opts0).toArray, clogger)
       if (!reporter.hasErrors) runner.genPass()
       else {
-        reporter.printSummary(ctx)
+        clogWriter.println(reporter.summary)
         runner.genFail(s"compilation failed with ${reporter.errorCount} errors")
       }
     } catch {
