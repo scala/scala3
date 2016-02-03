@@ -15,9 +15,7 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
 
     implicit val ctx: dotty.tools.dotc.core.Contexts.Context = {
       val base = new dotty.tools.dotc.core.Contexts.ContextBase
-      import base.settings._
-      val ctx = base.initialCtx.fresh.setSetting(printtypes, true)
-        .setSetting(pageWidth, 90).setSetting(log, List("<some"))
+      val ctx = base.initialCtx.fresh
       base.definitions.init(ctx)
       ctx
     }

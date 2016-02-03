@@ -22,17 +22,6 @@ class DottyTest /*extends ContextEscapeDetection*/ {
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
-      //.setSetting(verbose, true)
-      //      .withSetting(debug, true)
-      //      .withSetting(debugTrace, true)
-      //      .withSetting(prompt, true)
-      //.setSetting(Ylogcp, true)
-      //.setSetting(printtypes, true)
-      .setSetting(pageWidth, 90)
-      .setSetting(log, List("<some"))
-    //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))
-
-    //      .withSetting(uniqid, true)
     base.definitions.init(ctx)
     ctx
   }
