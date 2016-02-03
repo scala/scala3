@@ -33,12 +33,10 @@ abstract class Driver extends DotClass {
   protected def sourcesRequired = true
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val summary = CompilerCommand.distill(args)(rootCtx)
-    // FIXME: We should reuse rootCtx instead of creating newCtx, but this
-    // makes some tests fail with "denotation module _root_ invalid in run 2."
-    val newCtx = initCtx.setCompilerCallback(rootCtx.compilerCallback)
-    implicit val ctx: Context = newCtx.fresh.setSettings(summary.sstate)
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+    val ctx = rootCtx.fresh
+    val summary = CompilerCommand.distill(args)(ctx)
+    ctx.setSettings(summary.sstate)
+    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }
 

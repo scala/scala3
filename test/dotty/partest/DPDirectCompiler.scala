@@ -5,7 +5,7 @@ import scala.tools.partest.{ TestState, nest }
 import java.io.{ File, PrintWriter, FileWriter }
 
 
-/* NOTE: Adapted from partest.DirectCompiler and DottyTest */
+/* NOTE: Adapted from partest.DirectCompiler */
 class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner) {
 
   override def compile(opts0: List[String], sources: List[File]): TestState = {
@@ -15,9 +15,7 @@ class DPDirectCompiler(runner: DPTestRunner) extends nest.DirectCompiler(runner)
 
     implicit val ctx: dotty.tools.dotc.core.Contexts.Context = {
       val base = new dotty.tools.dotc.core.Contexts.ContextBase
-      val ctx = base.initialCtx.fresh
-      base.definitions.init(ctx)
-      ctx
+      base.initialCtx.fresh
     }
 
     try {
