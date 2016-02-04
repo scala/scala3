@@ -276,6 +276,26 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case TypeBounds(_, hi) => hi
         case nx => nx
       }
+      /** If `tp1` and `tp2` are typebounds, try to make one fit into the other
+       *  or to make them equal, by instantiating uninstantiated type variables.
+       */
+      def homogenizedUnion(tp1: Type, tp2: Type): Type = {
+        def fitInto(tp1: Type, tp2: Type): Unit = tp1 match {
+          case tp1: TypeBounds =>
+            tp2 match {
+              case tp2: TypeBounds =>
+                val nestedCtx = ctx.fresh.setNewTyperState
+                if (tp2.boundsInterval.contains(tp1.boundsInterval)(nestedCtx))
+                  nestedCtx.typerState.commit()
+              case _ =>
+            }
+          case _ =>
+        }
+        fitInto(tp1, tp2)
+        fitInto(tp2, tp1)
+        tp1 | tp2
+      }
+
       tp1 match {
         case tp1: RefinedType =>
           tp2 match {
@@ -283,8 +303,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               return tp1.derivedRefinedType(
                 approximateUnion(OrType(tp1.parent, tp2.parent)),
                 tp1.refinedName,
-                (tp1.refinedInfo | tp2.refinedInfo).substRefinedThis(tp2, RefinedThis(tp1)))
-                .ensuring { x => println(i"approx or $tp1 | $tp2 = $x"); true } // DEBUG
+                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo).substRefinedThis(tp2, RefinedThis(tp1)))
+                //.ensuring { x => println(i"approx or $tp1 | $tp2 = $x\n constr = ${ctx.typerState.constraint}"); true } // DEBUG
             case _ =>
           }
         case _ =>
