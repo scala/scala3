@@ -379,6 +379,19 @@ object ProtoTypes {
     }
   }
 
+  /** Like wildApprox, but assume that all parameters of `disregarded` are not
+   *  bound in current constraint. This is necessary because an instance of
+   *  the type of a polymorphic function might already be part of the current
+   *  constraint when we try to check another occurrence of the same polymorphic
+   *  function for eligibility. An example is in i1044.scala where one expression
+   *  requires two implicit calls of the same refArrayOps method. When approximating
+   *  the parameter types of such a method we should always ignore type parameters of
+   *  the method itself, even though some of these parameters might still be
+   *  bound in the constraint.
+   */
+  final def wildApprox(tp: Type, disregarded: PolyType)(implicit ctx: Context): Type =
+    wildApprox(tp, new WildApproxMap(disregarded))
+
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
@@ -391,7 +404,10 @@ object ProtoTypes {
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
     case tp @ PolyParam(poly, pnum) =>
-      ctx.typerState.constraint.entry(tp) match {
+      val constrOrInst =
+        if (theMap != null && (poly eq theMap.disregarded)) NoType
+        else ctx.typerState.constraint.entry(tp)
+      constrOrInst match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))
         case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
         case inst => wildApprox(inst)
@@ -426,7 +442,7 @@ object ProtoTypes {
       (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }
 
-  private[ProtoTypes] class WildApproxMap(implicit ctx: Context) extends TypeMap {
+  private[ProtoTypes] class WildApproxMap(val disregarded: Type = NoType)(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = wildApprox(tp, this)
   }
 
