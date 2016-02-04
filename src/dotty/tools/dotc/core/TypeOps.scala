@@ -280,19 +280,21 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
        *  or to make them equal, by instantiating uninstantiated type variables.
        */
       def homogenizedUnion(tp1: Type, tp2: Type): Type = {
-        def fitInto(tp1: Type, tp2: Type): Unit = tp1 match {
+        tp1 match {
           case tp1: TypeBounds =>
             tp2 match {
               case tp2: TypeBounds =>
-                val nestedCtx = ctx.fresh.setNewTyperState
-                if (tp2.boundsInterval.contains(tp1.boundsInterval)(nestedCtx))
-                  nestedCtx.typerState.commit()
+                def fitInto(tp1: TypeBounds, tp2: TypeBounds): Unit = {
+                  val nestedCtx = ctx.fresh.setNewTyperState
+                  if (tp2.boundsInterval.contains(tp1.boundsInterval)(nestedCtx))
+                    nestedCtx.typerState.commit()
+                }
+                fitInto(tp1, tp2)
+                fitInto(tp2, tp1)
               case _ =>
             }
           case _ =>
         }
-        fitInto(tp1, tp2)
-        fitInto(tp2, tp1)
         tp1 | tp2
       }
 
