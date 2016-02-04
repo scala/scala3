@@ -1047,7 +1047,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else hkCombine(tp1, tp2, tparams1, tparams2, op)
   }
 
-  /** Try to distribute `&` inside type, detect and handle conflicts */
+  /** Try to distribute `&` inside type, detect and handle conflicts
+   *  pre: !(tp1 <: tp2) && !(tp2 <:< tp2) -- these cases were handled before
+   */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
     // opportunistically merge same-named refinements
     // this does not change anything semantically (i.e. merging or not merging
@@ -1105,6 +1107,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp1.underlying & tp2
     case tp1: AnnotatedType =>
       tp1.underlying & tp2
+    case tp1: SingletonType =>
+      // because of the precondition, `tp1 & tp2 != tp1`, so it must be strictly smaller than `tp1`,
+      // which means it's `Nothing`.
+      NothingType
     case _ =>
       NoType
   }
