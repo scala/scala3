@@ -111,14 +111,12 @@ class Compiler {
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .setMode(Mode.ImplicitsEnabled)
-      .setTyperState(new MutableTyperState(ctx.typerState, rootReporter(ctx), isCommittable = true))
+      .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
   }
-
-  protected def rootReporter(implicit ctx: Context): Reporter = new ConsoleReporter()
 
   def reset()(implicit ctx: Context): Unit = {
     ctx.base.reset()
