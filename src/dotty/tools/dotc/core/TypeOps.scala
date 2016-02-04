@@ -266,31 +266,50 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
     }
+    def approximateOr(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+      def isClassRef(tp: Type): Boolean = tp match {
+        case tp: TypeRef => tp.symbol.isClass
+        case tp: RefinedType => isClassRef(tp.parent)
+        case _ => false
+      }
+      def next(tp: TypeProxy) = tp.underlying match {
+        case TypeBounds(_, hi) => hi
+        case nx => nx
+      }
+      tp1 match {
+        case tp1: RefinedType =>
+          tp2 match {
+            case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
+              return tp1.derivedRefinedType(
+                approximateUnion(OrType(tp1.parent, tp2.parent)),
+                tp1.refinedName,
+                (tp1.refinedInfo | tp2.refinedInfo).substRefinedThis(tp2, RefinedThis(tp1)))
+                .ensuring { x => println(i"approx or $tp1 | $tp2 = $x"); true } // DEBUG
+            case _ =>
+          }
+        case _ =>
+      }
+      tp1 match {
+        case tp1: TypeProxy if !isClassRef(tp1) =>
+          approximateUnion(next(tp1) | tp2)
+        case _ =>
+          tp2 match {
+            case tp2: TypeProxy if !isClassRef(tp2) =>
+              approximateUnion(tp1 | next(tp2))
+            case _ =>
+              val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+              val doms = dominators(commonBaseClasses, Nil)
+              def baseTp(cls: ClassSymbol): Type =
+                if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
+                else tp.baseTypeWithArgs(cls)
+              doms.map(baseTp).reduceLeft(AndType.apply)
+          }
+      }
+    }
     if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
     else tp match {
       case tp: OrType =>
-        def isClassRef(tp: Type): Boolean = tp match {
-          case tp: TypeRef => tp.symbol.isClass
-          case tp: RefinedType => isClassRef(tp.parent)
-          case _ => false
-        }
-        def next(tp: TypeProxy) = tp.underlying match {
-          case TypeBounds(_, hi) => hi
-          case nx => nx
-        }
-        tp.tp1 match {
-          case tp1: TypeProxy if !isClassRef(tp1) =>
-            approximateUnion(next(tp1) | tp.tp2)
-          case _ =>
-            tp.tp2 match {
-              case tp2: TypeProxy if !isClassRef(tp2) =>
-                approximateUnion(tp.tp1 | next(tp2))
-              case _ =>
-                val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
-                val doms = dominators(commonBaseClasses, Nil)
-                doms.map(tp.baseTypeWithArgs).reduceLeft(AndType.apply)
-            }
-        }
+        approximateOr(tp.tp1, tp.tp2)
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
       case tp: RefinedType =>
