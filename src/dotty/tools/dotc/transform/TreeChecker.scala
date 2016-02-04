@@ -118,8 +118,7 @@ class TreeChecker extends Phase with SymTransformer {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squahsedPhase = ctx.squashed(prevPhase)
     ctx.println(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
-    val checkingCtx = ctx.fresh
-      .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.reporter)))
+    val checkingCtx = ctx.fresh.setReporter(new ThrowingReporter(ctx.reporter))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {

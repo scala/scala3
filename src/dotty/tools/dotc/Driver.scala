@@ -33,28 +33,64 @@ abstract class Driver extends DotClass {
   protected def sourcesRequired = true
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val summary = CompilerCommand.distill(args)(rootCtx)
-    // FIXME: We should reuse rootCtx instead of creating newCtx, but this
-    // makes some tests fail with "denotation module _root_ invalid in run 2."
-    val newCtx = initCtx.setCompilerCallback(rootCtx.compilerCallback)
-    implicit val ctx: Context = newCtx.fresh.setSettings(summary.sstate)
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+    val ctx = rootCtx.fresh
+    val summary = CompilerCommand.distill(args)(ctx)
+    ctx.setSettings(summary.sstate)
+    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }
 
+
+  /** Principal entry point to the compiler.
+   *  Creates a new compiler instance and run it with arguments `args`.
+   *
+   *  The optional arguments of this method all have `null` as their default
+   *  value, this makes it easier to call this method by reflection or from Java.
+   *
+   *  @param args       Arguments to pass to the compiler.
+   *  @param reporter   Used to log errors, warnings, and info messages.
+   *                    The default reporter is used if this is `null`.
+   *  @param callback   Used to execute custom code during the compilation
+   *                    process. No callbacks will be executed if this is `null`.
+   *  @return           The `Reporter` used. Use `Reporter#hasErrors` to check
+   *                    if compilation succeeded.
+   */
+  final def process(args: Array[String], reporter: Reporter = null,
+    callback: CompilerCallback = null): Reporter = {
+    val ctx = initCtx.fresh
+    if (reporter != null)
+      ctx.setReporter(reporter)
+    if (callback != null)
+      ctx.setCompilerCallback(callback)
+    process(args, ctx)
+  }
+
+  /** Entry point to the compiler with no optional arguments.
+   *
+   *  This overload is provided for compatibility reasons: the
+   *  `RawCompiler` of sbt expects this method to exist and calls
+   *  it using reflection. Keeping it means that we can change
+   *  the other overloads without worrying about breaking compatibility
+   *  with sbt.
+   */
+  final def process(args: Array[String]): Reporter =
+    process(args, null, null)
+
+  /** Entry point to the compiler using a custom `Context`.
+   *
+   *  In most cases, you do not need a custom `Context` and should
+   *  instead use one of the other overloads of `process`. However,
+   *  the other overloads cannot be overriden, instead you
+   *  should override this one which they call internally.
+   *
+   *  @param args       Arguments to pass to the compiler.
+   *  @param rootCtx    The root Context to use.
+   *  @return           The `Reporter` used. Use `Reporter#hasErrors` to check
+   *                    if compilation succeeded.
+   */
   def process(args: Array[String], rootCtx: Context): Reporter = {
     val (fileNames, ctx) = setup(args, rootCtx)
     doCompile(newCompiler(), fileNames)(ctx)
-  }
-
-  def process(args: Array[String], callback: CompilerCallback): Reporter = {
-    process(args, initCtx.setCompilerCallback(callback))
-  }
-
-  // We overload `process` instead of using a default argument so that we
-  // can easily call this method using reflection from `RawCompiler` in sbt.
-  def process(args: Array[String]): Reporter = {
-    process(args, initCtx)
   }
 
   def main(args: Array[String]): Unit = {

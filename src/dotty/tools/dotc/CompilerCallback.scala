@@ -18,7 +18,7 @@ import java.io.File
  *  }
  *  dotty.tools.dotc.process(args, callback)
  *  // Or, if you have a custom root context `rootCtx`:
- *  dotty.tools.dotc.process(args, rootCtx.setCompilerCallback(callback))
+ *  dotty.tools.dotc.process(args, rootCtx.fresh.setCompilerCallback(callback))
  *  }}}
  */
 trait CompilerCallback {

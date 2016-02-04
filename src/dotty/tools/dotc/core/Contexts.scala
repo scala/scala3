@@ -72,22 +72,16 @@ object Contexts {
       def next = { val c = current; current = current.outer; c }
     }
 
-    /** Set the compiler callback, shared by all contexts with the same `base` */
-    def setCompilerCallback(callback: CompilerCallback): this.type = {
-      base.compilerCallback = callback; this
-    }
-
     /** The outer context */
     private[this] var _outer: Context = _
     protected def outer_=(outer: Context) = _outer = outer
     def outer: Context = _outer
 
-    // protected def compilerCallback_=(callback: CompilerCallback) =
-    //   _compilerCallback = callback
-    // def compilerCallback: CompilerCallback = _compilerCallback
-    // def setCompilerCallback(callback: CompilerCallback): this.type = {
-    //   this.compilerCallback = callback; this
-    // }
+    /** The compiler callback implementation, or null if no callback will be called. */
+    private[this] var _compilerCallback: CompilerCallback = _
+    protected def compilerCallback_=(callback: CompilerCallback) =
+      _compilerCallback = callback
+    def compilerCallback: CompilerCallback = _compilerCallback
 
     /** The current context */
     private[this] var _period: Period = _
@@ -426,7 +420,9 @@ object Contexts {
   abstract class FreshContext extends Context {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
+    def setCompilerCallback(callback: CompilerCallback): this.type = { this.compilerCallback = callback; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def setReporter(reporter: Reporter): this.type = setTyperState(typerState.withReporter(reporter))
     def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
     def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
@@ -481,7 +477,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(new ThrowingReporter(new ConsoleReporter()(this)))
+    typerState = new TyperState(new ConsoleReporter())
     printerFn = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
@@ -536,10 +532,6 @@ object Contexts {
 
   /** The essential mutable state of a context base, collected into a common class */
   class ContextState {
-
-    /** The compiler callback implementation, or null if unset */
-    var compilerCallback: CompilerCallback = _
-
     // Symbols state
 
     /** A counter for unique ids */
