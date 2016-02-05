@@ -1343,6 +1343,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def methodStr = err.refStr(methPart(tree).tpe)
 
+    def missingArgs = errorTree(tree,
+      d"""missing arguments for $methodStr
+         |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
+
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
@@ -1475,12 +1479,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else if (wtp.isImplicit)
           err.typeMismatch(tree, pt)
         else
-          errorTree(tree,
-            d"""missing arguments for $methodStr
-               |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
+          missingArgs
       case _ =>
         if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
+        else if (wtp.isInstanceOf[MethodType]) missingArgs
         else {
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
           //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))

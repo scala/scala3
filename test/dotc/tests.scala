@@ -157,6 +157,7 @@ class tests extends CompilerTest {
   @Test def neg_i941 = compileFile(negDir, "i941", xerrors = 3)
   @Test def neg_finalSealed = compileFile(negDir, "final-sealed", xerrors = 2)
   @Test def neg_i705 = compileFile(negDir, "i705-inner-value-class", xerrors = 7)
+  @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
