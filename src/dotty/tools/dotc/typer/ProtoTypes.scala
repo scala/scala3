@@ -391,11 +391,15 @@ object ProtoTypes {
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
     case tp @ PolyParam(poly, pnum) =>
-      ctx.typerState.constraint.entry(tp) match {
-        case bounds: TypeBounds => wildApprox(WildcardType(bounds))
-        case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
-        case inst => wildApprox(inst)
-      }
+      def unconstrainedApprox = WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
+      if (ctx.mode.is(Mode.TypevarsMissContext))
+        unconstrainedApprox
+      else
+        ctx.typerState.constraint.entry(tp) match {
+          case bounds: TypeBounds => wildApprox(WildcardType(bounds))
+          case NoType => unconstrainedApprox
+          case inst => wildApprox(inst)
+        }
     case MethodParam(mt, pnum) =>
       WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
     case tp: TypeVar =>
