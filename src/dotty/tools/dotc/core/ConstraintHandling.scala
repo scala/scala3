@@ -35,6 +35,18 @@ trait ConstraintHandling {
 
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
+      def occursIn(bound: Type): Boolean = {
+        val b = bound.dealias
+        (b eq param) || {
+          b match {
+            case b: AndOrType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: TypeVar => occursIn(b.origin)
+            case _ => false
+          }
+        }
+      }
+      if (Config.checkConstraintsNonCyclicTrans)
+        assert(!occursIn(bound), s"$param occurs in $bound")
       val c1 = constraint.narrowBound(param, bound, isUpper)
       (c1 eq constraint) || {
         constraint = c1
@@ -222,11 +234,46 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+
+      /** Drop all constrained parameters that occur at the toplevel in bound.
+       *  The preconditions make sure that such parameters occur only
+       *  in one of two ways:
+       *
+       *  1.
+       *
+       *    P <: Ts1 | ... | Tsm   (m > 0)
+       *    Tsi = T1 & ... Tn      (n >= 0)
+       *    Some of the Ti are constrained parameters
+       *
+       *  2.
+       *
+       *    Ts1 & ... & Tsm <: P   (m > 0)
+       *    Tsi = T1 | ... | Tn    (n >= 0)
+       *    Some of the Ti are constrained parameters
+       *
+       *  In each case we cannot record the relationship as an isLess, because
+       *  of he outer |/&. But we should not leave it in the constraint either
+       *  because that would risk making a parameter a subtype or supertype of a bound
+       *  where the parameter occurs again at toplevel, which leads to cycles
+       *  in the subtyping test. So we intentionally loosen the constraint in order
+       *  to keep it safe. A test case that demonstrates the problem is i864.scala.
+       */
+      def prune(bound: Type): Type = bound match {
+        case bound: AndOrType =>
+          bound.derivedAndOrType(prune(bound.tp1), prune(bound.tp2))
+        case bound: TypeVar if constraint contains bound.origin =>
+          prune(bound.underlying)
+        case bound: PolyParam if constraint contains bound =>
+          if (fromBelow) defn.NothingType else defn.AnyType
+        case _ =>
+          bound
+      }
       try bound match {
         case bound: PolyParam if constraint contains bound =>
           if (fromBelow) addLess(bound, param) else addLess(param, bound)
         case _ =>
-          if (fromBelow) addLowerBound(param, bound) else addUpperBound(param, bound)
+          val pbound = prune(bound)
+          if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound)
       }
       finally addConstraintInvocations -= 1
     }

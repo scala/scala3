@@ -124,7 +124,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
-      assert(!ctx.settings.YnoDeepSubtypes.value) //throw new Error("deep subtype")
+      //if (ctx.settings.YnoDeepSubtypes.value) {
+      //  new Error("deep subtype").printStackTrace()
+      //}
+      assert(!ctx.settings.YnoDeepSubtypes.value)
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
@@ -1047,7 +1050,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else hkCombine(tp1, tp2, tparams1, tparams2, op)
   }
 
-  /** Try to distribute `&` inside type, detect and handle conflicts */
+  /** Try to distribute `&` inside type, detect and handle conflicts
+   *  @pre !(tp1 <: tp2) && !(tp2 <:< tp1) -- these cases were handled before
+   */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
     // opportunistically merge same-named refinements
     // this does not change anything semantically (i.e. merging or not merging
