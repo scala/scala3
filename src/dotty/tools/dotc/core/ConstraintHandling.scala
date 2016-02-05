@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers._
+import collection.mutable
 
 /** Methods for adding constraints and solving them.
  *
@@ -234,8 +235,11 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+      val related = new mutable.ListBuffer[PolyParam]()
 
-      /** Drop all constrained parameters that occur at the toplevel in bound.
+      /** Drop all constrained parameters that occur at the toplevel in bound
+       *  and add them to `related`, which means they will be handled by
+       *  `addLess` calls.
        *  The preconditions make sure that such parameters occur only
        *  in one of two ways:
        *
@@ -251,12 +255,18 @@ trait ConstraintHandling {
        *    Tsi = T1 | ... | Tn    (n >= 0)
        *    Some of the Ti are constrained parameters
        *
-       *  In each case we cannot record the relationship as an isLess, because
-       *  of the outer |/&. But we should not leave it in the constraint either
-       *  because that would risk making a parameter a subtype or supertype of a bound
-       *  where the parameter occurs again at toplevel, which leads to cycles
-       *  in the subtyping test. So we intentionally loosen the constraint in order
-       *  to keep it safe. A test case that demonstrates the problem is i864.scala.
+       *  In each case we cannot leave the parameter in place,
+       *  because that would risk making a parameter later a subtype or supertype
+       *  of a bound where the parameter occurs again at toplevel, which leads to cycles
+       *  in the subtyping test. So we intentionally narrow the constraint by
+       *  recording an isLess relationship instead (even though this is not implied
+       *  by the bound).
+       *
+       *  Narrowing a constraint is better than widening it, because narrowing leads
+       *  to incompleteness (which we face anyway, see for instance eitherIsSubType)
+       *  but widening leads to unsoundness.
+       *
+       *  A test case that demonstrates the problem is i864.scala.
        *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
        *  of the cycle when it is created.
        */
@@ -266,15 +276,19 @@ trait ConstraintHandling {
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)
         case bound: PolyParam if constraint contains bound =>
+          related += bound
           if (fromBelow) defn.NothingType else defn.AnyType
         case _ =>
           bound
       }
+      def addParamBound(bound: PolyParam) =
+        if (fromBelow) addLess(bound, param) else addLess(param, bound)
       try bound match {
         case bound: PolyParam if constraint contains bound =>
-          if (fromBelow) addLess(bound, param) else addLess(param, bound)
+          addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
+          related.foreach(addParamBound)
           if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound)
       }
       finally addConstraintInvocations -= 1
