@@ -151,6 +151,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Yheartbeat = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations.")
   val Yprintpos = BooleanSetting("-Yprintpos", "show tree positions.")
   val YnoDeepSubtypes = BooleanSetting("-Yno-deep-subtypes", "throw an exception on deep subtyping call stacks.")
+  val YplainPrinter = BooleanSetting("-Yplain-printer", "Pretty-print using a plain printer.")
   val YprintSyms = BooleanSetting("-Yprint-syms", "when printing trees print info in symbols instead of corresponding info in trees.")
   val YtestPickler = BooleanSetting("-Ytest-pickler", "self-test for pickling functionality; should be used with -Ystop-after:pickler")
   val YcheckReentrant = BooleanSetting("-Ycheck-reentrant", "check that compiled program does not contain vars that can be accessed from a global root.")
