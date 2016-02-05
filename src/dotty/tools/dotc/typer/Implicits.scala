@@ -52,7 +52,7 @@ object Implicits {
             mt.paramTypes.length != 1 ||
             !(argType relaxed_<:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
           case poly: PolyType =>
-            poly.resultType match {
+            constrained(poly).resultType match {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramTypes.length != 1 ||
