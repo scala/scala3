@@ -101,10 +101,12 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     val ost =
-      if ((selfInfo eq NoType) && (denot is ModuleClass))
+      if ((selfInfo eq NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
+        // it seems sometimes the source module does not exist for a module class.
+        // An example is `scala.reflect.internal.Trees.Template$. Without the
+        // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
         denot.owner.thisType select denot.sourceModule
       else selfInfo
-
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, decls, ost) // first rough info to avoid CyclicReferences
     var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
     if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil

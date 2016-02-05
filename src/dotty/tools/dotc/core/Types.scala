@@ -1972,7 +1972,7 @@ object Types {
   case class LazyRef(refFn: () => Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
-    lazy val ref = {
+    def ref = {
       if (computed) assert(myRef != null)
       else {
         computed = true
@@ -1980,6 +1980,7 @@ object Types {
       }
       myRef
     }
+    def evaluating = computed && myRef == null
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef($ref)"
     override def equals(other: Any) = other match {
