@@ -45,7 +45,7 @@ trait ConstraintHandling {
           }
         }
       }
-      if (Config.checkConstraintsNonCyclicTrans)
+      if (Config.checkConstraintsSeparated)
         assert(!occursIn(bound), s"$param occurs in $bound")
       val c1 = constraint.narrowBound(param, bound, isUpper)
       (c1 eq constraint) || {
@@ -252,11 +252,13 @@ trait ConstraintHandling {
        *    Some of the Ti are constrained parameters
        *
        *  In each case we cannot record the relationship as an isLess, because
-       *  of he outer |/&. But we should not leave it in the constraint either
+       *  of the outer |/&. But we should not leave it in the constraint either
        *  because that would risk making a parameter a subtype or supertype of a bound
        *  where the parameter occurs again at toplevel, which leads to cycles
        *  in the subtyping test. So we intentionally loosen the constraint in order
        *  to keep it safe. A test case that demonstrates the problem is i864.scala.
+       *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
+       *  of the cycle when it is created.
        */
       def prune(bound: Type): Type = bound match {
         case bound: AndOrType =>
