@@ -103,6 +103,7 @@ class tests extends CompilerTest {
 
   @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
   @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
+  @Test def pos_859 = compileFile(posSpecialDir, "i859", scala2mode)(allowDeepSubtypes)
 
   @Test def new_all = compileFiles(newDir, twice)
 
