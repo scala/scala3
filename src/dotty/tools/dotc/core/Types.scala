@@ -3386,7 +3386,7 @@ object Types {
   class MissingType(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
     i"""cannot resolve reference to type $pre.$name
        |the classfile defining the type might be missing from the classpath${otherReason(pre)}""".stripMargin) {
-    printStackTrace()
+    if (ctx.debug) printStackTrace()
   }
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {

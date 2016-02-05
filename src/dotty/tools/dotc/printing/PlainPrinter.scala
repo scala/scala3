@@ -32,7 +32,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def recursionLimitExceeded() = {
     ctx.warning("Exceeded recursion depth attempting to print.")
-    (new Throwable).printStackTrace
+    if (ctx.debug) Thread.dumpStack()
   }
 
   /** If true, tweak output so it is the same before and after pickling */
