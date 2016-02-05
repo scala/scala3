@@ -786,7 +786,7 @@ class Definitions {
     OpsPackageClass)
 
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-    lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+)
+    lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   private[this] var _isInitialized = false
   private def isInitialized = _isInitialized
