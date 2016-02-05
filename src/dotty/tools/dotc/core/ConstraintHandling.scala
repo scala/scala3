@@ -235,11 +235,12 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
-      val related = new mutable.ListBuffer[PolyParam]()
 
-      /** Drop all constrained parameters that occur at the toplevel in bound
-       *  and add them to `related`, which means they will be handled by
-       *  `addLess` calls.
+      def addParamBound(bound: PolyParam) =
+        if (fromBelow) addLess(bound, param) else addLess(param, bound)
+
+      /** Drop all constrained parameters that occur at the toplevel in `bound` and
+       *  handle them by `addLess` calls.
        *  The preconditions make sure that such parameters occur only
        *  in one of two ways:
        *
@@ -269,27 +270,32 @@ trait ConstraintHandling {
        *  A test case that demonstrates the problem is i864.scala.
        *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
        *  of the cycle when it is created.
+       *
+       *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
        */
       def prune(bound: Type): Type = bound match {
         case bound: AndOrType =>
-          bound.derivedAndOrType(prune(bound.tp1), prune(bound.tp2))
+          val p1 = prune(bound.tp1)
+          val p2 = prune(bound.tp2)
+          if (p1.exists && p2.exists) bound.derivedAndOrType(p1, p2)
+          else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)
         case bound: PolyParam if constraint contains bound =>
-          related += bound
-          if (fromBelow) defn.NothingType else defn.AnyType
+          if (!addParamBound(bound)) NoType
+          else if (fromBelow) defn.NothingType
+          else defn.AnyType
         case _ =>
           bound
       }
-      def addParamBound(bound: PolyParam) =
-        if (fromBelow) addLess(bound, param) else addLess(param, bound)
+
       try bound match {
         case bound: PolyParam if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = prune(bound)
-          related.foreach(addParamBound)
-          if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound)
+          pbound.exists && (
+            if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
       finally addConstraintInvocations -= 1
     }
