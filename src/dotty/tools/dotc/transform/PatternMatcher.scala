@@ -327,7 +327,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       private[TreeMakers] def incorporateOuterRebinding(outerSubst: Rebindings): Unit = {
         if (currSub ne null) {
           ctx.debuglog("BUG: incorporateOuterRebinding called more than once for " + ((this, currSub, outerSubst)))
-          Thread.dumpStack()
+          if (ctx.debug) Thread.dumpStack()
         }
         else currSub = outerSubst >> rebindings
       }

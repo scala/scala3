@@ -188,7 +188,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val ex = new BadSignature(
       sm"""error reading Scala signature of $classRoot from $source:
           |error occurred at position $readIndex: $msg""")
-    /*if (debug)*/ original.getOrElse(ex).printStackTrace() // !!! DEBUG
+    if (ctx.debug) original.getOrElse(ex).printStackTrace()
     throw ex
   }
 
@@ -425,7 +425,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
-              new Exception().printStackTrace()
+              if (ctx.debug) Thread.dumpStack()
               ctx.newStubSymbol(owner, name, source)
             }
           }
