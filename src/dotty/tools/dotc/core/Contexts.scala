@@ -255,7 +255,7 @@ object Contexts {
     private var creationTrace: Array[StackTraceElement] = _
 
     private def setCreationTrace() =
-      if (this.settings.debug.value)
+      if (this.settings.YtraceContextCreation.value)
         creationTrace = (new Throwable).getStackTrace().take(20)
 
     /** Print all enclosing context's creation stacktraces */

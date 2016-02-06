@@ -146,6 +146,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val etaExpandKeepsStar = BooleanSetting("-Yeta-expand-keeps-star", "Eta-expand varargs methods to T* rather than Seq[T].  This is a temporary option to ease transition.")
   val Yinvalidate = StringSetting("-Yinvalidate", "classpath-entry", "Invalidate classpath entry before run", "")
   val noSelfCheck = BooleanSetting("-Yno-self-type-checks", "Suppress check for self-type conformance among inherited members.")
+  val YtraceContextCreation = BooleanSetting("-Ytrace-context-creation", "Store stack trace of context creations.")
   val YshowSuppressedErrors = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally supressed.")
   val Yheartbeat = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations.")
   val Yprintpos = BooleanSetting("-Yprintpos", "show tree positions.")
