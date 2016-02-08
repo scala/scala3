@@ -223,7 +223,7 @@ trait ConstraintHandling {
   final def canConstrain(param: PolyParam): Boolean =
     !frozenConstraint && (constraint contains param)
 
-  /** Add constraint `param <: bond` if `fromBelow` is true, `param >: bound` otherwise.
+  /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
    *  `secondTry` of `TypeComparer`. In particular, it should not be an alias type,
    *  lazy ref, typevar, wildcard type, error type. In addition, upper bounds may
