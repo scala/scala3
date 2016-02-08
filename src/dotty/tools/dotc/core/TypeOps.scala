@@ -266,7 +266,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
     }
-    def approximateOr(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+    def approximateOr(tp1: Type, tp2: Type): Type = {
       def isClassRef(tp: Type): Boolean = tp match {
         case tp: TypeRef => tp.symbol.isClass
         case tp: RefinedType => isClassRef(tp.parent)
