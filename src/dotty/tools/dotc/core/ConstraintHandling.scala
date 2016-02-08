@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers._
+import collection.mutable
 
 /** Methods for adding constraints and solving them.
  *
@@ -35,6 +36,18 @@ trait ConstraintHandling {
 
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
+      def occursIn(bound: Type): Boolean = {
+        val b = bound.dealias
+        (b eq param) || {
+          b match {
+            case b: AndOrType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: TypeVar => occursIn(b.origin)
+            case _ => false
+          }
+        }
+      }
+      if (Config.checkConstraintsSeparated)
+        assert(!occursIn(bound), s"$param occurs in $bound")
       val c1 = constraint.narrowBound(param, bound, isUpper)
       (c1 eq constraint) || {
         constraint = c1
@@ -210,7 +223,7 @@ trait ConstraintHandling {
   final def canConstrain(param: PolyParam): Boolean =
     !frozenConstraint && (constraint contains param)
 
-  /** Add constraint `param <: bond` if `fromBelow` is true, `param >: bound` otherwise.
+  /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
    *  `secondTry` of `TypeComparer`. In particular, it should not be an alias type,
    *  lazy ref, typevar, wildcard type, error type. In addition, upper bounds may
@@ -222,11 +235,67 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+
+      def addParamBound(bound: PolyParam) =
+        if (fromBelow) addLess(bound, param) else addLess(param, bound)
+
+      /** Drop all constrained parameters that occur at the toplevel in `bound` and
+       *  handle them by `addLess` calls.
+       *  The preconditions make sure that such parameters occur only
+       *  in one of two ways:
+       *
+       *  1.
+       *
+       *    P <: Ts1 | ... | Tsm   (m > 0)
+       *    Tsi = T1 & ... Tn      (n >= 0)
+       *    Some of the Ti are constrained parameters
+       *
+       *  2.
+       *
+       *    Ts1 & ... & Tsm <: P   (m > 0)
+       *    Tsi = T1 | ... | Tn    (n >= 0)
+       *    Some of the Ti are constrained parameters
+       *
+       *  In each case we cannot leave the parameter in place,
+       *  because that would risk making a parameter later a subtype or supertype
+       *  of a bound where the parameter occurs again at toplevel, which leads to cycles
+       *  in the subtyping test. So we intentionally narrow the constraint by
+       *  recording an isLess relationship instead (even though this is not implied
+       *  by the bound).
+       *
+       *  Narrowing a constraint is better than widening it, because narrowing leads
+       *  to incompleteness (which we face anyway, see for instance eitherIsSubType)
+       *  but widening leads to unsoundness.
+       *
+       *  A test case that demonstrates the problem is i864.scala.
+       *  Turn Config.checkConstraintsSeparated on to get an accurate diagnostic
+       *  of the cycle when it is created.
+       *
+       *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
+       */
+      def prune(bound: Type): Type = bound match {
+        case bound: AndOrType =>
+          val p1 = prune(bound.tp1)
+          val p2 = prune(bound.tp2)
+          if (p1.exists && p2.exists) bound.derivedAndOrType(p1, p2)
+          else NoType
+        case bound: TypeVar if constraint contains bound.origin =>
+          prune(bound.underlying)
+        case bound: PolyParam if constraint contains bound =>
+          if (!addParamBound(bound)) NoType
+          else if (fromBelow) defn.NothingType
+          else defn.AnyType
+        case _ =>
+          bound
+      }
+
       try bound match {
         case bound: PolyParam if constraint contains bound =>
-          if (fromBelow) addLess(bound, param) else addLess(param, bound)
+          addParamBound(bound)
         case _ =>
-          if (fromBelow) addLowerBound(param, bound) else addUpperBound(param, bound)
+          val pbound = prune(bound)
+          pbound.exists && (
+            if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
       finally addConstraintInvocations -= 1
     }

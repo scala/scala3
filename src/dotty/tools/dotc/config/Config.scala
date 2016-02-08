@@ -15,11 +15,12 @@ object Config {
    */
   final val checkConstraintsNonCyclic = false
 
-  /** Like `checkConstraintsNonCyclic`, but all constrained parameters
-   *  are tested for direct or indirect dependencies, each time a
-   *  constraint is added in TypeComparer.
+  /** Make sure none of the bounds of a parameter in an OrderingConstraint
+   *  contains this parameter at its toplevel (i.e. as an operand of a
+   *  combination of &'s and |'s.). The check is performed each time a new bound
+   *  is added to the constraint.
    */
-  final val checkConstraintsNonCyclicTrans = false
+  final val checkConstraintsSeparated = false
 
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable.
