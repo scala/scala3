@@ -205,7 +205,9 @@ object TypeErasure {
   }
 
   /** The erased least upper bound is computed as follows
-   *  - if both argument are arrays, an array of the lub of the element types
+   *  - if both argument are arrays of objects, an array of the lub of the element types
+   *  - if both arguments are arrays of same primitives, an array of this primitive
+   *  - if one argument is array of primitives and the other is array of objects, Object
    *  - if one argument is an array, Object
    *  - otherwise a common superclass or trait S of the argument classes, with the
    *    following two properties:
@@ -217,8 +219,14 @@ object TypeErasure {
    */
   def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1 match {
     case JavaArrayType(elem1) =>
+      import dotty.tools.dotc.transform.TypeUtils._
       tp2 match {
-        case JavaArrayType(elem2) => JavaArrayType(erasedLub(elem1, elem2))
+        case JavaArrayType(elem2) =>
+          if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType) {
+            if (elem1.classSymbol eq elem2.classSymbol) // same primitive
+              JavaArrayType(elem1)
+            else defn.ObjectType
+          } else JavaArrayType(erasedLub(elem1, elem2))
         case _ => defn.ObjectType
       }
     case _ =>
