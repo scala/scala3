@@ -218,8 +218,12 @@ object TypeErasure {
   def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1 match {
     case JavaArrayType(elem1) =>
       tp2 match {
-        case JavaArrayType(elem2) => JavaArrayType(erasedLub(elem1, elem2))
-        case _ => defn.ObjectType
+        case JavaArrayType(elem2) =>
+          val lub = erasedLub(elem1, elem2)
+          if ((elem1 <:< lub) && (elem2 <:< lub)) JavaArrayType(lub)
+          else defn.ObjectType
+        case _ =>
+          defn.ObjectType
       }
     case _ =>
       tp2 match {
