@@ -1,9 +1,11 @@
 class C {
 
   private type T = E
+  private type Tok = D
   private val p: C = new C
 
   def f1(x: T): Unit = () // error
+  def f1(x: Tok): Unit = () // ok
   def f2(x: p.D): Unit = () // error
 
   val v1: T = ??? // error
