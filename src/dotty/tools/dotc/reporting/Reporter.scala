@@ -106,6 +106,9 @@ trait Reporting { this: Context =>
     reporter.report(new Error(msg, pos))
   }
 
+  def errorOrMigrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+    if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
+
   def restrictionError(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     error(s"Implementation restriction: $msg", pos)
 
