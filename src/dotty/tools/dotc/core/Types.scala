@@ -1199,6 +1199,15 @@ object Types {
      *      class B extends C[B] with D with E
      *
      *  we approximate `A | B` by `C[A | B] with D`
+     *
+     *  As a second measure we also homogenize refinements containing
+     *  type variables. For instance, if `A` is an instantiatable type variable,
+     *  then
+     *
+     *      ArrayBuffer[Int] | ArrayBuffer[A]
+     *
+     *  is approximated by instantiating `A` to `Int` and returning `ArrayBuffer[Int]`
+     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
      */
     def approximateUnion(implicit ctx: Context) = ctx.approximateUnion(this)
 
@@ -2848,6 +2857,11 @@ object Types {
       case _ => super.| (that)
     }
 
+    /** The implied bounds, where aliases are mapped to intervals from
+     *  Nothing/Any
+     */
+    def boundsInterval(implicit ctx: Context): TypeBounds = this
+
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
 
@@ -2885,6 +2899,11 @@ object Types {
       else if (v < 0) derivedTypeAlias(this.lo & that.lo, v)
       else super.| (that)
     }
+
+    override def boundsInterval(implicit ctx: Context): TypeBounds =
+      if (variance == 0) this
+      else if (variance < 0) TypeBounds.lower(alias)
+      else TypeBounds.upper(alias)
   }
 
   class CachedTypeAlias(alias: Type, variance: Int, hc: Int) extends TypeAlias(alias, variance) {

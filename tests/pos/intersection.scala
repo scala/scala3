@@ -1,3 +1,4 @@
+import dotty.language.keepUnions
 object intersection {
 
   class A
@@ -10,9 +11,6 @@ object intersection {
 
   val a: A & B => Unit = z
   val b: (A => Unit) | (B => Unit) = z
-
-
-
 
   type needsA = A => Nothing
   type needsB = B => Nothing
