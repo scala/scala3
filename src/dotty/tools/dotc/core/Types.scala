@@ -1014,6 +1014,12 @@ object Types {
       case _ => List()
     }
 
+    /** The full parent types, including all type arguments */
+    def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
+      case tp: TypeProxy => tp.underlying.parents
+      case _ => List()
+    }
+
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
@@ -2779,6 +2785,9 @@ object Types {
         parentsCache = cls.classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
       parentsCache
     }
+
+    override def parentsWithArgs(implicit ctx: Context): List[Type] =
+      parents.map(p => typeRef.baseTypeWithArgs(p.symbol))
 
     /** The parent types with all type arguments */
     def instantiatedParents(implicit ctx: Context): List[Type] =

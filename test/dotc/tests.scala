@@ -165,6 +165,8 @@ class tests extends CompilerTest {
   @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
+  @Test def neg_i997 = compileFile(negDir, "i997a", xerrors = 15)
+  @Test def neg_i997a = compileFile(negDir, "i997a", xerrors = 2)
   @Test def neg_i1050 = compileFile(negDir, "i1050", List("-strict"), xerrors = 11)
   @Test def neg_i1050a = compileFile(negDir, "i1050a", xerrors = 2)
   @Test def neg_i1050c = compileFile(negDir, "i1050c", xerrors = 8)

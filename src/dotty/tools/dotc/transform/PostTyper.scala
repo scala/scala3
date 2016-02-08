@@ -127,8 +127,42 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def transformAnnots(tree: MemberDef)(implicit ctx: Context): Unit =
-      tree.symbol.transformAnnotations(transformAnnot)
+    private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
+      val sym = tree.symbol
+      sym.transformAnnotations(transformAnnot)
+      type Errors = List[(String, Position)]
+      val notPrivate = new TypeAccumulator[Errors] {
+        def boundary(sym: Symbol): Symbol =
+          if (sym.is(Private)) sym.owner
+          else if (sym.privateWithin.exists) sym.privateWithin
+          else if (sym.is(Package)) sym
+          else boundary(sym.owner)
+        def apply(errors: Errors, tp: Type): Errors = tp match {
+          case tp: NamedType =>
+            val errors1 =
+              if (tp.symbol.is(Private) &&
+                  !boundary(sym).isContainedIn(boundary(tp.symbol))) {
+                //println(i"sym = $sym, ref = ${tp.symbol}, symb = ${boundary(sym)}, refb = ${boundary(tp.symbol)}")
+                (d"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}", tree.pos) :: errors
+              }
+              else foldOver(errors, tp)
+            if ((errors1 ne errors) && tp.info.isAlias) {
+              val errors2 = apply(errors, tp.info.bounds.hi)
+              if (errors2 eq errors) errors2
+              else errors1
+            }
+            else errors1
+          case tp: ClassInfo =>
+            (apply(errors, tp.prefix) /: tp.typeRef.parentsWithArgs)(apply)
+          case _ =>
+            foldOver(errors, tp)
+        }
+      }
+      if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) {
+        val errors = notPrivate(Nil, sym.info)
+        errors.foreach { case (msg, pos) => ctx.errorOrMigrationWarning(msg, pos) }
+      }
+    }
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val qual = tree.qualifier
@@ -172,10 +206,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
           finally parentNews = saved
         case tree: DefDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
         case tree: TypeDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           val sym = tree.symbol
           val tree1 =
             if (sym.isClass) tree
@@ -185,7 +219,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             }
           super.transform(tree1)
         case tree: MemberDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           super.transform(tree)
         case tree: New if !inJavaAnnot && !parentNews.contains(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
