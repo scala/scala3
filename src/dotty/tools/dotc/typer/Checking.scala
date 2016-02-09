@@ -56,12 +56,11 @@ object Checking {
         case AppliedTypeTree(tycon, args) =>
           // If `args` is a list of named arguments, return corresponding type parameters,
           // otherwise return type parameters unchanged
-          def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] = args match {
-            case (_: NamedArg) :: _ =>
+          def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] =
+            if (hasNamedArg(args))
               for (NamedArg(name, _) <- args) yield tycon.tpe.member(name).symbol
-            case _ =>
+            else
               tparams
-          }
           val tparams = matchNamed(tycon.tpe.typeSymbol.typeParams, args)
           val bounds = tparams.map(tparam =>
             tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
