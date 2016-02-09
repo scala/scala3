@@ -300,7 +300,7 @@ object Flags {
    */
   final val Abstract = commonFlag(23, "abstract")
 
-  /** Method is assumed to be stable */
+  /** Lazy val or method is known or assumed to be stable and realizable */
   final val Stable = termFlag(24, "<stable>")
 
   /** A case parameter accessor */

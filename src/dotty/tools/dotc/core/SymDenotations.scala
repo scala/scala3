@@ -12,6 +12,7 @@ import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
+import CheckRealizable._
 import typer.Mode
 import util.SimpleMap
 import util.Stats
@@ -519,15 +520,8 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) = {
-      val isUnstable =
-        (this is UnstableValue) ||
-        ctx.isVolatile(info) && !hasAnnotation(defn.UncheckedStableAnnot)
-      (this is Stable) || isType || {
-        if (isUnstable) false
-        else { setFlag(Stable); true }
-      }
-    }
+    final def isStable(implicit ctx: Context) =
+      isType || is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType])
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
@@ -816,14 +810,11 @@ object SymDenotations {
       enclClass(symbol, false)
     }
 
-    final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
-      (this.flags is Flags.PrivateOrFinal) || (!this.owner.isClass) ||
-        ((this.owner.flags is (Flags.ModuleOrFinal)) && (!this.flags.is(Flags.MutableOrLazy))) ||
-        (this.owner.isAnonymousClass)
-    }
+    /** A symbol is effectively final if it cannot be overridden in a subclass */
+    final def isEffectivelyFinal(implicit ctx: Context): Boolean =
+      is(PrivateOrFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
 
-    /** The class containing this denotation which has the given effective name.
-     */
+    /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
       if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)

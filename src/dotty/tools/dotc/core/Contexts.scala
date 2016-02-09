@@ -493,7 +493,7 @@ object Contexts {
   }
 
   @sharable object NoContext extends Context {
-    lazy val base = unsupported("base")
+    val base = null
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 

@@ -101,7 +101,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     case tree: TypeTree => tree
     case _ =>
       if (tree.isType) {
-        Checking.boundsChecker.traverse(tree)
+        Checking.typeChecker.traverse(tree)
         TypeTree(tree.tpe).withPos(tree.pos)
       }
       else tree.tpe.widenTermRefExpr match {
@@ -180,7 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           val tree1 =
             if (sym.isClass) tree
             else {
-              Checking.boundsChecker.traverse(tree.rhs)
+              Checking.typeChecker.traverse(tree.rhs)
               cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
             }
           super.transform(tree1)

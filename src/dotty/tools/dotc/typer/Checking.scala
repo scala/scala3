@@ -16,6 +16,7 @@ import Trees._
 import ProtoTypes._
 import Constants._
 import Scopes._
+import CheckRealizable._
 import ErrorReporting.errorTree
 import annotation.unchecked
 import util.Positions._
@@ -49,7 +50,7 @@ object Checking {
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Check all AppliedTypeTree nodes in this tree for legal bounds */
-  val boundsChecker = new TreeTraverser {
+  val typeChecker = new TreeTraverser {
     def traverse(tree: Tree)(implicit ctx: Context) = {
       tree match {
         case AppliedTypeTree(tycon, args) =>
@@ -57,6 +58,12 @@ object Checking {
           val bounds = tparams.map(tparam =>
             tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
           checkBounds(args, bounds, _.substDealias(tparams, _))
+        case Select(qual, name) if name.isTypeName =>
+          checkRealizable(qual.tpe, qual.pos)
+        case SelectFromTypeTree(qual, name) if name.isTypeName =>
+          checkRealizable(qual.tpe, qual.pos)
+        case SingletonTypeTree(ref) =>
+          checkRealizable(ref.tpe, ref.pos)
         case _ =>
       }
       traverseChildren(tree)
@@ -82,6 +89,15 @@ object Checking {
         }
       case _ =>
     }
+
+  /** Check that type `tp` is realizable. */
+  def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = realizability(tp)
+    if (rstatus ne Realizable) {
+      def msg = d"$tp is not a legal path\n since it${rstatus.msg}"
+      if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
+    }
+  }
 
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
@@ -319,8 +335,14 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable && !tp.isErroneous)
-      ctx.error(d"$tp is not stable", pos)
+    if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
+
+  /** Check that all type members of `tp` have realizable bounds */
+  def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    val rstatus = boundsRealizability(tp)
+    if (rstatus ne Realizable)
+      ctx.error(i"$tp cannot be instantiated since it${rstatus.msg}", pos)
+  }
 
  /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
    *  true check that `tp` is a trait.

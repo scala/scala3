@@ -42,6 +42,7 @@ class tests extends CompilerTest {
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
+  val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
@@ -101,15 +102,15 @@ class tests extends CompilerTest {
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
-  @Test def pos_i871 = compileFile(posSpecialDir, "i871", scala2mode)
-  @Test def pos_variancesConstr = compileFile(posSpecialDir, "variances-constr", scala2mode)
+  @Test def pos_scala2_all = compileFiles(posScala2Dir, scala2mode)
+
   @Test def pos_859 = compileFile(posSpecialDir, "i859", scala2mode)(allowDeepSubtypes)
 
   @Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_abstractOverride() = compileFile(negDir, "abstract-override", xerrors = 2)
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
-  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 3)
+  @Test def neg_bounds() = compileFile(negDir, "bounds", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 3)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
@@ -121,10 +122,10 @@ class tests extends CompilerTest {
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
-  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 12)
+  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 14)
   @Test def neg_overrideClass = compileFile(negDir, "overrideClass", List("-language:Scala2"), xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 2)
-  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 6)
+  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 3)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
 
   val negTailcallDir = negDir + "tailcall/"
@@ -146,10 +147,10 @@ class tests extends CompilerTest {
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
-  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
+  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 7)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
-  @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 3)
+  @Test def neg_hklower = compileFile(negDir, "hklower", xerrors = 4)
   @Test def neg_Iter2 = compileFile(negDir, "Iter2", xerrors = 2)
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
@@ -161,6 +162,9 @@ class tests extends CompilerTest {
   @Test def neg_i803 = compileFile(negDir, "i803", xerrors = 2)
   @Test def neg_i866 = compileFile(negDir, "i866", xerrors = 2)
   @Test def neg_i974 = compileFile(negDir, "i974", xerrors = 2)
+  @Test def neg_i1050 = compileFile(negDir, "i1050", List("-strict"), xerrors = 11)
+  @Test def neg_i1050a = compileFile(negDir, "i1050a", xerrors = 2)
+  @Test def neg_i1050c = compileFile(negDir, "i1050c", xerrors = 8)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
@@ -169,7 +173,7 @@ class tests extends CompilerTest {
   @Test def neg_selfreq = compileFile(negDir, "selfreq", xerrors = 2)
   @Test def neg_singletons = compileFile(negDir, "singletons", xerrors = 8)
   @Test def neg_shadowedImplicits = compileFile(negDir, "arrayclone-new", xerrors = 2)
-  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 2)
+  @Test def neg_ski = compileFile(negDir, "ski", xerrors = 12)
   @Test def neg_traitParamsTyper = compileFile(negDir, "traitParamsTyper", xerrors = 5)
   @Test def neg_traitParamsMixin = compileFile(negDir, "traitParamsMixin", xerrors = 2)
   @Test def neg_firstError = compileFile(negDir, "firstError", xerrors = 3)
@@ -199,7 +203,7 @@ class tests extends CompilerTest {
         |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
-  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant"))(allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")

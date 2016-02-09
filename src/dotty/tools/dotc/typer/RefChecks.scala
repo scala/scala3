@@ -211,7 +211,7 @@ object RefChecks {
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
-          if (member.owner == clazz) ctx.error(fullmsg+", member = $member", member.pos)
+          if (member.owner == clazz) ctx.error(fullmsg, member.pos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
@@ -330,10 +330,12 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       } else if (other.isStable && !member.isStable) { // (1.4)
         overrideError("needs to be a stable, immutable value")
-      } else if (member.is(Lazy) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
-        overrideError("cannot override a concrete non-lazy value")
-      } else if (other.is(Lazy, butNot = Deferred) && !other.isRealMethod && !member.is(Lazy)) {
-        overrideError("must be declared lazy to override a concrete lazy value")
+      } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
+        overrideError("may not override a concrete non-lazy value")
+      } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy)) {
+        overrideError("may not override a non-lazy value")
+      } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
+        overrideError("must be declared lazy to override a lazy value")
       } else if (other.is(Deferred) && member.is(Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)

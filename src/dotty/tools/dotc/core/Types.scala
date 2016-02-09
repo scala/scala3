@@ -573,6 +573,12 @@ object Types {
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
+    /** The set of abstract type members of this type. */
+    final def nonClassTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("nonClassTypeMembers") {
+      memberDenots(nonClassTypeNameFilter,
+          (name, buf) => buf += member(name).asSingleDenotation)
+    }
+
     /** The set of type members of this type */
     final def typeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("typeMembers") {
       memberDenots(typeNameFilter,
@@ -3365,6 +3371,15 @@ object Types {
       name.isTypeName && {
         val mbr = pre.member(name)
         (mbr.symbol is Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
+      }
+  }
+
+  /** A filter for names of abstract types of a given type */
+  object nonClassTypeNameFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      name.isTypeName && {
+        val mbr = pre.member(name)
+        mbr.symbol.isType && !mbr.symbol.isClass
       }
   }
 

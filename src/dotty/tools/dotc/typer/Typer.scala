@@ -919,8 +919,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.tree)
-    // necessary in order to mark the typed ahead annotations as definitiely typed:
-    untpd.modsDeco(mdef).mods.annotations.mapconserve(typedAnnotation)
+    // necessary in order to mark the typed ahead annotations as definitely typed:
+    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation)
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
@@ -986,6 +986,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
+    if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.pos)
     assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
 
     // todo later: check that
@@ -1057,6 +1058,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkStable(expr1.tpe, imp.expr.pos)
+    if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.pos)
     assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
   }
 
