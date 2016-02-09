@@ -49,7 +49,10 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
-  /** Check all AppliedTypeTree nodes in this tree for legal bounds @@@ */
+  /** Traverse type tree, performing the following checks:
+   *  1. All arguments of applied type trees must conform to their bounds.
+   *  2. Prefixes of type selections and singleton types must be realizable.
+   */
   val typeChecker = new TreeTraverser {
     def traverse(tree: Tree)(implicit ctx: Context) = {
       tree match {

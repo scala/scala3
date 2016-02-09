@@ -63,23 +63,6 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
 
-  /** Is this type a path with some part that is initialized on use?
-   */
-  private def isLateInitialized(tp: Type): Boolean = tp.dealias match {
-    case tp: TermRef =>
-      isLateInitialized(tp.symbol) || isLateInitialized(tp.prefix)
-    case _: SingletonType | NoPrefix =>
-      false
-    case tp: TypeRef =>
-      true
-    case tp: TypeProxy =>
-      isLateInitialized(tp.underlying)
-    case tp: AndOrType =>
-      isLateInitialized(tp.tp1) || isLateInitialized(tp.tp2)
-    case _ =>
-      true
-  }
-
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
@@ -121,13 +104,17 @@ class CheckRealizable(implicit ctx: Context) {
     }
   }
 
-  /** `Realizable` if `tp` all of `tp`'s non-struct fields have realizable types,
+  /** `Realizable` if all of `tp`'s non-struct fields have realizable types,
    *  a `HasProblemField` instance pointing to a bad field otherwise.
    */
   private def memberRealizability(tp: Type) = {
     def checkField(sofar: Realizability, fld: SingleDenotation): Realizability =
       sofar andAlso {
         if (checkedFields.contains(fld.symbol) || fld.symbol.is(Private | Mutable | Lazy))
+          // if field is private it cannot be part of a visible path
+          // if field is mutable it cannot be part of a path
+          // if field is lazy it does not need to be initialized when the owning object is
+          // so in all cases the field does not influence realizability of the enclosing object.
           Realizable
         else {
           checkedFields += fld.symbol
