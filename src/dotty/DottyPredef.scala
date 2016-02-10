@@ -2,11 +2,11 @@ package dotty
 
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
-import scala.Predef.???  // this is currently ineffective, because of #530
+import scala.Predef.???
 
 abstract class I1 {
-  implicit def classTag[T]: ClassTag[T] = scala.Predef.???
-  implicit def typeTag[T]: TypeTag[T] = scala.Predef.???
+  implicit def classTag[T]: ClassTag[T] = ???
+  implicit def typeTag[T]: TypeTag[T] = ???
   implicit val DoubleClassTag: ClassTag[Double]   = ClassTag.Double
 }
 abstract class I2 extends I1 {
