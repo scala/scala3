@@ -342,7 +342,7 @@ object Checking {
             else errors1
           } else errors1
         case tp: ClassInfo =>
-          (apply(errors, tp.prefix) /: tp.typeRef.parentsWithArgs)(apply)
+          (apply(errors, tp.prefix) /: tp.parentsWithArgs)(apply)
         case _ =>
           foldOver(errors, tp)
       }

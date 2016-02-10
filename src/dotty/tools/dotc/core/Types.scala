@@ -1016,7 +1016,7 @@ object Types {
 
     /** The full parent types, including all type arguments */
     def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
-      case tp: TypeProxy => tp.underlying.parents
+      case tp: TypeProxy => tp.underlying.parentsWithArgs
       case _ => List()
     }
 
@@ -2786,11 +2786,8 @@ object Types {
       parentsCache
     }
 
-    override def parentsWithArgs(implicit ctx: Context): List[Type] =
-      parents.map(p => typeRef.baseTypeWithArgs(p.symbol))
-
     /** The parent types with all type arguments */
-    def instantiatedParents(implicit ctx: Context): List[Type] =
+    override def parentsWithArgs(implicit ctx: Context): List[Type] =
       parents mapConserve { pref =>
         ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
           val targSym = decls.lookup(tparam.name)
