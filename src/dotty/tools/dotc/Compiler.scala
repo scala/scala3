@@ -77,6 +77,7 @@ class Compiler {
            new GetClass), // getClass transformation should be applied to specialized methods
       List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,
+           new DropEmptyCompanions,
            new Flatten,
            new RestoreScopes),
       List(/*new PrivateToStatic,*/
