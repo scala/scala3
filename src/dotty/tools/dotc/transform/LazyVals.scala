@@ -63,8 +63,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
       if (isField) {
         if (sym.isVolatile ||
-          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic))) 
-          // module class is user-defined. 
+          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic)))
+          // module class is user-defined.
           // Should be threadsafe, to mimic safety guaranteed by global object
           transformMemberDefVolatile(tree)
         else if (sym.is(Flags.Module)) { // synthetic module
@@ -101,7 +101,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     */
   def transformSyntheticModule(tree: ValOrDefDef)(implicit ctx: Context) = {
     val sym = tree.symbol
-    val holderSymbol = ctx.newSymbol(sym.owner, sym.asTerm.name ++ nme.LAZY_LOCAL,
+    val holderSymbol = ctx.newSymbol(sym.owner, sym.asTerm.name.lazyLocalName,
       Flags.Synthetic, sym.info.widen.resultType).enteredAfter(this)
     val field = ValDef(holderSymbol, tree.rhs.changeOwnerAfter(sym, holderSymbol, this))
     val getter = DefDef(sym.asTerm, ref(holderSymbol))
@@ -114,7 +114,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       */
     def transformLocalDef(x: ValOrDefDef)(implicit ctx: Context) = {
         val valueInitter = x.rhs
-        val holderName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
+        val holderName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
         val initName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL_INIT).toTermName
         val tpe = x.tpe.widen.resultType.widen
 
@@ -206,7 +206,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val claz = x.symbol.owner.asClass
         val tpe = x.tpe.widen.resultType.widen
         assert(!(x.mods is Flags.Mutable))
-        val containerName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
+        val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName,
           x.symbol.flags &~ containerFlagsMask | containerFlags | Flags.Private,
           tpe, coord = x.symbol.coord
@@ -367,7 +367,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             appendOffsetDefs += (companion.moduleClass -> new OffsetInfo(List(offsetTree), ord))
         }
 
-        val containerName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
+        val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
         val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 

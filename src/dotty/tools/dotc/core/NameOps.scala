@@ -82,6 +82,7 @@ object NameOps {
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
     def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
+    def isLazyLocal = name.endsWith(nme.LAZY_LOCAL)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
@@ -423,5 +424,11 @@ object NameOps {
         case NO_NAME => primitivePostfixMethodName
         case name => name
       }
+
+    def lazyLocalName = name ++ nme.LAZY_LOCAL
+    def nonLazyName = {
+      assert(name.isLazyLocal)
+      name.dropRight(nme.LAZY_LOCAL.length)
+    }
   }
 }
