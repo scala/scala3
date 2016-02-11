@@ -17,4 +17,9 @@ object Test {
   def main(args : Array[String]) : Unit = {
     b.initialize;
   }
+  class XYZ
 }
+
+
+
+
