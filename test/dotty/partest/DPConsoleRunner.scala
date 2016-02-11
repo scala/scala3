@@ -65,8 +65,9 @@ class DPSuiteRunner(testSourcePath: String, // relative path, like "files", or "
   consoleArgs: String,
   javaCmdPath: String = PartestDefaults.javaCmd,
   javacCmdPath: String = PartestDefaults.javacCmd,
-  scalacExtraArgs: Seq[String] = Seq.empty)
-extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPath, javacCmdPath, scalacExtraArgs) {
+  scalacExtraArgs: Seq[String] = Seq.empty,
+  javaOpts: String = DPConfig.runJVMOpts)
+extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPath, javacCmdPath, scalacExtraArgs, javaOpts) {
 
   if (!DPConfig.runTestsInParallel)
     sys.props("partest.threads") = "1"
