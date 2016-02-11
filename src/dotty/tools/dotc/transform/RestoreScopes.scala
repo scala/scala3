@@ -23,35 +23,46 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
   override def phaseName = "restoreScopes"
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
-    val TypeDef(_, impl: Template) = tree
-    //
-    val restoredDecls = newScope
-    for (stat <- impl.constr :: impl.body)
-      if (stat.isInstanceOf[MemberDef] && stat.symbol.exists)
-        restoredDecls.enter(stat.symbol)
+  /* Note: We need to wait until we see a package definition because
+   * DropEmptyConstructors changes template members when analyzing the
+   * enclosing package definitions. So by the time RestoreScopes gets to
+   * see a typedef or template, it still might be changed by DropEmptyConstructors.
+   */
+  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
+    pdef.stats.foreach(restoreScope)
+    pdef
+  }
+
+  private def restoreScope(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
+    case TypeDef(_, impl: Template) =>
+      val restoredDecls = newScope
+      for (stat <- impl.constr :: impl.body)
+        if (stat.isInstanceOf[MemberDef] && stat.symbol.exists)
+          restoredDecls.enter(stat.symbol)
       // Enter class in enclosing package scope, in case it was an inner class before flatten.
       // For top-level classes this does nothing.
-    val cls = tree.symbol.asClass
-    val pkg = cls.owner.asClass
+      val cls = tree.symbol.asClass
+      val pkg = cls.owner.asClass
 
-    // Bring back companion links
-    val companionClass  = cls.info.decls.lookup(nme.COMPANION_CLASS_METHOD)
-    val companionModule = cls.info.decls.lookup(nme.COMPANION_MODULE_METHOD)
+      // Bring back companion links
+      val companionClass = cls.info.decls.lookup(nme.COMPANION_CLASS_METHOD)
+      val companionModule = cls.info.decls.lookup(nme.COMPANION_MODULE_METHOD)
 
-    if (companionClass.exists) {
-      restoredDecls.enter(companionClass)
-    }
+      if (companionClass.exists) {
+        restoredDecls.enter(companionClass)
+      }
 
-    if (companionModule.exists) {
-      restoredDecls.enter(companionModule)
-    }
+      if (companionModule.exists) {
+        restoredDecls.enter(companionModule)
+      }
 
-    pkg.enter(cls)
-    val cinfo = cls.classInfo
-    tree.symbol.copySymDenotation(
-      info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error
-        decls = restoredDecls: Scope)).installAfter(thisTransform)
-    tree
+      pkg.enter(cls)
+      val cinfo = cls.classInfo
+      tree.symbol.copySymDenotation(
+        info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error
+          decls = restoredDecls: Scope)).installAfter(thisTransform)
+      tree
+    case tree => tree
   }
 }
+

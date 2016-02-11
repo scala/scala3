@@ -12,55 +12,55 @@ import ast.Trees._
 import collection.mutable
 import Decorators._
 import NameOps._
-import TreeTransforms.{TreeTransform, MiniPhase}
+import TreeTransforms.MiniPhaseTransform
 import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
 
-/** Remove companion objects that are empty */
-class DropEmptyCompanions extends MiniPhase { thisTransform =>
+/** Remove companion objects that are empty
+ *  Lots of constraints here:
+ *  1. It's impractical to place DropEmptyCompanions before lambda lift because dropped
+ *     modules can be anywhere and have hard to trace references.
+ *  2. DropEmptyCompanions cannot be interleaved with LambdaLift or Flatten because
+ *     they put things in liftedDefs sets which cause them to surface later. So
+ *     removed modules resurface.
+ *  3. DropEmptyCompanions has to be before RestoreScopes.
+ *  The solution to the constraints is to put DropEmptyCompanions between Flatten
+ *  and RestoreScopes and to only start working once we are back on PackageDef
+ *  level, so we know that all objects moved by LambdaLift and Flatten have arrived
+ *  at their destination.
+ */
+class DropEmptyCompanions extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
   override def phaseName = "dropEmpty"
-  val treeTransform = new Transform(Set())
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Flatten])
 
-  class Transform(dropped: Set[Symbol]) extends TreeTransform {
-    def phase = thisTransform
+  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
 
     /** Is `tree` an empty companion object? */
-    private def isEmptyCompanion(tree: Tree)(implicit ctx: Context) = tree match {
-      case TypeDef(_, impl: Template) if
-        tree.symbol.is(SyntheticModule) &&
+    def isEmptyCompanion(tree: Tree) = tree match {
+      case TypeDef(_, impl: Template) if tree.symbol.is(SyntheticModule) &&
         tree.symbol.companionClass.exists &&
         impl.body.forall(_.symbol.isPrimaryConstructor) =>
-        //println(i"removing ${tree.symbol}")
+        println(i"removing ${tree.symbol}")
         true
       case _ =>
         false
     }
 
-    /** A transform which has all empty companion objects in `stats`
-     *  recorded in its `dropped` set.
-     */
-    private def localTransform(stats: List[Tree])(implicit ctx: Context) =
-      new Transform(stats.filter(isEmptyCompanion).map(_.symbol).toSet)
-
-    override def prepareForTemplate(tree: Template)(implicit ctx: Context) =
-      localTransform(tree.body)
-
-    override def prepareForStats(trees: List[Tree])(implicit ctx: Context) =
-      if (ctx.owner is Package) localTransform(trees) else this
+    val dropped = pdef.stats.filter(isEmptyCompanion).map(_.symbol).toSet
 
     /** Symbol is a $lzy field representing a module */
-    private def isLazyModuleVar(sym: Symbol)(implicit ctx: Context) =
+    def isLazyModuleVar(sym: Symbol) =
       sym.name.isLazyLocal &&
-      sym.owner.info.decl(sym.name.asTermName.nonLazyName).symbol.is(Module)
+        sym.owner.info.decl(sym.name.asTermName.nonLazyName).symbol.is(Module)
 
     /** Symbol should be dropped together with a dropped companion object.
      *  Such symbols are:
      *   - lzy fields pointing to modules,
      *   - vals and getters representing modules.
      */
-    private def toDrop(sym: Symbol)(implicit ctx: Context): Boolean =
+    def symIsDropped(sym: Symbol): Boolean =
       (sym.is(Module) || isLazyModuleVar(sym)) &&
-      dropped.contains(sym.info.resultType.typeSymbol)
+        dropped.contains(sym.info.resultType.typeSymbol)
 
     /** Tree should be dropped because it (is associated with) an empty
      *  companion object. Such trees are
@@ -68,14 +68,31 @@ class DropEmptyCompanions extends MiniPhase { thisTransform =>
      *   - definitions of lazy module variables or assignments to them.
      *   - vals and getters for empty companion objects
      */
-    private def toDrop(stat: Tree)(implicit ctx: Context): Boolean = stat match {
+    def toDrop(stat: Tree): Boolean = stat match {
       case stat: TypeDef => dropped.contains(stat.symbol)
-      case stat: ValOrDefDef => toDrop(stat.symbol)
-      case stat: Assign => toDrop(stat.lhs.symbol)
+      case stat: ValOrDefDef => symIsDropped(stat.symbol)
+      case stat: Assign => symIsDropped(stat.lhs.symbol)
       case _ => false
     }
 
-    override def transformStats(stats: List[Tree])(implicit ctx: Context, info: TransformerInfo) =
-      stats.filterNot(toDrop)
+    def prune(tree: Tree): Tree = tree match {
+      case tree @ TypeDef(name, impl @ Template(constr, _, _, _)) =>
+        cpy.TypeDef(tree)(
+          rhs = cpy.Template(impl)(
+            constr = cpy.DefDef(constr)(rhs = pruneLocals(constr.rhs)),
+            body = pruneStats(impl.body)))
+      case _ =>
+        tree
+    }
+
+    def pruneStats(stats: List[Tree]) =
+      stats.filterConserve(!toDrop(_)).mapConserve(prune)
+
+    def pruneLocals(expr: Tree) = expr match {
+      case Block(stats, expr) => cpy.Block(expr)(pruneStats(stats), expr)
+      case _ => expr
+    }
+
+    cpy.PackageDef(pdef)(pdef.pid, pruneStats(pdef.stats))
   }
 }
