@@ -26,10 +26,12 @@ class DropEmptyCompanions extends MiniPhase { thisTransform =>
 
     /** Is `tree` an empty companion object? */
     private def isEmptyCompanion(tree: Tree)(implicit ctx: Context) = tree match {
-      case TypeDef(_, impl: Template) =>
-        tree.symbol.is(Module) &&
+      case TypeDef(_, impl: Template) if
+        tree.symbol.is(SyntheticModule) &&
         tree.symbol.companionClass.exists &&
-        impl.body.forall(_.symbol.isPrimaryConstructor)
+        impl.body.forall(_.symbol.isPrimaryConstructor) =>
+        //println(i"removing ${tree.symbol}")
+        true
       case _ =>
         false
     }
