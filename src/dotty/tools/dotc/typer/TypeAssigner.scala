@@ -8,6 +8,7 @@ import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, 
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import util.Positions._
 import config.Printers._
+import NameOps._
 
 trait TypeAssigner {
   import tpd._
@@ -16,7 +17,11 @@ trait TypeAssigner {
    *  @param packageOk   The qualifier may refer to a package.
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol = {
-    def qualifies(sym: Symbol) = sym.isClass && (qual.isEmpty || sym.name == qual)
+    def qualifies(sym: Symbol) =
+      sym.isClass && (
+          qual.isEmpty ||
+          sym.name == qual ||
+          sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
     ctx.outersIterator.map(_.owner).find(qualifies) match {
       case Some(c) if packageOK || !(c is Package) =>
         c
