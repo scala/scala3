@@ -402,7 +402,8 @@ trait Implicits { self: Typer =>
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)
         || (from.tpe isRef defn.NothingClass)
-        || (from.tpe isRef defn.NullClass)) NoImplicitMatches
+        || (from.tpe isRef defn.NullClass)
+        || (from.tpe eq NoPrefix)) NoImplicitMatches
     else
       try inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
       catch {
