@@ -67,7 +67,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
     ta.assignType(untpd.Typed(expr, tpt), tpt)
 
-  def NamedArg(name: Name, arg: Tree)(implicit ctx: Context) =
+  def NamedArg(name: Name, arg: Tree)(implicit ctx: Context): NamedArg =
     ta.assignType(untpd.NamedArg(name, arg), arg)
 
   def Assign(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign =

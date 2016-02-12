@@ -48,9 +48,8 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
     }
 
     pkg.enter(cls)
-    val cinfo = cls.classInfo
     tree.symbol.copySymDenotation(
-      info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error
+      info = cls.classInfo.derivedClassInfo(
         decls = restoredDecls: Scope)).installAfter(thisTransform)
     tree
   }

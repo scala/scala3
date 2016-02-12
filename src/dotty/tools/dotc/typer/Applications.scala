@@ -29,8 +29,6 @@ import language.implicitConversions
 
 object Applications {
   import tpd._
-  private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
-  def hasNamedArg(args: List[Any]) = args exists isNamedArg
 
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx:Context) = {
     val ref = tp.member(name).suchThat(_.info.isParameterless)
@@ -263,7 +261,12 @@ trait Applications extends Compatibility { self: Typer =>
         case Select(receiver, _) => receiver
         case mr => mr.tpe.normalizedPrefix match {
           case mr: TermRef => ref(mr)
-          case _ => EmptyTree
+          case mr =>
+            if (this.isInstanceOf[TestApplication[_]])
+              // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
+              ref(mr.narrow)
+            else
+              EmptyTree
         }
       }
       val getterPrefix =
@@ -600,11 +603,24 @@ trait Applications extends Compatibility { self: Typer =>
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
     throw new Error(s"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
 
+  def typedNamedArgs(args: List[untpd.Tree])(implicit ctx: Context) =
+    for (arg @ NamedArg(id, argtpt) <- args) yield {
+      val argtpt1 = typedType(argtpt)
+      cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
+    }
+
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
-    var typedArgs = tree.args mapconserve (typedType(_))
+    val isNamed = hasNamedArg(tree.args)
+    var typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>
+        def namedParamBound(arg: Tree): Option[Type] = {
+          val NamedArg(id, _) = arg
+          val idx = pt.paramNames.indexOf(id)
+          if (idx < 0) None else Some(pt.paramBounds(idx))
+        }
+        val paramBounds = if (isNamed) typedArgs.flatMap(namedParamBound) else pt.paramBounds
         if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
       case _ =>
@@ -1056,10 +1072,8 @@ trait Applications extends Compatibility { self: Typer =>
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
           if (normArgs exists (_.isInstanceOf[untpd.Function]))
-            if (args exists (_.isInstanceOf[Trees.NamedArg[_]]))
-              narrowByTrees(alts, args map treeShape, resultType)
-            else
-              narrowByTypes(alts, normArgs map typeShape, resultType)
+            if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
+            else narrowByTypes(alts, normArgs map typeShape, resultType)
           else
             alts
         }
@@ -1100,10 +1114,13 @@ trait Applications extends Compatibility { self: Typer =>
         // the arguments (which are constants) to be adapted to Byte. If we had picked
         // `candidates` instead, no solution would have been found.
       case alts =>
-//      overload.println(i"ambiguous $alts%, %")
-        val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-        else alts
+        val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+        if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
+        else {
+          val deepPt = pt.deepenProto
+          if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+          else alts
+        }
     }
   }
 

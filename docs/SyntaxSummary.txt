@@ -103,7 +103,7 @@ grammar.
   RefinedType       ::=  WithType {[nl] Refinement}                             RefinedTypeTree(t, ds)
   WithType          ::=  AnnotType {`with' AnnotType}                           (deprecated)
   AnnotType         ::=  SimpleType {Annotation}                                Annotated(t, annot)
-  SimpleType        ::=  SimpleType TypeArgs                                    AppliedTypeTree(t, args)
+  SimpleType        ::=  SimpleType (TypeArgs | NamedTypeArgs)                  AppliedTypeTree(t, args)
                       |  SimpleType `#' id                                      SelectFromTypeTree(t, name)
                       |  StableId
                       |  Path `.' `type'                                        SingletonTypeTree(p)
@@ -118,6 +118,8 @@ grammar.
   ParamType         ::=  [`=>'] ParamValueType
   ParamValueType    ::=  Type [`*']                                             PostfixOp(t, "*")
   TypeArgs          ::=  `[' ArgTypes `]'                                       ts
+  NamedTypeArg      ::=  id `=' ArgType                                         NamedArg(id, t)
+  NamedTypeArgs     ::=  `[' NamedTypeArg {`,' NamedTypeArg} `]'                nts
   Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
   TypeBounds        ::=  [`>:' Type] [`<: Type] | INT                           TypeBoundsTree(lo, hi)
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
@@ -160,7 +162,7 @@ grammar.
                       |  `_'
                       |  `(' ExprsInParens `)'                                  Parens(exprs)
                       |  SimpleExpr `.' id                                      Select(expr, id)
-                      |  SimpleExpr TypeArgs                                    TypeApply(expr, args)
+                      |  SimpleExpr (TypeArgs | NamedTypeArgs)                  TypeApply(expr, args)
                       |  SimpleExpr1 ArgumentExprs                              Apply(expr, args)
                       |  XmlExpr
   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}

@@ -215,6 +215,10 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _                   => false
   }
 
+  /** Does this list contain a named argument tree? */
+  def hasNamedArg(args: List[Any]) = args exists isNamedArg
+  val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
+
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */
   def isDefaultCase(cdef: CaseDef) = cdef match {
     case CaseDef(pat, EmptyTree, _) => isWildcardArg(pat)

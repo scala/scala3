@@ -1481,6 +1481,20 @@ object SymDenotations {
       if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
+    /** Make sure the type parameters of this class are `tparams`, reorder definitions
+     *  in scope if necessary.
+     *  @pre  All type parameters in `tparams` are entered in class scope `info.decls`.
+     */
+    def updateTypeParams(tparams: List[Symbol])(implicit ctx: Context): Unit =
+      if (!typeParams.corresponds(tparams)(_.name == _.name)) {
+        val decls = info.decls
+        val decls1 = newScope
+        for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
+        for (sym <- decls) if (!typeParams.contains(sym)) decls1.enter(sym)
+        info = classInfo.derivedClassInfo(decls = decls1)
+        myTypeParams = null
+      }
+
     /** All members of this class that have the given name.
      *  The elements of the returned pre-denotation all
      *  have existing symbols.

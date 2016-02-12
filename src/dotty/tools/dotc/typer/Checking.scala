@@ -49,12 +49,19 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
-  /** Check all AppliedTypeTree nodes in this tree for legal bounds */
+  /** Check all AppliedTypeTree nodes in this tree for legal bounds @@@ */
   val typeChecker = new TreeTraverser {
     def traverse(tree: Tree)(implicit ctx: Context) = {
       tree match {
         case AppliedTypeTree(tycon, args) =>
-          val tparams = tycon.tpe.typeSymbol.typeParams
+          // If `args` is a list of named arguments, return corresponding type parameters,
+          // otherwise return type parameters unchanged
+          def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] =
+            if (hasNamedArg(args))
+              for (NamedArg(name, _) <- args) yield tycon.tpe.member(name).symbol
+            else
+              tparams
+          val tparams = matchNamed(tycon.tpe.typeSymbol.typeParams, args)
           val bounds = tparams.map(tparam =>
             tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
           checkBounds(args, bounds, _.substDealias(tparams, _))

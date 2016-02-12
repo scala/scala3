@@ -8,6 +8,8 @@ import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, 
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import util.Positions._
 import config.Printers._
+import ast.Trees._
+import collection.mutable
 
 trait TypeAssigner {
   import tpd._
@@ -179,8 +181,11 @@ trait TypeAssigner {
             ErrorType
           }
         }
-        else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
-          ensureAccessible(d.info.bounds.hi, superAccess, pos)
+        else if (d.symbol is TypeParamAccessor)
+          if (d.info.isAlias)
+            ensureAccessible(d.info.bounds.hi, superAccess, pos)
+          else // It's a named parameter, use the non-symbolic representation to pick up inherited versions as well
+            d.symbol.owner.thisType.select(d.symbol.name)
         else
           ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
@@ -302,9 +307,44 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case pt: PolyType =>
-        val argTypes = args.tpes
-        if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
-        else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+        val paramNames = pt.paramNames
+        if (hasNamedArg(args)) {
+          val argMap = new mutable.HashMap[Name, Type]
+          for (NamedArg(name, arg) <- args)
+            if (argMap.contains(name))
+              ctx.error("duplicate name", arg.pos)
+            else if (!paramNames.contains(name))
+              ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
+            else
+              argMap(name) = arg.tpe
+          var missingParamCount = 0
+          def nextMissingParam =
+            try PolyParam(pt, missingParamCount) finally missingParamCount += 1
+          val normArgs = paramNames.map(pname => argMap.getOrElse(pname, nextMissingParam))
+          val transform = new TypeMap {
+            def apply(t: Type) = t match {
+              case PolyParam(`pt`, idx) => normArgs(idx)
+              case _ => mapOver(t)
+            }
+          }
+          val resultType1 = transform(pt.resultType)
+          if (missingParamCount == 0) resultType1
+          else {
+            val (missingParamNames, missingParamBounds) =
+              (paramNames, pt.paramBounds).zipped.filter {
+                case (pname, _) => !argMap.contains(pname)
+              }
+            pt.derivedPolyType(
+              missingParamNames,
+              missingParamBounds.map(transform(_).bounds),
+              resultType1)
+          }
+        }
+        else {
+          val argTypes = args.tpes
+          if (sameLength(argTypes, paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
+          else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+        }
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
@@ -370,8 +410,25 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
+    def refineNamed(tycon: Type, arg: Tree) = arg match {
+      case ast.Trees.NamedArg(name, argtpt) =>
+        // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
+        val tparam = tparams.find(_.name == name) match {
+          case Some(tparam) => tparam
+          case none =>
+            val sym = tycon.member(name).symbol
+            if (sym.isAbstractType) sym
+            else if (sym.is(ParamAccessor)) sym.info.dealias.typeSymbol
+            else NoSymbol
+        }
+        if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
+        else errorType(s"$tycon does not have a parameter or abstract type member named $name", arg.pos)
+      case _ =>
+        errorType(s"named and positional type arguments may not be mixed", arg.pos)
+    }
     val ownType =
-      if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
+      if (hasNamedArg(args)) (tycon.tpe /: args)(refineNamed)
+      else if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
       else errorType(d"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
     tree.withType(ownType)
   }

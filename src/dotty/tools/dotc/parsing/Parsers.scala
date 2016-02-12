@@ -740,7 +740,7 @@ object Parsers {
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
-      case LBRACKET => simpleTypeRest(atPos(t.pos.start) { AppliedTypeTree(t, typeArgs()) })
+      case LBRACKET => simpleTypeRest(atPos(t.pos.start) { AppliedTypeTree(t, typeArgs(namedOK = true)) })
       case _ => t
     }
 
@@ -759,9 +759,37 @@ object Parsers {
       }
       else typ()
 
-    /**   ArgTypes          ::=  ArgType {`,' ArgType}
+    /** NamedTypeArg      ::=  id `=' ArgType
      */
-    def argTypes() = commaSeparated(argType)
+    val namedTypeArg = () => {
+      val name = ident()
+      accept(EQUALS)
+      NamedArg(name.toTypeName, argType())
+    }
+
+    /**   ArgTypes          ::=  ArgType {`,' ArgType}
+     *                           NamedTypeArg {`,' NamedTypeArg}
+     */
+    def argTypes(namedOK: Boolean = false) = {
+      def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
+        val rest =
+          if (in.token == COMMA) {
+            in.nextToken()
+            commaSeparated(arg)
+          }
+          else Nil
+        first :: rest
+      }
+      if (namedOK && in.token == IDENTIFIER)
+        argType() match {
+          case Ident(name) if in.token == EQUALS =>
+            in.nextToken()
+            otherArgs(NamedArg(name, argType()), namedTypeArg)
+          case firstArg =>
+            otherArgs(firstArg, argType)
+        }
+      else commaSeparated(argType)
+    }
 
     /** FunArgType ::=  ArgType | `=>' ArgType
      */
@@ -785,9 +813,10 @@ object Parsers {
       } else t
     }
 
-    /** TypeArgs    ::= `[' ArgType {`,' ArgType} `]'
-       */
-    def typeArgs(): List[Tree] = inBrackets(argTypes())
+    /** TypeArgs      ::= `[' ArgType {`,' ArgType} `]'
+     *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
+     */
+    def typeArgs(namedOK: Boolean = false): List[Tree] = inBrackets(argTypes(namedOK))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -1045,7 +1074,7 @@ object Parsers {
      *                 |  Path
      *                 |  `(' [ExprsInParens] `)'
      *                 |  SimpleExpr `.' Id
-     *                 |  SimpleExpr TypeArgs
+     *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      */
     def simpleExpr(): Tree = {
@@ -1094,7 +1123,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selector(t), canApply = true)
         case LBRACKET =>
-          val tapp = atPos(t.pos.start, in.offset) { TypeApply(t, typeArgs()) }
+          val tapp = atPos(t.pos.start, in.offset) { TypeApply(t, typeArgs(namedOK = true)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE if canApply =>
           val app = atPos(t.pos.start, in.offset) { Apply(t, argumentExprs()) }
@@ -1493,7 +1522,7 @@ object Parsers {
             atPos(modStart, in.offset) {
               if (in.token == TYPE) {
                 in.nextToken()
-                mods | Param
+                mods | Param | ParamAccessor
               } else {
                 if (mods.hasFlags) syntaxError("`type' expected")
                 mods | Param | PrivateLocal

@@ -17,6 +17,7 @@ import SymDenotations._
 import Annotations._
 import Names._
 import NameOps._
+import Applications._
 import Flags._
 import Decorators._
 import ErrorReporting._
@@ -865,26 +866,30 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)(ctx retractMode Mode.Pattern)
     val tparams = tpt1.tpe.typeParams
-    var args = tree.args
     if (tparams.isEmpty) {
       ctx.error(d"${tpt1.tpe} does not take type parameters", tree.pos)
       tpt1
     }
     else {
-      if (args.length != tparams.length) {
-        ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
-        args = args.take(tparams.length)
-      }
-      def typedArg(arg: untpd.Tree, tparam: Symbol) = {
-        val (desugaredArg, argPt) =
-          if (ctx.mode is Mode.Pattern)
-            (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.info)
-          else
-            (arg, WildcardType)
-        val arg1 = typed(desugaredArg, argPt)
-        adaptTypeArg(arg1, tparam.info)
-      }
-      val args1 = args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+      var args = tree.args
+      val args1 =
+        if (hasNamedArg(args)) typedNamedArgs(args)
+        else {
+          if (args.length != tparams.length) {
+            ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
+            args = args.take(tparams.length)
+          }
+          def typedArg(arg: untpd.Tree, tparam: Symbol) = {
+            val (desugaredArg, argPt) =
+              if (ctx.mode is Mode.Pattern)
+                (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.info)
+              else
+                (arg, WildcardType)
+            val arg1 = typed(desugaredArg, argPt)
+            adaptTypeArg(arg1, tparam.info)
+          }
+          args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+        }
       // check that arguments conform to bounds is done in phase PostTyper
       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
     }
