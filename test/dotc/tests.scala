@@ -155,6 +155,7 @@ class tests extends CompilerTest {
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
+  @Test def neg_i324 = compileFile(negDir, "i324", xerrors = 2)
   @Test def neg_i583 = compileFile(negDir, "i0583-skolemize", xerrors = 2)
   @Test def neg_i941 = compileFile(negDir, "i941", xerrors = 3)
   @Test def neg_finalSealed = compileFile(negDir, "final-sealed", xerrors = 2)
