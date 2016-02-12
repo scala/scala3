@@ -615,7 +615,13 @@ trait Applications extends Compatibility { self: Typer =>
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>
-        if (typedArgs.length <= pt.paramBounds.length && !isNamed)
+        def namedParamBound(arg: Tree): Option[Type] = {
+          val NamedArg(id, _) = arg
+          val idx = pt.paramNames.indexOf(id)
+          if (idx < 0) None else Some(pt.paramBounds(idx))
+        }
+        val paramBounds = if (isNamed) typedArgs.flatMap(namedParamBound) else pt.paramBounds
+        if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
       case _ =>
     }

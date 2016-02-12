@@ -317,13 +317,10 @@ trait TypeAssigner {
               ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
             else
               argMap(name) = arg.tpe
-          val gapBuf = new mutable.ListBuffer[Int]
-          def nextPoly = {
-            val idx = gapBuf.length
-            gapBuf += idx
-            PolyParam(pt, idx)
-          }
-          val normArgs = paramNames.map(pname => argMap.getOrElse(pname, nextPoly))
+          var missingParamCount = 0
+          def nextMissingParam =
+            try PolyParam(pt, missingParamCount) finally missingParamCount += 1
+          val normArgs = paramNames.map(pname => argMap.getOrElse(pname, nextMissingParam))
           val transform = new TypeMap {
             def apply(t: Type) = t match {
               case PolyParam(`pt`, idx) => normArgs(idx)
@@ -331,12 +328,15 @@ trait TypeAssigner {
             }
           }
           val resultType1 = transform(pt.resultType)
-          if (gapBuf.isEmpty) resultType1
+          if (missingParamCount == 0) resultType1
           else {
-            val gaps = gapBuf.toList
+            val (missingParamNames, missingParamBounds) =
+              (paramNames, pt.paramBounds).zipped.filter {
+                case (pname, _) => !argMap.contains(pname)
+              }
             pt.derivedPolyType(
-              gaps.map(paramNames.filterNot(argMap.contains)),
-              gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
+              missingParamNames,
+              missingParamBounds.map(transform(_).bounds),
               resultType1)
           }
         }
