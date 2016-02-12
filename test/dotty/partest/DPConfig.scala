@@ -4,6 +4,8 @@ import scala.collection.JavaConversions._
 import scala.reflect.io.Path
 import java.io.File
 
+import scala.tools.partest.PartestDefaults
+
 
 /** Dotty Partest runs all tests in the provided testDirs located under
   * testRoot. There can be several directories with pos resp. neg tests, as
@@ -15,6 +17,12 @@ import java.io.File
   * otherwise pos/__defaultFlags.flags are used if the file exists).
   */
 object DPConfig {
+  /** Options used for _running_ the run tests.
+   *  Note that this is different from the options used when _compiling_ tests,
+   *  those are determined by the sbt configuration.
+   */
+  val runJVMOpts = s"-Xms64M -Xmx1024M ${PartestDefaults.javaOpts}"
+
   val testRoot = (Path(".") / Path("tests") / Path("partest-generated")).toString
   val genLog = Path(testRoot) / Path("gen.log")
 
