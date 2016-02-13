@@ -32,7 +32,7 @@ import NameOps._
 import StdNames.nme
 import NameOps._
 
-class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
+class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context) extends BackendInterface{
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
@@ -734,7 +734,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
 
     def moduleSuffix: String = "" // todo: validate that names already have $ suffix
-    def outputDirectory: AbstractFile = new PlainDirectory(new Directory(new JFile(ctx.settings.d.value)))
+    def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
     def pos: Position = sym.pos
 
     def throwsAnnotations: List[Symbol] = Nil
