@@ -82,6 +82,9 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(List(new SourceFile(virtualFile)))
   }
 
+  /** The context created for this run */
+  def runContext = ctx
+
   /** Print summary; return # of errors encountered */
   def printSummary(): Reporter = {
     ctx.runInfo.printMaxConstraint()
