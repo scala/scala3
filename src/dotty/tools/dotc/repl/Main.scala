@@ -14,6 +14,7 @@ package repl
  * There are a number of TODOs:
  *
  *  - re-enable jline support (urgent, easy, see TODO in InteractiveReader.scala)
+ *  - figure out why we can launch REPL only with `java`, not with `scala`.
  *  - make a doti command (urgent, easy)
  *  - create or port REPL tests (urgent, intermediate)
  *  - make interpreter run a pseudo line on startup to pre-load compiler (somewhat urgent, easy)
