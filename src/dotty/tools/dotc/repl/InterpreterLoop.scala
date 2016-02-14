@@ -35,7 +35,6 @@ class InterpreterLoop(
     out: PrintWriter)(implicit ctx: Context) {
 
   val interpreter = compiler.asInstanceOf[Interpreter]
-  interpreter.init()
 
   /** The context class loader at the time this object was created */
   protected val originalClassLoader =

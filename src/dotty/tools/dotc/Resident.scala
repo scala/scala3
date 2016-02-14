@@ -25,7 +25,7 @@ class Resident extends Driver {
 
   object residentCompiler extends Compiler
 
-  override def newCompiler(): Compiler = ???
+  override def newCompiler(implicit ctx: Context): Compiler = ???
 
   override def sourcesRequired = false
 

@@ -10,7 +10,7 @@ abstract class Driver extends DotClass {
 
   val prompt = "\ndotc> "
 
-  protected def newCompiler(): Compiler
+  protected def newCompiler(implicit ctx: Context): Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
@@ -90,7 +90,7 @@ abstract class Driver extends DotClass {
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
     val (fileNames, ctx) = setup(args, rootCtx)
-    doCompile(newCompiler(), fileNames)(ctx)
+    doCompile(newCompiler(ctx), fileNames)(ctx)
   }
 
   def main(args: Array[String]): Unit = {

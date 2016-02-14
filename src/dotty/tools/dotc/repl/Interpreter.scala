@@ -62,7 +62,7 @@ import Interpreter._
  * @author Moez A. Abdel-Gawad
  * @author Lex Spoon
  */
-class Interpreter(out: PrintWriter) extends Compiler {
+class Interpreter(out: PrintWriter, ictx: Context) extends Compiler {
 
   import ast.untpd._
   import Interpreter._
@@ -110,7 +110,7 @@ class Interpreter(out: PrintWriter) extends Compiler {
   private val prevRequests = new ArrayBuffer[Request]()
 
   /** the compiler's classpath, as URL's */
-  var compilerClasspath: List[URL] = _
+  val compilerClasspath: List[URL] = ictx.platform.classPath(ictx).asURLs
 
   /* A single class loader is used for all commands interpreted by this Interpreter.
      It would also be possible to create a new class loader for each command
@@ -126,17 +126,12 @@ class Interpreter(out: PrintWriter) extends Compiler {
          definitions.
   */
   /** class loader used to load compiled code */
-  var classLoader: ClassLoader = _
+  val classLoader: ClassLoader = {
+    val parent = new URLClassLoader(compilerClasspath.toArray, parentClassLoader)
+    new AbstractFileClassLoader(virtualDirectory, parent)
+  }
 
   protected def parentClassLoader: ClassLoader = classOf[Interpreter].getClassLoader
-
-  def init()(implicit ctx: Context) = {
-    compilerClasspath = ctx.platform.classPath.asURLs
-    classLoader = {
-      val parent = new URLClassLoader(compilerClasspath.toArray, parentClassLoader)
-      new AbstractFileClassLoader(virtualDirectory, parent)
-    }
-  }
 
   /** Set the current Java "context" class loader to this
    *  interpreter's class loader

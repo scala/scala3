@@ -36,7 +36,7 @@ class REPL extends Driver {
 
   def output: PrintWriter = new NewLinePrintWriter(new ConsoleWriter, true)
 
-  override def newCompiler(): Compiler = new repl.Interpreter(output)
+  override def newCompiler(implicit ctx: Context): Compiler = new repl.Interpreter(output, ctx)
 
   override def sourcesRequired = false
 

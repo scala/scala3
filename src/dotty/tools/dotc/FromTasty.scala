@@ -30,7 +30,7 @@ import ast.tpd._
  *    scala dotty.tools.dotc.FromTasty -Xprint:front extMethods.T
  */
 object FromTasty extends Driver {
-  override def newCompiler(): Compiler = new TASTYCompiler
+  override def newCompiler(implicit ctx: Context): Compiler = new TASTYCompiler
 
   class TASTYCompiler extends Compiler {
 
