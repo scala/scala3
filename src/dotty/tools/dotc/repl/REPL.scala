@@ -1,14 +1,10 @@
 package dotty.tools
 package dotc
+package repl
 
-import core.Phases
 import core.Contexts.Context
 import reporting.Reporter
-import java.io.EOFException
-import scala.annotation.tailrec
-import io.VirtualDirectory
 import java.io.{BufferedReader, File, FileReader, PrintWriter}
-import repl._
 
 /** A compiler which stays resident between runs.
  *  Usage:
@@ -27,6 +23,7 @@ import repl._
  */
 class REPL extends Driver {
 
+  /** The default input reader */
   def input(implicit ctx: Context): InteractiveReader = {
     val emacsShell = System.getProperty("env.emacs", "") != ""
     //println("emacsShell="+emacsShell) //debug
@@ -34,14 +31,19 @@ class REPL extends Driver {
     else InteractiveReader.createDefault()
   }
 
+  /** The defult output writer */
   def output: PrintWriter = new NewLinePrintWriter(new ConsoleWriter, true)
 
-  override def newCompiler(implicit ctx: Context): Compiler = new repl.Interpreter(output, ctx)
+  override def newCompiler(implicit ctx: Context): Compiler =
+    new repl.CompilingInterpreter(output, ctx)
 
   override def sourcesRequired = false
 
   override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter = {
-    new InterpreterLoop(compiler, input, output).run()
+    if (fileNames.isEmpty)
+      new InterpreterLoop(compiler, input, output).run()
+    else
+      ctx.error(s"don't now what to do with $fileNames%, %")
     ctx.reporter
   }
 }
