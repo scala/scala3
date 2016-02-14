@@ -93,7 +93,7 @@ class InterpreterLoop(
    */
   def firstLine(): String = {
     val futLine = Future(in.readLine(prompt))
-    //bindSettings() // TODO enable
+    // bindSettings() // TODO adapt to dotty and re-enable (?)
     Await.result(futLine, Duration.Inf)
   }
 
