@@ -45,18 +45,22 @@ trait SymDenotations { this: Context =>
     if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
-      if (initial ne denot)
-        ctx.withPhase(initial.validFor.firstPhaseId).stillValid(initial.asSymDenotation)
-      else try {
-        val owner = denot.owner.denot
-        stillValid(owner) && (
-          !owner.isClass
-          || owner.isRefinementClass
-          || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
-          || denot.isSelfSym)
-      } catch {
-        case ex: StaleSymbol => false
-      }
+      if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
+        ctx.withPhase(initial.validFor.firstPhaseId).stillValidInOwner(initial.asSymDenotation)
+      else
+        stillValidInOwner(denot)
+    }
+
+  private[SymDenotations] def stillValidInOwner(denot: SymDenotation): Boolean = try {
+    val owner = denot.owner.denot
+    stillValid(owner) && (
+      !owner.isClass
+      || owner.isRefinementClass
+      || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+      || denot.isSelfSym)
+  } catch {
+    case ex: StaleSymbol => false
+  }
 
   /** Explain why symbol is invalid; used for debugging only */
   def traceInvalid(denot: Denotation): Boolean = {
