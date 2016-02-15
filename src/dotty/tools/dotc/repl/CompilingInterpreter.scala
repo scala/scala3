@@ -93,7 +93,13 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
   private def newReporter = new ConsoleReporter(Console.in, out) {
     override def printMessage(msg: String) = {
-      out.print(clean(msg) + "\n")
+      out.print(/*clean*/(msg) + "\n")
+        // Suppress clean for now for compiler messages
+        // Otherwise we will completely delete all references to 
+        // line$object$ module classes. The previous interpreter did not
+        // have the project because the module class was written without the final `$'
+        // and therefore escaped the purge. We can turn this back on once
+        // we drop the final `$' from module classes.
       out.flush()
     }
   }
@@ -752,8 +758,8 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   }
 
   /** Clean up a string for output */
-  private def clean(str: String) = str
-    // truncPrintString(stripWrapperGunk(str))  // TODO: enable
+  private def clean(str: String) =
+    truncPrintString(stripWrapperGunk(str))
 
   /** Indent some code by the width of the scala> prompt.
    *  This way, compiler error messages read better.
