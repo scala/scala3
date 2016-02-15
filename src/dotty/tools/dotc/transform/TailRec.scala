@@ -77,7 +77,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   private def mkLabel(method: Symbol, abstractOverClass: Boolean)(implicit c: Context): TermSymbol = {
     val name = c.freshName(labelPrefix)
 
-    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass))
+    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass, liftThisType = true))
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -112,7 +112,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             if (rewrote) {
               val dummyDefDef = cpy.DefDef(tree)(rhs = rhsSemiTransformed)
               val res = fullyParameterizedDef(label, dummyDefDef, abstractOverClass = defIsTopLevel)
-              val call = forwarder(label, dd, abstractOverClass = defIsTopLevel)
+              val call = forwarder(label, dd, abstractOverClass = defIsTopLevel, liftThisType = true)
               Block(List(res), call)
             } else {
               if (mandatory)
@@ -175,8 +175,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           case x => (x, x, accArgs, accT, x.symbol)
         }
 
-        val (reciever, call, arguments, typeArguments, symbol) = receiverArgumentsAndSymbol(tree)
-        val recv = noTailTransform(reciever)
+        val (prefix, call, arguments, typeArguments, symbol) = receiverArgumentsAndSymbol(tree)
+        val recv = noTailTransform(prefix)
 
         val targs = typeArguments.map(noTailTransform)
         val argumentss = arguments.map(noTailTransforms)
@@ -215,12 +215,12 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
               targs ::: classTypeArgs.map(x => ref(x.typeSymbol))
             } else targs
 
-          val method = Apply(if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef),
-            List(receiver))
+          val method = if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef)
+          val thisPassed = method appliedTo(receiver.ensureConforms(method.tpe.widen.firstParamTypes.head))
 
           val res =
-          if (method.tpe.widen.isParameterless) method
-          else argumentss.foldLeft(method) {
+          if (thisPassed.tpe.widen.isParameterless) thisPassed
+          else argumentss.foldLeft(thisPassed) {
             (met, ar) => Apply(met, ar) // Dotty deviation no auto-detupling yet.
           }
           res

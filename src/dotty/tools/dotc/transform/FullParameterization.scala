@@ -12,6 +12,8 @@ import NameOps._
 import ast._
 import ast.Trees._
 
+import scala.reflect.internal.util.Collections
+
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
  *  `$this` parameter and type parameters of the class become additional type
@@ -86,9 +88,12 @@ trait FullParameterization {
    *    }
    *
    *  If a self type is present, $this has this self type as its type.
+   *
    *  @param abstractOverClass  if true, include the type parameters of the class in the method's list of type parameters.
+   *  @param liftThisType       if true, require created $this to be $this: (Foo[A] & Foo,this).
+   *                            This is needed of created member stays inside scope of Foo(as in tailrec)
    */
-  def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true)(implicit ctx: Context): Type = {
+  def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
       case info @ PolyType(mtnames) => (mtnames.length, info.resultType)
       case info: ExprType => (0, info.resultType)
@@ -100,7 +105,8 @@ trait FullParameterization {
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
-      MethodType(nme.SELF :: Nil, thisParamType :: Nil)(mt =>
+      val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
+      MethodType(nme.SELF :: Nil, firstArgType :: Nil)(mt =>
         mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
     }
 
@@ -217,12 +223,26 @@ trait FullParameterization {
    *  - the `this` of the enclosing class,
    *  - the value parameters of the original method `originalDef`.
    */
-  def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(implicit ctx: Context): Tree =
+  def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Tree = {
+    val fun =
     ref(derived.termRef)
-      .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
-      .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
-      .appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
-      .withPos(originalDef.rhs.pos)
+        .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
+        .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
+
+    (if (!liftThisType)
+      fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
+    else {
+      // this type could have changed on forwarding. Need to insert a cast.
+      val args = Collections.map2(originalDef.vparamss, fun.tpe.paramTypess)((vparams, paramTypes) =>
+        Collections.map2(vparams, paramTypes)((vparam, paramType) => {
+          assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
+          ref(vparam.symbol).ensureConforms(paramType)
+        })
+      )
+      fun.appliedToArgss(args)
+
+    }).withPos(originalDef.rhs.pos)
+  }
 }
 
 object FullParameterization {
