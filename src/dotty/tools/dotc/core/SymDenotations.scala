@@ -45,8 +45,9 @@ trait SymDenotations { this: Context =>
     if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
-      if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
-        ctx.withPhase(initial.validFor.firstPhaseId).stillValidInOwner(initial.asSymDenotation)
+      var firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
+        ctx.withPhase(firstPhaseId).stillValidInOwner(initial.asSymDenotation)
       else
         stillValidInOwner(denot)
     }
