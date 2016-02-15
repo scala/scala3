@@ -591,7 +591,7 @@ object Denotations {
         this
       case _ =>
         if (coveredInterval.containsPhaseId(ctx.phaseId)) {
-          if (ctx.settings.debug.value) ctx.traceInvalid(this)
+          if (ctx.debug) ctx.traceInvalid(this)
           staleSymbolError
         }
         else NoDenotation

@@ -45,7 +45,7 @@ trait SymDenotations { this: Context =>
     if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
-      var firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
+      val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
       if ((initial ne denot) || ctx.phaseId != firstPhaseId)
         ctx.withPhase(firstPhaseId).stillValidInOwner(initial.asSymDenotation)
       else
@@ -85,9 +85,9 @@ trait SymDenotations { this: Context =>
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
             else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
-        } catch {
-          case ex: StaleSymbol => explainSym(s"$ex was thrown")
-        }
+          } catch {
+            case ex: StaleSymbol => explainSym(s"$ex was thrown")
+          }
       }
       case _ =>
         explain("denotation is not a SymDenotation")
