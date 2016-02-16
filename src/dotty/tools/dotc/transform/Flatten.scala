@@ -11,6 +11,7 @@ import collection.mutable
 import TreeTransforms.MiniPhaseTransform
 import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
 
+/** Lift nested classes to toplevel */
 class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
   override def phaseName = "flatten"

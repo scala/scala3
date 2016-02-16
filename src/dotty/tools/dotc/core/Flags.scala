@@ -606,6 +606,7 @@ object Flags {
   final val AbstractFinal = allOf(Abstract, Final)
   final val AbstractSealed = allOf(Abstract, Sealed)
   final val SyntheticArtifact = allOf(Synthetic, Artifact)
+  final val SyntheticModule = allOf(Synthetic, Module)
   final val SyntheticTermParam = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam = allOf(Synthetic, TypeParam)
   final val SyntheticCase = allOf(Synthetic, Case)
