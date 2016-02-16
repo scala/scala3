@@ -73,14 +73,13 @@ class InterpreterLoop(
   val version = ".next (pre-alpha)"
 
   /** The first interpreted command always takes a couple of seconds
-   *  due to classloading. To bridge the gap, wait until the welcome message
-   *  has been printed before calling bindSettings.  That way,
-   *  the user can read the welcome message while this
-   *  command executes.
+   *  due to classloading. To bridge the gap, we warm up the interpreter
+   *  by letting it interpret a dummy line while waiting for the first
+   *  line of input to be entered.
    */
   def firstLine(): String = {
     val futLine = Future(in.readLine(prompt))
-    // bindSettings() // TODO adapt to dotty and re-enable (?)
+    interpreter.beQuietDuring(interpreter.interpret("val __$__ = 1 + 1"))
     Await.result(futLine, Duration.Inf)
   }
 
