@@ -1435,9 +1435,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
         def addImplicitArgs = {
-          def implicitArgError(msg: => String): Tree = {
-            ctx.error(msg, tree.pos.endPos)
+          val errors = new mutable.ListBuffer[() => String]
+          def implicitArgError(msg: => String) = {
+            errors += (() => msg)
             EmptyTree
+          }
+          def issueErrors() = {
+            for (err <- errors) ctx.error(err(), tree.pos.endPos)
+            tree
           }
           val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
             def where = d"parameter $pname of $methodStr"
@@ -1450,12 +1455,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
-          if (args.exists(_.isEmpty)) {
+          if (errors.nonEmpty) {
             // If there are several arguments, some arguments might already
-            // have influenced the context, binfing variables, but later ones
+            // have influenced the context, binding variables, but later ones
             // might fail. In that case the constraint needs to be reset.
             ctx.typerState.constraint = constr
-            tree
+
+            // If method has default params, fall back to regular application
+            // where all inferred implicits are passed as named args.
+            if (tree.symbol.hasDefaultParams) {
+              val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
+                arg match {
+                  case EmptyTree => Nil
+                  case _ => untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
+                }
+              }
+              tryEither { implicit ctx =>
+                typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
+              } { (_, _) =>
+                issueErrors()
+              }
+            } else issueErrors()
           }
           else adapt(tpd.Apply(tree, args), pt)
         }
