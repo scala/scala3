@@ -185,6 +185,7 @@ class tests extends CompilerTest {
   @Test def neg_validateRefchecks = compileFile(negDir, "validate-refchecks", xerrors = 2)
   @Test def neg_skolemize = compileFile(negDir, "skolemize", xerrors = 2)
   @Test def neg_nested_bounds = compileFile(negDir, "nested_bounds", xerrors = 1)
+  @Test def neg_valueClasses = compileFile(negDir, "valueClasses", xerrors = 4)
 
   @Test def run_all = runFiles(runDir)
 
