@@ -31,11 +31,6 @@ trait Interpreter {
    */
   def interpret(line: String)(implicit ctx: Context): Result
 
-  /** Compile a string without exectuting the result.
-   *  Returns true if there are no compilation errors, false otherwise.
-   */
-  def compileString(code: String)(implicit ctx: Context): Boolean
-
   /** Suppress output during evaluation of `operation`. */
   def beQuietDuring[T](operation: => T): T
 }
