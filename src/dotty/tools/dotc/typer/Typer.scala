@@ -624,7 +624,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       val desugared =
         if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
-          desugar.makeUnaryCaseLambda(params, fnBody)
+          desugar.makeTupledFunction(params, fnBody)
         }
         else {
           val inferredParams: List[untpd.ValDef] =
