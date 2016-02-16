@@ -38,18 +38,4 @@ trait Interpreter {
 
   /** Suppress output during evaluation of `operation`. */
   def beQuietDuring[T](operation: => T): T
-
-  /** The interpreter settings */
-  def isettings: InterpreterSettings
-
-  /** Bind a specified name to a specified value.  The name may
-   *  later be used by expressions passed to interpret. Can be used to
-   *  programmatically change intepreter settings.
-   *
-   *  @param name      the variable name to bind
-   *  @param boundType the type of the variable, as a string
-   *  @param value     the object value to bind to it
-   *  @return          an indication of whether the binding succeeded
-   */
-  def bind(name: String, boundType: String, value: Any)(implicit ctx: Context): Result
 }

@@ -49,19 +49,6 @@ class InterpreterLoop(
     Thread.currentThread.setContextClassLoader(originalClassLoader)
   }
 
-  /** Bind the settings so that evaluated code can modify them */
-  def bindSettings(): Unit = {
-    interpreter.beQuietDuring {
-      interpreter.compileString(InterpreterSettings.sourceCodeForClass)
-
-      interpreter.bind(
-        "settings",
-        "scala.tools.nsc.InterpreterSettings",
-        interpreter.isettings)
-    }
-  }
-
-
   /** print a friendly help message */
   def printHelp(): Unit = {
     printWelcome()

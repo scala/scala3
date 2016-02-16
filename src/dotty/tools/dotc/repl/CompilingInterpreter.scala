@@ -88,14 +88,11 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     }
   }
 
-  /** interpreter settings */
-  override val isettings = new InterpreterSettings
-
   private def newReporter = new ConsoleReporter(Console.in, out) {
     override def printMessage(msg: String) = {
       out.print(/*clean*/(msg) + "\n")
         // Suppress clean for now for compiler messages
-        // Otherwise we will completely delete all references to 
+        // Otherwise we will completely delete all references to
         // line$object$ module classes. The previous interpreter did not
         // have the project because the module class was written without the final `$'
         // and therefore escaped the purge. We can turn this back on once
@@ -198,29 +195,6 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
           else Interpreter.Error
         }
     }
-  }
-
-  /** A counter used for numbering objects created by <code>bind()</code>. */
-  private var binderNum = 0
-
-  override def bind(name: String, boundType: String, value: Any)(implicit ctx: Context): Interpreter.Result = {
-    val binderName = "binder" + binderNum
-    binderNum += 1
-
-    compileString(
-      "object " + binderName +
-        "{ var value: " + boundType + " = _; " +
-        " def set(x: Any) = value=x.asInstanceOf[" + boundType + "]; }")
-
-    val binderObject =
-      Class.forName(binderName, true, classLoader)
-    val setterMethod =
-      binderObject.getDeclaredMethods.find(_.getName == "set").get
-    var argsHolder: Array[Any] = null // this roundabout approach is to try and make sure the value is boxed
-    argsHolder = List(value).toArray
-    setterMethod.invoke(null, argsHolder.asInstanceOf[Array[AnyRef]])
-
-    interpret("val " + name + " = " + binderName + ".value")
   }
 
   /** Trait collecting info about one of the statements of an interpreter request */
@@ -741,8 +715,8 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   }
 
   /** Truncate a string if it is longer than settings.maxPrintString */
-  private def truncPrintString(str: String): String = {
-    val maxpr = isettings.maxPrintString
+  private def truncPrintString(str: String)(implicit ctx: Context): String = {
+    val maxpr = ctx.settings.XreplLineWidth.value
 
     if (maxpr <= 0)
       return str
@@ -758,7 +732,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   }
 
   /** Clean up a string for output */
-  private def clean(str: String) =
+  private def clean(str: String)(implicit ctx: Context) =
     truncPrintString(stripWrapperGunk(str))
 
   /** Indent some code by the width of the scala> prompt.
