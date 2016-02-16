@@ -22,3 +22,7 @@ object Test {
   def foo(a: Any => String) = ()
   foo((a: Int, b: String) => a + b) // error: none of the overloaded alternatives of method foo match arguments (Int, Int)
 }
+object jasonComment {
+  implicit def i2s(i: Int): String = i.toString
+  ((x: String, y: String) => 42) : (((Int, Int)) => String) // error
+}

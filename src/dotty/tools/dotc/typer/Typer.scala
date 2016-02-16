@@ -618,7 +618,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         formal.derivesFrom(pclass) &&
         formal.baseArgTypes(pclass).corresponds(params) {
           (argType, param) =>
-            param.tpt.isEmpty || isCompatible(argType, typedAheadType(param.tpt).tpe)
+            param.tpt.isEmpty || argType <:< typedAheadType(param.tpt).tpe
         }
       }
 
