@@ -11,7 +11,7 @@ object Test {
   def unary[T](a: T, b: T, f: ((T, T)) => T): T = f((a, b))
   unary(1, 2, (x, y) => x)
   unary(1, 2, (x: Int, y) => x)
-  unary(1, 2, (x: Int, y: Float) => x)
+  unary(1, 2, (x: Int, y: Int) => x)
 
   val xs = List(1, 2, 3)
   def f(x: Int, y: Int) = x * y
