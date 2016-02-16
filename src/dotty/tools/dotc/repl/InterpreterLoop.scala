@@ -79,7 +79,8 @@ class InterpreterLoop(
    */
   def firstLine(): String = {
     val futLine = Future(in.readLine(prompt))
-    interpreter.beQuietDuring(interpreter.interpret("val __$__ = 1 + 1"))
+    interpreter.beQuietDuring(
+      interpreter.interpret("val theAnswerToLifeInTheUniverseAndEverything = 21 * 2"))
     Await.result(futLine, Duration.Inf)
   }
 
