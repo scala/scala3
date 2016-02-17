@@ -708,7 +708,19 @@ object RefChecks {
       if (clazz.is(Abstract))
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
       if (!clazz.isStatic)
-        ctx.error("value class cannot be an inner class", clazz.pos)
+        ctx.error(s"value class may not be a ${if (clazz.owner.isTerm) "local class" else "member of another class"}", clazz.pos)
+      else {
+        val clParamAccessors = clazz.asClass.paramAccessors.filter(sym => sym.isTerm && !sym.is(Method))
+        clParamAccessors match {
+          case List(param) =>
+            if (param.is(Mutable))
+              ctx.error("value class parameter must not be a var", param.pos)
+            if (param.is(PrivateLocal))
+              ctx.error("value class parameter must not be private[this]", param.pos)
+          case _ =>
+            ctx.error("value class needs to have exactly one val parameter", clazz.pos)
+        }
+      }
       stats.foreach(checkValueClassMember)
     }
   }
