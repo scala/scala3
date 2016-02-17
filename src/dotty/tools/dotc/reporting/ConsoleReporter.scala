@@ -41,7 +41,10 @@ class ConsoleReporter(
   }
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = {
-    val issue = !(d.isSuppressed && hasErrors)
+    val issue =
+      !d.isNonSensical ||
+      !hasErrors || // if there are no errors yet, report even if diagnostic is non-sensical
+      ctx.settings.YshowSuppressedErrors.value
     if (issue) d match {
       case d: Error =>
         printMessageAndPos(s"error: ${d.msg}", d.pos)
