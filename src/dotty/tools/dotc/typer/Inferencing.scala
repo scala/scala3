@@ -15,7 +15,6 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.{errorType, DiagnosticString}
 import config.Printers._
 import annotation.tailrec
 import collection.mutable

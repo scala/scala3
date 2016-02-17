@@ -10,46 +10,10 @@ import collection.mutable
 import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
-import typer.ErrorReporting.DiagnosticString
 import typer.Mode
+import Diagnostic.{ERROR, WARNING, INFO}
 
 object Reporter {
-
-  private val ERROR = 2
-  private val WARNING = 1
-  private val INFO = 0
-
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) extends Exception {
-    import DiagnosticString._
-
-    private var myMsg: String = null
-    private var myIsNonSensical: Boolean = false
-
-    /** The message to report */
-    def msg: String = {
-      if (myMsg == null) {
-        myMsg = msgFn
-        if (myMsg.contains(nonSensicalStartTag)) {
-          myIsNonSensical = true
-          // myMsg might be composed of several d"..." invocations -> nested nonsensical tags possible
-          myMsg = myMsg.replaceAllLiterally(nonSensicalStartTag, "").replaceAllLiterally(nonSensicalEndTag, "")
-        }
-      }
-      myMsg
-    }
-
-    /** Report in current reporter */
-    def report(implicit ctx: Context) = ctx.reporter.report(this)
-
-    def isNonSensical = { msg; myIsNonSensical }
-    def isSuppressed(implicit ctx: Context): Boolean = !ctx.settings.YshowSuppressedErrors.value && isNonSensical
-
-    override def toString = s"$getClass at $pos: $msg"
-    override def getMessage() = msg
-
-    def checkingStr: String = msgFn
-  }
-
   class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
   class Warning(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, WARNING)
   class Info(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, INFO)

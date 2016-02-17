@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import Reporter.{Diagnostic, Error, Warning}
+import Reporter.{Error, Warning}
 import config.Printers._
 
 /**
