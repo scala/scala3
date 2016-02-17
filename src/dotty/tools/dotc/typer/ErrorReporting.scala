@@ -8,6 +8,7 @@ import Trees._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Applications._, Implicits._, Flags._
 import util.Positions._
+import reporting.Diagnostic
 import printing.Showable
 import printing.Disambiguation.disambiguated
 
@@ -139,13 +140,8 @@ object ErrorReporting {
       }
 
       val s = new StringInterpolators(sc).i(args : _*)
-      if (args.forall(isSensical(_))) s else nonSensicalStartTag + s + nonSensicalEndTag
+      if (args.forall(isSensical(_))) s
+      else Diagnostic.nonSensicalStartTag + s + Diagnostic.nonSensicalEndTag
     }
   }
-
-  object DiagnosticString {
-    final val nonSensicalStartTag = "<nonsensical>"
-    final val nonSensicalEndTag = "</nonsensical>"
-  }
-
 }
