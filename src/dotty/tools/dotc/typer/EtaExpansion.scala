@@ -48,13 +48,11 @@ object EtaExpansion {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper */
-  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: String = "")(implicit ctx: Context): Tree = {
-    val arg1 = arg match {
-      case NamedArg(_, arg1) => arg1
-      case arg => arg
+  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: String = "")(implicit ctx: Context): Tree =
+    arg match {
+      case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
+      case arg => lift(defs, arg, prefix)
     }
-    lift(defs, arg1, prefix)
-  }
 
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
