@@ -4,10 +4,10 @@ object Import {
     trait B { type L >: Any}
     trait U {
       lazy val p: B
-      locally { val x: p.L = ??? } // error: nonfinal lazy
+      locally { val x: p.L = ??? } // old-error: nonfinal lazy
       locally {
-        import p._
-        val x: L = ??? // error: nonfinal lazy
+        import p._ // error: Import.B(U.this.p) is not a legal path
+        val x: L = ??? // old-error: nonfinal lazy
       }
     }
 }

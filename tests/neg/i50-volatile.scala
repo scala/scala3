@@ -10,9 +10,9 @@ class Test {
   }
   lazy val o: A & B = ???
 
-  class Client extends o.Inner                          // error // error
+  class Client extends o.Inner                          // old-error // old-error
 
-  def xToString(x: o.X): String = x                     // error
+  def xToString(x: o.X): String = x                     // old-error
 
   def intToString(i: Int): String = xToString(i)
 }

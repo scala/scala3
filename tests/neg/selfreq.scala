@@ -2,7 +2,7 @@ trait X { self: Y =>  // error: cannot resolve reference to type (Y & X)(X.this)
 
   type T <: self.U
 
-  def foo(x: T): T  // error: cannot resolve reference to type (Y & X)(X.this).V
+  def foo(x: T): T  // old-error: cannot resolve reference to type (Y & X)(X.this).V
   def foo(x: String): String
 
 }
