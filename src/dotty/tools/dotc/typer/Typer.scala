@@ -68,6 +68,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+  def newLikeThis: Typer = new Typer
+
   /** Attribute an identifier consisting of a simple name or wildcard
    *
    *  @param tree      The tree representing the identifier.

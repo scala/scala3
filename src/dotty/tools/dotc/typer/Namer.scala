@@ -508,7 +508,7 @@ class Namer { typer: Typer =>
         if (sym is Module) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
       case original: DefDef =>
-        val typer1 = new Typer
+        val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
       case original: TypeDef =>
