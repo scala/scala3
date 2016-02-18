@@ -29,6 +29,7 @@ import scala.tools.asm.tree._
 import dotty.tools.dotc.util.{Positions, DotClass}
 import tpd._
 import StdNames._
+import scala.reflect.io.{Directory, PlainDirectory, AbstractFile}
 
 import scala.tools.nsc.backend.jvm.opt.LocalOpt
 
@@ -37,9 +38,11 @@ class GenBCode extends Phase {
   private val entryPoints = new mutable.HashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
+  def outputDir(implicit ctx: Context): AbstractFile =
+    new PlainDirectory(new Directory(new JFile(ctx.settings.d.value)))
 
   def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(entryPoints.toList, new DottyBackendInterface()(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    new GenBCodePipeline(entryPoints.toList, new DottyBackendInterface(outputDir)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
 }

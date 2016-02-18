@@ -590,7 +590,10 @@ object Denotations {
         } while (d ne denot)
         this
       case _ =>
-        if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
+        if (coveredInterval.containsPhaseId(ctx.phaseId)) {
+          if (ctx.debug) ctx.traceInvalid(this)
+          staleSymbolError
+        }
         else NoDenotation
     }
 

@@ -45,19 +45,54 @@ trait SymDenotations { this: Context =>
     if (denot.is(ValidForever) || denot.isRefinementClass) true
     else {
       val initial = denot.initial
-      if (initial ne denot)
-        ctx.withPhase(initial.validFor.firstPhaseId).stillValid(initial.asSymDenotation)
-      else try {
-        val owner = denot.owner.denot
-        stillValid(owner) && (
-          !owner.isClass
-          || owner.isRefinementClass
-          || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
-          || denot.isSelfSym)
-      } catch {
-        case ex: StaleSymbol => false
-      }
+      val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
+      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
+        ctx.withPhase(firstPhaseId).stillValidInOwner(initial.asSymDenotation)
+      else
+        stillValidInOwner(denot)
     }
+
+  private[SymDenotations] def stillValidInOwner(denot: SymDenotation): Boolean = try {
+    val owner = denot.owner.denot
+    stillValid(owner) && (
+      !owner.isClass
+      || owner.isRefinementClass
+      || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+      || denot.isSelfSym)
+  } catch {
+    case ex: StaleSymbol => false
+  }
+
+  /** Explain why symbol is invalid; used for debugging only */
+  def traceInvalid(denot: Denotation): Boolean = {
+    def show(d: Denotation) = s"$d#${d.symbol.id}"
+    def explain(msg: String) = {
+      println(s"${show(denot)} is invalid at ${this.period} because $msg")
+      false
+    }
+    denot match {
+      case denot: SymDenotation =>
+        def explainSym(msg: String) = explain(s"$msg\n defined = ${denot.definedPeriodsString}")
+        if (denot.is(ValidForever) || denot.isRefinementClass) true
+        else {
+          implicit val ctx: Context = this
+          val initial = denot.initial
+          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId) {
+            ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial.asSymDenotation)
+          } else try {
+            val owner = denot.owner.denot
+            if (!traceInvalid(owner)) explainSym("owner is invalid")
+            else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
+            else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
+            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
+          } catch {
+            case ex: StaleSymbol => explainSym(s"$ex was thrown")
+          }
+      }
+      case _ =>
+        explain("denotation is not a SymDenotation")
+    }
+  }
 }
 
 object SymDenotations {
