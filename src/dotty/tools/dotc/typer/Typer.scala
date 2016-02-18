@@ -1524,11 +1524,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (formal.isRef(defn.ClassTagClass))
         formal.argTypes match {
           case arg :: Nil =>
-            arg.underlyingClassRef(refinementOK = false) match {
+            val tp = fullyDefinedType(arg, "ClassTag argument", tree.pos)
+            tp.underlyingClassRef(refinementOK = false) match {
               case tref: TypeRef =>
                 return ref(defn.ClassTagModule)
                   .select(nme.apply)
-                  .appliedToType(arg)
+                  .appliedToType(tp)
                   .appliedTo(clsOf(tref))
                   .withPos(tree.pos.endPos)
               case _ =>
