@@ -40,7 +40,7 @@ class DropEmptyCompanions extends MiniPhaseTransform { thisTransform =>
       case TypeDef(_, impl: Template) if tree.symbol.is(SyntheticModule) &&
         tree.symbol.companionClass.exists &&
         impl.body.forall(_.symbol.isPrimaryConstructor) =>
-        println(i"removing ${tree.symbol}")
+        ctx.log(i"removing ${tree.symbol}")
         true
       case _ =>
         false

@@ -588,6 +588,26 @@ object desugar {
     Function(params, Match(selector, cases))
   }
 
+  /** Map n-ary function `(p1, ..., pn) => body` where n != 1 to unary function as follows:
+   *
+   *    x$1 => {
+   *      def p1 = x$1._1
+   *      ...
+   *      def pn = x$1._n
+   *      body
+   *    }
+   */
+  def makeTupledFunction(params: List[ValDef], body: Tree)(implicit ctx: Context): Tree = {
+    val param = makeSyntheticParameter()
+    def selector(n: Int) = Select(refOfDef(param), nme.selectorName(n))
+    val vdefs =
+      params.zipWithIndex.map{
+        case (param, idx) =>
+          DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withPos(param.pos)
+      }
+    Function(param :: Nil, Block(vdefs, body))
+  }
+
   /** Add annotation with class `cls` to tree:
    *      tree @cls
    */
