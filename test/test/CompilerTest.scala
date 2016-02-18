@@ -197,7 +197,7 @@ abstract class CompilerTest {
       assert(errorLines.length == nerrors, s"Not enough errors recorded.")
 
       val allFiles = (allArgs filter {
-          case arg => arg.endsWith(".scala") || arg.endsWith(".java")
+          arg => !arg.startsWith("-") && (arg.endsWith(".scala") || arg.endsWith(".java"))
       }).toList
       val expectedErrorsPerFile = allFiles.map(getErrors(_))
 
