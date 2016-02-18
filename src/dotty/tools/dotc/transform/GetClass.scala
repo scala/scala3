@@ -5,6 +5,7 @@ import ast.tpd
 import core.Contexts.Context
 import core.StdNames.nme
 import core.Phases.Phase
+import TypeUtils._
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
 /** Rewrite `getClass` calls as follow:
@@ -24,7 +25,8 @@ class GetClass extends MiniPhaseTransform {
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     import ast.Trees._
     tree match {
-      case Apply(Select(qual, nme.getClass_), Nil) => tree.clsOf(qual.tpe.widen, tree)
+      case Apply(Select(qual, nme.getClass_), Nil) if qual.tpe.widen.isPrimitiveValueType =>
+        clsOf(qual.tpe.widen).withPos(tree.pos)
       case _ => tree
     }
   }

@@ -419,6 +419,9 @@ class Definitions {
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
+  lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
+  def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
+  def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
