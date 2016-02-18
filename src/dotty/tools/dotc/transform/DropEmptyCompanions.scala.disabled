@@ -30,7 +30,7 @@ import dotty.tools.dotc.transform.TreeTransforms.TransformerInfo
  */
 class DropEmptyCompanions extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
-  override def phaseName = "dropEmpty"
+  override def phaseName = "dropEmptyCompanions"
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Flatten])
 
   override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context, info: TransformerInfo) = {
