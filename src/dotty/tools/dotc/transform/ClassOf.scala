@@ -31,7 +31,7 @@ class ClassOf extends MiniPhaseTransform {
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     if (tree.symbol eq classOfMethod) {
       val targ = tree.args.head.tpe
-      tree.clsOf(targ, Literal(Constant(TypeErasure.erasure(targ))))
+      clsOf(targ).ensureConforms(tree.tpe).withPos(tree.pos)
     }
     else tree
 }

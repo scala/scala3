@@ -1454,7 +1454,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case ambi: AmbiguousImplicits =>
                 implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
               case failure: SearchFailure =>
-                implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
+                val arg = synthesizedClassTag(formal)
+                if (!arg.isEmpty) arg
+                else implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
           if (errors.nonEmpty) {
@@ -1513,6 +1515,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
           adaptToSubType(wtp)
         }
+    }
+
+    /** If `formal` is of the form ClassTag[T], where `T` is a class type,
+     *  synthesize a class tag for `T`.
+     */
+    def synthesizedClassTag(formal: Type): Tree = {
+      if (formal.isRef(defn.ClassTagClass))
+        formal.argTypes match {
+          case arg :: Nil =>
+            arg.underlyingClassRef(refinementOK = false) match {
+              case tref: TypeRef =>
+                return ref(defn.ClassTagModule)
+                  .select(nme.apply)
+                  .appliedToType(arg)
+                  .appliedTo(clsOf(tref))
+                  .withPos(tree.pos.endPos)
+              case _ =>
+            }
+          case _ =>
+        }
+      EmptyTree
     }
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */
