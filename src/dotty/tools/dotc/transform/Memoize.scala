@@ -68,6 +68,10 @@ import Decorators._
     }
 
     lazy val field = sym.field.orElse(newField).asTerm
+    
+    def adaptToField(tree: Tree) =
+      if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
+      
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
         def skipBlocks(t: Tree): Tree = t match {
@@ -85,14 +89,15 @@ import Decorators._
           case _ =>
             var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
             if (isWildcardArg(rhs)) rhs = EmptyTree
-            val fieldDef = transformFollowing(ValDef(field, rhs))
+
+            val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
             val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
             Thicket(fieldDef, getterDef)
         }
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
-        val initializer = Assign(ref(field), ref(tree.vparamss.head.head.symbol))
+        val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
         cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
