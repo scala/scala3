@@ -15,6 +15,11 @@ import TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
  *    classOf[C]    -> B.TYPE
  *  For every non-primitive class D:
  *    classOf[D]    -> Literal(Constant(erasure(D)))
+ *
+ *  NOTE: This is almost redundant since classOf now resolves
+ *  to DottyPredef.classOf, which does not need the transform. The phase
+ *  is kept in in order not to crash if someone calls Predef.classOf.
+ *  Once we have merged Predef and DottyPredef, the phase can be dropped.
  */
 class ClassOf extends MiniPhaseTransform {
   import tpd._
