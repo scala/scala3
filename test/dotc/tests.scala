@@ -144,6 +144,7 @@ class tests extends CompilerTest {
   @Test def neg_variancesConstr = compileFile(negDir, "variances-constr", xerrors = 2)
   @Test def neg_i871_missingReturnType = compileFile(negDir, "i871", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
+  @Test def neg_classOf = compileFile(negDir, "classOf", xerrors = 4)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def neg_clashes = compileFile(negDir, "clashes", xerrors = 2)
