@@ -10,4 +10,7 @@ object DottyPredef {
 
   implicit def arrayTag[T](implicit ctag: ClassTag[T]): ClassTag[Array[T]] =
     ctag.wrap
+
+  def classOf[T](implicit ctag: ClassTag[T]): Class[T] =
+    ctag.runtimeClass.asInstanceOf[Class[T]]
 }
