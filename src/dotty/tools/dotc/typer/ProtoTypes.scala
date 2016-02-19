@@ -420,6 +420,8 @@ object ProtoTypes {
         WildcardType(tp1a.bounds | tp2a.bounds)
       else
         tp.derivedOrType(tp1a, tp2a)
+    case tp: LazyRef =>
+      WildcardType
     case tp: SelectionProto =>
       tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto), NoViewsAllowed)
     case tp: ViewProto =>
