@@ -221,6 +221,8 @@ class Definitions {
 
     lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
     def Predef_conforms(implicit ctx: Context) = Predef_conformsR.symbol
+    lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef("classOf")
+    def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
@@ -419,6 +421,9 @@ class Definitions {
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
+  lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
+  def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass
+  def ClassTagModule(implicit ctx: Context) = ClassTagClass.companionModule
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
