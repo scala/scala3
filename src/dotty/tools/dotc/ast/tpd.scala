@@ -777,27 +777,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else Assign(tree, rhs)
 
-    /** A tree in place of this tree that represents the class of type `tp`.
-     *  Contains special handling if the class is a primitive value class
-     *  and invokes a `default` method otherwise.
-     */
-    def clsOf(tp: Type, default: => Tree)(implicit ctx: Context): Tree = {
-      def TYPE(module: TermSymbol) =
-        ref(module).select(nme.TYPE_).ensureConforms(tree.tpe).withPos(tree.pos)
-      defn.scalaClassName(tp) match {
-        case tpnme.Boolean => TYPE(defn.BoxedBooleanModule)
-        case tpnme.Byte => TYPE(defn.BoxedByteModule)
-        case tpnme.Short => TYPE(defn.BoxedShortModule)
-        case tpnme.Char => TYPE(defn.BoxedCharModule)
-        case tpnme.Int => TYPE(defn.BoxedIntModule)
-        case tpnme.Long => TYPE(defn.BoxedLongModule)
-        case tpnme.Float => TYPE(defn.BoxedFloatModule)
-        case tpnme.Double => TYPE(defn.BoxedDoubleModule)
-        case tpnme.Unit => TYPE(defn.BoxedUnitModule)
-        case _ => default
-      }
-    }
-
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */
@@ -839,6 +818,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
+    }
+  }
+
+  /** A tree that represents the class of the erasure of type `tp`. */
+  def clsOf(tp: Type)(implicit ctx: Context): Tree = {
+    def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_)
+    defn.scalaClassName(tp) match {
+      case tpnme.Boolean => TYPE(defn.BoxedBooleanModule)
+      case tpnme.Byte => TYPE(defn.BoxedByteModule)
+      case tpnme.Short => TYPE(defn.BoxedShortModule)
+      case tpnme.Char => TYPE(defn.BoxedCharModule)
+      case tpnme.Int => TYPE(defn.BoxedIntModule)
+      case tpnme.Long => TYPE(defn.BoxedLongModule)
+      case tpnme.Float => TYPE(defn.BoxedFloatModule)
+      case tpnme.Double => TYPE(defn.BoxedDoubleModule)
+      case tpnme.Unit => TYPE(defn.BoxedUnitModule)
+      case _ => Literal(Constant(TypeErasure.erasure(tp)))
     }
   }
 
