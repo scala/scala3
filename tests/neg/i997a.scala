@@ -11,9 +11,9 @@ class C {
 
   import O._
 
-  println(O.CC(1))
+  println(O.CC(1)) // error: CC cannot be accessed
 
-  val s: Super = 1
+  val s: Super = 1 // error: type mismatch
 
 
 }
