@@ -383,7 +383,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+        checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
