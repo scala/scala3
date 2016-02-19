@@ -432,7 +432,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val tpt1 = typedTpt
         // special case for an abstract type that comes with a class tag
         tpt1.tpe.dealias match {
-          case tref: TypeRef if !tref.symbol.isClass =>
+          case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
             inferImplicit(defn.ClassTagType.appliedTo(tref),
                EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
               case SearchSuccess(arg, _, _) =>
