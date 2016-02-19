@@ -232,6 +232,7 @@ object desugar {
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
     val mods = cdef.mods
+    val accessFlags = (mods.flags & AccessFlags).toCommonFlags
 
     val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
       case meth: DefDef => (meth, Nil)
@@ -312,6 +313,7 @@ object desugar {
           case ValDef(_, tpt, _) => isRepeated(tpt)
           case _ => false
         })
+
         val copyMeths =
           if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
           else {
@@ -346,7 +348,7 @@ object desugar {
       moduleDef(
         ModuleDef(
           name.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
-            .withMods(synthetic))
+            .withFlags(Synthetic | accessFlags))
       .withPos(cdef.pos).toList
 
     // The companion object definitions, if a companion is needed, Nil otherwise.
@@ -371,7 +373,7 @@ object desugar {
           if (mods is Abstract) Nil
           else
             DefDef(nme.apply, derivedTparams, derivedVparamss, TypeTree(), creatorExpr)
-              .withMods(synthetic | (constr1.mods.flags & DefaultParameterized)) :: Nil
+              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: Nil
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -403,7 +405,7 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
-          .withFlags(Synthetic | Implicit)
+          .withFlags(Synthetic | Implicit | accessFlags)
           .withPos(cdef.pos) :: Nil
 
 
@@ -453,7 +455,7 @@ object desugar {
       val clsName = name.moduleClassName
       val clsRef = Ident(clsName)
       val modul = ValDef(name, clsRef, New(clsRef, Nil))
-        .withMods(mods | ModuleCreationFlags)
+        .withMods(mods | ModuleCreationFlags | mods.flags & AccessFlags)
         .withPos(mdef.pos)
       val ValDef(selfName, selfTpt, _) = tmpl.self
       val selfMods = tmpl.self.mods
@@ -515,7 +517,7 @@ object desugar {
           derivedValDef(named, tpt, matchExpr, mods)
         case _ =>
           val tmpName = ctx.freshName().toTermName
-          val patFlags = PrivateLocal | Synthetic | (mods.flags & Lazy)
+          val patFlags = mods.flags & AccessFlags | Synthetic | (mods.flags & Lazy)
           val firstDef = ValDef(tmpName, TypeTree(), matchExpr).withFlags(patFlags)
           def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =

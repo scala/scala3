@@ -130,8 +130,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def transformAnnots(tree: MemberDef)(implicit ctx: Context): Unit =
+    private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
       tree.symbol.transformAnnotations(transformAnnot)
+      Checking.checkNoPrivateLeaks(tree)
+    }
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val qual = tree.qualifier
@@ -211,10 +213,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
           finally parentNews = saved
         case tree: DefDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
         case tree: TypeDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           val sym = tree.symbol
           val tree1 =
             if (sym.isClass) tree
@@ -224,7 +226,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             }
           super.transform(tree1)
         case tree: MemberDef =>
-          transformAnnots(tree)
+          transformMemberDef(tree)
           super.transform(tree)
         case tree: New if !inJavaAnnot && !parentNews.contains(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)

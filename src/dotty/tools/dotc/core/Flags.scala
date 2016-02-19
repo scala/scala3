@@ -543,6 +543,9 @@ object Flags {
   /** A lazy or deferred value */
   final val LazyOrDeferred = Lazy | Deferred
 
+  /** A synthetic or private definition */
+  final val SyntheticOrPrivate = Synthetic | Private
+
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
 

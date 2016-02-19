@@ -14,12 +14,12 @@ object Disambiguation {
     val variants = new mutable.HashMap[String, mutable.ListBuffer[Symbol]]
   }
 
-  def newPrinter: Context => Printer = {
+  def newPrinter: Context => RefinedPrinter = {
     val state = new State
     new Printer(state)(_)
   }
 
-  class Printer(state: State)(_ctx: Context) extends RefinedPrinter(_ctx) {
+  private class Printer(state: State)(_ctx: Context) extends RefinedPrinter(_ctx) {
     import state._
 
     override def simpleNameString(sym: Symbol): String = {

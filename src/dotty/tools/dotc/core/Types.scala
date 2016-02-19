@@ -1018,6 +1018,12 @@ object Types {
       case _ => List()
     }
 
+    /** The full parent types, including all type arguments */
+    def parentsWithArgs(implicit ctx: Context): List[Type] = this match {
+      case tp: TypeProxy => tp.underlying.parentsWithArgs
+      case _ => List()
+    }
+
     /** The first parent of this type, AnyRef if list of parents is empty */
     def firstParent(implicit ctx: Context): TypeRef = parents match {
       case p :: _ => p
@@ -2785,7 +2791,7 @@ object Types {
     }
 
     /** The parent types with all type arguments */
-    def instantiatedParents(implicit ctx: Context): List[Type] =
+    override def parentsWithArgs(implicit ctx: Context): List[Type] =
       parents mapConserve { pref =>
         ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
           val targSym = decls.lookup(tparam.name)

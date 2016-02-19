@@ -322,6 +322,46 @@ object Checking {
     checkNoConflict(Private, Protected)
     checkNoConflict(Abstract, Override)
   }
+
+  /** Check the type signature of the symbol `M` defined by `tree` does not refer
+   *  to a private type or value which is invisible at a point where `M` is still
+   *  visible. As an exception, we allow references to type aliases if the underlying
+   *  type of the alias is not a leak. So type aliases are transparent as far as
+   *  leak testing is concerned. See 997.scala for tests.
+   */
+  def checkNoPrivateLeaks(tree: MemberDef)(implicit ctx: Context): Unit = {
+    type Errors = List[(String, Position)]
+    val sym = tree.symbol
+    val notPrivate = new TypeAccumulator[Errors] {
+      def accessBoundary(sym: Symbol): Symbol =
+        if (sym.is(Private)) sym.owner
+        else if (sym.privateWithin.exists) sym.privateWithin
+        else if (sym.is(Package)) sym
+        else accessBoundary(sym.owner)
+      def apply(errors: Errors, tp: Type): Errors = tp match {
+        case tp: NamedType =>
+          val errors1 =
+            if (tp.symbol.is(Private) &&
+               !accessBoundary(sym).isContainedIn(tp.symbol.owner)) {
+              (d"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}", tree.pos) :: errors
+            } else foldOver(errors, tp)
+          if ((errors1 ne errors) && tp.info.isAlias) {
+            // try to dealias to avoid a leak error
+            val errors2 = apply(errors, tp.info.bounds.hi)
+            if (errors2 eq errors) errors2
+            else errors1
+          } else errors1
+        case tp: ClassInfo =>
+          (apply(errors, tp.prefix) /: tp.parentsWithArgs)(apply)
+        case _ =>
+          foldOver(errors, tp)
+      }
+    }
+    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) {
+      val errors = notPrivate(Nil, sym.info)
+      errors.foreach { case (msg, pos) => ctx.errorOrMigrationWarning(msg, pos) }
+    }
+  }
 }
 
 trait Checking {

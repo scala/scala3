@@ -13,7 +13,7 @@ import config.Printers.variances
  *  The method should be invoked once for each Template.
  */
 object VarianceChecker {
-  private case class VarianceError(tvar: Symbol, required: Variance)
+  case class VarianceError(tvar: Symbol, required: Variance)
   def check(tree: tpd.Tree)(implicit ctx: Context) =
     new VarianceChecker()(ctx).Traverser.traverse(tree)
 }

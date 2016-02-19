@@ -71,7 +71,7 @@ trait TypeAssigner {
                 if (tp1.typeSymbol.exists)
                   return tp1
               }
-              val parentType = info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _))
+              val parentType = info.parentsWithArgs.reduceLeft(ctx.typeComparer.andType(_, _))
               def addRefinement(parent: Type, decl: Symbol) = {
                 val inherited =
                   parentType.findMember(decl.name, info.cls.thisType, Private)
@@ -292,7 +292,7 @@ trait TypeAssigner {
       else if (!mix.isEmpty) findMixinSuper(cls.info)
       else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
       else {
-        val ps = cls.classInfo.instantiatedParents
+        val ps = cls.classInfo.parentsWithArgs
         if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
       }
     tree.withType(SuperType(cls.thisType, owntype))
