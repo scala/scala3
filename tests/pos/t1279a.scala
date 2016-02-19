@@ -4,12 +4,12 @@ abstract class M {
 
   type T
   final type selfType = M {type T <: self.T}
-  type actualSelfType >: self.type <: selfType // this no longer compiles because self.type is not a subtype of selfType
+  type actualSelfType >: self.type <: selfType
 
   def next: selfType
 
   // I don't understand why this doesn't compile, but that's a separate matter
-  // error: method all2 cannot be accessed in M.this.selfType
+  // Error: method all2 cannot be accessed in M.this.selfType
   // because its instance type => Stream[M{type T <: M.this.selfType#T}]
   // contains a malformed type: M.this.selfType#T
   def all2: Stream[M {type T <: self.T}] = Stream.cons(self: actualSelfType, next.all2)

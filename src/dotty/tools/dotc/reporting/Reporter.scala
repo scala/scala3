@@ -223,6 +223,8 @@ abstract class Reporter {
   var warningCount = 0
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
+  private var errors: List[Error] = Nil
+  def allErrors = errors
 
   /** Have errors been reported by this reporter, or in the
    *  case where this is a StoreReporter, by an outer reporter?
@@ -238,7 +240,9 @@ abstract class Reporter {
       d match {
         case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
         case d: Warning => warningCount += 1
-        case d: Error => errorCount += 1
+        case d: Error =>
+          errors = d :: errors
+          errorCount += 1
         case d: Info => // nothing to do here
         // match error if d is something else
       }

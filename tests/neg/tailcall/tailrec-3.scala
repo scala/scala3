@@ -1,9 +1,9 @@
 import annotation.tailrec
 
 object Test {
-  @tailrec private def quux(xs: List[String]): List[String] = quux(quux(xs))
+  @tailrec private def quux(xs: List[String]): List[String] = quux(quux(xs)) // error
   @tailrec private def quux2(xs: List[String]): List[String] = xs match {
-    case x1 :: x2 :: rest => quux2(x1 :: quux2(rest))
+    case x1 :: x2 :: rest => quux2(x1 :: quux2(rest))                        // error
     case _                => Nil
   }
   @tailrec private def quux3(xs: List[String]): Boolean = xs match {

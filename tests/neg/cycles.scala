@@ -22,8 +22,8 @@ class C {
 
 class E {
   class F {
-    type T <: x.type // error: not stable
-    val z: x.type = ??? // error: not stable
+    type T <: x.type // old-error: not stable
+    val z: x.type = ??? // old-error: not stable
   }
   lazy val x: F#T = ???
 }
@@ -37,6 +37,6 @@ class T2 {
   type U = X | Int
 }
 object T12 {
-  ??? : (T1 {})#U // error: conflicting bounds
-  ??? : (T2 {})#U // error: conflicting bounds
+  ??? : (T1 {})#U // old-error: conflicting bounds
+  ??? : (T2 {})#U // old-error: conflicting bounds
 }

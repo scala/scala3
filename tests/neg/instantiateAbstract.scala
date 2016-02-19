@@ -24,7 +24,7 @@ object Test {
 
   new TT // error
 
-  new A // error
+  new A
 
 // the following are OK in Typer but would be caught later in RefChecks
 
@@ -36,3 +36,5 @@ object Test {
 
   object OO extends AA
 }
+
+// nopos-error: "A does not conform to its self type B; cannot be instantiated"

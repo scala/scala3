@@ -5,7 +5,7 @@ class Foo[+A: ClassTag](x: A) {
 
   private[this] val elems: Array[A] = Array(x)
 
-  def f[B](x: Array[B] = elems): Array[B] = x // (1) should give a variance error here or ...
+  def f[B](x: Array[B] = elems): Array[B] = x // error (1) should give a variance error here or ...
 
 }
 
@@ -25,7 +25,7 @@ class Outer[+A](x: A) {
 
   def getElem: A = elem
 
-  class Inner(constrParam: A) {  // (2) should give a variance error here or ...
+  class Inner(constrParam: A) {  // error (2) should give a variance error here or ...
     elem = constrParam
   }
 

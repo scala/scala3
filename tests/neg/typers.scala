@@ -40,8 +40,8 @@ object typers {
 
   object returns {
 
-    def foo(x: Int) = {   // error: has return; needs result type
-      return 3
+    def foo(x: Int) = {
+      return 3          // error: has return; needs result type
     }
 
     return 4            // error: return outside method definition
@@ -52,8 +52,8 @@ object typers {
       if (n == 0) acc
       else factorial(acc * n, n - 1)    // error: cyclic reference
 
-    def foo(x: Int) = x                 // error: cyclic reference
-    def foo() = foo(1)
+    def foo(x: Int) = x
+    def foo() = foo(1)                  // error: cyclic reference
 
   }
 
