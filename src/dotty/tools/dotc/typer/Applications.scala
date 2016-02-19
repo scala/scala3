@@ -607,6 +607,10 @@ trait Applications extends Compatibility { self: Typer =>
       case pt: PolyType =>
         if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
+          if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
+            val arg = typedArgs.head
+            checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
+          }
       case _ =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
