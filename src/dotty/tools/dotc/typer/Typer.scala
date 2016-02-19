@@ -427,10 +427,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
         wildName = nme.WILDCARD_STAR)
     else {
-      def tpt1 = checkSimpleKinded(typedType(tree.tpt))
+      def typedTpt = checkSimpleKinded(typedType(tree.tpt))
+      def handlePattern: Tree = {
+        val tpt1 = typedTpt
+        // special case for an abstract type that comes with a class tag
+        tpt1.tpe.dealias match {
+          case tref: TypeRef if !tref.symbol.isClass =>
+            inferImplicit(defn.ClassTagType.appliedTo(tref),
+               EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
+              case SearchSuccess(arg, _, _) =>
+                return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
+              case _ =>
+            }
+          case _ =>
+        }
+        ascription(tpt1, isWildcard = true)
+      }
       cases(
-        ifPat = ascription(tpt1, isWildcard = true),
-        ifExpr = ascription(tpt1, isWildcard = false),
+        ifPat = handlePattern,
+        ifExpr = ascription(typedTpt, isWildcard = false),
         wildName = nme.WILDCARD)
     }
   }
