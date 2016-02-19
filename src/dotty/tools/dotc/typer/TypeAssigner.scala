@@ -9,6 +9,7 @@ import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdName
 import util.Positions._
 import config.Printers._
 import ast.Trees._
+import NameOps._
 import collection.mutable
 
 trait TypeAssigner {
