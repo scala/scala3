@@ -4,7 +4,7 @@ abstract class M {
 
   type T
   final type selfType = M {type T <: self.T}
-  type actualSelfType >: self.type <: selfType // error: this no longer compiles because self.type is not a subtype of selfType
+  type actualSelfType >: self.type <: selfType
 
   def next: selfType
 
