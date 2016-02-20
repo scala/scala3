@@ -176,7 +176,7 @@ object desugar {
             name = meth.name.defaultGetterName(n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss, n),
-            tpt = TypeTree(),
+            tpt = vparam.tpt,
             rhs = vparam.rhs
           ).withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
