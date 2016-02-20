@@ -177,7 +177,7 @@ object DottyBuild extends Build {
           path = file.getAbsolutePath
         } yield "-Xbootclasspath/p:" + path
         // dotty itself needs to be in the bootclasspath
-        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
+        val fullpath = ("-Xbootclasspath/p:" + "dotty.jar") :: ("-Xbootclasspath/a:" + bin) :: path.toList
         // System.err.println("BOOTPATH: " + fullpath)
 
         val travis_build = // propagate if this is a travis build
