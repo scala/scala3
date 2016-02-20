@@ -1543,7 +1543,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val spb = subPatBinders
         ExtractorTreeMaker(extractorApply, lengthGuard(binder), binder)(
           spb,
-          subPatRefs(binder, spb, binderTypeTested),
+          subPatRefs(binder, spb, resultType),
           aligner.isBool,
           checkedLength,
           patBinderOrCasted,
