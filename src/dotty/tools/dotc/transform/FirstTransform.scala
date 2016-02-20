@@ -34,11 +34,13 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
   override def phaseName = "firstTransform"
 
-  private var needsCompanionPredicate: ClassSymbol => Boolean = null
+  private var addCompanionPhases: List[NeedsCompanions] = _
+
+  def needsCompanion(cls: ClassSymbol)(implicit ctx: Context) =
+    addCompanionPhases.exists(_.isCompanionNeeded(cls))
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    needsCompanionPredicate = ctx.phasePlan.flatMap(_.filter(x => x.isInstanceOf[NeedsCompanions])).
-      foldLeft((x: ClassSymbol) => false)((pred, phase) => x => pred(x) || phase.asInstanceOf[NeedsCompanions].isCompanionNeeded(x))
+    addCompanionPhases = ctx.phasePlan.flatMap(_ collect { case p: NeedsCompanions => p })
     this
   }
 
@@ -90,7 +92,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     }
 
     def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
-      case stat: TypeDef if (singleClassDefs contains stat.name) && needsCompanionPredicate(stat.symbol.asClass) =>
+      case stat: TypeDef if (singleClassDefs contains stat.name) && needsCompanion(stat.symbol.asClass) =>
         val objName = stat.name.toTermName
         val nameClash = stats.exists {
           case other: MemberDef =>
