@@ -186,7 +186,7 @@ object desugar {
             vparamss = takeUpTo(normalizedVparamss, n),
             tpt = TypeTree(),
             rhs = vparam.rhs
-          ).withMods(vparam.mods & AccessFlags)
+          ).withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
         if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
       case Nil :: vparamss1 =>
