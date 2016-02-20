@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import dotty.tools.dotc.core.Phases.NeedsCompanions
 import dotty.tools.dotc.typer.Mode
 
 import scala.collection.mutable
@@ -23,7 +24,7 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
 import Erasure.Boxing.adaptToType
 
-class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
+class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with NeedsCompanions {
   import LazyVals._
 
   import tpd._
@@ -45,6 +46,11 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter = Set(classOf[Mixin])
+
+  def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
+    def hasLazyVal(x: ClassSymbol) = x.classInfo.membersBasedOnFlags(Flags.Lazy, excludedFlags = Flags.EmptyFlags).nonEmpty
+    hasLazyVal(cls) || cls.mixins.exists(hasLazyVal)
+  }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
    transformLazyVal(tree)
