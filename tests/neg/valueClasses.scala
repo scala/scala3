@@ -6,5 +6,3 @@ class B1 {
     class B2(x: Int) extends AnyVal // error: value class may not be a local class
   }
 }
-class C(private[this] val u: Int) extends AnyVal // error: value class parameter must not be private[this]
-class D(u: Int) extends AnyVal // error: value class parameter must not be private[this]

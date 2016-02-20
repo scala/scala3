@@ -715,8 +715,6 @@ object RefChecks {
           case List(param) =>
             if (param.is(Mutable))
               ctx.error("value class parameter must not be a var", param.pos)
-            if (param.is(PrivateLocal))
-              ctx.error("value class parameter must not be private[this]", param.pos)
           case _ =>
             ctx.error("value class needs to have exactly one val parameter", clazz.pos)
         }
