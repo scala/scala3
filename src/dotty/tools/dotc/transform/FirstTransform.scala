@@ -3,7 +3,9 @@ package transform
 
 import core._
 import Names._
-import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Phases.NeedsCompanions
+import dotty.tools.dotc.transform.TreeTransforms._
 import ast.Trees._
 import Flags._
 import Types._
@@ -31,6 +33,14 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
   import ast.tpd._
 
   override def phaseName = "firstTransform"
+
+  private var needsCompanionPredicate: ClassSymbol => Boolean = null
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+    needsCompanionPredicate = ctx.phasePlan.flatMap(_.filter(x => x.isInstanceOf[NeedsCompanions])).
+      foldLeft((x: ClassSymbol) => false)((pred, phase) => x => pred(x) || phase.asInstanceOf[NeedsCompanions].isCompanionNeeded(x))
+    this
+  }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
@@ -80,7 +90,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     }
 
     def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
-      case stat: TypeDef if singleClassDefs contains stat.name =>
+      case stat: TypeDef if (singleClassDefs contains stat.name) && needsCompanionPredicate(stat.symbol.asClass) =>
         val objName = stat.name.toTermName
         val nameClash = stats.exists {
           case other: MemberDef =>

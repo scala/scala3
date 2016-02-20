@@ -4,6 +4,7 @@ package core
 import Periods._
 import Contexts._
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.dotc.core.Symbols.ClassSymbol
 import util.DotClass
 import DenotTransformers._
 import Denotations._
@@ -345,6 +346,10 @@ object Phases {
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
     override def toString = phaseName
+  }
+
+  trait NeedsCompanions {
+    def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean
   }
 
   /** Replace all instances of `oldPhaseClass` in `current` phases
