@@ -108,22 +108,22 @@ class tests extends CompilerTest {
 
   @Test def new_all = compileFiles(newDir, twice)
 
-  @Test def neg_all = compileFiles(negDir, verbose = true, negTest = true, compileSubDirs = false)
-  @Test def neg_typedIdents() = compileDir(negDir, "typedIdents", negTest = true)
+  @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
+  @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
 
   val negCustomArgs = negDir + "customArgs/"
-  @Test def neg_typers() = compileFile(negCustomArgs, "typers", negTest = true)(allowDoubleBindings)
-  @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", List("-language:Scala2"), negTest = true)
-  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil, negTest = true)
-  @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"), negTest = true)
+  @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
+  @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", List("-language:Scala2"))
+  @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
+  @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
 
   val negTailcallDir = negDir + "tailcall/"
-  @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b", negTest = true)
-  @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275", negTest = true)
-  @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574", negTest = true)
-  @Test def neg_tailcall = compileFile(negTailcallDir, "tailrec", negTest = true)
-  @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2", negTest = true)
-  @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3", negTest = true)
+  @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
+  @Test def neg_tailcall_t3275 = compileFile(negTailcallDir, "t3275")
+  @Test def neg_tailcall_t6574 = compileFile(negTailcallDir, "t6574")
+  @Test def neg_tailcall = compileFile(negTailcallDir, "tailrec")
+  @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2")
+  @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3")
 
   @Test def run_all = runFiles(runDir)
 

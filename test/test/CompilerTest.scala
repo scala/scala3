@@ -71,7 +71,7 @@ abstract class CompilerTest {
   def compileLine(cmdLine: String)(implicit defaultOptions: List[String]): Unit = {
     if (generatePartestFiles)
       log("WARNING: compileLine will always run with JUnit, no partest files generated.")
-    compileArgs(cmdLine.split("\n"), Nil, negTest = false)
+    compileArgs(cmdLine.split("\n"), Nil)
   }
 
   /** Compiles the given code file.
@@ -79,42 +79,39 @@ abstract class CompilerTest {
     * @param prefix    the parent directory (including separator at the end)
     * @param fileName  the filename, by default without extension
     * @param args      arguments to the compiler
-    * @param negTest   if negTest is true, this test is a neg test with the expected number
-    *                  of compiler errors. Otherwise, this is a pos test.
     * @param extension the file extension, .scala by default
     * @param defaultOptions more arguments to the compiler
     */
-  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, negTest: Boolean = false,
-      extension: String = ".scala", runTest: Boolean = false)
+  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, extension: String = ".scala", runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     val filePath = s"$prefix$fileName$extension"
-    val expErrors = expectedErrors(filePath, negTest)
+    val expErrors = expectedErrors(filePath)
     if (!generatePartestFiles || !partestableFile(prefix, fileName, extension, args ++ defaultOptions)) {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
-      compileArgs((s"$filePath" :: args).toArray, expErrors, negTest)
+      compileArgs((s"$filePath" :: args).toArray, expErrors)
     } else {
-      val kind = testKind(prefix, negTest, runTest)
+      val kind = testKind(prefix, runTest)
       log(s"generating partest files for test file: $prefix$fileName$extension of kind $kind")
 
       val sourceFile = new JFile(prefix + fileName + extension)
       if (sourceFile.exists) {
         val firstDest = SFile(DPConfig.testRoot + JFile.separator + kind + JFile.separator + fileName + extension)
-        val xerrors = if (negTest) expErrors.map(_.totalErrors).sum else 0
+        val xerrors = expErrors.map(_.totalErrors).sum
         computeDestAndCopyFiles(sourceFile, firstDest, kind, args ++ defaultOptions, xerrors.toString)
       } else {
         throw new java.io.FileNotFoundException(s"Unable to locate test file $prefix$fileName")
       }
     }
   }
-  def runFile(prefix: String, fileName: String, args: List[String] = Nil, negTest: Boolean = false,
-      extension: String = ".scala")(implicit defaultOptions: List[String]): Unit = {
-    compileFile(prefix, fileName, args, negTest, extension, true)
+  def runFile(prefix: String, fileName: String, args: List[String] = Nil, extension: String = ".scala")
+       (implicit defaultOptions: List[String]): Unit = {
+    compileFile(prefix, fileName, args, extension, true)
   }
 
   /** Compiles the code files in the given directory together. If args starts
     * with "-deep", all files in subdirectories (and so on) are included. */
-  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, negTest: Boolean = false, runTest: Boolean = false)
+  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
     val computeFilePathsAndExpErrors = { () =>
       val dir = Directory(prefix + dirName)
@@ -123,25 +120,25 @@ abstract class CompilerTest {
         case _ => (dir.files, args)
       }
       val filePaths = files.toArray.map(_.toString).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
-      val expErrors = expectedErrors(filePaths.toList, negTest)
+      val expErrors = expectedErrors(filePaths.toList)
       (filePaths, normArgs, expErrors)
     }
     if (!generatePartestFiles || !partestableDir(prefix, dirName, args ++ defaultOptions)) {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
       val (filePaths, normArgs, expErrors) = computeFilePathsAndExpErrors()
-      compileArgs(filePaths ++ normArgs, expErrors, negTest)
+      compileArgs(filePaths ++ normArgs, expErrors)
     } else {
       val (sourceDir, flags, deep) = args match {
         case "-deep" :: args1 => (flattenDir(prefix, dirName), args1 ++ defaultOptions, "deep")
         case _ => (new JFile(prefix + dirName), args ++ defaultOptions, "shallow")
       }
-      val kind = testKind(prefix, negTest, runTest)
+      val kind = testKind(prefix, runTest)
       log(s"generating partest files for test directory ($deep): $prefix$dirName of kind $kind")
 
       if (sourceDir.exists) {
         val firstDest = Directory(DPConfig.testRoot + JFile.separator + kind + JFile.separator + dirName)
-        val xerrors = if (negTest) {
+        val xerrors = if (isNegTest(prefix)) {
           val (_, _, expErrors) = computeFilePathsAndExpErrors()
           expErrors.map(_.totalErrors).sum
         } else 0
@@ -153,24 +150,24 @@ abstract class CompilerTest {
       }
     }
   }
-  def runDir(prefix: String, dirName: String, args: List[String] = Nil, negTest: Boolean = false)
+  def runDir(prefix: String, dirName: String, args: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit =
-    compileDir(prefix, dirName, args, negTest, true)
+    compileDir(prefix, dirName, args, true)
 
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
   def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false,
-                   negTest: Boolean = false, compileSubDirs: Boolean = true)(implicit defaultOptions: List[String]): Unit = {
+                   compileSubDirs: Boolean = true)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
     val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       if (verbose) log(s"testing $path$name")
-      compileFile(path, name, args, negTest, "", runTest)
+      compileFile(path, name, args, "", runTest)
     }
     if (compileSubDirs)
       for (subdir <- dir.dirs) {
         if (verbose) log(s"testing $subdir")
-        compileDir(path, subdir.jfile.getName, args, negTest, runTest)
+        compileDir(path, subdir.jfile.getName, args, runTest)
       }
   }
   def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
@@ -178,33 +175,31 @@ abstract class CompilerTest {
     compileFiles(path, args, verbose, true)
 
   /** Compiles the given list of code files. */
-  def compileList(testName: String, files: List[String], args: List[String] = Nil, negTest: Boolean = false)
+  def compileList(testName: String, files: List[String], args: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit = {
     if (!generatePartestFiles || !partestableList(testName, files, args ++ defaultOptions)) {
-      val expErrors = expectedErrors(files, negTest)
-      compileArgs((files ++ args).toArray, expErrors, negTest)
+      val expErrors = expectedErrors(files)
+      compileArgs((files ++ args).toArray, expErrors)
     } else {
       val destDir = Directory(DPConfig.testRoot + JFile.separator + testName)
       files.foreach({ file =>
         val jfile = new JFile(file)
         recCopyFiles(jfile, destDir / jfile.getName)
       })
-      compileDir(DPConfig.testRoot + JFile.separator, testName, args, negTest)
+      compileDir(DPConfig.testRoot + JFile.separator, testName, args)
       destDir.deleteRecursively
     }
   }
 
   // ========== HELPERS =============
 
-  private def expectedErrors(filePaths: List[String], negTest: Boolean): List[ErrorsInFile] = {
-    if (negTest) {
-      filePaths.map(getErrors(_))
-    } else Nil
-  }
+  private def expectedErrors(filePaths: List[String]): List[ErrorsInFile] = if (filePaths.exists(isNegTest(_))) filePaths.map(getErrors(_)) else Nil
 
-  private def expectedErrors(filePath: String, negTest: Boolean): List[ErrorsInFile] = expectedErrors(List(filePath), negTest)
+  private def expectedErrors(filePath: String): List[ErrorsInFile] = expectedErrors(List(filePath))
 
-  private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile], negTest: Boolean)
+  private def isNegTest(testPath: String) = testPath.contains(JFile.separator + "neg" + JFile.separator)
+
+  private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
@@ -212,12 +207,10 @@ abstract class CompilerTest {
 
     val nerrors = reporter.errorCount
     val xerrors = (expectedErrorsPerFile map {_.totalErrors}).sum
-    if (negTest)
-      assert((negTest && xerrors > 0), s"No errors found in neg test")
-    else
-      assert((!negTest && xerrors == 0), s"There shouldn't be expected errors in non-neg test")
-    assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
-
+    assert(nerrors == xerrors,
+      s"""Wrong # of errors. Expected: $xerrors, found: $nerrors
+         |Files with expected errors: ${expectedErrorsPerFile.collect{ case er if er.totalErrors > 0 => er.fileName} }
+       """.stripMargin)
     // NEG TEST
     if (xerrors > 0) {
       val errorLines = reporter.allErrors.map(_.pos)
@@ -344,9 +337,9 @@ abstract class CompilerTest {
   private val extensionsToCopy = scala.collection.immutable.HashSet("scala", "java")
 
   /** Determines what kind of test to run. */
-  private def testKind(prefixDir: String, negTest: Boolean, runTest: Boolean) = {
+  private def testKind(prefixDir: String, runTest: Boolean) = {
     if (runTest) "run"
-    else if (negTest) "neg"
+    else if (isNegTest(prefixDir)) "neg"
     else if (prefixDir.endsWith("run" + JFile.separator)) {
       log("WARNING: test is being run as pos test despite being in a run directory. " +
         "Use runFile/runDir instead of compileFile/compileDir to do a run test")
