@@ -10,46 +10,10 @@ import collection.mutable
 import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
-import typer.ErrorReporting.DiagnosticString
 import typer.Mode
+import Diagnostic.{ERROR, WARNING, INFO}
 
 object Reporter {
-
-  private val ERROR = 2
-  private val WARNING = 1
-  private val INFO = 0
-
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) extends Exception {
-    import DiagnosticString._
-
-    private var myMsg: String = null
-    private var myIsNonSensical: Boolean = false
-
-    /** The message to report */
-    def msg: String = {
-      if (myMsg == null) {
-        myMsg = msgFn
-        if (myMsg.contains(nonSensicalStartTag)) {
-          myIsNonSensical = true
-          // myMsg might be composed of several d"..." invocations -> nested nonsensical tags possible
-          myMsg = myMsg.replaceAllLiterally(nonSensicalStartTag, "").replaceAllLiterally(nonSensicalEndTag, "")
-        }
-      }
-      myMsg
-    }
-
-    /** Report in current reporter */
-    def report(implicit ctx: Context) = ctx.reporter.report(this)
-
-    def isNonSensical = { msg; myIsNonSensical }
-    def isSuppressed(implicit ctx: Context): Boolean = !ctx.settings.YshowSuppressedErrors.value && isNonSensical
-
-    override def toString = s"$getClass at $pos: $msg"
-    override def getMessage() = msg
-
-    def checkingStr: String = msgFn
-  }
-
   class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
   class Warning(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, WARNING)
   class Info(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, INFO)
@@ -195,10 +159,8 @@ trait Reporting { this: Context =>
  */
 abstract class Reporter {
 
-  /** Report a diagnostic, unless it is suppressed because it is nonsensical
-   *  @return a diagnostic was reported.
-   */
-  def doReport(d: Diagnostic)(implicit ctx: Context): Boolean
+  /** Report a diagnostic */
+  def doReport(d: Diagnostic)(implicit ctx: Context): Unit
 
  /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -239,7 +201,8 @@ abstract class Reporter {
   }
 
   def report(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (!isHidden(d) && doReport(d)(ctx.addMode(Mode.Printing)))
+    if (!isHidden(d)) {
+      doReport(d)(ctx.addMode(Mode.Printing))
       d match {
         case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
         case d: Warning => warningCount += 1
@@ -249,6 +212,7 @@ abstract class Reporter {
         case d: Info => // nothing to do here
         // match error if d is something else
       }
+    }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)

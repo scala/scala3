@@ -16,7 +16,7 @@ import scala.reflect.internal.util._
 class ConsoleReporter(
     reader: BufferedReader = Console.in,
     writer: PrintWriter = new PrintWriter(Console.err, true))
-  extends Reporter with UniqueMessagePositions {
+  extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {
 
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
@@ -40,21 +40,17 @@ class ConsoleReporter(
     }
   }
 
-  override def doReport(d: Diagnostic)(implicit ctx: Context): Boolean = {
-    val issue = !(d.isSuppressed && hasErrors)
-    if (issue) d match {
-      case d: Error =>
-        printMessageAndPos(s"error: ${d.msg}", d.pos)
-        if (ctx.settings.prompt.value) displayPrompt()
-      case d: ConditionalWarning if !d.enablingOption.value =>
-      case d: MigrationWarning =>
-        printMessageAndPos(s"migration warning: ${d.msg}", d.pos)
-      case d: Warning =>
-        printMessageAndPos(s"warning: ${d.msg}", d.pos)
-      case _ =>
-        printMessageAndPos(d.msg, d.pos)
-    }
-    issue
+  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
+    case d: Error =>
+      printMessageAndPos(s"error: ${d.msg}", d.pos)
+      if (ctx.settings.prompt.value) displayPrompt()
+    case d: ConditionalWarning if !d.enablingOption.value =>
+    case d: MigrationWarning =>
+      printMessageAndPos(s"migration warning: ${d.msg}", d.pos)
+    case d: Warning =>
+      printMessageAndPos(s"warning: ${d.msg}", d.pos)
+    case _ =>
+      printMessageAndPos(d.msg, d.pos)
   }
 
   def displayPrompt(): Unit = {
