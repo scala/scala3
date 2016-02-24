@@ -113,8 +113,8 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   def nextLine(offset: Int): Int =
     lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
 
-  /** The contents of the line containing position `offset` */
-  def lineContents(offset: Int): String =
+  /** The content of the line containing position `offset` */
+  def lineContent(offset: Int): String =
     content.slice(startOfLine(offset), nextLine(offset)).mkString
 
   /** The column corresponding to `offset`, starting at 0 */

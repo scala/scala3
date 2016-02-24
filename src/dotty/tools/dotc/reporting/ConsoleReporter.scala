@@ -22,7 +22,7 @@ class ConsoleReporter(
   protected def ErrorLimit = 100
 
   def printSourceLine(pos: SourcePosition) =
-    printMessage(pos.lineContents.stripLineEnd)
+    printMessage(pos.lineContent.stripLineEnd)
 
   def printColumnMarker(pos: SourcePosition) =
     if (pos.exists) { printMessage(" " * pos.column + "^") }
@@ -42,15 +42,15 @@ class ConsoleReporter(
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
     case d: Error =>
-      printMessageAndPos(s"error: ${d.msg}", d.pos)
+      printMessageAndPos(s"error: ${d.message}", d.pos)
       if (ctx.settings.prompt.value) displayPrompt()
     case d: ConditionalWarning if !d.enablingOption.value =>
     case d: MigrationWarning =>
-      printMessageAndPos(s"migration warning: ${d.msg}", d.pos)
+      printMessageAndPos(s"migration warning: ${d.message}", d.pos)
     case d: Warning =>
-      printMessageAndPos(s"warning: ${d.msg}", d.pos)
+      printMessageAndPos(s"warning: ${d.message}", d.pos)
     case _ =>
-      printMessageAndPos(d.msg, d.pos)
+      printMessageAndPos(d.message, d.pos)
   }
 
   def displayPrompt(): Unit = {

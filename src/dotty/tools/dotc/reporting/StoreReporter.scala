@@ -15,7 +15,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
   private var infos: mutable.ListBuffer[Diagnostic] = null
 
   def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
-    typr.println(s">>>> StoredError: ${d.msg}") // !!! DEBUG
+    typr.println(s">>>> StoredError: ${d.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += d
   }

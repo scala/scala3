@@ -21,7 +21,7 @@ class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) exte
   private var myIsNonSensical: Boolean = false
 
   /** The message to report */
-  def msg: String = {
+  def message: String = {
     if (myMsg == null) {
       myMsg = msgFn
       if (myMsg.contains(nonSensicalStartTag)) {
@@ -40,8 +40,8 @@ class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) exte
    *  they look weird and are normally follow-up errors to something that
    *  was diagnosed before.
    */
-  def isNonSensical = { msg; myIsNonSensical }
+  def isNonSensical = { message; myIsNonSensical }
 
-  override def toString = s"$getClass at $pos: $msg"
-  override def getMessage() = msg
+  override def toString = s"$getClass at $pos: $message"
+  override def getMessage() = message
 }
