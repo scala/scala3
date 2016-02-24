@@ -102,5 +102,5 @@ abstract class Driver extends DotClass {
   }
 }
 
-class FatalError(msg: String) extends Exception
+class FatalError(msg: String) extends Exception(msg)
 
