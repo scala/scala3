@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 
+import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
 import util.DotClass
@@ -101,6 +102,3 @@ abstract class Driver extends DotClass {
     sys.exit(if (process(args).hasErrors) 1 else 0)
   }
 }
-
-class FatalError(msg: String) extends Exception
-
