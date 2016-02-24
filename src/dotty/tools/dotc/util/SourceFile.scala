@@ -11,6 +11,8 @@ import Chars._
 import ScriptSourceFile._
 import Positions._
 
+import java.util.Optional
+
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
@@ -32,7 +34,7 @@ object ScriptSourceFile {
   }
 }
 
-case class SourceFile(file: AbstractFile, content: Array[Char]) {
+case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile {
 
   def this(_file: AbstractFile)                 = this(_file, _file.toCharArray)
   def this(sourceName: String, cs: Seq[Char])   = this(new VirtualFile(sourceName), cs.toArray)
@@ -40,6 +42,10 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
 
   /** Tab increment; can be overridden */
   def tabInc = 8
+
+  override def name = file.name
+  override def path = file.path
+  override def jfile = Optional.ofNullable(file.file)
 
   override def equals(that : Any) = that match {
     case that : SourceFile => file.path == that.file.path && start == that.start

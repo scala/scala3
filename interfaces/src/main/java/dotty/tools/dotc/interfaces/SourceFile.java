@@ -1,0 +1,13 @@
+package dotty.tools.dotc.interfaces;
+
+import java.io.File;
+
+/** A source file.
+ *
+ *  User code should not implement this interface, but it may have to
+ *  manipulate objects of this type.
+ */
+public interface SourceFile extends AbstractFile {
+  /** The content of this file as seen by the compiler. */
+  char[] content();
+}

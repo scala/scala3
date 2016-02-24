@@ -1,10 +1,11 @@
 package dotty.tools
-package dotc.util
+package dotc
+package util
 
 import Positions.{Position, NoPosition}
 
 /** A source position is comprised of a position in a source file */
-case class SourcePosition(source: SourceFile, pos: Position) {
+case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.SourcePosition {
   def exists = pos.exists
 
   def lineContent: String = source.lineContent(point)

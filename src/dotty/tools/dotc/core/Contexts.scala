@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package core
 
+import interfaces.CompilerCallback
 import Decorators._
 import Periods._
 import Names._

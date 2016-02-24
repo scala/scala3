@@ -11,7 +11,7 @@ import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
 import typer.Mode
-import Diagnostic.{ERROR, WARNING, INFO}
+import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 
 object Reporter {
   class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
@@ -33,6 +33,16 @@ object Reporter {
   class MigrationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.migration
   }
+
+  /** Convert a SimpleReporter into a real Reporter */
+  def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
+    new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
+      override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
+        case d: ConditionalWarning if !d.enablingOption.value =>
+        case _ =>
+          simple.report(d)
+      }
+    }
 }
 
 import Reporter._
@@ -157,7 +167,7 @@ trait Reporting { this: Context =>
  * This interface provides methods to issue information, warning and
  * error messages.
  */
-abstract class Reporter {
+abstract class Reporter extends interfaces.ReporterResult {
 
   /** Report a diagnostic */
   def doReport(d: Diagnostic)(implicit ctx: Context): Unit

@@ -4,21 +4,21 @@ package reporting
 
 import util.SourcePosition
 
+import java.util.Optional
+
 object Diagnostic {
-
-  // Error levels
-  val ERROR = 2
-  val WARNING = 1
-  val INFO = 0
-
   val nonSensicalStartTag = "<nonsensical>"
   val nonSensicalEndTag = "</nonsensical>"
 }
 
-class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) extends Exception {
+class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int)
+    extends Exception with interfaces.Diagnostic {
   import Diagnostic._
   private var myMsg: String = null
   private var myIsNonSensical: Boolean = false
+
+  override def position: Optional[interfaces.SourcePosition] =
+    if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
 
   /** The message to report */
   def message: String = {
