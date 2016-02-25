@@ -48,11 +48,15 @@ class LinkScala2ImplClasses extends MiniPhaseTransform with IdentityDenotTransfo
     }
   }
 
-  private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol =
-    meth.owner.implClass.info
-      .decl(if (meth.isConstructor) nme.TRAIT_CONSTRUCTOR else meth.name)
+  private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
+    val implInfo = meth.owner.implClass.info
+    if (meth.isConstructor)
+      implInfo.decl(nme.TRAIT_CONSTRUCTOR).symbol
+    else
+      implInfo.decl(meth.name)
       .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
       .symbol
+  }
 
   private val Scala2xTrait = allOf(Scala2x, Trait)
 }
