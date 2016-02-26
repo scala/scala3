@@ -16,6 +16,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.backend.sjs.GenSJSIR
 
 class Compiler {
 
@@ -83,6 +84,7 @@ class Compiler {
       List(new ExpandPrivate,
            new CollectEntryPoints,
            new LabelDefs),
+      List(new GenSJSIR),
       List(new GenBCode)
     )
 
@@ -101,7 +103,16 @@ class Compiler {
    */
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init(ctx)
-    ctx.setPhasePlan(phases)
+    val actualPhases = if (ctx.settings.scalajs.value) {
+      phases
+    } else {
+      // Remove Scala.js-related phases
+      phases.mapConserve(_.filter {
+        case _: GenSJSIR => false
+        case _ => true
+      }).filter(_.nonEmpty)
+    }
+    ctx.setPhasePlan(actualPhases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(nextRunId, FirstPhaseId))
