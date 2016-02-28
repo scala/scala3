@@ -35,7 +35,16 @@ object DottyBuild extends Build {
     )
   }
 
+  lazy val `dotty-interfaces` = project.in(file("interfaces")).
+    settings(
+      // Do not append Scala versions to the generated artifacts
+      crossPaths := false,
+      // Do not depend on the Scala library
+      autoScalaLibrary := false
+    )
+
   lazy val dotty = project.in(file(".")).
+    dependsOn(`dotty-interfaces`).
     settings(
       // set sources to src/, tests to test/ and resources to resources/
       scalaSource in Compile := baseDirectory.value / "src",
@@ -105,7 +114,7 @@ object DottyBuild extends Build {
       parallelExecution in Test := false,
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      javaOptions <++= (managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
         // put the Scala {library, reflect} in the classpath
         val path = for {
           file <- attList.map(_.data)

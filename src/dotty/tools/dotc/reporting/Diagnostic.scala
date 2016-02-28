@@ -4,24 +4,24 @@ package reporting
 
 import util.SourcePosition
 
+import java.util.Optional
+
 object Diagnostic {
-
-  // Error levels
-  val ERROR = 2
-  val WARNING = 1
-  val INFO = 0
-
   val nonSensicalStartTag = "<nonsensical>"
   val nonSensicalEndTag = "</nonsensical>"
 }
 
-class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) extends Exception {
+class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int)
+    extends Exception with interfaces.Diagnostic {
   import Diagnostic._
   private var myMsg: String = null
   private var myIsNonSensical: Boolean = false
 
+  override def position: Optional[interfaces.SourcePosition] =
+    if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
+
   /** The message to report */
-  def msg: String = {
+  def message: String = {
     if (myMsg == null) {
       myMsg = msgFn
       if (myMsg.contains(nonSensicalStartTag)) {
@@ -40,8 +40,8 @@ class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) exte
    *  they look weird and are normally follow-up errors to something that
    *  was diagnosed before.
    */
-  def isNonSensical = { msg; myIsNonSensical }
+  def isNonSensical = { message; myIsNonSensical }
 
-  override def toString = s"$getClass at $pos: $msg"
-  override def getMessage() = msg
+  override def toString = s"$getClass at $pos: $message"
+  override def getMessage() = message
 }

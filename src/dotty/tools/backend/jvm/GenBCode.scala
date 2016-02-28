@@ -13,6 +13,9 @@ import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
 
+import dotty.tools.dotc.interfaces
+import java.util.Optional
+
 import scala.reflect.ClassTag
 import dotty.tools.dotc.core._
 import Periods._
@@ -51,7 +54,17 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
   var tree: Tree = _
 
-  val sourceJFile: JFile = ctx.compilationUnit.source.file.file
+  val sourceFile = ctx.compilationUnit.source
+
+  /** Convert a `scala.reflect.io.AbstractFile` into a
+   *  `dotty.tools.dotc.interfaces.AbstractFile`.
+   */
+  private[this] def convertAbstractFile(absfile: scala.reflect.io.AbstractFile): interfaces.AbstractFile =
+    new interfaces.AbstractFile {
+      override def name = absfile.name
+      override def path = absfile.path
+      override def jfile = Optional.ofNullable(absfile.file)
+    }
 
   final class PlainClassBuilder(cunit: CompilationUnit) extends SyncAndTryBuilder(cunit)
 
@@ -307,7 +320,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       // Statistics.stopTimer(BackendStats.bcodeTimer, bcodeStart)
 
       if (ctx.compilerCallback != null)
-        ctx.compilerCallback.onSourceCompiled(sourceJFile)
+        ctx.compilerCallback.onSourceCompiled(sourceFile)
 
       /* TODO Bytecode can be verified (now that all classfiles have been written to disk)
        *
@@ -373,10 +386,9 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
               else getFileForClassfile(outFolder, jclassName, ".class")
             bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, outFile)
 
-            val outJFile = outFile.file
             val className = jclassName.replace('/', '.')
             if (ctx.compilerCallback != null)
-              ctx.compilerCallback.onClassGenerated(sourceJFile, outJFile, className)
+              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), className)
           }
           catch {
             case e: FileConflictException =>

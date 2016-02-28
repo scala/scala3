@@ -42,7 +42,8 @@ ReplMain=test.DottyRepl
 
 
 
-# autodetecting the compiler jar. this is location where sbt 'packages' it
+# autodetecting the compiler jars. this is the location where sbt 'packages' them
+INTERFACES_JAR=$DOTTY_ROOT/interfaces/target/dotty-interfaces-$DOTTY_VERSION.jar
 MAIN_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION.jar
 TEST_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION-tests.jar
 DOTTY_JAR=$DOTTY_ROOT/dotty.jar
@@ -62,7 +63,7 @@ function checkjar {
       echo "The required jar file was built successfully."
     fi
   else
-    NEW_FILES="$(find "$DOTTY_ROOT/$3" -iname "*.scala" -newer "$1")"
+    NEW_FILES="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$1")"
     if [ ! -z "$NEW_FILES" ]; 
     then
       echo "new files detected. rebuilding"
@@ -74,6 +75,7 @@ function checkjar {
   fi
 }
 
+checkjar $INTERFACES_JAR interfaces/package interfaces
 checkjar $MAIN_JAR package src
 checkjar $TEST_JAR test:package test
 
@@ -198,6 +200,8 @@ classpathArgs () {
   else
     toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR"
   fi
+  bcpJars="$INTERFACES_JAR:$MAIN_JAR"
+  cpJars="$INTERFACES_JAR:$MAIN_JAR:$TEST_JAR"
 
   if [[ -n "$cygwin" ]]; then
     if [[ "$OS" = "Windows_NT" ]] && cygpath -m .>/dev/null 2>/dev/null ; then
@@ -207,18 +211,18 @@ classpathArgs () {
     fi
 
     if [[ -n $bootcp ]]; then
-      boot_classpath="$(cygpath --path --$format "$toolchain:$MAIN_JAR")"
-      classpath="$(cygpath --path --$format "$MAIN_JAR:$TEST_JAR")"
+      boot_classpath="$(cygpath --path --$format "$toolchain:$bcpJars")"
+      classpath="$(cygpath --path --$format "$cpJars")"
       cpArgs="-Xbootclasspath/a:$boot_classpath -classpath $classpath"
     else
-      classpath="$(cygpath --path --$format "$toolchain:$MAIN_JAR:$TEST_JAR")"
+      classpath="$(cygpath --path --$format "$toolchain:$cpJars")"
       cpArgs="-classpath $classpath"
     fi
   else
     if [[ -n $bootcp ]]; then
-      cpArgs="-Xbootclasspath/a:$toolchain:$MAIN_JAR -classpath $MAIN_JAR:$TEST_JAR"
+      cpArgs="-Xbootclasspath/a:$toolchain:$bcpJars -classpath $cpJars"
     else
-      cpArgs="-classpath $toolchain:$MAIN_JAR:$TEST_JAR"
+      cpArgs="-classpath $toolchain:$cpJars"
     fi
   fi
   echo ${cpArgs}
