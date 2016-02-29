@@ -26,7 +26,7 @@ import reporting._
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
-import config.{Settings, ScalaSettings, Platform, JavaPlatform}
+import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 
@@ -514,8 +514,21 @@ object Contexts {
     /** The symbol loaders */
     val loaders = new SymbolLoaders
 
+    /** The platform, initialized by `initPlatform()`. */
+    private var _platform: Platform = _
+
     /** The platform */
-    val platform: Platform = new JavaPlatform
+    def platform: Platform = {
+      if (_platform == null) {
+        throw new IllegalStateException(
+            "initialize() must be called before accessing platform")
+      }
+      _platform
+    }
+
+    protected def newPlatform(implicit ctx: Context): Platform =
+      if (settings.scalajs.value) new SJSPlatform
+      else new JavaPlatform
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
@@ -525,6 +538,14 @@ object Contexts {
 
     /** The standard definitions */
     val definitions = new Definitions
+
+    /** Initializes the `ContextBase` with a starting context.
+     *  This initializes the `platform` and the `definitions`.
+     */
+    def initialize()(implicit ctx: Context): Unit = {
+      _platform = newPlatform
+      definitions.init
+    }
 
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)

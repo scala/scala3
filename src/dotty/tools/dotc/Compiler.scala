@@ -102,7 +102,7 @@ class Compiler {
    *    imports      For each element of RootImports, an import context
    */
   def rootContext(implicit ctx: Context): Context = {
-    ctx.definitions.init(ctx)
+    ctx.initialize()(ctx)
     val actualPhases = if (ctx.settings.scalajs.value) {
       phases
     } else {
@@ -123,7 +123,7 @@ class Compiler {
       .setTyper(new Typer)
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
-    ctx.definitions.init(start) // set context of definitions to start
+    ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)

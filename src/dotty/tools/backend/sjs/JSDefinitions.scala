@@ -8,22 +8,12 @@ import Symbols._
 import StdNames._
 import Decorators._
 
-object JSDefinitions {
-  @dotty.tools.sharable
-  private val cache = new java.util.WeakHashMap[ContextBase, JSDefinitions]
+import dotty.tools.dotc.config.SJSPlatform
 
-  // TODO Figure out where best to define this
-  def jsdefn(implicit ctx: Context): JSDefinitions = cache.synchronized {
-    val baseCtx = ctx.base
-    val cached = cache.get(baseCtx)
-    if (cached != null) {
-      cached
-    } else {
-      val newJSDefinitions = new JSDefinitions()
-      cache.put(baseCtx, newJSDefinitions)
-      newJSDefinitions
-    }
-  }
+object JSDefinitions {
+  /** The Scala.js-specific definitions for the current context. */
+  def jsdefn(implicit ctx: Context): JSDefinitions =
+    ctx.platform.asInstanceOf[SJSPlatform].jsDefinitions
 }
 
 final class JSDefinitions()(implicit ctx: Context) {

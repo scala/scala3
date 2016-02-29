@@ -80,7 +80,7 @@ class Pickler extends Phase {
 
   private def testUnpickler(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
-    ctx.definitions.init
+    ctx.initialize()
     val unpicklers =
       for (unit <- units; (cls, pickler) <- unit.picklers) yield {
         val unpickler = new DottyUnpickler(pickler.assembleParts())
