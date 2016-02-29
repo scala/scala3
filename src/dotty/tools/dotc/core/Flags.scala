@@ -508,7 +508,7 @@ object Flags {
   /** These flags are pickled */
   final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)
 
-  final val AllFlags = flagRange(FirstFlag, MaxFlag)
+  final val AnyFlags = flagRange(FirstFlag, MaxFlag)
 
   /** An abstract class or a trait */
   final val AbstractOrTrait = Abstract | Trait
