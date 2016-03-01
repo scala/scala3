@@ -358,7 +358,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def memberRef(sym: Symbol)(implicit ctx: Context, info: TransformerInfo): Tree = {
       val clazz = sym.enclosingClass
       val qual =
-        if (clazz.isStaticOwner) singleton(clazz.thisType)
+        if (clazz.isStaticOwner || ctx.owner.enclosingClass == clazz)
+          singleton(clazz.thisType)
+        else if (ctx.owner.isConstructor)
+          outerParam.get(ctx.owner) match {
+            case Some(param) => outer.path(clazz, Ident(param.termRef))
+            case _ => outer.path(clazz)
+          }
         else outer.path(clazz)
       transformFollowingDeep(qual.select(sym))
     }
