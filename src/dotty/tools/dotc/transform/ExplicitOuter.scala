@@ -209,7 +209,7 @@ object ExplicitOuter {
   private def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
-  /** Tree references a an outer class of `cls` which is not a static owner.
+  /** Tree references an outer class of `cls` which is not a static owner.
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
     def isOuter(sym: Symbol) =
@@ -231,7 +231,12 @@ object ExplicitOuter {
           case _ => false
         }
       case nw: New =>
-        isOuter(nw.tpe.classSymbol.owner.enclosingClass)
+        val newCls = nw.tpe.classSymbol
+        isOuter(newCls.owner.enclosingClass) ||
+        newCls.owner.isTerm && cls.isProperlyContainedIn(newCls)
+          // newCls might get proxies for free variables. If current class is
+          // properly contained in newCls, it needs an outer path to newCls access the
+          // proxies and forward them to the new instance.
       case _ =>
         false
     }
