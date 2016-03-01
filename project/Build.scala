@@ -8,7 +8,7 @@ object DottyBuild extends Build {
 
   // Currently, this cannot be increased without hitting the maximum amount of memory
   // available on the Jenkins VMs
-  val travisMemLimit = List("-Xmx1100m")
+  val jenkinsMemLimit = List("-Xmx1100m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
 
@@ -126,7 +126,7 @@ object DottyBuild extends Build {
 
         val travis_build = // propagate if this is a travis build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
-            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: travisMemLimit
+            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
           else
             List()
 
