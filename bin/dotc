@@ -75,7 +75,7 @@ function checkjar {
   fi
 }
 
-checkjar $INTERFACES_JAR interfaces/package interfaces
+checkjar $INTERFACES_JAR dotty-interfaces/package interfaces
 checkjar $MAIN_JAR package src
 checkjar $TEST_JAR test:package test
 
