@@ -103,12 +103,6 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      */
     private val liftedOwner = new HashMap[Symbol, Symbol]
 
-    /** All methods of local traits; these also get augmented with the free variables of
-     *  methods enclosing the owning trait, because traits cannot cache free references
-     *  like normal classes do.
-     */
-    private val localTraitMethods = new HashSet[Symbol]
-
     /** The outer parameter of a constructor */
     private val outerParam = new HashMap[Symbol, Symbol]
 
@@ -265,15 +259,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                 // On the other hand, all other methods will be indirectly owned by their
                 // top-level class. This avoids possible deadlocks when a static method
                 // has to access its enclosing object from the outside.
-            else if (sym.owner.is(Trait) && isLocal(sym.owner))
-              localTraitMethods += sym
-            if (sym.isConstructor) {
+            else if (sym.isConstructor) {
               if (sym.isPrimaryConstructor && sym.owner.owner.isTerm && !sym.owner.is(Trait))
                 // add a call edge from the constructor of a local non-trait class to
                 // the class itself. This is done so that the constructor inherits
                 // the free variables of the class.
                 symSet(called, sym) += sym.owner
-                
+
               tree.vparamss.head.find(_.name == nme.OUTER) match {
                 case Some(vdef) => outerParam(sym) = vdef.symbol
                 case _ =>
@@ -377,16 +369,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           initFlags = local.flags &~ (InSuperCall | Module) | Private | maybeStatic,
             // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisTransform)
-        if (local.isClass)
-          for (member <- local.asClass.info.decls)
-            if (member.isConstructor) {
-              val linfo = liftedInfo(member)
-              if (linfo ne member.info)
-                member.copySymDenotation(info = linfo).installAfter(thisTransform)
-            }
       }
-      for (local <- localTraitMethods)
-        local.copySymDenotation(info = liftedInfo(local)).installAfter(thisTransform)
+      for (local <- free.keys)
+        if (!liftedOwner.contains(local))
+          local.copySymDenotation(info = liftedInfo(local)).installAfter(thisTransform)
     }
 
     private def init(implicit ctx: Context) = {
@@ -528,11 +514,11 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
       val sym = tree.symbol
       val proxyHolder = sym.skipConstructor
-      if (needsLifting(proxyHolder) || localTraitMethods.contains(sym)) {
-        val paramsAdded = addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
-        if (sym.isConstructor) paramsAdded else liftDef(paramsAdded)
-      }
-      else tree
+      val paramsAdded =
+        if (free.contains(sym)) addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
+        else tree
+      if (needsLifting(sym)) liftDef(paramsAdded)
+      else paramsAdded
     }
 
     override def transformReturn(tree: Return)(implicit ctx: Context, info: TransformerInfo) = tree.expr match {
