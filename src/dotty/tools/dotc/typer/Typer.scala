@@ -383,7 +383,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+        checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -400,30 +400,53 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
-    def regularTyped(isWildcard: Boolean) = {
-      val tpt1 =
-        if (untpd.isWildcardStarArg(tree))
-          TypeTree(defn.SeqType.appliedTo(pt :: Nil))
-        else
-          checkSimpleKinded(typedType(tree.tpt))
-      val expr1 =
-        if (isWildcard) tree.expr withType tpt1.tpe
-        else typed(tree.expr, tpt1.tpe.widenSkolem)
-      assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
-    }
-    tree.expr match {
+    /*  Handles three cases:
+     *  @param  ifPat    how to handle a pattern (_: T)
+     *  @param  ifExpr   how to handle an expression (e: T)
+     *  @param  wildName what name `w` to use in the rewriting of
+     *                   (x: T) to (x @ (w: T)). This is either `_` or `_*`.
+     */
+    def cases(ifPat: => Tree, ifExpr: => Tree, wildName: TermName) = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
-        if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) regularTyped(isWildcard = true)
+        if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
-          val name = if (untpd.isWildcardStarArg(tree)) nme.WILDCARD_STAR else nme.WILDCARD
-          typed(Bind(id.name, Typed(Ident(name), tree.tpt)).withPos(id.pos), pt)
+          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withPos(id.pos), pt)
         }
-      case _ =>
-        if (untpd.isWildcardStarArg(tree))
-          seqToRepeated(typedExpr(tree.expr, defn.SeqType))
-        else
-          regularTyped(isWildcard = false)
+      case _ => ifExpr
+    }
+    def ascription(tpt: Tree, isWildcard: Boolean) = {
+      val expr1 =
+        if (isWildcard) tree.expr.withType(tpt.tpe)
+        else typed(tree.expr, tpt.tpe.widenSkolem)
+      assignType(cpy.Typed(tree)(expr1, tpt), tpt)
+    }
+    if (untpd.isWildcardStarArg(tree))
+      cases(
+        ifPat = ascription(TypeTree(defn.SeqType.appliedTo(pt :: Nil)), isWildcard = true),
+        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
+        wildName = nme.WILDCARD_STAR)
+    else {
+      def typedTpt = checkSimpleKinded(typedType(tree.tpt))
+      def handlePattern: Tree = {
+        val tpt1 = typedTpt
+        // special case for an abstract type that comes with a class tag
+        tpt1.tpe.dealias match {
+          case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
+            inferImplicit(defn.ClassTagType.appliedTo(tref),
+               EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
+              case SearchSuccess(arg, _, _) =>
+                return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
+              case _ =>
+            }
+          case _ =>
+        }
+        ascription(tpt1, isWildcard = true)
+      }
+      cases(
+        ifPat = handlePattern,
+        ifExpr = ascription(typedTpt, isWildcard = false),
+        wildName = nme.WILDCARD)
     }
   }
 
@@ -1477,7 +1500,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case ambi: AmbiguousImplicits =>
                 implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
               case failure: SearchFailure =>
-                implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
+                val arg = synthesizedClassTag(formal)
+                if (!arg.isEmpty) arg
+                else implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
             }
           }
           if (errors.nonEmpty) {
@@ -1536,6 +1561,28 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
           adaptToSubType(wtp)
         }
+    }
+
+    /** If `formal` is of the form ClassTag[T], where `T` is a class type,
+     *  synthesize a class tag for `T`.
+     */
+    def synthesizedClassTag(formal: Type): Tree = {
+      if (formal.isRef(defn.ClassTagClass))
+        formal.argTypes match {
+          case arg :: Nil =>
+            val tp = fullyDefinedType(arg, "ClassTag argument", tree.pos)
+            tp.underlyingClassRef(refinementOK = false) match {
+              case tref: TypeRef =>
+                return ref(defn.ClassTagModule)
+                  .select(nme.apply)
+                  .appliedToType(tp)
+                  .appliedTo(clsOf(tref))
+                  .withPos(tree.pos.endPos)
+              case _ =>
+            }
+          case _ =>
+        }
+      EmptyTree
     }
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */

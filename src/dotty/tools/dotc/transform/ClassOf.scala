@@ -21,17 +21,10 @@ class ClassOf extends MiniPhaseTransform {
 
   override def phaseName: String = "classOf"
 
-  private var classOfMethod: TermSymbol = _
-
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    classOfMethod = defn.ScalaPredefModule.requiredMethod(nme.classOf)
-    this
-  }
-
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (tree.symbol eq classOfMethod) {
+    if (tree.symbol eq defn.Predef_classOf) {
       val targ = tree.args.head.tpe
-      tree.clsOf(targ, Literal(Constant(TypeErasure.erasure(targ))))
+      clsOf(targ).ensureConforms(tree.tpe).withPos(tree.pos)
     }
     else tree
 }

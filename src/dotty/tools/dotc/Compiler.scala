@@ -59,7 +59,6 @@ class Compiler {
            new SeqLiterals,
            new InterceptedMethods,
            new Getters,
-           new ClassTags,
            new ElimByName,
            new AugmentScala2Traits,
            new ResolveSuper),

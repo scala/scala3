@@ -290,6 +290,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           ConstantType(Constant(readName().toString))
         case NULLconst =>
           ConstantType(Constant(null))
+        case CLASSconst =>
+          ConstantType(Constant(readType()))
         case BYNAMEtype =>
           ExprType(readType())
       }
