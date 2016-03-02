@@ -133,7 +133,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       val owner = sym.maybeOwner
       owner.isTerm ||
       owner.is(Trait) && isLocal(owner) ||
-      sym.isConstructor && isLocal(sym.owner)
+      sym.isConstructor && isLocal(owner)
     }
 
     /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
@@ -223,7 +223,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     }
 
     private def markCalled(callee: Symbol, caller: Symbol)(implicit ctx: Context): Unit = {
-      ctx.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller")
+      ctx.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
       assert(isLocal(callee))
       symSet(called, caller) += callee
       if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
@@ -261,7 +261,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                 // top-level class. This avoids possible deadlocks when a static method
                 // has to access its enclosing object from the outside.
             else if (sym.isConstructor) {
-              if (sym.isPrimaryConstructor && sym.owner.owner.isTerm && !sym.owner.is(Trait))
+              if (sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait))
                 // add a call edge from the constructor of a local non-trait class to
                 // the class itself. This is done so that the constructor inherits
                 // the free variables of the class.

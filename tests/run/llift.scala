@@ -128,6 +128,21 @@ object Test {
     new C1().f6
   }
 
+  def f1f(x: Int) = {
+    trait T1 {
+      trait T2 {
+        def f3: Int = x
+      }
+      class C2 extends T2 {
+        override def f3 = super.f3
+      }
+      new C2().f3
+      def f6 = x
+    }
+    class C1 extends T1
+    new C1().f6
+  }
+
   def main(args: Array[String]) = {
     assert(foo(3) == 3)
     assert(f1(4) == 4)
@@ -136,5 +151,6 @@ object Test {
     assert(f1c(7) == 14)
     assert(f1d(8) == 16)
     assert(f1e(9) == 9)
+    assert(f1f(10) == 10)
   }
 }

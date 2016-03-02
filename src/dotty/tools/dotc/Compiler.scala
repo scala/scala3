@@ -75,7 +75,7 @@ class Compiler {
            new Constructors, // constructors changes decls in transformTemplate, no InfoTransformers should be added after it
            new FunctionalInterfaces,
            new GetClass),   // getClass transformation should be applied to specialized methods
-      List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
+      List(new LambdaLift,  // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,
            new Flatten,
            // new DropEmptyCompanions,
