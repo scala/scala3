@@ -7,6 +7,7 @@ class A {
     }
   }
 }
+
 object Test {
   def foo(x: Int) = {
     trait B {
@@ -17,7 +18,6 @@ object Test {
     }
     new C().bar
   }
-
 
   def f1(x: Int) = {
     class C1 {
@@ -79,10 +79,11 @@ object Test {
             def f7 = this.f3
             f5
           }
+          def f3a = f3
         }
         class C2 extends T2
         class C3 extends T1
-        new C2().f3 + new C3().f6
+        new C2().f3a + new C3().f6
       }
       def f6 = x
     }
@@ -90,11 +91,50 @@ object Test {
     new C1().f2
   }
 
+  def f1d(x: Int) = {
+    trait T1 {
+      def f2 = {
+        trait T2 {
+          def f3: Int = {
+            def f4 = x
+            def f5 = f4
+            def f7 = this.f3
+            f5
+          }
+          def f3a = f3
+        }
+        class C2 extends T2
+        class C3 extends T1
+        new C2().f3a + new C3().f6
+      }
+      def f6 = x
+    }
+    class C1 extends T1
+    new C1().f2
+  }
+
+  def f1e(x: Int) = {
+    trait T1 {
+      def f2 = {
+        trait T2 {
+          def f3: Int = x
+        }
+        class C2 extends T2
+        new C2().f3
+      }
+      def f6 = x
+    }
+    class C1 extends T1
+    new C1().f6
+  }
+
   def main(args: Array[String]) = {
     assert(foo(3) == 3)
     assert(f1(4) == 4)
     assert(f1a(5) == 5)
     assert(f1b(6) == 6)
-    assert(f1c(6) == 12)
+    assert(f1c(7) == 14)
+    assert(f1d(8) == 16)
+    assert(f1e(9) == 9)
   }
 }

@@ -126,10 +126,14 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       free.getOrElse(sym, Nil).toList.map(pm)
     }
 
-    /** A symbol is local if it is owned by a term or a local trait */
+    /** A symbol is local if it is owned by a term or a local trait,
+     *  or if it is a constructor of a local symbol.
+     */
     def isLocal(sym: Symbol)(implicit ctx: Context): Boolean = {
       val owner = sym.maybeOwner
-      owner.isTerm || owner.is(Trait) && isLocal(owner)
+      owner.isTerm ||
+      owner.is(Trait) && isLocal(owner) ||
+      sym.isConstructor && isLocal(sym.owner)
     }
 
     /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
@@ -186,18 +190,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *    }
      *  }
      */
-    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Symbol = try {
+    private def markFree(sym: Symbol, enclosure: Symbol, propagating: Boolean = false)(implicit ctx: Context): Symbol = try {
       if (!enclosure.exists) throw new NoPath
       if (enclosure == sym.enclosure) NoSymbol
       else {
-        ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+        ctx.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         val intermediate =
           if (enclosure.is(PackageClass)) enclosure
-          else markFree(sym, enclosure.skipConstructor.enclosure)
-            // `enclosure` might be a constructor, in which case we want the enclosure
-            // of the enclosing class, so skipConstructor is needed here.
+          else markFree(sym, enclosure.enclosure)
         narrowLiftedOwner(enclosure, intermediate orElse sym.enclosingClass)
-        if (!intermediate.isClass || intermediate.is(Trait)) {
+        if (!intermediate.isClass || intermediate.is(Trait) ||
+            enclosure.isConstructor && propagating) {
           // Methods nested inside traits get the free variables of the enclosing trait.
           // Conversely, local traits do not get free variables.
           if (!enclosure.is(Trait)) {
@@ -205,7 +208,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             if (!ss(sym)) {
               ss += sym
               changedFreeVars = true
-              ctx.debuglog(i"$sym is free in $enclosure")
+              ctx.log(i"$sym is free in $enclosure")
             }
           }
         }
@@ -221,14 +224,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
     private def markCalled(callee: Symbol, caller: Symbol)(implicit ctx: Context): Unit = {
       ctx.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller")
-      assert(isLocal(callee.skipConstructor))
+      assert(isLocal(callee))
       symSet(called, caller) += callee
       if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
     }
 
     private class CollectDependencies extends EnclosingMethodTraverser {
-      def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = try { //debug
-        val enclosure = enclMeth.skipConstructor
+      def traverse(enclosure: Symbol, tree: Tree)(implicit ctx: Context) = try { //debug
         val sym = tree.symbol
         def narrowTo(thisClass: ClassSymbol) = {
           val enclClass = enclosure.enclosingClass
@@ -237,18 +239,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
         }
         tree match {
-          case tree: RefTree =>
+          case tree: Ident =>
             if (isLocal(sym)) {
               if (sym is Label)
                 assert(enclosure == sym.enclosure,
                   i"attempt to refer to label $sym from nested $enclosure")
               else if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
-            } else if (sym.maybeOwner.isClass) {
-              narrowTo(sym.owner.asClass)
-              if (sym.isConstructor && sym.owner.owner.isTerm)
-                markCalled(sym, enclosure)
             }
+            if (sym.maybeOwner.isClass) narrowTo(sym.owner.asClass)
+          case tree: Select =>
+            if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
@@ -294,7 +295,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           callee <- called(caller)
           fvs <- free get callee
           fv <- fvs
-        } markFree(fv, caller)
+        } markFree(fv, caller, propagating = true)
       } while (changedFreeVars)
 
     /** Compute final liftedOwner map by closing over caller dependencies */
@@ -340,7 +341,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
     private def liftedInfo(local: Symbol)(implicit ctx: Context): Type = local.info match {
       case mt @ MethodType(pnames, ptypes) =>
-        val ps = proxies(local.skipConstructor)
+        val ps = proxies(local)
         MethodType(
           ps.map(_.name.asTermName) ++ pnames,
           ps.map(_.info) ++ ptypes,
@@ -390,16 +391,17 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     }
 
     private def currentEnclosure(implicit ctx: Context) =
-      ctx.owner.enclosingMethod.skipConstructor
+      ctx.owner.enclosingMethodOrClass
 
     private def inCurrentOwner(sym: Symbol)(implicit ctx: Context) =
       sym.enclosure == currentEnclosure
 
     private def proxy(sym: Symbol)(implicit ctx: Context): Symbol = {
+      def liftedEnclosure(sym: Symbol) = liftedOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
-            if (encl.exists) encl :: enclosures(encl.enclosure) else Nil
+            if (encl.exists) encl :: enclosures(liftedEnclosure(encl)) else Nil
           throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
         }
         ctx.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
@@ -411,7 +413,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             }
           case none =>
         }
-        searchIn(enclosure.enclosure)
+        searchIn(liftedEnclosure(enclosure))
       }
       if (inCurrentOwner(sym)) sym else searchIn(currentEnclosure)
     }
@@ -445,35 +447,25 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       case Nil => tree
       case proxies =>
         val sym = tree.symbol
-        val ownProxies =
-          if (!sym.isConstructor) proxies
-          else proxies.map(_.copy(owner = sym, flags = Synthetic | Param))
-        val freeParamDefs = ownProxies.map(proxy =>
+        val freeParamDefs = proxies.map(proxy =>
           transformFollowingDeep(ValDef(proxy.asTerm).withPos(tree.pos)).asInstanceOf[ValDef])
         def proxyInit(field: Symbol, param: Symbol) =
           transformFollowingDeep(memberRef(field).becomes(ref(param)))
 
-        /** Map references to proxy fields `this.proxy` to proxy parameters */
-        def mapProxies = new TreeMap {
-          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
-            case Select(This(_), _) if proxies contains tree.symbol =>
-              ref(tree.symbol.subst(proxies, ownProxies))
-            case _ =>
-              super.transform(tree)
-          }
-        }
-
         /** Initialize proxy fields from proxy parameters and map `rhs` from fields to parameters */
         def copyParams(rhs: Tree) = {
-          ctx.log(i"copy params ${proxies.map(_.showLocated)}%, %, own = ${ownProxies.map(_.showLocated)}%, %")
-          seq((proxies, ownProxies).zipped.map(proxyInit), mapProxies.transform(rhs))
+          val classProxies = this.proxies(sym.owner)
+          ctx.debuglog(i"copy params ${proxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
+          seq((classProxies, proxies).zipped.map(proxyInit), rhs)
         }
 
         tree match {
           case tree: DefDef =>
             cpy.DefDef(tree)(
                 vparamss = tree.vparamss.map(freeParamDefs ++ _),
-                rhs = if (sym.isPrimaryConstructor) copyParams(tree.rhs) else tree.rhs)
+                rhs =
+                  if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
+                  else tree.rhs)
           case tree: Template =>
             cpy.Template(tree)(body = freeParamDefs ++ tree.body)
         }
@@ -506,16 +498,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     }
 
     override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
-      cpy.Apply(tree)(tree.fun, addFreeArgs(tree.symbol.skipConstructor, tree.args)).withPos(tree.pos)
+      cpy.Apply(tree)(tree.fun, addFreeArgs(tree.symbol, tree.args)).withPos(tree.pos)
 
     override def transformClosure(tree: Closure)(implicit ctx: Context, info: TransformerInfo) =
       cpy.Closure(tree)(env = addFreeArgs(tree.meth.symbol, tree.env))
 
     override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
       val sym = tree.symbol
-      val proxyHolder = sym.skipConstructor
       val paramsAdded =
-        if (free.contains(sym)) addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
+        if (free.contains(sym)) addFreeParams(tree, proxies(sym)).asInstanceOf[DefDef]
         else tree
       if (needsLifting(sym)) liftDef(paramsAdded)
       else paramsAdded
