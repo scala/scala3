@@ -490,7 +490,7 @@ trait Implicits { self: Typer =>
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
             pt)
         val generated1 = adapt(generated, pt)
-        lazy val shadowing =
+        val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)
                (nestedContext.addMode(Mode.ImplicitShadowing).setExploreTyperState)
         def refMatches(shadowing: Tree): Boolean =
