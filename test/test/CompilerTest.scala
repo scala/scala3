@@ -113,7 +113,7 @@ abstract class CompilerTest {
     * with "-deep", all files in subdirectories (and so on) are included. */
   def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false)
       (implicit defaultOptions: List[String]): Unit = {
-    val computeFilePathsAndExpErrors = { () =>
+    def computeFilePathsAndExpErrors = {
       val dir = Directory(prefix + dirName)
       val (files, normArgs) = args match {
         case "-deep" :: args1 => (dir.deepFiles, args1)
@@ -126,7 +126,7 @@ abstract class CompilerTest {
     if (!generatePartestFiles || !partestableDir(prefix, dirName, args ++ defaultOptions)) {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
-      val (filePaths, normArgs, expErrors) = computeFilePathsAndExpErrors()
+      val (filePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
       compileArgs(filePaths ++ normArgs, expErrors)
     } else {
       val (sourceDir, flags, deep) = args match {
@@ -139,7 +139,7 @@ abstract class CompilerTest {
       if (sourceDir.exists) {
         val firstDest = Directory(DPConfig.testRoot + JFile.separator + kind + JFile.separator + dirName)
         val xerrors = if (isNegTest(prefix)) {
-          val (_, _, expErrors) = computeFilePathsAndExpErrors()
+          val (_, _, expErrors) = computeFilePathsAndExpErrors
           expErrors.map(_.totalErrors).sum
         } else 0
         computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString)
