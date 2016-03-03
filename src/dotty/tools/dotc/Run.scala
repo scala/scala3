@@ -56,12 +56,13 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     ctx.usePhases(phases)
     for (phase <- ctx.allPhases)
       if (!ctx.reporter.hasErrors) {
-        if (ctx.settings.verbose.value) ctx.println(s"[$phase]")
+        val start = System.currentTimeMillis
         units = phase.runOn(units)
         def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
           for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
         if (ctx.settings.Xprint.value.containsPhase(phase))
           foreachUnit(printTree)
+        ctx.informTime(s"$phase ", start)
       }
   }
 

@@ -48,7 +48,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
   override def runsAfter = Set(classOf[Mixin])
 
   def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
-    def hasLazyVal(x: ClassSymbol) = x.classInfo.membersBasedOnFlags(Flags.Lazy, excludedFlags = Flags.EmptyFlags).nonEmpty
+    def hasLazyVal(cls: ClassSymbol) = cls.info.decls.exists(_.is(Flags.Lazy))
     hasLazyVal(cls) || cls.mixins.exists(hasLazyVal)
   }
 
