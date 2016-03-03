@@ -609,7 +609,7 @@ object Types {
         (name, buf) => buf ++= member(name).altsWith(x => !x.is(Method)))
     }
 
-    /** The set of members  of this type  having at least one of `requiredFlags` but none of  `excludedFlags` set */
+    /** The set of members of this type having at least one of `requiredFlags` but none of `excludedFlags` set */
     final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
       memberDenots(takeAllFilter,
         (name, buf) => buf ++= member(name).altsWith(x => x.is(requiredFlags, butNot = excludedFlags)))
