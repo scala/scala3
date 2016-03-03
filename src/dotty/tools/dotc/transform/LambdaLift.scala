@@ -266,7 +266,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                 // top-level class. This avoids possible deadlocks when a static method
                 // has to access its enclosing object from the outside.
             else if (sym.isConstructor) {
-              if (false && sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait))
+              if (sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait))
                 // add a call edge from the constructor of a local non-trait class to
                 // the class itself. This is done so that the constructor inherits
                 // the free variables of the class.
