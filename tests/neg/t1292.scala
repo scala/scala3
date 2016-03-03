@@ -1,5 +1,5 @@
 trait Foo[T <: Foo[T, Enum], Enum <: Enumeration] {
-  type StV = Enum#Value
+  type StV = Enum#Value // error: Enum is not a legal path
   type Meta = MegaFoo[T, Enum]
 
   type Slog <: Enumeration
@@ -9,7 +9,7 @@ trait Foo[T <: Foo[T, Enum], Enum <: Enumeration] {
 
 trait MegaFoo[T <: Foo[T, Enum], Enum <: Enumeration] extends Foo[T, Enum] {
   def doSomething(what: T, misc: StV, dog: Meta#Event) = None
-    // error: Meta is not a valid prefix for '#'.
+    // old-error: Meta is not a valid prefix for '#'.
     // The error is correct. Meta is not stable, and it has an abstract type member Slog
   abstract class Event
   object Event
