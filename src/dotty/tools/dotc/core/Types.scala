@@ -2424,8 +2424,6 @@ object Types {
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => resType.subst(this, x))
 
-    // need to override hashCode and equals to be object identity
-    // because paramNames by itself is not discriminatory enough
     override def equals(other: Any) = other match {
       case other: PolyType =>
         other.paramNames == this.paramNames && other.paramBounds == this.paramBounds && other.resType == this.resType

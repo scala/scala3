@@ -48,6 +48,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val nospecialization = BooleanSetting("-no-specialization", "Ignore @specialize annotations.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
+  val rewrite = BooleanSetting("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
 
   /** -X "Advanced" settings
    */

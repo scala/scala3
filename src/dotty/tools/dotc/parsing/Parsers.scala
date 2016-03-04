@@ -21,6 +21,7 @@ import Constants._
 import ScriptParsers._
 import annotation.switch
 import util.DotClass
+import rewrite.Patches.patch
 
 object Parsers {
 
@@ -1762,7 +1763,11 @@ object Parsers {
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
       def scala2ProcedureSyntax =
-        testScala2Mode("Procedure syntax no longer supported; `: Unit =' should be inserted here")
+        testScala2Mode("Procedure syntax no longer supported; `: Unit =' should be inserted here") && {
+          patch(source, Position(in.lastOffset),
+                if (in.token == LBRACE) ": Unit =" else ": Unit ")
+          true
+        }
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
