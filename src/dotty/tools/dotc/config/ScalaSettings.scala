@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import PathResolver.Defaults
-import rewrite.Patches
+import rewrite.Rewrites
 
 class ScalaSettings extends Settings.SettingGroup {
 
@@ -50,7 +50,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val nospecialization = BooleanSetting("-no-specialization", "Ignore @specialize annotations.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
-  val rewrite = OptionSetting[Patches.PatchedFiles]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
+  val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
 
   /** -X "Advanced" settings
    */

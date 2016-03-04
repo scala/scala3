@@ -5,7 +5,6 @@ import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
 import util.DotClass
 import reporting._
-import rewrite.Patches
 import scala.util.control.NonFatal
 
 /** Run the Dotty compiler.

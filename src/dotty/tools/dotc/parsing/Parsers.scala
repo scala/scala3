@@ -21,7 +21,7 @@ import Constants._
 import ScriptParsers._
 import annotation.switch
 import util.DotClass
-import rewrite.Patches.patch
+import rewrite.Rewrites.patch
 
 object Parsers {
 

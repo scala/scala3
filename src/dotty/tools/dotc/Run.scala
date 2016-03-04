@@ -8,7 +8,7 @@ import io.PlainFile
 import util.{SourceFile, NoSource, Stats, SimpleMap}
 import reporting.Reporter
 import transform.TreeChecker
-import rewrite.Patches
+import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 import scala.reflect.io.VirtualFile
 import scala.util.control.NonFatal
@@ -65,7 +65,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
           foreachUnit(printTree)
         ctx.informTime(s"$phase ", start)
       }
-    if (!ctx.reporter.hasErrors) Patches.writeBack()
+    if (!ctx.reporter.hasErrors) Rewrites.writeBack()
   }
 
   private def printTree(ctx: Context) = {
