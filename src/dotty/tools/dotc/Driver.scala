@@ -44,7 +44,6 @@ abstract class Driver extends DotClass {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
     ctx.setSettings(summary.sstate)
-    Patches.setup(ctx)
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }

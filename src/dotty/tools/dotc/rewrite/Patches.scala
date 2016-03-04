@@ -8,26 +8,17 @@ import collection.mutable
 
 object Patches {
 
-  private val PropertyTag = "rewrite-patches"
-
   private case class Patch(pos: Position, replacement: String) {
     def delta = replacement.length - (pos.end - pos.start)
   }
 
-  private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
+  class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
 
-  /** If `-rewrite` is set, enable patches in `ctx`. This means
-   *  setting up a property in `ctx` that allows to record patches.
-   */
-  def setup(ctx: FreshContext): Unit =
-    if (ctx.settings.rewrite.value(ctx))
-      ctx.setProperty(PropertyTag, new PatchedFiles)
-
-  /** If patches are enabled in `ctx`, record a patch that replaces the range
+  /** If -rewrite is set, record a patch that replaces the range
    *  given by `pos` in `source` by `replacement`
    */
   def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
-    ctx.moreProperties.get(PropertyTag) match {
+    ctx.settings.rewrite.value match {
       case Some(pfs: PatchedFiles) =>
         pfs.get(source) match {
           case Some(ps) =>
@@ -39,11 +30,10 @@ object Patches {
       case _ =>
     }
 
-  /** If patches are enabled in `ctx`, apply all patches
-   *  and overwrite patched source files
+  /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
   def writeBack()(implicit ctx: Context) =
-    ctx.moreProperties.get(PropertyTag) match {
+    ctx.settings.rewrite.value match {
       case Some(pfs: PatchedFiles) =>
         for (source <- pfs.keys) {
           ctx.println(s"[patched file ${source.file.path}]")
@@ -53,7 +43,7 @@ object Patches {
     }
 }
 
-private class Patches(source: SourceFile) {
+class Patches(source: SourceFile) {
   import Patches._
 
   private val pbuf = new mutable.ListBuffer[Patch]()
