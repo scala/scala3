@@ -83,8 +83,6 @@ object DottyBuild extends Build {
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "jline" % "jline" % "2.12"),
-      libraryDependencies +=
-        "org.scala-js" %% "scalajs-ir" % scalaJSVersion,
 
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
@@ -115,6 +113,38 @@ object DottyBuild extends Build {
         // Provide the jars required on the classpath of run tests
         runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
       },
+
+      /* Add the sources of scalajs-ir.
+       * To guarantee that dotty can bootstrap without depending on a version
+       * of scalajs-ir built with a different Scala compiler, we add its
+       * sources instead of depending on the binaries.
+       */
+      ivyConfigurations += config("sourcedeps").hide,
+      libraryDependencies +=
+        "org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps",
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
+
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = Set("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
+
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+          (trgDir ** "*.scala").get.toSet
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
 
       // Adjust classpath for running dotty
       mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
