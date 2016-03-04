@@ -22,7 +22,7 @@ class DottyTest /*extends ContextEscapeDetection*/ {
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
-    base.definitions.init(ctx)
+    base.initialize()(ctx)
     ctx
   }
 /*
