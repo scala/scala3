@@ -25,13 +25,9 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
 
   import ast.tpd._
 
-  /** Is SAMType `cls` also a SAM under the rules of the JVM? */
-  def isJvmSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    cls.is(NoInitsTrait) &&
-    cls.superClass == defn.ObjectClass &&
-    cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
-    !ExplicitOuter.needsOuterIfReferenced(cls) &&
-    cls.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
+  /** Is the SAMType `cls` also a SAM under the rules of the platform? */
+  def isPlatformSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+    ctx.platform.isSam(cls)
 
   override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
@@ -39,7 +35,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         case NoType => tree // it's a plain function
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           toPartialFunction(tree)
-        case tpe @ SAMType(_) if isJvmSam(tpe.classSymbol.asClass) =>
+        case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
           tree
         case tpe =>
           cpy.Block(tree)(stats,

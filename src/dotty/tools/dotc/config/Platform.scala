@@ -27,6 +27,9 @@ abstract class Platform {
   /** Any platform-specific phases. */
   //def platformPhases: List[SubComponent]
 
+  /** Is the SAMType `cls` also a SAM under the rules of the platform? */
+  def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean
+
   /** The various ways a boxed primitive might materialize at runtime. */
   def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context): Boolean
 
