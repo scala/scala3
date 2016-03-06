@@ -498,16 +498,16 @@ object desugar {
 
   /** If `pat` is a variable pattern,
    *
-   *    val/var p = e
+   *    val/var/lazy val p = e
    *
    *  Otherwise, in case there is exactly one variable x_1 in pattern
-   *   val/var p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
+   *   val/var/lazy val p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
-   *   val/var p = e  ==>  private synthetic val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
-   *                   val/var x_1 = t$._1
+   *   val/var/lazy p = e  ==>  private synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *                   val/var/def x_1 = t$._1
    *                   ...
-   *                  val/var x_N = t$._N
+   *                   val/var/def x_N = t$._N
    *  If the original pattern variable carries a type annotation, so does the corresponding
    *  ValDef.
    */
@@ -533,12 +533,16 @@ object desugar {
           derivedValDef(named, tpt, matchExpr, mods)
         case _ =>
           val tmpName = ctx.freshName().toTermName
-          val patFlags = mods.flags & AccessFlags | Synthetic | (mods.flags & Lazy)
-          val firstDef = ValDef(tmpName, TypeTree(), matchExpr).withFlags(patFlags)
+          val patMods = mods & (AccessFlags | Lazy) | Synthetic
+          val firstDef =
+            ValDef(tmpName, TypeTree(), matchExpr)
+              .withPos(pat.pos.union(rhs.pos)).withMods(patMods)
           def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex)
-              yield derivedValDef(named, tpt, selector(n), mods)
+            yield
+              if (mods is Lazy) derivedDefDef(named, tpt, selector(n), mods &~ Lazy)
+              else derivedValDef(named, tpt, selector(n), mods)
           flatTree(firstDef :: restDefs)
       }
   }
@@ -634,6 +638,9 @@ object desugar {
 
   private def derivedValDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
     ValDef(named.name.asTermName, tpt, rhs).withMods(mods).withPos(named.pos)
+
+  private def derivedDefDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
+    DefDef(named.name.asTermName, Nil, Nil, tpt, rhs).withMods(mods).withPos(named.pos)
 
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
