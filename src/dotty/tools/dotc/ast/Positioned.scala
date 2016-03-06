@@ -58,17 +58,42 @@ abstract class Positioned extends DotClass with Product {
    *  and transitively visit their children.
    */
   private def setChildPositions(pos: Position): Unit = {
-    def deepSetPos(x: Any): Unit = x match {
-      case p: Positioned =>
-        if (!p.pos.exists) p.setPos(pos)
-      case xs: List[_] =>
-        xs foreach deepSetPos
-      case _ =>
-    }
     var n = productArity
-    while (n > 0) {
-      n -= 1
-      deepSetPos(productElement(n))
+    var elems: List[Any] = Nil
+    var end = pos.end
+    var outstanding: List[Positioned] = Nil
+    def fillIn(ps: List[Positioned], start: Int, end: Int): Unit = ps match {
+      case p :: ps1 =>
+        p.setPos(Position(start, end))
+        fillIn(ps1, end, end)
+      case nil =>
+    }
+    while (true) {
+      var nextElem: Any = null
+      if (elems.nonEmpty) {
+        nextElem = elems.head
+        elems = elems.tail
+      }
+      else if (n > 0) {
+        n = n - 1
+        nextElem = productElement(n)
+      }
+      else {
+        fillIn(outstanding, pos.start, end)
+        return
+      }
+      nextElem match {
+        case p: Positioned =>
+          if (p.pos.exists) {
+            fillIn(outstanding, p.pos.end, end)
+            outstanding = Nil
+            end = p.pos.start
+          }
+          else outstanding = p :: outstanding
+        case xs: List[_] =>
+          elems = if (elems.isEmpty) xs else xs ::: elems
+        case _ =>
+      }
     }
   }
 
@@ -113,27 +138,5 @@ abstract class Positioned extends DotClass with Product {
         }
         found
       }
-  }
-
-  /** The path from this node to `that` node, represented
-   *  as a list starting with `this`, ending with`that` where
-   *  every node is a child of its predecessor.
-   *  Nil if no such path exists.
-   */
-  def pathTo(that: Positioned): List[Positioned] = {
-    def childPath(it: Iterator[Any]): List[Positioned] =
-      if (it.hasNext) {
-        val cpath = it.next match {
-          case x: Positioned => x.pathTo(that)
-          case xs: List[_] => childPath(xs.iterator)
-          case _ => Nil
-        }
-        if (cpath.nonEmpty) cpath else childPath(it)
-      } else Nil
-    if (this eq that) this :: Nil
-    else if (this.envelope contains that.pos) {
-      val cpath = childPath(productIterator)
-      if (cpath.nonEmpty) this :: cpath else Nil
-    } else Nil
   }
 }
