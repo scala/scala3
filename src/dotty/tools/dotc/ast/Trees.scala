@@ -50,13 +50,17 @@ object Trees {
     def toTypeFlags: Modifiers[T] = withFlags(flags.toTypeFlags)
     def toTermFlags: Modifiers[T] = withFlags(flags.toTermFlags)
 
-    private def withFlags(flags: FlagSet) =
+    def withFlags(flags: FlagSet) =
       if (this.flags == flags) this
       else copy(flags = flags)
 
+    def withAddedAnnotation[U >: Untyped <: T](annot: Tree[U]): Modifiers[U] =
+      if (annotations.exists(_ eq annot)) this
+      else withAnnotations(annotations :+ annot)
+
     def withAnnotations[U >: Untyped <: T](annots: List[Tree[U]]): Modifiers[U] =
-      if (annots.isEmpty) this
-      else copy(annotations = annotations ++ annots)
+      if (annots eq annotations) this
+      else copy(annotations = annots)
 
     def withPrivateWithin(pw: TypeName) =
       if (pw.isEmpty) this
