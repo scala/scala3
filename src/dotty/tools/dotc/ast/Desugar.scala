@@ -228,7 +228,7 @@ object desugar {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
       val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam), tparams = Nil)
-        .withFlags(PrivateLocalParamAccessor | Synthetic | tdef.mods.flags & VarianceFlags)
+        .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
     }
     else tdef
@@ -237,15 +237,15 @@ object desugar {
   @sharable private val synthetic = Modifiers(Synthetic)
 
   private def toDefParam(tparam: TypeDef): TypeDef =
-    tparam.withFlags(Param)
+    tparam.withMods(tparam.rawMods & EmptyFlags | Param)
   private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withFlags(Param | vparam.rawMods.flags & Implicit)
+    vparam.withMods(vparam.rawMods & Implicit | Param)
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
     val mods = cdef.mods
-    val accessFlags = (mods.flags & AccessFlags).toCommonFlags
+    val companionMods = mods.withFlags((mods.flags & AccessFlags).toCommonFlags)
 
     val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
       case meth: DefDef => (meth, Nil)
@@ -364,7 +364,7 @@ object desugar {
       moduleDef(
         ModuleDef(
           name.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
-            .withFlags(Synthetic | accessFlags))
+            .withMods(companionMods | Synthetic))
       .withPos(cdef.pos).toList
 
     // The companion object definitions, if a companion is needed, Nil otherwise.
@@ -421,9 +421,8 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
-          .withFlags(Synthetic | Implicit | accessFlags)
+          .withMods(companionMods | Synthetic | Implicit)
           .withPos(cdef.pos) :: Nil
-
 
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
