@@ -539,21 +539,21 @@ object Scanners {
         if ((ch != CR) && (ch != LF) && (ch != SU)) skipLine()
       }
       @tailrec
-      def skipBlock(openComments: Int): Unit = {
-        val last = ch
-        nextChar()
+      def skipComment(): Unit = {
         if (ch == '/') {
           nextChar()
-          if (last == '*') {
-            if (openComments > 0) skipBlock(openComments - 1)
-          } else {
-            if (ch == '*') { nextChar(); skipBlock(openComments + 1) }
-            else skipBlock(openComments)
-          }
+          if (ch == '*') nestedComment()
+          skipComment()
+        }
+        else if (ch == '*') {
+          do nextChar() while (ch == '*')
+          if (ch == '/') nextChar()
+          else skipComment()
         }
         else if (ch == SU) incompleteInputError("unclosed comment")
-        else skipBlock(openComments)
+        else { nextChar(); skipComment() }
       }
+      def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
       def finishComment(): Boolean = {
         if (keepComments) {
@@ -565,7 +565,7 @@ object Scanners {
       }
       nextChar()
       if (ch == '/') { skipLine(); finishComment() }
-      else if (ch == '*') { nextChar(); skipBlock(0); finishComment() }
+      else if (ch == '*') { nextChar(); skipComment(); finishComment() }
       else false
     }
 
