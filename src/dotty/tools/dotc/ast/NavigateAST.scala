@@ -70,11 +70,9 @@ object NavigateAST {
       }
       path
     }
-    def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] = {
-      println(i"TEST ${p.envelope} for $pos, tree = $p")
+    def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
       if (p.envelope contains pos) childPath(p.productIterator, p :: path)
       else path
-    }
     singlePath(from, Nil)
   }
 }
