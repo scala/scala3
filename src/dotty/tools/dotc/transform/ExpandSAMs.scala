@@ -42,8 +42,9 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         case tpe @ SAMType(_) if isJvmSam(tpe.classSymbol.asClass) =>
           tree
         case tpe =>
+          val Seq(samDenot) = tpe.abstractTermMembers.filter(!_.symbol.is(SuperAccessor))
           cpy.Block(tree)(stats,
-              AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, nme.apply :: Nil))
+              AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }
     case _ =>
       tree
