@@ -53,10 +53,16 @@ class SymUtils(val self: Symbol) extends AnyVal {
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
 
-  /** The logically enclosing method or class for this symbol.
-   *  Instead of constructors one always picks the enclosing class.
-   */
-  final def enclosure(implicit ctx: Context) = self.owner.enclosingMethod.skipConstructor
+  /** The closest properly enclosing method or class of this symbol. */
+  final def enclosure(implicit ctx: Context) = {
+    self.owner.enclosingMethodOrClass
+  }
+
+  /** The closest enclosing method or class of this symbol */
+  final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
+    if (self.is(Method, butNot = Label) || self.isClass) self
+    else if (self.exists) self.owner.enclosingMethodOrClass
+    else NoSymbol
 
   /** Apply symbol/symbol substitution to this symbol */
   def subst(from: List[Symbol], to: List[Symbol]): Symbol = {

@@ -209,7 +209,7 @@ object ExplicitOuter {
   private def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
-  /** Tree references a an outer class of `cls` which is not a static owner.
+  /** Tree references an outer class of `cls` which is not a static owner.
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
     def isOuter(sym: Symbol) =
@@ -231,7 +231,12 @@ object ExplicitOuter {
           case _ => false
         }
       case nw: New =>
-        isOuter(nw.tpe.classSymbol.owner.enclosingClass)
+        val newCls = nw.tpe.classSymbol
+        isOuter(newCls.owner.enclosingClass) ||
+        newCls.owner.isTerm && cls.isProperlyContainedIn(newCls)
+          // newCls might get proxies for free variables. If current class is
+          // properly contained in newCls, it needs an outer path to newCls access the
+          // proxies and forward them to the new instance.
       case _ =>
         false
     }
@@ -308,7 +313,7 @@ object ExplicitOuter {
     /** The path of outer accessors that references `toCls.this` starting from
      *  the context owner's this node.
      */
-    def path(toCls: Symbol): Tree = try {
+    def path(toCls: Symbol, start: Tree = This(ctx.owner.enclosingClass.asClass)): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
@@ -317,7 +322,7 @@ object ExplicitOuter {
         else loop(tree.select(outerAccessor(treeCls.asClass)(outerAccessorCtx)).ensureApplied)
       }
       ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
-      loop(This(ctx.owner.enclosingClass.asClass))
+      loop(start)
     } catch {
       case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
