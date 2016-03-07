@@ -103,7 +103,11 @@ class Compiler {
   def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
     val actualPhases = if (ctx.settings.scalajs.value) {
-      phases
+      // Remove phases that Scala.js does not want
+      phases.mapConserve(_.filter {
+        case _: FunctionalInterfaces => false
+        case _ => true
+      }).filter(_.nonEmpty)
     } else {
       // Remove Scala.js-related phases
       phases.mapConserve(_.filter {

@@ -14,23 +14,23 @@ import dotty.tools.dotc.core._
 import Periods._
 import SymDenotations._
 import Contexts._
+import Decorators._
 import Flags._
 import dotty.tools.dotc.ast.Trees._
 import Types._
 import Symbols._
 import Denotations._
 import Phases._
-import dotty.tools.dotc.util.Positions
-import Positions.Position
 import StdNames._
 
 import dotty.tools.dotc.transform.Erasure
 
 import org.scalajs.core.ir
-import org.scalajs.core.ir.{ClassKind, Trees => js, Types => jstpe}
+import org.scalajs.core.ir.{ClassKind, Position, Trees => js, Types => jstpe}
 import js.OptimizerHints
 
 import JSEncoding._
+import JSInterop._
 import ScopedVar.withScopedVars
 
 /** Main codegen for Scala.js IR.
@@ -58,6 +58,11 @@ class JSCodeGen()(implicit ctx: Context) {
   private val positionConversions = new JSPositions()(ctx)
   import positionConversions.{pos2irPos, implicitPos2irPos}
 
+  private val elimRepeatedPhase =
+    ctx.phaseOfClass(classOf[dotty.tools.dotc.transform.ElimRepeated])
+  private val elimErasedValueTypePhase =
+    ctx.phaseOfClass(classOf[dotty.tools.dotc.transform.ElimErasedValueType])
+
   // Some state --------------------------------------------------------------
 
   private val currentClassSym = new ScopedVar[Symbol]
@@ -75,6 +80,14 @@ class JSCodeGen()(implicit ctx: Context) {
   private var isModuleInitialized: Boolean = false
 
   private def currentClassType = encodeClassType(currentClassSym)
+
+  /** Returns a new fresh local identifier. */
+  private def freshLocalIdent()(implicit pos: Position): js.Ident =
+    localNames.get.freshLocalIdent()
+
+  /** Returns a new fresh local identifier. */
+  private def freshLocalIdent(base: String)(implicit pos: Position): js.Ident =
+    localNames.get.freshLocalIdent(base)
 
   // Compilation unit --------------------------------------------------------
 
@@ -129,7 +142,7 @@ class JSCodeGen()(implicit ctx: Context) {
         withScopedVars(
             currentClassSym := sym
         ) {
-          val tree = if (isRawJSType(sym)) {
+          val tree = if (isJSType(sym)) {
             /*assert(!isRawJSFunctionDef(sym),
                 s"Raw JS function def should have been recorded: $cd")*/
             if (!sym.is(Trait) && isScalaJSDefinedJSClass(sym))
@@ -611,7 +624,7 @@ class JSCodeGen()(implicit ctx: Context) {
     /* Any JavaScript expression is also a statement, but at least we get rid
      * of some pure expressions that come from our own codegen.
      */
-    implicit val pos: ir.Position = tree.pos
+    implicit val pos: Position = tree.pos
     tree match {
       case js.Block(stats :+ expr)  => js.Block(stats :+ exprToStat(expr))
       case _:js.Literal | js.This() => js.Skip()
@@ -682,21 +695,11 @@ class JSCodeGen()(implicit ctx: Context) {
       /*case t: Try =>
         genTry(t, isStat)*/
 
-      /*case Throw(expr) =>
-        val ex = genExpr(expr)
-        js.Throw {
-          if (isMaybeJavaScriptException(expr.tpe)) {
-            genApplyMethod(
-                genLoadModule(RuntimePackageModule),
-                Runtime_unwrapJavaScriptException,
-                List(ex))
-          } else {
-            ex
-          }
-        }*/
-
       case app: Apply =>
         genApply(app, isStat)
+
+      case app: TypeApply =>
+        genTypeApply(app)
 
       /*case app: ApplyDynamic =>
         genApplyDynamic(app)*/
@@ -831,23 +834,22 @@ class JSCodeGen()(implicit ctx: Context) {
         }
 
       /** Array constructor */
-      /*case av: ArrayValue =>
-        genArrayValue(av)
+      case javaSeqLiteral: JavaSeqLiteral =>
+        genJavaSeqLiteral(javaSeqLiteral)
 
       /** A Match reaching the backend is supposed to be optimized as a switch */
-      case mtch: Match =>
-        genMatch(mtch, isStat)
+      /*case mtch: Match =>
+        genMatch(mtch, isStat)*/
 
-      /** Anonymous function (only with -Ydelambdafy:method) */
-      case fun: Function =>
-        genAnonFunction(fun)
+      case tree: Closure =>
+        genClosure(tree)
 
-      case EmptyTree =>
+      /*case EmptyTree =>
         js.Skip()*/
 
       case _ =>
         throw new FatalError("Unexpected tree in genExpr: " +
-            tree + "/" + tree.getClass + " at: " + tree.pos)
+            tree + "/" + tree.getClass + " at: " + (tree.pos: Position))
     }
   } // end of genStatOrExpr()
 
@@ -864,6 +866,18 @@ class JSCodeGen()(implicit ctx: Context) {
       case _ =>
         None
     }
+  }
+
+  private def qualifierOf(fun: Tree): Tree = fun match {
+    case fun: Ident =>
+      fun.tpe match {
+        case TermRef(prefix: TermRef, _) => tpd.ref(prefix)
+        case TermRef(prefix: ThisType, _) => tpd.This(prefix.cls)
+      }
+    case Select(qualifier, _) =>
+      qualifier
+    case TypeApply(fun, _) =>
+      qualifierOf(fun)
   }
 
   /** Gen JS this of the current class.
@@ -900,35 +914,22 @@ class JSCodeGen()(implicit ctx: Context) {
       case fun => fun
     }
 
-    def isRawJSDefaultParam: Boolean = {
-      false /*
-      if (isCtorDefaultParam(sym)) {
-        isRawJSCtorDefaultParam(sym)
-      } else {
-        sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-        isRawJSType(sym.owner.tpe)
-      }*/
-    }
-
     fun match {
-      /*case _: TypeApply =>
-        genApplyTypeApply(tree)*/
-
-      /*case _ if isRawJSDefaultParam =>
-        js.UndefinedParam()(toIRType(sym.tpe.resultType))*/
+      /*case _ if isJSDefaultParam(sym) =>
+        js.UndefinedParam()(toIRType(sym.info.finalResultType))*/
 
       case Select(Super(_, _), _) =>
         genSuperCall(tree, isStat)
 
-      /*case Select(New(_), nme.CONSTRUCTOR) =>
-        genApplyNew(tree)*/
+      case Select(New(_), nme.CONSTRUCTOR) =>
+        genApplyNew(tree)
 
       case _ =>
         /*if (sym.isLabel) {
           genLabelApply(tree)
-        } else if (primitives.isPrimitive(tree)) {
+        } else*/ if (primitives.isPrimitive(tree)) {
           genPrimitiveOp(tree, isStat)
-        } else*/ if (Erasure.Boxing.isBox(sym)) {
+        } else if (Erasure.Boxing.isBox(sym)) {
           // Box a primitive value (cannot be Unit)
           val arg = args.head
           makePrimitiveBox(genExpr(arg), arg.tpe)
@@ -979,6 +980,607 @@ class JSCodeGen()(implicit ctx: Context) {
     }
   }
 
+  /** Gen JS code for a constructor call (new).
+   *  Further refined into:
+   *  * new String(...)
+   *  * new of a hijacked boxed class
+   *  * new of an anonymous function class that was recorded as JS function
+   *  * new of a raw JS class
+   *  * new Array
+   *  * regular new
+   */
+  private def genApplyNew(tree: Apply): js.Tree = {
+    implicit val pos: Position = tree.pos
+
+    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
+    val ctor = fun.symbol
+    val tpe = tpt.tpe
+
+    assert(ctor.isClassConstructor,
+        "'new' call to non-constructor: " + ctor.name)
+
+    if (tpe.isRef(defn.StringClass)) {
+      genNewString(ctor, genActualArgs(ctor, args))
+    } else /*if (isHijackedBoxedClass(tpe.typeSymbol)) {
+      genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
+    } else if (translatedAnonFunctions contains tpe.typeSymbol) {
+      val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
+      functionMaker(args map genExpr)
+    } else if (isJSType(tpe.widenDealias.typeSymbol)) {
+      val clsSym = tpe.widenDealias.typeSymbol
+      if (clsSym == jsdefn.JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
+      else if (clsSym == jsdefn.JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
+      else js.JSNew(genLoadJSConstructor(clsSym), genActualJSArgs(ctor, args))
+    } else*/ {
+      toIRType(tpe) match {
+        case cls: jstpe.ClassType =>
+          js.New(cls, encodeMethodSym(ctor), genActualArgs(ctor, args))
+
+        case other =>
+          throw new FatalError(s"Non ClassType cannot be instantiated: $other")
+      }
+    }
+  }
+
+  /** Gen JS code for a primitive method call. */
+  private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    implicit val pos: Position = tree.pos
+
+    val Apply(fun, args) = tree
+    val receiver = qualifierOf(fun)
+
+    val code = primitives.getPrimitive(tree, receiver.tpe)
+
+    if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code))
+      genSimpleOp(tree, receiver :: args, code)
+    else if (code == CONCAT)
+      genStringConcat(tree, receiver, args)
+    else if (code == HASH)
+      genScalaHash(tree, receiver)
+    else if (isArrayNew(code))
+      genArrayNew(tree, code)
+    else if (isArrayOp(code))
+      genArrayOp(tree, code)
+    else if (code == SYNCHRONIZED)
+      genSynchronized(tree, isStat)
+    else if (isCoercion(code))
+      genCoercion(tree, receiver, code)
+    else if (code == JSPrimitives.THROW)
+      genThrow(tree, args)
+    else /*if (primitives.isJSPrimitive(code))
+      genJSPrimitive(tree, receiver, args, code)
+    else*/
+      throw new FatalError(s"Unknown primitive: ${tree.symbol.fullName} at: $pos")
+  }
+
+  /** Gen JS code for a simple operation (arithmetic, logical, or comparison) */
+  private def genSimpleOp(tree: Apply, args: List[Tree], code: Int): js.Tree = {
+    args match {
+      case List(arg)      => genSimpleUnaryOp(tree, arg, code)
+      case List(lhs, rhs) => genSimpleBinaryOp(tree, lhs, rhs, code)
+      case _              => throw new FatalError("Incorrect arity for primitive")
+    }
+  }
+
+  /** Gen JS code for a simple unary operation. */
+  private def genSimpleUnaryOp(tree: Apply, arg: Tree, code: Int): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    implicit val pos: Position = tree.pos
+
+    val genArg = genExpr(arg)
+    val resultIRType = toIRType(tree.tpe)
+
+    (code: @switch) match {
+      case POS =>
+        genArg
+
+      case NEG =>
+        (resultIRType: @unchecked) match {
+          case jstpe.IntType =>
+            js.BinaryOp(js.BinaryOp.Int_-, js.IntLiteral(0), genArg)
+          case jstpe.LongType =>
+            js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), genArg)
+          case jstpe.FloatType =>
+            js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), genArg)
+          case jstpe.DoubleType =>
+            js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), genArg)
+        }
+
+      case NOT =>
+        (resultIRType: @unchecked) match {
+          case jstpe.IntType =>
+            js.BinaryOp(js.BinaryOp.Int_^, js.IntLiteral(-1), genArg)
+          case jstpe.LongType =>
+            js.BinaryOp(js.BinaryOp.Long_^, js.LongLiteral(-1), genArg)
+        }
+
+      case ZNOT =>
+        js.UnaryOp(js.UnaryOp.Boolean_!, genArg)
+
+      case _ =>
+        throw new FatalError("Unknown unary operation code: " + code)
+    }
+  }
+
+  /** Gen JS code for a simple binary operation. */
+  private def genSimpleBinaryOp(tree: Apply, lhs: Tree, rhs: Tree, code: Int): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+    import js.UnaryOp._
+
+    /* Codes for operation types, in an object so that they can be 'final val'
+     * and be used in switch-matches.
+     */
+    object OpTypes {
+      final val DoubleOp = 1
+      final val FloatOp = 2
+      final val LongOp = 3
+      final val IntOp = 4
+      final val BooleanOp = 5
+      final val AnyOp = 6
+    }
+    import OpTypes._
+
+    implicit val pos: Position = tree.pos
+
+    val lhsIRType = toIRType(lhs.tpe)
+    val rhsIRType = toIRType(rhs.tpe)
+
+    val opType = (lhsIRType, rhsIRType) match {
+      case (jstpe.DoubleType, _) | (_, jstpe.DoubleType) => DoubleOp
+      case (jstpe.FloatType, _) | (_, jstpe.FloatType)   => FloatOp
+      case (jstpe.LongType, _) | (_, jstpe.LongType)     => LongOp
+      case (jstpe.IntType, _) | (_, jstpe.IntType)       => IntOp
+      case (jstpe.BooleanType, jstpe.BooleanType)        => BooleanOp
+      case _                                             => AnyOp
+    }
+
+    if (opType == AnyOp && isUniversalEqualityOp(code)) {
+      genUniversalEqualityOp(lhs, rhs, code)
+    } else if (code == ZOR) {
+      js.If(genExpr(lhs), js.BooleanLiteral(true), genExpr(rhs))(jstpe.BooleanType)
+    } else if (code == ZAND) {
+      js.If(genExpr(lhs), genExpr(rhs), js.BooleanLiteral(false))(jstpe.BooleanType)
+    } else {
+      import js.BinaryOp._
+
+      def coerce(tree: js.Tree, opType: Int): js.Tree = (opType: @switch) match {
+        case DoubleOp =>
+          if (tree.tpe == jstpe.LongType) js.UnaryOp(LongToDouble, tree)
+          else tree
+
+        case FloatOp =>
+          if (tree.tpe == jstpe.FloatType || tree.tpe == jstpe.IntType) tree
+          else js.UnaryOp(DoubleToFloat, coerce(tree, DoubleOp))
+
+        case LongOp =>
+          if (tree.tpe == jstpe.LongType) tree
+          else {
+            assert(tree.tpe == jstpe.IntType)
+            js.UnaryOp(IntToLong, tree)
+          }
+
+        case IntOp =>
+          if (tree.tpe == jstpe.IntType) tree
+          else {
+            assert(tree.tpe == jstpe.LongType)
+            js.UnaryOp(LongToInt, tree)
+          }
+
+        case BooleanOp | AnyOp =>
+          tree
+      }
+
+      val rhsOpType = code match {
+        case LSL | LSR | ASR => IntOp
+        case _               => opType
+      }
+
+      val genLhs = coerce(genExpr(lhs), opType)
+      val genRhs = coerce(genExpr(rhs), rhsOpType)
+
+      val op = (opType: @switch) match {
+        case IntOp =>
+          (code: @switch) match {
+            case ADD => Int_+
+            case SUB => Int_-
+            case MUL => Int_*
+            case DIV => Int_/
+            case MOD => Int_%
+            case OR  => Int_|
+            case AND => Int_&
+            case XOR => Int_^
+            case LSL => Int_<<
+            case LSR => Int_>>>
+            case ASR => Int_>>
+
+            case EQ => Num_==
+            case NE => Num_!=
+            case LT => Num_<
+            case LE => Num_<=
+            case GT => Num_>
+            case GE => Num_>=
+          }
+
+        case FloatOp =>
+          (code: @switch) match {
+            case ADD => Float_+
+            case SUB => Float_-
+            case MUL => Float_*
+            case DIV => Float_/
+            case MOD => Float_%
+
+            case EQ => Num_==
+            case NE => Num_!=
+            case LT => Num_<
+            case LE => Num_<=
+            case GT => Num_>
+            case GE => Num_>=
+          }
+
+        case DoubleOp =>
+          (code: @switch) match {
+            case ADD => Double_+
+            case SUB => Double_-
+            case MUL => Double_*
+            case DIV => Double_/
+            case MOD => Double_%
+
+            case EQ => Num_==
+            case NE => Num_!=
+            case LT => Num_<
+            case LE => Num_<=
+            case GT => Num_>
+            case GE => Num_>=
+          }
+
+        case LongOp =>
+          (code: @switch) match {
+            case ADD => Long_+
+            case SUB => Long_-
+            case MUL => Long_*
+            case DIV => Long_/
+            case MOD => Long_%
+            case OR  => Long_|
+            case XOR => Long_^
+            case AND => Long_&
+            case LSL => Long_<<
+            case LSR => Long_>>>
+            case ASR => Long_>>
+
+            case EQ => Long_==
+            case NE => Long_!=
+            case LT => Long_<
+            case LE => Long_<=
+            case GT => Long_>
+            case GE => Long_>=
+          }
+
+        case BooleanOp =>
+          (code: @switch) match {
+            case EQ  => Boolean_==
+            case NE  => Boolean_!=
+            case OR  => Boolean_|
+            case AND => Boolean_&
+            case XOR => Boolean_!=
+          }
+
+        case AnyOp =>
+          /* No @switch because some 2.11 version erroneously report a warning
+           * for switches with less than 3 non-default cases.
+           */
+          code match {
+            case ID => ===
+            case NI => !==
+          }
+      }
+
+      js.BinaryOp(op, genLhs, genRhs)
+    }
+  }
+
+  /** Gen JS code for a universal equality test. */
+  private def genUniversalEqualityOp(lhs: Tree, rhs: Tree, code: Int)(
+      implicit pos: Position): js.Tree = {
+
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    val genLhs = genExpr(lhs)
+    val genRhs = genExpr(rhs)
+
+    val bypassEqEq = {
+      // Do not call equals if we have a literal null at either side.
+      genLhs.isInstanceOf[js.Null] ||
+      genRhs.isInstanceOf[js.Null]
+    }
+
+    if (bypassEqEq) {
+      js.BinaryOp(
+          if (code == EQ) js.BinaryOp.=== else js.BinaryOp.!==,
+          genLhs, genRhs)
+    } else {
+      val body = genEqEqPrimitive(lhs.tpe, rhs.tpe, genLhs, genRhs)
+      if (code == EQ) body
+      else js.UnaryOp(js.UnaryOp.Boolean_!, body)
+    }
+  }
+
+  private lazy val externalEqualsNumNum: Symbol =
+    defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
+  private lazy val externalEqualsNumChar: Symbol =
+    NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+  private lazy val externalEqualsNumObject: Symbol =
+    defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
+  private lazy val externalEquals: Symbol =
+    defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
+
+  /** Gen JS code for a call to Any.== */
+  private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
+      implicit pos: Position): js.Tree = {
+    ctx.debuglog(s"$ltpe == $rtpe")
+    val lsym = ltpe.widenDealias.typeSymbol.asClass
+    val rsym = rtpe.widenDealias.typeSymbol.asClass
+
+    /* True if the equality comparison is between values that require the
+     * use of the rich equality comparator
+     * (scala.runtime.BoxesRunTime.equals).
+     * This is the case when either side of the comparison might have a
+     * run-time type subtype of java.lang.Number or java.lang.Character,
+     * **which includes when either is a JS type**.
+     * When it is statically known that both sides are equal and subtypes of
+     * Number or Character, not using the rich equality is possible (their
+     * own equals method will do ok.)
+     */
+    val mustUseAnyComparator: Boolean = {
+      isJSType(lsym) || isJSType(rsym) || {
+        val p = ctx.platform
+        val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
+        !areSameFinals && p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym)
+      }
+    }
+
+    if (mustUseAnyComparator) {
+      val equalsMethod: Symbol = {
+        // scalastyle:off line.size.limit
+        val ptfm = ctx.platform
+        if (lsym.derivesFrom(defn.BoxedNumberClass)) {
+          if (rsym.derivesFrom(defn.BoxedNumberClass)) externalEqualsNumNum
+          else if (rsym.derivesFrom(defn.BoxedCharClass)) externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
+          else externalEqualsNumObject
+        } else externalEquals
+        // scalastyle:on line.size.limit
+      }
+      genModuleApplyMethod(equalsMethod, List(lsrc, rsrc))
+    } else {
+      // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
+      if (lsym == defn.StringClass) {
+        // String.equals(that) === (this eq that)
+        js.BinaryOp(js.BinaryOp.===, lsrc, rsrc)
+      } else {
+        /* This requires to evaluate both operands in local values first.
+         * The optimizer will eliminate them if possible.
+         */
+        val ltemp = js.VarDef(freshLocalIdent(), lsrc.tpe, mutable = false, lsrc)
+        val rtemp = js.VarDef(freshLocalIdent(), rsrc.tpe, mutable = false, rsrc)
+        js.Block(
+            ltemp,
+            rtemp,
+            js.If(js.BinaryOp(js.BinaryOp.===, ltemp.ref, js.Null()),
+                js.BinaryOp(js.BinaryOp.===, rtemp.ref, js.Null()),
+                genApplyMethod(ltemp.ref, defn.Any_equals, List(rtemp.ref)))(
+                jstpe.BooleanType))
+      }
+    }
+  }
+
+  /** Gen JS code for string concatenation.
+   */
+  private def genStringConcat(tree: Apply, receiver: Tree,
+      args: List[Tree]): js.Tree = {
+    implicit val pos: Position = tree.pos
+
+    val arg = args.head
+
+    /* Primitive number types such as scala.Int have a
+     *   def +(s: String): String
+     * method, which is why we have to box the lhs sometimes.
+     * Otherwise, both lhs and rhs are already reference types (Any or String)
+     * so boxing is not necessary (in particular, rhs is never a primitive).
+     */
+    assert(!isPrimitiveValueType(receiver.tpe) || arg.tpe.isRef(defn.StringClass))
+    assert(!isPrimitiveValueType(arg.tpe))
+
+    val genLhs = {
+      val genLhs0 = genExpr(receiver)
+      // Box the receiver if it is a primitive value
+      if (!isPrimitiveValueType(receiver.tpe)) genLhs0
+      else makePrimitiveBox(genLhs0, receiver.tpe)
+    }
+
+    val genRhs = genExpr(arg)
+
+    js.BinaryOp(js.BinaryOp.String_+, genLhs, genRhs)
+  }
+
+  /** Gen JS code for a call to Any.## */
+  private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
+    implicit val pos: Position = tree.pos
+
+    genModuleApplyMethod(defn.ScalaRuntimeModule.requiredMethod(nme.hash_),
+        List(genExpr(receiver)))
+  }
+
+  /** Gen JS code for a new array operation. */
+  private def genArrayNew(tree: Tree, code: Int): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    implicit val pos: Position = tree.pos
+
+    val Apply(fun, args) = tree
+    val genLength = genExpr(args.head)
+
+    toIRType(tree.tpe) match {
+      case arrayType: jstpe.ArrayType =>
+        js.NewArray(arrayType, List(genLength))
+
+      case irTpe =>
+        throw new FatalError(s"ArrayNew $tree must have an array type but was $irTpe")
+    }
+  }
+
+  /** Gen JS code for an array operation (get, set or length) */
+  private def genArrayOp(tree: Tree, code: Int): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    implicit val pos: Position = tree.pos
+
+    val Apply(fun, args) = tree
+    val arrayObj = qualifierOf(fun)
+
+    val genArray = genExpr(arrayObj)
+    val genArgs = args.map(genExpr)
+
+    def elementType: Type = arrayObj.tpe.widenDealias match {
+      case defn.ArrayOf(el)  => el
+      case JavaArrayType(el) => el
+      case tpe =>
+        ctx.error(s"expected Array $tpe")
+        ErrorType
+    }
+
+    def genSelect(): js.Tree =
+      js.ArraySelect(genArray, genArgs(0))(toIRType(elementType))
+
+    if (isArrayGet(code)) {
+      // get an item of the array
+      assert(args.length == 1,
+          s"Array get requires 1 argument, found ${args.length} in $tree")
+      genSelect()
+    } else if (isArraySet(code)) {
+      // set an item of the array
+      assert(args.length == 2,
+          s"Array set requires 2 arguments, found ${args.length} in $tree")
+      js.Assign(genSelect(), genArgs(1))
+    } else {
+      // length of the array
+      js.ArrayLength(genArray)
+    }
+  }
+
+  /** Gen JS code for a call to AnyRef.synchronized */
+  private def genSynchronized(tree: Apply, isStat: Boolean): js.Tree = {
+    /* JavaScript is single-threaded, so we can drop the
+     * synchronization altogether.
+     */
+    val Apply(fun, List(arg)) = tree
+    val receiver = qualifierOf(fun)
+
+    val genReceiver = genExpr(receiver)
+    val genArg = genStatOrExpr(arg, isStat)
+
+    genReceiver match {
+      case js.This() =>
+        // common case for which there is no side-effect nor NPE
+        genArg
+      case _ =>
+        implicit val pos: Position = tree.pos
+        /* TODO Check for a null receiver?
+         * In theory, it's UB, but that decision should be left for link time.
+         */
+        js.Block(genReceiver, genArg)
+    }
+  }
+
+  /** Gen JS code for a coercion */
+  private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
+    import scala.tools.nsc.backend.ScalaPrimitives._
+
+    implicit val pos: Position = tree.pos
+
+    val source = genExpr(receiver)
+
+    def source2int = (code: @switch) match {
+      case F2C | D2C | F2B | D2B | F2S | D2S | F2I | D2I =>
+        js.UnaryOp(js.UnaryOp.DoubleToInt, source)
+      case L2C | L2B | L2S | L2I =>
+        js.UnaryOp(js.UnaryOp.LongToInt, source)
+      case _ =>
+        source
+    }
+
+    (code: @switch) match {
+      // To Char, need to crop at unsigned 16-bit
+      case B2C | S2C | I2C | L2C | F2C | D2C =>
+        js.BinaryOp(js.BinaryOp.Int_&, source2int, js.IntLiteral(0xffff))
+
+      // To Byte, need to crop at signed 8-bit
+      case C2B | S2B | I2B | L2B | F2B | D2B =>
+        // note: & 0xff would not work because of negative values
+        js.BinaryOp(js.BinaryOp.Int_>>,
+            js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(24)),
+            js.IntLiteral(24))
+
+      // To Short, need to crop at signed 16-bit
+      case C2S | I2S | L2S | F2S | D2S =>
+        // note: & 0xffff would not work because of negative values
+        js.BinaryOp(js.BinaryOp.Int_>>,
+            js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(16)),
+            js.IntLiteral(16))
+
+      // To Int, need to crop at signed 32-bit
+      case L2I | F2I | D2I =>
+        source2int
+
+      // Any int to Long
+      case C2L | B2L | S2L | I2L =>
+        js.UnaryOp(js.UnaryOp.IntToLong, source)
+
+      // Any double to Long
+      case F2L | D2L =>
+        js.UnaryOp(js.UnaryOp.DoubleToLong, source)
+
+      // Long to Double
+      case L2D =>
+        js.UnaryOp(js.UnaryOp.LongToDouble, source)
+
+      // Any int, or Double, to Float
+      case C2F | B2F | S2F | I2F | D2F =>
+        js.UnaryOp(js.UnaryOp.DoubleToFloat, source)
+
+      // Long to Float === Long to Double to Float
+      case L2F =>
+        js.UnaryOp(js.UnaryOp.DoubleToFloat,
+            js.UnaryOp(js.UnaryOp.LongToDouble, source))
+
+      // Identities and IR upcasts
+      case C2C | B2B | S2S | I2I | L2L | F2F | D2D |
+           C2I | C2D |
+           B2S | B2I | B2D |
+           S2I | S2D |
+           I2D |
+           F2D =>
+        source
+    }
+  }
+
+  /** Gen a call to the special `throw` method. */
+  private def genThrow(tree: Apply, args: List[Tree]): js.Tree = {
+    implicit val pos: Position = tree.pos
+    val exception = args.head
+    val genException = genExpr(exception)
+    js.Throw {
+      if (exception.tpe.widenDealias.typeSymbol.derivesFrom(jsdefn.JavaScriptExceptionClass)) {
+        genModuleApplyMethod(
+            jsdefn.RuntimePackage_unwrapJavaScriptException,
+            List(genException))
+      } else {
+        genException
+      }
+    }
+  }
+
   /** Gen a "normal" apply (to a true method).
    *
    *  But even these are further refined into:
@@ -1004,9 +1606,9 @@ class JSCodeGen()(implicit ctx: Context) {
       case _                                           => false
     }
 
-    /*if (sym.owner == defn.StringClass && !isStringMethodFromObject) {
-      genStringCall(tree)
-    } else if (isRawJSType(sym.owner)) {
+    if (sym.owner == defn.StringClass && !isStringMethodFromObject) {
+      genApplyMethodOfString(genExpr(receiver), sym, genActualArgs(sym, args))
+    } else /*if (isJSType(sym.owner)) {
       if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
         genPrimitiveJSCall(tree, isStat)
       else
@@ -1018,6 +1620,240 @@ class JSCodeGen()(implicit ctx: Context) {
       genApplyMethodStatically(genExpr(receiver), sym, genActualArgs(sym, args))
     } else {
       genApplyMethod(genExpr(receiver), sym, genActualArgs(sym, args))
+    }
+  }
+
+  /** Gen JS code for a call to a polymorphic method.
+   *
+   *  The only methods that reach the back-end as polymorphic are
+   *  `isInstanceOf` and `asInstanceOf`.
+   *
+   *  (Well, in fact `DottyRunTime.newRefArray` too, but it is handled as a
+   *  primitive instead.)
+   */
+  private def genTypeApply(tree: TypeApply): js.Tree = {
+    implicit val pos: Position = tree.pos
+
+    val TypeApply(fun, targs) = tree
+
+    val sym = fun.symbol
+    val receiver = qualifierOf(fun)
+
+    val to = targs.head.tpe
+
+    assert(!isPrimitiveValueType(receiver.tpe),
+        s"Found receiver of type test with primitive type ${receiver.tpe} at $pos")
+    assert(!isPrimitiveValueType(to),
+        s"Found target type of type test with primitive type ${receiver.tpe} at $pos")
+
+    val genReceiver = genExpr(receiver)
+
+    if (sym == defn.Any_asInstanceOf) {
+      genAsInstanceOf(genReceiver, to)
+    } else if (sym == defn.Any_isInstanceOf) {
+      genIsInstanceOf(tree, genReceiver, to)
+    } else {
+      throw new FatalError(
+          s"Unexpected type application $fun with symbol ${sym.fullName}")
+    }
+  }
+
+  /** Gen JS code for a Java Seq literal. */
+  private def genJavaSeqLiteral(tree: JavaSeqLiteral): js.Tree = {
+    implicit val pos: Position = tree.pos
+
+    val genElems = tree.elems.map(genExpr)
+    val arrayType = toReferenceType(tree.tpe).asInstanceOf[jstpe.ArrayType]
+    js.ArrayValue(arrayType, genElems)
+  }
+
+  /** Gen JS code for a closure.
+   *
+   *  Input: a `Closure` tree of the form
+   *  {{{
+   *  Closure(env, call, functionalInterface)
+   *  }}}
+   *  representing the pseudo-syntax
+   *  {{{
+   *  { (p1, ..., pm) => call(env1, ..., envn, p1, ..., pm) }: functionInterface
+   *  }}}
+   *  where `envi` are identifiers in the local scope. The qualifier of `call`
+   *  is also implicitly captured.
+   *
+   *  Output: a `js.Closure` tree of the form
+   *  {{{
+   *  js.Closure(formalCaptures, formalParams, body, actualCaptures)
+   *  }}}
+   *  representing the pseudo-syntax
+   *  {{{
+   *  lambda<formalCapture1 = actualCapture1, ..., formalCaptureN = actualCaptureN>(
+   *      formalParam1, ..., formalParamM) = body
+   *  }}}
+   *  where the `actualCaptures` and `body` are, in general, arbitrary
+   *  expressions. But in this case, `actualCaptures` will be identifiers from
+   *  `env`, and the `body` will be of the form
+   *  {{{
+   *  call(formalCapture1.ref, ..., formalCaptureN.ref,
+   *      formalParam1.ref, ...formalParamM.ref)
+   *  }}}
+   *
+   *  When the `js.Closure` node is evaluated, i.e., when the closure value is
+   *  created, the expressions of the `actualCaptures` are evaluated, and the
+   *  results of those evaluations is "stored" in the environment of the
+   *  closure as the corresponding `formalCapture`.
+   *
+   *  When we later *call* the closure, the `formalCaptures` already have their
+   *  values from the environment, and they are available in the `body`. The
+   *  `formalParams` of the created closure receive their values from the
+   *  actual arguments at the call-site of the closure, and they are also
+   *  available in the `body`.
+   */
+  private def genClosure(tree: Closure): js.Tree = {
+    implicit val pos: Position = tree.pos
+    val Closure(env, call, functionalInterface) = tree
+
+    val envSize = env.size
+
+    val (fun, args) = call match {
+      // case Apply(fun, args) => (fun, args) // Conjectured not to happen
+      case t @ Select(_, _) => (t, Nil)
+      case t @ Ident(_) => (t, Nil)
+    }
+    val sym = fun.symbol
+
+    val qualifier = qualifierOf(fun)
+    val allCaptureValues = qualifier :: env
+
+    val (formalCaptures, actualCaptures) = allCaptureValues.map { value =>
+      implicit val pos: Position = value.pos
+      val formalIdent = value match {
+        case Ident(name) => freshLocalIdent(name.toString)
+        case This(_)     => freshLocalIdent("this")
+        case _           => freshLocalIdent()
+      }
+      val formalCapture =
+        js.ParamDef(formalIdent, toIRType(value.tpe), mutable = false, rest = false)
+      val actualCapture = genExpr(value)
+      (formalCapture, actualCapture)
+    }.unzip
+
+    val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
+    val formalParamTypes = sym.info.paramTypess.flatten.drop(envSize)
+    val (formalParams, actualParams) = formalParamNames.zip(formalParamTypes).map {
+      case (name, tpe) =>
+        val formalParam = js.ParamDef(freshLocalIdent(name.toString),
+            jstpe.AnyType, mutable = false, rest = false)
+        val actualParam = unbox(formalParam.ref, tpe)
+        (formalParam, actualParam)
+    }.unzip
+
+    val genBody = {
+      val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
+      val call = genApplyMethod(thisCaptureRef, sym, argCaptureRefs ::: actualParams)
+      box(call, sym.info.finalResultType)
+    }
+
+    val closure = js.Closure(formalCaptures, formalParams, genBody, actualCaptures)
+    ctx.debuglog(closure.toString)
+
+    val funInterfaceSym = functionalInterface.tpe.widenDealias.typeSymbol
+    if (jsdefn.isJSFunctionClass(funInterfaceSym)) {
+      closure
+    } else {
+      assert(!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym),
+          s"Invalid functional interface $funInterfaceSym reached the back-end")
+      val cls = "sjsr_AnonFunction" + formalParams.size
+      val ctor = js.Ident("init___sjs_js_Function" + formalParams.size)
+      js.New(jstpe.ClassType(cls), ctor, List(closure))
+    }
+  }
+
+  /** Boxes a value of the given type before `elimErasedValueType`.
+   *
+   *  @param expr Tree to be boxed if needed.
+   *  @param tpeEnteringElimErasedValueType The type of `expr` as it was
+   *    entering the `elimErasedValueType` phase.
+   */
+  private def box(expr: js.Tree, tpeEnteringElimErasedValueType: Type)(
+      implicit pos: Position): js.Tree = {
+
+    tpeEnteringElimErasedValueType match {
+      case tpe if isPrimitiveValueType(tpe) =>
+        makePrimitiveBox(expr, tpe)
+
+      /*case tpe: ErasedValueType =>
+        val boxedClass = tpe.valueClazz
+        val ctor = boxedClass.primaryConstructor
+        genNew(boxedClass, ctor, List(expr))*/
+
+      case _ =>
+        expr
+    }
+  }
+
+  /** Unboxes a value typed as Any to the given type before `elimErasedValueType`.
+   *
+   *  @param expr Tree to be extracted.
+   *  @param tpeEnteringElimErasedValueType The type of `expr` as it was
+   *    entering the `elimErasedValueType` phase.
+   */
+  private def unbox(expr: js.Tree, tpeEnteringElimErasedValueType: Type)(
+      implicit pos: Position): js.Tree = {
+
+    tpeEnteringElimErasedValueType match {
+      case tpe if isPrimitiveValueType(tpe) =>
+        makePrimitiveUnbox(expr, tpe)
+
+      /*case tpe: ErasedValueType =>
+        val boxedClass = tpe.valueClazz
+        val unboxMethod = boxedClass.derivedValueClassUnbox
+        val content = genApplyMethod(
+            genAsInstanceOf(expr, tpe), unboxMethod, Nil)
+        if (unboxMethod.tpe.resultType <:< tpe.erasedUnderlying)
+          content
+        else
+          fromAny(content, tpe.erasedUnderlying)*/
+
+      case tpe =>
+        genAsInstanceOf(expr, tpe)
+    }
+  }
+
+  /** Gen JS code for an asInstanceOf cast (for reference types only) */
+  private def genAsInstanceOf(value: js.Tree, to: Type)(
+      implicit pos: Position): js.Tree = {
+
+    val sym = to.widenDealias.typeSymbol
+
+    if (sym == defn.ObjectClass || isJSType(sym)) {
+      /* asInstanceOf[Object] always succeeds, and
+       * asInstanceOf to a raw JS type is completely erased.
+       */
+      value
+    } else {
+      js.AsInstanceOf(value, toReferenceType(to))
+    }
+  }
+
+  /** Gen JS code for an isInstanceOf test (for reference types only) */
+  private def genIsInstanceOf(tree: Tree, value: js.Tree, to: Type): js.Tree = {
+    implicit val pos: Position = tree.pos
+    val sym = to.widenDealias.typeSymbol
+
+    if (sym == defn.ObjectClass) {
+      js.BinaryOp(js.BinaryOp.!==, value, js.Null())
+    } else /*if (isJSType(sym)) {
+      if (sym.is(Trait)) {
+        ctx.error(
+            s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
+            tree.pos)
+        js.BooleanLiteral(true)
+      } else {
+        js.Unbox(js.JSBinaryOp(
+            js.JSBinaryOp.instanceof, value, genLoadJSConstructor(sym)), 'Z')
+      }
+    } else*/ {
+      js.IsInstanceOf(value, toReferenceType(to))
     }
   }
 
@@ -1064,6 +1900,33 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genModuleApplyMethod(methodSym: Symbol, arguments: List[js.Tree])(
       implicit pos: Position): js.Tree = {
     genApplyMethod(genLoadModule(methodSym.owner), methodSym, arguments)
+  }
+
+  /** Gen JS code for `new java.lang.String(...)`.
+   *
+   *  Rewires the instantiation to calling the appropriate overload of
+   *  `newString` in the object `scala.scalajs.runtime.RuntimeString`.
+   */
+  private def genNewString(ctor: Symbol, arguments: List[js.Tree])(
+      implicit pos: Position): js.Tree = {
+    js.Apply(
+        genLoadModule(jsdefn.RuntimeStringModuleClass),
+        encodeRTStringCtorSym(ctor), arguments)(
+        jstpe.ClassType(ir.Definitions.StringClass))
+  }
+
+  /** Gen a dynamically linked call to a method of java.lang.String.
+   *
+   *  Forwards the call to the module scala.scalajs.runtime.RuntimeString.
+   */
+  private def genApplyMethodOfString(receiver: js.Tree,
+      methodSym: Symbol, arguments: List[js.Tree])(
+      implicit pos: Position): js.Tree = {
+    js.Apply(
+        genLoadModule(jsdefn.RuntimeStringModuleClass),
+        encodeRTStringMethodSym(methodSym),
+        receiver :: arguments)(
+        toIRType(patchedResultType(methodSym)))
   }
 
   /** Gen a boxing operation (tpe is the primitive type) */
@@ -1146,7 +2009,8 @@ class JSCodeGen()(implicit ctx: Context) {
     }*/
   }
 
-  /** Generate loading of a module value
+  /** Gen JS code for loading a module.
+   *
    *  Can be given either the module symbol, or its module class symbol.
    */
   private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
@@ -1157,16 +2021,15 @@ class JSCodeGen()(implicit ctx: Context) {
       if (sym1 == defn.StringModule) jsdefn.RuntimeStringModule.moduleClass
       else sym1
 
-    //val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
-
-    /*if (isGlobalScope) {
-      genLoadGlobal()
-    } else if (isJSNativeClass(sym)) {
-      genPrimitiveJSModule(sym)
+    /*if (isJSType(sym)) {
+      if (isScalaJSDefinedJSClass(sym))
+        js.LoadJSModule(jstpe.ClassType(encodeClassFullName(sym)))
+      else if (sym.derivesFrom(jsdefn.JSGlobalScopeClass))
+        genLoadJSGlobal()
+      else
+        genLoadNativeJSModule(sym)
     } else {*/
-      val cls = jstpe.ClassType(encodeClassFullName(sym))
-      if (isRawJSType(sym)) js.LoadJSModule(cls)
-      else js.LoadModule(cls)
+      js.LoadModule(jstpe.ClassType(encodeClassFullName(sym)))
     //}
   }
 
@@ -1176,5 +2039,12 @@ class JSCodeGen()(implicit ctx: Context) {
 
   private def isStaticModule(sym: Symbol): Boolean =
     sym.is(Module) && sym.isStatic
+
+  private def isPrimitiveValueType(tpe: Type): Boolean = {
+    tpe.widenDealias match {
+      case JavaArrayType(_) => false
+      case t                => t.typeSymbol.asClass.isPrimitiveValueClass
+    }
+  }
 
 }

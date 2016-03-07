@@ -37,10 +37,13 @@ object JSPrimitives {
   final val ENV_INFO = 316      // runtime.environmentInfo
   final val LINKING_INFO = 317  // runtime.linkingInfo
 
+  final val THROW = 318 // <special-ops>.throw
+
 }
 
 class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
   import JSPrimitives._
+  import scala.tools.nsc.backend.ScalaPrimitives._
 
   private lazy val jsPrimitives: Map[Symbol, Int] = initJSPrimitives(ctx)
 
@@ -77,6 +80,18 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
 
     val jsdefn = JSDefinitions.jsdefn
 
+    // For some reason, the JVM primitive set does not register those
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newBooleanArray")), NEW_ZARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newByteArray")), NEW_BARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newShortArray")), NEW_SARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newCharArray")), NEW_CARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newIntArray")), NEW_IARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newLongArray")), NEW_LARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newFloatArray")), NEW_FARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newDoubleArray")), NEW_DARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newRefArray")), NEW_OARRAY)
+    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newUnitArray")), NEW_OARRAY)
+
     addPrimitive(defn.Any_getClass, GETCLASS)
 
     for (i <- 0 to 22)
@@ -106,6 +121,8 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
     //addPrimitive(jsdefn.Runtime_constructorOf, CONSTRUCTOROF)
     //addPrimitive(jsdefn.Runtime_environmentInfo, ENV_INFO)
     //addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
+
+    addPrimitive(defn.throwMethod, THROW)
 
     primitives.toMap
   }

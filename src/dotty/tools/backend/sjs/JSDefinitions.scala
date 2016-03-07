@@ -5,6 +5,7 @@ import dotty.tools.dotc.core._
 import Types._
 import Contexts._
 import Symbols._
+import Names._
 import StdNames._
 import Decorators._
 
@@ -171,5 +172,23 @@ final class JSDefinitions()(implicit ctx: Context) {
   def BoxesRunTime_boxToCharacter(implicit ctx: Context): Symbol = BoxesRunTime_boxToCharacterR.symbol
   lazy val BoxesRunTime_unboxToCharR = defn.BoxesRunTimeModule.requiredMethodRef("unboxToChar")
   def BoxesRunTime_unboxToChar(implicit ctx: Context): Symbol = BoxesRunTime_unboxToCharR.symbol
+
+  /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
+  private def scalajsClassName(cls: Symbol)(implicit ctx: Context): TypeName =
+    if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.asClass.name
+    else EmptyTypeName
+
+  private def isScalaJSVarArityClass(cls: Symbol, prefix: Name): Boolean = {
+    val name = scalajsClassName(cls)
+    name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
+  }
+
+  def isJSFunctionClass(cls: Symbol): Boolean =
+    isScalaJSVarArityClass(cls, nme.Function)
+
+  private val ThisFunctionName = termName("ThisFunction")
+
+  def isJSThisFunctionClass(cls: Symbol): Boolean =
+    isScalaJSVarArityClass(cls, ThisFunctionName)
 
 }
