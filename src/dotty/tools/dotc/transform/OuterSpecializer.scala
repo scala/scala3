@@ -118,10 +118,15 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   * */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
 
-    def enterNewSyms(newDecls: List[Symbol], classInfo: ClassInfo) = {
-      val decls = classInfo.decls.cloneScope
-      newDecls.foreach(decls.enter)
-      classInfo.derivedClassInfo(decls = decls)
+    def enterNewSyms(newDecls: List[Symbol], classInfo: ClassInfo, tp: Type) = {
+      if (!classInfo.typeSymbol.is(Flags.Package)) {
+        val decls = classInfo.decls.cloneScope
+        newDecls.foreach(decls.enter)
+        classInfo.derivedClassInfo(decls = decls)
+      } else {
+        newDecls.foreach(_.entered)
+        tp
+      }
     }
 
     def subsumes(outerTargs1: OuterTargs, outerTargs2: OuterTargs) = {
@@ -181,17 +186,19 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
             if (!other.isClassConstructor && (nw.signature.matchDegree(other.signature) != Signature.FullMatch)) {
               // bridge is needed
-              val bridge = ctx.newSymbol(claz, nw.name, nw.flags, nw.info).enteredAfter(this)
+              val bridge = ctx.newSymbol(claz, nw.name, nw.flags.&~(Flags.Accessor| Flags.ParamAccessor)|(Flags.Deferred), nw.info).enteredAfter(this)
               val lst = addBridges.getOrElse(claz, Nil)
 
               addBridges.put(claz, (bridge, other) :: lst)
             }
 
             if (other.isTerm && !(other.is(Flags.Method))) {
-              other.asSymDenotation.copySymDenotation(initFlags = other.symbol.flags &~ (Flags.Method| Flags.Mutable)).installAfter(this)
+              other.asSymDenotation.copySymDenotation(initFlags = other.symbol.flags &~ (Flags.Method | Flags.Mutable)).installAfter(this)
             }
 
-            //if(other.isTerm && !other.is(Flags.Method))
+            if (other.isTerm && other.is(Flags.ParamAccessor)) {
+              other.asSymDenotation.copySymDenotation(initFlags = (other.symbol.flags &~ (Flags.ParamAccessor | Flags.Accessor)) | Flags.Deferred).installAfter(this)
+            }
 
             newDecls.replace(other, nw)
         }
@@ -210,7 +217,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
         case classInfo: ClassInfo =>
 
           val newDecls = classInfo.decls
-            .filter(_.symbol.isCompleted) // We do not want to force symbols. Unforced symbol are not used in the source
+            .filter(x => x.isDefinedInCurrentRun && x.isCompleted) // We do not want to force symbols. Unforced symbol are not used in the source
             .filterNot(_.isConstructor)
             .filter(requestedSpecialization)
             .flatMap(decl => {
@@ -224,7 +231,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
           })
 
           val ntp =
-            if (newDecls.nonEmpty) enterNewSyms(newDecls.toList, classInfo)
+            if (newDecls.nonEmpty) enterNewSyms(newDecls.toList, classInfo, tp)
             else tp
           ntp
         case poly: PolyType if isSpecializable(sym, poly.paramNames.length) => // specialize method
@@ -278,9 +285,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
     if (!processed.containsKey(sym) &&
       (sym ne defn.ScalaPredefModule.moduleClass) &&
-      !(sym is Flags.JavaDefined) &&
+      !(sym is (Flags.JavaDefined, Flags.Package)) &&
       !(sym is Flags.Scala2x) &&
-      !(sym is Flags.Package) &&
       !sym.isAnonymousClass/*why? becasue nobody can call from outside? they can still be called from inside the class*/) {
       specializeSymbol(sym)
     } else tp
