@@ -91,6 +91,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
     appendOffsetDefs.get(cls) match {
       case None => template
       case Some(data) =>
+        data.defs.foreach(_.symbol.addAnnotation(defn.ScalaStaticAnnot))
         cpy.Template(template)(body = addInFront(data.defs, template.body))
     }
 
@@ -357,6 +358,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
                  .symbol.asTerm
             } else { // need to create a new flag
               offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
+              offsetSymbol.addAnnotation(defn.ScalaStaticAnnot)
               val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
               val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
               flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
@@ -366,6 +368,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
 
           case None =>
             offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
+            offsetSymbol.addAnnotation(defn.ScalaStaticAnnot)
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
             val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
@@ -375,9 +378,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
 
         val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
+
         val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 
-        val offset =  ref(companion).ensureApplied.select(offsetSymbol)
+        val offset =  ref(offsetSymbol)
         val getFlag = Select(ref(helperModule), lazyNme.RLazyVals.get)
         val setFlag = Select(ref(helperModule), lazyNme.RLazyVals.setFlag)
         val wait =    Select(ref(helperModule), lazyNme.RLazyVals.wait4Notification)
