@@ -320,10 +320,8 @@ object ProtoTypes {
    */
   def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
     val state = ctx.typerState
-    def howmany = if (owningTree.isEmpty) "no" else "some"
-    def committable = if (ctx.typerState.isCommittable) "committable" else "uncommittable"
-    assert(owningTree.isEmpty != ctx.typerState.isCommittable,
-      s"inconsistent: $howmany typevars were added to $committable constraint ${state.constraint}")
+    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
+      s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
     def newTypeVars(pt: PolyType): List[TypeVar] =
       for (n <- (0 until pt.paramNames.length).toList)
