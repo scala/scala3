@@ -7,7 +7,7 @@ import scala.annotation.meta._
 @field
 @getter
 @beanGetter
-@beanGetter
+@beanSetter
 @param
 @setter
 final class static extends StaticAnnotation
