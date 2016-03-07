@@ -44,15 +44,32 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     this
   }
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
+      tp match {
+        //create companions for value classes that are not from currently compiled source file
+        case tp@ClassInfo(_, cls, _, decls, _)
+          if (ValueClasses.isDerivedValueClass(cls)) &&
+            !sym.isDefinedInCurrentRun && sym.scalacLinkedClass == NoSymbol =>
+          println(s"needsCompanion for: $sym")
+          val newDecls = decls.cloneScope
+          val (modul, mcMethod, symMethod) = newCompanion(sym.name.toTermName, sym)
+          modul.entered
+          mcMethod.entered
+          newDecls.enter(symMethod)
+          tp.derivedClassInfo(decls = newDecls)
+        case _ => tp
+      }
+  }
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case Select(qual, _) if tree.symbol.exists =>
-      assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe}")
-    case _: TypeTree =>
-    case _: Import | _: NamedArg | _: TypTree =>
-      assert(false, i"illegal tree: $tree")
-    case _ =>
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+    tree match {
+      case Select(qual, _) if tree.symbol.exists =>
+        assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe}")
+      case _: TypeTree =>
+      case _: Import | _: NamedArg | _: TypTree =>
+        assert(false, i"illegal tree: $tree")
+      case _ =>
+    }
   }
 
   /** Reorder statements so that module classes always come after their companion classes, add missing companion classes */
@@ -81,14 +98,12 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case Nil => Nil
     }
 
-    def newCompanion(name: TermName, forClass: Symbol): Thicket = {
-      val modul = ctx.newCompleteModuleSymbol(ctx.owner, name, Synthetic, Synthetic,
-        defn.ObjectType :: Nil, Scopes.newScope)
-      val mc = modul.moduleClass
+    def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
+      val (modul, mcCompanion, classCompanion) = newCompanion(name, forClass)
       if (ctx.owner.isClass) modul.enteredAfter(thisTransformer)
-      ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc).enteredAfter(thisTransformer)
-      ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass).enteredAfter(thisTransformer)
-      ModuleDef(modul, Nil)
+      mcCompanion.enteredAfter(thisTransformer)
+      classCompanion.enteredAfter(thisTransformer)
+      modul
     }
 
     def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
@@ -101,11 +116,21 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
             false
         }
         val uniqueName = if (nameClash) objName.avoidClashName else objName
-        Thicket(stat :: newCompanion(uniqueName, stat.symbol).trees)
+        Thicket(stat :: ModuleDef(registerCompanion(uniqueName, stat.symbol), Nil).trees)
       case stat => stat
     }
 
     addMissingCompanions(reorder(stats))
+  }
+
+  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
+    val modul = ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
+      defn.ObjectType :: Nil, Scopes.newScope)
+    val mc = modul.moduleClass
+
+    val mcComp = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc)
+    val classComp = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass)
+    (modul, mcComp, classComp)
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
