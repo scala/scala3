@@ -12,7 +12,10 @@ import Symbols._
 import Decorators._
 import NameOps._
 import StdNames.nme
+import rewrite.Rewrites.patch
+import util.Positions.Position
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, MiniPhaseTransform}
+import dotty.tools.dotc.ast.NavigateAST._
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
@@ -65,11 +68,14 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
     val sym = tree.symbol
     if (!(sym is Flags.Lazy) || sym.owner.is(Flags.Trait) || (sym.isStatic && sym.is(Flags.Module))) tree
     else {
-
       val isField = sym.owner.isClass
-
       if (isField) {
         if (sym.isVolatile ||
+          ctx.scala2Mode && {
+            if (ctx.settings.rewrite.value.isDefined)
+              patch(ctx.compilationUnit.source, Position(toUntyped(tree).envelope.start), "@volatile ")
+            true // cannot assume volatile because of problems with compilestdlib. See #1149
+          } ||
           (sym.is(Flags.Module) && !sym.is(Flags.Synthetic)))
           // module class is user-defined.
           // Should be threadsafe, to mimic safety guaranteed by global object
