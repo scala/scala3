@@ -601,7 +601,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isFinal: Boolean = sym is Flags.Final
-    def isStaticMember: Boolean = (sym ne NoSymbol) && ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass))
+    def isStaticMember: Boolean = (sym ne NoSymbol) &&
+      ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
