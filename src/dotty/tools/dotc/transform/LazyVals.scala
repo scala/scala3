@@ -74,7 +74,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
           ctx.scala2Mode && {
             if (ctx.settings.rewrite.value.isDefined)
               patch(ctx.compilationUnit.source, Position(toUntyped(tree).envelope.start), "@volatile ")
-            true // cannot assume volatile because of problems with compilestdlib. See #1149
+            false // cannot assume volatile because of problems with compilestdlib. See #1149
           } ||
           (sym.is(Flags.Module) && !sym.is(Flags.Synthetic)))
           // module class is user-defined.
