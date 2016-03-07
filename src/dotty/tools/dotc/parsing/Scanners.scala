@@ -182,6 +182,18 @@ object Scanners {
      */
     var revComments: List[Comment] = Nil
 
+    /** The currently closest docstring, replaced every time a new docstring is
+     *  encountered
+     */
+    var closestDocString: Option[Comment] = None
+
+    /** Returns `closestDocString`'s raw string and sets it to `None` */
+    def getDocString(): Option[String] = {
+      val current = closestDocString.map(_.chrs)
+      closestDocString = None
+      current
+    }
+
     /** A buffer for comments */
     val commentBuf = new StringBuilder
 
@@ -528,8 +540,7 @@ object Scanners {
     }
 
     private def skipComment(): Boolean = {
-      def appendToComment(ch: Char) =
-        if (keepComments) commentBuf.append(ch)
+      def appendToComment(ch: Char) = commentBuf.append(ch)
       def nextChar() = {
         appendToComment(ch)
         Scanner.this.nextChar()
@@ -556,11 +567,16 @@ object Scanners {
       def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
       def finishComment(): Boolean = {
-        if (keepComments) {
-          val pos = Position(start, charOffset, start)
-          nextChar()
-          revComments = Comment(pos, flushBuf(commentBuf)) :: revComments
-        }
+        val pos = Position(start, charOffset, start)
+        val comment = Comment(pos, flushBuf(commentBuf))
+
+        closestDocString =
+          if (comment.isDocComment) Option(comment)
+          else closestDocString
+
+        if (keepComments)
+          revComments = comment :: revComments
+
         true
       }
       nextChar()

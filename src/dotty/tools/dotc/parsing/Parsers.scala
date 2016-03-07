@@ -1913,10 +1913,14 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
         val cmods = constrModsOpt()
         val vparamss = paramClauses(name, mods is Case)
+
         makeConstructor(tparams, vparamss).withMods(cmods)
       }
       val templ = templateOpt(constr)
-      TypeDef(name, templ).withMods(mods)
+
+      TypeDef(name, templ)
+        .withMods(mods)
+        .withComment(in.getDocString())
     }
 
     /** ConstrMods        ::=  AccessModifier
@@ -1935,7 +1939,10 @@ object Parsers {
     def objectDef(mods: Modifiers): ModuleDef = {
       val name = ident()
       val template = templateOpt(emptyConstructor())
-      ModuleDef(name, template).withMods(mods)
+
+      ModuleDef(name, template)
+        .withMods(mods)
+        .withComment(in.getDocString())
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

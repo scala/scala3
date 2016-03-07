@@ -321,6 +321,10 @@ object Trees {
     private[ast] def rawMods: Modifiers[T] =
       if (myMods == null) genericEmptyModifiers else myMods
 
+    private[this] var myComment: Option[String] = None
+
+    def rawComment: Option[String] = myComment
+
     def withMods(mods: Modifiers[Untyped]): ThisTree[Untyped] = {
       val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
       tree.setMods(mods)
@@ -328,6 +332,11 @@ object Trees {
     }
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(Modifiers(flags))
+
+    def withComment(cmt: Option[String]): ThisTree[Untyped] = {
+      myComment = cmt
+      asInstanceOf[ThisTree[Untyped]]
+    }
 
     protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
 
