@@ -206,14 +206,11 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           // Constructors and methods nested inside traits get the free variables
           // of the enclosing trait or class.
           // Conversely, local traits do not get free variables.
-          if (!enclosure.is(Trait)) {
-            val ss = symSet(free, enclosure)
-            if (!ss(sym)) {
-              ss += sym
+          if (!enclosure.is(Trait))
+            if (symSet(free, enclosure).add(sym)) {
               changedFreeVars = true
               ctx.log(i"$sym is free in $enclosure")
             }
-          }
         }
         if (intermediate.isRealClass) intermediate
         else if (enclosure.isRealClass) enclosure
