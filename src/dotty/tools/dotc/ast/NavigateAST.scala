@@ -17,7 +17,12 @@ object NavigateAST {
       case (utree: untpd.Tree) :: _ =>
         utree
       case _ =>
-        throw new Error(i"no untyped tree for $tree, best matching path =\n${untypedPath(tree, exactMatch = false)}%\n====\n%")
+        val loosePath = untypedPath(tree, exactMatch = false)
+        throw new
+          Error(i"""no untyped tree for $tree, pos = ${tree.pos}, envelope = ${tree.envelope}
+                   |best matching path =\n$loosePath%\n====\n%
+                   |path positions = ${loosePath.map(_.pos)}
+                   |path envelopes = ${loosePath.map(_.envelope)}""".stripMargin)
     }
 
   /** The reverse path of untyped trees starting with a tree that closest matches
