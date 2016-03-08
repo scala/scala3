@@ -185,14 +185,12 @@ object Scanners {
     /** The currently closest docstring, replaced every time a new docstring is
      *  encountered
      */
-    var closestDocString: Option[Comment] = None
+    val closestDocString: mutable.Queue[Comment] = mutable.Queue.empty
 
     /** Returns `closestDocString`'s raw string and sets it to `None` */
-    def getDocString(): Option[String] = {
-      val current = closestDocString.map(_.chrs)
-      closestDocString = None
-      current
-    }
+    def getDocString(): Option[String] =
+      if (closestDocString.isEmpty) None
+      else Some(closestDocString.dequeue.chrs)
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -570,9 +568,8 @@ object Scanners {
         val pos = Position(start, charOffset, start)
         val comment = Comment(pos, flushBuf(commentBuf))
 
-        closestDocString =
-          if (comment.isDocComment) Option(comment)
-          else closestDocString
+        if (comment.isDocComment)
+          closestDocString.enqueue(comment)
 
         if (keepComments)
           revComments = comment :: revComments

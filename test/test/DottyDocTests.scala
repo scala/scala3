@@ -59,7 +59,8 @@ object DottyDocTests extends DottyTest {
     MultipleClassesInPackage,
     SingleCaseClassWithoutPackage,
     SingleTraitWihoutPackage,
-    MultipleTraitsWithoutPackage
+    MultipleTraitsWithoutPackage,
+    MultipleMixedEntitiesWithPackage
   )
 
   def main(args: Array[String]): Unit = {
@@ -140,20 +141,47 @@ case object SingleTraitWihoutPackage extends DottyDocTest {
 }
 
 case object MultipleTraitsWithoutPackage extends DottyDocTest {
-  //TODO: This will fail if the tratis don't have bodies, because of the Scanner
   override val source =
     """
     |/** Trait1 docstring */
-    |trait Trait1 {}
+    |trait Trait1
     |
     |/** Trait2 docstring */
-    |trait Trait2 {}
+    |trait Trait2
     """.stripMargin
 
   override def assertion = {
     case PackageDef(_, Seq(t1 @ TypeDef(_,_), t2 @ TypeDef(_,_))) => {
       checkDocString(t1.rawComment, "/** Trait1 docstring */")
       checkDocString(t2.rawComment, "/** Trait2 docstring */")
+    }
+  }
+}
+
+case object MultipleMixedEntitiesWithPackage extends DottyDocTest {
+  override val source =
+    """
+    |/** Trait1 docstring */
+    |trait Trait1
+    |
+    |/** Class2 docstring */
+    |class Class2(val x: Int)
+    |
+    |/** CaseClass3 docstring */
+    |case class CaseClass3()
+    |
+    |case class NoComment()
+    |
+    |/** AbstractClass4 docstring */
+    |abstract class AbstractClass4(val x: Int)
+    """.stripMargin
+
+  override def assertion = {
+    case PackageDef(_, Seq(t1 @ TypeDef(_,_), c2 @ TypeDef(_,_), cc3 @ TypeDef(_,_), _, ac4 @ TypeDef(_,_))) => {
+      checkDocString(t1.rawComment, "/** Trait1 docstring */")
+      checkDocString(c2.rawComment, "/** Class2 docstring */")
+      checkDocString(cc3.rawComment, "/** CaseClass3 docstring */")
+      checkDocString(ac4.rawComment, "/** AbstractClass4 docstring */")
     }
   }
 }
