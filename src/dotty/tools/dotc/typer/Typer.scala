@@ -33,6 +33,7 @@ import annotation.tailrec
 import Implicits._
 import util.Stats.{track, record}
 import config.Printers._
+import rewrite.Rewrites.patch
 import language.implicitConversions
 
 object Typer {
@@ -1135,13 +1136,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+  def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
+    val untpd.PostfixOp(qual, nme.WILDCARD) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
-    var res = typed(tree, pt1)
+    var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
       def msg = i"not a function: ${res.tpe}; cannot be followed by `_'"
       if (ctx.scala2Mode) {
         ctx.migrationWarning(msg, tree.pos)
+        patch(ctx.compilationUnit.source, Position(qual.pos.end, tree.pos.end), "")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
       else ctx.error(msg, tree.pos)
@@ -1232,7 +1235,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => tree.tree
           case tree:  untpd.UnApply => typedUnApply(tree, pt)
-          case untpd.PostfixOp(tree, nme.WILDCARD) => typedAsFunction(tree, pt)
+          case tree @ untpd.PostfixOp(qual, nme.WILDCARD) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
         }
