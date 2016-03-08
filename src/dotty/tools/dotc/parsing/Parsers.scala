@@ -1909,6 +1909,7 @@ object Parsers {
      */
     def classDef(mods: Modifiers): TypeDef = atPos(tokenRange) {
       val name = ident().toTypeName
+      val docstring = in.getDocString()
       val constr = atPos(in.offset) {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
         val cmods = constrModsOpt()
@@ -1920,7 +1921,7 @@ object Parsers {
 
       TypeDef(name, templ)
         .withMods(mods)
-        .withComment(in.getDocString())
+        .withComment(docstring)
     }
 
     /** ConstrMods        ::=  AccessModifier
