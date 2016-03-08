@@ -285,10 +285,6 @@ object SymDenotations {
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
 
-    /** Add given annotation to the annotations of this denotation */
-    final def addAnnotation(annot: ClassSymbol)(implicit ctx: Context): Unit =
-      addAnnotation(ConcreteAnnotation(tpd.ref(annot)))
-
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)
