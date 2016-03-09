@@ -60,7 +60,9 @@ object DottyDocTests extends DottyTest {
     SingleCaseClassWithoutPackage,
     SingleTraitWihoutPackage,
     MultipleTraitsWithoutPackage,
-    MultipleMixedEntitiesWithPackage
+    MultipleMixedEntitiesWithPackage,
+    NestedClass,
+    NestedClassThenOuter
   )
 
   def main(args: Array[String]): Unit = {
@@ -183,5 +185,49 @@ case object MultipleMixedEntitiesWithPackage extends DottyDocTest {
       checkDocString(cc3.rawComment, "/** CaseClass3 docstring */")
       checkDocString(ac4.rawComment, "/** AbstractClass4 docstring */")
     }
+  }
+}
+
+case object NestedClass extends DottyDocTest {
+  override val source =
+    """
+    |/** Outer docstring */
+    |class Outer {
+    |  /** Inner docstring */
+    |  class Inner(val x: Int)
+    |}
+    """.stripMargin
+
+  override def assertion = {
+    case PackageDef(_, Seq(outer @ TypeDef(_, tpl @ Template(_,_,_,_)))) =>
+      checkDocString(outer.rawComment, "/** Outer docstring */")
+      tpl.body match {
+        case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+        case _ => assert(false, "Couldn't find inner class")
+      }
+  }
+}
+
+case object NestedClassThenOuter extends DottyDocTest {
+  override val source =
+    """
+    |/** Outer1 docstring */
+    |class Outer1 {
+    |  /** Inner docstring */
+    |  class Inner(val x: Int)
+    |}
+    |
+    |/** Outer2 docstring */
+    |class Outer2
+    """.stripMargin
+
+  override def assertion = {
+    case PackageDef(_, Seq(o1 @ TypeDef(_, tpl @ Template(_,_,_,_)), o2 @ TypeDef(_,_))) =>
+      checkDocString(o1.rawComment, "/** Outer1 docstring */")
+      checkDocString(o2.rawComment, "/** Outer2 docstring */")
+      tpl.body match {
+        case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+        case _ => assert(false, "Couldn't find inner class")
+      }
   }
 }

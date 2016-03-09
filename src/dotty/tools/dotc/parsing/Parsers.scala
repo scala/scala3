@@ -1888,28 +1888,30 @@ object Parsers {
     /** TmplDef ::= ([`case'] `class' | `trait') ClassDef
      *            |  [`case'] `object' ObjectDef
      */
-    def tmplDef(start: Int, mods: Modifiers): Tree = in.token match {
-      case TRAIT =>
-        classDef(posMods(start, addFlag(mods, Trait)))
-      case CLASS =>
-        classDef(posMods(start, mods))
-      case CASECLASS =>
-        classDef(posMods(start, mods | Case))
-      case OBJECT =>
-        objectDef(posMods(start, mods | Module))
-      case CASEOBJECT =>
-        objectDef(posMods(start, mods | Case | Module))
-      case _ =>
-        syntaxErrorOrIncomplete("expected start of definition")
-        EmptyTree
+    def tmplDef(start: Int, mods: Modifiers): Tree = {
+      val docstring = in.getDocString()
+      in.token match {
+        case TRAIT =>
+          classDef(posMods(start, addFlag(mods, Trait)), docstring)
+        case CLASS =>
+          classDef(posMods(start, mods), docstring)
+        case CASECLASS =>
+          classDef(posMods(start, mods | Case), docstring)
+        case OBJECT =>
+          objectDef(posMods(start, mods | Module))
+        case CASEOBJECT =>
+          objectDef(posMods(start, mods | Case | Module))
+        case _ =>
+          syntaxErrorOrIncomplete("expected start of definition")
+          EmptyTree
+      }
     }
 
     /** ClassDef ::= Id [ClsTypeParamClause]
      *               [ConstrMods] ClsParamClauses TemplateOpt
      */
-    def classDef(mods: Modifiers): TypeDef = atPos(tokenRange) {
+    def classDef(mods: Modifiers, docstring: Option[String]): TypeDef = atPos(tokenRange) {
       val name = ident().toTypeName
-      val docstring = in.getDocString()
       val constr = atPos(in.offset) {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
         val cmods = constrModsOpt()

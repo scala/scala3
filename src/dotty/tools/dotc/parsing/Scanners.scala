@@ -185,12 +185,23 @@ object Scanners {
     /** The currently closest docstring, replaced every time a new docstring is
      *  encountered
      */
-    val closestDocString: mutable.Queue[Comment] = mutable.Queue.empty
+    var closestDocString: List[mutable.Queue[Comment]] = mutable.Queue.empty[Comment] :: Nil
+
+    /** Adds level of nesting to docstrings */
+    def enterBlock(): Unit =
+      closestDocString = mutable.Queue.empty[Comment] :: closestDocString
+
+    /** Removes level of nesting for docstrings */
+    def exitBlock(): Unit = closestDocString = closestDocString match {
+      case x :: Nil => mutable.Queue.empty[Comment] :: Nil
+      case _ => closestDocString.tail
+    }
 
     /** Returns `closestDocString`'s raw string and sets it to `None` */
-    def getDocString(): Option[String] =
-      if (closestDocString.isEmpty) None
-      else Some(closestDocString.dequeue.chrs)
+    def getDocString(): Option[String] = closestDocString match {
+      case x :: _ if !x.isEmpty => Some(x.dequeue.chrs)
+      case _ => None
+    }
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -497,13 +508,13 @@ object Scanners {
         case ',' =>
           nextChar(); token = COMMA
         case '(' =>
-          nextChar(); token = LPAREN
+          enterBlock(); nextChar(); token = LPAREN
         case '{' =>
-          nextChar(); token = LBRACE
+          enterBlock(); nextChar(); token = LBRACE
         case ')' =>
-          nextChar(); token = RPAREN
+          exitBlock(); nextChar(); token = RPAREN
         case '}' =>
-          nextChar(); token = RBRACE
+          exitBlock(); nextChar(); token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
         case ']' =>
@@ -569,7 +580,7 @@ object Scanners {
         val comment = Comment(pos, flushBuf(commentBuf))
 
         if (comment.isDocComment)
-          closestDocString.enqueue(comment)
+          closestDocString.head.enqueue(comment)
 
         if (keepComments)
           revComments = comment :: revComments
