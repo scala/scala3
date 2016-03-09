@@ -93,12 +93,12 @@ abstract class CompilerTest {
       if (args.contains("-rewrite")) {
         val file = new PlainFile(filePath)
         val data = file.toByteArray
-        val cs = data.map(_.toChar)
-        println(s"data = ${cs.mkString}")
+        // compile with rewrite
         compileArgs((filePath :: args).toArray, expErrors)
+        // compile again, check that file now compiles without -language:Scala2
         val plainArgs = args.filter(arg => arg != "-rewrite" && arg != "-language:Scala2")
-        println(s"plainArgs = $plainArgs")
         compileFile(prefix, fileName, plainArgs, extension, runTest)
+        // restore original test file
         val out = file.output
         out.write(data)
         out.close()
