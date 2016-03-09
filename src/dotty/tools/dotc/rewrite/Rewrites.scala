@@ -23,8 +23,11 @@ object Rewrites {
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
       val patches = pbuf.toList.sortBy(_.pos.start)
-      patches.iterator.sliding(2, 1).foreach(ps =>
-        assert(ps(0).pos.end <= ps(1).pos.start, s"overlapping patches: ${ps(0)} and ${ps(1)}"))
+      if (patches.nonEmpty)
+        patches reduceLeft {(p1, p2) =>
+          assert(p1.pos.end <= p2.pos.start, s"overlapping patches: $p1 and $p2")
+          p2
+        }
       val ds = new Array[Char](cs.length + delta)
       def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
         def copy(upTo: Int): Int = {
