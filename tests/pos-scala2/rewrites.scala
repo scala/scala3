@@ -27,3 +27,9 @@ object Test {
 
 }
 
+class Stream[+A] {
+
+  class Inner(x: A) extends Stream[A]
+
+}
+
