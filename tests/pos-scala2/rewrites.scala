@@ -24,6 +24,7 @@ object Test {
   @deprecated private lazy val (x2, y2) = (1, 2)
 
   val yy = x1 _
+  val zz: () => Int = yy
 
 }
 

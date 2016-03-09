@@ -34,6 +34,8 @@ import Implicits._
 import util.Stats.{track, record}
 import config.Printers._
 import rewrite.Rewrites.patch
+import NavigateAST._
+import transform.SymUtils._
 import language.implicitConversions
 
 object Typer {
@@ -985,7 +987,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
-    assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    patchIfLazy(vdef1)
+    vdef1
+  }
+
+  /** Add a @volitile to lazy vals when rewriting from Scala2 */
+  private def patchIfLazy(vdef: ValDef)(implicit ctx: Context): Unit = {
+    val sym = vdef.symbol
+    if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
+        ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
+        !ctx.isAfterTyper)
+      patch(ctx.compilationUnit.source, Position(toUntyped(vdef).envelope.start), "@volatile ")
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
@@ -1143,8 +1156,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
       def msg = i"not a function: ${res.tpe}; cannot be followed by `_'"
       if (ctx.scala2Mode) {
+        // Under -rewrite, patch `x _` to `(() => x)`
         ctx.migrationWarning(msg, tree.pos)
-        patch(ctx.compilationUnit.source, Position(qual.pos.end, tree.pos.end), "")
+        patch(ctx.compilationUnit.source, Position(tree.pos.start), "(() => ")
+        patch(ctx.compilationUnit.source, Position(qual.pos.end, tree.pos.end), ")")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
       else ctx.error(msg, tree.pos)
