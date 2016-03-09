@@ -120,9 +120,9 @@ object Test {
     val ys7: String = xs7
     val xs8 = xs.drop(2)
     val ys8: String = xs8
-    val xs9 = xs.map((_: Char) + 1)  // !!! need a language change to make this work without the : Char
+    val xs9 = xs.map(_ + 1)  // !!! need a language change to make this work without the : Char
     val ys9: Seq[Int] = xs9
-    val xs9a = xs.map((_: Char).toUpper) // !!! need a language change to make this work without the : Char
+    val xs9a = xs.map(_.toUpper) // !!! need a language change to make this work without the : Char
     val ys9a: String = xs9a
     val xs10 = xs.flatMap((x: Char) => s"$x,$x")
     val ys10: String = xs10
