@@ -47,6 +47,9 @@ object Annotations {
 
     def apply(tree: Tree) = ConcreteAnnotation(tree)
 
+    def apply(cls: ClassSymbol)(implicit ctx: Context): Annotation =
+      apply(cls, Nil)
+
     def apply(cls: ClassSymbol, arg: Tree)(implicit ctx: Context): Annotation =
       apply(cls, arg :: Nil)
 

@@ -320,7 +320,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         false
     }
-    try test || tp.symbol.is(JavaStatic)
+    try test || tp.symbol.is(JavaStatic) || tp.symbol.hasAnnotation(defn.ScalaStaticAnnot)
     catch { // See remark in SymDenotations#accessWithin
       case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
     }
@@ -337,6 +337,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
+    else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
+      Ident(tp)
     else tp.prefix match {
       case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)

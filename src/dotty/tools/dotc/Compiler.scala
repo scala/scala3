@@ -44,6 +44,7 @@ class Compiler {
       List(new FirstTransform,
            new CheckReentrant),
       List(new RefChecks,
+           new CheckStatic,
            new ElimRepeated,
            new NormalizeFlags,
            new ExtensionMethods,
