@@ -1898,9 +1898,9 @@ object Parsers {
         case CASECLASS =>
           classDef(posMods(start, mods | Case), docstring)
         case OBJECT =>
-          objectDef(posMods(start, mods | Module))
+          objectDef(posMods(start, mods | Module), docstring)
         case CASEOBJECT =>
-          objectDef(posMods(start, mods | Case | Module))
+          objectDef(posMods(start, mods | Case | Module), docstring)
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
           EmptyTree
@@ -1939,13 +1939,13 @@ object Parsers {
 
     /** ObjectDef       ::= Id TemplateOpt
      */
-    def objectDef(mods: Modifiers): ModuleDef = {
+    def objectDef(mods: Modifiers, docstring: Option[String] = None): ModuleDef = {
       val name = ident()
       val template = templateOpt(emptyConstructor())
 
       ModuleDef(name, template)
         .withMods(mods)
-        .withComment(in.getDocString())
+        .withComment(docstring)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -2170,7 +2170,8 @@ object Parsers {
         if (in.token == PACKAGE) {
           in.nextToken()
           if (in.token == OBJECT) {
-            ts += objectDef(atPos(start, in.skipToken()) { Modifiers(Package) })
+            val docstring = in.getDocString()
+            ts += objectDef(atPos(start, in.skipToken()) { Modifiers(Package) }, docstring)
             if (in.token != EOF) {
               acceptStatSep()
               ts ++= topStatSeq()

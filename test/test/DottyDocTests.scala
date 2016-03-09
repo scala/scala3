@@ -4,7 +4,6 @@ import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 
 /** All tests need to extend this trait and define `source` and `assertion`
@@ -62,7 +61,10 @@ object DottyDocTests extends DottyTest {
     MultipleTraitsWithoutPackage,
     MultipleMixedEntitiesWithPackage,
     NestedClass,
-    NestedClassThenOuter
+    NestedClassThenOuter,
+    Objects,
+    ObjectsNestedClass,
+    PackageObject
   )
 
   def main(args: Array[String]): Unit = {
@@ -229,5 +231,94 @@ case object NestedClassThenOuter extends DottyDocTest {
         case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
         case _ => assert(false, "Couldn't find inner class")
       }
+  }
+}
+
+case object Objects extends DottyDocTest {
+  override val source =
+    """
+    |package p
+    |
+    |/** Object1 docstring */
+    |object Object1
+    |
+    |/** Object2 docstring */
+    |object Object2
+    """.stripMargin
+
+  override def assertion = {
+    case p @ PackageDef(_, Seq(o1: MemberDef[Untyped], o2: MemberDef[Untyped])) =>
+      assert(o1.name.toString == "Object1")
+      checkDocString(o1.rawComment, "/** Object1 docstring */")
+      assert(o2.name.toString == "Object2")
+      checkDocString(o2.rawComment, "/** Object2 docstring */")
+  }
+}
+
+case object ObjectsNestedClass extends DottyDocTest {
+  override val source =
+    """
+    |package p
+    |
+    |/** Object1 docstring */
+    |object Object1
+    |
+    |/** Object2 docstring */
+    |object Object2 {
+    |  class A1
+    |  /** Inner docstring */
+    |  class Inner
+    |}
+    """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    override def assertion = {
+      case p @ PackageDef(_, Seq(o1: ModuleDef, o2: ModuleDef)) =>
+        assert(o1.name.toString == "Object1")
+        checkDocString(o1.rawComment, "/** Object1 docstring */")
+        assert(o2.name.toString == "Object2")
+        checkDocString(o2.rawComment, "/** Object2 docstring */")
+
+        o2.impl.body match {
+          case _ :: (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+          case _ => assert(false, "Couldn't find inner class")
+        }
+    }
+}
+
+case object PackageObject extends DottyDocTest {
+  override val source =
+    """
+    |/** Package object docstring */
+    |package object foo {
+    |  /** Boo docstring */
+    |  case class Boo()
+    |
+    |  /** Trait docstring */
+    |  trait Trait
+    |
+    |  /** InnerObject docstring */
+    |  object InnerObject {
+    |    /** InnerClass docstring */
+    |    class InnerClass
+    |  }
+    |}
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(p: ModuleDef)) => {
+      checkDocString(p.rawComment, "/** Package object docstring */")
+
+      p.impl.body match {
+        case (b: TypeDef) :: (t: TypeDef) :: (o: ModuleDef) :: Nil => {
+          checkDocString(b.rawComment, "/** Boo docstring */")
+          checkDocString(t.rawComment, "/** Trait docstring */")
+          checkDocString(o.rawComment, "/** InnerObject docstring */")
+          checkDocString(o.impl.body.head.asInstanceOf[TypeDef].rawComment, "/** InnerClass docstring */")
+        }
+        case _ => assert(false, "Incorrect structure inside package object")
+      }
+    }
   }
 }
