@@ -232,7 +232,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
         }
         val curImport = ctx.importInfo
-        if (curImport != null && curImport.isRootImport && previous.exists) return previous
+        if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
+          return previous // no more conflicts possible in this case
         // would import of kind `prec` be not shadowed by a nested higher-precedence definition?
         def isPossibleImport(prec: Int) =
           prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope)
