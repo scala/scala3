@@ -91,7 +91,8 @@ abstract class Positioned extends DotClass with Product {
           }
           else outstanding = p :: outstanding
         case xs: List[_] =>
-          elems = if (elems.isEmpty) xs else xs ::: elems
+          val newElems = xs.reverse
+          elems = if (elems.isEmpty) newElems else newElems ::: elems
         case _ =>
       }
     }
