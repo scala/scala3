@@ -179,7 +179,7 @@ object ProtoTypes {
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType, typer)
 
-    def argsAreTyped: Boolean = myTypedArgs.nonEmpty || args.isEmpty
+    def argsAreTyped: Boolean = myTypedArgs.size == args.length
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.

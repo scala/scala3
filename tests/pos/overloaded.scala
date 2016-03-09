@@ -21,4 +21,8 @@ object overloaded {
 
   val xs = List("a", "b")
   xs.mkString
+
+  def map(f: Char => Char): String = ???
+  def map[U](f: Char => U): Seq[U] = ???
+  map(x => x.toUpper)
 }

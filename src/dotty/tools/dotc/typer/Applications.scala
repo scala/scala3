@@ -1089,7 +1089,10 @@ trait Applications extends Compatibility { self: Typer =>
           val alts2 = narrowByShapes(alts1)
           //ctx.log(i"narrowed by shape: ${alts1.map(_.symbol.showDcl)}%, %")
           if (isDetermined(alts2)) alts2
-          else narrowByTrees(alts2, pt.typedArgs, resultType)
+          else {
+            pretypeArgs(alts2, pt)
+            narrowByTrees(alts2, pt.typedArgs, resultType)
+          }
         }
 
       case pt @ PolyProto(targs, pt1) =>
@@ -1120,6 +1123,48 @@ trait Applications extends Compatibility { self: Typer =>
           else alts
         }
     }
+  }
+
+  /** Try to typecheck any arguments in `pt` that are function values missing a
+   *  parameter type. The expected type for these arguments is the lub of the
+   *  corresponding formal parameter types of all alternatives. Type variables
+   *  in formal parameter types are replaced by wildcards. The result of the
+   *  typecheck is stored in `pt`, to be retrieved when its `typedArgs` are selected.
+   *  The benefit of doing this is to allow idioms like this:
+   *
+   *     def map(f: Char => Char): String = ???
+   *     def map[U](f: Char => U): Seq[U] = ???
+   *     map(x => x.toUpper)
+   *
+   *  Without `pretypeArgs` we'd get a "missing parameter type" error for `x`.
+   *  With `pretypeArgs`, we use the union of the two formal parameter types
+   *  `Char => Char` and `Char => ?` as the expected type of the closure `x => x.toUpper`.
+   *  That union is `Char => Char`, so we have an expected parameter type `Char`
+   *  for `x`, and the code typechecks.
+   */
+  private def pretypeArgs(alts: List[TermRef], pt: FunProto)(implicit ctx: Context): Unit = {
+    def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match {
+      case arg :: args1 if !altFormals.exists(_.isEmpty) =>
+        def isUnknownParamType(t: untpd.Tree) = t match {
+          case ValDef(_, tpt, _) => tpt.isEmpty
+          case _ => false
+        }
+        arg match {
+          case arg: untpd.Function if arg.args.exists(isUnknownParamType) =>
+            val commonFormal = altFormals.map(_.head).reduceLeft(_ | _)
+            overload.println(i"pretype arg $arg with expected type $commonFormal")
+            pt.typedArg(arg, commonFormal)
+          case _ =>
+        }
+        recur(altFormals.map(_.tail), args1)
+      case _ =>
+    }
+    def paramTypes(alt: Type): List[Type] = alt match {
+      case mt: MethodType => mt.paramTypes
+      case mt: PolyType => paramTypes(mt.resultType).map(wildApprox(_))
+      case _ => Nil
+    }
+    recur(alts.map(alt => paramTypes(alt.widen)), pt.args)
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {
