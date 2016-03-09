@@ -50,7 +50,6 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
         case tp@ClassInfo(_, cls, _, decls, _)
           if (ValueClasses.isDerivedValueClass(cls)) &&
             !sym.isDefinedInCurrentRun && sym.scalacLinkedClass == NoSymbol =>
-          println(s"needsCompanion for: $sym")
           val newDecls = decls.cloneScope
           val (modul, mcMethod, symMethod) = newCompanion(sym.name.toTermName, sym)
           modul.entered
