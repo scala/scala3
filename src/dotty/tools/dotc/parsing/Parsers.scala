@@ -1762,17 +1762,18 @@ object Parsers {
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
-      def scala2ProcedureSyntax =
-        testScala2Mode("Procedure syntax no longer supported; `: Unit =' should be inserted here") && {
-          patch(source, Position(in.lastOffset),
-                if (in.token == LBRACE) ": Unit =" else ": Unit ")
+      def scala2ProcedureSyntax(resultTypeStr: String) = {
+        val toInsert = if (in.token == LBRACE) s"$resultTypeStr =" else ": Unit "
+        testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
+          patch(source, Position(in.lastOffset), toInsert)
           true
         }
+      }
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
         val rhs = {
-          if (!(in.token == LBRACE && scala2ProcedureSyntax)) accept(EQUALS)
+          if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods)
@@ -1789,7 +1790,7 @@ object Parsers {
           }
           else if (!tpt.isEmpty)
             EmptyTree
-          else if (scala2ProcedureSyntax) {
+          else if (scala2ProcedureSyntax(": Unit")) {
             tpt = scalaUnit
             if (in.token == LBRACE) expr()
             else EmptyTree
