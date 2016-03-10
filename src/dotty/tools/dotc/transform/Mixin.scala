@@ -98,8 +98,12 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
-    if (sym.is(Accessor, butNot = Deferred | Lazy) && sym.owner.is(Trait))
-      sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred).ensureNotPrivate
+    if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
+      val sym1 =
+        if (sym is Lazy) sym
+        else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
+      sym1.ensureNotPrivate
+    }
     else if (sym.isConstructor && sym.owner.is(Trait))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
