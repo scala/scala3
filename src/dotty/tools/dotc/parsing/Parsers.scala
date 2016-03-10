@@ -1752,13 +1752,13 @@ object Parsers {
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
-        patDefOrDcl(posMods(start, mods))
+        patDefOrDcl(posMods(start, mods), in.getDocString(start))
       case VAR =>
-        patDefOrDcl(posMods(start, addFlag(mods, Mutable)))
+        patDefOrDcl(posMods(start, addFlag(mods, Mutable)), in.getDocString(start))
       case DEF =>
-        defDefOrDcl(posMods(start, mods))
+        defDefOrDcl(posMods(start, mods), in.getDocString(start))
       case TYPE =>
-        typeDefOrDcl(posMods(start, mods))
+        typeDefOrDcl(posMods(start, mods), in.getDocString(start))
       case _ =>
         tmplDef(start, mods)
     }
@@ -1768,7 +1768,7 @@ object Parsers {
      *  ValDcl ::= Id {`,' Id} `:' Type
      *  VarDcl ::= Id {`,' Id} `:' Type
      */
-    def patDefOrDcl(mods: Modifiers): Tree = {
+    def patDefOrDcl(mods: Modifiers, docstring: Option[String] = None): Tree = {
       val lhs = commaSeparated(pattern2)
       val tpt = typedOpt()
       val rhs =
@@ -1782,8 +1782,10 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id)(name, tpt, rhs).withMods(mods)
-        case _ => PatDef(mods, lhs, tpt, rhs)
+        case (id @ Ident(name: TermName)) :: Nil =>
+          cpy.ValDef(id)(name, tpt, rhs).withMods(mods).withComment(docstring)
+        case _ =>
+          PatDef(mods, lhs, tpt, rhs)
       }
     }
 
@@ -1792,7 +1794,7 @@ object Parsers {
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
-    def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
+    def defDefOrDcl(mods: Modifiers, docstring: Option[String] = None): Tree = atPos(tokenRange) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
@@ -1833,7 +1835,7 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1)
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).withComment(docstring)
       }
     }
 
@@ -1867,7 +1869,7 @@ object Parsers {
     /** TypeDef ::= type Id [TypeParamClause] `=' Type
      *  TypeDcl ::= type Id [TypeParamClause] TypeBounds
      */
-    def typeDefOrDcl(mods: Modifiers): Tree = {
+    def typeDefOrDcl(mods: Modifiers, docstring: Option[String] = None): Tree = {
       newLinesOpt()
       atPos(tokenRange) {
         val name = ident().toTypeName
@@ -1875,7 +1877,7 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, tparams, typ()).withMods(mods)
+            TypeDef(name, tparams, typ()).withMods(mods).withComment(docstring)
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, tparams, typeBounds()).withMods(mods)
           case _ =>

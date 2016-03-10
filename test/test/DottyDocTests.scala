@@ -42,11 +42,14 @@ trait DottyDocTest extends DottyTest { self =>
       assert(false, s"""No docstring found, expected: "$expected"""")
   }
 
-  def run(): Unit = {
+  def run(): Unit = try {
     val c = compiler(assertion)
     c.rootContext(ctx)
     c.newRun.compile(source)
     println(s"${self.getClass.getSimpleName.split("\\$").last} passed")
+  } catch { case e: Throwable =>
+    Console.err.println(s"${self.getClass.getSimpleName.split("\\$").last} failed")
+    throw e
   }
 }
 
@@ -54,6 +57,7 @@ trait DottyDocTest extends DottyTest { self =>
 object DottyDocTests extends DottyTest {
   private[this] val tests = Seq(
     NoComment,
+
     SingleClassInPackage,
     MultipleOpenedOnSingleClassInPackage,
     MultipleClassesInPackage,
@@ -67,13 +71,18 @@ object DottyDocTests extends DottyTest {
     ObjectsNestedClass,
     PackageObject,
     MultipleDocStringsBeforeEntity,
-    MultipleDocStringsBeforeAndAfter
+    MultipleDocStringsBeforeAndAfter,
+
+    ValuesWithDocString,
+    VarsWithDocString,
+    DefsWithDocString,
+    TypesWithDocString
   )
 
   def main(args: Array[String]): Unit = {
-    println("------------ Testing DottyDoc  ------------")
+    println(s"-------------- Testing DottyDoc (${tests.length} tests) --------------")
     tests.foreach(_.run)
-    println("--------- DottyDoc tests passed! ----------")
+    println("--------------- DottyDoc tests passed! -------------------")
   }
 }
 
@@ -370,4 +379,128 @@ case object MultipleDocStringsBeforeAndAfter extends DottyDocTest {
       checkDocString(c.rawComment, "/** Real comment */")
   }
 
+}
+
+case object ValuesWithDocString extends DottyDocTest {
+  override val source =
+    """
+    |object Object {
+    |  /** val1 */
+    |  val val1 = 1
+    |
+    |  /** val2 */
+    |  val val2: Int = 2
+    |  /** bogus docstring */
+    |
+    |  /** bogus docstring */
+    |  /** val3 */
+    |  val val3: List[Int] = 1 :: 2 :: 3 :: Nil
+    |}
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(o: ModuleDef)) =>
+      o.impl.body match {
+        case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          checkDocString(v1.rawComment, "/** val1 */")
+          checkDocString(v2.rawComment, "/** val2 */")
+          checkDocString(v3.rawComment, "/** val3 */")
+        }
+        case _ => assert(false, "Incorrect structure inside object")
+      }
+  }
+}
+
+case object VarsWithDocString extends DottyDocTest {
+  override val source =
+    """
+    |object Object {
+    |  /** var1 */
+    |  var var1 = 1
+    |
+    |  /** var2 */
+    |  var var2: Int = 2
+    |  /** bogus docstring */
+    |
+    |  /** bogus docstring */
+    |  /** var3 */
+    |  var var3: List[Int] = 1 :: 2 :: 3 :: Nil
+    |}
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(o: ModuleDef)) =>
+      o.impl.body match {
+        case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          checkDocString(v1.rawComment, "/** var1 */")
+          checkDocString(v2.rawComment, "/** var2 */")
+          checkDocString(v3.rawComment, "/** var3 */")
+        }
+        case _ => assert(false, "Incorrect structure inside object")
+      }
+  }
+}
+
+case object DefsWithDocString extends DottyDocTest {
+  override val source =
+    """
+    |object Object {
+    |  /** def1 */
+    |  def def1 = 1
+    |
+    |  /** def2 */
+    |  def def2: Int = 2
+    |  /** bogus docstring */
+    |
+    |  /** bogus docstring */
+    |  /** def3 */
+    |  def def3: List[Int] = 1 :: 2 :: 3 :: Nil
+    |}
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(o: ModuleDef)) =>
+      o.impl.body match {
+        case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          checkDocString(v1.rawComment, "/** def1 */")
+          checkDocString(v2.rawComment, "/** def2 */")
+          checkDocString(v3.rawComment, "/** def3 */")
+        }
+        case _ => assert(false, "Incorrect structure inside object")
+      }
+  }
+}
+
+case object TypesWithDocString extends DottyDocTest {
+  override val source =
+    """
+    |object Object {
+    |  /** type1 */
+    |  type T1 = Int
+    |
+    |  /** type2 */
+    |  type T2 = String
+    |  /** bogus docstring */
+    |
+    |  /** bogus docstring */
+    |  /** type3 */
+    |  type T3 = T2
+    |}
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(o: ModuleDef)) =>
+      o.impl.body match {
+        case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          checkDocString(v1.rawComment, "/** type1 */")
+          checkDocString(v2.rawComment, "/** type2 */")
+          checkDocString(v3.rawComment, "/** type3 */")
+        }
+        case _ => assert(false, "Incorrect structure inside object")
+      }
+  }
 }
