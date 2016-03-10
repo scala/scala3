@@ -1782,9 +1782,9 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil =>
-          cpy.ValDef(id)(name, tpt, rhs).withMods(mods).withComment(docstring)
-        case _ =>
+        case (id @ Ident(name: TermName)) :: Nil => {
+          cpy.ValDef(id)(name, tpt, rhs).withMods(mods).setComment(docstring)
+        } case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }
     }
@@ -1835,7 +1835,7 @@ object Parsers {
             accept(EQUALS)
             expr()
           }
-        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).withComment(docstring)
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods1).setComment(docstring)
       }
     }
 
@@ -1877,7 +1877,7 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, tparams, typ()).withMods(mods).withComment(docstring)
+            TypeDef(name, tparams, typ()).withMods(mods).setComment(docstring)
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, tparams, typeBounds()).withMods(mods)
           case _ =>
@@ -1923,9 +1923,7 @@ object Parsers {
       }
       val templ = templateOpt(constr)
 
-      TypeDef(name, templ)
-        .withMods(mods)
-        .withComment(docstring)
+      TypeDef(name, templ).withMods(mods).setComment(docstring)
     }
 
     /** ConstrMods        ::=  AccessModifier
@@ -1945,9 +1943,7 @@ object Parsers {
       val name = ident()
       val template = templateOpt(emptyConstructor())
 
-      ModuleDef(name, template)
-        .withMods(mods)
-        .withComment(docstring)
+      ModuleDef(name, template).withMods(mods).setComment(docstring)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

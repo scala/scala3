@@ -180,12 +180,12 @@ object Scanners {
     /** All comments in the reverse order of their position in the source.
      *  set only when `keepComments` is true.
      */
-    var revComments: List[Comment] = Nil
+    private[this] var revComments: List[Comment] = Nil
 
     /** All doc comments as encountered, each list contains doc comments from
      *  the same block level. Starting with the deepest level and going upward
      */
-    var docsPerBlockStack: List[List[Comment]] = List(List())
+    private[this] var docsPerBlockStack: List[List[Comment]] = List(List())
 
     /** Adds level of nesting to docstrings */
     def enterBlock(): Unit =
