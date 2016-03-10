@@ -340,7 +340,23 @@ class JSCodeGen()(implicit ctx: Context) {
   /** Gen the IR ClassDef for a raw JS class or trait.
    */
   private def genRawJSClassData(td: TypeDef): js.ClassDef = {
-    ???
+    val sym = td.symbol.asClass
+    implicit val pos: Position = sym.pos
+
+    val classIdent = encodeClassFullNameIdent(sym)
+    val superClass =
+      if (sym.is(Trait)) None
+      else Some(encodeClassFullNameIdent(sym.superClass))
+    val jsName =
+      if (sym.is(Trait) || sym.is(ModuleClass)) None
+      else Some(fullJSNameOf(sym))
+
+    js.ClassDef(classIdent, ClassKind.RawJSType,
+        superClass,
+        genClassInterfaces(sym),
+        jsName,
+        Nil)(
+        OptimizerHints.empty)
   }
 
   /** Gen the IR ClassDef for an interface definition.
@@ -915,8 +931,8 @@ class JSCodeGen()(implicit ctx: Context) {
     }
 
     fun match {
-      /*case _ if isJSDefaultParam(sym) =>
-        js.UndefinedParam()(toIRType(sym.info.finalResultType))*/
+      case _ if isJSDefaultParam(sym) =>
+        js.UndefinedParam()(toIRType(sym.info.finalResultType))
 
       case Select(Super(_, _), _) =>
         genSuperCall(tree, isStat)
@@ -1006,12 +1022,12 @@ class JSCodeGen()(implicit ctx: Context) {
     } else if (translatedAnonFunctions contains tpe.typeSymbol) {
       val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
       functionMaker(args map genExpr)
-    } else if (isJSType(tpe.widenDealias.typeSymbol)) {
+    } else*/ if (isJSType(tpe.widenDealias.typeSymbol)) {
       val clsSym = tpe.widenDealias.typeSymbol
       if (clsSym == jsdefn.JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
       else if (clsSym == jsdefn.JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
       else js.JSNew(genLoadJSConstructor(clsSym), genActualJSArgs(ctor, args))
-    } else*/ {
+    } else {
       toIRType(tpe) match {
         case cls: jstpe.ClassType =>
           js.New(cls, encodeMethodSym(ctor), genActualArgs(ctor, args))
@@ -1608,12 +1624,12 @@ class JSCodeGen()(implicit ctx: Context) {
 
     if (sym.owner == defn.StringClass && !isStringMethodFromObject) {
       genApplyMethodOfString(genExpr(receiver), sym, genActualArgs(sym, args))
-    } else /*if (isJSType(sym.owner)) {
-      if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
-        genPrimitiveJSCall(tree, isStat)
-      else
-        genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
-    } else*/ if (foreignIsImplClass(sym.owner)) {
+    } else if (isJSType(sym.owner)) {
+      //if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+        genApplyJSMethodGeneric(tree, sym, genExpr(receiver), genActualJSArgs(sym, args), isStat)
+      /*else
+        genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))*/
+    } else if (foreignIsImplClass(sym.owner)) {
       genTraitImplApply(sym, args.map(genExpr))
     } else if (sym.isClassConstructor) {
       // Calls to constructors are always statically linked
@@ -1621,6 +1637,172 @@ class JSCodeGen()(implicit ctx: Context) {
     } else {
       genApplyMethod(genExpr(receiver), sym, genActualArgs(sym, args))
     }
+  }
+
+  /** Gen JS code for a call to a JS method (of a subclass of `js.Any`).
+   *
+   *  Basically it boils down to calling the method as a `JSBracketSelect`,
+   *  without name mangling. But other aspects come into play:
+   *
+   *  - Operator methods are translated to JS operators (not method calls)
+   *  - `apply` is translated as a function call, i.e., `o()` instead of `o.apply()`
+   *  - Scala varargs are turned into JS varargs (see `genPrimitiveJSArgs()`)
+   *  - Getters and parameterless methods are translated as `JSBracketSelect`
+   *  - Setters are translated to `Assign` to `JSBracketSelect`
+   */
+  private def genApplyJSMethodGeneric(tree: Tree, sym: Symbol,
+      receiver: js.Tree, args: List[js.Tree], isStat: Boolean,
+      superIn: Option[Symbol] = None)(
+      implicit pos: Position): js.Tree = {
+
+    implicit val pos: Position = tree.pos
+
+    def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
+    val argc = args.size // meaningful only for methods that don't have varargs
+
+    def requireNotSuper(): Unit = {
+      if (superIn.isDefined)
+        ctx.error("Illegal super call in Scala.js-defined JS class", tree.pos)
+    }
+
+    def hasExplicitJSEncoding = {
+      sym.hasAnnotation(jsdefn.JSNameAnnot) ||
+      sym.hasAnnotation(jsdefn.JSBracketAccessAnnot) ||
+      sym.hasAnnotation(jsdefn.JSBracketCallAnnot)
+    }
+
+    val boxedResult = sym.name match {
+      case JSUnaryOpMethodName(code) if argc == 0 =>
+        requireNotSuper()
+        js.JSUnaryOp(code, receiver)
+
+      case JSBinaryOpMethodName(code) if argc == 1 =>
+        requireNotSuper()
+        js.JSBinaryOp(code, receiver, args.head)
+
+      case nme.apply if !hasExplicitJSEncoding =>
+        requireNotSuper()
+        if (jsdefn.isJSThisFunctionClass(sym.owner))
+          js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
+        else
+          js.JSFunctionApply(receiver, args)
+
+      case _ =>
+        def jsFunName = js.StringLiteral(jsNameOf(sym))
+
+        def genSuperReference(propName: js.Tree): js.Tree = {
+          superIn.fold[js.Tree] {
+            js.JSBracketSelect(receiver, propName)
+          } { superInSym =>
+            js.JSSuperBracketSelect(
+                jstpe.ClassType(encodeClassFullName(superInSym)),
+                receiver, propName)
+          }
+        }
+
+        def genSelectGet(propName: js.Tree): js.Tree =
+          genSuperReference(propName)
+
+        def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
+          js.Assign(genSuperReference(propName), value)
+
+        def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
+          superIn.fold[js.Tree] {
+            js.JSBracketMethodApply(
+                receiver, methodName, args)
+          } { superInSym =>
+            js.JSSuperBracketCall(
+                jstpe.ClassType(encodeClassFullName(superInSym)),
+                receiver, methodName, args)
+          }
+        }
+
+        if (isJSGetter(sym)) {
+          assert(noSpread && argc == 0)
+          genSelectGet(jsFunName)
+        } else if (isJSSetter(sym)) {
+          assert(noSpread && argc == 1)
+          genSelectSet(jsFunName, args.head)
+        } else if (isJSBracketAccess(sym)) {
+          assert(noSpread && (argc == 1 || argc == 2),
+              s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
+          args match {
+            case List(keyArg) =>
+              genSelectGet(keyArg)
+            case List(keyArg, valueArg) =>
+              genSelectSet(keyArg, valueArg)
+          }
+        } else if (isJSBracketCall(sym)) {
+          val (methodName, actualArgs) = extractFirstArg(args)
+          genCall(methodName, actualArgs)
+        } else {
+          genCall(jsFunName, args)
+        }
+    }
+
+    if (isStat) {
+      boxedResult
+    } else {
+      val tpe = ctx.atPhase(elimErasedValueTypePhase) { implicit ctx =>
+        sym.info.finalResultType
+      }
+      unbox(boxedResult, tpe)
+    }
+  }
+
+  private object JSUnaryOpMethodName {
+    private val map = Map(
+      nme.UNARY_+ -> js.JSUnaryOp.+,
+      nme.UNARY_- -> js.JSUnaryOp.-,
+      nme.UNARY_~ -> js.JSUnaryOp.~,
+      nme.UNARY_! -> js.JSUnaryOp.!
+    )
+
+    def unapply(name: Names.TermName): Option[js.JSUnaryOp.Code] =
+      map.get(name)
+  }
+
+  private object JSBinaryOpMethodName {
+    private val map = Map(
+      nme.ADD -> js.JSBinaryOp.+,
+      nme.SUB -> js.JSBinaryOp.-,
+      nme.MUL -> js.JSBinaryOp.*,
+      nme.DIV -> js.JSBinaryOp./,
+      nme.MOD -> js.JSBinaryOp.%,
+
+      nme.LSL -> js.JSBinaryOp.<<,
+      nme.ASR -> js.JSBinaryOp.>>,
+      nme.LSR -> js.JSBinaryOp.>>>,
+      nme.OR  -> js.JSBinaryOp.|,
+      nme.AND -> js.JSBinaryOp.&,
+      nme.XOR -> js.JSBinaryOp.^,
+
+      nme.LT -> js.JSBinaryOp.<,
+      nme.LE -> js.JSBinaryOp.<=,
+      nme.GT -> js.JSBinaryOp.>,
+      nme.GE -> js.JSBinaryOp.>=,
+
+      nme.ZAND -> js.JSBinaryOp.&&,
+      nme.ZOR  -> js.JSBinaryOp.||
+    )
+
+    def unapply(name: Names.TermName): Option[js.JSBinaryOp.Code] =
+      map.get(name)
+  }
+
+  /** Extract the first argument in a list of actual arguments.
+   *
+   *  This is nothing else than decomposing into head and tail, except that
+   *  we assert that the first element is not a JSSpread.
+   */
+  private def extractFirstArg(args: List[js.Tree]): (js.Tree, List[js.Tree]) = {
+    assert(args.nonEmpty,
+        "Trying to extract the first argument of an empty argument list")
+    val firstArg = args.head
+    assert(!firstArg.isInstanceOf[js.JSSpread],
+        "Trying to extract the first argument of an argument list starting " +
+        "with a Spread argument: " + firstArg)
+    (firstArg, args.tail)
   }
 
   /** Gen JS code for a call to a polymorphic method.
@@ -1842,7 +2024,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     if (sym == defn.ObjectClass) {
       js.BinaryOp(js.BinaryOp.!==, value, js.Null())
-    } else /*if (isJSType(sym)) {
+    } else if (isJSType(sym)) {
       if (sym.is(Trait)) {
         ctx.error(
             s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
@@ -1852,7 +2034,7 @@ class JSCodeGen()(implicit ctx: Context) {
         js.Unbox(js.JSBinaryOp(
             js.JSBinaryOp.instanceof, value, genLoadJSConstructor(sym)), 'Z')
       }
-    } else*/ {
+    } else {
       js.IsInstanceOf(value, toReferenceType(to))
     }
   }
@@ -2009,6 +2191,154 @@ class JSCodeGen()(implicit ctx: Context) {
     }*/
   }
 
+  /** Gen actual actual arguments to a JS method call.
+   *  Returns a list of the transformed arguments.
+   *
+   *  - TODO Repeated arguments (varargs) are expanded
+   *  - Default arguments are omitted or replaced by undefined
+   *  - All arguments are boxed
+   *
+   *  Repeated arguments that cannot be expanded at compile time (i.e., if a
+   *  Seq is passed to a varargs parameter with the syntax `seq: _*`) will be
+   *  wrapped in a [[js.JSSpread]] node to be expanded at runtime.
+   */
+  private def genActualJSArgs(sym: Symbol, args: List[Tree])(
+      implicit pos: Position): List[js.Tree] = {
+
+    def paramNamesAndTypes(implicit ctx: Context): List[(Names.TermName, Type)] =
+      sym.info.paramNamess.flatten.zip(sym.info.paramTypess.flatten)
+
+    val wereRepeated = ctx.atPhase(elimRepeatedPhase) { implicit ctx =>
+      for ((name, tpe) <- paramNamesAndTypes)
+        yield (name -> tpe.isRepeatedParam)
+    }.toMap
+
+    val paramTypes = ctx.atPhase(elimErasedValueTypePhase) { implicit ctx =>
+      paramNamesAndTypes
+    }.toMap
+
+    var reversedArgs: List[js.Tree] = Nil
+
+    for ((arg, (paramName, paramType)) <- args.zip(paramNamesAndTypes)) {
+      val wasRepeated = wereRepeated.getOrElse(paramName, false)
+      if (wasRepeated) {
+        reversedArgs =
+          genJSRepeatedParam(arg) reverse_::: reversedArgs
+      } else {
+        val unboxedArg = genExpr(arg)
+        val boxedArg = unboxedArg match {
+          case js.UndefinedParam() =>
+            unboxedArg
+          case _ =>
+            val tpe = paramTypes.getOrElse(paramName, paramType)
+            box(unboxedArg, tpe)
+        }
+        reversedArgs ::= boxedArg
+      }
+    }
+
+    /* Remove all consecutive js.UndefinedParam's at the end of the argument
+     * list. No check is performed whether they may be there, since they will
+     * only be placed where default arguments can be anyway.
+     */
+    reversedArgs = reversedArgs.dropWhile(_.isInstanceOf[js.UndefinedParam])
+
+    /* Find remaining js.UndefinedParam and replace by js.Undefined. This can
+     * happen with named arguments or with multiple argument lists.
+     */
+    reversedArgs = reversedArgs map {
+      case js.UndefinedParam() => js.Undefined()
+      case arg                 => arg
+    }
+
+    reversedArgs.reverse
+  }
+
+  /** Gen JS code for a repeated param of a JS method.
+   *
+   *  In this case `arg` has type `Seq[T]` for some `T`, but the result should
+   *  be an expanded list of the elements in the sequence. So this method
+   *  takes care of the conversion.
+   *
+   *  It is specialized for the shapes of tree generated by the desugaring
+   *  of repeated params in Scala, so that these are actually expanded at
+   *  compile-time.
+   *
+   *  Otherwise, it returns a `JSSpread` with the `Seq` converted to a
+   *  `js.Array`.
+   */
+  private def genJSRepeatedParam(arg: Tree): List[js.Tree] = {
+    tryGenRepeatedParamAsJSArray(arg, handleNil = true).getOrElse {
+      /* Fall back to calling runtime.genTraversableOnce2jsArray
+       * to perform the conversion to js.Array, then wrap in a Spread
+       * operator.
+       */
+      implicit val pos: Position = arg.pos
+      val jsArrayArg = genModuleApplyMethod(
+          jsdefn.RuntimePackage_genTraversableOnce2jsArray,
+          List(genExpr(arg)))
+      List(js.JSSpread(jsArrayArg))
+    }
+  }
+
+  /** Try and expand an actual argument to a repeated param `(xs: T*)`.
+   *
+   *  This method recognizes the shapes of tree generated by the desugaring
+   *  of repeated params in Scala, and expands them.
+   *  If `arg` does not have the shape of a generated repeated param, this
+   *  method returns `None`.
+   */
+  private def tryGenRepeatedParamAsJSArray(arg: Tree,
+      handleNil: Boolean): Option[List[js.Tree]] = {
+    implicit val pos: Position = arg.pos
+
+    // Given a method `def foo(args: T*)`
+    arg match {
+      // foo(arg1, arg2, ..., argN) where N > 0
+      case MaybeAsInstanceOf(WrapArray(MaybeAsInstanceOf(array: JavaSeqLiteral))) =>
+        /* Value classes in arrays are already boxed, so no need to use
+         * the type before erasure.
+         * TODO Is this true in dotty?
+         */
+        Some(array.elems.map(e => box(genExpr(e), e.tpe)))
+
+      // foo()
+      case Ident(_) if handleNil && arg.symbol == defn.NilModule =>
+        Some(Nil)
+
+      // foo(argSeq: _*) - cannot be optimized
+      case _ =>
+        None
+    }
+  }
+
+  private object MaybeAsInstanceOf {
+    def unapply(tree: Tree): Some[Tree] = tree match {
+      case TypeApply(asInstanceOf_? @ Select(base, _), _)
+          if asInstanceOf_?.symbol == defn.Any_asInstanceOf =>
+        Some(base)
+      case _ =>
+        Some(tree)
+    }
+  }
+
+  private object WrapArray {
+    lazy val isWrapArray: Set[Symbol] = {
+      val names = {
+        defn.ScalaValueClasses().map(sym => nme.wrapXArray(sym.name)) ++
+        Set(nme.wrapRefArray, nme.genericWrapArray)
+      }
+      names.map(defn.ScalaPredefModule.requiredMethod(_)).toSet
+    }
+
+    def unapply(tree: Apply): Option[Tree] = tree match {
+      case Apply(wrapArray_?, List(wrapped)) if isWrapArray(wrapArray_?.symbol) =>
+        Some(wrapped)
+      case _ =>
+        None
+    }
+  }
+
   /** Gen JS code for loading a module.
    *
    *  Can be given either the module symbol, or its module class symbol.
@@ -2021,16 +2351,40 @@ class JSCodeGen()(implicit ctx: Context) {
       if (sym1 == defn.StringModule) jsdefn.RuntimeStringModule.moduleClass
       else sym1
 
-    /*if (isJSType(sym)) {
+    if (isJSType(sym)) {
       if (isScalaJSDefinedJSClass(sym))
         js.LoadJSModule(jstpe.ClassType(encodeClassFullName(sym)))
       else if (sym.derivesFrom(jsdefn.JSGlobalScopeClass))
         genLoadJSGlobal()
       else
         genLoadNativeJSModule(sym)
-    } else {*/
+    } else {
       js.LoadModule(jstpe.ClassType(encodeClassFullName(sym)))
-    //}
+    }
+  }
+
+  /** Gen JS code representing the constructor of a JS class. */
+  private def genLoadJSConstructor(sym: Symbol)(
+      implicit pos: Position): js.Tree = {
+    assert(!isStaticModule(sym) && !sym.is(Trait),
+        s"genPrimitiveJSClass called with non-class $sym")
+    js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
+  }
+
+  /** Gen JS code representing a native JS module. */
+  private def genLoadNativeJSModule(sym: Symbol)(
+      implicit pos: Position): js.Tree = {
+    require(sym.is(ModuleClass),
+        s"genLoadNativeJSModule called with non-module $sym")
+    fullJSNameOf(sym).split('.').foldLeft(genLoadJSGlobal()) { (memo, chunk) =>
+      js.JSBracketSelect(memo, js.StringLiteral(chunk))
+    }
+  }
+
+  /** Gen JS code to load the JavaScript global scope. */
+  private def genLoadJSGlobal()(implicit pos: Position): js.Tree = {
+    // TODO Change this when upgrading to Scala.js 0.6.8
+    js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global"))
   }
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
