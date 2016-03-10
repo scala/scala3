@@ -53,6 +53,7 @@ trait DottyDocTest extends DottyTest { self =>
 /** Add tests to the `tests` sequence */
 object DottyDocTests extends DottyTest {
   private[this] val tests = Seq(
+    NoComment,
     SingleClassInPackage,
     MultipleOpenedOnSingleClassInPackage,
     MultipleClassesInPackage,
@@ -64,13 +65,25 @@ object DottyDocTests extends DottyTest {
     NestedClassThenOuter,
     Objects,
     ObjectsNestedClass,
-    PackageObject
+    PackageObject,
+    MultipleDocStringsBeforeEntity,
+    MultipleDocStringsBeforeAndAfter
   )
 
   def main(args: Array[String]): Unit = {
     println("------------ Testing DottyDoc  ------------")
     tests.foreach(_.run)
     println("--------- DottyDoc tests passed! ----------")
+  }
+}
+
+case object NoComment extends DottyDocTest {
+  override val source = "class Class"
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(c: TypeDef)) =>
+      assert(c.rawComment == None, "Should not have a comment, mainly used for exhaustive tests")
   }
 }
 
@@ -321,4 +334,40 @@ case object PackageObject extends DottyDocTest {
       }
     }
   }
+}
+
+case object MultipleDocStringsBeforeEntity extends DottyDocTest {
+  override val source =
+    """
+    |/** First comment */
+    |/** Second comment */
+    |/** Real comment */
+    |class Class
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(c: TypeDef)) =>
+      checkDocString(c.rawComment, "/** Real comment */")
+  }
+}
+
+case object MultipleDocStringsBeforeAndAfter extends DottyDocTest {
+  override val source =
+    """
+    |/** First comment */
+    |/** Second comment */
+    |/** Real comment */
+    |class Class
+    |/** Following comment 1 */
+    |/** Following comment 2 */
+    |/** Following comment 3 */
+    """.stripMargin
+
+  import dotty.tools.dotc.ast.untpd._
+  override def assertion = {
+    case PackageDef(_, Seq(c: TypeDef)) =>
+      checkDocString(c.rawComment, "/** Real comment */")
+  }
+
 }

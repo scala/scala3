@@ -185,22 +185,33 @@ object Scanners {
     /** The currently closest docstring, replaced every time a new docstring is
      *  encountered
      */
-    var closestDocString: List[mutable.Queue[Comment]] = mutable.Queue.empty[Comment] :: Nil
+    var closestDocString: List[List[Comment]] = List(List())
 
     /** Adds level of nesting to docstrings */
     def enterBlock(): Unit =
-      closestDocString = mutable.Queue.empty[Comment] :: closestDocString
+      closestDocString = Nil ::: closestDocString
 
     /** Removes level of nesting for docstrings */
     def exitBlock(): Unit = closestDocString = closestDocString match {
-      case x :: Nil => mutable.Queue.empty[Comment] :: Nil
+      case x :: xs => List(List())
       case _ => closestDocString.tail
     }
 
-    /** Returns `closestDocString`'s raw string and sets it to `None` */
-    def getDocString(): Option[String] = closestDocString match {
-      case x :: _ if !x.isEmpty => Some(x.dequeue.chrs)
-      case _ => None
+    /** Returns the closest docstring preceding the position supplied */
+    def getDocString(pos: Int): Option[String] = {
+      def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
+        case x :: xs if (c.pos.end < x.pos.end && x.pos.end <= pos) => closest(x, xs)
+        case Nil => c
+      }
+
+      closestDocString match {
+        case (list @ (x :: xs)) :: _ => {
+          val c = closest(x, xs)
+          closestDocString = list.dropWhile(_ != c).tail :: closestDocString.tail
+          Some(c.chrs)
+        }
+        case _ => None
+      }
     }
 
     /** A buffer for comments */
@@ -580,7 +591,7 @@ object Scanners {
         val comment = Comment(pos, flushBuf(commentBuf))
 
         if (comment.isDocComment)
-          closestDocString.head.enqueue(comment)
+          closestDocString = (closestDocString.head :+ comment) :: closestDocString.tail
 
         if (keepComments)
           revComments = comment :: revComments

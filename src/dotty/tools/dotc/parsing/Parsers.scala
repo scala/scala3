@@ -1889,7 +1889,7 @@ object Parsers {
      *            |  [`case'] `object' ObjectDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
-      val docstring = in.getDocString()
+      val docstring = in.getDocString(start)
       in.token match {
         case TRAIT =>
           classDef(posMods(start, addFlag(mods, Trait)), docstring)
@@ -2170,7 +2170,7 @@ object Parsers {
         if (in.token == PACKAGE) {
           in.nextToken()
           if (in.token == OBJECT) {
-            val docstring = in.getDocString()
+            val docstring = in.getDocString(start)
             ts += objectDef(atPos(start, in.skipToken()) { Modifiers(Package) }, docstring)
             if (in.token != EOF) {
               acceptStatSep()
