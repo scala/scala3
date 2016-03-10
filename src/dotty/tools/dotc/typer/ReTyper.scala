@@ -92,7 +92,7 @@ class ReTyper extends Typer {
     try super.typedUnadapted(tree, pt)
     catch {
       case NonFatal(ex) =>
-        Printers.transforms.println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
+        println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }
 

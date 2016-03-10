@@ -380,8 +380,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(GlobalPrec) {
           "throw " ~ toText(expr)
         }
-      case SeqLiteral(elems) =>
-        "[" ~ toTextGlobal(elems, ",") ~ "]"
+      case SeqLiteral(elems, elemtpt) =>
+        "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
       case TypeTree(orig) =>

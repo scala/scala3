@@ -442,7 +442,10 @@ trait Applications extends Compatibility { self: Typer =>
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.trimEnd(n)
-      val seqLit = if (methodType.isJava) JavaSeqLiteral(args) else SeqLiteral(args)
+      val elemtpt = TypeTree(elemFormal)
+      val seqLit =
+        if (methodType.isJava) JavaSeqLiteral(args, elemtpt)
+        else SeqLiteral(args, elemtpt)
       typedArgBuf += seqToRepeated(seqLit)
     }
 
@@ -771,7 +774,7 @@ trait Applications extends Compatibility { self: Typer =>
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (argType.isRepeatedParam) untpd.SeqLiteral(args) :: Nil
+            if (argType.isRepeatedParam) untpd.SeqLiteral(args, untpd.TypeTree()) :: Nil
             else if (args.lengthCompare(1) > 0 && ctx.canAutoTuple) untpd.Tuple(args) :: Nil
             else args
           case _ => args

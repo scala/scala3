@@ -123,14 +123,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
-  def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    ta.assignType(untpd.SeqLiteral(elems), elems)
+  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
+    ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
-  def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    if (tpe derivesFrom defn.SeqClass) SeqLiteral(elems) else JavaSeqLiteral(elems)
-
-  def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems), elems)
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
+    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt)
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -564,11 +561,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
-      val tree1 = untpd.cpy.SeqLiteral(tree)(elems)
+    override def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = {
+      val tree1 = untpd.cpy.SeqLiteral(tree)(elems, elemtpt)
       tree match {
-        case tree: SeqLiteral if sameTypes(elems, tree.elems) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, elems)
+        case tree: SeqLiteral
+        if sameTypes(elems, tree.elems) && (elemtpt.tpe eq tree.elemtpt.tpe) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(tree1, elems, elemtpt)
       }
     }
 

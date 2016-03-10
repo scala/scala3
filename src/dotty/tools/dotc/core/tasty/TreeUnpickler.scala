@@ -801,7 +801,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               val fn = readTerm()
               val isJava = fn.tpe.isInstanceOf[JavaMethodType]
               def readArg() = readTerm() match {
-                case SeqLiteral(elems) if isJava => JavaSeqLiteral(elems)
+                case SeqLiteral(elems, elemtpt) if isJava => JavaSeqLiteral(elems, elemtpt)
                 case arg => arg
               }
               tpd.Apply(fn, until(end)(readArg()))
@@ -837,7 +837,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case TRY =>
               Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
             case REPEATED =>
-              SeqLiteral(until(end)(readTerm()))
+              val elemtpt = readTpt()
+              SeqLiteral(until(end)(readTerm()), elemtpt)
             case BIND =>
               val name = readName()
               val info = readType()

@@ -1000,7 +1000,7 @@ object desugar {
         collect(expr)
       case NamedArg(_, arg) =>
         collect(arg)
-      case SeqLiteral(elems) =>
+      case SeqLiteral(elems, _) =>
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
