@@ -182,19 +182,19 @@ object Scanners {
      */
     var revComments: List[Comment] = Nil
 
-    /** The currently closest docstring, replaced every time a new docstring is
-     *  encountered
+    /** All doc comments as encountered, each list contains doc comments from
+     *  the same block level. Starting with the deepest level and going upward
      */
-    var closestDocString: List[List[Comment]] = List(List())
+    var docsPerBlockStack: List[List[Comment]] = List(List())
 
     /** Adds level of nesting to docstrings */
     def enterBlock(): Unit =
-      closestDocString = Nil ::: closestDocString
+      docsPerBlockStack = Nil ::: docsPerBlockStack
 
     /** Removes level of nesting for docstrings */
-    def exitBlock(): Unit = closestDocString = closestDocString match {
+    def exitBlock(): Unit = docsPerBlockStack = docsPerBlockStack match {
       case x :: xs => List(List())
-      case _ => closestDocString.tail
+      case _ => docsPerBlockStack.tail
     }
 
     /** Returns the closest docstring preceding the position supplied */
@@ -204,10 +204,10 @@ object Scanners {
         case Nil => c
       }
 
-      closestDocString match {
+      docsPerBlockStack match {
         case (list @ (x :: xs)) :: _ => {
           val c = closest(x, xs)
-          closestDocString = list.dropWhile(_ != c).tail :: closestDocString.tail
+          docsPerBlockStack = list.dropWhile(_ != c).tail :: docsPerBlockStack.tail
           Some(c.chrs)
         }
         case _ => None
@@ -591,7 +591,7 @@ object Scanners {
         val comment = Comment(pos, flushBuf(commentBuf))
 
         if (comment.isDocComment)
-          closestDocString = (closestDocString.head :+ comment) :: closestDocString.tail
+          docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
 
         if (keepComments)
           revComments = comment :: revComments
