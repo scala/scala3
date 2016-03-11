@@ -82,9 +82,11 @@ final class TreeTypeMap(
           constr = tmap.transformSub(constr),
           parents = parents mapconserve transform,
           self = tmap.transformSub(self),
-          body = impl.body mapconserve tmap.transform
+          body = impl.body mapconserve
+            (tmap.transform(_)(ctx.withOwner(mapOwner(impl.symbol.owner))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
+      println(i"tree type map $tree1, owner = ${ctx.owner}")
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
           ref(id.tpe.asInstanceOf[TermRef]).withPos(id.pos)
