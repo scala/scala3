@@ -212,27 +212,34 @@ object ExplicitOuter {
   /** Tree references an outer class of `cls` which is not a static owner.
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
-    def isOuter(sym: Symbol) =
+    def isOuterSym(sym: Symbol) =
       !sym.isStaticOwner && cls.isProperlyContainedIn(sym)
+    def isOuterRef(ref: Type): Boolean = ref match {
+      case ref: ThisType =>
+        isOuterSym(ref.cls)
+      case ref: TermRef =>
+        if (ref.prefix ne NoPrefix)
+          !ref.symbol.isStatic && isOuterRef(ref.prefix)
+        else if (ref.symbol is Hoistable)
+          // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
+          // an outer path then.
+          isOuterSym(ref.symbol.owner.enclosingClass)
+        else
+          // ref.symbol will get a proxy in immediately enclosing class. If this properly
+          // contains the current class, it needs an outer path.
+          ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
+      case _ => false
+    }
+    def hasOuterPrefix(tp: Type) = tp match {
+      case TypeRef(prefix, _) => isOuterRef(prefix)
+      case _ => false
+    }
     tree match {
-      case thisTree @ This(_) =>
-        isOuter(thisTree.symbol)
-      case id: Ident =>
-        id.tpe match {
-          case ref @ TermRef(NoPrefix, _) =>
-            if (ref.symbol is Hoistable)
-              // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
-              // an outer path then.
-              isOuter(ref.symbol.owner.enclosingClass)
-            else
-              // ref.symbol will get a proxy in immediately enclosing class. If this properly
-              // contains the current class, it needs an outer path.
-              ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
-          case _ => false
-        }
+      case _: This | _: Ident => isOuterRef(tree.tpe)
       case nw: New =>
         val newCls = nw.tpe.classSymbol
-        isOuter(newCls.owner.enclosingClass) ||
+        isOuterSym(newCls.owner.enclosingClass) ||
+        hasOuterPrefix(nw.tpe) ||
         newCls.owner.isTerm && cls.isProperlyContainedIn(newCls)
           // newCls might get proxies for free variables. If current class is
           // properly contained in newCls, it needs an outer path to newCls access the
