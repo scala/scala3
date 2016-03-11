@@ -31,7 +31,7 @@ object higherKinded {
   }
 
   class Ident[-T >: Untyped] extends Tree[T] {
-    type ThisType[-U] = Ident[U]
+    type ThisType[-U >: Untyped] = Ident[U]
   }
 
   val id = new Ident[Integer]
