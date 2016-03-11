@@ -134,8 +134,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           val vsym = stat.symbol
           val isym = initializer(vsym)
           val rhs = Block(
-            initBuf.toList.map(_.changeOwner(impl.symbol, isym)),
-            stat.rhs.changeOwner(vsym, isym).wildcardToDefault)
+            initBuf.toList.map(_.changeOwnerAfter(impl.symbol, isym, thisTransform)),
+            stat.rhs.changeOwnerAfter(vsym, isym, thisTransform).wildcardToDefault)
           initBuf.clear()
           cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
