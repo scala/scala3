@@ -2479,7 +2479,7 @@ object Types {
     def copyBoundType(bt: BT) = new MethodParamImpl(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
-    override def computeHash = addDelta(System.identityHashCode(binder), paramNum)
+    override def computeHash = addDelta(binder.identityHash, paramNum)
     override def equals(that: Any) = that match {
       case that: MethodParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum

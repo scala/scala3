@@ -92,7 +92,9 @@ trait Hashable {
   protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 
-  protected final def addDelta(hc: Int, delta: Int) = avoidNotCached(hc + delta)
+  protected final def addDelta(elemHash: Int, delta: Int) =
+    if (elemHash == NotCached) NotCached
+    else avoidNotCached(elemHash + delta)
 
   private def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
 }
