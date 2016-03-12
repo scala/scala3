@@ -383,7 +383,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case TastyName.SuperAccessor(_) => Flags.SuperAccessor
         case _ => EmptyFlags
       }
-      val superFlag = if (rawName.isInstanceOf)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags | nameFlags(rawName), name, isAbstractType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
