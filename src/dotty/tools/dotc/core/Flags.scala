@@ -448,7 +448,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
+    CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
     LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
