@@ -52,6 +52,7 @@ information
 All three pieces of information are encoded in a value class over a 32 bit integer.
 Here's the API for class `Period`:
 
+```scala
     class Period(val code: Int) extends AnyVal {
       def runId: RunId            // The run identifier of this period.
       def firstPhaseId: PhaseId   // The first phase of this period
@@ -65,6 +66,7 @@ Here's the API for class `Period`:
       def & (that: Period): Period
       def | (that: Period): Period
     }
+```
 
 We can access the parts of a period using `runId`, `firstPhaseId`,
 `lastPhaseId`, or using `phaseId` for periods consisting only of a
@@ -78,6 +80,7 @@ operand, as periods spanning different `runId`s cannot be constructed.
 
 Periods are constructed using two `apply` methods:
 
+```scala
     object Period {
 
       /** The single-phase period consisting of given run id and phase id */
@@ -86,5 +89,6 @@ Periods are constructed using two `apply` methods:
       /** The period consisting of given run id, and lo/hi phase ids */
       def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period
     }
+```
 
 As a sentinel value there's `Nowhere`, a period that is empty.
