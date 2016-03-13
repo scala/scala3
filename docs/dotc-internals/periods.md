@@ -1,6 +1,6 @@
 # Dotc's concept of time
 
-Conceptually, the `dotc` copmpiler's job is to maintain views of
+Conceptually, the `dotc` compiler's job is to maintain views of
 various artifacts associated with source code at all points in time.
 But what is *time* for `dotc`? In fact, it is a combination of
 compiler runs and compiler phases.
@@ -18,6 +18,7 @@ compiler time might take only a fraction of a second in real time.
 The *minutes* of the compiler's clocks are measured in phases. At every
 compiler run, the compiler cycles through a number of
 [phases](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Phases.scala).
+The list of phases is defined in the [Compiler]object
 There are currently about 60 phases per run, so the minutes/hours
 analogy works out roughly. After every phase the view the compiler has
 of the world changes: trees are transformed,  types are gradually simplified
@@ -49,4 +50,41 @@ information
  - the number of phases in the period
 
 All three pieces of information are encoded in a value class over a 32 bit integer.
+Here's the API for class `Period`:
 
+    class Period(val code: Int) extends AnyVal {
+      def runId: RunId            // The run identifier of this period.
+      def firstPhaseId            // The first phase of this period
+      def lastPhaseId: PhaseId =  // The last phase of this period
+      def phaseId: PhaseId        // The phase identifier of this single-phase period.
+
+      def containsPhaseId(id: PhaseId): Boolean
+      def contains(that: Period): Boolean
+      def overlaps(that: Period): Boolean
+
+      def & (that: Period): Period
+      def | (that: Period): Period
+    }
+
+We can access the parts of a period using `runId`, `firstPhaseId`,
+`lastPhaseId`, or using `phaseId` for periods consisting only of a
+single phase. They return `RunId` or `PhaseId` values, which are
+aliases of `Int`. `containsPhaseId`, `contains` and `overlaps` test
+whether a period contains a phase or a period as a sub-interval, or
+whether the interval overlaps with another period. Finally, `&` and
+`|` produce the intersection and the union of two period intervals
+(the union operation `|` takes as `runId` the `runId` of its left
+operand, as periods spanning different `runId`s cannot be constructed.
+
+Periods are constructed using two `apply` methods:
+
+    object Period {
+
+      /** The single-phase period consisting of given run id and phase id */
+      def apply(rid: RunId, pid: PhaseId): Period      }
+
+      /** The period consisting of given run id, and lo/hi phase ids */
+      def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period
+    }
+
+As a sentinel value there's `Nowhere`, a period that is empty.
