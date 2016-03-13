@@ -54,7 +54,7 @@ Here's the API for class `Period`:
 
     class Period(val code: Int) extends AnyVal {
       def runId: RunId            // The run identifier of this period.
-      def firstPhaseId            // The first phase of this period
+      def firstPhaseId: PhaseId   // The first phase of this period
       def lastPhaseId: PhaseId    // The last phase of this period
       def phaseId: PhaseId        // The phase identifier of this single-phase period.
 
