@@ -57,8 +57,11 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
    *  static members of the companion class, we should tighten the condition below.
    */
   private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
-    if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass)
+    if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass) {
+      assert(d.symbol.sourceFile == ctx.source.file,
+          i"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.source.file}")
       d.ensureNotPrivate.installAfter(thisTransform)
+    }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
     ensurePrivateAccessible(tree.symbol)

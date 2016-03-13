@@ -98,8 +98,12 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
-    if (sym.is(Accessor, butNot = Deferred | Lazy) && sym.owner.is(Trait))
-      sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred).ensureNotPrivate
+    if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
+      val sym1 =
+        if (sym is Lazy) sym
+        else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
+      sym1.ensureNotPrivate
+    }
     else if (sym.isConstructor && sym.owner.is(Trait))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
@@ -108,17 +112,19 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       sym
 
   private def initializer(sym: Symbol)(implicit ctx: Context): TermSymbol = {
-    val initName = if(!sym.is(Lazy)) InitializerName(sym.name.asTermName) else sym.name.asTermName
-    sym.owner.info.decl(initName).suchThat(_.is(Lazy) == sym.is(Lazy)).symbol
-      .orElse(
-        ctx.newSymbol(
-          sym.owner,
-          initName,
-          Protected | Synthetic | Method,
-          sym.info,
-          coord = sym.symbol.coord).enteredAfter(thisTransform))
-       .asTerm
-  }
+    if (sym is Lazy) sym
+    else {
+      val initName = InitializerName(sym.name.asTermName)
+      sym.owner.info.decl(initName).symbol
+        .orElse(
+          ctx.newSymbol(
+            sym.owner,
+            initName,
+            Protected | Synthetic | Method,
+            sym.info,
+            coord = sym.symbol.coord).enteredAfter(thisTransform))
+    }
+  }.asTerm
 
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = impl.symbol.owner.asClass

@@ -282,7 +282,10 @@ class TreeChecker extends Phase with SymTransformer {
 
       val symbolsNotDefined = cls.classInfo.decls.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 
-      assert(symbolsNotDefined.isEmpty, i" $cls tree does not define methods: $symbolsNotDefined")
+      assert(symbolsNotDefined.isEmpty,
+          i" $cls tree does not define methods: ${symbolsNotDefined.toList}%, %\n" +
+          i"expected: ${cls.classInfo.decls.toSet.filter(isNonMagicalMethod).toList}%, %\n" +
+          i"defined: ${impl.body.map(_.symbol)}%, %")
 
       super.typedClassDef(cdef, cls)
     }
