@@ -131,8 +131,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
     private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
-      tree.symbol.transformAnnotations(transformAnnot)
-      Checking.checkNoPrivateLeaks(tree)
+      val sym = tree.symbol
+      sym.transformAnnotations(transformAnnot)
+      if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) {
+        val info1 = Checking.checkNoPrivateLeaks(sym, tree.pos)
+        if (info1 ne sym.info)
+          sym.copySymDenotation(info = info1).installAfter(thisTransformer)
+      }
     }
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
