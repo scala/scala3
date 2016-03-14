@@ -245,7 +245,7 @@ main_class=$CompilerMain
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
-     -h|-help) usage; exit 1 ;;
+     -h|-help) help=true && shift ;;
      -bootstrapped) bootstrapped=true && shift ;;
   -v|-verbose) verbose=true && shift ;;
     -debug) debug=true && shift ;;
@@ -259,7 +259,7 @@ case "$1" in
          -run) main_class=$ReplMain && shift ;;
          -fsc) main_class=$FscMain && shift ;;
       -bootcp) bootcp=true && shift ;;
-   -no-bootcp) unset bootcp && shift ;;
+   -nobootcp) unset bootcp && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;
       -jrebel) jrebel=true && shift ;;
