@@ -26,7 +26,7 @@ import collection.mutable
  *   - also moves private fields that are accessed only from constructor
  *     into the constructor if possible.
  */
-class Constructors extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import tpd._
 
   override def phaseName: String = "constructors"
@@ -97,18 +97,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
         assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
       case _ =>
     }
-  }
-
-  /** Symbols that are owned by either <local dummy> or a class field move into the
-   *  primary constructor.
-   */
-  override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    def ownerBecomesConstructor(owner: Symbol): Boolean =
-      (owner.isLocalDummy || owner.isTerm && !owner.is(MethodOrLazy)) &&
-      owner.owner.isClass
-    if (ownerBecomesConstructor(sym.owner))
-      sym.copySymDenotation(owner = sym.owner.enclosingClass.primaryConstructor)
-    else sym
   }
 
   /** @return true  if after ExplicitOuter, all references from this tree go via an
