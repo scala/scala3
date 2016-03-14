@@ -1,7 +1,6 @@
-package dotty.tools.dotc.typer
+package dotty.tools.dotc.core
 
-import collection.mutable
-
+/** A collection of mode bits that are part of a context */
 case class Mode(val bits: Int) extends AnyVal {
   import Mode._
   def | (that: Mode) = Mode(bits | that.bits)

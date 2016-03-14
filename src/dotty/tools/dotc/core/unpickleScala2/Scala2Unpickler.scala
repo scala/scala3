@@ -17,7 +17,6 @@ import printing.Printer
 import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
-import typer.Mode
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._

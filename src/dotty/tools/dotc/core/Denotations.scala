@@ -18,7 +18,6 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import config.Config
-import typer.Mode
 import util.common._
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator

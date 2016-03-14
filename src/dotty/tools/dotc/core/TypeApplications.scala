@@ -12,7 +12,6 @@ import Names._
 import NameOps._
 import Flags._
 import StdNames.tpnme
-import typer.Mode
 import util.Positions.Position
 import config.Printers._
 import collection.mutable

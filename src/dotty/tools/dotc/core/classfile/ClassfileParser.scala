@@ -12,7 +12,6 @@ import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import typer.Mode
 import io.AbstractFile
 import scala.util.control.NonFatal
 

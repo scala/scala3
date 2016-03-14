@@ -7,7 +7,7 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
+import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._

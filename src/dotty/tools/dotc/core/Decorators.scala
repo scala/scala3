@@ -7,7 +7,6 @@ import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer, printi
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.TreeTransforms._
-import typer.Mode
 import scala.language.implicitConversions
 
 /** This object provides useful implicit decorators for types defined elsewhere */

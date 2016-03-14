@@ -5,7 +5,6 @@ import Symbols._, Types._, util.Positions._, Contexts._, Constants._, ast.tpd._
 import config.ScalaVersion
 import StdNames._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 
 object Annotations {
 

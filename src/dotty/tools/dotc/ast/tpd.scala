@@ -10,7 +10,6 @@ import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._, DenotTransformers._
 import config.Printers._
-import typer.Mode
 import collection.mutable
 import typer.ErrorReporting._
 

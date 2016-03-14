@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
-import typer.Mode
+import core.Mode
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
