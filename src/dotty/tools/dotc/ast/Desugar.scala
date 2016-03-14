@@ -500,7 +500,7 @@ object desugar {
    *    val/var/lazy val p = e
    *
    *  Otherwise, in case there is exactly one variable x_1 in pattern
-   *   val/var/lazy val p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
+   *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
    *   val/var/lazy p = e  ==>  private synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
@@ -508,7 +508,7 @@ object desugar {
    *                   ...
    *                   val/var/def x_N = t$._N
    *  If the original pattern variable carries a type annotation, so does the corresponding
-   *  ValDef.
+   *  ValDef or DefDef.
    */
   def makePatDef(mods: Modifiers, pat: Tree, rhs: Tree)(implicit ctx: Context): Tree = pat match {
     case VarPattern(named, tpt) =>

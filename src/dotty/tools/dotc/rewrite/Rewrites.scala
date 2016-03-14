@@ -51,7 +51,7 @@ object Rewrites {
 
     def writeBack(): Unit = {
       val out = source.file.output
-      val chars = apply(source.content)
+      val chars = apply(source.underlying.content)
       val bytes = new String(chars).getBytes
       out.write(bytes)
       out.close()
@@ -62,28 +62,21 @@ object Rewrites {
    *  given by `pos` in `source` by `replacement`
    */
   def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
-    ctx.settings.rewrite.value match {
-      case Some(rewrites: Rewrites) =>
-        rewrites.patched.get(source) match {
-          case Some(ps) =>
-            ps.addPatch(pos, replacement)
-          case None =>
-            rewrites.patched(source) = new Patches(source)
-            patch(source, pos, replacement)
-        }
-      case _ =>
-    }
+    for (rewrites <- ctx.settings.rewrite.value)
+      rewrites.patched
+        .getOrElseUpdate(source, new Patches(source))
+        .addPatch(pos, replacement)
+
+  /** Patch position in `ctx.compilationUnit.source`. */
+  def patch(pos: Position, replacement: String)(implicit ctx: Context): Unit =
+    patch(ctx.compilationUnit.source, pos, replacement)
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
   def writeBack()(implicit ctx: Context) =
-    ctx.settings.rewrite.value match {
-      case Some(rewrites: Rewrites) =>
-        for (source <- rewrites.patched.keys) {
-          ctx.println(s"[patched file ${source.file.path}]")
-          rewrites.patched(source).writeBack()
-        }
-      case _ =>
+    for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
+      ctx.println(s"[patched file ${source.file.path}]")
+      rewrites.patched(source).writeBack()
     }
 }
 

@@ -998,7 +998,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
         ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
-      patch(ctx.compilationUnit.source, Position(toUntyped(vdef).envelope.start), "@volatile ")
+      patch(Position(toUntyped(vdef).envelope.start), "@volatile ")
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
@@ -1158,8 +1158,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (ctx.scala2Mode) {
         // Under -rewrite, patch `x _` to `(() => x)`
         ctx.migrationWarning(msg, tree.pos)
-        patch(ctx.compilationUnit.source, Position(tree.pos.start), "(() => ")
-        patch(ctx.compilationUnit.source, Position(qual.pos.end, tree.pos.end), ")")
+        patch(Position(tree.pos.start), "(() => ")
+        patch(Position(qual.pos.end, tree.pos.end), ")")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
       else ctx.error(msg, tree.pos)

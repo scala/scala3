@@ -70,7 +70,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
       val isField = sym.owner.isClass
       if (isField) {
         if (sym.isVolatile ||
-           (sym.is(Flags.Module)/* || ctx.scala2Mode*/) && !sym.is(Flags.Synthetic)) // TODO assume @voliat
+           (sym.is(Flags.Module)/* || ctx.scala2Mode*/) &&
+            // TODO assume @volatile once LazyVals uses static helper constructs instead of
+            // ones in the companion object.
+           !sym.is(Flags.Synthetic))
             // module class is user-defined.
             // Should be threadsafe, to mimic safety guaranteed by global object
           transformMemberDefVolatile(tree)

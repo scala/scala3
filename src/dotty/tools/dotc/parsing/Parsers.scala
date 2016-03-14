@@ -1763,7 +1763,9 @@ object Parsers {
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
-        val toInsert = if (in.token == LBRACE) s"$resultTypeStr =" else ": Unit "
+        val toInsert =
+          if (in.token == LBRACE) s"$resultTypeStr ="
+          else ": Unit "  // trailing space ensures that `def f()def g()` works.
         testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
           patch(source, Position(in.lastOffset), toInsert)
           true

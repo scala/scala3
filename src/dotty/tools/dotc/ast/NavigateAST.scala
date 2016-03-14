@@ -47,7 +47,7 @@ object NavigateAST {
         }
       case _ =>
         untypedPath(tree.pos) match {
-          case path @ last :: _ if last.pos == tree.pos || !exactMatch => path
+          case (path @ last :: _) if last.pos == tree.pos || !exactMatch => path
           case _ => Nil
         }
     }
