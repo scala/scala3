@@ -38,54 +38,55 @@ class Compiler {
    */
   def phases: List[List[Phase]] =
     List(
-      List(new FrontEnd),
-      List(new PostTyper),
-      List(new Pickler),
-      List(new FirstTransform,
-           new CheckReentrant),
-      List(new RefChecks,
-           new CheckStatic,
-           new ElimRepeated,
-           new NormalizeFlags,
-           new ExtensionMethods,
-           new ExpandSAMs,
-           new TailRec,
-           new LiftTry,
-           new ClassOf),
-      List(new PatternMatcher,
-           new ExplicitOuter,
-           new ExplicitSelf,
-           new CrossCastAnd,
-           new Splitter),
-      List(new VCInlineMethods,
-           new SeqLiterals,
-           new InterceptedMethods,
-           new Getters,
-           new ElimByName,
-           new AugmentScala2Traits,
-           new ResolveSuper),
-      List(new Erasure),
-      List(new ElimErasedValueType,
-           new VCElideAllocations,
-           new Mixin,
-           new LazyVals,
-           new Memoize,
-           new LinkScala2ImplClasses,
-           new NonLocalReturns,
-           new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
-           new Constructors, // constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-           new FunctionalInterfaces,
-           new GetClass),   // getClass transformation should be applied to specialized methods
-      List(new LambdaLift,  // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
-           new ElimStaticThis,
-           new Flatten,
-           // new DropEmptyCompanions,
-           new RestoreScopes),
-      List(new ExpandPrivate,
-           new CollectEntryPoints,
-           new LabelDefs),
-      List(new GenSJSIR),
-      List(new GenBCode)
+      List(new FrontEnd),           // Compiler frontend: scanner, parser, namer, typer
+      List(new PostTyper),          // Additional checks and cleanups after type checking
+      List(new Pickler),            // Generate TASTY info
+      List(new FirstTransform,      // Some transformations to put trees into a canonical form
+           new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
+      List(new RefChecks,           // Various checks mostly related to abstract members and overriding
+           new CheckStatic,         // Check restrictions that apply to @static members
+           new ElimRepeated,        // Rewrite vararg parameters and arguments
+           new NormalizeFlags,      // Rewrite some definition flags
+           new ExtensionMethods,    // Expand methods of value classes with extension methods
+           new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
+           new TailRec,             // Rewrite tail recursion to loops
+           new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
+           new ClassOf),            // Expand `Predef.classOf` calls.
+      List(new PatternMatcher,      // Compile pattern matches
+           new ExplicitOuter,       // Add accessors to outer classes from nested ones.
+           new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
+           new CrossCastAnd,        // Normalize selections involving intersection types.
+           new Splitter),           // Expand selections involving union types into conditionals
+      List(new VCInlineMethods,     // Inlines calls to value class methods
+           new SeqLiterals,         // Express vararg arguments as arrays
+           new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
+           new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
+           new ElimByName,          // Expand by-name parameters and arguments
+           new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
+           new ResolveSuper),       // Implement super accessors and add forwarders to trait methods
+      List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
+      List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
+           new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
+           new Mixin,               // Expand trait fields and trait initializers
+           new LazyVals,            // Expand lazy vals
+           new Memoize,             // Add private fields to getters and setters
+           new LinkScala2ImplClasses, // Forward calls to the implementation classes of traits defined by Scala 2.11
+           new NonLocalReturns,     // Expand non-local returns
+           new CapturedVars,        // Represent vars captured by closures as heap objects
+           new Constructors,        // Collect initialization code in primary constructors
+                                       // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
+           new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
+           new GetClass),           // Rewrites getClass calls on primitive types.
+      List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
+                                       // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
+           new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
+           new Flatten,             // Lift all inner classes to package scope
+           new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
+      List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
+           new CollectEntryPoints,  // Find classes with main methods
+           new LabelDefs),          // Converts calls to labels to jumps
+      List(new GenSJSIR),           // Generate .js code
+      List(new GenBCode)            // Generate JVM bytecode
     )
 
   var runId = 1
