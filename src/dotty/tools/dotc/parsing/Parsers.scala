@@ -259,11 +259,19 @@ object Parsers {
       } finally inFunReturnType = saved
     }
 
+    private val isScala2Mode =
+      ctx.settings.language.value.contains(nme.Scala2.toString)
+
+    def migrationWarningOrError(msg: String, offset: Int = in.offset) =
+      if (isScala2Mode)
+        ctx.migrationWarning(msg, source atPos Position(offset))
+      else
+        syntaxError(msg, offset)
+
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     private def testScala2Mode(msg: String, pos: Position = Position(in.offset)) = {
-      val s2 = ctx.settings.language.value.contains(nme.Scala2.toString)
-      if (s2) ctx.migrationWarning(msg, source atPos pos)
-      s2
+      if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
+      isScala2Mode
     }
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
@@ -1309,7 +1317,20 @@ object Parsers {
      */
     val pattern2 = () => infixPattern() match {
       case p @ Ident(name) if isVarPattern(p) && in.token == AT =>
-        atPos(p.pos.start, in.skipToken()) { Bind(name, infixPattern()) }
+        val pos = in.skipToken()
+
+        // compatibility for Scala2 `x @ _*` syntax
+        infixPattern() match {
+          case pt @ Ident(tpnme.WILDCARD_STAR) =>
+            migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", p.pos.start)
+            atPos(p.pos.start, pos) { Typed(p, pt) }
+          case p =>
+            atPos(p.pos.start, pos) { Bind(name, p) }
+        }
+      case p @ Ident(tpnme.WILDCARD_STAR) =>
+        // compatibility for Scala2 `_*` syntax
+        migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", p.pos.start)
+        atPos(p.pos.start) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
     }
@@ -1337,7 +1358,15 @@ object Parsers {
           case t => simplePatternRest(t)
         }
       case USCORE =>
-        wildcardIdent()
+        val wildIndent = wildcardIdent()
+
+        // compatibility for Scala2 `x @ _*` and `_*` syntax
+        // `x: _*' is parsed in `ascription'
+        if (isIdent(nme.raw.STAR)) {
+          in.nextToken()
+          if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument", wildIndent.pos)
+          atPos(wildIndent.pos) { Ident(tpnme.WILDCARD_STAR) }
+        } else wildIndent
       case LPAREN =>
         atPos(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case LBRACE =>
