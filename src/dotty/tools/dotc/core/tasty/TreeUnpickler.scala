@@ -78,7 +78,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     case Shadowed(original) => toTermName(original).shadowedName
     case Expanded(prefix, original) => toTermName(original).expandedName(toTermName(prefix))
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
-    case SuperAccessor(accessed) => ???
+    case SuperAccessor(accessed) => toTermName(accessed).superName
     case DefaultGetter(meth, num) => ???
   }
 
@@ -378,9 +378,13 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
-      val expandedFlag = if (rawName.isInstanceOf[TastyName.Expanded]) ExpandedName else EmptyFlags
+      def nameFlags(tname: TastyName): FlagSet = tname match {
+        case TastyName.Expanded(_, original) => ExpandedName | nameFlags(tastyName(original))
+        case TastyName.SuperAccessor(_) => Flags.SuperAccessor
+        case _ => EmptyFlags
+      }
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
-      val flags = normalizeFlags(tag, givenFlags | expandedFlag, name, isAbstractType, rhsIsEmpty)
+      val flags = normalizeFlags(tag, givenFlags | nameFlags(rawName), name, isAbstractType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
