@@ -18,6 +18,9 @@ import core.Denotations.SingleDenotation
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 import dotty.tools.backend.sjs.GenSJSIR
 
+/** The central class of the dotc compiler. The job of a compiler is to create
+ *  runs, which process given `phases` in a given `rootContext`.
+ */
 class Compiler {
 
   /** Meta-ordering constraint:

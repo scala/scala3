@@ -13,6 +13,7 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import scala.reflect.io.VirtualFile
 import scala.util.control.NonFatal
 
+/** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler)(implicit ctx: Context) {
 
   assert(comp.phases.last.last.id <= Periods.MaxPossiblePhaseId)
