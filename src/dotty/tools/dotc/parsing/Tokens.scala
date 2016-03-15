@@ -94,8 +94,8 @@ abstract class TokensCommon {
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
-  final val SEMI = 71;             enter(DOT, "'.'")
-  final val DOT = 72;              enter(SEMI, "';'")
+  final val SEMI = 71;             enter(SEMI, "';'")
+  final val DOT = 72;              enter(DOT, "'.'")
   //final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
   //final val NEWLINES = 79;         enter(NEWLINES, "end of statement", "new lines")
 
