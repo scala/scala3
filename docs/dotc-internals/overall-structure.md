@@ -55,7 +55,7 @@ this
 
     f(/*normal args*/)(ctx.withPhase(phase))
 
-This assumes that `f` is defined in way most compiler functions are:
+This assumes that `f` is defined in the way most compiler functions are:
 
     def f(/*normal parameters*/)(implicit ctx: Context) ...
 
@@ -77,15 +77,16 @@ not implicit, so we can track where it is used, and that it has a name
 different from `ctx`. Commonly used is `ictx` for "initialization
 context".
 
-With these two conventions is has turned out that the use of implicit
-contexts as an dependency injection and bulk parameterization device
-worked exceptionally well. There were not very many bugs related to
-passing the wrong context by accident.
+With these two conventions in place, it has turned out that implicit
+contexts work amazingly well as a device for dependency injection and
+bulk parameterization.  There is of course always the danger that
+an unexpected implicit will be passed, but in practice this has not turned out to
+be much of a problem.
 
 ## Compiler Phases
 
 Seen from a temporal perspective, the `dotc` compiler consists of a list of phases.
-The current list of phases is specified in class [Compiler] as follows:
+The current list of phases is specified in class [Compiler](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Compiler.scala) as follows:
 
 ```scala
     def phases: List[List[Phase]] = List(
@@ -141,14 +142,14 @@ The current list of phases is specified in class [Compiler] as follows:
     )
 ```
 
-Note that phases are grouped, so the `phases` value is a
-`List[List[Phase]]`. The idea is that all phases in a group are be
+Note that phases are grouped, so the `phases` method is of type
+`List[List[Phase]]`. The idea is that all phases in a group are
 *fused* into a single tree traversal. That way, phases can be kept
 small (most phases perform a single function) without requiring an
 excessive number of tree traversals (which are costly, because they
 have generally bad cache locality).
 
-Phases fall into 4 categories:
+Phases fall into four categories:
 
  - Frontend phases: `Frontend`, `PostTyper` and `Pickler`. `FrontEnd` parses the source programs and generates
    untyped abstract syntax trees, which are then typechecked and transformed into typed abstract syntax trees.
@@ -166,7 +167,7 @@ Phases fall into 4 categories:
    pass, but using the rules of the JVM's type system instead of Scala's.
 
  - Low-level transformations: All phases from `ElimErasedValueType` to `LabelDefs`. These
-   further transform trees until they are just a structured version of Java bytecode.
+   further transform trees until they are essentially a structured version of Java bytecode.
 
  - Code generators: These map the transformed trees to Java classfiles or Javascript files.
 
