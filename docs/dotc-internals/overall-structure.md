@@ -1,16 +1,22 @@
 # Dotc's Overall Structure
 
-The compiler code is found in package `dotty.tools`. It spans the
+The compiler code is found in package [dotty.tools](https://github.com/lampepfl/dotty/tree/master/src/dotty/tools). It spans the
 following three sub-packages:
 
     backend          Compiler backends (currently for JVM and JS)
     dotc             The main compiler
     io               Helper modules for file access and classpath handling.
 
-The `dotc` package contains some main classes that can be run as separate
-programs. The most important one is class `Main`. `Main` inherits from `Driver` which
-contains the highest level functions for starting a compiler and processing some sources
-`Driver` in turn is based on two other high-level classes, `Compiler` and `Run`.
+The [dotc](https://github.com/lampepfl/dotty/tree/master/src/dotty/tools/dotc)
+package contains some main classes that can be run as separate
+programs. The most important one is class
+[Main](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Main.scala).
+`Main` inherits from
+[Driver](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Driver.scala) which
+contains the highest level functions for starting a compiler and processing some sources.
+`Driver` in turn is based on two other high-level classes,
+[Compiler](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Compiler.scala) and
+[Run](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Run.scala).
 
 ## Package Structure
 
@@ -38,7 +44,9 @@ and their focus.
 
 `dotc` has almost no global state (the only significant bit of global state is the name table,
 which is used to hash strings into unique names). Instead, all essential bits of information that
-can vary over a compiler run are collected in a [Context](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Context.scala). Most methods in `dotc` take a Context value as an implicit parameter.
+can vary over a compiler run are collected in a
+[Context](https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Contexts.scala).
+Most methods in `dotc` take a Context value as an implicit parameter.
 
 Contexts give a convenient way to customize values in some part of the
 call-graph. To run, e.g. some compiler function `f` at a given
