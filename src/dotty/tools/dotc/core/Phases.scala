@@ -233,8 +233,10 @@ object Phases {
     private val picklerCache = new PhaseCache(classOf[Pickler])
 
     private val refChecksCache = new PhaseCache(classOf[RefChecks])
+    private val elimRepeatedCache = new PhaseCache(classOf[ElimRepeated])
     private val extensionMethodsCache = new PhaseCache(classOf[ExtensionMethods])
     private val erasureCache = new PhaseCache(classOf[Erasure])
+    private val elimErasedValueTypeCache = new PhaseCache(classOf[ElimErasedValueType])
     private val patmatCache = new PhaseCache(classOf[PatternMatcher])
     private val lambdaLiftCache = new PhaseCache(classOf[LambdaLift])
     private val flattenCache = new PhaseCache(classOf[Flatten])
@@ -245,8 +247,10 @@ object Phases {
     def typerPhase = typerCache.phase
     def picklerPhase = picklerCache.phase
     def refchecksPhase = refChecksCache.phase
+    def elimRepeatedPhase = elimRepeatedCache.phase
     def extensionMethodsPhase = extensionMethodsCache.phase
     def erasurePhase = erasureCache.phase
+    def elimErasedValueTypePhase = elimErasedValueTypeCache.phase
     def patmatPhase = patmatCache.phase
     def lambdaLiftPhase = lambdaLiftCache.phase
     def flattenPhase = flattenCache.phase

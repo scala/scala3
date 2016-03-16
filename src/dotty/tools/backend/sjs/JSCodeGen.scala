@@ -58,11 +58,6 @@ class JSCodeGen()(implicit ctx: Context) {
   private val positionConversions = new JSPositions()(ctx)
   import positionConversions.{pos2irPos, implicitPos2irPos}
 
-  private val elimRepeatedPhase =
-    ctx.phaseOfClass(classOf[dotty.tools.dotc.transform.ElimRepeated])
-  private val elimErasedValueTypePhase =
-    ctx.phaseOfClass(classOf[dotty.tools.dotc.transform.ElimErasedValueType])
-
   // Some state --------------------------------------------------------------
 
   private val currentClassSym = new ScopedVar[Symbol]
@@ -1743,7 +1738,7 @@ class JSCodeGen()(implicit ctx: Context) {
     if (isStat) {
       boxedResult
     } else {
-      val tpe = ctx.atPhase(elimErasedValueTypePhase) { implicit ctx =>
+      val tpe = ctx.atPhase(ctx.elimErasedValueTypePhase) { implicit ctx =>
         sym.info.finalResultType
       }
       unbox(boxedResult, tpe)
@@ -2208,12 +2203,12 @@ class JSCodeGen()(implicit ctx: Context) {
     def paramNamesAndTypes(implicit ctx: Context): List[(Names.TermName, Type)] =
       sym.info.paramNamess.flatten.zip(sym.info.paramTypess.flatten)
 
-    val wereRepeated = ctx.atPhase(elimRepeatedPhase) { implicit ctx =>
+    val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) { implicit ctx =>
       for ((name, tpe) <- paramNamesAndTypes)
         yield (name -> tpe.isRepeatedParam)
     }.toMap
 
-    val paramTypes = ctx.atPhase(elimErasedValueTypePhase) { implicit ctx =>
+    val paramTypes = ctx.atPhase(ctx.elimErasedValueTypePhase) { implicit ctx =>
       paramNamesAndTypes
     }.toMap
 
