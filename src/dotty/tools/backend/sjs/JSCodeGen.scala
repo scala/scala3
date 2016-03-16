@@ -1947,6 +1947,10 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Boxes a value of the given type before `elimErasedValueType`.
    *
+   *  This should be used when sending values to a JavaScript context, which
+   *  is erased/boxed at the IR level, although it is not erased at the
+   *  dotty/JVM level.
+   *
    *  @param expr Tree to be boxed if needed.
    *  @param tpeEnteringElimErasedValueType The type of `expr` as it was
    *    entering the `elimErasedValueType` phase.
@@ -1969,6 +1973,10 @@ class JSCodeGen()(implicit ctx: Context) {
   }
 
   /** Unboxes a value typed as Any to the given type before `elimErasedValueType`.
+   *
+   *  This should be used when receiving values from a JavaScript context,
+   *  which is erased/boxed at the IR level, although it is not erased at the
+   *  dotty/JVM level.
    *
    *  @param expr Tree to be extracted.
    *  @param tpeEnteringElimErasedValueType The type of `expr` as it was

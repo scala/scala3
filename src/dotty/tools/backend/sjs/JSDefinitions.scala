@@ -178,6 +178,11 @@ final class JSDefinitions()(implicit ctx: Context) {
     if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.asClass.name
     else EmptyTypeName
 
+  /** Is the given `cls` a class of the form `scala.scalajs.js.prefixN` where
+   *  `N` is a number.
+   *
+   *  This is similar to `isVarArityClass` in `Definitions.scala`.
+   */
   private def isScalaJSVarArityClass(cls: Symbol, prefix: Name): Boolean = {
     val name = scalajsClassName(cls)
     name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)

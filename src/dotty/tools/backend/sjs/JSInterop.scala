@@ -24,22 +24,38 @@ object JSInterop {
   def isScalaJSDefinedJSClass(sym: Symbol)(implicit ctx: Context): Boolean =
     isJSType(sym) && !sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
-  /** Should this symbol be translated into a JS getter? */
+  /** Should this symbol be translated into a JS getter?
+   *
+   *  This is true for any parameterless method, i.e., defined without `()`.
+   *  Unlike `SymDenotations.isGetter`, it applies to user-defined methods as
+   *  much as *accessor* methods created for `val`s and `var`s.
+   */
   def isJSGetter(sym: Symbol)(implicit ctx: Context): Boolean = {
     sym.info.firstParamTypes.isEmpty && ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
       sym.info.isParameterless
     }
   }
 
-  /** Should this symbol be translated into a JS setter? */
+  /** Should this symbol be translated into a JS setter?
+   *
+   *  This is true for any method whose name ends in `_=`.
+   *  Unlike `SymDenotations.isGetter`, it applies to user-defined methods as
+   *  much as *accessor* methods created for `var`s.
+   */
   def isJSSetter(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name.isSetterName && sym.is(Method)
 
-  /** Should this symbol be translated into a JS bracket access? */
+  /** Should this symbol be translated into a JS bracket access?
+   *
+   *  This is true for methods annotated with `@JSBracketAccess`.
+   */
   def isJSBracketAccess(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(jsdefn.JSBracketAccessAnnot)
 
-  /** Should this symbol be translated into a JS bracket call? */
+  /** Should this symbol be translated into a JS bracket call?
+   *
+   *  This is true for methods annotated with `@JSBracketCall`.
+   */
   def isJSBracketCall(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(jsdefn.JSBracketCallAnnot)
 
