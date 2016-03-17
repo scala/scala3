@@ -479,7 +479,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
             addWrapper()
 
         if (handler.statement.isInstanceOf[Import])
-          preamble.append(handler.statement.toString + ";\n")
+          preamble.append(handler.statement.show + ";\n")
 
         // give wildcard imports a import wrapper all to their own
         if (handler.importsWildcard)
@@ -647,7 +647,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
     private class ImportHandler(imp: Import) extends StatementHandler(imp) {
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
-        code.println("+ \"" + imp.toString + "\\n\"")
+        code.println("+ \"" + imp.show + "\\n\"")
       }
 
       def isWildcardSelector(tree: Tree) = tree match {
