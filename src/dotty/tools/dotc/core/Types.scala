@@ -415,8 +415,16 @@ object Types {
       memberExcluding(name, Flags.Private)
     }
 
-    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation =
-      findMember(name, widenIfUnstable, excluding)
+    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation = {
+      // We need a valid prefix for `asSeenFrom`
+      val pre = this match {
+        case tp: ClassInfo =>
+          tp.typeRef
+        case _ =>
+          widenIfUnstable
+      }
+      findMember(name, pre, excluding)
+    }
 
     /** Find member of this type with given name and
      *  produce a denotation that contains the type of the member
