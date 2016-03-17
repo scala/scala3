@@ -177,7 +177,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     // if (prevRequests.isEmpty)
     //  new Run(this) // initialize the compiler // (not sure this is needed)
     // parse
-    parse(indentCode(line)) match {
+    parse(line) match {
       case None => Interpreter.Incomplete
       case Some(Nil) => Interpreter.Error // parse error or empty input
       case Some(tree :: Nil) if tree.isTerm && !tree.isInstanceOf[Assign] =>
@@ -273,7 +273,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
         // header for the wrapper object
         code.println("object " + objectName + " {")
         code.print(importsPreamble)
-        code.println(indentCode(toCompute))
+        code.println(toCompute)
         handlers.foreach(_.extraCodeToEvaluate(this,code))
         code.println(importsTrailer)
         //end the wrapper object
@@ -736,20 +736,6 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   /** Clean up a string for output */
   private def clean(str: String)(implicit ctx: Context) =
     truncPrintString(stripWrapperGunk(str))
-
-  /** Indent some code by the width of the scala> prompt.
-   *  This way, compiler error messages read better.
-   */
-  def indentCode(code: String) = {
-    val spaces = "       "
-
-    stringFrom(str =>
-      for (line <- code.lines) {
-        str.print(spaces)
-        str.print(line + "\n")
-        str.flush()
-      })
-  }
 }
 
 /** Utility methods for the Interpreter. */
