@@ -21,10 +21,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
  *  @author  Lex Spoon
  *  @author Martin Odersky
  */
-class InterpreterLoop(
-    compiler: Compiler,
-    private var in: InteractiveReader,
-    out: PrintWriter)(implicit ctx: Context) {
+class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Context) {
+  import config._
+
+  private var in = input
 
   val interpreter = compiler.asInstanceOf[Interpreter]
 
@@ -52,23 +52,19 @@ class InterpreterLoop(
   /** print a friendly help message */
   def printHelp(): Unit = {
     printWelcome()
-    out.println("Type :load followed by a filename to load a Scala file.")
-    out.println("Type :replay to reset execution and replay all previous commands.")
-    out.println("Type :quit to exit the interpreter.")
+    output.println("Type :load followed by a filename to load a Scala file.")
+    output.println("Type :replay to reset execution and replay all previous commands.")
+    output.println("Type :quit to exit the interpreter.")
   }
 
   /** Print a welcome message */
   def printWelcome(): Unit = {
-    out.println(s"Welcome to Scala$version " + " (" +
+    output.println(s"Welcome to Scala$version " + " (" +
                 System.getProperty("java.vm.name") + ", Java " + System.getProperty("java.version") + ")." )
-    out.println("Type in expressions to have them evaluated.")
-    out.println("Type :help for more information.")
-    out.flush()
+    output.println("Type in expressions to have them evaluated.")
+    output.println("Type :help for more information.")
+    output.flush()
   }
-
-  /** Prompt to print when awaiting input */
-  val prompt             = "scala> "
-  val continuationPrompt = "     | "
 
   val version = ".next (pre-alpha)"
 
@@ -92,7 +88,7 @@ class InterpreterLoop(
       val (keepGoing, finalLineOpt) = command(line)
       if (keepGoing) {
         finalLineOpt.foreach(addReplay)
-        out.flush()
+        output.flush()
         repl()
       }
     }
@@ -103,16 +99,16 @@ class InterpreterLoop(
       new FileReader(filename)
     } catch {
       case _: IOException =>
-        out.println("Error opening file: " + filename)
+        output.println("Error opening file: " + filename)
         return
     }
     val oldIn = in
     val oldReplay = replayCommandsRev
     try {
       val inFile = new BufferedReader(fileIn)
-      in = new SimpleReader(inFile, out, false)
-      out.println("Loading " + filename + "...")
-      out.flush
+      in = new SimpleReader(inFile, output, false)
+      output.println("Loading " + filename + "...")
+      output.flush
       repl()
     } finally {
       in = oldIn
@@ -124,10 +120,10 @@ class InterpreterLoop(
   /** create a new interpreter and replay all commands so far */
   def replay(): Unit = {
     for (cmd <- replayCommands) {
-      out.println("Replaying: " + cmd)
-      out.flush()  // because maybe cmd will have its own output
+      output.println("Replaying: " + cmd)
+      output.flush()  // because maybe cmd will have its own output
       command(cmd)
-      out.println
+      output.println
     }
   }
 
@@ -138,12 +134,12 @@ class InterpreterLoop(
     def withFile(command: String)(action: String => Unit): Unit = {
       val spaceIdx = command.indexOf(' ')
       if (spaceIdx <= 0) {
-        out.println("That command requires a filename to be specified.")
+        output.println("That command requires a filename to be specified.")
         return
       }
       val filename = command.substring(spaceIdx).trim
       if (!new File(filename).exists) {
-        out.println("That file does not exist")
+        output.println("That file does not exist")
         return
       }
       action(filename)
@@ -169,7 +165,7 @@ class InterpreterLoop(
     else if (line matches replayRegexp)
       replay()
     else if (line startsWith ":")
-      out.println("Unknown command.  Type :help for help.")
+      output.println("Unknown command.  Type :help for help.")
     else
       shouldReplay = interpretStartingWith(line)
 
@@ -188,7 +184,7 @@ class InterpreterLoop(
       case Interpreter.Error => None
       case Interpreter.Incomplete =>
         if (in.interactive && code.endsWith("\n\n")) {
-          out.println("You typed two blank lines.  Starting a new command.")
+          output.println("You typed two blank lines.  Starting a new command.")
           None
         } else {
           val nextLine = in.readLine(continuationPrompt)
@@ -207,7 +203,7 @@ class InterpreterLoop(
           val cmd = ":load " + filename
           command(cmd)
           replayCommandsRev = cmd :: replayCommandsRev
-          out.println()
+          output.println()
         }
       case _ =>
     }
