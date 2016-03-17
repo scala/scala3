@@ -60,6 +60,8 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   import ast.untpd._
   import CompilingInterpreter._
 
+  ictx.base.initialize()(ictx)
+
   /** directory to save .class files to */
   val virtualDirectory =
     if (ictx.settings.d.isDefault(ictx)) new VirtualDirectory("(memory)", None)
