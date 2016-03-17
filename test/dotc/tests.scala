@@ -46,6 +46,7 @@ class tests extends CompilerTest {
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
+  val replDir       = testsDir + "repl/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -109,6 +110,7 @@ class tests extends CompilerTest {
   @Test def pos_859 = compileFile(posSpecialDir, "i859", scala2mode)(allowDeepSubtypes)
 
   @Test def new_all = compileFiles(newDir, twice)
+  @Test def repl_all = replFiles(replDir)
 
   @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
