@@ -227,6 +227,8 @@ object Parsers {
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
+      *
+      * @return The offset at the start of the token to accept
       */
     def accept(token: Int): Int = {
       val offset = in.offset
@@ -234,7 +236,7 @@ object Parsers {
         syntaxErrorOrIncomplete(expectedMsg(token))
       }
       if (in.token == token) in.nextToken()
-      in.offset
+      offset
     }
 
     /** semi = nl {nl} | `;'
@@ -1011,7 +1013,7 @@ object Parsers {
           val uscoreStart = in.skipToken()
           if (isIdent(nme.raw.STAR)) {
             in.nextToken()
-            if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument")
+            if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument", uscoreStart)
             Typed(t, atPos(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           } else {
             syntaxErrorOrIncomplete("`*' expected"); t
