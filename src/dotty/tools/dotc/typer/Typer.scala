@@ -33,6 +33,9 @@ import annotation.tailrec
 import Implicits._
 import util.Stats.{track, record}
 import config.Printers._
+import rewrite.Rewrites.patch
+import NavigateAST._
+import transform.SymUtils._
 import language.implicitConversions
 
 object Typer {
@@ -984,7 +987,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
-    assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    patchIfLazy(vdef1)
+    vdef1
+  }
+
+  /** Add a @volitile to lazy vals when rewriting from Scala2 */
+  private def patchIfLazy(vdef: ValDef)(implicit ctx: Context): Unit = {
+    val sym = vdef.symbol
+    if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
+        ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
+        !ctx.isAfterTyper)
+      patch(Position(toUntyped(vdef).envelope.start), "@volatile ")
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
@@ -1135,13 +1149,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+  def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
+    val untpd.PostfixOp(qual, nme.WILDCARD) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
-    var res = typed(tree, pt1)
+    var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
       def msg = i"not a function: ${res.tpe}; cannot be followed by `_'"
       if (ctx.scala2Mode) {
+        // Under -rewrite, patch `x _` to `(() => x)`
         ctx.migrationWarning(msg, tree.pos)
+        patch(Position(tree.pos.start), "(() => ")
+        patch(Position(qual.pos.end, tree.pos.end), ")")
         res = typed(untpd.Function(Nil, untpd.TypedSplice(res)))
       }
       else ctx.error(msg, tree.pos)
@@ -1232,7 +1250,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => tree.tree
           case tree:  untpd.UnApply => typedUnApply(tree, pt)
-          case untpd.PostfixOp(tree, nme.WILDCARD) => typedAsFunction(tree, pt)
+          case tree @ untpd.PostfixOp(qual, nme.WILDCARD) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
         }

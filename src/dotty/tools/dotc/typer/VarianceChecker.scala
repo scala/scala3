@@ -6,6 +6,8 @@ import core._
 import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps._
 import Decorators._
 import Variances._
+import util.Positions._
+import rewrite.Rewrites.patch
 import config.Printers.variances
 
 /** Provides `check` method to check that all top-level definitions
@@ -108,11 +110,13 @@ class VarianceChecker()(implicit ctx: Context) {
   }
 
   private object Traverser extends TreeTraverser {
-    def checkVariance(sym: Symbol) = Validator.validateDefinition(sym) match {
+    def checkVariance(sym: Symbol, pos: Position) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
-        if (ctx.scala2Mode && sym.owner.isConstructor)
+        if (ctx.scala2Mode && sym.owner.isConstructor) {
           ctx.migrationWarning(s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg", sym.pos)
+          patch(Position(pos.end), " @scala.annotation.unchecked.uncheckedVariance") // TODO use an import or shorten if possible
+        }
         else ctx.error(msg, sym.pos)
       case None =>
     }
@@ -128,12 +132,11 @@ class VarianceChecker()(implicit ctx: Context) {
         case defn: MemberDef if skip =>
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
-          checkVariance(sym)
-          traverseChildren(tree)
+          checkVariance(sym, tree.envelope)
         case tree: ValDef =>
-          checkVariance(sym)
+          checkVariance(sym, tree.envelope)
         case DefDef(_, tparams, vparamss, _, _) =>
-          checkVariance(sym)
+          checkVariance(sym, tree.envelope)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case Template(_, _, _, body) =>

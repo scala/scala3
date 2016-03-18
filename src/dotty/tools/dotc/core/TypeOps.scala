@@ -546,7 +546,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             hasImport(c)
           }))
     def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
-    hasImport || hasOption
+    hasImport(ctx.withPhase(ctx.typerPhase)) || hasOption
   }
 
   /** Is auto-tupling enabled? */

@@ -511,7 +511,7 @@ object JavaParsers {
                   atPos(offset) {
                     New(Select(scalaDot(nme.runtime), tpnme.AnnotationDefaultATTR), Nil)
                   }
-                mods1 = mods1 withAnnotations annot :: Nil
+                mods1 = mods1 withAddedAnnotation annot
                 skipTo(SEMI)
                 accept(SEMI)
                 unimplementedExpr

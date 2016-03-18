@@ -10,6 +10,7 @@ import scala.reflect.io.{ Path, Directory, File => SFile, AbstractFile }
 import scala.tools.partest.nest.{ FileManager, NestUI }
 import scala.annotation.tailrec
 import java.io.{ RandomAccessFile, File => JFile }
+import dotty.tools.io.PlainFile
 
 import org.junit.Test
 
@@ -89,7 +90,20 @@ abstract class CompilerTest {
     if (!generatePartestFiles || !partestableFile(prefix, fileName, extension, args ++ defaultOptions)) {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$fileName$extension")
-      compileArgs((s"$filePath" :: args).toArray, expErrors)
+      if (args.contains("-rewrite")) {
+        val file = new PlainFile(filePath)
+        val data = file.toByteArray
+        // compile with rewrite
+        compileArgs((filePath :: args).toArray, expErrors)
+        // compile again, check that file now compiles without -language:Scala2
+        val plainArgs = args.filter(arg => arg != "-rewrite" && arg != "-language:Scala2")
+        compileFile(prefix, fileName, plainArgs, extension, runTest)
+        // restore original test file
+        val out = file.output
+        out.write(data)
+        out.close()
+      }
+      else compileArgs((filePath :: args).toArray, expErrors)
     } else {
       val kind = testKind(prefix, runTest)
       log(s"generating partest files for test file: $prefix$fileName$extension of kind $kind")
@@ -190,6 +204,8 @@ abstract class CompilerTest {
       destDir.deleteRecursively
     }
   }
+
+
 
   // ========== HELPERS =============
 

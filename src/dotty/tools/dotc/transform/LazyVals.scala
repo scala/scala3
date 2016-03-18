@@ -12,6 +12,8 @@ import Symbols._
 import Decorators._
 import NameOps._
 import StdNames.nme
+import rewrite.Rewrites.patch
+import util.Positions.Position
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, MiniPhaseTransform}
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
@@ -65,19 +67,20 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
     val sym = tree.symbol
     if (!(sym is Flags.Lazy) || sym.owner.is(Flags.Trait) || (sym.isStatic && sym.is(Flags.Module))) tree
     else {
-
       val isField = sym.owner.isClass
-
       if (isField) {
         if (sym.isVolatile ||
-          (sym.is(Flags.Module) && !sym.is(Flags.Synthetic)))
-          // module class is user-defined.
-          // Should be threadsafe, to mimic safety guaranteed by global object
+           (sym.is(Flags.Module)/* || ctx.scala2Mode*/) &&
+            // TODO assume @volatile once LazyVals uses static helper constructs instead of
+            // ones in the companion object.
+           !sym.is(Flags.Synthetic))
+            // module class is user-defined.
+            // Should be threadsafe, to mimic safety guaranteed by global object
           transformMemberDefVolatile(tree)
-        else if (sym.is(Flags.Module)) { // synthetic module
+        else if (sym.is(Flags.Module)) // synthetic module
           transformSyntheticModule(tree)
-        }
-        else transformMemberDefNonVolatile(tree)
+        else
+          transformMemberDefNonVolatile(tree)
       }
       else transformLocalDef(tree)
     }
