@@ -7,6 +7,7 @@ import ClassPath.{ JavaContext, DefaultJavaContext }
 import core._
 import Symbols._, Types._, Contexts._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import transform.ExplicitOuter, transform.SymUtils._
 
 class JavaPlatform extends Platform {
 
@@ -37,6 +38,14 @@ class JavaPlatform extends Platform {
     currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
 
   def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)
+
+  /** Is the SAMType `cls` also a SAM under the rules of the JVM? */
+  def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+    cls.is(NoInitsTrait) &&
+    cls.superClass == defn.ObjectClass &&
+    cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
+    !ExplicitOuter.needsOuterIfReferenced(cls) &&
+    cls.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal

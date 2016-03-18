@@ -19,6 +19,7 @@ import ir.{Trees => js, Types => jstpe}
 
 import ScopedVar.withScopedVars
 import JSDefinitions._
+import JSInterop._
 
 /** Encoding of symbol names for JavaScript
  *
@@ -139,17 +140,32 @@ object JSEncoding {
    *  java.lang.String, which is the `this` parameter.
    */
   def encodeRTStringMethodSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): (Symbol, js.Ident) = {
-    require(sym.is(Flags.Method), "encodeMethodSym called with non-method symbol: " + sym)
+      implicit ctx: Context, pos: ir.Position): js.Ident = {
     require(sym.owner == defn.StringClass)
     require(!sym.isClassConstructor && !sym.is(Flags.Private))
 
     val (encodedName, paramsString) =
       encodeMethodNameInternal(sym, inRTClass = true)
-    val methodIdent = js.Ident(encodedName + paramsString,
+    js.Ident(encodedName + paramsString,
         Some(sym.unexpandedName.decoded + paramsString))
+  }
 
-    (jsdefn.RuntimeStringModuleClass, methodIdent)
+  /** Encodes a constructor symbol of java.lang.String for use in RuntimeString.
+   *
+   *  - The name is rerouted to `newString`
+   *  - The result type is set to `java.lang.String`
+   */
+  def encodeRTStringCtorSym(sym: Symbol)(
+      implicit ctx: Context, pos: ir.Position): js.Ident = {
+    require(sym.owner == defn.StringClass)
+    require(sym.isClassConstructor && !sym.is(Flags.Private))
+
+    val paramTypeNames = sym.info.firstParamTypes.map(internalName(_))
+    val paramAndResultTypeNames = paramTypeNames :+ ir.Definitions.StringClass
+    val paramsString = makeParamsString(paramAndResultTypeNames)
+
+    js.Ident("newString" + paramsString,
+        Some(sym.unexpandedName.decoded + paramsString))
   }
 
   private def encodeMethodNameInternal(sym: Symbol,
@@ -197,7 +213,7 @@ object JSEncoding {
 
   def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
-    else if (isRawJSType(sym)) jstpe.AnyType
+    else if (isJSType(sym)) jstpe.AnyType
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
@@ -210,19 +226,16 @@ object JSEncoding {
     js.Ident(encodeClassFullName(sym), Some(sym.fullName.toString))
   }
 
-  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String =
-    ir.Definitions.encodeClassName(sym.fullName.toString)
+  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String = {
+    if (sym == defn.NothingClass) ir.Definitions.RuntimeNothingClass
+    else if (sym == defn.NullClass) ir.Definitions.RuntimeNullClass
+    else ir.Definitions.encodeClassName(sym.fullName.toString)
+  }
 
   private def encodeMemberNameInternal(sym: Symbol)(
       implicit ctx: Context): String = {
-    sym.name.toString.replace("_", "$und")
+    sym.name.toString.replace("_", "$und").replace("~", "$tilde")
   }
-
-  def isRawJSType(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.hasAnnotation(jsdefn.RawJSTypeAnnot)
-
-  def isScalaJSDefinedJSClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    isRawJSType(sym) && !sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
   def toIRType(tp: Type)(implicit ctx: Context): jstpe.Type = {
     val refType = toReferenceTypeInternal(tp)
@@ -243,7 +256,7 @@ object JSEncoding {
           else
             jstpe.IntType
         } else {
-          if (sym == defn.ObjectClass || isRawJSType(sym))
+          if (sym == defn.ObjectClass || isJSType(sym))
             jstpe.AnyType
           else if (sym == defn.NothingClass)
             jstpe.NothingType
