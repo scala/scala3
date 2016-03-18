@@ -123,14 +123,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
-  def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    ta.assignType(untpd.SeqLiteral(elems), elems)
+  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
+    ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
-  def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    if (tpe derivesFrom defn.SeqClass) SeqLiteral(elems) else JavaSeqLiteral(elems)
-
-  def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems), elems)
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
+    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt)
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -564,11 +561,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
-      val tree1 = untpd.cpy.SeqLiteral(tree)(elems)
+    override def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = {
+      val tree1 = untpd.cpy.SeqLiteral(tree)(elems, elemtpt)
       tree match {
-        case tree: SeqLiteral if sameTypes(elems, tree.elems) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, elems)
+        case tree: SeqLiteral
+        if sameTypes(elems, tree.elems) && (elemtpt.tpe eq tree.elemtpt.tpe) =>
+          tree1.withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(tree1, elems, elemtpt)
       }
     }
 
@@ -852,7 +852,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           ctx.typer.resolveOverloaded(allAlts, proto, Nil)
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
-          i"$method on ${receiver.tpe.widenDealias} with targs: $targs, args: $args and expectedType: $expectedType." +
+          i"$method on ${receiver.tpe.widenDealias} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
           i" isAnnotConstructor = $isAnnotConstructor.\n" +
           i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it

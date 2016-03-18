@@ -438,7 +438,14 @@ class ClassfileParser(
             case None => hasError = true
           }
         if (hasError) None
-        else if (skip) None else Some(JavaSeqLiteral(arr.toList))
+        else if (skip) None
+        else {
+          val elems = arr.toList
+          val elemType =
+            if (elems.isEmpty) defn.ObjectType
+            else ctx.typeComparer.lub(elems.tpes).widen
+          Some(JavaSeqLiteral(elems, TypeTree(elemType)))
+        }
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip) map (_.tree)
     }

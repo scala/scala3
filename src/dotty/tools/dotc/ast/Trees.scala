@@ -519,16 +519,18 @@ object Trees {
     type ThisTree[-T >: Untyped] = Try[T]
   }
 
-  /** Seq(elems) */
-  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]])
+  /** Seq(elems)
+   *  @param  tpt  The element type of the sequence.
+   */
+  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = SeqLiteral[T]
   }
 
   /** Array(elems) */
-  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]])
-    extends SeqLiteral(elems) {
-    override def toString = s"JavaSeqLiteral($elems)"
+  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])
+    extends SeqLiteral(elems, elemtpt) {
+    override def toString = s"JavaSeqLiteral($elems, $elemtpt)"
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -978,12 +980,12 @@ object Trees {
         case tree: Try if (expr eq tree.expr) && (cases eq tree.cases) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, cases, finalizer))
       }
-      def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = tree match {
+      def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral = tree match {
         case tree: JavaSeqLiteral =>
-          if (elems eq tree.elems) tree
-          else finalize(tree, new JavaSeqLiteral(elems))
-        case tree: SeqLiteral if elems eq tree.elems => tree
-        case _ => finalize(tree, untpd.SeqLiteral(elems))
+          if ((elems eq tree.elems) && (elemtpt eq tree.elemtpt)) tree
+          else finalize(tree, new JavaSeqLiteral(elems, elemtpt))
+        case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
+        case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt))
       }
       def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
         case tree: TypeTree if original eq tree.original => tree
@@ -1129,8 +1131,8 @@ object Trees {
           cpy.Return(tree)(transform(expr), transformSub(from))
         case Try(block, cases, finalizer) =>
           cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
-        case SeqLiteral(elems) =>
-          cpy.SeqLiteral(tree)(transform(elems))
+        case SeqLiteral(elems, elemtpt) =>
+          cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
         case TypeTree(original) =>
           tree
         case SingletonTypeTree(ref) =>
@@ -1233,8 +1235,8 @@ object Trees {
             this(this(x, expr), from)
           case Try(block, handler, finalizer) =>
             this(this(this(x, block), handler), finalizer)
-          case SeqLiteral(elems) =>
-            this(x, elems)
+          case SeqLiteral(elems, elemtpt) =>
+            this(this(x, elems), elemtpt)
           case TypeTree(original) =>
             x
           case SingletonTypeTree(ref) =>

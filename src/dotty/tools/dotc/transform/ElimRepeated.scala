@@ -71,8 +71,8 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
 
   /** Convert sequence argument to Java array */
   private def seqToArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case SeqLiteral(elems) =>
-      JavaSeqLiteral(elems)
+    case SeqLiteral(elems, elemtpt) =>
+      JavaSeqLiteral(elems, elemtpt)
     case _ =>
       val elemType = tree.tpe.firstBaseArgInfo(defn.SeqClass)
       var elemClass = elemType.classSymbol

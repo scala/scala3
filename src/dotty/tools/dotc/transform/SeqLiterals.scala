@@ -32,9 +32,9 @@ class SeqLiterals extends MiniPhaseTransform {
   override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
     case tree: JavaSeqLiteral => tree
     case _ =>
-      val arr = JavaSeqLiteral(tree.elems)
+      val arr = JavaSeqLiteral(tree.elems, tree.elemtpt)
       //println(i"trans seq $tree, arr = $arr: ${arr.tpe} ${arr.tpe.elemType}")
-      val elemtp = arr.tpe.elemType.bounds.hi
+      val elemtp = tree.elemtpt.tpe
       val elemCls = elemtp.classSymbol
       val (wrapMethStr, targs) =
         if (elemCls.isPrimitiveValueClass) (s"wrap${elemCls.name}Array", Nil)

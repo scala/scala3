@@ -850,8 +850,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
-      defn.SeqType.appliedTo(defn.AnnotationType :: Nil),
-      until(end, () => readClassfileAnnotArg(readNat())))
+      until(end, () => readClassfileAnnotArg(readNat())),
+      TypeTree(defn.AnnotationType))
   }
 
   private def readAnnotInfoArg()(implicit ctx: Context): Tree = {
@@ -1063,7 +1063,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
         val trees = until(end, readTreeRef)
-        SeqLiteral(defn.SeqType.appliedTo(elemtpt.tpe :: Nil), trees)
+        SeqLiteral(trees, elemtpt)
           // note can't deal with trees passed to Java methods as arrays here
 
       case FUNCTIONtree =>

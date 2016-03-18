@@ -53,8 +53,8 @@ class DeSugarTest extends ParserTest {
           cpy.Typed(tree1)(transform(expr), transform(tpt, Type))
         case CaseDef(pat, guard, body) =>
           cpy.CaseDef(tree1)(transform(pat, Pattern), transform(guard), transform(body))
-        case SeqLiteral(elems) =>
-          cpy.SeqLiteral(tree1)(transform(elems))
+        case SeqLiteral(elems, elemtpt) =>
+          cpy.SeqLiteral(tree1)(transform(elems), transform(elemtpt))
         case UnApply(fun, implicits, patterns) =>
           cpy.UnApply(tree1)(transform(fun, Expr), transform(implicits), transform(patterns))
         case tree1 @ ValDef(name, tpt, _) =>

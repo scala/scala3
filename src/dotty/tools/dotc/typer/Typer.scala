@@ -839,7 +839,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val proto1 = pt.elemType orElse WildcardType
     val elems1 = tree.elems mapconserve (typed(_, proto1))
-    assignType(cpy.SeqLiteral(tree)(elems1), elems1)
+    val proto2 = // the computed type of the `elemtpt` field
+      if (!tree.elemtpt.isEmpty) WildcardType
+      else if (isFullyDefined(proto1, ForceDegree.none)) proto1
+      else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]]) 
+        defn.ObjectType // generic empty Java varargs are of type Object[]
+      else ctx.typeComparer.lub(elems1.tpes)
+    val elemtpt1 = typed(tree.elemtpt, proto2)
+    assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
