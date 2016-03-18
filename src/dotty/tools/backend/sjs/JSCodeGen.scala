@@ -557,21 +557,7 @@ class JSCodeGen()(implicit ctx: Context) {
           }
         }
 
-        /* Work around https://github.com/scala-js/scala-js/issues/2259
-         * TODO Remove this when we upgrade to Scala.js 0.6.8.
-         */
-        val methodDef1 = if (!sym.owner.is(Trait)) {
-          methodDef
-        } else {
-          val workaroundBody = js.Block(
-              js.Apply(js.ClassOf(jstpe.ClassType(encodeClassFullName(sym.owner))),
-                  js.Ident("isPrimitive__Z"), Nil)(jstpe.BooleanType),
-              methodDef.body)
-          methodDef.copy(body = workaroundBody)(
-              methodDef.optimizerHints, methodDef.hash)
-        }
-
-        Some(methodDef1)
+        Some(methodDef)
       }
     }
   }
@@ -2386,8 +2372,9 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code to load the JavaScript global scope. */
   private def genLoadJSGlobal()(implicit pos: Position): js.Tree = {
-    // TODO Change this when upgrading to Scala.js 0.6.8
-    js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global"))
+    js.JSBracketSelect(
+        js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
+        js.StringLiteral("global"))
   }
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
