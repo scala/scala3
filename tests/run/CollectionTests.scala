@@ -3,7 +3,7 @@ import scala.reflect.ClassTag
 
 object Test {
   import strawman.collections._
-  import CollectionStrawMan1._
+  import CollectionStrawMan4._
 
   def seqOps(xs: Seq[Int]) = {
     val x1 = xs.foldLeft("")(_ + _)
@@ -120,15 +120,15 @@ object Test {
     val ys7: String = xs7
     val xs8 = xs.drop(2)
     val ys8: String = xs8
-    val xs9 = xs.map((_: Char) + 1)  // !!! need a language change to make this work without the : Char
+    val xs9 = xs.map(_ + 1)  // !!! need a language change to make this work without the : Char
     val ys9: Seq[Int] = xs9
-    val xs9a = xs.map((_: Char).toUpper) // !!! need a language change to make this work without the : Char
+    val xs9a = xs.map(_.toUpper) // !!! need a language change to make this work without the : Char
     val ys9a: String = xs9a
     val xs10 = xs.flatMap((x: Char) => s"$x,$x")
     val ys10: String = xs10
     val xs11 = xs ++ xs
     val ys11: String = xs11
-    val xs11a = xs ++ List('x', 'y')
+    val xs11a = xs ++ List('x', 'y') // Cons('x', Cons('y', Nil))
     val ys11a: String = xs11a
     val xs12 = xs ++ Nil
     val ys12: String = xs12
