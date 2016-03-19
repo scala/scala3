@@ -841,14 +841,6 @@ object Types {
       case _ => this
     }
 
-    /** If this is a refinement type, the unrefined parent,
-     *  else the type itself.
-     */
-    final def unrefine(implicit ctx: Context): Type = stripTypeVar match {
-      case tp @ RefinedType(tycon, _) => tycon.unrefine
-      case _ => this
-    }
-
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip non-parameter refinements.
