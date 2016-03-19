@@ -156,16 +156,24 @@ object Checking {
         tp
     }
 
-    def apply(tp: Type) = tp match {
+    private def apply(tp: Type, cycleOK: Boolean, nestedCycleOK: Boolean): Type = {
+      val savedCycleOK = this.cycleOK
+      val savedNestedCycleOK = this.nestedCycleOK
+      this.cycleOK = cycleOK
+      this.nestedCycleOK = nestedCycleOK
+      try apply(tp)
+      finally {
+        this.cycleOK = savedCycleOK
+        this.nestedCycleOK = savedNestedCycleOK
+      }
+    }
+
+    def apply(tp: Type): Type = tp match {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
       case tp @ RefinedType(parent, name) =>
-        val parent1 = this(parent)
-        val saved = cycleOK
-        cycleOK = nestedCycleOK
-        try tp.derivedRefinedType(parent1, name, this(tp.refinedInfo))
-        finally cycleOK = saved
+        tp.derivedRefinedType(this(parent), name, this(tp.refinedInfo, nestedCycleOK, nestedCycleOK))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -182,19 +190,12 @@ object Checking {
             case _: RefinedType => true
             case _ => false
           }
-          // If prefix is interesting, check info of typeref recursively, marking the referred symbol
-          // with NoCompleter. This provokes a CyclicReference when the symbol
-          // is hit again. Without this precaution we could stackoverflow here.
           if (isInteresting(pre)) {
-            val info = tp.info
-            val sym = tp.symbol
-            if (sym.infoOrCompleter == SymDenotations.NoCompleter) throw CyclicReference(sym)
-            val symInfo = sym.info
-            if (sym.exists) sym.info = SymDenotations.NoCompleter
-            try checkInfo(info)
-            finally if (sym.exists) sym.info = symInfo
+            val pre1 = this(pre, false, false)
+            checkInfo(tp.info)
+            if (pre1 eq pre) tp else tp.newLikeThis(pre1)
           }
-          tp
+          else tp
         } catch {
           case ex: CyclicReference =>
             ctx.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
@@ -210,9 +211,6 @@ object Checking {
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
    *  @return  `info` where every legal F-bounded reference is proctected
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
-   *                  Furthermore: Add an #Apply to a fully instantiated type lambda, if none was
-   *                  given before. This is necessary here because sometimes type lambdas are not
-   *                  recognized when they are first formed.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(implicit ctx: Context): Type = {
     val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.addMode(Mode.CheckCyclic))
