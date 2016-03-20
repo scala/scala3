@@ -90,7 +90,7 @@ class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
       tree // The rewiring will be handled by a fully-applied parent node
     case _ =>
       if (isMethodWithExtension(tree.symbol))
-        rewire(tree)
+        rewire(tree).ensureConforms(tree.tpe)
       else
         tree
   }
