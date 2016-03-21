@@ -416,7 +416,7 @@ trait TypeAssigner {
             else NoSymbol
         }
         if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
-        else errorType(s"$tycon does not have a parameter or abstract type member named $name", arg.pos)
+        else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
       case _ =>
         errorType(s"named and positional type arguments may not be mixed", arg.pos)
     }
