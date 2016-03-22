@@ -119,11 +119,13 @@ object Settings {
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
+        case (StringTag, _) if choices.nonEmpty =>
+          if (argRest.isEmpty) missingArg
+          else if (!choices.contains(argRest))
+            fail(s"$arg is not a valid choice for $name", args)
+          else update(argRest, args)
         case (StringTag, arg2 :: args2) =>
-          if (choices.nonEmpty && !(choices contains arg2))
-            fail(s"$arg2 is not a valid choice for $name", args2)
-          else
-            update(arg2, args2)
+          update(arg2, args2)
         case (IntTag, arg2 :: args2) =>
           try {
             val x = arg2.toInt
