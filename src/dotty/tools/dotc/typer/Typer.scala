@@ -842,7 +842,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val proto2 = // the computed type of the `elemtpt` field
       if (!tree.elemtpt.isEmpty) WildcardType
       else if (isFullyDefined(proto1, ForceDegree.none)) proto1
-      else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]]) 
+      else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]])
         defn.ObjectType // generic empty Java varargs are of type Object[]
       else ctx.typeComparer.lub(elems1.tpes)
     val elemtpt1 = typed(tree.elemtpt, proto2)
@@ -961,13 +961,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
   }
 
-  def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
+  def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
     val body1 = typed(tree.body, pt1)
     typr.println(i"typed bind $tree pt = $pt1 bodytpe = ${body1.tpe}")
-    val flags = if (tree.isType) BindDefinedType else EmptyFlags
-    val sym = ctx.newSymbol(ctx.owner, tree.name, flags, body1.tpe, coord = tree.pos)
-    assignType(cpy.Bind(tree)(tree.name, body1), sym)
+    body1 match {
+      case UnApply(fn, Nil, arg :: Nil) if tree.body.isInstanceOf[untpd.Typed] =>
+        // A typed pattern `x @ (_: T)` with an implicit `ctag: ClassTag[T]`
+        // was rewritten to `x @ ctag(_)`.
+        // Rewrite further to `ctag(x @ _)`
+        assert(fn.symbol.owner == defn.ClassTagClass)
+        tpd.cpy.UnApply(body1)(fn, Nil,
+            typed(untpd.Bind(tree.name, arg).withPos(tree.pos), arg.tpe) :: Nil)
+      case _ =>
+        val flags = if (tree.isType) BindDefinedType else EmptyFlags
+        val sym = ctx.newSymbol(ctx.owner, tree.name, flags, body1.tpe, coord = tree.pos)
+        assignType(cpy.Bind(tree)(tree.name, body1), sym)
+    }
   }
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {
