@@ -175,6 +175,8 @@ object JavaParsers {
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
+      *
+      * @return The offset at the start of the token to accept
       */
     def accept(token: Int): Int = {
       val offset = in.offset
