@@ -8,12 +8,12 @@ object Test {
     def map[T](f: Out => T): Repr[Out = T] = ???
   }
 
-  class Source[type +Out, type +Mat] extends FO[Out, Mat] {
-    type Repr <: Source[Out, Mat]
+  class Source[type +Out, type +Mat] extends FO[Out, Mat] { self =>
+    type Repr <: Source[Mat = self.Mat]
   }
 
-  class Flow[type -In, type +Out, type +Mat] extends FO[Out, Mat] {
-    type Repr <: Flow[In, Out, Mat]
+  class Flow[type -In, type +Out, type +Mat] extends FO[Out, Mat] { self =>
+    type Repr <: Flow[In = self.In, Mat = self.Mat]
   }
 
   implicit class x[O, M, F <: FO](val f: F[Out = O, Mat = M]) extends AnyVal {
