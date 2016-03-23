@@ -467,28 +467,18 @@ object Erasure extends TypeTestsCasts{
         tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      var effectiveSym = sym
-      if (sym == defn.newRefArrayMethod) {
-        // newRefArray is treated specially: It's the only source-defined method
-        // that has a polymorphic type after erasure. But treating its (dummy) definition
-        // with a polymorphic type at and after erasure is an awkward special case.
-        // We therefore rewrite the method definition with a new Symbol of type
-        // (length: Int)Object
-        val MethodType(pnames, ptypes) = sym.info.resultType
-        effectiveSym = sym.copy(info = MethodType(pnames, ptypes, defn.ObjectType))
-      }
       val restpe =
-        if (effectiveSym.isConstructor) defn.UnitType
-        else effectiveSym.info.resultType
+        if (sym.isConstructor) defn.UnitType
+        else sym.info.resultType
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
-        vparamss = (outer.paramDefs(effectiveSym) ::: ddef.vparamss.flatten) :: Nil,
+        vparamss = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil,
         tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
         rhs = ddef.rhs match {
           case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
           case _ => ddef.rhs
         })
-      super.typedDefDef(ddef1, effectiveSym)
+      super.typedDefDef(ddef1, sym)
     }
 
     /** After erasure, we may have to replace the closure method by a bridge.

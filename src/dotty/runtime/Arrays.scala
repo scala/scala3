@@ -2,6 +2,8 @@ package dotty.runtime
 
 import scala.reflect.ClassTag
 
+import java.lang.{reflect => jlr}
+
 /** All but the first two operations should be short-circuited and implemented specially by
  *  the backend.
  */
@@ -22,35 +24,44 @@ object Arrays {
     arr
   }
 
-  /** Create an array of type T. T must be of form Array[E], with
-   *  E being a reference type.
+  /** Create an array of a reference type T.
    */
-  def newRefArray[T](length: Int): T = ???
+  def newRefArray[T](componentType: Class[T])(length: Int): Array[T] =
+    jlr.Array.newInstance(componentType, length).asInstanceOf[Array[T]]
 
   /** Create a Byte[] array */
-  def newByteArray(length: Int): Array[Byte] = ???
+  def newByteArray(length: Int): Array[Byte] =
+    jlr.Array.newInstance(classOf[Byte], length).asInstanceOf[Array[Byte]]
 
   /** Create a Short[] array */
-  def newShortArray(length: Int): Array[Short] = ???
+  def newShortArray(length: Int): Array[Short] =
+    jlr.Array.newInstance(classOf[Short], length).asInstanceOf[Array[Short]]
 
   /** Create a Char[] array */
-  def newCharArray(length: Int): Array[Char] = ???
+  def newCharArray(length: Int): Array[Char] =
+    jlr.Array.newInstance(classOf[Char], length).asInstanceOf[Array[Char]]
 
   /** Create an Int[] array */
-  def newIntArray(length: Int): Array[Int] = ???
+  def newIntArray(length: Int): Array[Int] =
+    jlr.Array.newInstance(classOf[Int], length).asInstanceOf[Array[Int]]
 
   /** Create a Long[] array */
-  def newLongArray(length: Int): Array[Long] = ???
+  def newLongArray(length: Int): Array[Long] =
+    jlr.Array.newInstance(classOf[Long], length).asInstanceOf[Array[Long]]
 
   /** Create a Float[] array */
-  def newFloatArray(length: Int): Array[Float] = ???
+  def newFloatArray(length: Int): Array[Float] =
+    jlr.Array.newInstance(classOf[Float], length).asInstanceOf[Array[Float]]
 
   /** Create a Double[] array */
-  def newDoubleArray(length: Int): Array[Double] = ???
+  def newDoubleArray(length: Int): Array[Double] =
+    jlr.Array.newInstance(classOf[Double], length).asInstanceOf[Array[Double]]
 
   /** Create a Boolean[] array */
-  def newBooleanArray(length: Int): Array[Boolean] = ???
+  def newBooleanArray(length: Int): Array[Boolean] =
+    jlr.Array.newInstance(classOf[Boolean], length).asInstanceOf[Array[Boolean]]
 
   /** Create a scala.runtime.BoxedUnit[] array */
-  def newUnitArray(length: Int): Array[Unit] = ???
+  def newUnitArray(length: Int): Array[Unit] =
+    jlr.Array.newInstance(classOf[scala.runtime.BoxedUnit], length).asInstanceOf[Array[Unit]]
 }

@@ -80,18 +80,6 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
 
     val jsdefn = JSDefinitions.jsdefn
 
-    // For some reason, the JVM primitive set does not register those
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newBooleanArray")), NEW_ZARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newByteArray")), NEW_BARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newShortArray")), NEW_SARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newCharArray")), NEW_CARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newIntArray")), NEW_IARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newLongArray")), NEW_LARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newFloatArray")), NEW_FARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newDoubleArray")), NEW_DARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newRefArray")), NEW_OARRAY)
-    addPrimitive(defn.DottyArraysModule.requiredMethod(Names.termName("newUnitArray")), NEW_OARRAY)
-
     addPrimitive(defn.Any_getClass, GETCLASS)
 
     for (i <- 0 to 22)

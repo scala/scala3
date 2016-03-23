@@ -371,9 +371,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       newArr("Generic").appliedToTypeTrees(typeArg :: Nil)
     else if (elemClass.isPrimitiveValueClass)
       newArr(elemClass.name.toString)
-    else
-      newArr("Ref").appliedToTypeTrees(
-        TypeTree(defn.ArrayOf(elemType)).withPos(typeArg.pos) :: Nil)
+    else {
+      val typeApplied = newArr("Ref").appliedToTypeTrees(typeArg :: Nil)
+      val classOfArg =
+        ref(defn.Predef_classOf).appliedToTypeTrees(typeArg :: Nil)
+      Apply(typeApplied, classOfArg :: Nil).withPos(typeArg.pos)
+    }
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------

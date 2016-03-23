@@ -247,8 +247,6 @@ class Definitions {
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
 
-    def newRefArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newRefArray")
-
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
 
@@ -622,7 +620,7 @@ class Definitions {
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
   def isPolymorphicAfterErasure(sym: Symbol) =
-     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq newRefArrayMethod)
+     (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length

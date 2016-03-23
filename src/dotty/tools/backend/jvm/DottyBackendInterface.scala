@@ -153,7 +153,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
   }.toMap
   def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
-  private val mkArrayNames: Set[Name] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short", "Ref").map{ x=>
+  private val mkArrayNames: Set[Name] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short"/*, "Ref"*/).map{ x=>
     ("new" + x + "Array").toTermName
   }
 
