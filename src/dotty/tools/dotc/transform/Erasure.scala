@@ -21,7 +21,7 @@ import core.Decorators._
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
@@ -299,8 +299,9 @@ object Erasure extends TypeTestsCasts{
       assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
 
-    override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+    override def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Literal =
       if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
+      else if (tree.const.tag == Constants.ClazzTag) Literal(Constant(erasure(tree.const.typeValue)))
       else super.typedLiteral(tree)
 
     /** Type check select nodes, applying the following rewritings exhaustively
