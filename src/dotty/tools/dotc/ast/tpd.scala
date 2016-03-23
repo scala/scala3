@@ -362,21 +362,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `typeArg`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(typeArg: Tree, pos: Position)(implicit ctx: Context): Tree = {
-    val elemType = typeArg.tpe
-    val elemClass = elemType.classSymbol
-    def newArr(kind: String) =
-      ref(defn.DottyArraysModule).select(s"new${kind}Array".toTermName).withPos(pos)
-    if (TypeErasure.isUnboundedGeneric(elemType))
-      newArr("Generic").appliedToTypeTrees(typeArg :: Nil)
-    else if (elemClass.isPrimitiveValueClass)
-      newArr(elemClass.name.toString)
-    else {
-      val typeApplied = newArr("Ref").appliedToTypeTrees(typeArg :: Nil)
-      val classOfArg =
-        ref(defn.Predef_classOf).appliedToTypeTrees(typeArg :: Nil)
-      Apply(typeApplied, classOfArg :: Nil).withPos(typeArg.pos)
-    }
+  def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
+    val elemClass = elemTpe.classSymbol
+    def newArr(symbol: TermSymbol) =
+      ref(defn.DottyArraysModule).select(symbol).withPos(pos)
+
+    if (!ctx.erasedTypes)
+      if (TypeErasure.isUnboundedGeneric(elemTpe)) {
+        //exists only before erasure
+        assert(dims.elems.tail.isEmpty)
+        newArr(defn.newGenericArrayMethod).appliedToType(elemTpe).appliedTo(dims.elems.head)
+      }
+      else
+        newArr(defn.newArrayMethod).appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+    else  // after erasure
+      newArr(defn.newArrayMethod).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------

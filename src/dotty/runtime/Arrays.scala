@@ -26,42 +26,6 @@ object Arrays {
 
   /** Create an array of a reference type T.
    */
-  def newRefArray[T](componentType: Class[T])(length: Int): Array[T] =
-    jlr.Array.newInstance(componentType, length).asInstanceOf[Array[T]]
-
-  /** Create a Byte[] array */
-  def newByteArray(length: Int): Array[Byte] =
-    jlr.Array.newInstance(classOf[Byte], length).asInstanceOf[Array[Byte]]
-
-  /** Create a Short[] array */
-  def newShortArray(length: Int): Array[Short] =
-    jlr.Array.newInstance(classOf[Short], length).asInstanceOf[Array[Short]]
-
-  /** Create a Char[] array */
-  def newCharArray(length: Int): Array[Char] =
-    jlr.Array.newInstance(classOf[Char], length).asInstanceOf[Array[Char]]
-
-  /** Create an Int[] array */
-  def newIntArray(length: Int): Array[Int] =
-    jlr.Array.newInstance(classOf[Int], length).asInstanceOf[Array[Int]]
-
-  /** Create a Long[] array */
-  def newLongArray(length: Int): Array[Long] =
-    jlr.Array.newInstance(classOf[Long], length).asInstanceOf[Array[Long]]
-
-  /** Create a Float[] array */
-  def newFloatArray(length: Int): Array[Float] =
-    jlr.Array.newInstance(classOf[Float], length).asInstanceOf[Array[Float]]
-
-  /** Create a Double[] array */
-  def newDoubleArray(length: Int): Array[Double] =
-    jlr.Array.newInstance(classOf[Double], length).asInstanceOf[Array[Double]]
-
-  /** Create a Boolean[] array */
-  def newBooleanArray(length: Int): Array[Boolean] =
-    jlr.Array.newInstance(classOf[Boolean], length).asInstanceOf[Array[Boolean]]
-
-  /** Create a scala.runtime.BoxedUnit[] array */
-  def newUnitArray(length: Int): Array[Unit] =
-    jlr.Array.newInstance(classOf[scala.runtime.BoxedUnit], length).asInstanceOf[Array[Unit]]
+  def newArray[Arr](componentType: Class[_], returnType: Class[Arr], dimensions: Array[Int]): Arr =
+    jlr.Array.newInstance(componentType, dimensions: _*).asInstanceOf[Arr]
 }

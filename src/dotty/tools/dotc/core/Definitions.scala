@@ -246,6 +246,8 @@ class Definitions {
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
+    def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
+    def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
 
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
@@ -277,6 +279,9 @@ class Definitions {
     def Array_clone(implicit ctx: Context) = Array_cloneR.symbol
     lazy val ArrayConstructorR            = ArrayClass.requiredMethodRef(nme.CONSTRUCTOR)
     def ArrayConstructor(implicit ctx: Context) = ArrayConstructorR.symbol
+  lazy val ArrayModuleType = ctx.requiredModuleRef("scala.Array")
+  def ArrayModule(implicit ctx: Context) = ArrayModuleType.symbol.moduleClass.asClass
+
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
