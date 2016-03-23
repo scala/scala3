@@ -718,9 +718,9 @@ class JSCodeGen()(implicit ctx: Context) {
         if (sym.is(Module)) {
           assert(!sym.is(Package), "Cannot use package as value: " + tree)
           genLoadModule(sym)
-        } else /*if (sym.isStaticMember) {
-          genStaticMember(sym)
-        } else if (paramAccessorLocals contains sym) {
+        } else if (sym.is(JavaStatic)) {
+          genLoadStaticField(sym)
+        } else /*if (paramAccessorLocals contains sym) {
           paramAccessorLocals(sym).ref
         } else if (isScalaJSDefinedJSClass(sym.owner)) {
           val genQual = genExpr(qualifier)
@@ -2325,6 +2325,24 @@ class JSCodeGen()(implicit ctx: Context) {
         Some(wrapped)
       case _ =>
         None
+    }
+  }
+
+  /** Gen JS code for loading a Java static field.
+   */
+  private def genLoadStaticField(sym: Symbol)(implicit pos: Position): js.Tree = {
+    /* Actually, there is no static member in Scala.js. If we come here, that
+     * is because we found the symbol in a Java-emitted .class in the
+     * classpath. But the corresponding implementation in Scala.js will
+     * actually be a val in the companion module.
+     */
+
+    if (sym == defn.BoxedUnit_UNIT) {
+      js.Undefined()
+    } else {
+      val instance = genLoadModule(sym.owner)
+      val method = encodeStaticMemberSym(sym)
+      js.Apply(instance, method, Nil)(toIRType(sym.info))
     }
   }
 
