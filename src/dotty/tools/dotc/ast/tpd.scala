@@ -838,7 +838,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tpnme.Float => TYPE(defn.BoxedFloatModule)
       case tpnme.Double => TYPE(defn.BoxedDoubleModule)
       case tpnme.Unit => TYPE(defn.BoxedUnitModule)
-      case _ => Literal(Constant(TypeErasure.erasure(tp)))
+      case _ =>
+        if(ctx.erasedTypes || !tp.derivesFrom(defn.ArrayClass))
+          Literal(Constant(TypeErasure.erasure(tp)))
+        else Literal(Constant(tp))
     }
   }
 

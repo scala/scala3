@@ -560,7 +560,7 @@ trait Applications extends Compatibility { self: Typer =>
                 if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
                 else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
               val result = app.result
-              convertNewArray(ConstFold(result))
+              ConstFold(result)
             } { (failedVal, failedState) =>
               val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
               if (fun1 eq fun2) {
@@ -635,15 +635,6 @@ trait Applications extends Compatibility { self: Typer =>
 
   def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
     tree.withType(tree.tpe.etaExpandIfHK(bound))
-
-  /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
-  def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-    case Apply(TypeApply(tycon, targ :: Nil), args) if tycon.symbol == defn.ArrayConstructor =>
-      fullyDefinedType(tree.tpe, "array", tree.pos)
-      tpd.cpy.Apply(tree)(newArray(targ, tree.pos), args)
-    case _ =>
-      tree
-  }
 
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
