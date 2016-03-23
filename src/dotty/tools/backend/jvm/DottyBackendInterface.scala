@@ -153,15 +153,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
   }.toMap
   def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
-  private val mkArrayNames: Set[Name] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short"/*, "Ref"*/).map{ x=>
-    ("new" + x + "Array").toTermName
-  }
-
-  val dottyArraysModuleClass = toDenot(defn.DottyArraysModule).moduleClass.asClass
-
-
   override def isSyntheticArrayConstructor(s: Symbol) = {
-    (toDenot(s).maybeOwner eq dottyArraysModuleClass) && mkArrayNames.contains(s.name)
+    s eq defn.newArrayMethod
   }
 
   def isBox(sym: Symbol): Boolean = Erasure.Boxing.isBox(sym)
