@@ -611,7 +611,7 @@ object Erasure extends TypeTestsCasts{
       traverse(newStats, oldStats)
     }
 
-    private final val NoBridgeFlags = Flags.Accessor | Flags.Deferred | Flags.Lazy
+    private final val NoBridgeFlags = Flags.Accessor | Flags.Deferred | Flags.Lazy | Flags.ParamAccessor
 
     /** Create a bridge DefDef which overrides a parent method.
      *
