@@ -2643,7 +2643,7 @@ object Types {
       // First, solve the constraint.
       var inst = ctx.typeComparer.approximation(origin, fromBelow)
 
-      // Then, approximate by (1.) and (2.) and simplify as follows.
+      // Then, approximate by (1.) - (3.) and simplify as follows.
       // 1. If instance is from below and is a singleton type, yet
       // upper bound is not a singleton type, widen the instance.
       if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
@@ -2656,6 +2656,10 @@ object Types {
       // of all common base types.
       if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
         inst = inst.approximateUnion
+
+      // 3. If instance is from below, and upper bound has open named parameters
+      //    make sure the instance has all named parameters of the bound.
+      if (fromBelow) inst = inst.widenToNamedTypeParams(this.namedTypeParams)
 
       if (ctx.typerState.isGlobalCommittable)
         assert(!inst.isInstanceOf[PolyParam], i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
