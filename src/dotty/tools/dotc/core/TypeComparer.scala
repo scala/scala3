@@ -1086,7 +1086,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *    C[type T], D[type U]
    *
-   *  Then do you expand `C & D` to `[T, U] -> C[T, U] & D[T, U]` or not? Under the named
+   *  Then do you expand `C & D` to `[T] -> C[T] & D[T]` or not? Under the named
    *  type parameter interpretation, this would be wrong whereas under the traditional
    *  higher-kinded interpretation this would be required. The problem arises from
    *  allowing both interpretations. A possible remedy is to be somehow stricter
