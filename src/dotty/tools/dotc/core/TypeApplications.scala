@@ -295,7 +295,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  no type field named `p` in this type, or `p` is a named type parameter of this type.
    *  The first case is important for the recursive case of AndTypes, because some of their operands might
    *  be missing the named parameter altogether, but the AndType as a whole can still
-   *  contain it. 
+   *  contain it.
    */
   final def widenToNamedTypeParams(params: Set[TypeSymbol])(implicit ctx: Context): Type = {
 
@@ -311,10 +311,11 @@ class TypeApplications(val self: Type) extends AnyVal {
 
     /** Widen type by forming the intersection of its widened parents */
     def widenToParents(tp: Type) = {
-      val parents = tp.parents.map(p => tp.baseTypeWithArgs(p.symbol))
-      ctx.typeComparer.glb(parents.map(_.widenToNamedTypeParams(params)))
+      val parents = tp.parents.map(p =>
+        tp.baseTypeWithArgs(p.symbol).widenToNamedTypeParams(params))
+      parents.reduceLeft(ctx.typeComparer.andType(_, _))
     }
-    
+
     if (isOK(self)) self
     else self match {
       case self @ AppliedType(tycon, args) if !isOK(tycon) =>
