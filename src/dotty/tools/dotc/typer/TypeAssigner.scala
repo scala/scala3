@@ -96,7 +96,8 @@ trait TypeAssigner {
           }
         case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
           val base = apply(tycon)
-          apply(base.appliedTo(tp.baseArgInfos(base.typeSymbol)))
+          val args = tp.baseArgInfos(base.typeSymbol)
+          if (base.typeParams.length == args.length) base.appliedTo(args) else base
         case tp @ RefinedType(parent, name) if variance > 0 =>
           val parent1 = apply(tp.parent)
           val refinedInfo1 = apply(tp.refinedInfo)
@@ -404,16 +405,13 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
+    lazy val ntparams = tycon.tpe.namedTypeParams
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
         val tparam = tparams.find(_.name == name) match {
           case Some(tparam) => tparam
-          case none =>
-            val sym = tycon.member(name).symbol
-            if (sym.isAbstractType) sym
-            else if (sym.is(ParamAccessor)) sym.info.dealias.typeSymbol
-            else NoSymbol
+          case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }
         if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
         else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
