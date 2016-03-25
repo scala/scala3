@@ -1069,6 +1069,9 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
+    /** The named type parameters declared or inherited by this symbol */
+    def namedTypeParams(implicit ctx: Context): Set[TypeSymbol] = Set()
+
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
@@ -1202,6 +1205,8 @@ object SymDenotations {
     /** TODO: Document why caches are supposedly safe to use */
     private[this] var myTypeParams: List[TypeSymbol] = _
 
+    private[this] var myNamedTypeParams: Set[TypeSymbol] = _
+
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
       def computeTypeParams = {
@@ -1212,6 +1217,16 @@ object SymDenotations {
       }
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
+    }
+
+    /** The named type parameters declared or inherited by this class */
+    override final def namedTypeParams(implicit ctx: Context): Set[TypeSymbol] = {
+      def computeNamedTypeParams: Set[TypeSymbol] =
+        if (ctx.erasedTypes || is(Module)) Set() // fast return for modules to avoid scanning package decls
+        else memberNames(abstractTypeNameFilter).map(name =>
+          info.member(name).symbol.asType).filter(_.is(TypeParam, butNot = ExpandedName)).toSet
+      if (myNamedTypeParams == null) myNamedTypeParams = computeNamedTypeParams
+      myNamedTypeParams
     }
 
     override protected[dotc] final def info_=(tp: Type) = {
