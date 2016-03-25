@@ -20,6 +20,10 @@ object Test {
     def xx(i: Int): f.Repr[Out = O] = f.map(identity)
   }
 
+  class xalt[O, M, F <: FO](val f: F[Out = O, Mat = M]) extends AnyVal {
+    def xx(i: Int): FO[Out = O, Mat = M] = ???
+  }
+
   val s1 = new Source[Int, NotUsed].xx(12)
   val s2: Source[Int, NotUsed] = s1
   val f1 = x[Int, NotUsed, Flow[In = Int]](new Flow[Int, Int, NotUsed]).xx(12)
@@ -30,4 +34,6 @@ object Test {
   val f4: Flow[Int, Int, NotUsed] = f3
   val f5 = new Flow[Int, Int, NotUsed].xx(12)
   val f6: Flow[Int, Int, NotUsed] = f5
+  val f7 = new xalt(new Flow[Int, Int, NotUsed]).xx(12)
+  val f8: FO[Int, NotUsed] = f7
 }
