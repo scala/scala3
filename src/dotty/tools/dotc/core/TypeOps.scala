@@ -150,7 +150,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                   ctx.log(s"deskolem: $tp: ${tp.info}")
                   tp.info match {
                     case TypeBounds(lo, hi) => approx(lo, hi)
-                    case info => approx(defn.NothingType, info)
+                    case info => NoType
                   }
                 }
             }
