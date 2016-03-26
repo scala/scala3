@@ -3072,64 +3072,86 @@ object Types {
 
     protected var variance = 1
 
+    protected def derivedSelect(tp: NamedType, pre: Type): Type =
+      tp.derivedSelect(pre)
+    protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type): Type =
+      tp.derivedRefinedType(parent, tp.refinedName, info)
+    protected def derivedTypeAlias(tp: TypeAlias, alias: Type): Type =
+      tp.derivedTypeAlias(alias)
+    protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
+      tp.derivedTypeBounds(lo, hi)
+    protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
+      tp.derivedSuperType(thistp, supertp)
+    protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
+      tp.derivedAndOrType(tp1, tp2)
+    protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
+      tp.derivedSkolemType(info)
+    protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
+      tp.derivedAnnotatedType(underlying, annot)
+    protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
+      tp.derivedWildcardType(bounds)
+    protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type =
+      tp.derivedClassInfo(pre)
+    protected def derivedJavaArrayType(tp: JavaArrayType, elemtp: Type): Type =
+      tp.derivedJavaArrayType(elemtp)
+    protected def derivedMethodType(tp: MethodType, formals: List[Type], restpe: Type): Type =
+      tp.derivedMethodType(tp.paramNames, formals, restpe)
+    protected def derivedExprType(tp: ExprType, restpe: Type): Type =
+      tp.derivedExprType(restpe)
+    protected def derivedPolyType(tp: PolyType, pbounds: List[TypeBounds], restpe: Type): Type =
+      tp.derivedPolyType(tp.paramNames, pbounds, restpe)
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
       implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
-          else {
-            val saved = variance
-            variance = 0
-            val result = tp.derivedSelect(this(tp.prefix))
-            variance = saved
-            result
-          }
+          else derivedSelect(tp, this(tp.prefix))
 
         case _: ThisType
           | _: BoundType
           | NoPrefix => tp
 
         case tp: RefinedType =>
-          tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
+          derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
         case tp: TypeAlias =>
           val saved = variance
           variance = variance * tp.variance
           val alias1 = this(tp.alias)
           variance = saved
-          tp.derivedTypeAlias(alias1)
+          derivedTypeAlias(tp, alias1)
 
         case tp: TypeBounds =>
           variance = -variance
           val lo1 = this(tp.lo)
           variance = -variance
-          tp.derivedTypeBounds(lo1, this(tp.hi))
+          derivedTypeBounds(tp, lo1, this(tp.hi))
 
         case tp: MethodType =>
           def mapOverMethod = {
             variance = -variance
             val ptypes1 = tp.paramTypes mapConserve this
             variance = -variance
-            tp.derivedMethodType(tp.paramNames, ptypes1, this(tp.resultType))
+            derivedMethodType(tp, ptypes1, this(tp.resultType))
           }
           mapOverMethod
 
         case tp: ExprType =>
-          tp.derivedExprType(this(tp.resultType))
+          derivedExprType(tp, this(tp.resultType))
 
         case tp: PolyType =>
           def mapOverPoly = {
             variance = -variance
             val bounds1 = tp.paramBounds.mapConserve(this).asInstanceOf[List[TypeBounds]]
             variance = -variance
-            tp.derivedPolyType(
-              tp.paramNames, bounds1, this(tp.resultType))
+            derivedPolyType(tp, bounds1, this(tp.resultType))
           }
           mapOverPoly
 
         case tp @ SuperType(thistp, supertp) =>
-          tp.derivedSuperType(this(thistp), this(supertp))
+          derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
           LazyRef(() => this(tp.ref))
@@ -3142,20 +3164,21 @@ object Types {
           if (inst.exists) apply(inst) else tp
 
         case tp: AndOrType =>
-          tp.derivedAndOrType(this(tp.tp1), this(tp.tp2))
+          derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
 
         case tp: SkolemType =>
-          tp.derivedSkolemType(this(tp.info))
+          derivedSkolemType(tp, this(tp.info))
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp else tp.derivedAnnotatedType(underlying1, mapOver(annot))
+          if (underlying1 eq underlying) tp
+          else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
         case tp @ WildcardType =>
-          tp.derivedWildcardType(mapOver(tp.optBounds))
+          derivedWildcardType(tp, mapOver(tp.optBounds))
 
         case tp: JavaArrayType =>
-          tp.derivedJavaArrayType(this(tp.elemType))
+          derivedJavaArrayType(tp, this(tp.elemType))
 
         case tp: ProtoType =>
           tp.map(this)
@@ -3182,8 +3205,8 @@ object Types {
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
-    protected def mapClassInfo(tp: ClassInfo): ClassInfo =
-      tp.derivedClassInfo(this(tp.prefix))
+    protected def mapClassInfo(tp: ClassInfo): Type =
+      derivedClassInfo(tp, this(tp.prefix))
 
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       override def stopAtStatic = thisMap.stopAtStatic
@@ -3207,6 +3230,55 @@ object Types {
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
     override def stopAtStatic = true
     def apply(tp: Type) = tp
+  }
+
+  abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
+    def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType) =
+      if (variance == 0) NoType
+      else apply(if (variance < 0) lo else hi)
+
+    override protected def derivedSelect(tp: NamedType, pre: Type) =
+      if (pre eq tp.prefix) tp
+      else tp.info match {
+        case TypeAlias(alias) => apply(alias) // try to heal by following aliases
+        case _ =>
+          if (pre.exists && !pre.isRef(defn.NothingClass) && variance > 0) tp.derivedSelect(pre)
+          else tp.info match {
+            case TypeBounds(lo, hi) => approx(lo, hi)
+            case _ => approx()
+          }
+      }
+    override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
+      if (parent.exists && info.exists) tp.derivedRefinedType(parent, tp.refinedName, info)
+      else approx(hi = parent)
+    override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
+      if (alias.exists) tp.derivedTypeAlias(alias)
+      else approx(NoType, TypeBounds.empty)
+    override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
+      if (lo.exists && hi.exists) tp.derivedTypeBounds(lo, hi)
+      else approx(NoType,
+        if (lo.exists) TypeBounds.lower(lo)
+        else if (hi.exists) TypeBounds.upper(hi)
+        else TypeBounds.empty)
+    override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
+      if (thistp.exists && supertp.exists) tp.derivedSuperType(thistp, supertp)
+      else NoType
+    override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
+      if (tp1.exists && tp2.exists) tp.derivedAndOrType(tp1, tp2)
+      else if (tp.isAnd) approx(hi = tp1 & tp2)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
+      else approx(lo = tp1 & tp2)
+    override protected def derivedSkolemType(tp: SkolemType, info: Type) =
+      if (info.exists) tp.derivedSkolemType(info)
+      else NoType
+    override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
+      if (underlying.exists) tp.derivedAnnotatedType(underlying, annot)
+      else NoType
+    override protected def derivedWildcardType(tp: WildcardType, bounds: Type) =
+      if (bounds.exists) tp.derivedWildcardType(bounds)
+      else WildcardType
+    override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type =
+      if (pre.exists) tp.derivedClassInfo(pre)
+      else NoType
   }
 
   // ----- TypeAccumulators ----------------------------------------------------
