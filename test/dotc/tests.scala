@@ -50,8 +50,11 @@ class tests extends CompilerTest {
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
   val toolsDir  = dottyDir + "tools/"
+  val backendDir = toolsDir + "backend/"
   val dotcDir   = toolsDir + "dotc/"
   val coreDir   = dotcDir + "core/"
+  val parsingDir = dotcDir + "parsing/"
+  val replDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
@@ -191,11 +194,35 @@ class tests extends CompilerTest {
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 
+  //TASTY tests
   @Test def tasty_new_all = compileFiles(newDir, testPickling)
+
+  @Test def tasty_dotty = compileDir(sourceDir, "dotty", testPickling)
+  @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
+  @Test def tasty_runtime = compileDir(s"$dottyDir", "runtime", testPickling)
+
+  //TODO: issues with ./src/dotty/runtime/vc/VCPrototype.scala
+  //@Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
+
+  @Test def tasty_tools = compileDir(dottyDir, "tools", testPickling)
+
+  //TODO: issue with ./src/dotty/tools/backend/jvm/DottyBackendInterface.scala
+  @Test def tasty_backend_jvm = compileList("tasty_backend_jvm", List(
+    "CollectEntryPoints.scala", "GenBCode.scala", "LabelDefs.scala",
+    "scalaPrimitives.scala"
+  ) map (s"${backendDir}jvm/" + _), testPickling)
+
+  //TODO: issue with ./src/dotty/tools/backend/sjs/JSCodeGen.scala
+  @Test def tasty_backend_sjs = compileList("tasty_backend_sjs", List(
+    "GenSJSIR.scala", "JSDefinitions.scala", "JSEncoding.scala", "JSInterop.scala",
+    "JSPositions.scala", "JSPrimitives.scala", "ScopedVar.scala"
+  ) map (s"${backendDir}sjs/" + _), testPickling)
+
+  @Test def tasty_dotc = compileDir(toolsDir, "dotc", testPickling)
+  @Test def tasty_dotc_ast = compileDir(dotcDir, "ast", testPickling)
   @Test def tasty_dotc_config = compileDir(dotcDir, "config", testPickling)
-  @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
-  //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
-  @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
+
+  //TODO: issue with ./src/dotty/tools/dotc/core/Types.scala
   @Test def tasty_core = compileList("tasty_core", List(
       "Annotations.scala", "Constants.scala", "Constraint.scala", "ConstraintHandling.scala",
       "ConstraintRunInfo.scala", "Contexts.scala", "Decorators.scala", "Definitions.scala",
@@ -206,15 +233,56 @@ class tests extends CompilerTest {
       "TypeApplications.scala", "TypeComparer.scala", "TypeErasure.scala", "TypeOps.scala",
       "TyperState.scala", "Uniques.scala"
     ) map (coreDir + _), testPickling)
-  @Test def tasty_typer = compileList("tasty_typer", List(
-      "Applications.scala", "Checking.scala", "ConstFold.scala", "ErrorReporting.scala",
-      "EtaExpansion.scala", "FrontEnd.scala", "Implicits.scala", "ImportInfo.scala",
-      "Inferencing.scala", "Mode.scala", "ProtoTypes.scala", "ReTyper.scala", "RefChecks.scala",
-      "TypeAssigner.scala", "Typer.scala", "VarianceChecker.scala", "Variances.scala"
-    ) map (typerDir + _), testPickling)
-  @Test def tasty_tasty = compileDir(coreDir, "tasty", testPickling)
+
   @Test def tasty_classfile = compileDir(coreDir, "classfile", testPickling)
+  @Test def tasty_tasty = compileDir(coreDir, "tasty", testPickling)
   @Test def tasty_unpickleScala2 = compileDir(coreDir, "unpickleScala2", testPickling)
+
+  //TODO: issue with ./src/dotty/tools/dotc/parsing/Parsers.scala
+  @Test def tasty_dotc_parsing = compileList("tasty_dotc_parsing", List(
+    "CharArrayReader.scala", "JavaParsers.scala", "JavaScanners.scala", "JavaTokens.scala",
+    "MarkupParserCommon.scala", "MarkupParsers.scala", "package.scala" ,"Scanners.scala",
+    "ScriptParsers.scala", "SymbolicXMLBuilder.scala", "Tokens.scala", "Utility.scala"
+  ) map (parsingDir + _), testPickling)
+
+  @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
+
+  //TODO: issues with ./src/dotty/tools/dotc/repl/CompilingInterpreter.scala,
+  //./src/dotty/tools/dotc/repl/InterpreterLoop.scala
+  @Test def tasty_dotc_repl = compileList("tasty_dotc_repl", List(
+    "AbstractFileClassLoader.scala", "ConsoleWriter.scala", "InteractiveReader.scala",
+    "Interpreter.scala", "Main.scala", "NewLinePrintWriter.scala", "REPL.scala", "SimpleReader.scala"
+  ) map (replDir + _), testPickling)
+
+  //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
+  @Test def tasty_dotc_rewrite = compileDir(dotcDir, "rewrite", testPickling)
+
+  //TODO: issues with LazyVals.scala, PatternMatcher.scala
+  @Test def tasty_dotc_transform = compileList("tasty_dotc_transform", List(
+    "AugmentScala2Traits.scala", "CapturedVars.scala", "CheckReentrant.scala", "CheckStatic.scala",
+    "ClassOf.scala", "CollectEntryPoints.scala", "Constructors.scala", "CrossCastAnd.scala",
+    "CtxLazy.scala", "ElimByName.scala", "ElimErasedValueType.scala", "ElimRepeated.scala",
+    "ElimStaticThis.scala", "Erasure.scala", "ExpandPrivate.scala", "ExpandSAMs.scala",
+    "ExplicitOuter.scala", "ExplicitSelf.scala", "ExtensionMethods.scala", "FirstTransform.scala",
+    "Flatten.scala", "FullParameterization.scala", "FunctionalInterfaces.scala", "GetClass.scala",
+    "Getters.scala", "InterceptedMethods.scala", "LambdaLift.scala", "LiftTry.scala", "LinkScala2ImplClasses.scala",
+    "MacroTransform.scala", "Memoize.scala", "Mixin.scala", "MixinOps.scala", "NonLocalReturns.scala",
+    "NormalizeFlags.scala", "OverridingPairs.scala", "ParamForwarding.scala", "Pickler.scala", "PostTyper.scala",
+    "ResolveSuper.scala", "RestoreScopes.scala", "SeqLiterals.scala", "Splitter.scala", "SuperAccessors.scala",
+    "SymUtils.scala", "SyntheticMethods.scala", "TailRec.scala", "TreeChecker.scala", "TreeExtractors.scala",
+    "TreeGen.scala", "TreeTransform.scala", "TypeTestsCasts.scala", "TypeUtils.scala", "ValueClasses.scala",
+    "VCElideAllocations.scala", "VCInlineMethods.scala"
+  ) map (s"${dotcDir}transform/" + _), testPickling)
+
+  //TODO: issue with ./src/dotty/tools/dotc/typer/Namer.scala
+  @Test def tasty_typer = compileList("tasty_typer", List(
+    "Applications.scala", "Checking.scala", "ConstFold.scala", "ErrorReporting.scala",
+    "EtaExpansion.scala", "FrontEnd.scala", "Implicits.scala", "ImportInfo.scala",
+    "Inferencing.scala", "Mode.scala", "ProtoTypes.scala", "ReTyper.scala", "RefChecks.scala",
+    "TypeAssigner.scala", "Typer.scala", "VarianceChecker.scala", "Variances.scala"
+  ) map (typerDir + _), testPickling)
+
+  @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 }
