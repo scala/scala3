@@ -34,7 +34,7 @@ class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     def rewrite(elemType: Type, dims: List[Tree]) =
-      tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)).asInstanceOf[JavaSeqLiteral])
+      tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
       tree.fun match {

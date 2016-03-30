@@ -125,8 +125,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
     ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
-  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt)
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
+    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -371,6 +371,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (TypeErasure.isUnboundedGeneric(elemTpe)) {
         //exists only before erasure
         assert(dims.elems.tail.isEmpty)
+        assert(!ctx.isAfterTyper) // needs to infer an implicit
         newArr(defn.newGenericArrayMethod).appliedToType(elemTpe).appliedTo(dims.elems.head)
       }
       else
