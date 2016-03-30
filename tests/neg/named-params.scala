@@ -32,3 +32,6 @@ object Test {
   val z5 = d2[Elem = Int][Value = String](1) //error // error
 
 }
+
+
+
