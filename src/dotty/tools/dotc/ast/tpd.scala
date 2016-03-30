@@ -367,16 +367,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def newArr(symbol: TermSymbol) =
       ref(defn.DottyArraysModule).select(symbol).withPos(pos)
 
-    if (!ctx.erasedTypes)
-      if (TypeErasure.isUnboundedGeneric(elemTpe)) {
-        //exists only before erasure
-        assert(dims.elems.tail.isEmpty)
-        assert(!ctx.isAfterTyper) // needs to infer an implicit
-        newArr(defn.newGenericArrayMethod).appliedToType(elemTpe).appliedTo(dims.elems.head)
-      }
-      else
-        newArr(defn.newArrayMethod).appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
-    else  // after erasure
+    if (!ctx.erasedTypes) {
+      assert(!TypeErasure.isUnboundedGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
+      newArr(defn.newArrayMethod).appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+    } else  // after erasure
       newArr(defn.newArrayMethod).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
   }
 
@@ -754,7 +748,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** If inititializer tree is `_', the default value of its type,
      *  otherwise the tree itself.
-     */
+     * */
     def wildcardToDefault(implicit ctx: Context) =
       if (isWildcardArg(tree)) defaultValue(tree.tpe) else tree
 
