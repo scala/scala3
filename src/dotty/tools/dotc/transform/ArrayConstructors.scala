@@ -21,12 +21,11 @@ import collection.mutable
 import ResolveSuper._
 
 
-/** This phase rewrites calls to array constructors to newArray and newGenericArray methods
-  * in Dotty.runtime.Arrays module.
-  *
-  * Additionally it optimizes calls to scala.Array.ofDim functions
-  *
-  */
+/** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
+ *
+ * It assummes that generic arrays have already been handled by typer(see Applications.convertNewGenericArray).
+ * Additionally it optimizes calls to scala.Array.ofDim functions by replacing them with calls to newArray with specific dimensions
+ */
 class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
@@ -46,9 +45,9 @@ class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
     } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
 
       tree.fun match {
-        case Apply(TypeApply(t: Ident, targ), dims) =>
+        case Apply(TypeApply(t: Ident, targ), dims)  if !TypeErasure.isUnboundedGeneric(targ.head.tpe) =>
           rewrite(targ.head.tpe, dims)
-        case Apply(TypeApply(t: Select, targ), dims) =>
+        case Apply(TypeApply(t: Select, targ), dims) if !TypeErasure.isUnboundedGeneric(targ.head.tpe) =>
           Block(t.qualifier :: Nil, rewrite(targ.head.tpe, dims))
         case _ => tree
       }
