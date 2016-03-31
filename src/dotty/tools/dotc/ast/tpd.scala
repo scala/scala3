@@ -364,14 +364,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
     val elemClass = elemTpe.classSymbol
-    def newArr(symbol: TermSymbol) =
-      ref(defn.DottyArraysModule).select(symbol).withPos(pos)
+    def newArr =
+      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isUnboundedGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr(defn.newArrayMethod).appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
     } else  // after erasure
-      newArr(defn.newArrayMethod).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
@@ -748,7 +748,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** If inititializer tree is `_', the default value of its type,
      *  otherwise the tree itself.
-     * */
+     */
     def wildcardToDefault(implicit ctx: Context) =
       if (isWildcardArg(tree)) defaultValue(tree.tpe) else tree
 
