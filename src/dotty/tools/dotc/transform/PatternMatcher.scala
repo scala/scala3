@@ -303,8 +303,139 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def optimizeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type): (List[List[TreeMaker]], List[Tree])
     def analyzeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type, suppression: Suppression): Unit = {}
 
-    def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] =
-      None // todo
+    def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] = {
+      // TODO Deal with guards?
+
+      def isSwitchableType(tpe: Type): Boolean = {
+        (tpe isRef defn.IntClass) ||
+        (tpe isRef defn.ByteClass) ||
+        (tpe isRef defn.ShortClass) ||
+        (tpe isRef defn.CharClass)
+      }
+
+      object IntEqualityTestTreeMaker {
+        def unapply(treeMaker: EqualityTestTreeMaker): Option[Int] = treeMaker match {
+          case EqualityTestTreeMaker(`scrutSym`, _, Literal(const), _) =>
+            if (const.isIntRange) Some(const.intValue)
+            else None
+          case _ =>
+            None
+        }
+      }
+
+      def isSwitchCase(treeMakers: List[TreeMaker]): Boolean = treeMakers match {
+        // case 5 =>
+        case List(IntEqualityTestTreeMaker(_), _: BodyTreeMaker) =>
+          true
+
+        // case 5 | 6 =>
+        case List(AlternativesTreeMaker(`scrutSym`, alts, _), _: BodyTreeMaker) =>
+          alts.forall {
+            case List(IntEqualityTestTreeMaker(_)) => true
+            case _ => false
+          }
+
+        // case _ =>
+        case List(_: BodyTreeMaker) =>
+          true
+
+        /* case x @ pat =>
+         * This includes:
+         *   case x =>
+         *   case x @ 5 =>
+         *   case x @ (5 | 6) =>
+         */
+        case (_: SubstOnlyTreeMaker) :: rest =>
+          isSwitchCase(rest)
+
+        case _ =>
+          false
+      }
+
+      /* (Nil, body) means that `body` is the default case
+       * It's a bit hacky but it simplifies manipulations.
+       */
+      def extractSwitchCase(treeMakers: List[TreeMaker]): (List[Int], BodyTreeMaker) = treeMakers match {
+        // case 5 =>
+        case List(IntEqualityTestTreeMaker(intValue), body: BodyTreeMaker) =>
+          (List(intValue), body)
+
+        // case 5 | 6 =>
+        case List(AlternativesTreeMaker(_, alts, _), body: BodyTreeMaker) =>
+          val intValues = alts.map {
+            case List(IntEqualityTestTreeMaker(intValue)) => intValue
+          }
+          (intValues, body)
+
+        // case _ =>
+        case List(body: BodyTreeMaker) =>
+          (Nil, body)
+
+        // case x @ pat =>
+        case (_: SubstOnlyTreeMaker) :: rest =>
+          /* Rebindings have been propagated, so the eventual body in `rest`
+           * contains all the necessary information. The substitution can be
+           * dropped at this point.
+           */
+          extractSwitchCase(rest)
+      }
+
+      def doOverlap(a: List[Int], b: List[Int]): Boolean =
+        a.exists(b.contains _)
+
+      def makeSwitch(valuesToCases: List[(List[Int], BodyTreeMaker)]): Tree = {
+        def genBody(body: BodyTreeMaker): Tree = {
+          val valDefs = body.rebindings.emitValDefs
+          if (valDefs.isEmpty) body.body
+          else Block(valDefs, body.body)
+        }
+
+        val intScrut =
+          if (pt isRef defn.IntClass) ref(scrutSym)
+          else Select(ref(scrutSym), nme.toInt)
+
+        val (normalCases, defaultCaseAndRest) = valuesToCases.span(_._1.nonEmpty)
+
+        val newCases = for {
+          (values, body) <- normalCases
+        } yield {
+          val literals = values.map(v => Literal(Constant(v)))
+          val pat =
+            if (literals.size == 1) literals.head
+            else Alternative(literals)
+          CaseDef(pat, EmptyTree, genBody(body))
+        }
+
+        val catchAllDef = {
+          if (defaultCaseAndRest.isEmpty) {
+            matchFailGenOverride.fold[Tree](
+                Throw(New(defn.MatchErrorType, List(ref(scrutSym)))))(
+                _(scrutSym))
+          } else {
+            /* After the default case, assuming the IR even allows anything,
+             * things are unreachable anyway and can be removed.
+             */
+            genBody(defaultCaseAndRest.head._2)
+          }
+        }
+        val defaultCase = CaseDef(Underscore(defn.IntType), EmptyTree, catchAllDef)
+
+        Match(intScrut, newCases :+ defaultCase)
+      }
+
+      if (isSwitchableType(scrut.tpe.widenDealias) && cases.forall(isSwitchCase)) {
+        val valuesToCases = cases.map(extractSwitchCase)
+        val values = valuesToCases.map(_._1)
+        if (values.tails.exists { tail => tail.nonEmpty && tail.tail.exists(doOverlap(_, tail.head)) }) {
+          // TODO Deal with overlapping cases (mostly useless without guards)
+          None
+        } else {
+          Some(makeSwitch(valuesToCases))
+        }
+      } else {
+        None
+      }
+    }
 
     // for catch (no need to customize match failure)
     def emitTypeSwitch(bindersAndCases: List[(Symbol, List[TreeMaker])], pt: Type): Option[List[CaseDef]] =
