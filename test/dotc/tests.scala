@@ -55,7 +55,7 @@ class tests extends CompilerTest {
   val dotcDir   = toolsDir + "dotc/"
   val coreDir   = dotcDir + "core/"
   val parsingDir = dotcDir + "parsing/"
-  val replDir   = dotcDir + "repl/"
+  val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
@@ -254,7 +254,7 @@ class tests extends CompilerTest {
   @Test def tasty_dotc_repl = compileList("tasty_dotc_repl", List(
     "AbstractFileClassLoader.scala", "ConsoleWriter.scala", "InteractiveReader.scala",
     "Interpreter.scala", "Main.scala", "NewLinePrintWriter.scala", "REPL.scala", "SimpleReader.scala"
-  ) map (replDir + _), testPickling)
+  ) map (dottyReplDir + _), testPickling)
 
   //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
   @Test def tasty_dotc_rewrite = compileDir(dotcDir, "rewrite", testPickling)
