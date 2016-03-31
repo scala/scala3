@@ -91,7 +91,7 @@ trait FullParameterization {
    *
    *  @param abstractOverClass  if true, include the type parameters of the class in the method's list of type parameters.
    *  @param liftThisType       if true, require created $this to be $this: (Foo[A] & Foo,this).
-   *                            This is needed of created member stays inside scope of Foo(as in tailrec)
+   *                            This is needed if created member stays inside scope of Foo(as in tailrec)
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
@@ -225,7 +225,7 @@ trait FullParameterization {
    */
   def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Tree = {
     val fun =
-    ref(derived.termRef)
+      ref(derived.termRef)
         .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
 
