@@ -544,7 +544,7 @@ object Contexts {
      */
     def initialize()(implicit ctx: Context): Unit = {
       _platform = newPlatform
-      definitions.init
+      definitions.init()
     }
 
     def squashed(p: Phase): Phase = {

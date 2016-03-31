@@ -31,6 +31,7 @@ class Resident extends Driver {
 
   private val quit = ":q"
   private val reset = ":reset"
+  private val prompt = "dotc> "
 
   private def getLine() = {
     Console.print(prompt)

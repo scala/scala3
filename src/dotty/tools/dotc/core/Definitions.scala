@@ -798,7 +798,7 @@ class Definitions {
   private[this] var _isInitialized = false
   private def isInitialized = _isInitialized
 
-  def init(implicit ctx: Context) = {
+  def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler

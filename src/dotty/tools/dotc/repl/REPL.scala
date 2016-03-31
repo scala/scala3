@@ -23,27 +23,37 @@ import java.io.{BufferedReader, File, FileReader, PrintWriter}
  */
 class REPL extends Driver {
 
-  /** The default input reader */
-  def input(implicit ctx: Context): InteractiveReader = {
-    val emacsShell = System.getProperty("env.emacs", "") != ""
-    //println("emacsShell="+emacsShell) //debug
-    if (ctx.settings.Xnojline.value || emacsShell) new SimpleReader()
-    else InteractiveReader.createDefault()
-  }
-
-  /** The defult output writer */
-  def output: PrintWriter = new NewLinePrintWriter(new ConsoleWriter, true)
+  lazy val config = new REPL.Config
 
   override def newCompiler(implicit ctx: Context): Compiler =
-    new repl.CompilingInterpreter(output, ctx)
+    new repl.CompilingInterpreter(config.output, ctx)
 
   override def sourcesRequired = false
 
   override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter = {
     if (fileNames.isEmpty)
-      new InterpreterLoop(compiler, input, output).run()
+      new InterpreterLoop(compiler, config).run()
     else
       ctx.error(s"don't now what to do with $fileNames%, %")
     ctx.reporter
+  }
+}
+
+object REPL {
+  class Config {
+    val prompt             = "scala> "
+    val continuationPrompt = "     | "
+    val version            = ".next (pre-alpha)"
+
+    /** The default input reader */
+    def input(implicit ctx: Context): InteractiveReader = {
+      val emacsShell = System.getProperty("env.emacs", "") != ""
+      //println("emacsShell="+emacsShell) //debug
+      if (ctx.settings.Xnojline.value || emacsShell) new SimpleReader()
+      else InteractiveReader.createDefault()
+    }
+
+    /** The default output writer */
+    def output: PrintWriter = new NewLinePrintWriter(new ConsoleWriter, true)
   }
 }

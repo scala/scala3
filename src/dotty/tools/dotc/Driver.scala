@@ -15,8 +15,6 @@ import scala.util.control.NonFatal
  */
 abstract class Driver extends DotClass {
 
-  val prompt = "\ndotc> "
-
   protected def newCompiler(implicit ctx: Context): Compiler
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
