@@ -176,6 +176,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
         }
 
         val (prefix, call, arguments, typeArguments, symbol) = receiverArgumentsAndSymbol(tree)
+        val hasConformingTargs = (typeArguments zip methTparams).forall{x => x._1.tpe <:< x._2.tpe}
         val recv = noTailTransform(prefix)
 
         val targs = typeArguments.map(noTailTransform)
@@ -228,7 +229,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
         if (isRecursiveCall) {
           if (ctx.tailPos) {
-            if (recv eq EmptyTree) rewriteTailCall(This(enclosingClass.asClass))
+            if (!hasConformingTargs) fail("it changes type arguments on a polymorphic recursive call")
+            else if (recv eq EmptyTree) rewriteTailCall(This(enclosingClass.asClass))
             else if (receiverIsSame || receiverIsThis) rewriteTailCall(recv)
             else fail("it changes type of 'this' on a polymorphic recursive call")
           }
