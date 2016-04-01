@@ -280,7 +280,7 @@ class tests extends CompilerTest {
   @Test def tasty_typer = compileList("tasty_typer", List(
     "Applications.scala", "Checking.scala", "ConstFold.scala", "ErrorReporting.scala",
     "EtaExpansion.scala", "FrontEnd.scala", "Implicits.scala", "ImportInfo.scala",
-    "Inferencing.scala", "Mode.scala", "ProtoTypes.scala", "ReTyper.scala", "RefChecks.scala",
+    "Inferencing.scala", "ProtoTypes.scala", "ReTyper.scala", "RefChecks.scala",
     "TypeAssigner.scala", "Typer.scala", "VarianceChecker.scala", "Variances.scala"
   ) map (typerDir + _), testPickling)
 

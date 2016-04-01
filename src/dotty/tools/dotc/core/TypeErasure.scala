@@ -6,7 +6,6 @@ import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators.
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
-import typer.Mode
 import util.DotClass
 
 /** Erased types are:

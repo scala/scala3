@@ -15,6 +15,7 @@ import core.StdNames._
 import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
+import core.Mode
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter

@@ -18,7 +18,7 @@ import util.Positions._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
-import typer._
+import typer.{Implicits, ImplicitRunInfo, ImportInfo, NamerContextOps, SearchHistory, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config

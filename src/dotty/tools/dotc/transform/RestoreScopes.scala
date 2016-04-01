@@ -11,7 +11,6 @@ import TreeTransforms.MiniPhaseTransform
 import SymDenotations._
 import ast.Trees._
 import NameOps._
-import typer.Mode
 import TreeTransforms.TransformerInfo
 import StdNames._
 

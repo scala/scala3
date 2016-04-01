@@ -9,7 +9,7 @@ import dotty.tools.dotc._
 import ast.Trees._
 import ast.desugar
 import ast.desugar._
-import typer.Mode
+import core.Mode
 import Contexts.Context
 
 import scala.collection.mutable.ListBuffer

@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import dotty.tools.dotc.core.Types.{ThisType, TermRef}
 
-/** Replace This references to module classes  in static methods by global identifiers to the
+/** Replace This references to module classes in static methods by global identifiers to the
  *  corresponding modules.
  */
 class ElimStaticThis extends MiniPhaseTransform {

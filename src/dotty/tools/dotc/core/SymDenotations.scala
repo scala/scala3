@@ -13,7 +13,6 @@ import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
 import CheckRealizable._
-import typer.Mode
 import util.SimpleMap
 import util.Stats
 import config.Config

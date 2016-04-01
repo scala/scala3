@@ -8,7 +8,6 @@ import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
-import typer.Mode
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {

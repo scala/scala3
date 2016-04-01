@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import typer.Mode
 import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable

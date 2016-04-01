@@ -10,7 +10,7 @@ import collection.mutable
 import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
-import typer.Mode
+import core.Mode
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 
 object Reporter {

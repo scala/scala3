@@ -13,7 +13,6 @@ import TastyUnpickler._, TastyBuffer._, PositionPickler._
 import scala.annotation.{tailrec, switch}
 import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
-import typer.Mode
 import config.Printers.pickling
 
 /** Unpickler for typed trees

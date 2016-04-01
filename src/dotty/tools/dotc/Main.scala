@@ -3,8 +3,7 @@ package dotc
 
 import core.Contexts.Context
 
-/* To do:
- */
+/** Main class of the `dotc` batch compiler. */
 object Main extends Driver {
   override def newCompiler(implicit ctx: Context): Compiler = new Compiler
 }

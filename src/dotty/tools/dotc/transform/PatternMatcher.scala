@@ -21,7 +21,7 @@ import ast.Trees._
 import Applications._
 import TypeApplications._
 import SymUtils._, core.NameOps._
-import typer.Mode
+import core.Mode
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._

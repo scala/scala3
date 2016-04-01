@@ -8,6 +8,10 @@ package dotc
 import core.Contexts.Context
 import reporting.Reporter
 
+/** A main class for running compiler benchmarks. Can instantiate a given
+ *  number of compilers and run each (sequentially) a given number of times
+ *  on the same sources.
+ */
 object Bench extends Driver {
 
   @sharable private var numRuns = 1

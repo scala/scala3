@@ -31,7 +31,6 @@ import config.Config
 import config.Printers._
 import annotation.tailrec
 import Flags.FlagSet
-import typer.Mode
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 
@@ -3446,7 +3445,7 @@ object Types {
   object CyclicReference {
     def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
       val ex = new CyclicReference(denot)
-      if (!(ctx.mode is typer.Mode.CheckCyclic)) {
+      if (!(ctx.mode is Mode.CheckCyclic)) {
         cyclicErrors.println(ex.getMessage)
         for (elem <- ex.getStackTrace take 200)
           cyclicErrors.println(elem.toString)

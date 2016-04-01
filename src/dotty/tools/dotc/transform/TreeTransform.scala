@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Flags.PackageVal
-import dotty.tools.dotc.typer.Mode
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.util.DotClass
