@@ -755,8 +755,8 @@ object Denotations {
      *  whether the replaced denotation is the only one in its cycle or not.
      */
     private def insertInsteadOf(old: SingleDenotation): Unit = {
-      var prev = current
-      while (prev.nextInRun ne current) prev = prev.nextInRun
+      var prev = old
+      while (prev.nextInRun ne old) prev = prev.nextInRun
       prev.nextInRun = this
       this.nextInRun = old.nextInRun // order of previous two assignments is important!
       old.validFor = Nowhere
