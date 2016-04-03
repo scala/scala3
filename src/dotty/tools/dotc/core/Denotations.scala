@@ -655,8 +655,7 @@ object Denotations {
                     next.resetFlag(Frozen)
                   case _ =>
                 }
-                next.nextInRun = cur.nextInRun
-                cur.nextInRun = next
+                next.insertAfter(cur)
                 cur = next
               }
               cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
@@ -672,6 +671,10 @@ object Denotations {
           while (!(cur.validFor contains currentPeriod)) {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
+            // Note: One might be tempted to add a `prev` field to get to the new denotation
+            // more directly here. I tried that, but it degrades rather than improves
+            // performance: Test setup: Compile everything in dotc and immediate subdirectories
+            // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
             cnt += 1
             if (cnt > MaxPossiblePhaseId) return NotDefinedHereDenotation
           }
@@ -708,12 +711,10 @@ object Denotations {
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
-          replaceDenotation(current)
+          insertInsteadOf(current)
         else {
-          // insert this denotation after current
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
-          this.nextInRun = current.nextInRun
-          current.nextInRun = this
+          insertAfter(current)
         }
       // printPeriods(this)
       }
@@ -731,19 +732,34 @@ object Denotations {
         val current1: SingleDenotation = f(current.asSymDenotation)
         if (current1 ne current) {
           current1.validFor = current.validFor
-          current1.replaceDenotation(current)
+          current1.insertInsteadOf(current)
         }
         hasNext = current1.nextInRun.validFor.code > current1.validFor.code
         current = current1.nextInRun
       }
     }
 
-    private def replaceDenotation(current: SingleDenotation): Unit = {
+    /** Insert this denotation so that it follows `prev`. */
+    private def insertAfter(prev: SingleDenotation) = {
+      this.nextInRun = prev.nextInRun
+      prev.nextInRun = this
+    }
+
+    /** Insert this denotation instead of `old`.
+     *  Also ensure that `old` refers with `nextInRun` to this denotation
+     *  inserted denotation and set its `validFor` field to `NoWhere`. This
+     *  is important do that references to the old denotation can find via
+     *  current a valid denotation.
+     *
+     *  The code to achieve this is subtle in that it works correctly
+     *  whether the replaced denotation is the only one in its cycle or not.
+     */
+    private def insertInsteadOf(old: SingleDenotation): Unit = {
       var prev = current
       while (prev.nextInRun ne current) prev = prev.nextInRun
       prev.nextInRun = this
-      this.nextInRun = current.nextInRun
-      current.validFor = Nowhere
+      this.nextInRun = old.nextInRun // order of previous two assignments is important!
+      old.validFor = Nowhere
     }
 
     def staleSymbolError(implicit ctx: Context) = {
