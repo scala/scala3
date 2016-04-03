@@ -157,8 +157,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           return toText(tp.info)
       case ExprType(result) =>
         return "=> " ~ toText(result)
-      case ErasedValueType(clazz, underlying) =>
-        return "ErasedValueType(" ~ toText(clazz.typeRef) ~ ", " ~ toText(underlying) ~ ")"
+      case ErasedValueType(tycon, underlying) =>
+        return "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
         return toTextParents(tp.parentsWithArgs) ~ "{...}"
       case JavaArrayType(elemtp) =>

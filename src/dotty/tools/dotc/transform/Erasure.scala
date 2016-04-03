@@ -153,8 +153,8 @@ object Erasure extends TypeTestsCasts{
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
-        case ErasedValueType(clazz, _) =>
-          New(clazz.typeRef, cast(tree, underlyingOfValueClass(clazz)) :: Nil) // todo: use adaptToType?
+        case ErasedValueType(tycon, _) =>
+          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -173,10 +173,10 @@ object Erasure extends TypeTestsCasts{
 
     def unbox(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
       pt match {
-        case ErasedValueType(clazz, underlying) =>
+        case ErasedValueType(tycon, underlying) =>
           def unboxedTree(t: Tree) =
-            adaptToType(t, clazz.typeRef)
-            .select(valueClassUnbox(clazz))
+            adaptToType(t, tycon)
+            .select(valueClassUnbox(tycon.symbol.asClass))
             .appliedToNone
 
           // Null unboxing needs to be treated separately since we cannot call a method on null.
@@ -185,7 +185,7 @@ object Erasure extends TypeTestsCasts{
           val tree1 =
             if (tree.tpe isRef defn.NullClass)
               adaptToType(tree, underlying)
-            else if (!(tree.tpe <:< clazz.typeRef)) {
+            else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = Literal(Constant(null))
               val unboxedNull = adaptToType(nullTree, underlying)
@@ -223,12 +223,12 @@ object Erasure extends TypeTestsCasts{
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
           cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
-        case (_, ErasedValueType(cls, _)) =>
-          ref(u2evt(cls)).appliedTo(tree)
+        case (_, ErasedValueType(tycon, _)) =>
+          ref(u2evt(tycon.symbol.asClass)).appliedTo(tree)
         case _ =>
           tree.tpe.widen match {
-            case ErasedValueType(cls, _) =>
-              ref(evt2u(cls)).appliedTo(tree)
+            case ErasedValueType(tycon, _) =>
+              ref(evt2u(tycon.symbol.asClass)).appliedTo(tree)
             case _ =>
               if (pt.isPrimitiveValueType)
                 primitiveConversion(tree, pt.classSymbol)

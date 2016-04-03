@@ -69,17 +69,17 @@ object TypeErasure {
    *  @param   cls               The value class symbol
    *  @param   erasedUnderlying  The erased type of the single field of the value class
    */
-  abstract case class ErasedValueType(cls: ClassSymbol, erasedUnderlying: Type)
+  abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
   extends CachedGroundType with ValueType {
-    override def computeHash = doHash(cls, erasedUnderlying)
+    override def computeHash = doHash(tycon, erasedUnderlying)
   }
 
-  final class CachedErasedValueType(cls: ClassSymbol, erasedUnderlying: Type)
-    extends ErasedValueType(cls, erasedUnderlying)
+  final class CachedErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
+    extends ErasedValueType(tycon, erasedUnderlying)
 
   object ErasedValueType {
-    def apply(cls: ClassSymbol, erasedUnderlying: Type)(implicit ctx: Context) = {
-      unique(new CachedErasedValueType(cls, erasedUnderlying))
+    def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context) = {
+      unique(new CachedErasedValueType(tycon, erasedUnderlying))
     }
   }
 
@@ -411,7 +411,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    if (underlying.exists) ErasedValueType(cls, valueErasure(underlying))
+    if (underlying.exists) ErasedValueType(tref, valueErasure(underlying))
     else NoType
   }
 
