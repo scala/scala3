@@ -66,7 +66,7 @@ object TypeErasure {
    *  Nothing. This is because this type is only useful for type adaptation (see
    *  [[Erasure.Boxing#adaptToType]]).
    *
-   *  @param   cls               The value class symbol
+   *  @param   tycon             A TypeRef referring to the value class symbol
    *  @param   erasedUnderlying  The erased type of the single field of the value class
    */
   abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
