@@ -747,9 +747,9 @@ object Denotations {
 
     /** Insert this denotation instead of `old`.
      *  Also ensure that `old` refers with `nextInRun` to this denotation
-     *  inserted denotation and set its `validFor` field to `NoWhere`. This
-     *  is important do that references to the old denotation can find via
-     *  current a valid denotation.
+     *  and set its `validFor` field to `NoWhere`. This is necessary so that
+     *  references to the old denotation can be brought forward via `current`
+     *  to a valid denotation.
      *
      *  The code to achieve this is subtle in that it works correctly
      *  whether the replaced denotation is the only one in its cycle or not.
@@ -757,8 +757,9 @@ object Denotations {
     private def insertInsteadOf(old: SingleDenotation): Unit = {
       var prev = old
       while (prev.nextInRun ne old) prev = prev.nextInRun
+      // order of next two assignments is important!
       prev.nextInRun = this
-      this.nextInRun = old.nextInRun // order of previous two assignments is important!
+      this.nextInRun = old.nextInRun
       old.validFor = Nowhere
     }
 
