@@ -181,6 +181,80 @@ class TreeChecker extends Phase with SymTransformer {
       if (tree.symbol.maybeOwner.isTerm)
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
 
+    /** assert Java classes are not used as objects */
+    def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      case _ : untpd.Ident =>
+        assert(!tree.symbol.is(JavaModule), "Java class can't be used as value: " + tree)
+      case _ =>
+    }
+
+    /** check Java classes are not used as objects */
+    def checkIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      // case tree: untpd.Ident =>
+      // case tree: untpd.Select =>
+      // case tree: untpd.SelectFromTypeTree =>
+      // case tree: untpd.Bind =>
+      case vd : ValDef =>
+        assertIdentNotJavaClass(vd.forceIfLazy)
+      case dd : DefDef =>
+        assertIdentNotJavaClass(dd.forceIfLazy)
+      // case tree: untpd.TypeDef =>
+      case Apply(fun, args) =>
+        assertIdentNotJavaClass(fun)
+        args.foreach(assertIdentNotJavaClass _)
+      // case tree: untpd.This =>
+      // case tree: untpd.Literal =>
+      // case tree: untpd.New =>
+      case Pair(left, right) =>
+        assertIdentNotJavaClass(left)
+        assertIdentNotJavaClass(right)
+      case Typed(expr, _) =>
+        assertIdentNotJavaClass(expr)
+      case NamedArg(_, arg) =>
+        assertIdentNotJavaClass(arg)
+      case Assign(_, rhs) =>
+        assertIdentNotJavaClass(rhs)
+      case Block(stats, expr) =>
+        stats.foreach(assertIdentNotJavaClass _)
+        assertIdentNotJavaClass(expr)
+      case If(_, thenp, elsep) =>
+        assertIdentNotJavaClass(thenp)
+        assertIdentNotJavaClass(elsep)
+      // case tree: untpd.Closure =>
+      case Match(selector, cases) =>
+        assertIdentNotJavaClass(selector)
+        cases.foreach(caseDef => assertIdentNotJavaClass(caseDef.body))
+      case Return(expr, _) =>
+        assertIdentNotJavaClass(expr)
+      case Try(expr, cases, finalizer) =>
+        assertIdentNotJavaClass(expr)
+        cases.foreach(caseDef => assertIdentNotJavaClass(caseDef.body))
+        assertIdentNotJavaClass(finalizer)
+      // case tree: TypeApply =>
+      // case tree: Super =>
+      case SeqLiteral(elems, _) =>
+        elems.foreach(assertIdentNotJavaClass)
+      // case tree: TypeTree =>
+      // case tree: SingletonTypeTree =>
+      // case tree: AndTypeTree =>
+      // case tree: OrTypeTree =>
+      // case tree: RefinedTypeTree =>
+      // case tree: AppliedTypeTree =>
+      // case tree: ByNameTypeTree =>
+      // case tree: TypeBoundsTree =>
+      // case tree: Alternative =>
+      // case tree: PackageDef =>
+      case Annotated(_, arg) =>
+        assertIdentNotJavaClass(arg)
+      case _ =>
+    }
+
+    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree = {
+      val tpdTree = super.typed(tree)
+      checkIdentNotJavaClass(tpdTree)
+      tpdTree
+    }
+
     override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
       val res = tree match {
         case _: untpd.UnApply =>
