@@ -8,24 +8,19 @@ trait InteractiveReader {
   val interactive: Boolean
 }
 
-/** TODO Enable jline support.
- *  The current Scala REPL know how to do this flexibly.
+/** The current Scala REPL know how to do this flexibly.
  */
 object InteractiveReader {
   /** Create an interactive reader.  Uses JLine if the
    *  library is available, but otherwise uses a
    *  SimpleReader. */
-  def createDefault(): InteractiveReader = new SimpleReader()
-  /*
-  {
+  def createDefault(): InteractiveReader = {
     try {
-      new JLineReader
+      new JLineReader()
     } catch {
       case e =>
         //out.println("jline is not available: " + e) //debug
 	      new SimpleReader()
     }
   }
-*/
-
 }
