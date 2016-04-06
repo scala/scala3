@@ -1743,7 +1743,7 @@ object Types {
       if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
         val ownSym = symbol
         val newd = asMemberOf(prefix)
-        candidate.withDenot(asMemberOf(prefix).suchThat(_ eq ownSym))
+        candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
       }
       else candidate
     }
