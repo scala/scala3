@@ -114,13 +114,13 @@ object CollectionStrawMan1 {
   /* --------- Concrete collection types ------------------------------- */
 
   /** Concrete collection type: List */
-  sealed trait List[+A] extends Seq[A] with FromIterator[List] {
+  sealed trait List[type +Elem] extends Seq[Elem] with FromIterator[List] {
     def isEmpty: Boolean
-    def head: A
-    def tail: List[A]
-    def iterator = new ListIterator[A](this)
+    def head: Elem
+    def tail: List[Elem]
+    def iterator = new ListIterator[Elem](this)
     def fromIterator[B](it: Iterator[B]): List[B] = List.fromIterator(it)
-    def apply(i: Int): A = {
+    def apply(i: Int): Elem = {
       require(!isEmpty)
       if (i == 0) head else tail.apply(i - 1)
     }
@@ -155,17 +155,17 @@ object CollectionStrawMan1 {
   }
 
   /** Concrete collection type: ArrayBuffer */
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: Int) extends Seq[A] with FromIterator[ArrayBuffer] {
+  class ArrayBuffer[type Elem] private (initElems: Array[AnyRef], initLength: Int) extends Seq[Elem] with FromIterator[ArrayBuffer] {
     def this() = this(new Array[AnyRef](16), 0)
     private var elems: Array[AnyRef] = initElems
     private var start = 0
     private var limit = initLength
-    def apply(i: Int) = elems(start + i).asInstanceOf[A]
+    def apply(i: Int) = elems(start + i).asInstanceOf[Elem]
     def length = limit - start
-    def iterator = new ArrayBufferIterator[A](elems, start, length)
+    def iterator = new ArrayBufferIterator[Elem](elems, start, length)
     def fromIterator[B](it: Iterator[B]): ArrayBuffer[B] =
       ArrayBuffer.fromIterator(it)
-    def +=(elem: A): this.type = {
+    def +=(elem: Elem): this.type = {
       if (limit == elems.length) {
         if (start > 0) {
           Array.copy(elems, start, elems, 0, length)
@@ -213,7 +213,7 @@ object CollectionStrawMan1 {
   }
 
   /** Concrete collection type: View */
-  class View[+A](it: => Iterator[A]) extends CanIterate[A] {
+  class View[type +Elem](it: => Iterator[Elem]) extends CanIterate[Elem] {
     def iterator = it
   }
 

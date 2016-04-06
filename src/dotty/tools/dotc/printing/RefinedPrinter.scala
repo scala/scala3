@@ -345,7 +345,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "new " ~ {
           tpt match {
             case tpt: Template => toTextTemplate(tpt, ofNew = true)
-            case _ => toTextLocal(tpt)
+            case _ => toTextLocal(tpt.typeOpt.underlyingClassRef(refinementOK = false))
           }
         }
       case Pair(l, r) =>

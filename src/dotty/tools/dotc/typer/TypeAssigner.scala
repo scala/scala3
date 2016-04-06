@@ -6,6 +6,7 @@ import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
+import TypeApplications.AppliedType
 import util.Positions._
 import config.Printers._
 import ast.Trees._
@@ -93,27 +94,18 @@ trait TypeAssigner {
             case _ =>
               mapOver(tp)
           }
+        case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
+          val base = apply(tycon)
+          val args = tp.baseArgInfos(base.typeSymbol)
+          if (base.typeParams.length == args.length) base.appliedTo(args) else base
         case tp @ RefinedType(parent, name) if variance > 0 =>
-          // The naive approach here would be to first approximate the parent,
-          // but if the base type of the approximated parent is different from
-          // the current base type, then the current refinement won't be valid
-          // if it's a type parameter refinement.
-          // Therefore we first approximate the base type, then use `baseArgInfos`
-          // to get correct refinements for the approximated base type, then
-          // recursively approximate the resulting type.
-          val base = tp.unrefine
-          if (toAvoid(base)) {
-            val base1 = apply(base)
-            apply(base1.appliedTo(tp.baseArgInfos(base1.typeSymbol)))
+          val parent1 = apply(tp.parent)
+          val refinedInfo1 = apply(tp.refinedInfo)
+          if (toAvoid(refinedInfo1)) {
+            typr.println(s"dropping refinement from $tp")
+            parent1
           } else {
-            val parent1 = apply(tp.parent)
-            val refinedInfo1 = apply(tp.refinedInfo)
-            if (toAvoid(refinedInfo1)) {
-              typr.println(s"dropping refinement from $tp")
-              parent1
-            } else {
-              tp.derivedRefinedType(parent1, name, refinedInfo1)
-            }
+            tp.derivedRefinedType(parent1, name, refinedInfo1)
           }
         case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
           val lo = ctx.typerState.constraint.fullLowerBound(tp.origin)
@@ -413,19 +405,16 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
+    lazy val ntparams = tycon.tpe.namedTypeParams
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
         val tparam = tparams.find(_.name == name) match {
           case Some(tparam) => tparam
-          case none =>
-            val sym = tycon.member(name).symbol
-            if (sym.isAbstractType) sym
-            else if (sym.is(ParamAccessor)) sym.info.dealias.typeSymbol
-            else NoSymbol
+          case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }
         if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
-        else errorType(s"$tycon does not have a parameter or abstract type member named $name", arg.pos)
+        else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
       case _ =>
         errorType(s"named and positional type arguments may not be mixed", arg.pos)
     }
