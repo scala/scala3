@@ -311,6 +311,13 @@ class TreeChecker extends Phase with SymTransformer {
       tree
     }
 
+    /** Check that all methods have MethodicType */
+    def isMethodType(pt: Type)(implicit ctx: Context): Boolean = pt match {
+      case at: AnnotatedType => isMethodType(at.tpe)
+      case _: MethodicType => true  // MethodType, ExprType, PolyType
+      case _ => false
+    }
+
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
@@ -369,7 +376,9 @@ class TreeChecker extends Phase with SymTransformer {
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
           if (!sym.isClassConstructor) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
-          super.typedDefDef(ddef, sym)
+          val tpdTree = super.typedDefDef(ddef, sym)
+          assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
+          tpdTree
         }
       }
 
