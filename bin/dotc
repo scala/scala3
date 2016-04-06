@@ -38,7 +38,7 @@ unset verbose quiet cygwin toolcp colors saved_stty CDPATH
 
 CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
-ReplMain=test.DottyRepl
+ReplMain=dotty.tools.dotc.repl.Main
 
 
 
