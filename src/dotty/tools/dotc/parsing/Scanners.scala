@@ -177,11 +177,6 @@ object Scanners {
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     val keepComments = ctx.settings.YkeepComments.value
 
-    /** All comments in the reverse order of their position in the source.
-     *  set only when `keepComments` is true.
-     */
-    private[this] var revComments: List[Comment] = Nil
-
     /** All doc comments as encountered, each list contains doc comments from
      *  the same block level. Starting with the deepest level and going upward
      */
@@ -594,8 +589,6 @@ object Scanners {
 
           if (comment.isDocComment)
             docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
-
-          revComments = comment :: revComments
         }
 
         true
