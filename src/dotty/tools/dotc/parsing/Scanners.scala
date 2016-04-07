@@ -175,7 +175,7 @@ object Scanners {
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
-    var keepComments = false
+    val keepComments = ctx.settings.YkeepComments.value
 
     /** All comments in the reverse order of their position in the source.
      *  set only when `keepComments` is true.
@@ -560,7 +560,8 @@ object Scanners {
     }
 
     private def skipComment(): Boolean = {
-      def appendToComment(ch: Char) = commentBuf.append(ch)
+      def appendToComment(ch: Char) =
+        if (keepComments) commentBuf.append(ch)
       def nextChar() = {
         appendToComment(ch)
         Scanner.this.nextChar()
@@ -587,14 +588,15 @@ object Scanners {
       def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
       def finishComment(): Boolean = {
-        val pos = Position(start, charOffset, start)
-        val comment = Comment(pos, flushBuf(commentBuf))
+        if (keepComments) {
+          val pos = Position(start, charOffset, start)
+          val comment = Comment(pos, flushBuf(commentBuf))
 
-        if (comment.isDocComment)
-          docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
+          if (comment.isDocComment)
+            docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
 
-        if (keepComments)
           revComments = comment :: revComments
+        }
 
         true
       }

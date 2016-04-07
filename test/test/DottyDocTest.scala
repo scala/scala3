@@ -4,6 +4,8 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 
 trait DottyDocTest extends DottyTest {
+  ctx = ctx.fresh.setSetting(ctx.settings.YkeepComments, true)
+
   def checkDocString(actual: Option[String], expected: String): Unit = actual match {
     case Some(str) =>
       assert(str == expected, s"""Docstring: "$str" didn't match expected "$expected"""")
