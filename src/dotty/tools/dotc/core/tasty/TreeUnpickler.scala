@@ -596,6 +596,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
           sym.info = ctx.methodType(typeParams, valueParamss, resType)
+          if (sym.isSetter && sym.accessedFieldOrGetter.is(ParamAccessor)) {
+            // reconstitute ParamAccessor flag of setters for var parameters, which is not pickled
+            sym.setFlag(ParamAccessor)
+            sym.resetFlag(Deferred)
+          }
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           sym.info = readType()
