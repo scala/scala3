@@ -6,26 +6,9 @@ import dotty.tools.dotc.ast.Trees._
 import org.junit.Assert._
 import org.junit.Test
 
-class DottyDocParsingTests extends DottyTest {
-  def checkDocString(actual: Option[String], expected: String): Unit = actual match {
-    case Some(str) =>
-      assert(str == expected, s"""Docstring: "$str" didn't match expected "$expected"""")
-    case None =>
-      assert(false, s"""No docstring found, expected: "$expected"""")
-  }
+class DottyDocParsingTests extends DottyDocTest {
 
-  private def defaultAssertion: PartialFunction[Tree[Untyped], Unit] = {
-    case x => assert(false, "Couldn't match resulting AST to expected AST in: " + x.show)
-  }
-
-  private def checkFrontend(source: String)(docAssert: PartialFunction[Tree[Untyped], Unit]) = {
-    checkCompile("frontend", source) { (_, ctx) =>
-      implicit val c = ctx
-      (docAssert orElse defaultAssertion)(ctx.compilationUnit.untpdTree)
-    }
-  }
-
-  @Test def noComment() = {
+  @Test def noComment = {
     import dotty.tools.dotc.ast.untpd._
     val source = "class Class"
 
@@ -35,7 +18,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def singleClassInPackage() = {
+  @Test def singleClassInPackage = {
     val source =
       """
       |package a
@@ -50,7 +33,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def multipleOpenedOnSingleClassInPackage() = {
+  @Test def multipleOpenedOnSingleClassInPackage = {
     val source =
       """
       |package a
@@ -64,7 +47,7 @@ class DottyDocParsingTests extends DottyTest {
         checkDocString(t.rawComment, "/** Hello /* multiple open */ world! */")
     }
   }
-  @Test def multipleClassesInPackage() = {
+  @Test def multipleClassesInPackage = {
     val source =
       """
       |package a
@@ -86,7 +69,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def singleCaseClassWithoutPackage() = {
+  @Test def singleCaseClassWithoutPackage = {
     val source =
       """
       |/** Class without package */
@@ -98,7 +81,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def SingleTraitWihoutPackage() = {
+  @Test def SingleTraitWihoutPackage = {
     val source = "/** Trait docstring */\ntrait Trait"
 
     checkFrontend(source) {
@@ -106,7 +89,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def multipleTraitsWithoutPackage() = {
+  @Test def multipleTraitsWithoutPackage = {
     val source =
       """
       |/** Trait1 docstring */
@@ -124,7 +107,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def multipleMixedEntitiesWithPackage() = {
+  @Test def multipleMixedEntitiesWithPackage = {
     val source =
       """
       |/** Trait1 docstring */
@@ -152,7 +135,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def nestedClass() = {
+  @Test def nestedClass = {
     val source =
       """
       |/** Outer docstring */
@@ -173,7 +156,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def nestedClassThenOuter() = {
+  @Test def nestedClassThenOuter = {
     val source =
       """
       |/** Outer1 docstring */
@@ -198,7 +181,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def objects() = {
+  @Test def objects = {
     val source =
       """
       |package p
@@ -220,7 +203,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def objectsNestedClass() = {
+  @Test def objectsNestedClass = {
     val source =
       """
       |package p
@@ -252,7 +235,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def packageObject() = {
+  @Test def packageObject = {
     val source =
       """
       |/** Package object docstring */
@@ -289,7 +272,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def multipleDocStringsBeforeEntity() = {
+  @Test def multipleDocStringsBeforeEntity = {
     val source =
       """
       |/** First comment */
@@ -305,7 +288,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def multipleDocStringsBeforeAndAfter() = {
+  @Test def multipleDocStringsBeforeAndAfter = {
     val source =
       """
       |/** First comment */
@@ -324,7 +307,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def valuesWithDocString() = {
+  @Test def valuesWithDocString = {
     val source =
       """
       |object Object {
@@ -356,7 +339,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def varsWithDocString() = {
+  @Test def varsWithDocString = {
     val source =
       """
       |object Object {
@@ -388,7 +371,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def defsWithDocString() = {
+  @Test def defsWithDocString = {
     val source =
       """
       |object Object {
@@ -420,7 +403,7 @@ class DottyDocParsingTests extends DottyTest {
     }
   }
 
-  @Test def typesWithDocString() = {
+  @Test def typesWithDocString = {
     val source =
       """
       |object Object {
@@ -449,6 +432,28 @@ class DottyDocParsingTests extends DottyTest {
           case _ => assert(false, "Incorrect structure inside object")
         }
       }
+    }
+  }
+
+  @Test def defInnerClass = {
+    val source =
+      """
+      |object Foo {
+      |  def foo() = {
+      |    /** Innermost */
+      |    class Innermost
+      |  }
+      |}
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case PackageDef(_, Seq(o: ModuleDef)) =>
+        o.impl.body match {
+          case (foo: MemberDef) :: Nil =>
+            expectNoDocString(foo.rawComment)
+          case _ => assert(false, "Incorrect structure inside object")
+        }
     }
   }
 } /* End class */

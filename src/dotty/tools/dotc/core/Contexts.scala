@@ -550,6 +550,14 @@ object Contexts {
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
+
+    val _docstrings: mutable.Map[Symbol, String] =
+      mutable.Map.empty
+
+    def docstring(sym: Symbol): Option[String] = _docstrings.get(sym)
+
+    def addDocstring(sym: Symbol, doc: Option[String]): Unit =
+      doc.map(d => _docstrings += (sym -> d))
   }
 
   /** The essential mutable state of a context base, collected into a common class */
