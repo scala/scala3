@@ -18,8 +18,10 @@ object DottyUnpickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   class SourceFileUnpickler extends SectionUnpickler[SourceFile]("Sourcefile") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new SourceFile(tastyName(reader.readNameRef()).toString, Seq())
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) = {
+      val TastyName.Simple(sourceName) = tastyName(reader.readNameRef())
+      new SourceFile(sourceName.toString, Seq())
+    }
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
