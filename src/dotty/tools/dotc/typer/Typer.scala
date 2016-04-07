@@ -1518,7 +1518,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val tvarsToInstantiate = tvarsInParams(tree)
         wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
-        def addImplicitArgs = {
+        def addImplicitArgs(implicit ctx: Context) = {
           val errors = new mutable.ListBuffer[() => String]
           def implicitArgError(msg: => String) = {
             errors += (() => msg)
@@ -1565,9 +1565,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           else adapt(tpd.Apply(tree, args), pt)
         }
-        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
+        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs(argCtx(tree))
         else
-          ctx.typerState.tryWithFallback(addImplicitArgs) {
+          ctx.typerState.tryWithFallback(addImplicitArgs(argCtx(tree))) {
             adapt(typed(original, WildcardType), pt, EmptyTree)
           }
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>

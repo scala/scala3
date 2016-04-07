@@ -531,12 +531,16 @@ trait Applications extends Compatibility { self: Typer =>
     def treeToArg(arg: Tree): Tree = arg
   }
 
+  /** If `app` is a `this(...)` constructor call, the this-call argument context,
+   *  otherwise the current context.
+   */
+  def argCtx(app: untpd.Tree)(implicit ctx: Context): Context =
+    if (untpd.isSelfConstrCall(app)) ctx.thisCallArgContext else ctx
+
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      def argCtx(implicit ctx: Context) =
-        if (untpd.isSelfConstrCall(tree)) ctx.thisCallArgContext else ctx
-      var proto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx)
+      var proto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
       val fun1 = typedExpr(tree.fun, proto)
 
       // Warning: The following line is dirty and fragile. We record that auto-tupling was demanded as
@@ -554,7 +558,7 @@ trait Applications extends Compatibility { self: Typer =>
             tryEither { implicit ctx =>
               val app =
                 if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx)
+                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
               val result = app.result
               convertNewArray(ConstFold(result))
             } { (failedVal, failedState) =>
