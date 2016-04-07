@@ -84,7 +84,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
-                  REPEATED       Length elem_Term*
+                  REPEATED       Length elem_Type elem_Term*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
