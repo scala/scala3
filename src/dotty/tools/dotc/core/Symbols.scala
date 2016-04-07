@@ -21,6 +21,7 @@ import StdNames._
 import NameOps._
 import ast.tpd.Tree
 import ast.TreeTypeMap
+import Constants.Constant
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -463,20 +464,23 @@ object Symbols {
       denot.topLevelClass.symbol.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
-    final def binaryFile(implicit ctx: Context): AbstractFile =
-      pickFile(associatedFile, classFile = true)
+    final def binaryFile(implicit ctx: Context): AbstractFile = {
+      val file = associatedFile
+      if (file != null && file.path.endsWith("class")) file else null
+    }
 
     /** The source file from which this class was generated, null if not applicable. */
-    final def sourceFile(implicit ctx: Context): AbstractFile =
-      pickFile(associatedFile, classFile = false)
-
-   /** Desire to re-use the field in ClassSymbol which stores the source
-     *  file to also store the classfile, but without changing the behavior
-     *  of sourceFile (which is expected at least in the IDE only to
-     *  return actual source code.) So sourceFile has classfiles filtered out.
-     */
-    private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
-      if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
+    final def sourceFile(implicit ctx: Context): AbstractFile = {
+      val file = associatedFile
+      if (file != null && !file.path.endsWith("class")) file
+      else denot.topLevelClass.getAnnotation(defn.SourceFileAnnot) match {
+        case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+          case Some(Constant(path: String)) => AbstractFile.getFile(path)
+          case none => null
+        }
+        case none => null
+      }
+    }
 
     /** The position of this symbol, or NoPosition is symbol was not loaded
      *  from source.

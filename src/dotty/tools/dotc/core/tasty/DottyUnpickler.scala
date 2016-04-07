@@ -62,6 +62,6 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
     if (readPositions)
       for ((totalRange, positions) <- unpickler.unpickle(new PositionsSectionUnpickler))
         treeUnpickler.usePositions(totalRange, positions)
-    (treeUnpickler.unpickle(source), source)
+    (treeUnpickler.unpickle(), source)
   }
 }
