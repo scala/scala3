@@ -64,6 +64,9 @@ object FromTasty extends Driver {
   }
 
   class ReadTastyTreesFromClasses extends FrontEnd {
+
+    override def isTyper = false
+
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map(readTASTY)
 
