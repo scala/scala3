@@ -336,13 +336,17 @@ object Contexts {
     def thisCallArgContext: Context = {
       assert(owner.isClassConstructor)
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next
-      superOrThisCallContext(owner, constrCtx.scope).setTyperState(typerState)
+      superOrThisCallContext(owner, constrCtx.scope)
+        .setTyperState(typerState)
+        .setGadt(gadt)
     }
 
-    /** The super= or this-call context with given owner and locals. */
+    /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
       var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
-      classCtx.outer.fresh.setOwner(owner).setScope(locals).setMode(classCtx.mode | Mode.InSuperCall)
+      classCtx.outer.fresh.setOwner(owner)
+        .setScope(locals)
+        .setMode(classCtx.mode | Mode.InSuperCall)
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
@@ -438,6 +442,7 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
