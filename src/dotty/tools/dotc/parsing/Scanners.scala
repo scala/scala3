@@ -175,12 +175,39 @@ object Scanners {
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
-    var keepComments = false
+    val keepComments = ctx.settings.YkeepComments.value
 
-    /** All comments in the reverse order of their position in the source.
-     *  set only when `keepComments` is true.
+    /** All doc comments as encountered, each list contains doc comments from
+     *  the same block level. Starting with the deepest level and going upward
      */
-    var revComments: List[Comment] = Nil
+    private[this] var docsPerBlockStack: List[List[Comment]] = List(List())
+
+    /** Adds level of nesting to docstrings */
+    def enterBlock(): Unit =
+      docsPerBlockStack = Nil ::: docsPerBlockStack
+
+    /** Removes level of nesting for docstrings */
+    def exitBlock(): Unit = docsPerBlockStack = docsPerBlockStack match {
+      case x :: xs => List(List())
+      case _ => docsPerBlockStack.tail
+    }
+
+    /** Returns the closest docstring preceding the position supplied */
+    def getDocString(pos: Int): Option[String] = {
+      def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
+        case x :: xs if (c.pos.end < x.pos.end && x.pos.end <= pos) => closest(x, xs)
+        case Nil => c
+      }
+
+      docsPerBlockStack match {
+        case (list @ (x :: xs)) :: _ => {
+          val c = closest(x, xs)
+          docsPerBlockStack = list.dropWhile(_ != c).tail :: docsPerBlockStack.tail
+          Some(c.chrs)
+        }
+        case _ => None
+      }
+    }
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -487,13 +514,13 @@ object Scanners {
         case ',' =>
           nextChar(); token = COMMA
         case '(' =>
-          nextChar(); token = LPAREN
+          enterBlock(); nextChar(); token = LPAREN
         case '{' =>
-          nextChar(); token = LBRACE
+          enterBlock(); nextChar(); token = LBRACE
         case ')' =>
-          nextChar(); token = RPAREN
+          exitBlock(); nextChar(); token = RPAREN
         case '}' =>
-          nextChar(); token = RBRACE
+          exitBlock(); nextChar(); token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
         case ']' =>
@@ -558,9 +585,12 @@ object Scanners {
       def finishComment(): Boolean = {
         if (keepComments) {
           val pos = Position(start, charOffset, start)
-          nextChar()
-          revComments = Comment(pos, flushBuf(commentBuf)) :: revComments
+          val comment = Comment(pos, flushBuf(commentBuf))
+
+          if (comment.isDocComment)
+            docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
         }
+
         true
       }
       nextChar()

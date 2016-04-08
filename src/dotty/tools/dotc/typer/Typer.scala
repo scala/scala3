@@ -586,7 +586,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case _ => false
       }
 
-      /** The funcion body to be returned in the closure. Can become a TypedSplice
+      /** The function body to be returned in the closure. Can become a TypedSplice
        *  of a typed expression if this is necessary to infer a parameter type.
        */
       var fnBody = tree.body

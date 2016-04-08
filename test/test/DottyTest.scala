@@ -32,7 +32,6 @@ class DottyTest /*extends ContextEscapeDetection*/ {
   }
 */
   private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
-    self =>
     override def phases = {
       val allPhases = super.phases
       val targetPhase = allPhases.flatten.find(p => p.phaseName == phase).get
@@ -48,7 +47,7 @@ class DottyTest /*extends ContextEscapeDetection*/ {
     }
   }
 
-  def checkCompile(checkAfterPhase: String, source:String)(assertion:(tpd.Tree, Context) => Unit): Unit = {
+  def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Unit = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     c.rootContext(ctx)
     val run = c.newRun

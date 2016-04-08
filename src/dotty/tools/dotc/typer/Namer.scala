@@ -401,17 +401,27 @@ class Namer { typer: Typer =>
       val pkg = createPackageSymbol(pcl.pid)
       index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
       invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
+      setDocstring(pkg, stat)
       ctx
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
     case mdef: DefTree =>
-      enterSymbol(createSymbol(mdef))
+      val sym = enterSymbol(createSymbol(mdef))
+      setDocstring(sym, stat)
       ctx
     case stats: Thicket =>
-      for (tree <- stats.toList) enterSymbol(createSymbol(tree))
+      for (tree <- stats.toList) {
+        val sym = enterSymbol(createSymbol(tree))
+        setDocstring(sym, stat)
+      }
       ctx
     case _ =>
       ctx
+  }
+
+  def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
+    case t: MemberDef => ctx.base.addDocstring(sym, t.rawComment)
+    case _ => ()
   }
 
   /** Create top-level symbols for statements and enter them into symbol table */
@@ -859,7 +869,7 @@ class Namer { typer: Typer =>
         WildcardType
     }
     paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
- }
+  }
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
