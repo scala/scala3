@@ -291,7 +291,11 @@ object Phases {
      */
     def relaxedTyping: Boolean = false
 
-    /** Overridden by FrontEnd */
+    /** Is this phase the standard typerphase? True for FrontEnd, but
+     *  not for other first phases (such as FromTasty). The predicate
+     *  is tested in some places that perform checks and corrections. It's
+     *  different from isAfterTyper (and cheaper to test).
+     */
     def isTyper = false
 
     def exists: Boolean = true
