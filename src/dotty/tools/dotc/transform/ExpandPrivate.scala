@@ -16,6 +16,7 @@ import TreeTransforms._
 import Decorators._
 import ast.Trees._
 import TreeTransforms._
+import java.io.File.separatorChar
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
@@ -58,7 +59,20 @@ class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { t
    */
   private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
     if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass) {
-      assert(d.symbol.sourceFile == ctx.source.file,
+      // Paths `p1` and `p2` are similar if they have a common suffix that follows
+      // possibly different directory paths. That is, their common suffix extends
+      // in both cases either to the start of the path or to a file separator character.
+      def isSimilar(p1: String, p2: String): Boolean = {
+        var i = p1.length - 1
+        var j = p2.length - 1
+        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar) {
+          i -= 1
+          j -= 1
+        }
+        (i < 0 || p1(i) == separatorChar) &&
+        (j < 0 || p1(j) == separatorChar)
+      }
+      assert(isSimilar(d.symbol.sourceFile.path, ctx.source.file.path),
           i"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.source.file}")
       d.ensureNotPrivate.installAfter(thisTransform)
     }

@@ -68,7 +68,7 @@ class Pickler extends Phase {
   private def pickleSourcefile(pickler: TastyPickler, source: SourceFile): Unit = {
     val buf = new TastyBuffer(10)
     pickler.newSection("Sourcefile", buf)
-    buf.writeNat(pickler.nameBuffer.nameIndex(source.file.canonicalPath).index)
+    buf.writeNat(pickler.nameBuffer.nameIndex(source.file.path).index)
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
