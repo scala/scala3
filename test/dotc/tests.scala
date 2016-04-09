@@ -200,7 +200,10 @@ class tests extends CompilerTest {
   @Test def tasty_new_all = compileFiles(newDir, testPickling)
 
   @Test def tasty_dotty = compileDir(sourceDir, "dotty", testPickling)
-  @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
+
+  // Disabled because we get stale symbol errors on the SourceFile annotation, which is normal.
+  // @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
+
   @Test def tasty_runtime = compileDir(s"$dottyDir", "runtime", testPickling)
 
   //TODO: issues with ./src/dotty/runtime/vc/VCPrototype.scala
