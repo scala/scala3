@@ -227,7 +227,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           val sym = tree.symbol
           val tree1 =
             if (sym.isClass) {
-              if (sym.owner.is(Package) && ctx.compilationUnit.source.exists)
+              if (sym.owner.is(Package) &&
+                  ctx.compilationUnit.source.exists &&
+                  sym != defn.SourceFileAnnot)
                 sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
               tree
             }
