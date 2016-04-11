@@ -1879,7 +1879,7 @@ object Parsers {
             in.nextToken()
             TypeDef(name, tparams, typ()).withMods(mods).setComment(docstring)
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(name, tparams, typeBounds()).withMods(mods)
+            TypeDef(name, tparams, typeBounds()).withMods(mods).setComment(docstring)
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree
