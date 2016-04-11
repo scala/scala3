@@ -264,6 +264,63 @@ object DottyInjectedPlugin extends AutoPlugin {
     settings(publishing)
 
 
+    lazy val dottydoc = crossProject.in(file("dottydoc"))
+      .jsSettings(
+        libraryDependencies ++= Seq(
+          "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+          "com.github.benhutchison" %%% "prickle" % "1.1.10",
+          "com.lihaoyi" %%% "scalatags" % "0.5.4"
+        )
+      )
+
+    lazy val dottydocJS = dottydoc.js.dependsOn(dotty).settings(
+      scalaSource in Compile := baseDirectory.value / "src"
+    )
+
+    lazy val dottydocJVM = dottydoc.jvm.dependsOn(dotty).settings(
+      (resources in Compile) += (fastOptJS in (dottydocJS, Compile)).value.data,
+      scalaSource in Compile := baseDirectory.value / "src",
+      libraryDependencies ++= Seq(
+        "com.github.benhutchison" %% "prickle" % "1.1.10",
+        "com.lihaoyi" %% "scalatags" % "0.5.4"
+      ),
+
+      // enable improved incremental compilation algorithm
+      incOptions := incOptions.value.withNameHashing(true),
+
+      mainClass in (Compile, run) := Some("dotty.tools.dottydoc.DottyDoc"),
+      fork in run := true,
+      fork in Test := true,
+      parallelExecution in Test := false,
+
+      // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
+      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+        // put the Scala {library, reflect} in the classpath
+        val path = for {
+          file <- attList.map(_.data)
+          path = file.getAbsolutePath
+        } yield "-Xbootclasspath/p:" + path
+        // dotty itself needs to be in the bootclasspath
+        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
+        // System.err.println("BOOTPATH: " + fullpath)
+
+        val travis_build = // propagate if this is a travis build
+          if (sys.props.isDefinedAt(JENKINS_BUILD))
+            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
+          else
+            List()
+
+        val tuning =
+          if (sys.props.isDefinedAt("Oshort"))
+            // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+            List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
+          else
+            List()
+
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
+      }
+    )
+
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
    *  This sandbox is compiled with dotty with support for Scala.js. It can be

@@ -1,0 +1,9 @@
+main > div.page-content {
+    padding: 30px 60px;
+}
+
+span.subtitle {
+    font-size: 12px;
+    line-height: 0 !important;
+    padding-top: 32px;
+}
