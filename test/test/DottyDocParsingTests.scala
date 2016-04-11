@@ -456,4 +456,34 @@ class DottyDocParsingTests extends DottyDocTest {
         }
     }
   }
+
+  @Test def withExtends = {
+    val source =
+      """
+      |trait Trait1
+      |/** Class1 */
+      |class Class1 extends Trait1
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
+        checkDocString(c.rawComment, "/** Class1 */")
+    }
+  }
+
+  @Test def withAnnotation = {
+    val source =
+      """
+      |/** Class1 */
+      |@SerialVersionUID(1)
+      |class Class1
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(c: TypeDef)) =>
+        checkDocString(c.rawComment, "/** Class1 */")
+    }
+  }
 } /* End class */

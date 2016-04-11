@@ -180,15 +180,15 @@ object Scanners {
     /** All doc comments as encountered, each list contains doc comments from
      *  the same block level. Starting with the deepest level and going upward
      */
-    private[this] var docsPerBlockStack: List[List[Comment]] = List(List())
+    private[this] var docsPerBlockStack: List[List[Comment]] = List(Nil)
 
     /** Adds level of nesting to docstrings */
     def enterBlock(): Unit =
-      docsPerBlockStack = Nil ::: docsPerBlockStack
+      docsPerBlockStack = List(Nil) ::: docsPerBlockStack
 
     /** Removes level of nesting for docstrings */
     def exitBlock(): Unit = docsPerBlockStack = docsPerBlockStack match {
-      case x :: xs => List(List())
+      case x :: Nil => List(Nil)
       case _ => docsPerBlockStack.tail
     }
 
