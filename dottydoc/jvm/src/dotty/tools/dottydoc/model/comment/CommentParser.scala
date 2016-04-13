@@ -562,7 +562,7 @@ trait CommentParser {
         case (qualName, optTitle) =>
           //TODO: this should be enabled
           //makeEntityLink(optTitle getOrElse Text(target), pos, target, site)
-          title.getOrElse(Text("broken link"))
+          title.getOrElse(Text(qualName))
       }
     }
 

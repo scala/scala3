@@ -29,6 +29,7 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
+import parsing.Scanners.Comment
 import xsbti.AnalysisCallback
 
 object Contexts {
@@ -568,12 +569,12 @@ object Contexts {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
 
-    val _docstrings: mutable.Map[Symbol, String] =
+    val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
 
-    def docstring(sym: Symbol): Option[String] = _docstrings.get(sym)
+    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
-    def addDocstring(sym: Symbol, doc: Option[String]): Unit =
+    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
       doc.map(d => _docstrings += (sym -> d))
   }
 

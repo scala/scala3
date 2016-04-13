@@ -33,7 +33,8 @@ object Index {
         span(
           cls := "mdl-layout-title",
           "Packages"
-        )
+        ),
+        packageView
       ),
       main(
         cls := "mdl-layout__content",
@@ -49,6 +50,15 @@ object Index {
         )
       )
     )
+
+  def packageView = nav(
+    cls := "mdl-navigation",
+    ParsedIndex.packages.keys.flatMap { k =>
+      ParsedIndex.packages(k).children.sortBy(_.name).map { c =>
+        a(cls := "mdl-navigation__link", href := "#", c.name)
+      }
+    }.toList
+  )
 
   def companionHref(m: Entity): Option[PackageMember] = {
     val pack = m.path.dropRight(1).mkString(".")

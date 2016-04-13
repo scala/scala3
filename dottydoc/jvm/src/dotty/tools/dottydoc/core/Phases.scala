@@ -36,8 +36,7 @@ object Phases {
         case _ => Nil
       }
 
-      val comment =
-        ctx.base.docstring(tree.symbol).map(c => Comment(wikiParser.parseHtml(c)))
+      val comment = wikiParser.parseHtml(tree.symbol)
 
       tree match {
         /** package */
