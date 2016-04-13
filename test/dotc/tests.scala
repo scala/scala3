@@ -205,9 +205,7 @@ class tests extends CompilerTest {
   // @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
 
   @Test def tasty_runtime = compileDir(s"$dottyDir", "runtime", testPickling)
-
-  //TODO: issues with ./src/dotty/runtime/vc/VCPrototype.scala
-  //@Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
+  @Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
 
   @Test def tasty_tools = compileDir(dottyDir, "tools", testPickling)
 
@@ -217,11 +215,7 @@ class tests extends CompilerTest {
     "scalaPrimitives.scala"
   ) map (s"${backendDir}jvm/" + _), testPickling)
 
-  //TODO: issue with ./src/dotty/tools/backend/sjs/JSCodeGen.scala
-  @Test def tasty_backend_sjs = compileList("tasty_backend_sjs", List(
-    "GenSJSIR.scala", "JSDefinitions.scala", "JSEncoding.scala", "JSInterop.scala",
-    "JSPositions.scala", "JSPrimitives.scala", "ScopedVar.scala"
-  ) map (s"${backendDir}sjs/" + _), testPickling)
+  @Test def tasty_backend_sjs = compileDir(s"${backendDir}", "sjs", testPickling)
 
   @Test def tasty_dotc = compileDir(toolsDir, "dotc", testPickling)
   @Test def tasty_dotc_ast = compileDir(dotcDir, "ast", testPickling)
@@ -252,12 +246,7 @@ class tests extends CompilerTest {
 
   @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
 
-  //TODO: issues with ./src/dotty/tools/dotc/repl/CompilingInterpreter.scala,
-  //./src/dotty/tools/dotc/repl/InterpreterLoop.scala
-  @Test def tasty_dotc_repl = compileList("tasty_dotc_repl", List(
-    "AbstractFileClassLoader.scala", "ConsoleWriter.scala", "InteractiveReader.scala",
-    "Interpreter.scala", "Main.scala", "NewLinePrintWriter.scala", "REPL.scala", "SimpleReader.scala"
-  ) map (dottyReplDir + _), testPickling)
+  @Test def tasty_dotc_repl = compileDir(dotcDir, "repl", testPickling)
 
   //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
   @Test def tasty_dotc_rewrite = compileDir(dotcDir, "rewrite", testPickling)
