@@ -239,7 +239,6 @@ object DottyBuild extends Build {
 
       libraryDependencies ++= Seq("com.storm-enroute" %% "scalameter" % "0.6" % Test,
         "com.novocode" % "junit-interface" % "0.11"),
-      testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
 
       fork in Test := true,
       parallelExecution in Test := false,
