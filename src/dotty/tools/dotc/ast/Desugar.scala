@@ -634,8 +634,11 @@ object desugar {
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
     Annotated(untpd.New(untpd.TypeTree(cls.typeRef), Nil), tree)
 
-  private def derivedValDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
-    ValDef(named.name.asTermName, tpt, rhs).withMods(mods).withPos(named.pos)
+  private def derivedValDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
+    val vdef = ValDef(named.name.asTermName, tpt, rhs).withMods(mods).withPos(named.pos)
+    val mayNeedSetter = valDef(vdef)
+    mayNeedSetter
+   }
 
   private def derivedDefDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs).withMods(mods).withPos(named.pos)
