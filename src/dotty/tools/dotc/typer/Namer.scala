@@ -112,9 +112,13 @@ trait NamerContextOps { this: Context =>
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
         make.fromSymbols(params, resultType)
       }
-    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
-    else if (valueParamss.isEmpty) ExprType(monotpe)
-    else monotpe
+
+    val exprIfNeeded =
+      if (valueParamss.isEmpty) ExprType(monotpe)
+      else monotpe
+
+    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, exprIfNeeded)
+    else exprIfNeeded
   }
 
   /** Find moduleClass/sourceModule in effective scope */
