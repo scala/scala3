@@ -3,16 +3,15 @@ package js
 package html
 
 import scalatags.JsDom.all._
+import scalatags.JsDom.TypedTag
 
-object Index {
+object IndexLayout {
   import model.Entities._
   import CustomTags._
 
-  def layout(ent: Entity) = ent match {
-    case x: Entity with Members with Modifiers => packageMember(x)
-  }
+  def layout(ent: Entity) = entity(ent)
 
-  def packageMember(m: Entity with Members with Modifiers) =
+  def entity(m: Entity) =
     div(
       cls := "mdl-layout mdl-js-layout mdl-layout--fixed-drawer",
       div(
@@ -41,20 +40,27 @@ object Index {
         div(
           cls := "page-content",
           div(raw(m.comment.fold("")(_.body))),
-          div(
-            cls := "mld-grid",
-            m.members
-             .collect { case x: Entity with Modifiers if !x.isPrivate => x}
-             .flatMap(member)
-          )
+          m match {
+            case e: Entity with Members =>
+              Seq(
+                h5("Members"),
+                div(
+                  cls := "mld-grid",
+                  e.members
+                    .collect { case x: Entity with Modifiers if !x.isPrivate => x}
+                    .flatMap(member)
+                )
+              )
+            case _ => ()
+          }
         )
       )
     )
 
   def packageView = nav(
     cls := "mdl-navigation",
-    ParsedIndex.packages.keys.flatMap { k =>
-      ParsedIndex.packages(k).children.sortBy(_.name).map { c =>
+    Index.packages.keys.flatMap { k =>
+      Index.packages(k).children.sortBy(_.name).map { c =>
         a(cls := "mdl-navigation__link", href := "#", c.name)
       }
     }.toList
@@ -62,19 +68,48 @@ object Index {
 
   def companionHref(m: Entity): Option[PackageMember] = {
     val pack = m.path.dropRight(1).mkString(".")
-    ParsedIndex.packages.get(pack)
+    Index.packages.get(pack)
       .flatMap(_.children.find(e => e.name == m.name && e.path.last != m.path.last))
   }
 
-  def member(m: Entity) = m match {
-    case m: Entity with Modifiers => Seq(
-        div(
-          cls := "mdl-cell mdl-cell--12-col",
-          h6(m.modifiers.mkString(" ") + " " + m.kind + " " + m.name)
-        ),
-        div(
-          cls := "mdl-cell mdl-cell--12-col",
-          raw(m.comment.fold("")(_.body)))
-    )
+
+  import org.scalajs.dom
+  import org.scalajs.dom.html.Div
+
+
+  def member(m: Entity) = {
+    def toggleBetween(short: Div, and: Div): Unit =
+      if (and.style.display == "none") {
+        and.style.display = "block"
+        short.style.display = "none"
+      } else {
+        and.style.display = "none"
+        short.style.display = "block"
+      }
+
+    m match {
+      case m: Entity with Modifiers =>
+        val shortComment = div(
+          cls := "mdl-cell mdl-cell--12-col summary-comment",
+          raw(m.comment.fold("")(_.short))
+        ).render
+        val fullComment = div(
+          cls := "mdl-cell mdl-cell--12-col full-comment",
+          style := "display: none;",
+          raw(m.comment.fold("")(_.body))
+        ).render
+        val divs = div(
+          cls := "mdl-cell mdl-cell--12-col member",
+          onclick := { () => toggleBetween(shortComment, and = fullComment) },
+          div(
+            cls := "mdl-cell mdl-cell--12-col",
+            h6(m.modifiers.mkString(" ") + " " + m.kind + " " + m.name)
+          ),
+          shortComment,
+          fullComment
+        )
+        Seq(divs)
+      case _ => Nil
+    }
   }
 }

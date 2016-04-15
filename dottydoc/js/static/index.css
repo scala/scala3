@@ -7,3 +7,7 @@ span.subtitle {
     line-height: 0 !important;
     padding-top: 32px;
 }
+
+div.member:hover {
+    cursor: pointer;
+}

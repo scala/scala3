@@ -11,7 +11,7 @@ import Entities.Entity
 final case class Body(blocks: Seq[Block]) {
 
   /** The summary text of the comment body. */
-  lazy val summary: Option[Inline] = {
+  lazy val summary: Option[Body] = {
     def summaryInBlock(block: Block): Seq[Inline] = block match {
       case Title(text, _)        => summaryInInline(text)
       case Paragraph(text)       => summaryInInline(text)
@@ -33,8 +33,8 @@ final case class Body(blocks: Seq[Block]) {
     }
     (blocks flatMap { summaryInBlock(_) }).toList match {
       case Nil => None
-      case inline :: Nil => Some(inline)
-      case inlines => Some(Chain(inlines))
+      case inline :: Nil => Some(Body(Seq(Paragraph(inline))))
+      case inlines => Some(Body(Seq(Paragraph(Chain(inlines)))))
     }
   }
 }

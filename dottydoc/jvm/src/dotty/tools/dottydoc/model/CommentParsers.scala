@@ -15,9 +15,11 @@ object CommentParsers {
     def parseHtml(sym: Symbol, entity: Entity, packages: Map[String, Package])(implicit ctx: Context): Option[Comment] =
       ctx.base.docstring(sym).map { d =>
         val expanded = expand(sym)
-        parse(entity, packages, clean(expanded), expanded, d.pos).toHtml(entity) match {
+        val body = parse(entity, packages, clean(expanded), expanded, d.pos)
+        val summary = body.summary.map(_.toHtml(entity)).getOrElse("")
+        body.toHtml(entity) match {
           case "" => None
-          case x  => Some(Comment(x))
+          case x  => Some(Comment(x, summary))
         }
       }.flatten
     }

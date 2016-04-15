@@ -3,4 +3,4 @@ package dottydoc
 package model
 package comment
 
-case class Comment(body: String)
+case class Comment(body: String, short: String)

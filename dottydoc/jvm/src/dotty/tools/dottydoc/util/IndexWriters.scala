@@ -24,7 +24,7 @@ object IndexWriters {
     }
 
     val pickled = Pickle.intoString(packs)
-    val js = "Index = {}; Index.packages = " + pickled + ";"
+    val js = "UnparsedIndex = {}; UnparsedIndex.packages = " + pickled + ";"
     println("Writing index.js...")
     writeFile(js, outPath + "/../", "index.js")
     println("Done writing static material, building js-app")

@@ -29,7 +29,7 @@ object Html {
     ),
     body(div(id := "main-container")),
     script(raw(
-      s"""|Index.currentEntity = ${Pickle.intoString(ent)};
+      s"""|UnparsedIndex.currentEntity = ${Pickle.intoString(ent)};
           |dotty.tools.dottydoc.js.DottyDocJS()
           |  .main(document.getElementById("main-container"));
       """.stripMargin))
