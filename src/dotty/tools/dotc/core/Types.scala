@@ -903,7 +903,9 @@ object Types {
         case pre: RefinedType =>
           object instantiate extends TypeMap {
             var isSafe = true
-            def apply(tp: Type): Type = tp match {
+            def apply(tp: Type): Type =
+              if (!isSafe) tp
+              else tp match {
               case TypeRef(RefinedThis(`pre`), name) if name.isHkArgName =>
                 member(name).info match {
                   case TypeAlias(alias) => alias
@@ -2061,7 +2063,7 @@ object Types {
         false
     }
     override def computeHash = doHash(refinedName, refinedInfo, parent)
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
+    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | $hashCode)"
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName) {
