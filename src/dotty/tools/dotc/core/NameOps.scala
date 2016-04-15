@@ -116,7 +116,12 @@ object NameOps {
       name.drop(tpnme.hkArgPrefixLength).toString.toInt
 
     def isLambdaTraitName(implicit ctx: Context): Boolean =
-      name.startsWith(tpnme.hkLambdaPrefix)
+      name.isTypeName && name.startsWith(tpnme.hkLambdaPrefix)
+
+    def lambdaTraitVariances(implicit ctx: Context): List[Int] = {
+      val vs = name.drop(tpnme.hkLambdaPrefix.length)
+      vs.map(c => tpnme.varianceSuffixes.indexOf(c) - 1).toList
+    }
 
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.
