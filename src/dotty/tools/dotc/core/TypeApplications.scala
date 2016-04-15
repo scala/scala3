@@ -377,6 +377,14 @@ class TypeApplications(val self: Type) extends AnyVal {
       false
   }
 
+  /** Dealias type if it can be done without forcing anything */
+  def safeDealias(implicit ctx: Context): Type = self match {
+    case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
+      self.info.bounds.hi.stripTypeVar.safeDealias
+    case _ =>
+      self
+  }
+
   /** Replace references to type parameters with references to hk arguments `this.$hk_i`
    * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
    */
@@ -546,8 +554,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         substHkArgs(body)
       case self: PolyType =>
         self.instantiate(args)
-      case _ =>
-        appliedTo(args, typeParams)
+      case self1 =>
+        self1.safeDealias.appliedTo(args, typeParams)
     }
   }
 
