@@ -2,6 +2,7 @@ package strawman.collections
 
 import Predef.{augmentString => _, wrapString => _, _}
 import scala.reflect.ClassTag
+import annotation.unchecked.uncheckedVariance
 
 /** A strawman architecture for new collections. It contains some
  *  example collection classes and methods with the intent to expose
@@ -11,7 +12,7 @@ import scala.reflect.ClassTag
  *
  *  For a test file, see tests/run/CollectionTests.scala.
  */
-object CollectionStrawMan4 {
+object CollectionStrawMan5 {
 
   /* ------------ Base Traits -------------------------------- */
 
@@ -20,16 +21,9 @@ object CollectionStrawMan4 {
     def iterator: Iterator[A]
   }
 
-  /** Base trait for generic collections */
-  trait Iterable[+A] extends IterableOnce[A] with FromIterable[Iterable] {
-    def iterator: Iterator[A]
-    def view: View[A] = View.fromIterator(iterator)
-    def knownLength: Int = -1
-  }
-
   /** Base trait for instances that can construct a collection from an iterable */
   trait FromIterable[+C[X] <: Iterable[X]] {
-    def fromIterable[B](v: Iterable[B]): C[B]
+    def fromIterable[B](it: Iterable[B]): C[B]
   }
 
   /** Base trait for companion objects of collections */
@@ -38,22 +32,63 @@ object CollectionStrawMan4 {
     def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
   }
 
+  /** Base trait for Iterable operations */
+  trait IterableLike[+A, +C[X] <: Iterable[X]]
+    extends FromIterable[C]
+       with IterableOps[A]
+       with IterableMonoTransforms[A @uncheckedVariance, C[A @uncheckedVariance]]
+       with IterablePolyTransforms[A @uncheckedVariance, C] {
+    protected def fromLikeIterable(coll: Iterable[A @uncheckedVariance]): C[A @uncheckedVariance] = fromIterable(coll)
+  }
+
+  /** Base trait for Seq operations */
+  trait SeqLike[+A, +C[X] <: Seq[X]] extends IterableLike[A, C] {
+    def reverse: C[A @uncheckedVariance] = {
+      var xs: List[A] = Nil
+      var it = iterator
+      while (it.hasNext) xs = new Cons(it.next, xs)
+      fromLikeIterable(xs)
+    }
+  }
+
+  /** Base trait for generic collections */
+  trait Iterable[+A] extends IterableOnce[A] with IterableLike[A, Iterable] {
+    override def iterator: Iterator[A]
+    override def fromIterable[B](it: Iterable[B]): Iterable[B]
+
+    protected def coll: Iterable[A] = this
+    def knownLength: Int = -1
+  }
+
   /** Base trait for sequence collections */
-  trait Seq[+A] extends Iterable[A] with FromIterable[Seq] {
+  trait Seq[+A] extends Iterable[A] with SeqLike[A, Seq] {
     def apply(i: Int): A
     def length: Int
+    override def iterator: Iterator[A]
+  }
+
+  trait Buildable[+A, +To <: Iterable[A]] extends Iterable[A] {
+    protected[this] def newBuilder: Builder[A, To]
+    override def partition(p: A => Boolean): (To, To) = {
+      val l, r = newBuilder
+      iterator.foreach(x => (if (p(x)) l else r) += x)
+      (l.result, r.result)
+    }
   }
 
   trait Builder[-A, +To] {
     def +=(x: A): this.type
-    def ++=(xs: IterableOnce[A]): Unit = xs.iterator.foreach(+=)
     def result: To
+
+    def ++=(xs: IterableOnce[A]): this.type = {
+      xs.iterator.foreach(+=)
+      this
+    }
   }
 
   /* ------------ Operations ----------------------------------- */
 
-  /** Operations returning types unrelated to current collection */
-  trait Ops[A] extends Any {
+  trait IterableOps[+A] extends Any {
     def iterator: Iterator[A]
     def foreach(f: A => Unit): Unit = iterator.foreach(f)
     def foldLeft[B](z: B)(op: (B, A) => B): B = iterator.foldLeft(z)(op)
@@ -61,66 +96,43 @@ object CollectionStrawMan4 {
     def indexWhere(p: A => Boolean): Int = iterator.indexWhere(p)
     def isEmpty: Boolean = !iterator.hasNext
     def head: A = iterator.next
+    def view: View[A] = View.fromIterator(iterator)
   }
 
-  /** Transforms returning same collection type */
-  trait MonoTransforms[A, Repr] extends Any {
+  trait IterableMonoTransforms[A, +Repr] extends Any {
     protected def coll: Iterable[A]
-    protected def fromIterable(it: Iterable[A]): Repr
-    def filter(p: A => Boolean): Repr = fromIterable(View.Filter(coll, p))
+    protected def fromLikeIterable(coll: Iterable[A]): Repr
+    def filter(p: A => Boolean): Repr = fromLikeIterable(View.Filter(coll, p))
     def partition(p: A => Boolean): (Repr, Repr) = {
       val pn = View.Partition(coll, p)
-      (fromIterable(pn.left), fromIterable(pn.right))
+      (fromLikeIterable(pn.left), fromLikeIterable(pn.right))
     }
-    def drop(n: Int): Repr = fromIterable(View.Drop(coll, n))
-    def to[C[X] <: Iterable[X]](fv: FromIterable[C]): C[A] = fv.fromIterable(coll)
+    def drop(n: Int): Repr = fromLikeIterable(View.Drop(coll, n))
+    def to[C[X] <: Iterable[X]](fi: FromIterable[C]): C[A] = fi.fromIterable(coll)
   }
 
-  trait PolyTransforms[A, C[X]] extends Any {
+  trait IterablePolyTransforms[+A, +C[A]] extends Any {
     protected def coll: Iterable[A]
-    protected def fromIterable[B](it: Iterable[B]): C[B]
+    def fromIterable[B](coll: Iterable[B]): C[B]
     def map[B](f: A => B): C[B] = fromIterable(View.Map(coll, f))
     def flatMap[B](f: A => IterableOnce[B]): C[B] = fromIterable(View.FlatMap(coll, f))
     def ++[B >: A](xs: IterableOnce[B]): C[B] = fromIterable(View.Concat(coll, xs))
-    def zip[B](xs: IterableOnce[B]): C[(A, B)] = fromIterable(View.Zip(coll, xs))
+    def zip[B](xs: IterableOnce[B]): C[(A @uncheckedVariance, B)] = fromIterable(View.Zip(coll, xs))
   }
 
-  /** Transforms that only apply to Seq */
-  trait MonoTransformsOfSeqs[A, Repr] extends Any with MonoTransforms[A, Repr] {
-    def reverse: Repr = fromIterable(View.Reverse(coll))
-  }
-
-  /** Implementation of Ops for all generic collections */
-  implicit class IterableOps[A](val c: Iterable[A])
-  extends AnyVal with Ops[A] {
-    def iterator = c.iterator
-  }
-
-  /** Implementation of MonoTransforms for all generic collections */
-  implicit class IterableMonoTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterable[C])
-  extends AnyVal with MonoTransforms[A, C[A]] {
-    protected def coll = c
-    protected def fromIterable(it: Iterable[A]): C[A] = c.fromIterable(it)
-  }
-
-  /** Implementation of PolyTransforms for all generic collections */
-  implicit class IterablePolyTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterable[C])
-  extends AnyVal with PolyTransforms[A, C] {
-    protected def coll = c
-    protected def fromIterable[B](it: Iterable[B]): C[B] = c.fromIterable(it)
-  }
-
-  /** Implementation of MonoTransformsForSeqs for all generic collections */
-  implicit class SeqMonoTransforms[A, C[X] <: Seq[X]](val c: Seq[A] with FromIterable[C])
-  extends AnyVal with MonoTransformsOfSeqs[A, C[A]] {
-    protected def coll = c
-    protected def fromIterable(it: Iterable[A]): C[A] = c.fromIterable(it)
+  trait SeqMonoTransforms[A, +Repr] extends Any with IterableMonoTransforms[A, Repr] {
+    def reverse: Repr = {
+      var xs: List[A] = Nil
+      var it = coll.iterator
+      while (it.hasNext) xs = new Cons(it.next, xs)
+      fromLikeIterable(xs)
+    }
   }
 
   /* --------- Concrete collection types ------------------------------- */
 
   /** Concrete collection type: List */
-  sealed trait List[+A] extends Seq[A] with FromIterable[List] { self =>
+  sealed trait List[+A] extends Seq[A] with SeqLike[A, List] with Buildable[A, List[A]] { self =>
     def isEmpty: Boolean
     def head: A
     def tail: List[A]
@@ -134,46 +146,80 @@ object CollectionStrawMan4 {
       require(!isEmpty)
       if (i == 0) head else tail.apply(i - 1)
     }
-    def :::[B >: A](prefix: List[B]): List[B] =
-      if (prefix.isEmpty) this
-      else Cons(prefix.head, prefix.tail ::: this)
     def length: Int =
       if (isEmpty) 0 else 1 + tail.length
+    protected[this] def newBuilder = new ListBuffer[A]
+    def ++:[B >: A](prefix: List[B]): List[B] =
+      if (prefix.isEmpty) this
+      else Cons(prefix.head, prefix.tail ++: this)
+    override def ++[B >: A](xs: IterableOnce[B]): List[B] = xs match {
+      case xs: List[B] => this ++: xs
+      case _ => super.++(xs)
+    }
+    override def reverse = super.reverse
   }
 
-  case class Cons[+A](x: A, xs: List[A]) extends List[A] {
-    def isEmpty = false
-    def head = x
-    def tail = xs
+  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance]) extends List[A] {
+    override def isEmpty = false
+    override def head = x
+    def tail = next
   }
 
   case object Nil extends List[Nothing] {
-    def isEmpty = true
-    def head = ???
+    override def isEmpty = true
+    override def head = ???
     def tail = ???
   }
 
   object List extends IterableFactory[List] {
-    def fromIterator[B](it: Iterator[B]): List[B] =
-      if (it.hasNext) Cons(it.next, fromIterator(it)) else Nil
-    def fromIterable[B](c: Iterable[B]): List[B] = c match {
-      case View.Concat(xs, ys: Iterable[B]) =>
-        fromIterable(xs) ::: fromIterable(ys)
-      case View.Drop(xs: List[B], n) =>
-        var i = 0
-        var ys = xs
-        while (i < n && !xs.isEmpty) {
-          ys = ys.tail
-          i += 1
-        }
-        ys
-      case _ => fromIterator(c.iterator)
+    def fromIterable[B](coll: Iterable[B]): List[B] = coll match {
+      case coll: List[B] => coll
+      case _ => ListBuffer.fromIterable(coll).result
     }
+  }
+
+  /** Concrete collection type: ListBuffer */
+  class ListBuffer[A] extends Seq[A] with SeqLike[A, ListBuffer] with Builder[A, List[A]] {
+    private var first, last: List[A] = Nil
+    private var aliased = false
+    def iterator = new Iterator[A] {
+      var current: List[A] = first
+      def hasNext = ???
+      def next = ???
+    }
+    def fromIterable[B](coll: Iterable[B]) = ListBuffer.fromIterable(coll)
+    def apply(i: Int) = first.apply(i)
+    def length = first.length
+
+    private def copyElems(): Unit = {
+      val buf = ListBuffer.fromIterable(result)
+      first = buf.first
+      last = buf.last
+      aliased = false
+    }
+    def result = {
+      aliased = true
+      first
+    }
+    def +=(elem: A) = {
+      if (aliased) copyElems()
+      val last1 = Cons(elem, Nil)
+      last match {
+        case last: Cons[A] => last.next = last1
+        case _ => first = last1
+      }
+      last = last1
+      this
+    }
+  }
+
+  object ListBuffer extends IterableFactory[ListBuffer] {
+    def fromIterable[B](coll: Iterable[B]): ListBuffer[B] = new ListBuffer[B] ++= coll
   }
 
   /** Concrete collection type: ArrayBuffer */
   class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: Int)
-  extends Seq[A] with FromIterable[ArrayBuffer] with Builder[A, ArrayBuffer[A]] {
+  extends Seq[A] with SeqLike[A, ArrayBuffer] with Builder[A, ArrayBuffer[A]] {
     def this() = this(new Array[AnyRef](16), 0)
     private var elems: Array[AnyRef] = initElems
     private var start = 0
@@ -204,69 +250,59 @@ object CollectionStrawMan4 {
     }
     def result = this
     def trimStart(n: Int): Unit = start += (n max 0)
+    override def ++[B >: A](xs: IterableOnce[B]): ArrayBuffer[B] = xs match {
+      case xs: ArrayBuffer[B] =>
+        val elems = new Array[AnyRef](length + xs.length)
+        Array.copy(this.elems, this.start, elems, 0, this.length)
+        Array.copy(xs.elems, xs.start, elems, this.length, xs.length)
+        new ArrayBuffer(elems, elems.length)
+      case _ => super.++(xs)
+    }
+
     override def toString = s"ArrayBuffer(${elems.slice(start, end).mkString(", ")})"
   }
 
   object ArrayBuffer extends IterableFactory[ArrayBuffer] {
-    def fromIterable[B](c: Iterable[B]): ArrayBuffer[B] = c match {
-      case View.Concat(fst: ArrayBuffer[B], snd: ArrayBuffer[B]) =>
-        val elems = new Array[AnyRef](fst.length + snd.length)
-        Array.copy(fst.elems, fst.start, elems, 0, fst.length)
-        Array.copy(snd.elems, snd.start, elems, fst.length, snd.length)
-        new ArrayBuffer(elems, elems.length)
-      case pd @ View.Partitioned(partition: View.Partition[B]) =>
-        partition.distribute(new ArrayBuffer[B]())
-        pd.forced.get.asInstanceOf[ArrayBuffer[B]]
-      case c if c.knownLength >= 0 =>
-        val elems = new Array[AnyRef](c.knownLength)
-        val it = c.iterator
+    def fromIterable[B](coll: Iterable[B]): ArrayBuffer[B] =
+      if (coll.knownLength >= 0) {
+        val elems = new Array[AnyRef](coll.knownLength)
+        val it = coll.iterator
         for (i <- 0 until elems.length) elems(i) = it.next().asInstanceOf[AnyRef]
         new ArrayBuffer[B](elems, elems.length)
-      case _ =>
+      }
+      else {
         val buf = new ArrayBuffer[B]
-        val it = c.iterator
+        val it = coll.iterator
         while (it.hasNext) buf += it.next()
         buf
-    }
+      }
   }
 
   class ArrayBufferView[A](val elems: Array[AnyRef], val start: Int, val end: Int) extends RandomAccessView[A] {
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
   }
 
-  case class StringView(s: String) extends RandomAccessView[Char] {
-    val start = 0
-    val end = s.length
-    def apply(n: Int) = s.charAt(n)
-  }
-
   /** Concrete collection type: String */
-  implicit class StringOps(val s: String) extends AnyVal with Ops[Char] {
-    def iterator: Iterator[Char] = new StringView(s).iterator
-  }
-
-  implicit class StringMonoTransforms(val s: String)
-  extends AnyVal with MonoTransformsOfSeqs[Char, String] {
-    protected def coll: Iterable[Char] = StringView(s)
-    protected def fromIterable(it: Iterable[Char]): String = {
+  implicit class StringOps(val s: String)
+  extends AnyVal with IterableOps[Char]
+     with SeqMonoTransforms[Char, String]
+     with IterablePolyTransforms[Char, List] {
+    protected def coll = new StringView(s)
+    def iterator = coll.iterator
+    protected def fromLikeIterable(coll: Iterable[Char]): String = {
       val sb = new StringBuilder
-      for (ch <- it) sb.append(ch)
+      for (ch <- coll) sb.append(ch)
       sb.toString
     }
-  }
-
-  implicit class StringPolyTransforms(val s: String)
-  extends AnyVal with PolyTransforms[Char, Seq] {
-    protected def coll = StringView(s)
-    protected def fromIterable[B](it: Iterable[B]): Seq[B] = List.fromIterable(it)
+    def fromIterable[B](coll: Iterable[B]): List[B] = List.fromIterable(coll)
     def map(f: Char => Char): String = {
       val sb = new StringBuilder
-      for (ch <- s) sb.append(f(ch))
+      for (ch <- StringOps(s)) sb.append(f(ch))
       sb.toString
     }
-    def flatMap(f: Char => String) = {
+    def flatMap(f: Char => String): String = {
       val sb = new StringBuilder
-      for (ch <- s) sb.append(f(ch))
+      for (ch <- StringOps(s)) sb.append(f(ch))
       sb.toString
     }
     def ++(xs: IterableOnce[Char]): String = {
@@ -277,18 +313,24 @@ object CollectionStrawMan4 {
     def ++(xs: String): String = s + xs
   }
 
-  /* ------------ Views --------------------------------------- */
+  case class StringView(s: String) extends RandomAccessView[Char] {
+    val start = 0
+    val end = s.length
+    def apply(n: Int) = s.charAt(n)
+  }
 
-  /** A lazy iterable */
-  trait View[+A] extends Iterable[A] with FromIterable[View] {
+/* ---------- Views -------------------------------------------------------*/
+
+  /** Concrete collection type: View */
+  trait View[+A] extends Iterable[A] with IterableLike[A, View] {
     override def view = this
-    override def fromIterable[B](c: Iterable[B]) = c match {
+    override def fromIterable[B](c: Iterable[B]): View[B] = c match {
       case c: View[B] => c
       case _ => View.fromIterator(c.iterator)
     }
   }
 
-  /** Iterator defined in terms of indexing a range */
+  /** View defined in terms of indexing a range */
   trait RandomAccessView[+A] extends View[A] {
     def start: Int
     def end: Int
@@ -321,29 +363,11 @@ object CollectionStrawMan4 {
       def iterator = underlying.iterator.filter(p)
     }
     case class Partition[A](val underlying: Iterable[A], p: A => Boolean) {
-      val left, right = Partitioned(this)
-      def distribute(bf: => Builder[A, Iterable[A]]) = {
-        val lb, rb = bf
-        val it = underlying.iterator
-        while (it.hasNext) {
-          val x = it.next()
-          (if (p(x)) lb else rb) += x
-        }
-        left.forced = Some(lb.result)
-        right.forced = Some(rb.result)
-      }
+      val left = Partitioned(this, true)
+      val right = Partitioned(this, false)
     }
-    case class Partitioned[A](partition: Partition[A]) extends View[A] {
-      private var myForced: Option[Iterable[A]] = None
-      def forced: Option[Iterable[A]] = myForced
-      private[View] def forced_=(x: Option[Iterable[A]]): Unit = myForced = x
-      def underlying = partition.underlying
-      def iterator = forced match {
-        case Some(c) => c.iterator
-        case None =>
-          underlying.iterator.filter(
-            if (this eq partition.left) partition.p else !partition.p(_))
-      }
+    case class Partitioned[A](partition: Partition[A], cond: Boolean) extends View[A] {
+      def iterator = partition.underlying.iterator.filter(x => partition.p(x) == cond)
     }
     case class Drop[A](underlying: Iterable[A], n: Int) extends View[A] {
       def iterator = underlying.iterator.drop(n)
@@ -483,4 +507,3 @@ object CollectionStrawMan4 {
     }.iterator
   }
 }
-
