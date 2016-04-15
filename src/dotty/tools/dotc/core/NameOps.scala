@@ -184,7 +184,13 @@ object NameOps {
      *  an encoded name, e.g. super$$plus$eq. See #765.
      */
     def unexpandedName: N = {
-      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+      var idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+
+      // Hack to make super accessors from traits work. They would otherwise fail because of #765
+      // TODO: drop this once we have more robust name handling
+      if (name.slice(idx - FalseSuperLength, idx) == FalseSuper)
+        idx -= FalseSuper.length
+
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
     }
 
@@ -436,4 +442,7 @@ object NameOps {
       name.dropRight(nme.LAZY_LOCAL.length)
     }
   }
+
+  private final val FalseSuper = "$$super".toTermName
+  private val FalseSuperLength = FalseSuper.length
 }
