@@ -25,10 +25,15 @@ object BodyParsers {
       def enityLinkToHtml(target: Inline, link: LinkTo) = link match {
         case Tooltip(_) => inlineToHtml(target)
         case LinkToExternal(n, url) => s"""<a href="$url">$n</a>"""
-        case LinkToMember(mbr, parent) =>
-          s"""<a href="${relativePath(parent)}#${mbr.name}">${mbr.name}</a>"""
-        case LinkToEntity(target: Entity) =>
-          s"""<a href="${relativePath(target)}">${target.name}</a>"""
+        case LinkToEntity(t: Entity) => t match {
+          // Entity is a package member
+          case e: Entity with Members =>
+            s"""<a href="${relativePath(t)}">${inlineToHtml(target)}</a>"""
+          // Entity is a Val / Def
+          case x => x.parent.fold(inlineToHtml(target)) { xpar =>
+            s"""<a href="${relativePath(xpar)}#${x.name}">${inlineToHtml(target)}</a>"""
+          }
+        }
       }
 
       def relativePath(target: Entity) =

@@ -28,10 +28,23 @@ object Phases {
     /** Saves the commentParser function for later evaluation, for when the AST has been filled */
     def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
       val entity = op
+
       val commentParser = { (entity: Entity, packs: Map[String, Package]) =>
         wikiParser.parseHtml(symbol, entity, packs)(ctx)
       }
-      commentCache = commentCache + (entity -> commentParser)
+
+      entity match {
+        case p: Package =>
+          val path = p.path.mkString(".")
+          commentCache = commentCache + (packages.get(path).map { ex =>
+            val children = (ex.children ::: p.children).distinct.sortBy(_.name)
+            Package(p.name, children, p.path, None)
+          }.getOrElse(p) -> commentParser)
+        case _ =>
+          commentCache = commentCache + (entity -> commentParser)
+      }
+
+
       entity
     }
 

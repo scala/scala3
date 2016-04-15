@@ -88,7 +88,6 @@ final case class HtmlTag(data: String) extends Inline {
 final case class Summary(text: Inline) extends Inline
 
 sealed trait LinkTo
-final case class LinkToMember(mbr: Entity, parent: Entity) extends LinkTo
 final case class LinkToEntity(entity: Entity) extends LinkTo
 final case class LinkToExternal(name: String, url: String) extends LinkTo
 final case class Tooltip(name: String) extends LinkTo

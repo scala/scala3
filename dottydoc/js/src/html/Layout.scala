@@ -62,7 +62,6 @@ object Index {
 
   def companionHref(m: Entity): Option[PackageMember] = {
     val pack = m.path.dropRight(1).mkString(".")
-    println(pack)
     ParsedIndex.packages.get(pack)
       .flatMap(_.children.find(e => e.name == m.name && e.path.last != m.path.last))
   }
