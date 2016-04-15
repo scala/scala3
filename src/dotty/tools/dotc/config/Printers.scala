@@ -13,7 +13,7 @@ object Printers {
   }
 
   val default: Printer = new Printer
-  val dottydoc: Printer = new Printer
+  val dottydoc: Printer = noPrinter
   val core: Printer = noPrinter
   val typr: Printer = noPrinter
   val constr: Printer = noPrinter

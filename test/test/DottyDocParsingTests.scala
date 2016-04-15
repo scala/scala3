@@ -14,7 +14,7 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
-        assert(c.rawComment == None, "Should not have a comment, mainly used for exhaustive tests")
+        assert(c.rawComment.map(_.chrs) == None, "Should not have a comment, mainly used for exhaustive tests")
     }
   }
 
@@ -29,7 +29,7 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(t @ TypeDef(name, _))) if name.toString == "Class" =>
-        checkDocString(t.rawComment, "/** Hello world! */")
+        checkDocString(t.rawComment.map(_.chrs), "/** Hello world! */")
     }
   }
 
@@ -44,7 +44,7 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(t @ TypeDef(name, _))) if name.toString == "Class" =>
-        checkDocString(t.rawComment, "/** Hello /* multiple open */ world! */")
+        checkDocString(t.rawComment.map(_.chrs), "/** Hello /* multiple open */ world! */")
     }
   }
   @Test def multipleClassesInPackage = {
@@ -62,8 +62,8 @@ class DottyDocParsingTests extends DottyDocTest {
     checkCompile("frontend", source) { (_, ctx) =>
       ctx.compilationUnit.untpdTree match {
         case PackageDef(_, Seq(c1 @ TypeDef(_,_), c2 @ TypeDef(_,_))) => {
-          checkDocString(c1.rawComment, "/** Class1 docstring */")
-          checkDocString(c2.rawComment, "/** Class2 docstring */")
+          checkDocString(c1.rawComment.map(_.chrs), "/** Class1 docstring */")
+          checkDocString(c2.rawComment.map(_.chrs), "/** Class2 docstring */")
         }
       }
     }
@@ -77,7 +77,7 @@ class DottyDocParsingTests extends DottyDocTest {
       """.stripMargin
 
     checkFrontend(source) {
-      case PackageDef(_, Seq(t @ TypeDef(_,_))) => checkDocString(t.rawComment, "/** Class without package */")
+      case PackageDef(_, Seq(t @ TypeDef(_,_))) => checkDocString(t.rawComment.map(_.chrs), "/** Class without package */")
     }
   }
 
@@ -85,7 +85,7 @@ class DottyDocParsingTests extends DottyDocTest {
     val source = "/** Trait docstring */\ntrait Trait"
 
     checkFrontend(source) {
-      case PackageDef(_, Seq(t @ TypeDef(_,_))) => checkDocString(t.rawComment, "/** Trait docstring */")
+      case PackageDef(_, Seq(t @ TypeDef(_,_))) => checkDocString(t.rawComment.map(_.chrs), "/** Trait docstring */")
     }
   }
 
@@ -101,8 +101,8 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(t1 @ TypeDef(_,_), t2 @ TypeDef(_,_))) => {
-        checkDocString(t1.rawComment, "/** Trait1 docstring */")
-        checkDocString(t2.rawComment, "/** Trait2 docstring */")
+        checkDocString(t1.rawComment.map(_.chrs), "/** Trait1 docstring */")
+        checkDocString(t2.rawComment.map(_.chrs), "/** Trait2 docstring */")
       }
     }
   }
@@ -127,10 +127,10 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(t1 @ TypeDef(_,_), c2 @ TypeDef(_,_), cc3 @ TypeDef(_,_), _, ac4 @ TypeDef(_,_))) => {
-        checkDocString(t1.rawComment, "/** Trait1 docstring */")
-        checkDocString(c2.rawComment, "/** Class2 docstring */")
-        checkDocString(cc3.rawComment, "/** CaseClass3 docstring */")
-        checkDocString(ac4.rawComment, "/** AbstractClass4 docstring */")
+        checkDocString(t1.rawComment.map(_.chrs), "/** Trait1 docstring */")
+        checkDocString(c2.rawComment.map(_.chrs), "/** Class2 docstring */")
+        checkDocString(cc3.rawComment.map(_.chrs), "/** CaseClass3 docstring */")
+        checkDocString(ac4.rawComment.map(_.chrs), "/** AbstractClass4 docstring */")
       }
     }
   }
@@ -147,9 +147,9 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(outer @ TypeDef(_, tpl @ Template(_,_,_,_)))) => {
-        checkDocString(outer.rawComment, "/** Outer docstring */")
+        checkDocString(outer.rawComment.map(_.chrs), "/** Outer docstring */")
         tpl.body match {
-          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.chrs), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -171,10 +171,10 @@ class DottyDocParsingTests extends DottyDocTest {
 
     checkFrontend(source) {
       case PackageDef(_, Seq(o1 @ TypeDef(_, tpl @ Template(_,_,_,_)), o2 @ TypeDef(_,_))) => {
-        checkDocString(o1.rawComment, "/** Outer1 docstring */")
-        checkDocString(o2.rawComment, "/** Outer2 docstring */")
+        checkDocString(o1.rawComment.map(_.chrs), "/** Outer1 docstring */")
+        checkDocString(o2.rawComment.map(_.chrs), "/** Outer2 docstring */")
         tpl.body match {
-          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.chrs), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -196,9 +196,9 @@ class DottyDocParsingTests extends DottyDocTest {
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(o1: MemberDef[Untyped], o2: MemberDef[Untyped])) => {
         assertEquals(o1.name.toString, "Object1")
-        checkDocString(o1.rawComment, "/** Object1 docstring */")
+        checkDocString(o1.rawComment.map(_.chrs), "/** Object1 docstring */")
         assertEquals(o2.name.toString, "Object2")
-        checkDocString(o2.rawComment, "/** Object2 docstring */")
+        checkDocString(o2.rawComment.map(_.chrs), "/** Object2 docstring */")
       }
     }
   }
@@ -223,12 +223,12 @@ class DottyDocParsingTests extends DottyDocTest {
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(o1: ModuleDef, o2: ModuleDef)) => {
         assert(o1.name.toString == "Object1")
-        checkDocString(o1.rawComment, "/** Object1 docstring */")
+        checkDocString(o1.rawComment.map(_.chrs), "/** Object1 docstring */")
         assert(o2.name.toString == "Object2")
-        checkDocString(o2.rawComment, "/** Object2 docstring */")
+        checkDocString(o2.rawComment.map(_.chrs), "/** Object2 docstring */")
 
         o2.impl.body match {
-          case _ :: (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment, "/** Inner docstring */")
+          case _ :: (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.chrs), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -257,14 +257,14 @@ class DottyDocParsingTests extends DottyDocTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case PackageDef(_, Seq(p: ModuleDef)) => {
-        checkDocString(p.rawComment, "/** Package object docstring */")
+        checkDocString(p.rawComment.map(_.chrs), "/** Package object docstring */")
 
         p.impl.body match {
           case (b: TypeDef) :: (t: TypeDef) :: (o: ModuleDef) :: Nil => {
-            checkDocString(b.rawComment, "/** Boo docstring */")
-            checkDocString(t.rawComment, "/** Trait docstring */")
-            checkDocString(o.rawComment, "/** InnerObject docstring */")
-            checkDocString(o.impl.body.head.asInstanceOf[TypeDef].rawComment, "/** InnerClass docstring */")
+            checkDocString(b.rawComment.map(_.chrs), "/** Boo docstring */")
+            checkDocString(t.rawComment.map(_.chrs), "/** Trait docstring */")
+            checkDocString(o.rawComment.map(_.chrs), "/** InnerObject docstring */")
+            checkDocString(o.impl.body.head.asInstanceOf[TypeDef].rawComment.map(_.chrs), "/** InnerClass docstring */")
           }
           case _ => assert(false, "Incorrect structure inside package object")
         }
@@ -284,7 +284,7 @@ class DottyDocParsingTests extends DottyDocTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
-        checkDocString(c.rawComment, "/** Real comment */")
+        checkDocString(c.rawComment.map(_.chrs), "/** Real comment */")
     }
   }
 
@@ -303,7 +303,7 @@ class DottyDocParsingTests extends DottyDocTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
-        checkDocString(c.rawComment, "/** Real comment */")
+        checkDocString(c.rawComment.map(_.chrs), "/** Real comment */")
     }
   }
 
@@ -329,9 +329,9 @@ class DottyDocParsingTests extends DottyDocTest {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
           case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
-            checkDocString(v1.rawComment, "/** val1 */")
-            checkDocString(v2.rawComment, "/** val2 */")
-            checkDocString(v3.rawComment, "/** val3 */")
+            checkDocString(v1.rawComment.map(_.chrs), "/** val1 */")
+            checkDocString(v2.rawComment.map(_.chrs), "/** val2 */")
+            checkDocString(v3.rawComment.map(_.chrs), "/** val3 */")
           }
           case _ => assert(false, "Incorrect structure inside object")
         }
@@ -361,9 +361,9 @@ class DottyDocParsingTests extends DottyDocTest {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
           case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
-            checkDocString(v1.rawComment, "/** var1 */")
-            checkDocString(v2.rawComment, "/** var2 */")
-            checkDocString(v3.rawComment, "/** var3 */")
+            checkDocString(v1.rawComment.map(_.chrs), "/** var1 */")
+            checkDocString(v2.rawComment.map(_.chrs), "/** var2 */")
+            checkDocString(v3.rawComment.map(_.chrs), "/** var3 */")
           }
           case _ => assert(false, "Incorrect structure inside object")
         }
@@ -393,9 +393,9 @@ class DottyDocParsingTests extends DottyDocTest {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
           case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
-            checkDocString(v1.rawComment, "/** def1 */")
-            checkDocString(v2.rawComment, "/** def2 */")
-            checkDocString(v3.rawComment, "/** def3 */")
+            checkDocString(v1.rawComment.map(_.chrs), "/** def1 */")
+            checkDocString(v2.rawComment.map(_.chrs), "/** def2 */")
+            checkDocString(v3.rawComment.map(_.chrs), "/** def3 */")
           }
           case _ => assert(false, "Incorrect structure inside object")
         }
@@ -425,9 +425,9 @@ class DottyDocParsingTests extends DottyDocTest {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
           case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
-            checkDocString(v1.rawComment, "/** type1 */")
-            checkDocString(v2.rawComment, "/** type2 */")
-            checkDocString(v3.rawComment, "/** type3 */")
+            checkDocString(v1.rawComment.map(_.chrs), "/** type1 */")
+            checkDocString(v2.rawComment.map(_.chrs), "/** type2 */")
+            checkDocString(v3.rawComment.map(_.chrs), "/** type3 */")
           }
           case _ => assert(false, "Incorrect structure inside object")
         }
@@ -451,7 +451,7 @@ class DottyDocParsingTests extends DottyDocTest {
       case PackageDef(_, Seq(o: ModuleDef)) =>
         o.impl.body match {
           case (foo: MemberDef) :: Nil =>
-            expectNoDocString(foo.rawComment)
+            expectNoDocString(foo.rawComment.map(_.chrs))
           case _ => assert(false, "Incorrect structure inside object")
         }
     }
@@ -468,7 +468,7 @@ class DottyDocParsingTests extends DottyDocTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
-        checkDocString(c.rawComment, "/** Class1 */")
+        checkDocString(c.rawComment.map(_.chrs), "/** Class1 */")
     }
   }
 
@@ -483,7 +483,7 @@ class DottyDocParsingTests extends DottyDocTest {
     import dotty.tools.dotc.ast.untpd._
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
-        checkDocString(c.rawComment, "/** Class1 */")
+        checkDocString(c.rawComment.map(_.chrs), "/** Class1 */")
     }
   }
 } /* End class */

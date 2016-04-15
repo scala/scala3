@@ -4,20 +4,29 @@ package comment
 
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
+import Entities.{Entity, Package}
 
-//TODO: re-enable pos?
-trait CommentParser {
+trait CommentParser extends util.MemberLookup {
   import Regexes._
 
   /** Parses a raw comment string into a `Comment` object.
+   * @param packages     all packages parsed by Scaladoc tool, used for lookup
    * @param cleanComment a cleaned comment to be parsed
    * @param src          the raw comment source string.
    * @param pos          the position of the comment in source.
    */
-  def parse(comment: List[String], src: String, /*pos: Position,*/ site: Symbol = NoSymbol): Body = {
+  def parse(
+    entity: Entity,
+    packages: Map[String, Package],
+    comment: List[String],
+    src: String,
+    pos: Position,
+    site: Symbol = NoSymbol
+  )(implicit ctx: Context): Body = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
      *  instance, recursively on lines. To do so, it splits the whole comment
@@ -136,12 +145,12 @@ trait CommentParser {
         val tagsWithoutDiagram = tags.filterNot(pair => stripTags.contains(pair._1))
 
         val bodyTags: mutable.Map[TagKey, List[Body]] =
-          mutable.Map((tagsWithoutDiagram mapValues {tag => tag map (parseWikiAtSymbol(_, /*pos,*/ site))}).toSeq: _*)
+          mutable.Map((tagsWithoutDiagram mapValues {tag => tag map (parseWikiAtSymbol(entity, packages, _, pos, site))}).toSeq: _*)
 
         def oneTag(key: SimpleTagKey, filterEmpty: Boolean = true): Option[Body] =
           ((bodyTags remove key): @unchecked) match {
             case Some(r :: rs) if !(filterEmpty && r.blocks.isEmpty) =>
-              //if (!rs.isEmpty) dottydoc.println(s"$pos: only one '@${key.name}' tag is allowed")
+              if (!rs.isEmpty) dottydoc.println(s"$pos: only one '@${key.name}' tag is allowed")
               Some(r)
             case _ => None
           }
@@ -154,15 +163,15 @@ trait CommentParser {
             bodyTags.keys.toSeq flatMap {
               case stk: SymbolTagKey if (stk.name == key.name) => Some(stk)
               case stk: SimpleTagKey if (stk.name == key.name) =>
-                //dottydoc.println(s"$pos: tag '@${stk.name}' must be followed by a symbol name")
+                dottydoc.println(s"$pos: tag '@${stk.name}' must be followed by a symbol name")
                 None
               case _ => None
             }
           val pairs: Seq[(String, Body)] =
             for (key <- keys) yield {
               val bs = (bodyTags remove key).get
-              //if (bs.length > 1)
-                //dottydoc.println(s"$pos: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
+              if (bs.length > 1)
+                dottydoc.println(s"$pos: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
               (key.symbol, bs.head)
             }
           Map.empty[String, Body] ++ (if (filterEmpty) pairs.filterNot(_._2.blocks.isEmpty) else pairs)
@@ -171,16 +180,16 @@ trait CommentParser {
         def linkedExceptions: Map[String, Body] = {
           val m = allSymsOneTag(SimpleTagKey("throws"), filterEmpty = false)
 
-          m.map { case (name,body) =>
-            //val link = memberLookup(pos, name, site)
+          m.map { case (targetStr,body) =>
+            val link = lookup(entity, packages, targetStr, pos)
             val newBody = body match {
               case Body(List(Paragraph(Chain(content)))) =>
                 val descr = Text(" ") +: content
-                //val entityLink = EntityLink(Monospace(Text(name)), link)
-                Body(List(Paragraph(Chain(/*entityLink +: */descr))))
+                val entityLink = EntityLink(Monospace(Text(targetStr)), link)
+                Body(List(Paragraph(Chain(entityLink +: descr))))
               case _ => body
             }
-            (name, newBody)
+            (targetStr, newBody)
           }
         }
 
@@ -214,7 +223,7 @@ trait CommentParser {
         //for ((key, _) <- bodyTags)
         //  dottydoc.println(s"$pos: Tag '@${key.name}' is not recognised")
 
-        parseWikiAtSymbol(docBody.toString, /*pos,*/ site)
+        parseWikiAtSymbol(entity, packages, docBody.toString, pos, site)
       }
     }
 
@@ -241,14 +250,26 @@ trait CommentParser {
     *  - Removed start-of-line star and one whitespace afterwards (if present).
     *  - Removed all end-of-line whitespace.
     *  - Only `endOfLine` is used to mark line endings. */
-  def parseWikiAtSymbol(string: String, /*pos: Position,*/ site: Symbol): Body = new WikiParser(string, /*pos,*/ site).document()
+  def parseWikiAtSymbol(
+    entity: Entity,
+    packages: Map[String, Package],
+    string: String,
+    pos: Position,
+    site: Symbol
+  )(implicit ctx: Context): Body = new WikiParser(entity, packages, string, pos, site).document()
 
-  /** TODO
-    *
+  /** Original wikiparser from NSC
     * @author Ingo Maier
     * @author Manohar Jonnalagedda
-    * @author Gilles Dubochet */
-  protected final class WikiParser(val buffer: String, /*pos: Position,*/ site: Symbol) extends CharReader(buffer) { wiki =>
+    * @author Gilles Dubochet
+    */
+  protected final class WikiParser(
+    entity: Entity,
+    packages: Map[String, Package],
+    val buffer: String,
+    pos: Position,
+    site: Symbol
+  )(implicit ctx: Context) extends CharReader(buffer) { wiki =>
     var summaryParsed = false
 
     def document(): Body = {
@@ -335,7 +356,7 @@ trait CommentParser {
       jump("{{{")
       val str = readUntil("}}}")
       if (char == endOfText)
-        reportError(/*pos,*/ "unclosed code block")
+        reportError(pos, "unclosed code block")
       else
         jump("}}}")
       blockEnded("code block")
@@ -349,7 +370,7 @@ trait CommentParser {
       val text = inline(check("=" * inLevel))
       val outLevel = repeatJump('=', inLevel)
       if (inLevel != outLevel)
-        reportError(/*pos,*/ "unbalanced or unclosed heading")
+        reportError(pos, "unbalanced or unclosed heading")
       blockEnded("heading")
       Title(text, inLevel)
     }
@@ -560,9 +581,7 @@ trait CommentParser {
         case (SchemeUri(uri), optTitle) =>
           Link(uri, optTitle getOrElse Text(uri))
         case (qualName, optTitle) =>
-          //TODO: this should be enabled
-          //makeEntityLink(optTitle getOrElse Text(target), pos, target, site)
-          title.getOrElse(Text(qualName))
+          makeEntityLink(entity, packages, optTitle getOrElse Text(target), pos, target)
       }
     }
 
@@ -571,7 +590,7 @@ trait CommentParser {
     /** {{{ eol ::= { whitespace } '\n' }}} */
     def blockEnded(blockType: String): Unit = {
       if (char != endOfLine && char != endOfText) {
-        reportError(/*pos,*/ "no additional content on same line after " + blockType)
+        reportError(pos, "no additional content on same line after " + blockType)
         jumpUntil(endOfLine)
       }
       while (char == endOfLine)
@@ -629,9 +648,8 @@ trait CommentParser {
       }
     }
 
-    def reportError(/*pos: Position,*/ message: String) =
-      //dottydoc.println(s"$pos: $message")
-      dottydoc.println(s"$message")
+    def reportError(pos: Position, message: String) =
+      dottydoc.println(s"$pos: $message")
   }
 
   protected sealed class CharReader(buffer: String) { reader =>

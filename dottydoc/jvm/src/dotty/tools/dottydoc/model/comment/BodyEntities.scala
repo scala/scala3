@@ -3,6 +3,7 @@ package model
 package comment
 
 import scala.collection._
+import Entities.Entity
 
 /** A body of text. A comment has a single body, which is composed of
   * at least one block. Inside every body is exactly one summary (see
@@ -61,12 +62,11 @@ final case class Subscript(text: Inline) extends Inline
 final case class Link(target: String, title: Inline) extends Inline
 final case class Monospace(text: Inline) extends Inline
 final case class Text(text: String) extends Inline
-//TODO: this should be used
-//abstract class EntityLink(val title: Inline) extends Inline { def link: LinkTo }
-//object EntityLink {
-//  def apply(title: Inline, linkTo: LinkTo) = new EntityLink(title) { def link: LinkTo = linkTo }
-//  def unapply(el: EntityLink): Option[(Inline, LinkTo)] = Some((el.title, el.link))
-//}
+abstract class EntityLink(val title: Inline) extends Inline { def link: LinkTo }
+object EntityLink {
+  def apply(title: Inline, linkTo: LinkTo) = new EntityLink(title) { def link: LinkTo = linkTo }
+  def unapply(el: EntityLink): Option[(Inline, LinkTo)] = Some((el.title, el.link))
+}
 final case class HtmlTag(data: String) extends Inline {
   private val Pattern = """(?ms)\A<(/?)(.*?)[\s>].*\z""".r
   private val (isEnd, tagName) = data match {
@@ -86,3 +86,9 @@ final case class HtmlTag(data: String) extends Inline {
 
 /** The summary of a comment, usually its first sentence. There must be exactly one summary per body. */
 final case class Summary(text: Inline) extends Inline
+
+sealed trait LinkTo
+final case class LinkToMember(mbr: Entity, parent: Entity) extends LinkTo
+final case class LinkToEntity(entity: Entity) extends LinkTo
+final case class LinkToExternal(name: String, url: String) extends LinkTo
+final case class Tooltip(name: String) extends LinkTo

@@ -4,7 +4,7 @@ package dottydoc
 import core.Phases.DocPhase
 import dotc.config.CompilerCommand
 import dotc.config.Printers.dottydoc
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{FreshContext, Context}
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dotc.{Compiler, Driver}
@@ -17,7 +17,8 @@ import dotc.{Compiler, Driver}
  *
  *  Example:
  *    1. Use the existing FrontEnd to typecheck the code being fed to dottydoc
- *    2. Create JSON from the results of the FrontEnd phase
+ *    2. Create an AST that is serializable
+ *    3. Serialize to JSON
  */
 case object DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] =

@@ -16,7 +16,7 @@ object EntityFactories {
   def flags(t: Tree)(implicit ctx: Context): List[String] =
     (t.symbol.flags & SourceModifierFlags).flagStrings.toList
 
-  def path(t: Tree, name: String)(implicit ctx: Context): List[String] = {
+  def path(t: Tree)(implicit ctx: Context): List[String] = {
     def pathList(tpe: Type): List[String] = tpe match {
       case t: ThisType =>
         pathList(t.tref)
