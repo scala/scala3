@@ -37,7 +37,7 @@ object Names {
    */
   abstract class Name extends DotClass
     with PreName
-    with Seq[Char]
+    with collection.immutable.Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
 
     /** A type for names of the same kind as this name */
