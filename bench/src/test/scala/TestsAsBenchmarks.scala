@@ -50,6 +50,9 @@ abstract class TestsToBenchmarkConverter
   // accept all the results, do not fail
   override def tester: Tester = new Tester.Accepter
 
+  // store all results
+  override def historian: RegressionReporter.Historian = RegressionReporter.Historian.Complete()
+
   override def executor: Executor = LocalExecutor(warmer, aggregator, measurer)
   val testNames = getMethodsAnnotatedWith(targetClass, filterAnnot).map(_.getName).sorted
 
