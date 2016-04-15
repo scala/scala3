@@ -199,7 +199,8 @@ object DottyBuild extends Build {
     settings(
       addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
       addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
+      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
+      addCommandAlias("dottydoc", ";dottydocJVM/run")
     ).
     settings(publishing)
 
@@ -262,7 +263,6 @@ object DottyInjectedPlugin extends AutoPlugin {
       */
     ).
     settings(publishing)
-
 
     lazy val dottydoc = crossProject.in(file("dottydoc"))
       .jsSettings(
