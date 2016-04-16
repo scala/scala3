@@ -124,7 +124,7 @@ object Test {
     val ys9: Seq[Int] = xs9
     val xs9a = xs.map(_.toUpper) // !!! need a language change to make this work without the : Char
     val ys9a: String = xs9a
-    val xs10 = xs.flatMap((x: Char) => s"$x,$x")
+    val xs10 = xs.flatMap(x => s"$x,$x")
     val ys10: String = xs10
     val xs11 = xs ++ xs
     val ys11: String = xs11
