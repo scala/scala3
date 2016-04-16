@@ -3,24 +3,19 @@ package dotc
 package core
 package tasty
 
-import Contexts._, SymDenotations._
+import Contexts._, SymDenotations._, Symbols._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
-import dotty.tools.dotc.core.tasty.DottyUnpickler.{SourceFileUnpickler, TreeSectionUnpickler, PositionsSectionUnpickler}
 import util.Positions._
 import util.{SourceFile, NoSource}
 import PositionUnpickler._
+import Annotations.Annotation
 import classfile.ClassfileParser
 
 object DottyUnpickler {
 
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
-
-  class SourceFileUnpickler extends SectionUnpickler[SourceFile]("Sourcefile") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new SourceFile(tastyName(reader.readNameRef()).toString, Seq())
-  }
 
   class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
@@ -38,6 +33,7 @@ object DottyUnpickler {
  */
 class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   import tpd._
+  import DottyUnpickler._
 
   val unpickler = new TastyUnpickler(bytes)
   private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler).get
@@ -51,11 +47,10 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   /** The unpickled trees, and the source file they come from
    *  @param readPositions if true, trees get decorated with position information.
    */
-  def body(readPositions: Boolean = false)(implicit ctx: Context): (List[Tree], SourceFile) = {
-    val source = unpickler.unpickle(new SourceFileUnpickler).getOrElse(NoSource)
+  def body(readPositions: Boolean = false)(implicit ctx: Context): List[Tree] = {
     if (readPositions)
       for ((totalRange, positions) <- unpickler.unpickle(new PositionsSectionUnpickler))
         treeUnpickler.usePositions(totalRange, positions)
-    (treeUnpickler.unpickle(), source)
+    treeUnpickler.unpickle()
   }
 }

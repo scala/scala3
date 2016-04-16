@@ -596,6 +596,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
           sym.info = ctx.methodType(typeParams, valueParamss, resType)
+          if (sym.isSetter && sym.accessedFieldOrGetter.is(ParamAccessor)) {
+            // reconstitute ParamAccessor flag of setters for var parameters, which is not pickled
+            sym.setFlag(ParamAccessor)
+            sym.resetFlag(Deferred)
+          }
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           sym.info = readType()
@@ -802,9 +807,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               tpd.Super(qual, mixName, ctx.mode.is(Mode.InSuperCall), mixClass)
             case APPLY =>
               val fn = readTerm()
-              val isJava = fn.tpe.isInstanceOf[JavaMethodType]
+              val isJava = fn.symbol.is(JavaDefined)
               def readArg() = readTerm() match {
-                case SeqLiteral(elems, elemtpt) if isJava => JavaSeqLiteral(elems, elemtpt)
+                case SeqLiteral(elems, elemtpt) if isJava =>
+                  JavaSeqLiteral(elems, elemtpt)
                 case arg => arg
               }
               tpd.Apply(fn, until(end)(readArg()))
@@ -813,7 +819,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case PAIR =>
               Pair(readTerm(), readTerm())
             case TYPED =>
-              Typed(readTerm(), readTpt())
+              val expr = readTerm()
+              val tpt = readTpt()
+              val expr1 = expr match {
+                case SeqLiteral(elems, elemtpt) if tpt.tpe.isRef(defn.ArrayClass) =>
+                  JavaSeqLiteral(elems, elemtpt)
+                case expr => expr
+              }
+              Typed(expr1, tpt)
             case NAMEDARG =>
               NamedArg(readName(), readTerm())
             case ASSIGN =>

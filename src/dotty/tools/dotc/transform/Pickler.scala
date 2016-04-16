@@ -11,7 +11,6 @@ import Periods._
 import Phases._
 import Symbols._
 import Flags.Module
-import util.SourceFile
 import collection.mutable
 
 /** This phase pickles trees */
@@ -48,8 +47,6 @@ class Pickler extends Phase {
       treePkl.pickle(tree :: Nil)
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
-      if (unit.source.exists)
-        pickleSourcefile(pickler, unit.source)
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
@@ -63,12 +60,6 @@ class Pickler extends Phase {
         new TastyPrinter(pickler.assembleParts()).printContents()
       }
     }
-  }
-
-  private def pickleSourcefile(pickler: TastyPickler, source: SourceFile): Unit = {
-    val buf = new TastyBuffer(10)
-    pickler.newSection("Sourcefile", buf)
-    buf.writeNat(pickler.nameBuffer.nameIndex(source.file.path).index)
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
@@ -89,16 +80,16 @@ class Pickler extends Phase {
       }
     pickling.println("************* entered toplevel ***********")
     for ((cls, unpickler) <- unpicklers) {
-      val (unpickled, source) = unpickler.body(readPositions = true)
-      testSame(i"$unpickled%\n%", beforePickling(cls), cls, source)
+      val unpickled = unpickler.body(readPositions = true)
+      testSame(i"$unpickled%\n%", beforePickling(cls), cls)
     }
   }
 
-  private def testSame(unpickled: String, previous: String, cls: ClassSymbol, source: SourceFile)(implicit ctx: Context) =
+  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for ${cls.fullName} in $source, for details:
+      ctx.error(s"""pickling difference for ${cls.fullName} in ${cls.sourceFile}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }

@@ -36,6 +36,8 @@ import Symbols._, TypeUtils._
  *
  *  (8) Replaces self references by name with `this`
  *
+ *  (9) Adds SourceFile annotations to all top-level classes and objects
+ *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -224,7 +226,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           transformMemberDef(tree)
           val sym = tree.symbol
           val tree1 =
-            if (sym.isClass) tree
+            if (sym.isClass) {
+              if (sym.owner.is(Package) &&
+                  ctx.compilationUnit.source.exists &&
+                  sym != defn.SourceFileAnnot)
+                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+              tree
+            }
             else {
               Checking.typeChecker.traverse(tree.rhs)
               cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))

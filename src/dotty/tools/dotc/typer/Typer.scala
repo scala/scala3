@@ -1022,17 +1022,20 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
-    // for secondary constructors we need to use that their type parameters
-    // are aliases of the class type parameters. See pos/i941.scala
-    if (sym.isConstructor && !sym.isPrimaryConstructor)
-      (sym.owner.typeParams, tparams1).zipped.foreach {(tparam, tdef) =>
-        tdef.symbol.info = TypeAlias(tparam.typeRef)
-       }
-
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     val tpt1 = checkSimpleKinded(typedType(tpt))
-    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)
+
+    var rhsCtx = ctx
+    if (sym.isConstructor && !sym.isPrimaryConstructor && tparams1.nonEmpty) {
+      // for secondary constructors we need a context that "knows"
+      // that their type parameters are aliases of the class type parameters.
+      // See pos/i941.scala
+      rhsCtx = ctx.fresh.setFreshGADTBounds
+      (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
+        rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
+    }
+    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
@@ -1518,7 +1521,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val tvarsToInstantiate = tvarsInParams(tree)
         wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
-        def addImplicitArgs = {
+        def addImplicitArgs(implicit ctx: Context) = {
           val errors = new mutable.ListBuffer[() => String]
           def implicitArgError(msg: => String) = {
             errors += (() => msg)
@@ -1565,9 +1568,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           else adapt(tpd.Apply(tree, args), pt)
         }
-        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
+        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs(argCtx(tree))
         else
-          ctx.typerState.tryWithFallback(addImplicitArgs) {
+          ctx.typerState.tryWithFallback(addImplicitArgs(argCtx(tree))) {
             adapt(typed(original, WildcardType), pt, EmptyTree)
           }
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
@@ -1677,7 +1680,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             var typeArgs = tree match {
-              case Select(New(tpt), nme.CONSTRUCTOR) => tpt.tpe.dealias.argTypesLo
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo
               case _ => Nil
             }
             if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2

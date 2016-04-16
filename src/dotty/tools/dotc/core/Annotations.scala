@@ -94,6 +94,9 @@ object Annotations {
     def makeChild(sym: Symbol)(implicit ctx: Context) =
       deferred(defn.ChildAnnot,
         implicit ctx => New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil))
+
+    def makeSourceFile(path: String)(implicit ctx: Context) =
+      apply(defn.SourceFileAnnot, Literal(Constant(path)))
   }
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {

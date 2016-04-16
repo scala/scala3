@@ -84,7 +84,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
-                  REPEATED       Length elem_Term*
+                  REPEATED       Length elem_Type elem_Term*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
@@ -183,8 +183,6 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 3 (tags 96-111) :  tag AST
   Category 4 (tags 112-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
-
-Standard Section: "Sourcefile" sourcefile_NameRef
 
 Standard Section: "Positions" sourceLength_Nat Assoc*
 

@@ -64,6 +64,9 @@ object FromTasty extends Driver {
   }
 
   class ReadTastyTreesFromClasses extends FrontEnd {
+
+    override def isTyper = false
+
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map(readTASTY)
 
@@ -83,8 +86,8 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd) match {
                   case Some(unpickler: DottyUnpickler) =>
-                    val (List(unpickled), source) = unpickler.body(readPositions = true)
-                    val unit1 = new CompilationUnit(source)
+                    val List(unpickled) = unpickler.body(readPositions = true)
+                    val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
                     unit1.tpdTree = unpickled
                     unit1.unpicklers += (clsd.classSymbol -> unpickler.unpickler)
                     force.traverse(unit1.tpdTree)

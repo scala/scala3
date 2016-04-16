@@ -456,6 +456,8 @@ class Definitions {
   def RemoteAnnot(implicit ctx: Context) = RemoteAnnotType.symbol.asClass
   lazy val RepeatedAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Repeated")
   def RepeatedAnnot(implicit ctx: Context) = RepeatedAnnotType.symbol.asClass
+  lazy val SourceFileAnnotType = ctx.requiredClassRef("dotty.annotation.internal.SourceFile")
+  def SourceFileAnnot(implicit ctx: Context) = SourceFileAnnotType.symbol.asClass
   lazy val ScalaSignatureAnnotType = ctx.requiredClassRef("scala.reflect.ScalaSignature")
   def ScalaSignatureAnnot(implicit ctx: Context) = ScalaSignatureAnnotType.symbol.asClass
   lazy val ScalaLongSignatureAnnotType = ctx.requiredClassRef("scala.reflect.ScalaLongSignature")
