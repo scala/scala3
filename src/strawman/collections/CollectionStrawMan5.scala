@@ -38,18 +38,12 @@ object CollectionStrawMan5 {
        with IterableOps[A]
        with IterableMonoTransforms[A @uncheckedVariance, C[A @uncheckedVariance]]
        with IterablePolyTransforms[A @uncheckedVariance, C] {
-    protected def fromLikeIterable(coll: Iterable[A @uncheckedVariance]): C[A @uncheckedVariance] = fromIterable(coll)
+    protected[this] def fromLikeIterable(coll: Iterable[A]): C[A] = fromIterable(coll)
   }
 
   /** Base trait for Seq operations */
-  trait SeqLike[+A, +C[X] <: Seq[X]] extends IterableLike[A, C] {
-    def reverse: C[A @uncheckedVariance] = {
-      var xs: List[A] = Nil
-      var it = iterator
-      while (it.hasNext) xs = new Cons(it.next, xs)
-      fromLikeIterable(xs)
-    }
-  }
+  trait SeqLike[+A, +C[X] <: Seq[X]]
+  extends IterableLike[A, C] with SeqMonoTransforms[A @uncheckedVariance, C[A @uncheckedVariance]]
 
   /** Base trait for generic collections */
   trait Iterable[+A] extends IterableOnce[A] with IterableLike[A, Iterable] {
