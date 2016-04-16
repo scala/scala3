@@ -47,6 +47,8 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
+  val tastyDir      = testsDir + "tasty/"
+  val tastyFailedDir = tastyDir + "failed/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -279,4 +281,34 @@ class tests extends CompilerTest {
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
+
+  //TODO - failed TASTY tests
+  @Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
+  @Test def tasty_fail1 = compileFile(tastyFailedDir, "Fail1", testPickling)
+
+  //issue with types in import, lazy val imports from Scala
+  @Test def tasty_fail_backend = compileFile(s"${backendDir}jvm/", "DottyBackendInterface", testPickling)
+
+  @Test def tasty_fail_sjs = compileDir(s"${backendDir}", "sjs", testPickling)
+
+  @Test def tasty_fail_types = compileFile(coreDir, "Types", testPickling)
+  @Test def tasty_fail2 = compileFile(tastyFailedDir, "Fail2", testPickling)
+  //TODO - Fail3.scala - problem with the compilation after unpickling
+
+  @Test def tasty_fail_parsers = compileFile(parsingDir, "Parsers", testPickling)
+  @Test def tasty_fail4 = compileFile(tastyFailedDir, "Fail4", testPickling)
+
+  @Test def tasty_fail_repl1 = compileFile(dotcDir + "repl/", "CompilingInterpreter", testPickling)
+  @Test def tasty_fail5 = compileFile(tastyFailedDir, "Fail5", testPickling)
+
+  //var param, issue with order
+  @Test def tasty_fail6 = compileFile(tastyFailedDir, "Fail6", testPickling)
+  //TODO - Fail7.scala - problem with unpickling - var param
+
+  @Test def tasty_fail_transform = compileFile(s"${dotcDir}transform/", "PatternMatcher", testPickling)
+  @Test def tasty_fail8 = compileFile(tastyFailedDir, "Fail8", testPickling)
+  @Test def tasty_fail9 = compileFile(tastyFailedDir, "Fail9", testPickling)
+
+  @Test def tasty_fail_typer = compileFile(typerDir, "Namer", testPickling)
+  @Test def tasty_fail10 = compileFile(tastyFailedDir, "Fail10", testPickling)
 }
