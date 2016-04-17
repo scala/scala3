@@ -3,6 +3,7 @@ package strawman.collections
 import Predef.{augmentString => _, wrapString => _, _}
 import scala.reflect.ClassTag
 import annotation.unchecked.uncheckedVariance
+import annotation.tailrec
 
 /** A strawman architecture for new collections. It contains some
  *  example collection classes and methods with the intent to expose
@@ -32,30 +33,8 @@ object CollectionStrawMan5 {
     def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
   }
 
-  /** Base trait for Iterable operations */
-  trait IterableLike[+A, +C[X] <: Iterable[X]]
-    extends FromIterable[C]
-       with IterableOps[A]
-       with IterableMonoTransforms[A @uncheckedVariance, C[A @uncheckedVariance]]
-       with IterablePolyTransforms[A @uncheckedVariance, C] {
-    protected def fromLikeIterable(coll: Iterable[A @uncheckedVariance]): C[A @uncheckedVariance] = fromIterable(coll)
-  }
-
-  /** Base trait for Seq operations */
-  trait SeqLike[+A, +C[X] <: Seq[X]] extends IterableLike[A, C] {
-    def reverse: C[A @uncheckedVariance] = {
-      var xs: List[A] = Nil
-      var it = iterator
-      while (it.hasNext) xs = new Cons(it.next, xs)
-      fromLikeIterable(xs)
-    }
-  }
-
   /** Base trait for generic collections */
   trait Iterable[+A] extends IterableOnce[A] with IterableLike[A, Iterable] {
-    override def iterator: Iterator[A]
-    override def fromIterable[B](it: Iterable[B]): Iterable[B]
-
     protected def coll: Iterable[A] = this
     def knownLength: Int = -1
   }
@@ -64,9 +43,9 @@ object CollectionStrawMan5 {
   trait Seq[+A] extends Iterable[A] with SeqLike[A, Seq] {
     def apply(i: Int): A
     def length: Int
-    override def iterator: Iterator[A]
   }
 
+  /** Base trait for strict collections */
   trait Buildable[+A, +To <: Iterable[A]] extends Iterable[A] {
     protected[this] def newBuilder: Builder[A, To]
     override def partition(p: A => Boolean): (To, To) = {
@@ -74,8 +53,11 @@ object CollectionStrawMan5 {
       iterator.foreach(x => (if (p(x)) l else r) += x)
       (l.result, r.result)
     }
+    // one might also override other transforms here to avoid generating
+    // iterators if it helps efficiency.
   }
 
+  /** Base trait for collection builders */
   trait Builder[-A, +To] {
     def +=(x: A): this.type
     def result: To
@@ -88,6 +70,29 @@ object CollectionStrawMan5 {
 
   /* ------------ Operations ----------------------------------- */
 
+  /** Base trait for Iterable operations
+   *
+   *  VarianceNote
+   *  ============
+   *
+   *  We require that for all child classes of Iterable the variance of
+   *  the child class and the variance of the `C` parameter passed to `IterableLike`
+   *  are the same. We cannot express this since we lack variance polymorphism. That's
+   *  why we have to resort at some places to write `C[A @uncheckedVariance]`.
+   *
+   */
+  trait IterableLike[+A, +C[X] <: Iterable[X]]
+    extends FromIterable[C]
+       with IterableOps[A]
+       with IterableMonoTransforms[A, C[A @uncheckedVariance]] // sound bcs of VarianceNote
+       with IterablePolyTransforms[A, C] {
+    protected[this] def fromLikeIterable(coll: Iterable[A]): C[A] = fromIterable(coll)
+  }
+
+  /** Base trait for Seq operations */
+  trait SeqLike[+A, +C[X] <: Seq[X]]
+  extends IterableLike[A, C] with SeqMonoTransforms[A, C[A @uncheckedVariance]] // sound bcs of VarianceNote
+
   trait IterableOps[+A] extends Any {
     def iterator: Iterator[A]
     def foreach(f: A => Unit): Unit = iterator.foreach(f)
@@ -99,16 +104,19 @@ object CollectionStrawMan5 {
     def view: View[A] = View.fromIterator(iterator)
   }
 
-  trait IterableMonoTransforms[A, +Repr] extends Any {
+  trait IterableMonoTransforms[+A, +Repr] extends Any {
     protected def coll: Iterable[A]
-    protected def fromLikeIterable(coll: Iterable[A]): Repr
+    protected[this] def fromLikeIterable(coll: Iterable[A]): Repr
     def filter(p: A => Boolean): Repr = fromLikeIterable(View.Filter(coll, p))
     def partition(p: A => Boolean): (Repr, Repr) = {
       val pn = View.Partition(coll, p)
       (fromLikeIterable(pn.left), fromLikeIterable(pn.right))
     }
     def drop(n: Int): Repr = fromLikeIterable(View.Drop(coll, n))
-    def to[C[X] <: Iterable[X]](fi: FromIterable[C]): C[A] = fi.fromIterable(coll)
+    def to[C[X] <: Iterable[X]](fi: FromIterable[C]): C[A @uncheckedVariance] =
+      // variance seems sound because `to` could just as well have been added
+      // as a decorator. We should investigate this further to be sure.
+      fi.fromIterable(coll)
   }
 
   trait IterablePolyTransforms[+A, +C[A]] extends Any {
@@ -118,9 +126,10 @@ object CollectionStrawMan5 {
     def flatMap[B](f: A => IterableOnce[B]): C[B] = fromIterable(View.FlatMap(coll, f))
     def ++[B >: A](xs: IterableOnce[B]): C[B] = fromIterable(View.Concat(coll, xs))
     def zip[B](xs: IterableOnce[B]): C[(A @uncheckedVariance, B)] = fromIterable(View.Zip(coll, xs))
+       // sound bcs of VarianceNote
   }
 
-  trait SeqMonoTransforms[A, +Repr] extends Any with IterableMonoTransforms[A, Repr] {
+  trait SeqMonoTransforms[+A, +Repr] extends Any with IterableMonoTransforms[A, Repr] {
     def reverse: Repr = {
       var xs: List[A] = Nil
       var it = coll.iterator
@@ -156,10 +165,12 @@ object CollectionStrawMan5 {
       case xs: List[B] => this ++: xs
       case _ => super.++(xs)
     }
-    override def reverse = super.reverse
+    @tailrec final override def drop(n: Int) =
+      if (n > 0) tail.drop(n - 1) else this
   }
 
-  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance]) extends List[A] {
+  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
+  extends List[A] {
     override def isEmpty = false
     override def head = x
     def tail = next
@@ -182,11 +193,7 @@ object CollectionStrawMan5 {
   class ListBuffer[A] extends Seq[A] with SeqLike[A, ListBuffer] with Builder[A, List[A]] {
     private var first, last: List[A] = Nil
     private var aliased = false
-    def iterator = new Iterator[A] {
-      var current: List[A] = first
-      def hasNext = ???
-      def next = ???
-    }
+    def iterator = first.iterator
     def fromIterable[B](coll: Iterable[B]) = ListBuffer.fromIterable(coll)
     def apply(i: Int) = first.apply(i)
     def length = first.length
@@ -211,6 +218,12 @@ object CollectionStrawMan5 {
       last = last1
       this
     }
+    override def toString: String =
+      if (first.isEmpty) "ListBuffer()"
+      else {
+        val b = new StringBuilder("ListBuffer(").append(first.head)
+        first.tail.foldLeft(b)(_.append(", ").append(_)).append(")").toString
+      }
   }
 
   object ListBuffer extends IterableFactory[ListBuffer] {
@@ -297,12 +310,12 @@ object CollectionStrawMan5 {
     def fromIterable[B](coll: Iterable[B]): List[B] = List.fromIterable(coll)
     def map(f: Char => Char): String = {
       val sb = new StringBuilder
-      for (ch <- StringOps(s)) sb.append(f(ch))
+      for (ch <- s) sb.append(f(ch))
       sb.toString
     }
     def flatMap(f: Char => String): String = {
       val sb = new StringBuilder
-      for (ch <- StringOps(s)) sb.append(f(ch))
+      for (ch <- s) sb.append(f(ch))
       sb.toString
     }
     def ++(xs: IterableOnce[Char]): String = {
@@ -398,15 +411,6 @@ object CollectionStrawMan5 {
         case _ =>
           -1
       }
-    }
-    case class Reverse[A](underlying: Iterable[A]) extends View[A] {
-      def iterator = {
-        var xs: List[A] = Nil
-        val it = underlying.iterator
-        while (it.hasNext) xs = Cons(it.next(), xs)
-        xs.iterator
-      }
-      override def knownLength = underlying.knownLength
     }
   }
 
