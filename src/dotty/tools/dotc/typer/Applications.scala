@@ -645,7 +645,9 @@ trait Applications extends Compatibility { self: Typer =>
       fullyDefinedType(tree.tpe, "array", tree.pos)
 
       def newGenericArrayCall =
-        ref(defn.DottyArraysModule).select(defn.newGenericArrayMethod).withPos(tree.pos).appliedToTypeTrees(targs).appliedToArgs(args)
+        ref(defn.DottyArraysModule)
+          .select(defn.newGenericArrayMethod).withPos(tree.pos)
+          .appliedToTypeTrees(targs).appliedToArgs(args)
 
       if (TypeErasure.isUnboundedGeneric(targ.tpe))
         newGenericArrayCall

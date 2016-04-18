@@ -17,8 +17,11 @@ import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import util.Positions._
 import Names._
+
 import collection.mutable
 import ResolveSuper._
+
+import scala.collection.immutable.::
 
 
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
@@ -36,12 +39,8 @@ class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
       tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
-      tree.fun match {
-        case TypeApply(tycon, targ :: Nil)  =>
-          rewrite(targ.tpe, tree.args)
-        case _ =>
-          ???
-      }
+      val TypeApply(tycon, targ :: Nil) = tree.fun
+      rewrite(targ.tpe, tree.args)
     } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
 
       tree.fun match {
