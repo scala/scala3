@@ -180,7 +180,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
     override def transform(tree: Tree)(implicit c: Context): Tree = {
       /* A possibly polymorphic apply to be considered for tail call transformation. */
-      def rewriteApply(tree: Tree, sym: Symbol): Tree = {
+      def rewriteApply(tree: Tree, sym: Symbol, required: Boolean = false): Tree = {
         def receiverArgumentsAndSymbol(t: Tree, accArgs: List[List[Tree]] = Nil, accT: List[Tree] = Nil):
             (Tree, Tree, List[List[Tree]], List[Tree], Symbol) = t match {
           case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiverArgumentsAndSymbol(fun, accArgs, targs)
@@ -216,7 +216,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           }
         }
         def fail(reason: String) = {
-          if (isMandatory) c.error(s"Cannot rewrite recursive call: $reason", tree.pos)
+          if (isMandatory || required) c.error(s"Cannot rewrite recursive call: $reason", tree.pos)
           else c.debuglog("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
           continue
         }
@@ -299,7 +299,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             noTailTransforms(stats),
             transform(expr)
           )
-
+        case tree @ Typed(t: Apply, tpt) if tpt.tpe.hasAnnotation(defn.TailrecAnnot) =>
+          tpd.Typed(rewriteApply(t, t.fun.symbol, required = true), tpt)
         case tree@If(cond, thenp, elsep) =>
           tpd.cpy.If(tree)(
             noTailTransform(cond),
