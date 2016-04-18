@@ -91,7 +91,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
    */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     tree match {
-      case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) =>
+      case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) && !tree.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
         assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")
       case tree: DefDef if !tree.symbol.is(LazyOrDeferred) =>
         assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
@@ -181,7 +181,7 @@ class Constructors extends MiniPhaseTransform with IdentityDenotTransformer { th
     def splitStats(stats: List[Tree]): Unit = stats match {
       case stat :: stats1 =>
         stat match {
-          case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) =>
+          case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) && !stat.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
