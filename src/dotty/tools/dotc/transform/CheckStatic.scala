@@ -61,13 +61,15 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
         def clashes = companion.asClass.membersNamed(defn.name)
 
         if (!companion.exists) {
-          ctx.error("object that conatin @static members should have companion class", defn.pos)
+          ctx.error("object that contains @static members should have companion class", defn.pos)
         } else if (clashes.exists) {
           ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
-          ctx.error("Companions of traits cannot define mutable @static fields")
+          ctx.error("Companions of traits cannot define mutable @static fields", defn.pos)
         } else if (defn.symbol.is(Flags.Lazy)) {
-          ctx.error("Lazy @static fields are not supported")
+          ctx.error("Lazy @static fields are not supported", defn.pos)
+        } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
+          ctx.error("@static members cannot override or implement non-static ones")
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
