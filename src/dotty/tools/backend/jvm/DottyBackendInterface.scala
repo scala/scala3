@@ -12,7 +12,7 @@ import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.WeakHashSet
-import scala.reflect.io.{Directory, PlainDirectory, AbstractFile}
+import scala.reflect.io.{AbstractFile, Directory, PlainDirectory}
 import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
 import dotty.tools.dotc.core._
@@ -24,13 +24,16 @@ import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
-import dotty.tools.dotc.util.{Positions, DotClass}
+
+import dotty.tools.dotc.util.{DotClass, Positions}
 import Decorators._
 import tpd._
+
 import scala.tools.asm
 import NameOps._
 import StdNames.nme
 import NameOps._
+import dotty.tools.dotc.core
 
 class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context) extends BackendInterface{
   type Symbol          = Symbols.Symbol
@@ -633,7 +636,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
         toDenot(sym)(shiftedContext).isStatic(shiftedContext)
       }
 
-    def isStaticConstructor: Boolean = isStaticMember && isClassConstructor
+    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq core.Names.STATIC_CONSTRUCTOR)
 
 
     // navigation

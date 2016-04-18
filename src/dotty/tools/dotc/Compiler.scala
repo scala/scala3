@@ -91,6 +91,7 @@ class Compiler {
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
       List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
            new CollectEntryPoints,  // Find classes with main methods
+           new MoveStatics,         // Move static methods to companion classes
            new LabelDefs),          // Converts calls to labels to jumps
       List(new GenSJSIR),           // Generate .js code
       List(new GenBCode)            // Generate JVM bytecode
