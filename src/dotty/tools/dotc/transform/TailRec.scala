@@ -73,6 +73,20 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   final val labelPrefix = "tailLabel"
   final val labelFlags = Flags.Synthetic | Flags.Label
 
+  /** Symbols of methods that have @tailrec annotatios inside */
+  private val methodsWithInnerAnnots = new collection.mutable.HashSet[Symbol]()
+
+  override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    methodsWithInnerAnnots.clear()
+    tree
+  }
+
+  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    if (tree.tpt.tpe.hasAnnotation(defn.TailrecAnnot))
+      methodsWithInnerAnnots += ctx.owner.enclosingMethod
+    tree
+  }
+
   private def mkLabel(method: Symbol, abstractOverClass: Boolean)(implicit c: Context): TermSymbol = {
     val name = c.freshName(labelPrefix)
 
@@ -137,10 +151,10 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             }
           })
         }
-      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) =>
+      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error("TailRec optimisation not applicable, method is neither private nor final so can be overridden", d.pos)
         d
-      case d if d.symbol.hasAnnotation(defn.TailrecAnnot) =>
+      case d if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error("TailRec optimisation not applicable, not a method", d.pos)
         d
       case _ => tree
