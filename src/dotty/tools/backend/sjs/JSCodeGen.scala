@@ -718,9 +718,9 @@ class JSCodeGen()(implicit ctx: Context) {
         if (sym.is(Module)) {
           assert(!sym.is(Package), "Cannot use package as value: " + tree)
           genLoadModule(sym)
-        } else /*if (sym.isStaticMember) {
-          genStaticMember(sym)
-        } else if (paramAccessorLocals contains sym) {
+        } else if (sym.is(JavaStatic)) {
+          genLoadStaticField(sym)
+        } else /*if (paramAccessorLocals contains sym) {
           paramAccessorLocals(sym).ref
         } else if (isScalaJSDefinedJSClass(sym.owner)) {
           val genQual = genExpr(qualifier)
@@ -1036,8 +1036,6 @@ class JSCodeGen()(implicit ctx: Context) {
       genStringConcat(tree, receiver, args)
     else if (code == HASH)
       genScalaHash(tree, receiver)
-    else if (isArrayNew(code))
-      genArrayNew(tree, code)
     else if (isArrayOp(code))
       genArrayOp(tree, code)
     else if (code == SYNCHRONIZED)
@@ -1407,24 +1405,6 @@ class JSCodeGen()(implicit ctx: Context) {
 
     genModuleApplyMethod(defn.ScalaRuntimeModule.requiredMethod(nme.hash_),
         List(genExpr(receiver)))
-  }
-
-  /** Gen JS code for a new array operation. */
-  private def genArrayNew(tree: Tree, code: Int): js.Tree = {
-    import scala.tools.nsc.backend.ScalaPrimitives._
-
-    implicit val pos: Position = tree.pos
-
-    val Apply(fun, args) = tree
-    val genLength = genExpr(args.head)
-
-    toIRType(tree.tpe) match {
-      case arrayType: jstpe.ArrayType =>
-        js.NewArray(arrayType, List(genLength))
-
-      case irTpe =>
-        throw new FatalError(s"ArrayNew $tree must have an array type but was $irTpe")
-    }
   }
 
   /** Gen JS code for an array operation (get, set or length) */
@@ -2325,6 +2305,24 @@ class JSCodeGen()(implicit ctx: Context) {
         Some(wrapped)
       case _ =>
         None
+    }
+  }
+
+  /** Gen JS code for loading a Java static field.
+   */
+  private def genLoadStaticField(sym: Symbol)(implicit pos: Position): js.Tree = {
+    /* Actually, there is no static member in Scala.js. If we come here, that
+     * is because we found the symbol in a Java-emitted .class in the
+     * classpath. But the corresponding implementation in Scala.js will
+     * actually be a val in the companion module.
+     */
+
+    if (sym == defn.BoxedUnit_UNIT) {
+      js.Undefined()
+    } else {
+      val instance = genLoadModule(sym.owner)
+      val method = encodeStaticMemberSym(sym)
+      js.Apply(instance, method, Nil)(toIRType(sym.info))
     }
   }
 

@@ -560,7 +560,7 @@ trait Applications extends Compatibility { self: Typer =>
                 if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
                 else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
               val result = app.result
-              convertNewArray(ConstFold(result))
+              convertNewGenericArray(ConstFold(result))
             } { (failedVal, failedState) =>
               val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
               if (fun1 eq fun2) {
@@ -636,11 +636,22 @@ trait Applications extends Compatibility { self: Typer =>
   def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
     tree.withType(tree.tpe.etaExpandIfHK(bound))
 
-  /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
-  def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-    case Apply(TypeApply(tycon, targ :: Nil), args) if tycon.symbol == defn.ArrayConstructor =>
+  /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
+   *  It is performed during typer as creation of generic arrays needs a classTag.
+   *  we rely on implicit search to find one.
+   */
+  def convertNewGenericArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+    case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.pos)
-      tpd.cpy.Apply(tree)(newArray(targ, tree.pos), args)
+
+      def newGenericArrayCall =
+        ref(defn.DottyArraysModule)
+          .select(defn.newGenericArrayMethod).withPos(tree.pos)
+          .appliedToTypeTrees(targs).appliedToArgs(args)
+
+      if (TypeErasure.isUnboundedGeneric(targ.tpe))
+        newGenericArrayCall
+      else tree
     case _ =>
       tree
   }

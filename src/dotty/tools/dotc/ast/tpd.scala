@@ -125,8 +125,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
     ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
-  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): SeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt)
+  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
+    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -362,18 +362,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `typeArg`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(typeArg: Tree, pos: Position)(implicit ctx: Context): Tree = {
-    val elemType = typeArg.tpe
-    val elemClass = elemType.classSymbol
-    def newArr(kind: String) =
-      ref(defn.DottyArraysModule).select(s"new${kind}Array".toTermName).withPos(pos)
-    if (TypeErasure.isUnboundedGeneric(elemType))
-      newArr("Generic").appliedToTypeTrees(typeArg :: Nil)
-    else if (elemClass.isPrimitiveValueClass)
-      newArr(elemClass.name.toString)
-    else
-      newArr("Ref").appliedToTypeTrees(
-        TypeTree(defn.ArrayOf(elemType)).withPos(typeArg.pos) :: Nil)
+  def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
+    val elemClass = elemTpe.classSymbol
+    def newArr =
+      ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
+
+    if (!ctx.erasedTypes) {
+      assert(!TypeErasure.isUnboundedGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+    } else  // after erasure
+      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
@@ -835,7 +833,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tpnme.Float => TYPE(defn.BoxedFloatModule)
       case tpnme.Double => TYPE(defn.BoxedDoubleModule)
       case tpnme.Unit => TYPE(defn.BoxedUnitModule)
-      case _ => Literal(Constant(TypeErasure.erasure(tp)))
+      case _ =>
+        if(ctx.erasedTypes || !tp.derivesFrom(defn.ArrayClass))
+          Literal(Constant(TypeErasure.erasure(tp)))
+        else Literal(Constant(tp))
     }
   }
 

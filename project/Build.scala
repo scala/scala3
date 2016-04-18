@@ -77,7 +77,7 @@ object DottyBuild extends Build {
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
       // get libraries onboard
-      partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20151022-113908-7fb0e653fd",
+      partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd",
                          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
                          "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
       libraryDependencies ++= partestDeps.value,

@@ -1684,7 +1684,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case _ => Nil
             }
             if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
-            convertNewArray(
+            convertNewGenericArray(
               adaptInterpolated(tree.appliedToTypes(typeArgs), pt, original))
           }
         case wtp =>

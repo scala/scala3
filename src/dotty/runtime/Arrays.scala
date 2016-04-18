@@ -2,6 +2,8 @@ package dotty.runtime
 
 import scala.reflect.ClassTag
 
+import java.lang.{reflect => jlr}
+
 /** All but the first two operations should be short-circuited and implemented specially by
  *  the backend.
  */
@@ -22,35 +24,8 @@ object Arrays {
     arr
   }
 
-  /** Create an array of type T. T must be of form Array[E], with
-   *  E being a reference type.
+  /** Create an array of a reference type T.
    */
-  def newRefArray[T](length: Int): T = ???
-
-  /** Create a Byte[] array */
-  def newByteArray(length: Int): Array[Byte] = ???
-
-  /** Create a Short[] array */
-  def newShortArray(length: Int): Array[Short] = ???
-
-  /** Create a Char[] array */
-  def newCharArray(length: Int): Array[Char] = ???
-
-  /** Create an Int[] array */
-  def newIntArray(length: Int): Array[Int] = ???
-
-  /** Create a Long[] array */
-  def newLongArray(length: Int): Array[Long] = ???
-
-  /** Create a Float[] array */
-  def newFloatArray(length: Int): Array[Float] = ???
-
-  /** Create a Double[] array */
-  def newDoubleArray(length: Int): Array[Double] = ???
-
-  /** Create a Boolean[] array */
-  def newBooleanArray(length: Int): Array[Boolean] = ???
-
-  /** Create a scala.runtime.BoxedUnit[] array */
-  def newUnitArray(length: Int): Array[Unit] = ???
+  def newArray[Arr](componentType: Class[_], returnType: Class[Arr], dimensions: Array[Int]): Arr =
+    jlr.Array.newInstance(componentType, dimensions: _*).asInstanceOf[Arr]
 }
