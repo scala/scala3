@@ -32,6 +32,7 @@ import TypeUtils._
   *     is not allowed to inherit classes that define a term member with name `foo`.
   *  5. Only `@static` methods and vals are supported in companions of traits.
   *     Java8 supports those, but not vars, and JavaScript does not have interfaces at all.
+  *  6. `@static` Lazy vals are currently unsupported.
   */
 class CheckStatic extends MiniPhaseTransform { thisTransformer =>
   import ast.tpd._
@@ -65,6 +66,8 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
           ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
           ctx.error("Companions of traits cannot define mutable @static fields")
+        } else if (defn.symbol.is(Flags.Lazy)) {
+          ctx.error("Lazy @static fields are not supported")
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
