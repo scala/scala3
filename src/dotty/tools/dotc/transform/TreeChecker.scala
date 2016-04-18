@@ -26,6 +26,9 @@ import collection.mutable
 import ProtoTypes._
 import config.Printers
 import java.lang.AssertionError
+
+import dotty.tools.dotc.core.Names
+
 import scala.util.control.NonFatal
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
@@ -382,7 +385,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
-          if (!sym.isClassConstructor) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
+          if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR)) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
           val tpdTree = super.typedDefDef(ddef, sym)
           assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
           tpdTree
