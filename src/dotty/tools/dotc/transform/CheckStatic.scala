@@ -57,16 +57,13 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
         }
 
         val companion = ctx.owner.companionClass
+        def clashes = companion.asClass.membersNamed(defn.name)
+
         if (!companion.exists) {
           ctx.error("object that conatin @static members should have companion class", defn.pos)
-        }
-
-        val clashes = companion.asClass.membersNamed(defn.name)
-        if (clashes.exists) {
+        } else if (clashes.exists) {
           ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
-        }
-
-        if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
+         } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
           ctx.error("Companions of traits cannot define mutable @static fields")
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
