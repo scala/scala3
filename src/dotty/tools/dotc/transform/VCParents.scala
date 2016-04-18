@@ -22,70 +22,73 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
 
   override def phaseName: String = "vcParents"
 
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case moduleClass: ClassDenotation if moduleClass.is(ModuleClass) =>
-      moduleClass.linkedClass match {
-        case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
-          val moduleSym = moduleClass.symbol.asClass
-          val cinfo = moduleClass.classInfo
-          val decls1 = cinfo.decls.cloneScope
+  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+    ref match {
+      case moduleClass: ClassDenotation if moduleClass.is(ModuleClass) =>
+        moduleClass.linkedClass match {
+          case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+            val moduleSym = moduleClass.symbol.asClass
+            val cinfo = moduleClass.classInfo
+            val decls1 = cinfo.decls.cloneScope
 
-          val underlying = underlyingOfValueClass(valueClass)
-          // FIXME: what should we do if these symbols already exist?
-          val boxSym = ctx.newSymbol(moduleClass.symbol, nme.box,
-            Synthetic | Override | Method, MethodType(List(nme.x_0), List(underlying), valueClass.typeRef))
-          val runtimeClassSym = ctx.newSymbol(moduleClass.symbol, nme.runtimeClass,
-            Synthetic | Override | Method, MethodType(Nil, defn.ClassClass.typeRef))
-          decls1.enter(boxSym)
-          decls1.enter(runtimeClassSym)
+            val underlying = underlyingOfValueClass(valueClass)
+            // TODO: what should we do if these symbols already exist (box and runtimeClassSym)?
+            val boxParamTpe = if (underlying.classSymbol.isPrimitiveValueClass) underlying else defn.ObjectType
+            val boxSymTpe = if (underlying.classSymbol.isPrimitiveValueClass) valueClass.typeRef else defn.ObjectType
+            val boxSym = ctx.newSymbol(moduleClass.symbol, nme.box,
+              Synthetic | Override | Method, MethodType(List(nme.x_0), List(boxParamTpe), boxSymTpe))
+            val runtimeClassSym = ctx.newSymbol(moduleClass.symbol, nme.runtimeClass,
+              Synthetic | Override | Method, MethodType(Nil, defn.ClassClass.typeRef))
+            decls1.enter(boxSym)
+            decls1.enter(runtimeClassSym)
 
-          val superType = tpd.ref(defn.vcCompanionOf(valueClass))
-            .select(nme.CONSTRUCTOR)
-            .appliedToType(valueClass.typeRef)
-            .tpe
-            .resultType
+            val superType = tpd.ref(defn.vcCompanionOf(valueClass))
+              .select(nme.CONSTRUCTOR)
+              .appliedToType(valueClass.typeRef)
+              .tpe
+              .resultType
 
-          moduleClass.copySymDenotation(info =
-            cinfo.derivedClassInfo(decls = decls1, classParents =
-              ctx.normalizeToClassRefs(List(superType), moduleSym, decls1)))
-        case _ =>
-          moduleClass
-      }
-    case valueClass: ClassDenotation if isDerivedValueClass(valueClass) =>
-      val cinfo = valueClass.classInfo
-      val superType = defn.vcPrototypeOf(valueClass).typeRef
+            moduleClass.copySymDenotation(info =
+              cinfo.derivedClassInfo(decls = decls1, classParents =
+                ctx.normalizeToClassRefs(List(superType), moduleSym, decls1)))
+          case _ =>
+            moduleClass
+        }
+      case valueClass: ClassDenotation if isDerivedValueClass(valueClass) =>
+        val cinfo = valueClass.classInfo
+        val superType = defn.vcPrototypeOf(valueClass).typeRef
 
-      val (p :: ps) = cinfo.classParents
-      assert(p.isRef(defn.AnyValClass))
-      val parents = superType :: ps
-      valueClass.copySymDenotation(info = cinfo.derivedClassInfo(classParents = parents))
-    case proto: ClassDenotation if proto.symbol eq defn.VCPrototypeClass =>
-      // After this phase, value classes extend VCXPrototype which extends VCPrototype,
-      // so we make VCPrototype extend AnyVal to preserve existing subtyping relations.
-      // We could make VCPrototype extend AnyVal earlier than this phase, but then we
-      // would need to be careful to not treat it like a real value class.
-      val cinfo = proto.classInfo
-      val (p :: ps) = cinfo.classParents
-      assert(p.isRef(defn.ObjectClass))
-      proto.copySymDenotation(info =
-        cinfo.derivedClassInfo(classParents = defn.AnyValClass.typeRef :: ps))
-    case proto: ClassDenotation if defn.vcPrototypeValues.contains(proto.symbol) =>
-      // We need to copy the ClassDenotations of the VCXPrototype classes to reset
-      // their cache of base classes, the cache is no longer valid because these
-      // classes extend VCPrototype and we changed the superclass of VCPrototype
-      // in this phase.
-      proto.copySymDenotation(info = proto.info)
-    case _ =>
-      ref
-  }
+        val (p :: ps) = cinfo.classParents
+        //TODO: remove assert to fix issue with i705-inner-value-class.scala
+        assert(p.isRef(defn.AnyValClass))
+        val parents = superType :: ps
+        valueClass.copySymDenotation(info = cinfo.derivedClassInfo(classParents = parents))
+      // This rewiring is required for cases:
+      // case class Meter(x: Int) extends AnyVal
+      // val x: AnyVal = Meter(3) //-Ycheck:all
+      case proto: ClassDenotation if proto.symbol eq defn.VCPrototypeClass =>
+        // After this phase, value classes extend VCXPrototype which extends VCPrototype,
+        // so we make VCPrototype extend AnyVal to preserve existing subtyping relations.
+        // We could make VCPrototype extend AnyVal earlier than this phase, but then we
+        // would need to be careful to not treat it like a real value class.
+        val cinfo = proto.classInfo
+        val (p :: ps) = cinfo.classParents
+        assert(p.isRef(defn.ObjectClass))
+        proto.copySymDenotation(info =
+          cinfo.derivedClassInfo(classParents = defn.AnyValClass.typeRef :: ps))
+      case proto: ClassDenotation if defn.vcPrototypeValues.contains(proto.symbol) =>
+        // We need to copy the ClassDenotations of the VCXPrototype classes to reset
+        // their cache of base classes, the cache is no longer valid because these
+        // classes extend VCPrototype and we changed the superclass of VCPrototype
+        // in this phase.
+        proto.copySymDenotation(info = proto.info)
+      case _ =>
+        ref
+    }
 
   private def boxDefDef(vc: ClassDenotation)(implicit ctx: Context) = {
-    val vctp = vc.typeRef
     val sym = vc.linkedClass.info.decl(nme.box).symbol.asTerm
-    DefDef(sym, { paramss =>
-      val List(params) = paramss
-      New(vctp, params)
-    })
+    DefDef(sym, ref(defn.ScalaPredefModule).select(nme.???))
   }
 
   private def runtimeClassDefDef(vc: ClassDenotation)(implicit ctx: Context) = {
@@ -120,7 +123,10 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
       case valueClass: ClassDenotation if isDerivedValueClass(valueClass) =>
         val prototype = defn.vcPrototypeOf(valueClass).typeRef
         val underlyingSym = valueClassUnbox(valueClass)
-        val superCall = New(prototype, List(ref(underlyingSym)))
+
+        val superCallExpr = if (underlyingSym.info.classSymbol.isPrimitiveValueClass) ref(underlyingSym)
+          else ref(underlyingSym).ensureConforms(defn.ObjectType) //ensureConforms is required in case of Any is underlying type (-Ycheck)
+        val superCall = New(prototype, List(superCallExpr))
         // TODO: manually do parameter forwarding: the prototype has a local field
         // so we don't need a field inside the value class
 
@@ -130,4 +136,25 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
       case _ =>
         tree
     }
+
+  private var scala2ClassTagModule: Symbol = null
+  private var scala2ClassTagApplyMethod: Symbol = null
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+    scala2ClassTagModule = ctx.requiredModule("scala.reflect.ClassTag")
+    scala2ClassTagApplyMethod = scala2ClassTagModule.requiredMethod(nme.apply)
+    this
+  }
+
+  //change class tag for derived value class, companion is class tag
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    tree match {
+      case Apply(TypeApply(_, tptr :: _), _) if (tree.fun.symbol eq scala2ClassTagApplyMethod) => {
+        val claz = tptr.tpe.classSymbol
+        if (ValueClasses.isDerivedValueClass (claz) )
+          ref(claz.companionModule) else tree
+        }
+      case _ => tree
+    }
+  }
 }

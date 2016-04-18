@@ -4,8 +4,10 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Trees._, Types._, StdNames._, Symbols._
+import Constants.Constant
 import DenotTransformers._, TreeTransforms._, Phases.Phase
 import TypeErasure.ErasedValueType, ValueClasses._
+import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 
 /** This phase erases arrays of value classes to their runtime representation.
  *
@@ -19,11 +21,11 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
 
   override def phaseName: String = "vcArrays"
 
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    eraseVCArrays(tp)
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = eraseVCArrays(tp)
 
   private def eraseVCArrays(tp: Type)(implicit ctx: Context): Type = tp match {
-    case JavaArrayType(ErasedValueType(cls, _)) =>
+    case JavaArrayType(ErasedValueType(tr, _)) =>
+      val cls = tr.symbol.asClass
       defn.vcArrayOf(cls).typeRef
     case tp: MethodType =>
       val paramTypes = tp.paramTypes.mapConserve(eraseVCArrays)
@@ -40,9 +42,20 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
     val tpt1 = transformTypeOfTree(tree.tpt)
     cpy.ValDef(tree)(tpt = tpt1)
   }
+
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val vc = tree.symbol.owner.companionClass
+    val newRhs = tree.name match {
+      //box body implementation
+      case _ if tree.name == nme.box && ValueClasses.isDerivedValueClass(tree.symbol.owner.companionClass) && !tree.symbol.is(Flags.Bridge) =>
+        val List(List(param)) = tree.vparamss
+        val newParam = ref(param.symbol).ensureConforms(ValueClasses.underlyingOfValueClass(vc.asClass))
+        val newRhs = New(vc.typeRef, newParam :: Nil).ensureConforms(tree.tpt.tpe)
+        newRhs
+      case _ => tree.rhs
+    }
     val tpt1 = transformTypeOfTree(tree.tpt)
-    cpy.DefDef(tree)(tpt = tpt1)
+    cpy.DefDef(tree)(tpt = tpt1, rhs = newRhs)
   }
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
@@ -59,10 +72,13 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
   override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree =
     tree.tpe match {
       // [arg1, arg2,  ...] => new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...])
-      case JavaArrayType(ErasedValueType(cls, _)) =>
+      case JavaArrayType(ErasedValueType(tr, tund)) =>
+        val cls = tr.symbol.asClass
         val evt2uMethod = ref(evt2u(cls))
-        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)))
+        //[V.evt2u$(arg1), V.evt2u$(arg2), ...]
+        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)), ref(tund.typeSymbol))
         val mod = cls.companionModule
+        //new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...], VCXCompanion)
         New(defn.vcArrayOf(cls).typeRef, List(underlyingArray, ref(mod)))
       case _ =>
         tree
@@ -71,10 +87,11 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree match {
       // newRefArray[ErasedValueType(V, U)[]](args) => New VCXArray(newXArray(args), V)
-      case Apply(ta @ TypeApply(sel @ Select(_,_), List(targ)), args)
+      case Apply(ta @ TypeApply(sel @ Select(_, _), List(targ)), args)
           if (sel.symbol == defn.newRefArrayMethod) =>
         targ.tpe match {
-          case JavaArrayType(ErasedValueType(cls, underlying)) =>
+          case JavaArrayType(ErasedValueType(tr, underlying)) =>
+            val cls = tr.symbol.asClass
             val mod = cls.companionModule
             New(defn.vcArrayOf(cls).typeRef,
               List(newArray(TypeTree(underlying), tree.pos).appliedToArgs(args),
@@ -85,28 +102,49 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
       // array.[]update(idx, elem) => array.arr().[]update(idx, elem)
       case Apply(Select(array, nme.primitive.arrayUpdate), List(idx, elem)) =>
         elem.tpe.widen match {
-          case ErasedValueType(cls, _) =>
+          case ErasedValueType(tr, _) =>
+            val cls = tr.symbol.asClass
             array.select(nme.ARR).appliedToNone
               .select(nme.primitive.arrayUpdate).appliedTo(idx, ref(evt2u(cls)).appliedTo(elem))
           case _ =>
             tree
         }
       // array.[]apply(idx) => array.arr().[]apply(idx)
-      case Apply(Select(array, nme.primitive.arrayApply), List(idx)) =>
+      case t@Apply(Select(array, nme.primitive.arrayApply), List(idx)) =>
         tree.tpe.widen match {
-          case ErasedValueType(cls, _) =>
-            ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
+          case ErasedValueType(tr, undType) =>
+            val cls = tr.symbol.asClass
+            if (undType.classSymbol.isPrimitiveValueClass)
+              ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
               .select(nme.primitive.arrayApply).appliedTo(idx))
+            else
+              ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
+                .select(nme.primitive.arrayApply).appliedTo(idx).ensureConforms(undType))
           case _ =>
             tree
         }
       // array.[]length() => array.arr().[]length()
       case Apply(Select(array, nme.primitive.arrayLength), Nil)
-      if (array.tpe <:< defn.VCArrayPrototypeType) =>
+          if (array.tpe <:< defn.VCArrayPrototypeType) =>
         array.select(nme.ARR).appliedToNone
           .select(nme.primitive.arrayLength).appliedToNone
+      // scala.Predef.genericWrapArray(...) => DottyPredef.genericWrapArray2(...)
+      case ap@Apply(tr, trs@List(x)) if tr.symbol eq scala2genericWrapArray =>
+        ref(defn.DottyPredefModule).select(nme.genericWrapArray2).appliedToArgs(trs)
+      // scala.Predef.genericArrayOps(...) => DottyPredef.genericArrayOps(...)
+      case ap@Apply(tr, trs@List(x)) if tr.symbol eq scala2genericArrayOps =>
+        ref(defn.DottyPredefModule).select(nme.genericArrayOps2).appliedToArgs(trs)
       case _ =>
         tree
     }
+  }
+
+  private var scala2genericWrapArray: Symbol = null
+  private var scala2genericArrayOps: Symbol = null
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+    scala2genericWrapArray = defn.ScalaPredefModule.requiredMethod(nme.genericWrapArray)
+    scala2genericArrayOps = defn.ScalaPredefModule.requiredMethod(nme.genericArrayOps)
+    this
   }
 }

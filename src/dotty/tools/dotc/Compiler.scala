@@ -53,8 +53,8 @@ class Compiler {
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
-           new VCParents,
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
+           new VCParents,           // Inherit value classes from VCXPrototype
            new TailRec,             // Rewrite tail recursion to loops
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new ClassOf),            // Expand `Predef.classOf` calls.
@@ -73,7 +73,7 @@ class Compiler {
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-      List(new VCArrays),
+      List(new VCArrays),           // Rewrite arrays of value classes. TODO: change to mini phase
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
            new Mixin,               // Expand trait fields and trait initializers

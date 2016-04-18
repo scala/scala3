@@ -47,6 +47,7 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
+  val vcArraysDir        = posDir + "vc-arrays/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -103,6 +104,8 @@ class tests extends CompilerTest {
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
   @Test def pos_companions = compileFile(posDir, "companions", twice)
+  @Test def pos_vc_proto_any_val = compileFile(vcArraysDir, "prototypeAnyVal", args = "-Ycheck:all" :: Nil)
+  @Test def pos_any_val_gen_classes = compileFile(runDir, "valueclasses-array-gen")
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 

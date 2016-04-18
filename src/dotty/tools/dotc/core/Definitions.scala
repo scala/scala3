@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
+import transform.ValueClasses
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -774,33 +775,39 @@ class Definitions {
   /** The type of the boxed class corresponding to primitive value type `tp`. */
   def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
 
-  lazy val vcPrototype: Map[Symbol, Symbol] =
-    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
-  lazy val vcPrototypeValues = vcPrototype.values.toSet
-  lazy val vcCompanion: Map[Symbol, Symbol] =
-    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
-  lazy val vcArray: Map[Symbol, Symbol] =
-    refClasses.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+  lazy val vcPrototypeClassKeys: collection.Set[Symbol] =
+    defn.ScalaNumericValueClasses() + defn.BooleanClass + defn.ObjectClass
 
-  lazy val VCPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCPrototype")
-  def VCPrototypeType = VCPrototypeClass.typeRef
+  lazy val vcPrototype: Map[Symbol, Symbol] =
+    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
+  lazy val vcCompanion: Map[Symbol, Symbol] =
+    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
+  lazy val vcArray: Map[Symbol, Symbol] =
+    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+
   lazy val VCArrayPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCArrayPrototype")
+
+  lazy val vcPrototypeValues = vcPrototype.values.toSet
+
   def VCArrayPrototypeType = VCArrayPrototypeClass.typeRef
+
+  lazy val VCPrototypeType = ctx.requiredClassRef(s"dotty.runtime.vc.VCPrototype")
+  def VCPrototypeClass = VCPrototypeType.classSymbol.asClass
 
   def vcPrototypeOf(vc: ClassDenotation) = {
     val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
     vcPrototype.getOrElse(underlying, vcPrototype(defn.ObjectClass))
   }
+
   def vcCompanionOf(vc: ClassDenotation) = {
     val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
     vcCompanion.getOrElse(underlying, vcCompanion(defn.ObjectClass))
   }
+
   def vcArrayOf(vc: ClassDenotation) = {
     val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
     vcArray.getOrElse(underlying, vcArray(defn.ObjectClass))
   }
-
-
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol

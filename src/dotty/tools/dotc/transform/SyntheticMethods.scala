@@ -42,7 +42,8 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
+      //Any_hashCode should be in myCaseSymbols
+      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Any_hashCode, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix)
     }
 
