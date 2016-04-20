@@ -594,7 +594,7 @@ object SymDenotations {
     final def isPrimaryConstructor(implicit ctx: Context) =
       isConstructor && owner.primaryConstructor == symbol
 
-    /** Does this symbol denote the primary constructor of its enclosing class? */
+    /** Does this symbol denote the static constructor of its enclosing class? */
     final def isStaticConstructor(implicit ctx: Context) =
       name.isStaticConstructorName
 
