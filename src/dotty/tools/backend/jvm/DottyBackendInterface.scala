@@ -719,7 +719,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
       toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method)).toList
     }
     def methodSymbols: List[Symbol] =
-      for (f <- toDenot(sym).info.decls.toList if !f.isMethod && f.isTerm && !f.isModule) yield f
+      for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
     def serialVUID: Option[Long] = None
 
 
