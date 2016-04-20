@@ -353,7 +353,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             val id = info.ord / flagsPerLong
             val offsetById = offsetName(id)
             if (ord != 0) { // there are unused bits in already existing flag
-              offsetSymbol = claz.moduleClass.info.decl(offsetById)
+              offsetSymbol = claz.info.decl(offsetById)
                 .suchThat(sym => (sym is Flags.Synthetic) && sym.isTerm)
                  .symbol.asTerm
             } else { // need to create a new flag
