@@ -39,7 +39,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
         if (!module.symbol.is(Flags.Module)) move(companion, module)
         else {
           val allMembers =
-            if(companion ne null) {companion.rhs.asInstanceOf[Template].body} else Nil ++
+            (if(companion ne null) {companion.rhs.asInstanceOf[Template].body} else Nil) ++
             module.rhs.asInstanceOf[Template].body
           val (newModuleBody, newCompanionBody) = allMembers.partition(x => {assert(x.symbol.exists); x.symbol.owner == module.symbol})
           def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
@@ -48,6 +48,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
             val staticFields = newBody.filter(x => x.isInstanceOf[ValDef] && x.symbol.hasAnnotation(defn.ScalaStaticAnnot)).asInstanceOf[List[ValDef]]
             val newBodyWithStaticConstr =
               if (staticFields.nonEmpty) {
+                /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
                 val staticCostructor = ctx.newSymbol(orig.symbol, Names.STATIC_CONSTRUCTOR, Flags.Synthetic  | Flags.Method, MethodType(Nil, defn.UnitType))
                 staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot))
                 staticCostructor.entered
