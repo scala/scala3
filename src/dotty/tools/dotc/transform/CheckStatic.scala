@@ -69,7 +69,7 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
         } else if (defn.symbol.is(Flags.Lazy)) {
           ctx.error("Lazy @static fields are not supported", defn.pos)
         } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
-          ctx.error("@static members cannot override or implement non-static ones")
+          ctx.error("@static members cannot override or implement non-static ones", defn.pos)
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
