@@ -594,6 +594,10 @@ object SymDenotations {
     final def isPrimaryConstructor(implicit ctx: Context) =
       isConstructor && owner.primaryConstructor == symbol
 
+    /** Does this symbol denote the primary constructor of its enclosing class? */
+    final def isStaticConstructor(implicit ctx: Context) =
+      name.isStaticConstructorName
+
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
 
