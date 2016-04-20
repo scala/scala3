@@ -161,9 +161,11 @@ object Test {
   def main(args: Array[String]) = {
     val ints = Cons(1, Cons(2, Cons(3, Nil)))
     val intsBuf = ints.to(ArrayBuffer)
+    val intsListBuf = ints.to(ListBuffer)
     val intsView = ints.view
     seqOps(ints)
     seqOps(intsBuf)
+    seqOps(intsListBuf)
     viewOps(intsView)
     stringOps("abc")
   }

@@ -256,7 +256,21 @@ object desugar {
     // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
     // go in `constr`, the constructor after desugaring.
 
+    /** Does `tree' look like a reference to AnyVal? Temporary test before we have inline classes */
+    def isAnyVal(tree: Tree): Boolean = tree match {
+      case Ident(tpnme.AnyVal) => true
+      case Select(qual, tpnme.AnyVal) => isScala(qual)
+      case _ => false
+    }
+    def isScala(tree: Tree): Boolean = tree match {
+      case Ident(nme.scala_) => true
+      case Select(Ident(nme.ROOTPKG), nme.scala_) => true
+      case _ => false
+    }
+
     val isCaseClass = mods.is(Case) && !mods.is(Module)
+    val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
+      // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
     val constrTparams = constr1.tparams map toDefParam
     val constrVparamss =
@@ -398,7 +412,9 @@ object desugar {
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
       else if (defaultGetters.nonEmpty)
-          companionDefs(anyRef, defaultGetters)
+        companionDefs(anyRef, defaultGetters)
+      else if (isValueClass)
+        companionDefs(anyRef, Nil)
       else Nil
 
 

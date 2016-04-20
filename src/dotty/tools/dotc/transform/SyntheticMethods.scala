@@ -10,6 +10,7 @@ import DenotTransformers._
 import ast.Trees._
 import ast.untpd
 import Decorators._
+import NameOps._
 import ValueClasses.isDerivedValueClass
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -79,14 +80,17 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
+      def ownName(vrefss: List[List[Tree]]): Tree =
+        Literal(Constant(clazz.name.stripModuleClassSuffix.decode.toString))
+
       def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody
         case nme.hashCode_ => vrefss => caseHashCodeBody
-        case nme.toString_ => forwardToRuntime
+        case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime
         case nme.equals_ => vrefss => equalsBody(vrefss.head.head)
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
-        case nme.productPrefix => vrefss => Literal(Constant(clazz.name.decode.toString))
+        case nme.productPrefix => ownName
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))

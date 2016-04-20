@@ -44,7 +44,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     this
   }
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp/*{
       tp match {
         //create companions for value classes that are not from currently compiled source file
         case tp@ClassInfo(_, cls, _, decls, _)
@@ -59,7 +59,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
         case _ => tp
       }
   }
-
+*/
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, _) if tree.symbol.exists =>

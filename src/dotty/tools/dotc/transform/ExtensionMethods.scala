@@ -33,7 +33,7 @@ import SymUtils._
  * This is different from the implementation of value classes in Scala 2
  * (see SIP-15) which uses `asInstanceOf` which does not typecheck.
  */
-class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization with NeedsCompanions { thisTransformer =>
+class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransformer =>
 
   import tpd._
   import ExtensionMethods._
@@ -44,10 +44,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimRepeated])
 
   override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
-
-  def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
-    isDerivedValueClass(cls)
-  }
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
