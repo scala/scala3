@@ -21,6 +21,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module)) {
+      sym.owner.asClass.delete(sym.symbol)
       sym.owner.companionClass.asClass.enter(sym.symbol)
       val flags = if (sym.is(Flags.Method)) sym.flags else sym.flags | Flags.Mutable
       sym.copySymDenotation(owner = sym.owner.companionClass, initFlags = flags)
@@ -58,7 +59,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
           yield
             if (classes.tail.isEmpty) classes.head
             else move(classes.head, classes.tail.head)
-      Trees.flatten(newPairs.toList)
+      Trees.flatten(newPairs.toList ++ others)
     } else trees
   }
 }
