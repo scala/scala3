@@ -53,6 +53,7 @@ abstract class VCFloatCompanion[T /*<: VCFloatPrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCFloatArray(this.asInstanceOf[VCFloatCompanion[VCFloatPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Float)       = underlying
@@ -108,6 +109,7 @@ abstract class VCObjectCompanion[T /*<: VCObjectPrototype*/] extends ClassTag[T]
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCObjectArray(this.asInstanceOf[VCObjectCompanion[VCObjectPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Object)       = underlying
@@ -165,6 +167,7 @@ abstract class VCShortCompanion[T /*<: VCShortPrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCShortArray(this.asInstanceOf[VCShortCompanion[VCShortPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Short)       = underlying
@@ -223,6 +226,7 @@ abstract class VCLongCompanion[T /*<: VCLongPrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCLongArray(this.asInstanceOf[VCLongCompanion[VCLongPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Long)       = underlying
@@ -279,6 +283,7 @@ abstract class VCIntCompanion[T /*<: VCIntPrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCIntArray(this.asInstanceOf[VCIntCompanion[VCIntPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
   def _1$extension(underlying: Int)       = underlying
   def hashCode$extension(underlying: Int) = underlying.hashCode()
@@ -333,6 +338,7 @@ abstract class VCDoubleCompanion[T /*<: VCDoublePrototype*/] extends ClassTag[T]
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCDoubleArray(this.asInstanceOf[VCDoubleCompanion[VCDoublePrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Double)       = underlying
@@ -388,6 +394,7 @@ abstract class VCBooleanCompanion[T /*<: VCBooleanPrototype*/] extends ClassTag[
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCBooleanArray(this.asInstanceOf[VCBooleanCompanion[VCBooleanPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Boolean)       = underlying
@@ -447,6 +454,7 @@ abstract class VCCharCompanion[T /*<: VCCharPrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCCharArray(this.asInstanceOf[VCCharCompanion[VCCharPrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Char)       = underlying
@@ -502,6 +510,7 @@ abstract class VCByteCompanion[T /*<: VCBytePrototype*/] extends ClassTag[T] {
   implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCByteArray(this.asInstanceOf[VCByteCompanion[VCBytePrototype]], len).asInstanceOf[Array[T]]
+  override def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](this.newArray(0).getClass)
 
 
   def _1$extension(underlying: Byte)       = underlying
