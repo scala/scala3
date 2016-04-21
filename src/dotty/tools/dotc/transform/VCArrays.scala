@@ -55,7 +55,8 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
       case _ => tree.rhs
     }
     val tpt1 = transformTypeOfTree(tree.tpt)
-    cpy.DefDef(tree)(tpt = tpt1, rhs = newRhs)
+    val newRhs2 = transformTypeOfTree(newRhs)
+    cpy.DefDef(tree)(tpt = tpt1, rhs = newRhs2)
   }
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
