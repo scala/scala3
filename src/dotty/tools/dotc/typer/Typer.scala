@@ -1529,7 +1529,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           def issueErrors() = {
             for (err <- errors) ctx.error(err(), tree.pos.endPos)
-            tree
+            tree.withType(wtp.resultType)
           }
           val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
             def where = d"parameter $pname of $methodStr"
