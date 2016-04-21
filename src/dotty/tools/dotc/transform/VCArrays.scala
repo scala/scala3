@@ -84,6 +84,15 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         tree
     }
 
+  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo): Tree =
+    tree.tpe match {
+      case JavaArrayType(ErasedValueType(tr, tund)) =>
+        val cls = tr.symbol.asClass
+        Typed(tree.expr, ref(defn.vcArrayOf(cls).typeRef))
+      case _ =>
+        tree
+    }
+
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree match {
       // newRefArray[ErasedValueType(V, U)[]](args) => New VCXArray(newXArray(args), V)
