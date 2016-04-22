@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package repl
 
+import dotc.core.Contexts.Context
 import jline.console.ConsoleReader
 
 /** Adaptor for JLine
@@ -11,5 +12,5 @@ class JLineReader extends InteractiveReader {
 
   val interactive = true
 
-  def readLine(prompt: String) = reader.readLine(prompt)
+  def readLine(prompt: String)(implicit ctx: Context) = reader.readLine(prompt)
 }

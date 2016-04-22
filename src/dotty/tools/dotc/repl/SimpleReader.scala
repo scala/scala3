@@ -3,6 +3,7 @@ package dotc
 package repl
 
 import java.io.{BufferedReader, PrintWriter}
+import dotc.core.Contexts.Context
 
 
 /** Reads using standard JDK API */
@@ -13,7 +14,7 @@ class SimpleReader(
 extends InteractiveReader {
   def this() = this(Console.in, new PrintWriter(Console.out), true)
 
-  def readLine(prompt: String) = {
+  def readLine(prompt: String)(implicit ctx: Context) = {
     if (interactive) {
       out.print(prompt)
       out.flush()

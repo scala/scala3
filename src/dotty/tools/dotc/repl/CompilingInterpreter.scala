@@ -727,10 +727,10 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
       return str
 
     val trailer = "..."
-    if (maxpr >= trailer.length+1)
-      return str.substring(0, maxpr-3) + trailer
-
-    str.substring(0, maxpr)
+    if (maxpr >= trailer.length-1)
+      str.substring(0, maxpr-3) + trailer + "\n"
+    else
+      str.substring(0, maxpr-1)
   }
 
   /** Clean up a string for output */
