@@ -1,20 +1,23 @@
 package strawman.equality
+import annotation.implicitNotFound
 
 object EqualityStrawman1 {
 
   trait Eq[-T]
-  trait Impossible
+
+  @implicitNotFound("cannot compare value of type ${T} with a value outside its equality class")
+  trait Impossible[T]
 
   object Eq extends Eq[Any]
 
   trait Base {
     def === (other: Any): Boolean = this.equals(other)
-    def === (other: CondEquals)(implicit ce: Impossible): Boolean = ???
+    def === [T <: CondEquals](other: T)(implicit ce: Impossible[T]): Boolean = ???
   }
 
   trait CondEquals extends Base {
     def === [T >: this.type <: CondEquals](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
-    def === (other: Any)(implicit ce: Impossible): Boolean = ???
+    def === [T](other: T)(implicit ce: Impossible[T]): Boolean = ???
   }
 
   trait Equals[-T] extends CondEquals

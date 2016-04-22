@@ -1541,7 +1541,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case failure: SearchFailure =>
                 val arg = synthesizedClassTag(formal)
                 if (!arg.isEmpty) arg
-                else implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
+                else {
+                  var msg = d"no implicit argument of type $formal found for $where" + failure.postscript
+                  for (notFound <- formal.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot);
+                       Literal(Constant(raw: String)) <- notFound.argument(0))
+                    msg = err.implicitNotFoundString(
+                        raw,
+                        formal.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+                        formal.argInfos)
+                  implicitArgError(msg)
+                }
             }
           }
           if (errors.nonEmpty) {
