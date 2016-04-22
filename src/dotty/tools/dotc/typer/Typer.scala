@@ -1469,14 +1469,22 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-      case _: MethodType | _: PolyType =>
-        def isUnary = wtp.firstParamTypes match {
+    def isUnary(tp: Type): Boolean = tp match {
+      case tp: MethodicType =>
+        tp.firstParamTypes match {
           case ptype :: Nil => !ptype.isRepeatedParam
           case _ => false
         }
-        if (pt.args.lengthCompare(1) > 0 && isUnary && ctx.canAutoTuple)
-          adaptToArgs(wtp, pt.tupled)
+      case tp: TermRef =>
+        tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      case _ =>
+        false
+    }
+
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+      case _: MethodType | _: PolyType =>
+        if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+          adaptInterpolated(tree, pt.tupled, original)
         else
           tree
       case _ => tryInsertApplyOrImplicit(tree, pt) {
@@ -1684,7 +1692,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case ErrorType =>
           tree
         case ref: TermRef =>
-          adaptOverloaded(ref)
+          pt match {
+            case pt: FunProto
+            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
+              adaptInterpolated(tree, pt.tupled, original)
+            case _ =>
+              adaptOverloaded(ref)
+          }
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
