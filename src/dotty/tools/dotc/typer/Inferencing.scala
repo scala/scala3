@@ -81,7 +81,7 @@ object Inferencing {
         force.appliesTo(tvar) && {
           val direction = instDirection(tvar.origin)
           if (direction != 0) {
-            if (direction > 0) println(s"inst $tvar dir = up")
+            //if (direction > 0) println(s"inst $tvar dir = up")
             instantiate(tvar, direction < 0)
           }
           else {
