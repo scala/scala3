@@ -12,23 +12,23 @@ object EqualityStrawman1 {
 
   trait Base {
     def === (other: Any): Boolean = this.equals(other)
-    def === [T <: CondEquals](other: T)(implicit ce: Impossible[T]): Boolean = ???
+    def === (other: Null): Boolean = this.equals(other)
+    def === [T <: EqClass](other: T)(implicit ce: Impossible[T]): Boolean = ???
   }
 
-  trait CondEquals extends Base {
-    def === [T >: this.type <: CondEquals](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+  trait EqClass[-U] extends Base {
+    def === [T >: this.type <: EqClass](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
     def === [T](other: T)(implicit ce: Impossible[T]): Boolean = ???
+    def === (other: Null): Boolean = this.equals(other)
   }
 
-  trait Equals[-T] extends CondEquals
+  case class Str(str: String) extends EqClass[_]
 
-  case class Str(str: String) extends CondEquals
-
-  case class Num(x: Int) extends Equals[Num]
+  case class Num(x: Int) extends EqClass[Num]
 
   case class Other(x: Int) extends Base
 
-  trait Option[+T] extends CondEquals
+  trait Option[+T] extends EqClass[_]
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
@@ -36,7 +36,7 @@ object EqualityStrawman1 {
   //implicit def eqNum: Eq[Num] = Eq
   implicit def eqOption[T: Eq]: Eq[Option[T]] = Eq
 
-  implicit def eqEq[T <: Equals[T]]: Eq[T] = Eq
+  implicit def eqEq[T <: EqClass[T]]: Eq[T] = Eq
 
   def main(args: Array[String]): Unit = {
     val x = Str("abc")
@@ -56,6 +56,8 @@ object EqualityStrawman1 {
     Some(x) === z
     None === z
 
+    Other(3) === null
+    Str("x") === null
 
     def ddistinct[T <: Base: Eq](xs: List[T]): List[T] = xs match {
       case Nil => Nil
