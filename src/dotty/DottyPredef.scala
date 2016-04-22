@@ -2,9 +2,7 @@ package dotty
 
 import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.ClassTag
-import scala.collection.mutable.ArrayOps
-import scala.runtime.ScalaRunTime.arrayElementClass
-import scala.collection.mutable.WrappedArray
+import scala.collection.mutable.{ArrayOps, WrappedArray}
 import dotty.runtime.vc._
 import scala.Predef.???
 import scala.collection.Seq
@@ -47,17 +45,8 @@ object DottyPredef {
   implicit def eqDoubleNum: Eq[Double, Number] = Eq
   implicit def eqNumDouble: Eq[Number, Double] = Eq
 
-  def wrapVCArray[T](xs: Array[T]): WrappedArray[T] = {
-    new WrappedArray[T] {
-      val array = xs
-      lazy val elemTag = ClassTag[T](arrayElementClass(array.getClass))
-      def length: Int = array.length
-      def apply(index: Int): T = array(index)
-      def update(index: Int, elem: T) = {
-        array(index) = elem
-      }
-    }
-  }
+  def wrapVCArray[T](xs: Array[T]): WrappedArray[T] =
+    new VCWrappedArray[T](xs)
 
   //def to substitute scala.Predef.genericWrapArray
   def genericWrapArray2[T](xs: Array[T]): WrappedArray[T] = {
@@ -71,19 +60,8 @@ object DottyPredef {
     }
   }
 
-  def refVCArray[T /*<: AnyVal*/](xs: Array[T]): ArrayOps[T] = {
-    new ArrayOps[T] {
-      val array = xs
-      lazy val elemTag = ClassTag[T](arrayElementClass(array.getClass))
-      def length: Int = array.length
-      def apply(index: Int): T = array(index)
-      def update(index: Int, elem: T) = {
-        array(index) = elem
-      }
-      //TODO - add the implementation for newBuilder
-      def newBuilder = ???
-    }
-  }
+  def refVCArray[T /*<: AnyVal*/](xs: Array[T]): ArrayOps[T] =
+    new VCArrayOps[T](xs)
 
   //def to substitute scala.Predef.genericArrayOps
   def genericArrayOps2[T](xs: Array[T]): ArrayOps[T] = (xs match {
