@@ -106,6 +106,7 @@ class tests extends CompilerTest {
   @Test def pos_companions = compileFile(posDir, "companions", twice)
   @Test def pos_vc_proto_any_val = compileFile(vcArraysDir, "prototypeAnyVal", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_functions = compileFile(runDir, "valueclasses-array-functions", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_functions2 = compileFile(runDir, "valueclasses-array-functions2", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_usage = compileFile(runDir, "valueclasses-array-usage", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_gen = compileFile(runDir, "valueclasses-array-gen", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_int = compileFile(runDir, "valueclasses-array-int", args = "-Ycheck:all" :: Nil)

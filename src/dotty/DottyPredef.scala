@@ -1,8 +1,9 @@
 package dotty
 
+import scala.collection.generic.CanBuildFrom
 import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.ClassTag
-import scala.collection.mutable.{ArrayOps, WrappedArray}
+import scala.collection.mutable.{ArrayBuilder, ArrayOps, WrappedArray}
 import dotty.runtime.vc._
 import scala.Predef.???
 import scala.collection.Seq
@@ -79,4 +80,19 @@ object DottyPredef {
     case x: Array[Unit] => scala.Predef.unitArrayOps(x)
     case null => null
   }).asInstanceOf[ArrayOps[T]]
+
+  implicit def canBuildFrom2[T](implicit t: ClassTag[T]): CanBuildFrom[Array[_], T, Array[T]] = {
+    t match {
+      case _: VCIntCompanion[_] | _: VCShortCompanion[_] |
+           _: VCLongCompanion[_] | _: VCByteCompanion[_] |
+           _: VCBooleanCompanion[_] | _: VCCharCompanion[_] |
+           _: VCFloatCompanion[_] | _: VCDoubleCompanion[_] |
+           _: VCObjectCompanion[_] =>
+        new CanBuildFrom[Array[_], T, Array[T]] {
+          def apply(from: Array[_]) = new VCArrayBuilder[T]()(t).asInstanceOf[ArrayBuilder[T]]
+          def apply() = new VCArrayBuilder[T]()(t).asInstanceOf[ArrayBuilder[T]]
+        }
+      case _ => scala.Array.canBuildFrom[T](t)
+    }
+  }
 }
