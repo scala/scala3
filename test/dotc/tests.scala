@@ -112,6 +112,7 @@ class tests extends CompilerTest {
   @Test def pos_vc_array_int = compileFile(runDir, "valueclasses-array-int", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_object = compileFile(runDir, "valueclasses-array-object", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_newarray = compileFile(runDir, "valueclasses-array-newarray", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_underlying_null = compileFile(runDir, "valueclasses-underlying-null", args = "-Ycheck:all" :: Nil)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 

@@ -85,7 +85,7 @@ final class VCFloatArray[T <: VCFloatPrototype] (val arr: Array[Float], val ct: 
 
 abstract class VCObjectPrototype(val underlying: Object) extends VCPrototype {
   override def hashCode(): Int = {
-    underlying.hashCode()
+    if (underlying == null) 0 else underlying.hashCode()
   }
 }
 
@@ -94,7 +94,7 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
   final def _1: Object = underlying
 
   override final def hashCode(): Int = {
-    underlying.hashCode()
+    if (underlying == null) 0 else underlying.hashCode()
   }
 
   override def toString: String = {
