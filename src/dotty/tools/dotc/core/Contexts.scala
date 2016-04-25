@@ -492,7 +492,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
+  class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None

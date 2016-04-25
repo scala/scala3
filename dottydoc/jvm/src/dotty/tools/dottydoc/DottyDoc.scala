@@ -4,7 +4,7 @@ package dottydoc
 import core.Phases.DocPhase
 import dotc.config.CompilerCommand
 import dotc.config.Printers.dottydoc
-import dotc.core.Contexts.{FreshContext, Context}
+import dotc.core.Contexts._
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dotc.{Compiler, Driver}
@@ -18,7 +18,9 @@ import dotc.{Compiler, Driver}
  *  Example:
  *    1. Use the existing FrontEnd to typecheck the code being fed to dottydoc
  *    2. Create an AST that is serializable
- *    3. Serialize to JSON
+ *    3. Serialize to JS-Object and write to file
+ *    4. Deserialize on client side with Scala.js
+ *    5. Serve content using Scala.js
  */
 case object DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] =
@@ -28,6 +30,9 @@ case object DottyDocCompiler extends Compiler {
 }
 
 object DottyDoc extends Driver {
+  override protected def initCtx =
+    new InitialContext(new ContextBase, new DottyDocSettings)
+
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
