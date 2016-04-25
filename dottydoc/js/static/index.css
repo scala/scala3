@@ -11,3 +11,29 @@ span.subtitle {
 div.member:hover {
     cursor: pointer;
 }
+
+nav.packages {
+    padding-top: 0 !important;
+}
+
+nav.packages > a.entity {
+    padding: 0.2em 4em !important;
+}
+
+div.search-container {
+    margin: 0 2em 0 2.8em;
+}
+
+a.mdl-navigation__link {
+    padding-top: 0.2em !important;
+    padding-bottom: 0.2em !important;
+}
+
+nav.related {
+    padding-top: 0 !important;
+}
+
+span#docs-title {
+    line-height: normal;
+    padding-top: 2em;
+}

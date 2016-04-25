@@ -4,6 +4,8 @@ package html
 
 import scalatags.JsDom.all._
 import scalatags.JsDom.TypedTag
+import org.scalajs.dom
+import org.scalajs.dom.html.Div
 
 object IndexLayout {
   import model.Entities._
@@ -25,14 +27,20 @@ object IndexLayout {
           m.name
         ),
         nav(
-          cls := "mdl-navigation",
-          a(cls := "mdl-navigation__link", href := companionHref(m).map(_.path.last + ".html").getOrElse(""), "Companion " + m.name),
+          cls := "related mdl-navigation",
+          a(
+            cls := "mdl-navigation__link",
+            href := companionHref(m).map(_.path.last + ".html").getOrElse(""),
+            "Companion " + m.name
+          ),
           a(cls := "mdl-navigation__link", href := m.sourceUrl, "Source")
         ),
         span(
           cls := "mdl-layout-title",
-          "Packages"
+          id := "docs-title",
+          "Docs"
         ),
+        searchView,
         packageView
       ),
       main(
@@ -57,13 +65,23 @@ object IndexLayout {
       )
     )
 
+  def searchView = div(
+    cls := "search-container",
+    div(
+      cls := "mdl-textfield mdl-js-textfield mdl-textfield--floating-label",
+      input(cls := "mdl-textfield__input", `type` := "text", id := "search"),
+      label(cls := "mdl-textfield__label", `for` := "search", "Search")
+    )
+  )
+
   def packageView = nav(
-    cls := "mdl-navigation",
+    cls := "mdl-navigation packages",
     Index.packages.keys.flatMap { k =>
+      a(cls := "mdl-navigation__link package", href := "#", k) ::
       Index.packages(k).children.sortBy(_.name).map { c =>
-        a(cls := "mdl-navigation__link", href := "#", c.name)
+        a(cls := "mdl-navigation__link entity", href := "#", c.name)
       }
-    }.toList
+    }.toSeq
   )
 
   def companionHref(m: Entity): Option[PackageMember] = {
@@ -71,11 +89,6 @@ object IndexLayout {
     Index.packages.get(pack)
       .flatMap(_.children.find(e => e.name == m.name && e.path.last != m.path.last))
   }
-
-
-  import org.scalajs.dom
-  import org.scalajs.dom.html.Div
-
 
   def member(m: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =
