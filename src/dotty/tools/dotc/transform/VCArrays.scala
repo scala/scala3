@@ -61,10 +61,10 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     tree match {
-      case TypeApply(sel @ Select(_, _), _) if (sel.symbol == defn.newRefArrayMethod) =>
-        // Preserve the semi-erased type of the array so that we can properly transform
-        // it in transformApply
-        tree
+//      case TypeApply(sel @ Select(_, _), _) if (sel.symbol == defn.newRefArrayMethod) =>
+//        // Preserve the semi-erased type of the array so that we can properly transform
+//        // it in transformApply
+//        tree
       case TypeApply(fun, args) =>
         val tree1 = cpy.TypeApply(tree)(fun, args.map(transformTypeOfTree(_)))
         transformTypeOfTree(tree1)
@@ -96,15 +96,17 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree match {
-      // newRefArray[ErasedValueType(V, U)[]](args) => New VCXArray(newXArray(args), V)
-      case Apply(ta @ TypeApply(sel @ Select(_, _), List(targ)), args)
-          if (sel.symbol == defn.newRefArrayMethod) =>
-        targ.tpe match {
+      // newArray(args) => New VCXArray(newXArray(args'), V)
+      case ap@Apply(fun, List(compTpt, retTpt, dims))
+          if (fun.symbol == defn.newArrayMethod) =>
+        val Literal(Constant(ins)) = retTpt
+        ins match {
           case JavaArrayType(ErasedValueType(tr, underlying)) =>
             val cls = tr.symbol.asClass
             val mod = cls.companionModule
+            val arTpe = JavaArrayType(underlying)
             New(defn.vcArrayOf(cls).typeRef,
-              List(newArray(TypeTree(underlying), tree.pos).appliedToArgs(args),
+              List(newArray(underlying, arTpe, tree.pos, dims.asInstanceOf[JavaSeqLiteral]).ensureConforms(arTpe),
                 ref(mod)))
           case _ =>
             tree
