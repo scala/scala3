@@ -46,7 +46,7 @@ object Inferencing {
 
   /** Instantiate selected type variables `tvars` in type `tp` */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
-    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains)).process(tp)
+    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
@@ -86,6 +86,7 @@ object Inferencing {
           }
           else {
             val minimize =
+              force.minimizeAll ||
               variance >= 0 && !(
                 force == ForceDegree.noBottom &&
                 defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
@@ -293,9 +294,9 @@ object Inferencing {
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean)
-  val none = new Value(_ => false)
-  val all = new Value(_ => true)
-  val noBottom = new Value(_ => true)
+  class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean)
+  val none = new Value(_ => false, minimizeAll = false)
+  val all = new Value(_ => true, minimizeAll = false)
+  val noBottom = new Value(_ => true, minimizeAll = false)
 }
 

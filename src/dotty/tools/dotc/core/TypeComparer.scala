@@ -678,7 +678,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     isSubType(tp11, tp21) && {
       val leftConstraint = constraint
       constraint = preConstraint
-      if (isSubType(tp12, tp22) && !subsumes(leftConstraint, constraint, preConstraint))
+      if (!(isSubType(tp12, tp22) && subsumes(leftConstraint, constraint, preConstraint)))
         constraint = leftConstraint
       true
     } || isSubType(tp12, tp22)

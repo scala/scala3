@@ -1611,7 +1611,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           // (otherwise equality is required)
           def compareOp: (Tree, Tree) => Tree =
             if (aligner.isStar) _.select(defn.Int_>=).appliedTo(_)
-            else         _.select(defn.Int_==).appliedTo(_)
+            else _.select(defn.Int_==).appliedTo(_)
 
           // `if (binder != null && $checkExpectedLength [== | >=] 0) then else zero`
           (seqTree(binder).select(defn.Any_!=).appliedTo(Literal(Constant(null)))).select(defn.Boolean_&&).appliedTo(compareOp(checkExpectedLength, Literal(Constant(0))))

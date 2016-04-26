@@ -116,6 +116,18 @@ object ErrorReporting {
            | found   : $found
            | required: $expected""".stripMargin + whyNoMatchStr(found, expected)
     }
+
+    /** Format `raw` implicitNotFound argument, replacing all
+     *  occurrences of `${X}` where `X` is in `paramNames` with the
+     *  corresponding shown type in `args`.
+     */
+    def implicitNotFoundString(raw: String, paramNames: List[String], args: List[Type]): String = {
+      def translate(name: String): Option[String] = {
+        val idx = paramNames.indexOf(name)
+        if (idx >= 0) Some(args(idx).show) else None
+      }
+      """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
+    }
   }
 
   def err(implicit ctx: Context): Errors = new Errors
