@@ -509,7 +509,7 @@ object SymDenotations {
      */
     final def isSelfSym(implicit ctx: Context) = owner.infoOrCompleter match {
       case ClassInfo(_, _, _, _, selfInfo) =>
-        selfInfo == symbol ||
+        (selfInfo eq symbol) ||
           selfInfo.isInstanceOf[Type] && name == nme.WILDCARD
       case _ => false
     }
