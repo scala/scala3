@@ -6,5 +6,9 @@ X-9
 X-11
 X-32
 List(X-11)
-r6: Set(X-7, X-9, X-11)
 r7: List(X-7, X-9, X-11)
+List(X-3, X-4, X-5)
+List(X-3, X-4, X-5, X-6)
+List(X-7, X-3, X-4, X-5)
+List(X-3, X-4, X-5)
+List(X-3, X-3)

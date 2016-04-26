@@ -15,11 +15,21 @@ object Test {
     println(r3)
     println(r5)
     val r6 = test.toSet
-    println(s"r6: $r6")
     val r7 = test.toList
     println(s"r7: $r7")
 
     val t1: ArrayOps[X] = Array(new X(7))
+    def a1 = Array(Array[X]())
+    def a2 = Array.ofDim[X](2)
+    def a3 = new Array[X](5)
+    def a4: Array[X] = Array(new X(3), new X(4), new X(5))
+    println(a4.toArray.toList)
+    println(a4.:+(new X(6)).toList)
+    println(a4.+:(new X(7)).toList)
+    println(a4.par.toList)
+    val a5 = Array(new X(1), new X(2))
+    val a6 = Array(new X(3), new X(4))
+    println(a5.map(x => a6(0)).toList)
   }
 
   def test: Array[X] = Array(new X(7), new X(9), new X(11))

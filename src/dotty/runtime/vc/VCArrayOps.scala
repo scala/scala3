@@ -24,6 +24,8 @@ class VCArrayOps[T](xs: Array[T]) extends ArrayOps[T] {
     case vc: VCObjectArray[_] => vc.ct.asInstanceOf[ClassTag[T]]
   }
 
+  override def repr = xs
+
   override protected[this] def newBuilder = new VCArrayBuilder[T]()(elemTag).asInstanceOf[ArrayBuilder[T]]
   //override protected[this] def newBuilder = new ArrayBuilder.ofRef[T]()(ClassTag[T](arrayElementClass(repr.getClass)))
 
