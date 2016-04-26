@@ -42,11 +42,14 @@ class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
       val TypeApply(tycon, targ :: Nil) = tree.fun
       rewrite(targ.tpe, tree.args)
     } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
-
+      val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
+      val cs = tp.tpe.widen.classSymbol
       tree.fun match {
-        case Apply(TypeApply(t: Ident, targ), dims)  if !TypeErasure.isUnboundedGeneric(targ.head.tpe) =>
+        case Apply(TypeApply(t: Ident, targ), dims)
+          if !TypeErasure.isUnboundedGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
           rewrite(targ.head.tpe, dims)
-        case Apply(TypeApply(t: Select, targ), dims) if !TypeErasure.isUnboundedGeneric(targ.head.tpe) =>
+        case Apply(TypeApply(t: Select, targ), dims)
+          if !TypeErasure.isUnboundedGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
           Block(t.qualifier :: Nil, rewrite(targ.head.tpe, dims))
         case _ => tree
       }
@@ -54,4 +57,3 @@ class ArrayConstructors extends MiniPhaseTransform { thisTransform =>
     } else tree
   }
 }
-
