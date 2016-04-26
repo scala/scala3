@@ -847,7 +847,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =
       if (denot.isOverloaded) {
-        val allAlts = denot.alternatives.map(_.termRef)
+        def typeParamCount(tp: Type) = tp.widen match {
+          case tp: PolyType => tp.paramBounds.length
+          case _ => 0
+        }
+        var allAlts = denot.alternatives
+          .map(_.termRef).filter(tr => typeParamCount(tr) == targs.length)
+        if (targs.isEmpty) allAlts = allAlts.filterNot(_.widen.isInstanceOf[PolyType])
         val alternatives =
           ctx.typer.resolveOverloaded(allAlts, proto, Nil)
         assert(alternatives.size == 1,
