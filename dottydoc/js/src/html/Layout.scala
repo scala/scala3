@@ -5,7 +5,7 @@ package html
 import scalatags.JsDom.all._
 import scalatags.JsDom.TypedTag
 import org.scalajs.dom
-import org.scalajs.dom.html.Div
+import org.scalajs.dom.html.{Anchor, Div}
 
 object IndexLayout {
   import model.Entities._
@@ -28,11 +28,7 @@ object IndexLayout {
         ),
         nav(
           cls := "related mdl-navigation",
-          a(
-            cls := "mdl-navigation__link",
-            href := companionHref(m).map(_.path.last + ".html").getOrElse(""),
-            "Companion " + m.name
-          ),
+          companion(m),
           a(cls := "mdl-navigation__link", href := m.sourceUrl, "Source")
         ),
         span(
@@ -74,20 +70,34 @@ object IndexLayout {
     )
   )
 
+  private def relativePath(to: Entity) =
+    util.Traversing.relativePath(Index.currentEntity, to)
+
   def packageView = nav(
     cls := "mdl-navigation packages",
-    Index.packages.keys.flatMap { k =>
-      a(cls := "mdl-navigation__link package", href := "#", k) ::
-      Index.packages(k).children.sortBy(_.name).map { c =>
-        a(cls := "mdl-navigation__link entity", href := "#", c.name)
+    {
+      val keys: Seq[String] = Index.packages.keys.toSeq.sorted
+      keys.flatMap { k =>
+        val pack = Index.packages(k)
+        (a(cls := "mdl-navigation__link package", href := relativePath(pack), k) ::
+        pack.children.sortBy(_.name).map { c =>
+          a(cls := "mdl-navigation__link entity", href := relativePath(c), c.name)
+        })
       }
-    }.toSeq
+    }
   )
 
-  def companionHref(m: Entity): Option[PackageMember] = {
+  def companion(m: Entity) = {
     val pack = m.path.dropRight(1).mkString(".")
     Index.packages.get(pack)
       .flatMap(_.children.find(e => e.name == m.name && e.path.last != m.path.last))
+      .map { p =>
+        a(
+          cls := "mdl-navigation__link",
+          href := p.path.last + ".html",
+          "Companion " + m.kind
+        )
+      }.getOrElse(span())
   }
 
   def member(m: Entity) = {

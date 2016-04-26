@@ -37,9 +37,7 @@ object BodyParsers {
       }
 
       def relativePath(target: Entity) =
-        "../" * (origin.path.length - 1) +
-        target.path.mkString("/") +
-        ".html"
+        util.Traversing.relativePath(origin, target)
 
       def bodyToHtml(body: Body): String =
         (body.blocks map blockToHtml).mkString
