@@ -365,7 +365,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with printing.Showable with EqClassOf[Symbol] {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with printing.Showable with EqClass[Symbol] {
 
     type ThisName <: Name
 

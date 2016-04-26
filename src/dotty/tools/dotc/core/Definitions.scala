@@ -56,10 +56,19 @@ class Definitions {
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
 
-  // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
-  // implemented in Dotty and not in Scala 2.
-  // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
-  private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
+  /** A class following the template
+   *
+   *      package scala
+   *      class <name>[<paramFlags> $T0] extends <parents>
+   *
+   *  where <parents> = [constr' | constr <- parentConstrs]
+   *        <constr'> = constr[$T0]     of <constr> has a type parameter
+   *                  = constr          otherwise
+   */
+  private def specialPolyClass(name: TypeName, classFlags: FlagSet, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
+    // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
+    // implemented in Dotty and not in Scala 2.
+    // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -73,7 +82,7 @@ class Definitions {
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer)
+    newClassSymbol(ScalaPackageClass, name, classFlags, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -204,8 +213,8 @@ class Definitions {
    *
    *    trait EqClass {
    *      /** Comparison operations between values in the same equality class */
-   *      final def == [T >: this.type <: EqClass](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
-   *      final def != [T >: this.type <: EqClass](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+   *      final def == [T >: this.type <: EqClass[_](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+   *      final def != [T >: this.type <: EqClass[_](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
    *    }
    *
    *  The reason we define this here rather than as a source file is that these definitions
@@ -215,13 +224,12 @@ class Definitions {
    *    Exception in thread "main" scala.reflect.internal.Types$NoCommonType: lub/glb of incompatible types: => core.this.Names.TypeName and scala.this.Nothing
    */
   lazy val EqClassClass: ClassSymbol = {
-    val ecc = newCompleteClassSymbol(
-      ScalaPackageClass, tpnme.EqClass, PureInterfaceCreationFlags, List(AnyClass.typeRef))
+    val ecc = specialPolyClass(tpnme.EqClass, PureInterfaceCreationFlags, Contravariant, List(AnyClass.typeRef))
     val completer = new LazyType {
       override def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         denot.info =
           PolyType(tpnme.syntheticTypeParamNames(1))(
-            pt => List(TypeBounds(ecc.thisType, ecc.typeRef)),
+            pt => List(TypeBounds(ecc.thisType, ecc.typeRef.appliedTo(TypeBounds.empty))),
             pt => MethodType(List(PolyParam(pt, 0)),
                    ImplicitMethodType(List(EqType.appliedTo(PolyParam(pt, 0))),
                      BooleanType)))
@@ -393,10 +401,10 @@ class Definitions {
   lazy val BoxedDoubleModule  = ctx.requiredModule("java.lang.Double")
   lazy val BoxedUnitModule    = ctx.requiredModule("java.lang.Void")
 
-  lazy val ByNameParamClass2x = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
-  lazy val EqualsPatternClass = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
+  lazy val ByNameParamClass2x = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, EmptyFlags, Covariant, Seq(AnyType))
+  lazy val EqualsPatternClass = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, EmptyFlags, Seq(AnyType))
 
-  lazy val RepeatedParamClass = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
+  lazy val RepeatedParamClass = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, EmptyFlags, Covariant, Seq(ObjectType, SeqType))
 
   // fundamental classes
   lazy val StringClass                = ctx.requiredClass("java.lang.String")

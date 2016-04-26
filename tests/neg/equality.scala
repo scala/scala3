@@ -3,7 +3,7 @@ object equality {
 
   case class Str(str: String) extends EqClass
 
-  case class Num(x: Int) extends EqClassOf[Num]
+  case class Num(x: Int) extends EqClass[Num]
 
   case class Other(x: Int)
 

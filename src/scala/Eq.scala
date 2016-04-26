@@ -12,6 +12,6 @@ object Eq extends Eq[Any] {
   /** An implicit that provides an `Eq` instance for all types `T` that have
    *  a base type `U` such that `U <: EqClass[U]`.
    */
-  implicit def eqEq[U, T <: EqClassOf[U] with U]: Eq[T] = Eq
+  implicit def eqEq[U, T <: EqClass[U] with U]: Eq[T] = Eq
 }
 
