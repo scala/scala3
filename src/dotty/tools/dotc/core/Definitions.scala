@@ -200,6 +200,39 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
+  /** A trait with the following signature:
+   *
+   *    trait EqClass {
+   *      /** Comparison operations between values in the same equality class */
+   *      final def == [T >: this.type <: EqClass](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+   *      final def != [T >: this.type <: EqClass](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
+   *    }
+   *
+   *  The reason we define this here rather than as a source file is that these definitions
+   *  throughly confuse scalac. When inheriting from EqClass and typechecking == it dies
+   *  with errors like this (and no stacktrace):
+   *
+   *    Exception in thread "main" scala.reflect.internal.Types$NoCommonType: lub/glb of incompatible types: => core.this.Names.TypeName and scala.this.Nothing
+   */
+  lazy val EqClassClass: ClassSymbol = {
+    val ecc = newCompleteClassSymbol(
+      ScalaPackageClass, tpnme.EqClass, PureInterfaceCreationFlags, List(AnyClass.typeRef))
+    val completer = new LazyType {
+      override def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+        denot.info =
+          PolyType(tpnme.syntheticTypeParamNames(1))(
+            pt => List(TypeBounds(ecc.thisType, ecc.typeRef)),
+            pt => MethodType(List(PolyParam(pt, 0)),
+                   ImplicitMethodType(List(EqType.appliedTo(PolyParam(pt, 0))),
+                     BooleanType)))
+      }
+    }
+    newMethod(ecc, nme.EQ, completer, Final)
+    newMethod(ecc, nme.NE, completer, Final)
+    ecc
+  }
+  def EqClassType = EqClassClass.typeRef
+
   /** Dummy method needed by elimByName */
   lazy val dummyApply = newPolyMethod(
       OpsPackageClass, nme.dummyApply, 1,
@@ -281,7 +314,6 @@ class Definitions {
     def ArrayConstructor(implicit ctx: Context) = ArrayConstructorR.symbol
   lazy val ArrayModuleType = ctx.requiredModuleRef("scala.Array")
   def ArrayModule(implicit ctx: Context) = ArrayModuleType.symbol.moduleClass.asClass
-
 
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
@@ -401,6 +433,8 @@ class Definitions {
     lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+(implicit ctx: Context) = StringAdd_plusR.symbol
 
+  lazy val EqType: TypeRef                      = ctx.requiredClassRef("scala.Eq")
+  def EqClass(implicit ctx: Context)            = EqType.symbol.asClass
   lazy val PairType: TypeRef                    = ctx.requiredClassRef("dotty.Pair")
   def PairClass(implicit ctx: Context) = PairType.symbol.asClass
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
@@ -797,7 +831,8 @@ class Definitions {
     SingletonClass,
     EqualsPatternClass,
     EmptyPackageVal,
-    OpsPackageClass)
+    OpsPackageClass,
+    EqClassClass)
 
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
     lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
