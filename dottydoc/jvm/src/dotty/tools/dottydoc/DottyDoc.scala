@@ -7,7 +7,10 @@ import dotc.config.Printers.dottydoc
 import dotc.core.Contexts._
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
-import dotc.{Compiler, Driver}
+import dotc.{Compiler, Driver, Run}
+import io.PlainFile
+
+import scala.util.control.NonFatal
 
 /** Custom Compiler with phases for the documentation tool
  *
@@ -27,17 +30,40 @@ case object DottyDocCompiler extends Compiler {
     List(new FrontEnd) ::
     List(new DocPhase) ::
     Nil
+
+    override def newRun(implicit ctx: Context): Run = {
+      reset()
+      new DocRun(this)(rootContext)
+    }
+}
+
+class DocRun(comp: Compiler)(implicit ctx: Context) extends Run(comp)(ctx) {
+  def fromDirectory(f: String): List[String] = {
+    val file = new PlainFile(f)
+
+    if (!file.isDirectory && f.endsWith(".scala")) List(f)
+    else if (!file.isDirectory) Nil
+    else file.iterator.flatMap {
+      case x if x.isDirectory => fromDirectory(x.canonicalPath)
+      case x => List(x.canonicalPath)
+    }.toList
+  }
+
+  /** If DocRecursive is set, then try to find all scala files! */
+  override def compile(fileNames: List[String]): Unit = super.compile(
+    if (ctx.settings.DocRecursive.value) fileNames flatMap fromDirectory
+    else fileNames
+  )
 }
 
 object DottyDoc extends Driver {
-  override protected def initCtx =
-    new InitialContext(new ContextBase, new DottyDocSettings)
-
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val ctx = rootCtx.fresh
+    val ctx     = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
+
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YkeepComments, true)
+
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }
