@@ -19,7 +19,7 @@ object Test {
     println(s"r7: $r7")
 
     val t1: ArrayOps[X] = Array(new X(7))
-    def a1 = Array(Array[X]())
+    //def a1 = Array(Array[X]())
     def a2 = Array.ofDim[X](2)
     def a3 = new Array[X](5)
     def a4: Array[X] = Array(new X(3), new X(4), new X(5))
