@@ -207,6 +207,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             case _ =>
               super.transform(tree1)
           }
+        case tree @ Apply(Select(lhs, nme.EQ), rhs :: Nil) if tree.symbol == defn.Any_== =>
+          if (lhs.tpe.derivesFrom(defn.EqClassClass) ||
+              rhs.tpe.derivesFrom(defn.EqClassClass) && !lhs.tpe.isRef(defn.NullClass))
+            ctx.error(d"values of type ${lhs.tpe} and ${rhs.tpe} cannot be compared", tree.pos)
+          super.transform(tree)
         case tree @ Assign(sel: Select, _) =>
           superAcc.transformAssign(super.transform(tree))
         case tree: Template =>
