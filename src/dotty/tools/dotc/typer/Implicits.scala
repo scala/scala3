@@ -361,7 +361,7 @@ trait ImplicitRunInfo { self: RunInfo =>
         computeIScope(cacheResult = false)
       else implicitScopeCache get tp match {
         case Some(is) => is
-        case None => computeIScope(cacheResult = true)
+        case None => computeIScope(cacheResult = seen.isEmpty)
       }
     }
 
