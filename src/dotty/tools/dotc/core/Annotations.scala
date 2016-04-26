@@ -8,7 +8,7 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 
 object Annotations {
 
-  abstract class Annotation {
+  abstract class Annotation extends EqClass[Annotation] {
     def tree(implicit ctx: Context): Tree
     def symbol(implicit ctx: Context): Symbol =
       if (tree.symbol.isConstructor) tree.symbol.owner

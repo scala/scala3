@@ -261,7 +261,7 @@ object Phases {
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
-  trait Phase extends DotClass {
+  trait Phase extends DotClass with EqClass[Phase] {
 
     def phaseName: String
 

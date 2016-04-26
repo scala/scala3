@@ -34,7 +34,7 @@ object ScriptSourceFile {
   }
 }
 
-case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile {
+case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile with EqClass[SourceFile] {
 
   def this(_file: AbstractFile)                 = this(_file, _file.toCharArray)
   def this(sourceName: String, cs: Seq[Char])   = this(new VirtualFile(sourceName), cs.toArray)

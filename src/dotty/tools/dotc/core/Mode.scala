@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core
 
 /** A collection of mode bits that are part of a context */
-case class Mode(val bits: Int) extends AnyVal {
+case class Mode(val bits: Int) extends AnyVal with EqClass[Mode] {
   import Mode._
   def | (that: Mode) = Mode(bits | that.bits)
   def & (that: Mode) = Mode(bits & that.bits)

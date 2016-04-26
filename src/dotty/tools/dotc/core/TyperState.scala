@@ -12,7 +12,7 @@ import printing.Texts._
 import config.Config
 import collection.mutable
 
-class TyperState(r: Reporter) extends DotClass with Showable {
+class TyperState(r: Reporter) extends DotClass with Showable with EqClass[TyperState] {
 
   /** The current reporter */
   def reporter = r

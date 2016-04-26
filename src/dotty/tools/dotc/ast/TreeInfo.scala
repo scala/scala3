@@ -32,8 +32,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def defKind(tree: Tree): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case tree: DefDef => if (tree.unforcedRhs eq EmptyTree) NoInitsInterface else NoInits
+    case tree: ValDef => if (tree.unforcedRhs eq EmptyTree) NoInitsInterface else EmptyFlags
     case _ => EmptyFlags
   }
 
@@ -254,7 +254,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
     case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
+      (mdef.unforcedRhs eq EmptyTree) && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
     case mdef: TypeDef =>
       mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
     case _ => false

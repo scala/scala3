@@ -52,7 +52,7 @@ object Periods {
    *
    *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
-  class Period(val code: Int) extends AnyVal {
+  class Period(val code: Int) extends AnyVal with EqClass[Period] {
 
     /** The run identifier of this period. */
     def runId: RunId = code >>> (PhaseWidth * 2)

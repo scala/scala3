@@ -12,7 +12,7 @@ object Flags {
    *  that has the intersection of the applicability to terms/types
    *  of the two flag sets. It is checked that the intersection is not empty.
    */
-  case class FlagSet(val bits: Long) extends AnyVal {
+  case class FlagSet(val bits: Long) extends AnyVal with EqClass[FlagSet] {
 
     /** The union of this flag set and the given flag set
      */
@@ -121,7 +121,7 @@ object Flags {
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    */
-  case class FlagConjunction(bits: Long) {
+  case class FlagConjunction(bits: Long) extends EqClass[FlagConjunction] {
     override def toString = FlagSet(bits).toString
   }
 

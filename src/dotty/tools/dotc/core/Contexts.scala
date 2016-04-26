@@ -60,7 +60,8 @@ object Contexts {
                             with SymDenotations
                             with Reporting
                             with NamerContextOps
-                            with Cloneable { thiscontext =>
+                            with Cloneable
+                            with EqClass[Context] { thiscontext =>
     implicit def ctx: Context = this
 
     /** The context base at the root */
