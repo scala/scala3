@@ -9,8 +9,8 @@ class Eq[-T]
  */
 object Eq extends Eq[Any] {
 
-  /** An implicit that provides an `Eq` instance for all types `T`
-   *  such that `T <: EqClass[T]`.
+  /** An implicit that provides an `Eq` instance for all types `T` that have
+   *  a base type `U` such that `U <: EqClass[U]`.
    */
   implicit def eqEq[U, T <: EqClassOf[U] with U]: Eq[T] = Eq
 }
