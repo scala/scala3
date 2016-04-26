@@ -7,10 +7,11 @@ import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core._
 import Decorators._
+import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, Symbol}
 import dotty.tools.dotc.core.Types._
@@ -21,6 +22,9 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
 import scala.collection.mutable
 import scala.reflect.internal.util.Collections
 
+
+// TODO: Check secondary constructors.
+// TODO: check private fields
 class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   import tpd._
@@ -96,13 +100,66 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     }
   }
 
+  def isSimilar(arguments: OuterTargs, other: OuterTargs)(implicit ctx: Context) = {
+    other.mp.forall { other =>
+      arguments.mp.get(other._1) match {
+        case None => false
+        case Some(mapping) =>
+          mapping.forall{thisMapping =>
+            other._2.get(thisMapping._1) match {
+              case None => false
+              case Some(otherTp) =>
+                otherTp.dropAlias =:= thisMapping._2.dropAlias
+            }
+          }
+      }
+    }
+  }
+
+  def subsumes(arguments: OuterTargs, other: OuterTargs)(implicit ctx: Context) = {
+    other.mp.forall { other =>
+      arguments.mp.get(other._1) match {
+        case None => false
+        case Some(mapping) =>
+          mapping.forall{thisMapping =>
+            other._2.get(thisMapping._1) match {
+              case None => false
+              case Some(otherTp) =>
+                otherTp.dropAlias <:< thisMapping._2.dropAlias
+            }
+          }
+      }
+    }
+  }
+
   def registerSpecializationRequest(methodOrClass: Symbols.Symbol)(arguments: OuterTargs)
                                    (implicit ctx: Context): Unit = {
-    assert(methodOrClass.isClass || methodOrClass.is(Flags.Method))
-    if (ctx.phaseId > this.treeTransformPhase.id)
-      assert(ctx.phaseId <= this.treeTransformPhase.id)
-    val prev = specializationRequests.getOrElse(methodOrClass, List.empty)
-    specializationRequests.put(methodOrClass, arguments :: prev)
+    if (methodOrClass.isClass || methodOrClass.is(Flags.Method)) {
+      if (ctx.phaseId > this.treeTransformPhase.id)
+        assert(ctx.phaseId <= this.treeTransformPhase.id)
+      val prev = specializationRequests.getOrElse(methodOrClass, List.empty)
+      def isSimilar(arguments: OuterTargs, other: OuterTargs) = {
+        other.mp.forall { other =>
+         arguments.mp.get(other._1) match {
+           case None => false
+           case Some(mapping) =>
+             mapping.forall{thisMapping =>
+               other._2.get(thisMapping._1) match {
+                 case None => false
+                 case Some(otherTp) =>
+                   otherTp =:= thisMapping._2
+               }
+             }
+         }
+        }
+      }
+      if (prev.exists(isSimilar(arguments, _)))
+        return;
+      specializationRequests.put(methodOrClass, arguments :: prev)
+    }
+    else {
+      println(s"ignoring specialization reguest for ${methodOrClass.showFullName} for ${arguments}")
+    }
   }
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
@@ -160,15 +217,20 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
             other.info match {
               case tp: TypeBounds =>
                 // val newParam = ctx.newSymbol(newClaz, other.name, other.flags, TypeAlias(otherTr), other.privateWithin, other.coord)
-                val nw = ctx.newSymbol(newClaz, other.name, other.flags, TypeBounds(tp.lo & mappedTr, tp.hi & mappedTr), other.privateWithin, other.coord)
+                val newBoulds =
+                  if (mappedTr.typeSymbol eq defn.AnyClass) tp
+                  else TypeAlias(mappedTr)
+                val nw = ctx.newSymbol(newClaz, other.name, other.flags, newBoulds, other.privateWithin, other.coord)
                 newDecls.replace(other, nw)
             }
 
           case other =>
+            if (other.name.toString == "it")
+              println("bla")
             val tpe = if (other.isClassConstructor) other.info match {
               case oinfo: PolyType =>
                 val newConstructorBounds = claz.info.typeParams.map(x => specialization.mp(claz)(x.name))
-                val fullConstructorBounds = (oinfo.paramBounds zip newConstructorBounds).map{case (old, nw) => TypeBounds(old.lo & nw.dropAlias, old.hi & nw.dropAlias)}
+                val fullConstructorBounds = (oinfo.paramBounds zip newConstructorBounds).map{case (old, nw) => TypeBounds(old.lo | nw.dropAlias, old.hi & nw.dropAlias)}
                 def newResultType(m: MethodType): MethodType =  {
                   m.resultType match {
                     case r: MethodType => m.derivedMethodType(m.paramNames, m.paramTypes, newResultType(r))
@@ -181,24 +243,34 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
                 oinfo.derivedPolyType(oinfo.paramNames, fullConstructorBounds, resultType)
               case _ => map(other.info)
             } else map(other.info)
-            val nw = ctx.newSymbol(newClaz, other.name, other.flags, tpe, other.privateWithin, other.coord)
+            def fixMethodic(tp: Type, flags: FlagSet) = {
+              if (flags is Flags.Method)
+                if (tp.isInstanceOf[MethodicType]) tp
+                else ExprType(tp)
+              else tp
+            }
+            val nw = ctx.newSymbol(newClaz, other.name, other.flags, fixMethodic(tpe, other.flags), other.privateWithin, other.coord)
 
+            if(nw.name.toString.contains("import"))
+              println("hoo")
 
             if (!other.isClassConstructor && (nw.signature.matchDegree(other.signature) != Signature.FullMatch)) {
               // bridge is needed
-              val bridge = ctx.newSymbol(claz, nw.name, nw.flags.&~(Flags.Accessor| Flags.ParamAccessor)|(Flags.Deferred), nw.info).enteredAfter(this)
+              val bridge = ctx.newSymbol(claz, nw.name, nw.flags.&~(Flags.Accessor| Flags.ParamAccessor)|(Flags.Deferred) | Flags.Bridge, nw.info).enteredAfter(this)
               val lst = addBridges.getOrElse(claz, Nil)
 
               addBridges.put(claz, (bridge, other) :: lst)
             }
 
-            if (other.isTerm && !(other.is(Flags.Method))) {
-              other.asSymDenotation.copySymDenotation(initFlags = other.symbol.flags &~ (Flags.Method | Flags.Mutable)).installAfter(this)
+            if (other.isTerm && !(other.is(Flags.Method))) {  // field
+              val newFlags = (other.symbol.flags &~ (Flags.Mutable | Flags.Private)) | Flags.Deferred | Flags.Method | Flags.Stable
+              other.asSymDenotation.copySymDenotation(initFlags = newFlags, info = fixMethodic(other.info, newFlags)).installAfter(this)
             }
 
-            if (other.isTerm && other.is(Flags.ParamAccessor)) {
-              other.asSymDenotation.copySymDenotation(initFlags = (other.symbol.flags &~ (Flags.ParamAccessor | Flags.Accessor)) | Flags.Deferred).installAfter(this)
-            }
+            /* if (other.isTerm && other.is(Flags.ParamAccessor)) {
+              val newFlags = (other.symbol.flags &~ (Flags.ParamAccessor | Flags.Accessor | Flags.Private)) | Flags.Deferred | Flags.Method| Flags.Stable
+              other.asSymDenotation.copySymDenotation(initFlags = newFlags, info = fixMethodic(other.info, newFlags)).installAfter(this)
+            } */
 
             newDecls.replace(other, nw)
         }
@@ -225,7 +297,17 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
               case poly: PolyType if isSpecializable(decl.symbol, poly.paramNames.length) =>
                 generateMethodSpecializations(getSpecTypes(decl, poly))(poly, decl)
               case claz: ClassInfo if requestedSpecialization(decl) =>
-                specializationRequests(decl).map(x => duplicateClass(decl.asClass, x))
+                def addGenericSpec(x: List[OuterTargs]): List[OuterTargs] =
+                  if (x.isEmpty) x
+                  else {
+                    val tparams = decl.typeParams
+                    val generic = x.find(_.mp.values.flatten.forall(x => TypeErasure.erasure(x._2) == defn.ObjectType ))
+                    if (generic.isEmpty) {
+                      val tparamsMapping: Map[Name, Type] = tparams.map(x => (x.name, TypeAlias(defn.AnyType))).toMap
+                      OuterTargs(Map(decl -> tparamsMapping)) :: x
+                    } else x
+                  }
+                addGenericSpec(specializationRequests(decl)).map(x => duplicateClass(decl.asClass, x))
               case _ => Nil
             }
           })
@@ -261,7 +343,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
       val bounds = if(instantiations.mp.contains(decl)) (poly.paramBounds zip poly.paramNames).map{case (bound, name) =>
         instantiations.mp.getOrElse(decl, Map.empty).get(name) match {
-          case Some(instantiation) => TypeBounds(bound.lo & instantiation, bound.hi & instantiation)
+          case Some(instantiation) => TypeBounds(bound.lo | instantiation, bound.hi & instantiation)
           case None => bound
         }
       } else poly.paramBounds
@@ -340,14 +422,16 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     val origTParams = oldTree.tparams.map(_.symbol)
     val origVParams = oldTree.vparamss.flatten.map(_.symbol)
 
+
     polyDefDef(newSym.asTerm, { tparams => vparams => {
 
       val treemap: (Tree => Tree) = _ match {
         case Return(t, from) if from.symbol == oldSym => Return(t, ref(newSym))
-        /* case t: TypeApply =>
-           transformTypeApply(t)
+        case t: This if t.symbol eq oldSym.enclosingClass => This(newSym.enclosingClass.asClass)
+         case t: TypeApply =>
+           transformTypeApply(t)(ctx, null)
          case t: Apply =>
-           transformApply(t) */
+           transformApply(t)(ctx, null)
         case t => t
       }
 
@@ -370,7 +454,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     val oldSym = tree.symbol
     if (oldSym.isClass) newSymbolMap.get(tree.symbol) match {
       case Some(x) =>
-        val newClasses: List[Tree] = x.map{case (outersTargs, newSym) =>
+        val newClasses: List[Tree] = x.map{case (outersTargs, newClassSym) =>
           val typemap:  (Type, List[Symbol], List[Type]) => (List[Symbol], List[Type]) => Type => Type =
             (oldPoly, oldTparams, newTparams) => (oldArgs, newArgs) =>
               new SubstituteByParentMap(outersTargs) {
@@ -386,25 +470,38 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
               }
           //duplicateMethod(newSym, tree)(typeMap = typemap)()
           val treeRhs = tree.rhs.asInstanceOf[Template]
-          val newSubst = newSym.info.fields.map(_.symbol).toList// ++ newSym.info.accessors
+          val newSubst = newClassSym.info.fields.map(_.symbol).toList// ++ newSym.info.accessors
           val oldSubst = oldSym.info.fields.map(_.symbol).toList// ++ oldSym.info.accessors
-          val bodytreeTypeMap = new TreeTypeMap(typeMap = typemap(null, Nil, Nil)(Nil, Nil), substFrom = oldSubst, substTo = newSubst
+          val treeMap: Tree => Tree = {
+          case t: This if (t.symbol eq oldSym) => tpd.This(newClassSym.asClass)
+          case t: TypeApply => transformTypeApply(t)(ctx, null)
+          case t: Apply => transformApply(t)(ctx, null)
+          case t => t
+        }
+          val bodytreeTypeMap = new TreeTypeMap(typeMap = typemap(null, Nil, Nil)(Nil, Nil), substFrom = oldSubst, substTo = newSubst, treeMap = treeMap
             /*oldOwners = oldSubst, newOwners = newSubst*/)
-          val constr = duplicateMethod(newSym.primaryConstructor, treeRhs.constr)(typemap)(oldSubst, newSubst)
+          val constr = duplicateMethod(newClassSym.primaryConstructor, treeRhs.constr)(typemap)(oldSubst, newSubst)
 
           val body = treeRhs.body.map{original =>
              original match {
                case t: DefDef =>
+
+                 val variants = newClassSym.info.decl(t.symbol.name)
+                 val popa = variants.alternatives.map(_.symbol.info.overrides(original.symbol.info))
                  val newMeth: Symbol = // todo: handle overloading
                    /*if(!t.symbol.is(Flags.Private)) t.symbol.matchingMember(newSym.info) // does not work. Signatures do not match anymore
-                   else */newSym.info.decl(t.symbol.name).asSymDenotation.symbol
+                   else */
+                   t.symbol.asSymDenotation.matchingDecl(newClassSym, newClassSym.thisType).orElse(
+                     newClassSym.asClass.classInfo.decl(t.symbol.name).symbol
+                   )
+                   //x.matchingDecl(original.symbol.owner.asClass, x.owner.thisType).exists)
 
                  duplicateMethod(newMeth, t)(typemap)(oldSubst, newSubst)
                case t: TypeDef if !t.isClassDef =>
-                 val newMember = newSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
+                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
                  tpd.TypeDef(newMember)
                case t: ValDef =>
-                 val newMember = newSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
+                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
                  tpd.ValDef(newMember, bodytreeTypeMap.apply(t.rhs))
                case _ => // just body. TTM this shit
                  bodytreeTypeMap.apply(original)
@@ -415,11 +512,13 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
             case _ => Nil
           }
 
-          tpd.ClassDef(newSym.asClass, constr, body, superArgs)
+          tpd.ClassDef(newClassSym.asClass, constr, body, superArgs)
         }.toList
 
         val newBridges = {
-          val bridgeSymbols = addBridges(tree.symbol.asClass)
+          val bridgeSymbols = addBridges.getOrElse(tree.symbol.asClass, Nil)
+          if (bridgeSymbols.isEmpty)
+            println(s"generating no bridges for ${tree.symbol}")
           bridgeSymbols.map{case(nw, old) =>
              polyDefDef(nw.asTerm, tparams => vparamss => {
 
@@ -449,32 +548,43 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     assert(tree.isInstanceOf[TypeApply])
     val TypeApply(fun, args) = tree
 
+    if (fun.symbol.isPrimaryConstructor && fun.symbol.owner.name.toString.contains("ArrayBuf"))
+      println("here")
+
+
     if (fun.symbol.isPrimaryConstructor && newSymbolMap.contains(fun.symbol.owner)) {
       val availableSpecializations = newSymbolMap(fun.symbol.owner)
       val poly = fun.symbol.info.widen.asInstanceOf[PolyType]
       val argsNames = fun.symbol.owner.asClass.classInfo.typeParams.map(_.name) zip args
-      val betterClasses = availableSpecializations.filter {
+      val availableClasses = availableSpecializations.filter {
         case (instantiations, symbol) => {
           val mappings = instantiations.mp(fun.symbol.owner)
           argsNames.forall { case (name, arg) => arg.tpe <:< mappings(name).dropAlias }
         }
+      }
+
+      val bestVersions = availableClasses.filter{case (instantiations1, symbol1) =>
+        availableClasses.find{case (instantiations2, symbol2) =>
+          (symbol2 ne symbol1)  && subsumes(instantiations1, instantiations2)
+        }.isEmpty
       }.toList
 
-      if (betterClasses.length > 1) {
-        ctx.debuglog(s"Several specialized variants fit for ${fun.symbol.name} of ${fun.symbol.owner}." +
-          s" Defaulting to no specialization.")
+
+      if (bestVersions.length > 1) {
+        ctx.error(s"Several specialized variants fit for ${fun.symbol.name} of ${fun.symbol.owner}." +
+          s" Defaulting to no specialization. This is not supported yet.")
         tree
       }
 
-      else if (betterClasses.nonEmpty) {
-        val newClassSym = betterClasses.head._2
+      else if (bestVersions.nonEmpty) {
+        val newClassSym = bestVersions.head._2
         ctx.debuglog(s"new ${fun.symbol.owner} rewired to ${newClassSym}")
         tpd.New(newClassSym.typeRef)
           .select(newClassSym.primaryConstructor)  // todo handle secondary cosntr
           .appliedToTypeTrees(args)
       } else tree
 
-    } else if (newSymbolMap.contains(fun.symbol)) {
+    } else if (newSymbolMap.contains(fun.symbol)) {  // not a constructor
       val poly = fun.symbol.info.widen.asInstanceOf[PolyType]
       val argsNames = poly.paramNames zip args
       val availableSpecializations = newSymbolMap(fun.symbol)
@@ -512,6 +622,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    if (ctx.owner.name.toString.contains("IterableOps"))
+      println("dsd")
     val TypeApply(fun, _) = tree
     if (fun.tpe.widenDealias.isParameterless) rewireTree(tree)
     else tree
