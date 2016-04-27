@@ -52,7 +52,7 @@ class TreeChecker extends Phase with SymTransformer {
       !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   def printError(str: String)(implicit ctx: Context) = {
-    ctx.println(Console.RED + "[error] " + Console.WHITE  + str)
+    ctx.echo(Console.RED + "[error] " + Console.WHITE  + str)
   }
 
   val NoSuperClass = Trait | Package
@@ -118,17 +118,17 @@ class TreeChecker extends Phase with SymTransformer {
   def check(phasesToRun: Seq[Phase], ctx: Context) = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squahsedPhase = ctx.squashed(prevPhase)
-    ctx.println(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
+    ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
     val checkingCtx = ctx.fresh.setReporter(new ThrowingReporter(ctx.reporter))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         implicit val ctx: Context = checkingCtx
-        ctx.println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
-        ctx.println(ex.toString)
-        ctx.println(ex.getStackTrace.take(30).deep.mkString("\n"))
-        ctx.println("<<<")
+        ctx.echo(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
+        ctx.echo(ex.toString)
+        ctx.echo(ex.getStackTrace.take(30).deep.mkString("\n"))
+        ctx.echo("<<<")
         throw ex
     }
   }
@@ -163,10 +163,10 @@ class TreeChecker extends Phase with SymTransformer {
         }
 
         nowDefinedSyms += tree.symbol
-        //ctx.println(i"defined: ${tree.symbol}")
+        //ctx.echo(i"defined: ${tree.symbol}")
         val res = op
         nowDefinedSyms -= tree.symbol
-        //ctx.println(i"undefined: ${tree.symbol}")
+        //ctx.echo(i"undefined: ${tree.symbol}")
         res
       case _ => op
     }

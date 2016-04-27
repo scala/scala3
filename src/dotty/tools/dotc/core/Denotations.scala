@@ -464,7 +464,7 @@ object Denotations {
           try info.signature
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
-              ctx.println(s"cannot take signature of ${info.show}")
+              ctx.echo(s"cannot take signature of ${info.show}")
               throw ex
           }
         case _ => Signature.NotAMethod
