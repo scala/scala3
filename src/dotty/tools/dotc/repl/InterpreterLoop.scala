@@ -74,10 +74,9 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
    *  line of input to be entered.
    */
   def firstLine(): String = {
-    val line = in.readLine(prompt)
     interpreter.beQuietDuring(
       interpreter.interpret("val theAnswerToLifeInTheUniverseAndEverything = 21 * 2"))
-    line
+    in.readLine(prompt)
   }
 
   /** The main read-eval-print loop for the interpreter.  It calls
@@ -171,7 +170,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
         case Some(oldRes) =>
           output.print(oldRes)
           Some(line)
-        case _ => interpretStartingWith(line)
+        case None => interpretStartingWith(line)
       }
 
     (true, shouldReplay)
