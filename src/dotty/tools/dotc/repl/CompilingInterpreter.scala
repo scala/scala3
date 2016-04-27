@@ -78,6 +78,27 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
   /** whether to print out result lines */
   private var printResults: Boolean = true
+  private var delayOutput: Boolean = false
+
+  var previousOutput: String = null
+
+  override def lastOutput() =
+    if (previousOutput == null) None
+    else {
+      val ret = Some(previousOutput)
+      previousOutput = null
+      ret
+    }
+
+  override def delayOutputDuring[T](operation: => T): T = {
+    val old = delayOutput
+    try {
+      delayOutput = true
+      operation
+    } finally {
+      delayOutput = old
+    }
+  }
 
   /** Temporarily be quiet */
   override def beQuietDuring[T](operation: => T): T = {
@@ -188,7 +209,9 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
           Interpreter.Error // an error happened during compilation, e.g. a type error
         else {
           val (interpreterResultString, succeeded) = req.loadAndRun()
-          if (printResults || !succeeded)
+          if (delayOutput)
+            previousOutput = clean(interpreterResultString)
+          else if (printResults || !succeeded)
             out.print(clean(interpreterResultString))
           if (succeeded) {
             prevRequests += req

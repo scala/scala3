@@ -15,9 +15,9 @@ class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extend
   val interactive = true
 
   def incompleteInput(str: String): Boolean =
-    interpreter.beQuietDuring(interpreter.interpret(str)) match {
+    interpreter.delayOutputDuring(interpreter.interpret(str)) match {
       case Interpreter.Incomplete => true
-      case _ => false // TODO: should perhaps save output here?
+      case _ => false
     }
 
   val reader = new java.io.InputStreamReader(System.in)

@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  *  After instantiation, clients should call the `run` method.
  *
  *  @author Moez A. Abdel-Gawad
- *  @author  Lex Spoon
+ *  @author Lex Spoon
  *  @author Martin Odersky
  */
 class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Context) {
@@ -167,7 +167,12 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     else if (line startsWith ":")
       output.println("Unknown command.  Type :help for help.")
     else
-      shouldReplay = interpretStartingWith(line)
+      shouldReplay = interpreter.lastOutput() match { // don't interpret twice
+        case Some(oldRes) =>
+          output.print(oldRes)
+          Some(line)
+        case _ => interpretStartingWith(line)
+      }
 
     (true, shouldReplay)
   }
