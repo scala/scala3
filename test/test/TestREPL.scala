@@ -20,7 +20,7 @@ class TestREPL(script: String) extends REPL {
   override lazy val config = new REPL.Config {
     override val output = new NewLinePrintWriter(out)
 
-    override def input(implicit ctx: Context) = new InteractiveReader {
+    override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines
       def readLine(prompt: String): String = {
         val line = lines.next

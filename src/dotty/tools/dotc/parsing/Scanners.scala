@@ -45,9 +45,6 @@ object Scanners {
     /** the string value of a literal */
     var strVal: String = null
 
-    /** the started parsing of a literal */
-    var startedLiteral: String = null
-
     /** the base of a number */
     var base: Int = 0
 
@@ -177,13 +174,8 @@ object Scanners {
 
   }
 
-  class Scanner(
-    source: SourceFile,
-    override val startFrom: Offset = 0,
-    preserveWhitespace: Boolean = false
-  )(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
-    val keepComments       = ctx.settings.YkeepComments.value
-    val whitespace         = new StringBuilder
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+    val keepComments = ctx.settings.YkeepComments.value
 
     /** All doc comments as encountered, each list contains doc comments from
      *  the same block level. Starting with the deepest level and going upward
@@ -247,13 +239,13 @@ object Scanners {
 
     /** Are we directly in a string interpolation expression?
      */
-    def inStringInterpolation =
+    private def inStringInterpolation =
       sepRegions.nonEmpty && sepRegions.head == STRINGLIT
 
     /** Are we directly in a multiline string interpolation expression?
      *  @pre inStringInterpolation
      */
-    def inMultiLineInterpolation =
+    private def inMultiLineInterpolation =
       inStringInterpolation && sepRegions.tail.nonEmpty && sepRegions.tail.head == STRINGPART
 
     /** read next token and return last offset
@@ -324,7 +316,7 @@ object Scanners {
         token = if (pastBlankLine()) NEWLINES else NEWLINE
       }
 
-      if (!preserveWhitespace) postProcessToken()
+      postProcessToken()
       // print("[" + this +"]")
     }
 
@@ -383,20 +375,9 @@ object Scanners {
       offset = charOffset - 1
       (ch: @switch) match {
         case ' ' | '\t' | CR | LF | FF =>
-          if (preserveWhitespace) {
-            while ((' ' :: '\t' :: CR :: LF :: FF :: Nil) contains ch) {
-              whitespace += ch
-              nextChar()
-            }
-            token  = WHITESPACE
-            strVal = whitespace.toString
-            whitespace.clear()
-          } else {
-            nextChar()
-            fetchToken()
-          }
-        case c @ (
-             'A' | 'B' | 'C' | 'D' | 'E' |
+          nextChar()
+          fetchToken()
+        case 'A' | 'B' | 'C' | 'D' | 'E' |
              'F' | 'G' | 'H' | 'I' | 'J' |
              'K' | 'L' | 'M' | 'N' | 'O' |
              'P' | 'Q' | 'R' | 'S' | 'T' |
@@ -407,14 +388,12 @@ object Scanners {
              'k' | 'l' | 'm' | 'n' | 'o' |
              'p' | 'q' | 'r' | 's' | 't' |
              'u' | 'v' | 'w' | 'x' | 'y' |
-             'z') =>
+             'z' =>
           putChar(ch)
           nextChar()
           getIdentRest()
-          if (ch == '"' && token == IDENTIFIER) {
+          if (ch == '"' && token == IDENTIFIER)
             token = INTERPOLATIONID
-            startedLiteral = "\""
-          }
         case '<' => // is XMLSTART?
           def fetchLT() = {
             val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
@@ -515,11 +494,9 @@ object Scanners {
               getLitChar()
               if (ch == '\'') {
                 nextChar()
-                startedLiteral = null
                 token = CHARLIT
                 setStrVal()
               } else {
-                startedLiteral = "\'"
                 error("unclosed character literal")
               }
             }
@@ -709,12 +686,8 @@ object Scanners {
       if (ch == '"') {
         setStrVal()
         nextChar()
-        startedLiteral = null
         token = STRINGLIT
-      } else {
-        startedLiteral = "\""
-        error("unclosed string literal")
-      }
+      } else error("unclosed string literal")
     }
 
     private def getRawStringLit(): Unit = {
