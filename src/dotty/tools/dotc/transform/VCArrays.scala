@@ -140,12 +140,6 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
           if (array.tpe <:< defn.VCArrayPrototypeType) =>
         array.select(nme.ARR).appliedToNone
           .select(nme.primitive.arrayLength).appliedToNone
-      // scala.Predef.genericWrapArray(...) => DottyPredef.genericWrapArray2(...)
-      case ap@Apply(tr, trs@List(x)) if tr.symbol eq scala2genericWrapArray =>
-        ref(defn.DottyPredefModule).select(nme.genericWrapArray2).appliedToArgs(trs)
-      // scala.Predef.genericArrayOps(...) => DottyPredef.genericArrayOps(...)
-      case ap@Apply(tr, trs@List(x)) if tr.symbol eq scala2genericArrayOps =>
-        ref(defn.DottyPredefModule).select(nme.genericArrayOps2).appliedToArgs(trs)
       case _ =>
         tree
     }

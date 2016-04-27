@@ -12,11 +12,12 @@ package mutable
 
 import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime
+import dotty.runtime.vc.VCArrayBuilder
+import dotty.tools.dotc.transform.ValueClasses
 
 /** A builder class for arrays.
   *
   *  @since 2.8
-  *
   *  @tparam T    the type of the elements for the builder.
   */
 abstract class ArrayBuilder[T] extends Builder[T, Array[T]] with Serializable
@@ -27,7 +28,6 @@ abstract class ArrayBuilder[T] extends Builder[T, Array[T]] with Serializable
   */
 object ArrayBuilder {
 
-  //TODO: update for vc arrays
   /** Creates a new arraybuilder of type `T`.
     *
     *  @tparam T     type of the elements for the array builder, with a `ClassTag` context bound.
@@ -45,6 +45,7 @@ object ArrayBuilder {
       case java.lang.Double.TYPE    => new ArrayBuilder.ofDouble().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Boolean.TYPE   => new ArrayBuilder.ofBoolean().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Void.TYPE      => new ArrayBuilder.ofUnit().asInstanceOf[ArrayBuilder[T]]
+      case _ if ValueClasses.isVCCompanion(tag) => new VCArrayBuilder[T]()(tag).asInstanceOf[ArrayBuilder[T]]
       case _                        => new ArrayBuilder.ofRef[T with AnyRef]()(tag.asInstanceOf[ClassTag[T with AnyRef]]).asInstanceOf[ArrayBuilder[T]]
     }
   }

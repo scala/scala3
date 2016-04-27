@@ -16,6 +16,7 @@ import scala.annotation.{ elidable, implicitNotFound }
 import scala.annotation.elidable.ASSERTION
 import scala.language.{implicitConversions, existentials}
 import scala.io.StdIn
+import dotty.runtime.vc.VCArrayPrototype
 
 /** The `Predef` object provides definitions that are accessible in all Scala
   *  compilation units without explicit qualification.
@@ -315,8 +316,8 @@ object Predef extends LowPriorityImplicits with DeprecatedPredef {
   implicit def tuple2ToZippedOps[T1, T2](x: (T1, T2))                           = new runtime.Tuple2Zipped.Ops(x)
   implicit def tuple3ToZippedOps[T1, T2, T3](x: (T1, T2, T3))                   = new runtime.Tuple3Zipped.Ops(x)
 
-  //TODO: update for vc arrays
   implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T] = (xs match {
+    case _ if xs.isInstanceOf[VCArrayPrototype[_]] => dotty.DottyPredef.opsVCArray(xs)
     case x: Array[AnyRef]  => refArrayOps[AnyRef](x)
     case x: Array[Boolean] => booleanArrayOps(x)
     case x: Array[Byte]    => byteArrayOps(x)

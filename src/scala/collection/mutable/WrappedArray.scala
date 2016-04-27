@@ -16,6 +16,7 @@ import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime._
 import scala.collection.generic._
 import scala.collection.parallel.mutable.ParArray
+import dotty.runtime.vc.VCArrayPrototype
 
 /**
   *  A class representing `Array[T]`.
@@ -92,7 +93,6 @@ object WrappedArray {
   private val EmptyWrappedArray  = new ofRef[AnyRef](new Array[AnyRef](0))
   def empty[T <: AnyRef]: WrappedArray[T] = EmptyWrappedArray.asInstanceOf[WrappedArray[T]]
 
-  //TODO: update for vc arrays
   // If make is called explicitly we use whatever we're given, even if it's
   // empty.  This may be unnecesssary (if WrappedArray is to honor the collections
   // contract all empty ones must be equal, so discriminating based on the reference
@@ -100,6 +100,7 @@ object WrappedArray {
   // conservative since wrapRefArray contributes most of the unnecessary allocations.
   def make[T](x: AnyRef): WrappedArray[T] = (x match {
     case null              => null
+    case x: VCArrayPrototype[_] => dotty.DottyPredef.wrapVCArray(x.asInstanceOf[Array[T]])
     case x: Array[AnyRef]  => new ofRef[AnyRef](x)
     case x: Array[Int]     => new ofInt(x)
     case x: Array[Double]  => new ofDouble(x)

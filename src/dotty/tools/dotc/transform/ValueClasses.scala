@@ -8,6 +8,9 @@ import SymDenotations._
 import Contexts._
 import Flags._
 import StdNames._
+import dotty.runtime.vc._
+
+import scala.reflect.ClassTag
 
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
@@ -53,4 +56,12 @@ object ValueClasses {
   def underlyingOfValueClass(d: ClassDenotation)(implicit ctx: Context): Type =
     valueClassUnbox(d).info.resultType
 
+  def isVCCompanion[T](ct: ClassTag[T]) = ct match {
+    case _: VCIntCompanion[_] | _: VCShortCompanion[_] |
+         _: VCLongCompanion[_] | _: VCByteCompanion[_] |
+         _: VCBooleanCompanion[_] | _: VCCharCompanion[_] |
+         _: VCFloatCompanion[_] | _: VCDoubleCompanion[_] |
+         _: VCObjectCompanion[_] => true
+    case _ => false
+  }
 }
