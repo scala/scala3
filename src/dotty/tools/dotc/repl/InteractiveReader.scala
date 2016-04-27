@@ -6,7 +6,7 @@ import dotc.core.Contexts.Context
 
 /** Reads lines from an input stream */
 trait InteractiveReader {
-  def readLine(prompt: String)(implicit ctx: Context): String
+  def readLine(prompt: String): String
   val interactive: Boolean
 }
 
@@ -16,9 +16,9 @@ object InteractiveReader {
   /** Create an interactive reader.  Uses JLine if the
    *  library is available, but otherwise uses a
    *  SimpleReader. */
-  def createDefault(): InteractiveReader = {
+  def createDefault(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
     try {
-      new AmmoniteReader()
+      new AmmoniteReader(in)
     } catch { case e =>
       //out.println("jline is not available: " + e) //debug
       e.printStackTrace()

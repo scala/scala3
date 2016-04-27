@@ -22,7 +22,7 @@ class TestREPL(script: String) extends REPL {
 
     override def input(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines
-      def readLine(prompt: String)(implicit ctx: Context): String = {
+      def readLine(prompt: String): String = {
         val line = lines.next
         if (line.startsWith(prompt) || line.startsWith(continuationPrompt)) {
           output.println(line)

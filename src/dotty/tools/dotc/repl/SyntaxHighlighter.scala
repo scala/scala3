@@ -40,9 +40,9 @@ object SyntaxHighlighting {
   private val typeEnders =
    '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: Nil
 
-  def apply(buffer: Iterable[Char]): Vector[Char] = {
+  def apply(chars: Iterable[Char]): Vector[Char] = {
     var prev: Char = 0
-    var iter       = buffer.toIterator
+    var remaining  = chars.toStream
     val newBuf     = new StringBuilder
 
     @inline def keywordStart =
@@ -51,18 +51,24 @@ object SyntaxHighlighting {
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
 
-    while (iter.hasNext) {
-      val n = iter.next
+    def takeChar(): Char = takeChars(1).head
+    def takeChars(x: Int): Seq[Char] = {
+      val taken = remaining.take(x)
+      remaining = remaining.drop(x)
+      taken
+    }
+
+    while (remaining.nonEmpty) {
+      val n = takeChar()
       if (interpolationPrefixes.contains(n)) {
         // Interpolation prefixes are a superset of the keyword start chars
-        val next = iter.take(3).mkString
+        val next = remaining.take(3).mkString
         if (next.startsWith("\"")) {
           newBuf += n
           prev = n
-          appendLiteral('"', next.toIterator.drop(1), next == "\"\"\"")
+          if (remaining.nonEmpty) takeChar() // drop 1 for appendLiteral
+          appendLiteral('"', next == "\"\"\"")
         } else {
-          val (dup, _ ) = iter.duplicate
-          iter = next.toIterator ++ dup
           if (n.isUpper && keywordStart) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
           } else if (keywordStart) {
@@ -75,15 +81,11 @@ object SyntaxHighlighting {
       } else {
         (n: @switch) match {
           case '/'  =>
-            if (iter.hasNext) {
-              iter.next match {
+            if (remaining.nonEmpty) {
+              takeChar() match {
                 case '/' => eolComment()
                 case '*' => blockComment()
-                case x => {
-                  newBuf += '/'
-                  val (dup, _) = iter.duplicate
-                  iter = List(x).toIterator ++ dup
-                }
+                case x => newBuf += '/'; remaining = x #:: remaining
               }
             } else newBuf += '/'
           case '='  =>
@@ -92,19 +94,17 @@ object SyntaxHighlighting {
             append('<', { x => x == "<-" || x == "<:" || x == "<%" }, keyword)
           case '>'  =>
             append('>', { x => x == ">:" }, keyword)
-          case '#'  =>
+          case '#'  if prev != ' ' && prev != '.' =>
             newBuf append keyword("#")
             prev = '#'
           case '@'  =>
             appendWhile('@', _ != ' ', annotation)
-          case '\"' => iter.take(2).mkString match {
-            case "\"\"" => appendLiteral('\"', Iterator.empty, multiline = true)
-            case lit    => appendLiteral('\"', lit.toIterator)
-          }
+          case '\"' =>
+            appendLiteral('\"', multiline = remaining.take(2).mkString == "\"\"")
           case '\'' =>
-            appendLiteral('\'', Iterator.empty)
+            appendLiteral('\'')
           case '`'  =>
-            appendUntil('`', _ == '`', none)
+            appendTo('`', _ == '`', none)
           case c if c.isUpper && keywordStart =>
             appendWhile(c, !typeEnders.contains(_), typeDef)
           case c if numberStart(c) =>
@@ -118,8 +118,8 @@ object SyntaxHighlighting {
     def eolComment() = {
       newBuf append (CommentColor + "//")
       var curr = '/'
-      while (curr != '\n' && iter.hasNext) {
-        curr = iter.next
+      while (curr != '\n' && remaining.nonEmpty) {
+        curr = takeChar()
         newBuf += curr
       }
       prev = curr
@@ -130,16 +130,16 @@ object SyntaxHighlighting {
       newBuf append (CommentColor + "/*")
       var curr = '*'
       var open = 1
-      while (open > 0 && iter.hasNext) {
-        curr = iter.next
+      while (open > 0 && remaining.nonEmpty) {
+        curr = takeChar()
         newBuf += curr
 
-        if (curr == '*' && iter.hasNext) {
-          curr = iter.next
+        if (curr == '*' && remaining.nonEmpty) {
+          curr = takeChar()
           newBuf += curr
           if (curr == '/') open -= 1
-        } else if (curr == '/' && iter.hasNext) {
-          curr = iter.next
+        } else if (curr == '/' && remaining.nonEmpty) {
+          curr = takeChar()
           newBuf += curr
           if (curr == '*') open += 1
         }
@@ -148,7 +148,7 @@ object SyntaxHighlighting {
       newBuf append NoColor
     }
 
-    def appendLiteral(delim: Char, succ: Iterator[Char], multiline: Boolean = false) = {
+    def appendLiteral(delim: Char, multiline: Boolean = false) = {
       var curr: Char      = 0
       var continue        = true
       var closing         = 0
@@ -156,32 +156,31 @@ object SyntaxHighlighting {
       newBuf append (LiteralColor + delim)
 
       def shouldInterpolate =
-        inInterpolation && curr == '$' && prev != '$' && (iter.hasNext || succ.hasNext)
+        inInterpolation && curr == '$' && prev != '$' && remaining.nonEmpty
 
       def interpolate() = {
-        val next: Char = if (succ.hasNext) succ.next else iter.next
+        val next = takeChar()
         if (next == '$') {
           newBuf += curr
           newBuf += next
           prev = '$'
         } else if (next == '{') {
+          var open = 1 // keep track of open blocks
           newBuf append (KeywordColor + curr)
           newBuf += next
-          if (iter.hasNext) {
-            var c = iter.next
-            while (iter.hasNext && c != '}') {
-              newBuf += c
-              c = iter.next
-            }
+          while (remaining.nonEmpty && open > 0) {
+            var c = takeChar()
             newBuf += c
-            newBuf append LiteralColor
+            if (c == '}') open -= 1
+            else if (c == '{') open += 1
           }
+          newBuf append LiteralColor
         } else {
           newBuf append (KeywordColor + curr)
           newBuf += next
           var c: Char = 'a'
-          while (c.isLetterOrDigit && (iter.hasNext || succ.hasNext)) {
-            c = if (succ.hasNext) succ.next else iter.next
+          while (c.isLetterOrDigit && remaining.nonEmpty) {
+            c = takeChar()
             if (c != '"') newBuf += c
           }
           newBuf append LiteralColor
@@ -193,13 +192,13 @@ object SyntaxHighlighting {
         closing = 0
       }
 
-      while (continue && (iter.hasNext || succ.hasNext)) {
-        curr = if(succ.hasNext) succ.next else iter.next
-        if (curr == '\\' && (iter.hasNext || succ.hasNext)) {
-          val next = if (succ.hasNext) succ.next else iter.next
+      while (continue && remaining.nonEmpty) {
+        curr = takeChar()
+        if (curr == '\\' && remaining.nonEmpty) {
+          val next = takeChar()
           newBuf append (KeywordColor + curr)
           if (next == 'u') {
-            val code = "u" + iter.take(4).mkString
+            val code = "u" + takeChars(4).mkString
             newBuf append code
           } else newBuf += next
           newBuf append LiteralColor
@@ -220,18 +219,13 @@ object SyntaxHighlighting {
       }
       newBuf append NoColor
       prev = curr
-
-      if (succ.hasNext) {
-        val (dup, _) = iter.duplicate
-        iter = succ ++ dup
-      }
     }
 
-    def append(c: Char, shouldHL: String => Boolean, highlight: String => String, pre: Iterator[Char] = Iterator.empty) = {
+    def append(c: Char, shouldHL: String => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while ((pre.hasNext || iter.hasNext) && curr != ' ' && curr != '(') {
-        curr = if (pre.hasNext) pre.next else iter.next
+      while (remaining.nonEmpty && curr != ' ' && curr != '(') {
+        curr = takeChar()
         if (curr != ' ') sb += curr
       }
 
@@ -245,8 +239,8 @@ object SyntaxHighlighting {
     def appendWhile(c: Char, pred: Char => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while (iter.hasNext && pred(curr)) {
-        curr = iter.next
+      while (remaining.nonEmpty && pred(curr)) {
+        curr = takeChar()
         if (pred(curr)) sb += curr
       }
 
@@ -256,15 +250,15 @@ object SyntaxHighlighting {
       prev = curr
     }
 
-    def appendUntil(c: Char, pred: Char => Boolean, highlight: String => String) = {
+    def appendTo(c: Char, pred: Char => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while (iter.hasNext && !pred(curr)) {
-        curr = iter.next
+      while (remaining.nonEmpty && !pred(curr)) {
+        curr = takeChar()
         sb += curr
       }
 
-      newBuf append (highlight(sb.toString))
+      newBuf append highlight(sb.toString)
       prev = curr
     }
 

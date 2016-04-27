@@ -11,8 +11,14 @@ import BasicFilters._
 import GUILikeFilters._
 import util.SourceFile
 
-class AmmoniteReader extends InteractiveReader {
+class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extends InteractiveReader {
   val interactive = true
+
+  def incompleteInput(str: String): Boolean =
+    interpreter.beQuietDuring(interpreter.interpret(str)) match {
+      case Interpreter.Incomplete => true
+      case _ => false // TODO: should perhaps save output here?
+    }
 
   val reader = new java.io.InputStreamReader(System.in)
   val writer = new java.io.OutputStreamWriter(System.out)
@@ -21,11 +27,11 @@ class AmmoniteReader extends InteractiveReader {
   val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
   val multilineFilter: Filter = Filter("multilineFilter") {
     case TermState(lb ~: rest, b, c, _)
-      if (lb == 10 || lb == 13) => // Enter
-
+      if (lb == 10 || lb == 13) && incompleteInput(b.mkString) =>
       BasicFilters.injectNewLine(b, c, rest)
   }
-  def readLine(prompt: String)(implicit ctx: Context): String = {
+
+  def readLine(prompt: String): String = {
     val historyFilter = new HistoryFilter(
       () => history.toVector,
       Console.BLUE,
@@ -39,9 +45,8 @@ class AmmoniteReader extends InteractiveReader {
       GUILikeFilters.altFilter,
       GUILikeFilters.fnFilter,
       ReadlineFilters.navFilter,
-      //autocompleteFilter,
       cutPasteFilter,
-      //multilineFilter,
+      multilineFilter,
       BasicFilters.all
     )
 
@@ -52,7 +57,6 @@ class AmmoniteReader extends InteractiveReader {
       allFilters,
       displayTransform = (buffer, cursor) => {
         val ansiBuffer = Ansi.Str.parse(SyntaxHighlighting(buffer))
-        //val ansiBuffer = Ansi.Str.parse(SyntaxHighlighting(new SourceFile("<console>", buffer)))
         val (newBuffer, cursorOffset) = SelectionFilter.mangleBuffer(
           selectionFilter, ansiBuffer, cursor, Ansi.Reversed.On
         )
@@ -64,7 +68,9 @@ class AmmoniteReader extends InteractiveReader {
         (newNewBuffer, cursorOffset)
       }
     ) match {
-      case Some(s) => history = s :: history; s
+      case Some(res) =>
+        history = res :: history;
+        res
       case None => ":q"
     }
   }

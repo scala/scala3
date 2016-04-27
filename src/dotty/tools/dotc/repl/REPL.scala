@@ -46,11 +46,11 @@ object REPL {
     val version            = ".next (pre-alpha)"
 
     /** The default input reader */
-    def input(implicit ctx: Context): InteractiveReader = {
+    def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
       val emacsShell = System.getProperty("env.emacs", "") != ""
       //println("emacsShell="+emacsShell) //debug
       if (ctx.settings.Xnojline.value || emacsShell) new SimpleReader()
-      else InteractiveReader.createDefault()
+      else InteractiveReader.createDefault(in)
     }
 
     /** The default output writer */
