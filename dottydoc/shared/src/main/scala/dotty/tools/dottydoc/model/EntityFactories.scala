@@ -34,4 +34,8 @@ object EntityFactories {
 
     pathList(ref)
   }
+
+  // TODO: should be updated to link to local entities
+  def returnType(t: Tree)(implicit ctx: Context): String =
+    t.show
 }

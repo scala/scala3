@@ -99,6 +99,7 @@ object Entities {
     name: String,
     modifiers: List[String],
     path: List[String],
+    returnValue: String,
     var comment: Option[Comment] = None
   ) extends Entity with Modifiers {
     override val kind = "def"
@@ -109,6 +110,7 @@ object Entities {
     name: String,
     modifiers: List[String],
     path: List[String],
+    returnValue: String,
     var comment: Option[Comment] = None
   ) extends Entity with Modifiers {
     override val kind = "val"

@@ -87,11 +87,11 @@ object Phases {
 
         /** def */
         case d: DefDef =>
-          Def(d.name.toString, flags(d), path(d))
+          Def(d.name.toString, flags(d), path(d), returnType(d.tpt))
 
         /** val */
         case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-          Val(v.name.toString, flags(v), path(v))
+          Val(v.name.toString, flags(v), path(v), returnType(v.tpt))
 
         case x => {
           //dottydoc.println(s"Found unwanted entity: $x (${x.pos}, ${comment})\n${x.show}")
