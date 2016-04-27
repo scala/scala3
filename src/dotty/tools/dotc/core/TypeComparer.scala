@@ -715,7 +715,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           //    val foo: C
           //    foo.type <: C { type T = foo.T }
           rinfo2 match {
-            case rinfo2: TypeAlias => (base select name) =:= rinfo2.alias
+            case rinfo2: TypeAlias =>
+              !defn.isBottomType(base.widen) && (base select name) =:= rinfo2.alias
             case _ => false
           }
         }
