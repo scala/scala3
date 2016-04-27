@@ -38,5 +38,5 @@ trait Interpreter {
   def delayOutputDuring[T](operation: => T): T
 
   /** Gets the last output not printed immediately */
-  def lastOutput(): Option[String]
+  def lastOutput(): List[String]
 }

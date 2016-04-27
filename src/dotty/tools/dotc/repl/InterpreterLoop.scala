@@ -167,10 +167,10 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
       output.println("Unknown command.  Type :help for help.")
     else
       shouldReplay = interpreter.lastOutput() match { // don't interpret twice
-        case Some(oldRes) =>
-          output.print(oldRes)
+        case Nil => interpretStartingWith(line)
+        case oldRes =>
+          oldRes foreach output.print
           Some(line)
-        case None => interpretStartingWith(line)
       }
 
     (true, shouldReplay)

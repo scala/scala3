@@ -80,15 +80,13 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   private var printResults: Boolean = true
   private var delayOutput: Boolean = false
 
-  var previousOutput: String = null
+  var previousOutput: List[String] = Nil
 
-  override def lastOutput() =
-    if (previousOutput == null) None
-    else {
-      val ret = Some(previousOutput)
-      previousOutput = null
-      ret
-    }
+  override def lastOutput() = {
+    val prev = previousOutput
+    previousOutput = Nil
+    prev
+  }
 
   override def delayOutputDuring[T](operation: => T): T = {
     val old = delayOutput
@@ -113,14 +111,18 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
   private def newReporter = new ConsoleReporter(Console.in, out) {
     override def printMessage(msg: String) = {
-      out.print(/*clean*/(msg) + "\n")
-        // Suppress clean for now for compiler messages
-        // Otherwise we will completely delete all references to
-        // line$object$ module classes. The previous interpreter did not
-        // have the project because the module class was written without the final `$'
-        // and therefore escaped the purge. We can turn this back on once
-        // we drop the final `$' from module classes.
-      out.flush()
+      if (!delayOutput) {
+        out.print(/*clean*/(msg) + "\n")
+          // Suppress clean for now for compiler messages
+          // Otherwise we will completely delete all references to
+          // line$object$ module classes. The previous interpreter did not
+          // have the project because the module class was written without the final `$'
+          // and therefore escaped the purge. We can turn this back on once
+          // we drop the final `$' from module classes.
+        out.flush()
+      } else {
+        previousOutput = (/*clean*/(msg) + "\n") :: previousOutput
+      }
     }
   }
 
@@ -210,7 +212,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
         else {
           val (interpreterResultString, succeeded) = req.loadAndRun()
           if (delayOutput)
-            previousOutput = clean(interpreterResultString)
+            previousOutput = clean(interpreterResultString) :: previousOutput
           else if (printResults || !succeeded)
             out.print(clean(interpreterResultString))
           if (succeeded) {
