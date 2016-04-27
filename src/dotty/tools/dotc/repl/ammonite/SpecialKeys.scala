@@ -9,7 +9,6 @@ package ammonite.terminal
  */
 object SpecialKeys {
 
-
   /**
    * Lets you easily pattern match on characters modified by ctrl,
    * or convert a character into its ctrl-ed version

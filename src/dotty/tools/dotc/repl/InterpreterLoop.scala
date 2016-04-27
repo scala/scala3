@@ -148,6 +148,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     val quitRegexp    = ":q(u(i(t)?)?)?"
     val loadRegexp    = ":l(o(a(d)?)?)?.*"
     val replayRegexp  = ":r(e(p(l(a(y)?)?)?)?)?.*"
+    val lastOutput    = interpreter.lastOutput()
 
     var shouldReplay: Option[String] = None
 
@@ -166,7 +167,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     else if (line startsWith ":")
       output.println("Unknown command.  Type :help for help.")
     else
-      shouldReplay = interpreter.lastOutput() match { // don't interpret twice
+      shouldReplay = lastOutput match { // don't interpret twice
         case Nil => interpretStartingWith(line)
         case oldRes =>
           oldRes foreach output.print
