@@ -21,7 +21,7 @@ object BasicFilters {
     exitFilter,
     enterFilter,
     clearFilter,
-    loggingFilter,
+    //loggingFilter,
     typingFilter
   )
 

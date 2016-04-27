@@ -38,7 +38,7 @@ object SyntaxHighlighting {
     'q' :: 'r' :: 's' :: 't' :: 'u' :: 'v' :: 'w' :: 'x' :: 'y' :: 'z' :: Nil
 
   private val typeEnders =
-   '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: Nil
+   '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Vector[Char] = {
     var prev: Char = 0
@@ -46,7 +46,7 @@ object SyntaxHighlighting {
     val newBuf     = new StringBuilder
 
     @inline def keywordStart =
-      prev == 0 || prev == ' ' || prev == '{' || prev == '('
+      prev == 0 || prev == ' ' || prev == '{' || prev == '(' || prev == '\n'
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -224,7 +224,7 @@ object SyntaxHighlighting {
     def append(c: Char, shouldHL: String => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while (remaining.nonEmpty && curr != ' ' && curr != '(') {
+      while (remaining.nonEmpty && curr != ' ' && curr != '(' && curr != '\n') {
         curr = takeChar()
         if (curr != ' ') sb += curr
       }
