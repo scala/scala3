@@ -3,6 +3,7 @@ import scala.collection.mutable._
 class X(val a: Int) extends AnyVal {
   override def toString = s"X-$a"
 }
+class Y(val y: String) extends AnyVal
 class A
 object Test {
   def prettyPrintArray(x: Array[_]) = println("Array(" + x.mkString(", ") + ")")
@@ -29,6 +30,10 @@ object Test {
     test10
     test11(Array(1,2,3))
 
+    val b: ArrayOps[X] = Array(new X(11))
+    println(s"${b.asInstanceOf[dotty.runtime.vc.VCArrayOps[_]].vcElementClass}")
+    val c: ArrayOps[Y] = Array(new Y("yyy"))
+    println(s"${c.asInstanceOf[dotty.runtime.vc.VCArrayOps[_]].vcElementClass}")
   }
 
   def test: Array[X] = Array(new X(7), new X(9), new X(11))
