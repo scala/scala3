@@ -736,8 +736,7 @@ trait Applications extends Compatibility { self: Typer =>
       }
 
     unapplyFn.tpe.widen match {
-      case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
-        val m = mt
+      case mt: MethodType if mt.paramTypes.length == 1 =>
         val unapplyArgType = mt.paramTypes.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         def wpt = widenForMatchSelector(selType) // needed?
@@ -778,7 +777,7 @@ trait Applications extends Compatibility { self: Typer =>
               tree.pos)
           }
 
-        val dummyArg = dummyTreeOfType(unapplyArgType)
+        val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val unapplyImplicits = unapplyApp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
