@@ -2240,18 +2240,21 @@ object Types {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
         val isDepAcc = new TypeAccumulator[DependencyStatus] {
-          def apply(x: DependencyStatus, tp: Type) =
-            if (x == TrueDeps) x
+          def apply(status: DependencyStatus, tp: Type) =
+            if (status == TrueDeps) status
             else
               tp match {
                 case MethodParam(`thisMethodType`, _) => TrueDeps
-                case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
+                case tp: TypeRef =>
+                  val status1 = foldOver(status, tp)
                   tp.info match { // follow type alias to avoid dependency
-                    case TypeAlias(alias) => combine(apply(x, alias), FalseDeps)
-                    case _ => TrueDeps
+                    case TypeAlias(alias) if status1 == TrueDeps && status != TrueDeps =>
+                      combine(apply(status, alias), FalseDeps)
+                    case _ =>
+                      status1
                   }
-                case tp: TypeVar if !tp.isInstantiated => combine(x, Provisional)
-                case _ => foldOver(x, tp)
+                case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
+                case _ => foldOver(status, tp)
               }
         }
         val result = isDepAcc(NoDeps, resType)
