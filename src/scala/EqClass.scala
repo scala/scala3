@@ -6,7 +6,7 @@ package scala
  *
  *  1st way: When defining a class or trait `C`, simply write:
  *
- *     class C extends ... EqClass[T]
+ *     class C extends ... EqClass[C]
  *
  *  This makes `C` the root of a separate equality class. Any subtype
  *  of `C` can then be compared with any other subtype of `C`, but it cannot

@@ -211,7 +211,7 @@ class Definitions {
 
   /** A trait with the following signature:
    *
-   *    trait EqClass {
+   *    trait EqClass[-U] {
    *      /** Comparison operations between values in the same equality class */
    *      final def == [T >: this.type <: EqClass[_](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
    *      final def != [T >: this.type <: EqClass[_](other: T)(implicit ce: Eq[T]): Boolean = this.equals(other)
