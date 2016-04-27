@@ -659,8 +659,23 @@ trait Applications extends Compatibility { self: Typer =>
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
 
-    def notAnExtractor(tree: Tree) =
-      errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
+    def notAnExtractor(unapplyFn: Tree) = {
+      val methodStr = unapplyFn.symbol.name match {
+        case nme.unapply => "unapply"
+        case nme.unapplySeq => "unapplySeq"
+        case _ => "unapply or unapplySeq"
+      }
+      val because = unapplyFn.tpe.widen match {
+        case mt: MethodType =>
+          i"its $methodStr method of type $mt" + (
+            if (mt.isDependent) i" has a dependent type"
+            else if (mt.paramTypes.length != 1) i" does not take a single parameter"
+            else " is not eligible (this could be an internal compiler error)")
+        case _ =>
+          "it lacks a unapply or unapplySeq method"
+      }
+      errorTree(unapplyFn, s"${qual.show} cannot be used as an extractor in a pattern $because")
+    }
 
     /** If this is a term ref tree, try to typecheck with its type name.
      *  If this refers to a type alias, follow the alias, and if
