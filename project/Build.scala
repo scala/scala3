@@ -64,6 +64,10 @@ object DottyBuild extends Build {
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
       unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
 
+      // set system in/out for repl
+      connectInput in run := true,
+      outputStrategy := Some(StdoutOutput),
+
       // Generate compiler.properties, used by sbt
       resourceGenerators in Compile += Def.task {
         val file = (resourceManaged in Compile).value / "compiler.properties"
