@@ -51,9 +51,9 @@ trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    if (this.settings.verbose.value) this.println(msg, pos)
+    if (this.settings.verbose.value) this.echo(msg, pos)
 
-  def println(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
@@ -95,7 +95,7 @@ trait Reporting { this: Context =>
    */
   def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.log.value.containsPhase(phase))
-      this.println(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
+      echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
   def debuglog(msg: => String): Unit =
     if (ctx.debug) log(msg)
@@ -243,8 +243,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Print the summary of warnings and errors */
   def printSummary(implicit ctx: Context): Unit = {
     val s = summary
-    if (s != "")
-      ctx.println(s)
+    if (s != "") ctx.echo(s)
   }
 
   /** Returns a string meaning "n elements". */

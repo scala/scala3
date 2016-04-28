@@ -35,7 +35,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
-      ctx.println(i"exception occurred while compiling $units%, %")
+      ctx.echo(i"exception occurred while compiling $units%, %")
       throw ex
   }
 
@@ -74,8 +74,8 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.squashed(prevPhase)
 
-    ctx.println(s"result of $unit after ${squashedPhase}:")
-    ctx.println(unit.tpdTree.show(ctx))
+    ctx.echo(s"result of $unit after ${squashedPhase}:")
+    ctx.echo(unit.tpdTree.show(ctx))
   }
 
   def compile(sourceCode: String): Unit = {

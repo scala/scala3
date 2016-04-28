@@ -715,7 +715,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           //    val foo: C
           //    foo.type <: C { type T = foo.T }
           rinfo2 match {
-            case rinfo2: TypeAlias => (base select name) =:= rinfo2.alias
+            case rinfo2: TypeAlias =>
+              !defn.isBottomType(base.widen) && (base select name) =:= rinfo2.alias
             case _ => false
           }
         }
@@ -1295,10 +1296,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
     println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
     def explainPoly(tp: Type) = tp match {
-      case tp: PolyParam => ctx.println(s"polyparam ${tp.show} found in ${tp.binder.show}")
-      case tp: TypeRef if tp.symbol.exists => ctx.println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-      case tp: TypeVar => ctx.println(s"typevar ${tp.show}, origin = ${tp.origin}")
-      case _ => ctx.println(s"${tp.show} is a ${tp.getClass}")
+      case tp: PolyParam => ctx.echo(s"polyparam ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+      case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
+      case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
     }
     explainPoly(tp1)
     explainPoly(tp2)

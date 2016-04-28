@@ -2209,9 +2209,11 @@ object Types {
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
         val dealiasMap = new TypeMap {
           def apply(tp: Type) = tp match {
-            case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) => // follow type alias to avoid dependency
-              val TypeAlias(alias) = tp.info
-              apply(alias)
+            case tp @ TypeRef(pre, name) =>
+              tp.info match {
+                case TypeAlias(alias) if depStatus(pre) == TrueDeps => apply(alias)
+                case _ => mapOver(tp)
+              }
             case _ =>
               mapOver(tp)
           }
@@ -2222,10 +2224,31 @@ object Types {
 
     var myDependencyStatus: DependencyStatus = Unknown
 
-    private def combine(x: DependencyStatus, y: DependencyStatus): DependencyStatus = {
-      val status = (x & StatusMask) max (y & StatusMask)
-      val provisional = (x | y) & Provisional
-      (if (status == TrueDeps) status else status | provisional).toByte
+    private def depStatus(tp: Type)(implicit ctx: Context): DependencyStatus = {
+      def combine(x: DependencyStatus, y: DependencyStatus) = {
+        val status = (x & StatusMask) max (y & StatusMask)
+        val provisional = (x | y) & Provisional
+        (if (status == TrueDeps) status else status | provisional).toByte
+      }
+      val depStatusAcc = new TypeAccumulator[DependencyStatus] {
+        def apply(status: DependencyStatus, tp: Type) =
+          if (status == TrueDeps) status
+          else
+            tp match {
+              case MethodParam(`thisMethodType`, _) => TrueDeps
+              case tp: TypeRef =>
+                val status1 = foldOver(status, tp)
+                tp.info match { // follow type alias to avoid dependency
+                  case TypeAlias(alias) if status1 == TrueDeps && status != TrueDeps =>
+                    combine(apply(status, alias), FalseDeps)
+                  case _ =>
+                    status1
+                }
+              case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
+              case _ => foldOver(status, tp)
+            }
+      }
+      depStatusAcc(NoDeps, tp)
     }
 
     /** The dependency status of this method. Some examples:
@@ -2239,22 +2262,7 @@ object Types {
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
-        val isDepAcc = new TypeAccumulator[DependencyStatus] {
-          def apply(x: DependencyStatus, tp: Type) =
-            if (x == TrueDeps) x
-            else
-              tp match {
-                case MethodParam(`thisMethodType`, _) => TrueDeps
-                case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
-                  tp.info match { // follow type alias to avoid dependency
-                    case TypeAlias(alias) => combine(apply(x, alias), FalseDeps)
-                    case _ => TrueDeps
-                  }
-                case tp: TypeVar if !tp.isInstantiated => combine(x, Provisional)
-                case _ => foldOver(x, tp)
-              }
-        }
-        val result = isDepAcc(NoDeps, resType)
+        val result = depStatus(resType)
         if ((result & Provisional) == 0) myDependencyStatus = result
         (result & StatusMask).toByte
       }

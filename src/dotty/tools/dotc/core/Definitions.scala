@@ -605,7 +605,13 @@ class Definitions {
   }
 
   def isBottomClass(cls: Symbol) = cls == NothingClass || cls == NullClass
-  def isBottomType(tp: Type) = tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
+  def isBottomType(tp: Type) = {
+    def test(implicit ctx: Context) = tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
+    try test
+    catch { // See remark in SymDenotations#accessWithin
+      case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
+    }
+  }
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)

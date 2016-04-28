@@ -110,18 +110,18 @@ object CompilerCommand extends DotClass {
 
     if (summary.errors.nonEmpty) {
       summary.errors foreach (ctx.error(_))
-      ctx.println("  dotc -help  gives more information")
+      ctx.echo("  dotc -help  gives more information")
       Nil
     }
     else if (settings.version.value) {
-      ctx.println(versionMsg)
+      ctx.echo(versionMsg)
       Nil
     }
     else if (shouldStopWithInfo) {
-      ctx.println(infoMessage)
+      ctx.echo(infoMessage)
       Nil
     } else {
-      if (sourcesRequired && summary.arguments.isEmpty) ctx.println(usageMessage)
+      if (sourcesRequired && summary.arguments.isEmpty) ctx.echo(usageMessage)
       summary.arguments
     }
   }

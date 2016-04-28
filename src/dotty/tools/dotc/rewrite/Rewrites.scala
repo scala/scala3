@@ -75,7 +75,7 @@ object Rewrites {
    */
   def writeBack()(implicit ctx: Context) =
     for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
-      ctx.println(s"[patched file ${source.file.path}]")
+      ctx.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()
     }
 }
