@@ -18,17 +18,21 @@ import terminal._
  * text selection, etc.
  */
 object GUILikeFilters {
-  case class SelectionFilter(indent: Int) extends DelegateFilter{
+  case class SelectionFilter(indent: Int) extends DelegateFilter {
     def identifier = "SelectionFilter"
     var mark: Option[Int] = None
+
     def setMark(c: Int) = {
       Debug("setMark\t" + mark + "\t->\t" + c)
       if (mark == None) mark = Some(c)
     }
-    def doIndent(b: Vector[Char],
-                 c: Int,
-                 rest: LazyList[Int],
-                 slicer: Vector[Char] => Int) = {
+
+    def doIndent(
+      b: Vector[Char],
+      c: Int,
+      rest: LazyList[Int],
+      slicer: Vector[Char] => Int
+    ) = {
 
       val markValue = mark.get
       val (chunks, chunkStarts, chunkIndex) = FilterTools.findChunks(b, c)
@@ -42,7 +46,7 @@ object GUILikeFilters {
         for((Seq(l, r), i) <- frags) yield {
           val slice = b.slice(l, r)
           if (i == 0) slice
-          else{
+          else {
             val cut = slicer(slice)
 
             if (i == 1) firstOffset = cut
@@ -64,16 +68,16 @@ object GUILikeFilters {
 
     def filter = Filter.merge(
 
-      Case(ShiftUp){(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
-      Case(ShiftDown){(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
-      Case(ShiftRight){(b, c, m) => setMark(c); (b, c + 1)},
-      Case(ShiftLeft){(b, c, m) => setMark(c); (b, c - 1)},
-      Case(AltShiftUp){(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
-      Case(AltShiftDown){(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
-      Case(AltShiftRight){(b, c, m) => setMark(c); wordRight(b, c)},
-      Case(AltShiftLeft){(b, c, m) => setMark(c); wordLeft(b, c)},
-      Case(FnShiftRight){(b, c, m) => setMark(c); BasicFilters.moveEnd(b, c, m.width)},
-      Case(FnShiftLeft){(b, c, m) => setMark(c); BasicFilters.moveStart(b, c, m.width)},
+      Case(ShiftUp) {(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
+      Case(ShiftDown) {(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
+      Case(ShiftRight) {(b, c, m) => setMark(c); (b, c + 1)},
+      Case(ShiftLeft) {(b, c, m) => setMark(c); (b, c - 1)},
+      Case(AltShiftUp) {(b, c, m) => setMark(c); BasicFilters.moveUp(b, c, m.width)},
+      Case(AltShiftDown) {(b, c, m) => setMark(c); BasicFilters.moveDown(b, c, m.width)},
+      Case(AltShiftRight) {(b, c, m) => setMark(c); wordRight(b, c)},
+      Case(AltShiftLeft) {(b, c, m) => setMark(c); wordLeft(b, c)},
+      Case(FnShiftRight) {(b, c, m) => setMark(c); BasicFilters.moveEnd(b, c, m.width)},
+      Case(FnShiftLeft) {(b, c, m) => setMark(c); BasicFilters.moveStart(b, c, m.width)},
       Filter("fnOtherFilter") {
         case TS(27 ~: 91 ~: 90 ~: rest, b, c, _) if mark.isDefined =>
           doIndent(b, c, rest,
@@ -94,7 +98,7 @@ object GUILikeFilters {
               char != 10 /*enter*/) {
             mark = None
             TS(char ~: inputs, buffer, cursor)
-          }else{
+          } else {
             // If it's a  printable character, delete the current
             // selection and write the printable character.
             val Seq(min, max) = Seq(mark.get, cursor).sorted
@@ -108,12 +112,15 @@ object GUILikeFilters {
       }
     )
   }
-  object SelectionFilter{
-    def mangleBuffer(selectionFilter: SelectionFilter,
-                     string: Ansi.Str,
-                     cursor: Int,
-                     startColor: Ansi.Attr) = {
-      selectionFilter.mark match{
+
+  object SelectionFilter {
+    def mangleBuffer(
+      selectionFilter: SelectionFilter,
+      string: Ansi.Str,
+      cursor: Int,
+      startColor: Ansi.Attr
+    ) = {
+      selectionFilter.mark match {
         case Some(mark) if mark != cursor =>
           val Seq(min, max) = Seq(cursor, mark).sorted
           val displayOffset = if (cursor < mark) 0 else -1
@@ -131,21 +138,21 @@ object GUILikeFilters {
     Case(FnLeft)((b, c, m) => BasicFilters.moveStart(b, c, m.width))
   )
   val altFilter = Filter.merge(
-    Case(AltUp){(b, c, m) => BasicFilters.moveUp(b, c, m.width)},
-    Case(AltDown){(b, c, m) => BasicFilters.moveDown(b, c, m.width)},
-    Case(AltRight){(b, c, m) => wordRight(b, c)},
-    Case(AltLeft){(b, c, m) => wordLeft(b, c)}
+    Case(AltUp)    {(b, c, m) => BasicFilters.moveUp(b, c, m.width)},
+    Case(AltDown)  {(b, c, m) => BasicFilters.moveDown(b, c, m.width)},
+    Case(AltRight) {(b, c, m) => wordRight(b, c)},
+    Case(AltLeft)  {(b, c, m) => wordLeft(b, c)}
   )
 
   val fnAltFilter = Filter.merge(
-    Case(FnAltUp){(b, c, m) => (b, c)},
-    Case(FnAltDown){(b, c, m) => (b, c)},
-    Case(FnAltRight){(b, c, m) => (b, c)},
-    Case(FnAltLeft){(b, c, m) => (b, c)}
+    Case(FnAltUp)    {(b, c, m) => (b, c)},
+    Case(FnAltDown)  {(b, c, m) => (b, c)},
+    Case(FnAltRight) {(b, c, m) => (b, c)},
+    Case(FnAltLeft)  {(b, c, m) => (b, c)}
   )
   val fnAltShiftFilter = Filter.merge(
-    Case(FnAltShiftRight){(b, c, m) => (b, c)},
-    Case(FnAltShiftLeft){(b, c, m) => (b, c)}
+    Case(FnAltShiftRight) {(b, c, m) => (b, c)},
+    Case(FnAltShiftLeft)  {(b, c, m) => (b, c)}
   )
 
 
@@ -160,5 +167,4 @@ object GUILikeFilters {
   // a word.
   def wordLeft(b: Vector[Char], c: Int) = b -> consumeWord(b, c - 1, -1, 1)
   def wordRight(b: Vector[Char], c: Int) = b -> consumeWord(b, c, 1, 0)
-
 }

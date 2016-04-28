@@ -4,28 +4,24 @@ package repl
 package ammonite.terminal
 
 object Filter {
-
   def apply(id: String)(f: PartialFunction[TermInfo, TermAction]): Filter =
-    new Filter{
+    new Filter {
       val op = f.lift
       def identifier = id
     }
 
   def wrap(id: String)(f: TermInfo => Option[TermAction]): Filter =
-    new Filter{
+    new Filter {
       val op = f
       def identifier = id
     }
 
-  /**
-    * Merges multiple [[Filter]]s into one.
-    */
+  /** Merges multiple [[Filter]]s into one. */
   def merge(pfs: Filter*) = new Filter {
-
     val op = (v1: TermInfo) => pfs.iterator.map(_.op(v1)).find(_.isDefined).flatten
-
     def identifier = pfs.iterator.map(_.identifier).mkString(":")
   }
+
   val empty = Filter.merge()
 }
 

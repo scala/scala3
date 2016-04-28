@@ -1,13 +1,8 @@
 package dotty.tools
 package dotc
-package repl
+package printing
 
 import parsing.Tokens._
-import ammonite.terminal.FilterTools._
-import ammonite.terminal.LazyList._
-import ammonite.terminal.SpecialKeys._
-import ammonite.terminal.Filter
-import ammonite.terminal._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
 

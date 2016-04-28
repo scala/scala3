@@ -14,9 +14,11 @@ import terminal._
   * as history-search functionality (`Ctrl R` in bash) letting you quickly find
   * & filter previous commands by entering a sub-string.
   */
-class HistoryFilter(history: () => IndexedSeq[String],
-                    commentStartColor: String,
-                    commentEndColor: String) extends DelegateFilter{
+class HistoryFilter(
+  history: () => IndexedSeq[String],
+  commentStartColor: String,
+  commentEndColor: String
+) extends DelegateFilter {
 
 
   def identifier = "HistoryFilter"
@@ -56,15 +58,18 @@ class HistoryFilter(history: () => IndexedSeq[String],
     up(Vector(), c)
   }
 
-  def searchHistory(start: Int,
-                    increment: Int,
-                    buffer: Vector[Char],
-                    skipped: Vector[Char]) = {
+  def searchHistory(
+    start: Int,
+    increment: Int,
+    buffer: Vector[Char],
+    skipped: Vector[Char]
+  ) = {
 
     def nextHistoryIndexFor(v: Vector[Char]) = {
       HistoryFilter.findNewHistoryIndex(start, v, history(), increment, skipped)
     }
-    val (newHistoryIndex, newBuffer, newMsg, newCursor) = searchTerm match{
+
+    val (newHistoryIndex, newBuffer, newMsg, newCursor) = searchTerm match {
       // We're not searching for anything, just browsing history.
       // Pass in Vector.empty so we scroll through all items
       case None =>
@@ -97,22 +102,23 @@ class HistoryFilter(history: () => IndexedSeq[String],
 
   def activeHistory = searchTerm.nonEmpty || historyIndex != -1
   def activeSearch = searchTerm.nonEmpty
-  def up(b: Vector[Char], c: Int) = {
+
+  def up(b: Vector[Char], c: Int) =
     searchHistory(historyIndex + 1, 1, b, b)
-  }
-  def down(b: Vector[Char], c: Int) = {
+
+  def down(b: Vector[Char], c: Int) =
     searchHistory(historyIndex - 1, -1, b, b)
-  }
-  def wrap(rest: LazyList[Int], out: (Vector[Char], Int, String)) = {
+
+  def wrap(rest: LazyList[Int], out: (Vector[Char], Int, String)) =
     TS(rest, out._1, out._2, out._3)
-  }
-  def ctrlR(b: Vector[Char], c: Int) = {
+
+  def ctrlR(b: Vector[Char], c: Int) =
     if (activeSearch) up(b, c)
     else {
       searchTerm = Some(b)
       up(Vector(), c)
     }
-  }
+
   def printableChar(char: Char)(b: Vector[Char], c: Int) = {
     searchTerm = searchTerm.map(_ :+ char)
     searchHistory(historyIndex.max(0), 1, b :+ char, Vector())
@@ -133,9 +139,8 @@ class HistoryFilter(history: () => IndexedSeq[String],
     * aggressively on every keystroke while history-mode only cycles when you
     * reach the top/bottom line of the multi-line input.
     */
-  def searchOrHistoryAnd(cond: Boolean) = {
+  def searchOrHistoryAnd(cond: Boolean) =
     activeSearch || (activeHistory && cond)
-  }
 
   val dropHistoryChars = Set(9, 13, 10) // Tab or Enter
 
@@ -149,7 +154,7 @@ class HistoryFilter(history: () => IndexedSeq[String],
       prelude.op(ti) match {
         case None =>
           prevBuffer = Some(ti.ts.buffer)
-          filter0.op(ti) match{
+          filter0.op(ti) match {
             case Some(ts: TermState) =>
               prevBuffer = Some(ts.buffer)
               Some(ts)
@@ -253,13 +258,14 @@ class HistoryFilter(history: () => IndexedSeq[String],
   }
 }
 
-object HistoryFilter{
+object HistoryFilter {
 
-
-  def mangleBuffer(historyFilter: HistoryFilter,
-                   buffer: Ansi.Str,
-                   cursor: Int,
-                   startColor: Ansi.Attr) = {
+  def mangleBuffer(
+    historyFilter: HistoryFilter,
+    buffer: Ansi.Str,
+    cursor: Int,
+    startColor: Ansi.Attr
+  ) = {
     if (!historyFilter.activeSearch) buffer
     else {
       val (searchStart, searchEnd) =
@@ -274,8 +280,8 @@ object HistoryFilter{
       val newStr = buffer.overlay(startColor, searchStart, searchEnd)
       newStr
     }
-
   }
+
   /**
     * @param startIndex The first index to start looking from
     * @param searchTerm The term we're searching from; can be empty
@@ -284,17 +290,19 @@ object HistoryFilter{
     * @param skipped Any buffers which we should skip in our search results,
     *                e.g. because the user has seen them before.
     */
-  def findNewHistoryIndex(startIndex: Int,
-                          searchTerm: Vector[Char],
-                          history: IndexedSeq[String],
-                          indexIncrement: Int,
-                          skipped: Vector[Char]) = {
+  def findNewHistoryIndex(
+    startIndex: Int,
+    searchTerm: Vector[Char],
+    history: IndexedSeq[String],
+    indexIncrement: Int,
+    skipped: Vector[Char]
+  ) = {
     /**
       * `Some(i)` means we found a reasonable result at history element `i`
       * `None` means we couldn't find anything, and should show a not-found
       * error to the user
       */
-    def rec(i: Int): Option[Int] = history.lift(i) match{
+    def rec(i: Int): Option[Int] = history.lift(i) match {
       // If i < 0, it means the user is pressing `down` too many times, which
       // means it doesn't show anything but we shouldn't show an error
       case None if i < 0 => Some(-1)
@@ -306,22 +314,21 @@ object HistoryFilter{
 
     val newHistoryIndex = rec(startIndex)
     val foundIndex = newHistoryIndex.find(_ != -1)
-    val newBuffer = foundIndex match{
+    val newBuffer = foundIndex match {
       case None => searchTerm
       case Some(i) => history(i).toVector
     }
 
-    val newCursor = foundIndex match{
+    val newCursor = foundIndex match {
       case None => newBuffer.length
       case Some(i) => history(i).indexOfSlice(searchTerm) + searchTerm.length
     }
 
     (newHistoryIndex, newBuffer, newCursor)
   }
+
   val emptySearchMessage =
     s" ...enter the string to search for, then `up` for more"
   val cannotFindSearchMessage =
     s" ...can't be found in history; re-starting search"
-
-
 }

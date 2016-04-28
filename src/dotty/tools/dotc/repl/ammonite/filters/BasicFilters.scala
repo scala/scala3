@@ -102,24 +102,21 @@ object BasicFilters {
       }
     case TS(-1 ~: rest, b, c, _) => Exit   // java.io.Reader.read() produces -1 on EOF
   }
+
   def clearFilter: Filter = Filter("clearFilter") {
     case TS(Ctrl('l') ~: rest, b, c, _) => ClearScreen(TS(rest, b, c))
   }
 
-  def moveStart(b: Vector[Char],
-                c: Int,
-                w: Int) = {
+  def moveStart(b: Vector[Char], c: Int, w: Int) = {
     val (_, chunkStarts, chunkIndex) = findChunks(b, c)
     val currentColumn = (c - chunkStarts(chunkIndex)) % w
     b -> (c - currentColumn)
-
   }
-  def moveEnd(b: Vector[Char],
-              c: Int,
-              w: Int) = {
+
+  def moveEnd(b: Vector[Char], c: Int, w: Int) = {
     val (chunks, chunkStarts, chunkIndex) = findChunks(b, c)
     val currentColumn = (c - chunkStarts(chunkIndex)) % w
-    val c1 = chunks.lift(chunkIndex + 1) match{
+    val c1 = chunks.lift(chunkIndex + 1) match {
       case Some(next) =>
         val boundary = chunkStarts(chunkIndex + 1) - 1
         if ((boundary - c) > (w - currentColumn)) {
@@ -133,19 +130,20 @@ object BasicFilters {
     b -> c1
   }
 
-
-  def moveUpDown(b: Vector[Char],
-                 c: Int,
-                 w: Int,
-                 boundaryOffset: Int,
-                 nextChunkOffset: Int,
-                 checkRes: Int,
-                 check: (Int, Int) => Boolean,
-                 isDown: Boolean) = {
+  def moveUpDown(
+    b: Vector[Char],
+    c: Int,
+    w: Int,
+    boundaryOffset: Int,
+    nextChunkOffset: Int,
+    checkRes: Int,
+    check: (Int, Int) => Boolean,
+    isDown: Boolean
+  ) = {
     val (chunks, chunkStarts, chunkIndex) = findChunks(b, c)
     val offset = chunkStarts(chunkIndex + boundaryOffset)
     if (check(checkRes, offset)) checkRes
-    else chunks.lift(chunkIndex + nextChunkOffset) match{
+    else chunks.lift(chunkIndex + nextChunkOffset) match {
       case None => c + nextChunkOffset * 9999
       case Some(next) =>
         val boundary = chunkStarts(chunkIndex + boundaryOffset)
@@ -155,9 +153,11 @@ object BasicFilters {
         else boundary + math.min(currentColumn - next % w, 0) - 1
     }
   }
+
   def moveUp(b: Vector[Char], c: Int, w: Int) = {
     b -> moveUpDown(b, c, w, 0, -1, c - w, _ > _, false)
   }
+
   def moveDown(b: Vector[Char], c: Int, w: Int) = {
     b -> moveUpDown(b, c, w, 1, 1, c + w, _ <= _, true)
   }

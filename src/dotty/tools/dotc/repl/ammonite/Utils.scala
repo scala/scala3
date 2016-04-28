@@ -3,12 +3,12 @@ package dotc
 package repl
 package ammonite.terminal
 
-import java.io.{OutputStream, ByteArrayOutputStream, Writer}
+import java.io.{FileOutputStream, Writer, File => JFile}
 import scala.annotation.tailrec
 
 /**
- * Prints stuff to an ad-hoc logging file when running the ammonite-repl or
- * ammonite-terminal in development mode in its SBT project.
+ * Prints stuff to an ad-hoc logging file when running the repl or terminal in
+ * development mode
  *
  * Very handy for the common case where you're debugging terminal interactions
  * and cannot use `println` because it will stomp all over your already messed
@@ -17,18 +17,16 @@ import scala.annotation.tailrec
  * want without affecting the primary terminal you're using to interact with
  * Ammonite.
  */
-object Debug{
-  lazy val debugOutput = {
-    if (System.getProperty("ammonite-sbt-build") != "true") ???
-    else new java.io.FileOutputStream(new java.io.File("terminal/target/log"))
-  }
-  def apply(s: Any) = {
+object Debug {
+  lazy val debugOutput =
+    new FileOutputStream(new JFile("terminal/target/log"))
+
+  def apply(s: Any) =
     if (System.getProperty("ammonite-sbt-build") == "true")
       debugOutput.write((System.currentTimeMillis() + "\t\t" + s + "\n").getBytes)
-  }
 }
 
-class AnsiNav(output: Writer){
+class AnsiNav(output: Writer) {
   def control(n: Int, c: Char) = output.write(s"\033[" + n + c)
 
   /**
@@ -65,13 +63,14 @@ class AnsiNav(output: Writer){
    */
   def clearLine(n: Int) = control(n, 'K')
 }
-object AnsiNav{
+
+object AnsiNav {
   val resetUnderline = "\u001b[24m"
   val resetForegroundColor = "\u001b[39m"
   val resetBackgroundColor = "\u001b[49m"
 }
 
-object TTY{
+object TTY {
 
   // Prefer standard tools. Not sure why we need to do this, but for some
   // reason the version installed by gnu-coreutils blows up sometimes giving
@@ -123,7 +122,7 @@ object TTY{
 /**
  * A truly-lazy implementation of scala.Stream
  */
-case class LazyList[T](headThunk: () => T, tailThunk: () => LazyList[T]){
+case class LazyList[T](headThunk: () => T, tailThunk: () => LazyList[T]) {
   var rendered = false
   lazy val head = {
     rendered = true
@@ -148,17 +147,20 @@ case class LazyList[T](headThunk: () => T, tailThunk: () => LazyList[T]){
     }
     s"LazyList(${(rec(this, Nil).reverse ++ Seq("...")).mkString(",")})"
   }
+
   def ~:(other: => T) = LazyList(() => other, () => this)
 }
-object LazyList{
-  object ~:{
+
+object LazyList {
+  object ~: {
     def unapply[T](x: LazyList[T]) = Some((x.head, x.tail))
   }
+
   def continually[T](t: => T): LazyList[T] = LazyList(() => t, () =>continually(t))
 
-  implicit class CS(ctx: StringContext){
+  implicit class CS(ctx: StringContext) {
     val base = ctx.parts.mkString
-    object p{
+    object p {
       def unapply(s: LazyList[Int]): Option[LazyList[Int]] = {
         s.dropPrefix(base.map(_.toInt))
       }

@@ -18,6 +18,7 @@ object Ansi {
     def matches(state: Short) = (state & resetMask) == applyMask
     def apply(s: Ansi.Str) = s.overlay(this, 0, s.length)
   }
+
   object Attr {
     val Reset = new Attr(Some(Console.RESET), Short.MaxValue, 0)
 
@@ -38,7 +39,7 @@ object Ansi {
     * Represents a set of [[Ansi.Attr]]s all occupying the same bit-space
     * in the state `Short`
     */
-  sealed abstract class Category(){
+  sealed abstract class Category() {
     val mask: Int
     val all: Seq[Attr]
     lazy val bitsMap = all.map{ m => m.applyMask -> m}.toMap
@@ -47,7 +48,7 @@ object Ansi {
     }
   }
 
-  object Color extends Category{
+  object Color extends Category {
 
     val mask = 15 << 7
     val Reset     = makeAttr(Some("\u001b[39m"),     0 << 7)
@@ -66,7 +67,7 @@ object Ansi {
     )
   }
 
-  object Back extends Category{
+  object Back extends Category {
     val mask = 15 << 3
 
     val Reset    = makeAttr(Some("\u001b[49m"),       0 << 3)
@@ -84,20 +85,22 @@ object Ansi {
       Blue, Magenta, Cyan, White
     )
   }
-  object Bold extends Category{
+
+  object Bold extends Category {
     val mask = 1 << 0
     val On  = makeAttr(Some(Console.BOLD), 1 << 0)
     val Off = makeAttr(None              , 0 << 0)
     val all = Seq(On, Off)
   }
 
-  object Underlined extends Category{
+  object Underlined extends Category {
     val mask = 1 << 1
     val On  = makeAttr(Some(Console.UNDERLINED), 1 << 1)
     val Off = makeAttr(None,                     0 << 1)
     val all = Seq(On, Off)
   }
-  object Reversed extends Category{
+
+  object Reversed extends Category {
     val mask = 1 << 2
     val On  = makeAttr(Some(Console.REVERSED),   1 << 2)
     val Off = makeAttr(None,                     0 << 2)
@@ -105,22 +108,14 @@ object Ansi {
   }
 
   val hardOffMask = Bold.mask | Underlined.mask | Reversed.mask
-  val categories = Vector(
-    Color,
-    Back,
-    Bold,
-    Underlined,
-    Reversed
-  )
+  val categories = List(Color, Back, Bold, Underlined, Reversed)
 
   object Str {
-
-    lazy val ansiRegex = "\u001B\\[[;\\d]*m".r
+    @sharable lazy val ansiRegex = "\u001B\\[[;\\d]*m".r
 
     implicit def parse(raw: CharSequence): Str = {
-      // This will
-      val chars = new Array[Char](raw.length)
-      val colors = new Array[Short](raw.length)
+      val chars        = new Array[Char](raw.length)
+      val colors       = new Array[Short](raw.length)
       var currentIndex = 0
       var currentColor = 0.toShort
 
@@ -147,7 +142,6 @@ object Ansi {
 
       Str(chars.take(currentIndex), colors.take(currentIndex))
     }
-
   }
 
   /**
@@ -187,6 +181,7 @@ object Ansi {
       val (leftColors, rightColors) = colors.splitAt(index)
       (new Str(leftChars, leftColors), new Str(rightChars, rightColors))
     }
+
     def length = chars.length
     override def toString = render
 
@@ -238,11 +233,8 @@ object Ansi {
       // Cap off the left-hand-side of the rendered string with any ansi escape
       // codes necessary to rest the state to 0
       emitDiff(0)
-
       output.toString
     }
-
-
 
     /**
       * Overlays the desired color over the specified range of the [[Ansi.Str]].
@@ -260,8 +252,5 @@ object Ansi {
       }
       new Str(chars, colorsOut)
     }
-
   }
-
-
 }

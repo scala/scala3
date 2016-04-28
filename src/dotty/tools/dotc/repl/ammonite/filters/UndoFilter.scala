@@ -50,6 +50,7 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
     */
   var state = UndoState.Default
   def currentUndo = undoBuffer(undoBuffer.length - undoIndex - 1)
+
   def undo(b: Vector[Char], c: Int) = {
     val msg =
       if (undoIndex >= undoBuffer.length - 1) UndoFilter.cannotUndoMsg
@@ -61,6 +62,7 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
     val (b1, c1) = currentUndo
     (b1, c1, msg)
   }
+
   def redo(b: Vector[Char], c: Int) = {
     val msg =
       if (undoIndex <= 0) UndoFilter.cannotRedoMsg
@@ -74,13 +76,13 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
     val (b1, c1) = currentUndo
     (b1, c1, msg)
   }
+
   def wrap(bc: (Vector[Char], Int, Ansi.Str), rest: LazyList[Int]) = {
     val (b, c, msg) = bc
     TS(rest, b, c, msg)
   }
 
   def pushUndos(b: Vector[Char], c: Int) = {
-
     val (lastB, lastC) = currentUndo
     // Since we don't have access to the `typingFilter` in this code, we
     // instead attempt to reverse-engineer "what happened" to the buffer by
@@ -114,10 +116,10 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter {
       undoBuffer.remove(undoBuffer.length - undoIndex, undoIndex)
       undoIndex = 0
 
-      if(undoBuffer.length == maxUndo) undoBuffer.remove(0)
+      if (undoBuffer.length == maxUndo) undoBuffer.remove(0)
 
       undoBuffer.append(b -> c)
-    }else if (undoIndex == 0 && (b, c) != undoBuffer(undoBuffer.length - 1)) {
+    } else if (undoIndex == 0 && (b, c) != undoBuffer(undoBuffer.length - 1)) {
       undoBuffer(undoBuffer.length - 1) = (b, c)
     }
 
@@ -147,9 +149,9 @@ object UndoState {
   val Navigating = new UndoState("Navigating")
 }
 
-object UndoFilter{
-  val undoMsg = Ansi.Color.Blue(" ...undoing last action, `Alt -` or `Esc -` to redo")
+object UndoFilter {
+  val undoMsg       = Ansi.Color.Blue(" ...undoing last action, `Alt -` or `Esc -` to redo")
   val cannotUndoMsg = Ansi.Color.Blue(" ...no more actions to undo")
-  val redoMsg = Ansi.Color.Blue(" ...redoing last action")
+  val redoMsg       = Ansi.Color.Blue(" ...redoing last action")
   val cannotRedoMsg = Ansi.Color.Blue(" ...no more actions to redo")
 }

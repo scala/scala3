@@ -38,8 +38,8 @@ object ReadlineFilters {
   // Ctrl-y     paste last cut
 
   /**
-   * Basic readline-style navigation, using all the obscure alphabet 
-   * hotkeys rather than using arrows
+   * Basic readline-style navigation, using all the obscure alphabet hotkeys
+   * rather than using arrows
    */
   lazy val navFilter = Filter.merge(
     Case(Ctrl('b'))((b, c, m) => (b, c - 1)), // <- one char
@@ -61,17 +61,16 @@ object ReadlineFilters {
     Case(Ctrl('t'))((b, c, m) => transposeLetter(b, c))
   )
 
-  def transposeLetter(b: Vector[Char], c: Int) = {
+  def transposeLetter(b: Vector[Char], c: Int) =
     // If there's no letter before the cursor to transpose, don't do anything
     if (c == 0) (b, c)
     else if (c == b.length) (b.dropRight(2) ++ b.takeRight(2).reverse, c)
     else (b.patch(c-1, b.slice(c-1, c+1).reverse, 2), c + 1)
-  }
 
   def transposeWord(b: Vector[Char], c: Int) = {
     val leftStart0 = GUILikeFilters.consumeWord(b, c - 1, -1, 1)
-    val leftEnd0 = GUILikeFilters.consumeWord(b, leftStart0, 1, 0)
-    val rightEnd = GUILikeFilters.consumeWord(b, c, 1, 0)
+    val leftEnd0   = GUILikeFilters.consumeWord(b, leftStart0, 1, 0)
+    val rightEnd   = GUILikeFilters.consumeWord(b, c, 1, 0)
     val rightStart = GUILikeFilters.consumeWord(b, rightEnd - 1, -1, 1)
 
     // If no word to the left to transpose, do nothing
@@ -80,18 +79,19 @@ object ReadlineFilters {
       val (leftStart, leftEnd) =
         // If there is no word to the *right* to transpose,
         // transpose the two words to the left instead
-        if (leftEnd0 == b.length && rightEnd == b.length){
+        if (leftEnd0 == b.length && rightEnd == b.length) {
           val leftStart = GUILikeFilters.consumeWord(b, leftStart0 - 1, -1, 1)
-          val leftEnd = GUILikeFilters.consumeWord(b, leftStart, 1, 0)
+          val leftEnd   = GUILikeFilters.consumeWord(b, leftStart, 1, 0)
           (leftStart, leftEnd)
         }else (leftStart0, leftEnd0)
 
       val newB =
-        b.slice(0, leftStart) ++
-          b.slice(rightStart, rightEnd) ++
-          b.slice(leftEnd, rightStart) ++
-          b.slice(leftStart, leftEnd) ++
-          b.slice(rightEnd, b.length)
+        b.slice(0, leftStart)         ++
+        b.slice(rightStart, rightEnd) ++
+        b.slice(leftEnd, rightStart)  ++
+        b.slice(leftStart, leftEnd)   ++
+        b.slice(rightEnd, b.length)
+
       (newB, rightEnd)
     }
   }
@@ -100,7 +100,7 @@ object ReadlineFilters {
    * All the cut-pasting logic, though for many people they simply
    * use these shortcuts for deleting and don't use paste much at all.
    */
-  case class CutPasteFilter() extends DelegateFilter{
+  case class CutPasteFilter() extends DelegateFilter {
     def identifier = "CutPasteFilter"
     var accumulating = false
     var currentCut = Vector.empty[Char]
@@ -157,10 +157,9 @@ object ReadlineFilters {
 
       // If some command goes through that's not appending/prepending to the
       // kill ring, stop appending and allow the next kill to override it
-      Filter.wrap("ReadLineFilterWrap"){_ => accumulating = false; None},
+      Filter.wrap("ReadLineFilterWrap") {_ => accumulating = false; None},
       Case(Ctrl('h'))((b, c, m) => cutCharLeft(b, c)),
       Case(Ctrl('y'))((b, c, m) => paste(b, c))
     )
   }
-
 }

@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package repl
 package ammonite.terminal
+
 /**
  * A collection of helpers that to simpify the common case of building filters
  */
@@ -12,8 +13,8 @@ object FilterTools {
     var splitIndex = 0
     var length = 0
 
-    while(length < in){
-      ansiRegex.r.findPrefixOf(buffer.drop(splitIndex)) match{
+    while(length < in) {
+      ansiRegex.r.findPrefixOf(buffer.drop(splitIndex)) match {
         case None =>
           splitIndex += 1
           length += 1
@@ -23,9 +24,6 @@ object FilterTools {
     }
     splitIndex
   }
-
-
-
 
   /**
    * Shorthand to construct a filter in the common case where you're
@@ -58,11 +56,8 @@ object FilterTools {
     def identifier = "Case"
   }
 
-  /**
-   * Shorthand for pattern matching on [[TermState]]
-   */
+  /** Shorthand for pattern matching on [[TermState]] */
   val TS = TermState
-
 
   def findChunks(b: Vector[Char], c: Int) = {
     val chunks = Terminal.splitBuffer(b)
@@ -76,11 +71,10 @@ object FilterTools {
     (chunks, chunkStarts, chunkIndex)
   }
 
-  def firstRow(cursor: Int, buffer: Vector[Char], width: Int) = {
+  def firstRow(cursor: Int, buffer: Vector[Char], width: Int) =
     cursor < width && (buffer.indexOf('\n') >= cursor || buffer.indexOf('\n') == -1)
-  }
-  def lastRow(cursor: Int, buffer: Vector[Char], width: Int) = {
+
+  def lastRow(cursor: Int, buffer: Vector[Char], width: Int) =
     (buffer.length - cursor) < width &&
       (buffer.lastIndexOf('\n') < cursor || buffer.lastIndexOf('\n') == -1)
-  }
 }

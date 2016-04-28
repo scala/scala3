@@ -10,6 +10,7 @@ import filters._
 import BasicFilters._
 import GUILikeFilters._
 import util.SourceFile
+import printing.SyntaxHighlighting
 
 class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extends InteractiveReader {
   val interactive = true
