@@ -25,7 +25,7 @@ import scala.util.control.NonFatal
  *    4. Deserialize on client side with Scala.js
  *    5. Serve content using Scala.js
  */
-case object DottyDocCompiler extends Compiler {
+class DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] =
     List(new FrontEnd) ::
     List(new DocPhase) ::
@@ -56,7 +56,7 @@ class DocRun(comp: Compiler)(implicit ctx: Context) extends Run(comp)(ctx) {
   )
 }
 
-object DottyDoc extends Driver {
+trait DottyDoc extends Driver {
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx     = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
@@ -68,5 +68,7 @@ object DottyDoc extends Driver {
     (fileNames, ctx)
   }
 
-  override def newCompiler(implicit ctx: Context): Compiler = DottyDocCompiler
+  override def newCompiler(implicit ctx: Context): Compiler = new DottyDocCompiler
 }
+
+object Main extends DottyDoc

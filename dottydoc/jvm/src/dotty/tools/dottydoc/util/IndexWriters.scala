@@ -7,14 +7,17 @@ object IndexWriters {
   import model.Html._
 
   def writeJs(packs: Map[String, Package], outPath: String): Unit = {
-    for ((_, pack) <- packs) {
+    for (pack <- packs.values) {
       println(s"""Writing '${pack.path.mkString(".")}'""")
       writeFile(
         entityHtml(pack),
-        outPath + pack.path.tail.mkString("/", "/", "/"),
+        outPath + pack.path.mkString("/", "/", "/"),
         "index.html")
 
-      for (child <- pack.children) {
+      for {
+        child <- pack.children
+        if child.kind != "package"
+      } {
         println(s"""Writing '${child.path.mkString(".")}'""")
         writeFile(
           entityHtml(child),

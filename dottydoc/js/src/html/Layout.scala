@@ -12,7 +12,12 @@ object IndexLayout {
   import CustomTags._
   import MemberLayout._
 
-  def layout(m: Entity) = div(
+  def layout(m: Entity) = m match {
+    case p: Package => h1(s"Package: ${p.name}")
+    case e => entity(e)
+  }
+
+  def entity(m: Entity) = div(
     cls := "mdl-layout mdl-js-layout mdl-layout--fixed-drawer",
     div(
       cls := "mdl-layout__drawer",
@@ -27,7 +32,7 @@ object IndexLayout {
       nav(
         cls := "related mdl-navigation",
         companion(m),
-        a(cls := "mdl-navigation__link", href := m.sourceUrl, "Source")
+        a(cls := "mdl-navigation__link", href := "#", "Source")
       ),
       span(
         cls := "mdl-layout-title",
@@ -78,7 +83,7 @@ object IndexLayout {
       keys.flatMap { k =>
         val pack = Index.packages(k)
         (a(cls := "mdl-navigation__link package", href := relativePath(pack), k) ::
-        pack.children.sortBy(_.name).map { c =>
+        pack.children.sortBy(_.name).filter(_.kind == "package").map { c =>
           a(cls := "mdl-navigation__link entity", href := relativePath(c), c.name)
         })
       }

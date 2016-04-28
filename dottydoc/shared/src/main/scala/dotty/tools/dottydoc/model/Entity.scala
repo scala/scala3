@@ -6,7 +6,7 @@ import comment.Comment
 object Entities {
   import prickle._
 
-  type PackageMember = Entity with Members with Modifiers
+  type EntityMember = Entity with Members
 
   sealed trait Entity {
     def name: String
@@ -15,8 +15,6 @@ object Entities {
     def path: List[String]
 
     def comment: Option[Comment]
-
-    def sourceUrl: String = "#"
 
     def kind: String
 
@@ -47,8 +45,8 @@ object Entities {
     override val kind = "package"
 
     var parent: Option[Entity] = None
-    val children: List[PackageMember] =
-      members.collect { case x: PackageMember => x }
+    val children: List[EntityMember] =
+      members.collect { case x: EntityMember => x }
   }
 
   final case class Class(

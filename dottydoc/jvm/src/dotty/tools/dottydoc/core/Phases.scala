@@ -23,7 +23,7 @@ object Phases {
 
     def phaseName = "docphase"
 
-    private[this] var commentCache: Map[Entity, (Entity, Map[String, Package]) => Option[Comment]] = Map.empty
+    private[this] var commentCache: Map[String, (Entity, Map[String, Package]) => Option[Comment]] = Map.empty
 
     /** Saves the commentParser function for later evaluation, for when the AST has been filled */
     def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
@@ -33,54 +33,45 @@ object Phases {
         wikiParser.parseHtml(symbol, entity, packs)(ctx)
       }
 
-      entity match {
-        case p: Package =>
-          val path = p.path.mkString(".")
-          commentCache = commentCache + (packages.get(path).map { ex =>
-            val children = (ex.children ::: p.children).distinct.sortBy(_.name)
-            Package(p.name, children, p.path, None)
-          }.getOrElse(p) -> commentParser)
-        case _ =>
-          commentCache = commentCache + (entity -> commentParser)
-      }
-
-
+      commentCache = commentCache + (entity.path.mkString(".") -> commentParser)
       entity
     }
 
     /** Build documentation hierarchy from existing tree */
-    def collect(tree: Tree)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
+    def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
 
-      def collectList(xs: List[Tree])(implicit ctx: Context): List[Entity] =
-        xs.map(collect).filter(_ != NonEntity)
+      def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
+        xs.map(collect(_, ps)).filter(_ != NonEntity)
 
-      def collectPackageMembers(xs: List[Tree])(implicit ctx: Context): List[PackageMember] =
-        collectList(xs).asInstanceOf[List[PackageMember]]
+      def collectEntityMembers(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[EntityMember] =
+        collectList(xs, ps).asInstanceOf[List[EntityMember]]
 
-      def collectMembers(tree: Tree)(implicit ctx: Context): List[Entity] = tree match {
-        case t: Template => collectList(t.body)
+      def collectMembers(tree: Tree, ps: List[String] = prev)(implicit ctx: Context): List[Entity] = tree match {
+        case t: Template => collectList(t.body, ps)
         case _ => Nil
       }
 
       tree match {
         /** package */
-        case p @ PackageDef(pid, st) =>
-          val name = pid.name.toString
-          Package(name, collectPackageMembers(st), path(p))
+        case pd @ PackageDef(pid, st) =>
+          val newPath = prev :+ pid.name.toString
+          addEntity(Package(newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
 
         /** trait */
         case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
           val name = n.toString
-          Trait(name, collectMembers(rhs), flags(t), path(t))
+          val newPath = prev :+ name
+          Trait(name, collectMembers(rhs), flags(t), newPath)
 
         /** objects, on the format "Object$" so drop the last letter */
         case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
           val name = n.toString.dropRight(1)
-          Object(name, collectMembers(rhs),  flags(o), path(o))
+          Object(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"))
 
         /** class / case class */
         case c @ TypeDef(name, rhs) if c.symbol.isClass =>
-          (name.toString, collectMembers(rhs), flags(c), path(c), None) match {
+          val newPath = prev :+ name.toString
+          (name.toString, collectMembers(rhs), flags(c), newPath, None) match {
             case x if c.symbol.is(Flags.CaseClass) => CaseClass.tupled(x)
             case x => Class.tupled(x)
           }
@@ -94,7 +85,7 @@ object Phases {
           Val(v.name.toString, flags(v), path(v), returnType(v.tpt))
 
         case x => {
-          //dottydoc.println(s"Found unwanted entity: $x (${x.pos}, ${comment})\n${x.show}")
+          //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
           NonEntity
         }
       }
@@ -102,19 +93,19 @@ object Phases {
 
     var packages: Map[String, Package] = Map.empty
 
-    def addEntity(p: Package): Unit = {
-      val path = p.path.mkString(".")
-      packages = packages + (path -> packages.get(path).map { ex =>
+    def addEntity(p: Package): Package = {
+      val path    = p.path.mkString(".")
+      val newPack = packages.get(path).map { ex =>
         val children = (ex.children ::: p.children).distinct.sortBy(_.name)
         Package(p.name, children, p.path, None)
-      }.getOrElse(p))
+      }.getOrElse(p)
+
+      packages = packages + (path -> newPack)
+      newPack
     }
 
     override def run(implicit ctx: Context): Unit =
-      collect(ctx.compilationUnit.tpdTree) match {
-        case p: Package => addEntity(p)
-        case _ => ()
-      }
+      collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       // (1) Create package structure for all `units`, this will give us a complete structure
@@ -150,13 +141,13 @@ object Phases {
       // (3) Create documentation template from docstrings, with internal links
       packages.values.foreach { p =>
         mutateEntities(p) {
-          case e: Package   => e.comment = commentCache(e)(e, packages)
-          case e: Class     => e.comment = commentCache(e)(e, packages)
-          case e: CaseClass => e.comment = commentCache(e)(e, packages)
-          case e: Object    => e.comment = commentCache(e)(e, packages)
-          case e: Trait     => e.comment = commentCache(e)(e, packages)
-          case e: Val       => e.comment = commentCache(e)(e, packages)
-          case e: Def       => e.comment = commentCache(e)(e, packages)
+          case e: Package   => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Class     => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: CaseClass => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Object    => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Trait     => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Val       => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Def       => e.comment = commentCache(e.path.mkString("."))(e, packages)
           case _ => ()
         }
       }
@@ -166,7 +157,8 @@ object Phases {
 
 
       // (5) Clear caches
-      commentCache = Map.empty
+      // TODO: enable me!
+      //commentCache = Map.empty
 
       // Return super's result
       compUnits

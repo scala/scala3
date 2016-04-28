@@ -55,7 +55,7 @@ object MemberLayout {
           fullComment
         )
         Seq(divs)
-      case _ => Nil
+      case x => Seq(h1("ERROR: " + x.name))
     }
   }
 

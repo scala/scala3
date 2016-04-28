@@ -278,8 +278,11 @@ object DottyInjectedPlugin extends AutoPlugin {
     )
 
     lazy val dottydocJVM = dottydoc.jvm.dependsOn(dotty).settings(
-      (resources in Compile) += (fastOptJS in (dottydocJS, Compile)).value.data,
+      resources in Compile   += (fastOptJS in (dottydocJS, Compile)).value.data,
       scalaSource in Compile := baseDirectory.value / "src",
+      scalaSource in Test    := baseDirectory.value / "test",
+      javaSource in Test     := baseDirectory.value / "test",
+
       libraryDependencies ++= Seq(
         "com.github.benhutchison" %% "prickle" % "1.1.10",
         "com.lihaoyi" %% "scalatags" % "0.5.4"
@@ -288,7 +291,7 @@ object DottyInjectedPlugin extends AutoPlugin {
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
-      mainClass in (Compile, run) := Some("dotty.tools.dottydoc.DottyDoc"),
+      mainClass in (Compile, run) := Some("dotty.tools.dottydoc.Main"),
       fork in run := true,
       fork in Test := true,
       parallelExecution in Test := false,
