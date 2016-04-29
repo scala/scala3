@@ -7,6 +7,6 @@ import scalatags.generic.Util
 import org.scalajs.dom
 
 object CustomTags {
-  lazy val main = "main".tag
   lazy val nav  = "nav".tag
+  lazy val main = "main".tag
 }

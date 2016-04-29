@@ -7,16 +7,13 @@ import js.JSApp
 import js.annotation.{ JSExport, JSName }
 import org.scalajs.dom
 import model.Entities._
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import html.EntityLayout
 
 @JSExport object DottyDocJS {
   @JSExport def main(target: dom.html.Div) = {
+    global.document.title = "Dotty " + EntityIndex.currentEntity.path.mkString(".")
+    target.appendChild(EntityLayout(EntityIndex.currentEntity).html.render)
     hljs.initHighlightingOnLoad()
-
-    println("Started parsing...")
-    Future(EntityIndex.packages.keys).map(println)
-    println("after fututre")
   }
 }
 

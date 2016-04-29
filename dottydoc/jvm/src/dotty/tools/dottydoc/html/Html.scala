@@ -2,22 +2,21 @@ package dotty.tools.dottydoc
 package html
 
 import scalatags.Text.all._
+import model.Entities._
 
-object Html {
+case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import prickle._
-  import model.Entities._
+  import CustomTags._
 
   private def relPath(to: String, from: Entity) =
     "../" * from.path.length + to
 
-  def entityHtml(entity: Entity, packages: Map[String, Package]) = "<!DOCTYPE html>" + html(
+  def render = "<!DOCTYPE html>" + html(
     head(
       meta(charset := "utf-8"),
       meta(name := "viewport",
            content := "width=device-width, initial-scale=1, shrink-to-fit=no"),
       meta("http-equiv".attr := "x-ua-compatible", content := "ie=edge"),
-
-      //title("Dotty - " + ent.path.mkString(".")),
 
       script(`type` := "text/javascript", src := relPath("static/material.min.js", entity)),
       script(`type` := "text/javascript", src := relPath("static/highlight.pack.js", entity)),
@@ -31,13 +30,94 @@ object Html {
     body(
       div(
         id := "main-container",
-        EntityLayout(entity, packages).html
+        div(
+          cls := "mdl-layout mdl-js-layout mdl-layout--fixed-drawer",
+          div(
+            cls := "mdl-layout__drawer",
+            span(
+              cls := "mdl-layout-title subtitle",
+              entity.path.dropRight(1).mkString(".")
+            ),
+            span(
+              cls := "mdl-layout-title",
+              entity match {
+                case p: Package => p.name.split("\\.").last
+                case e => e.name
+              }
+            ),
+            nav(
+              cls := "related mdl-navigation",
+              companion,
+              a(cls := "mdl-navigation__link", href := "#", "Source")
+            ),
+            span(
+              cls := "mdl-layout-title",
+              id := "docs-title",
+              "Docs"
+            ),
+            searchView,
+            packageView
+          ),
+          main(
+            id := "entity-container",
+            cls := "mdl-layout__content"
+          )
+        )
       )
     ),
     script(
-      raw(s"""|dotty.tools.dottydoc.js.DottyDocJS()
-              |  .main(document.getElementById("main-container"));
+      raw(s"""|UnparsedIndex.currentEntity = ${Pickle.intoString(entity)};
+              |dotty.tools.dottydoc.js.DottyDocJS()
+              |     .main(document.getElementById("entity-container"));
            """.stripMargin)
+    )
+  )
+
+  private def filteredName(str: String) =
+    str.replaceAll("\\$colon", ":")
+
+  private def relativePath(to: Entity) =
+    util.Traversing.relativePath(entity, to)
+
+  def packageView = nav(
+    cls := "mdl-navigation packages",
+    {
+      val keys: Seq[String] = packages.keys.toSeq.sorted
+      keys.flatMap { k =>
+        val pack = packages(k)
+        val children =
+          pack.children.sortBy(_.name).filterNot(_.kind == "package").map { c =>
+            a(cls := "mdl-navigation__link entity", href := relativePath(c), filteredName(c.name))
+          }
+
+        if (children.length > 0)
+          a(cls := "mdl-navigation__link package", href := relativePath(pack), filteredName(k)) :: children
+        else Nil
+      }
+    }
+  )
+
+  def companion = {
+    val pack = entity.path.dropRight(1).mkString(".")
+    packages.get(pack)
+      .flatMap { p =>
+        p.children.find(e => e.name == entity.name && e.path.last != entity.path.last)
+      }
+      .map { c =>
+        a(
+          cls := "mdl-navigation__link",
+          href := c.path.last + ".html",
+          "Companion " + c.kind
+        )
+      }.getOrElse(span())
+  }
+
+  def searchView = div(
+    cls := "search-container",
+    div(
+      cls := "mdl-textfield mdl-js-textfield mdl-textfield--floating-label",
+      input(cls := "mdl-textfield__input", `type` := "text", id := "search"),
+      label(cls := "mdl-textfield__label", `for` := "search", "Search")
     )
   )
 }
