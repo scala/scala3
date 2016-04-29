@@ -221,12 +221,12 @@ object SyntaxHighlighting {
       val sb = new StringBuilder(s"$c")
       while (remaining.nonEmpty && curr != ' ' && curr != '(' && curr != '\n') {
         curr = takeChar()
-        if (curr != ' ') sb += curr
+        if (curr != ' ' && curr != '\n') sb += curr
       }
 
       val str    = sb.toString
       val toAdd  = if (shouldHL(str)) highlight(str) else str
-      val suffix = if (curr == ' ') " " else ""
+      val suffix = if (curr == ' ' || curr == '\n') s"$curr" else ""
       newBuf append (toAdd + suffix)
       prev = curr
     }
