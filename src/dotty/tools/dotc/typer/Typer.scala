@@ -460,16 +460,38 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context) = track("typedAssign") {
+    def curriedUpdate(canCopy:untpd.Tree,update:untpd.Tree,lhsArgs:List[untpd.Tree]) = {
+      val step1 = cpy.Apply(canCopy)(update,lhsArgs)
+      typed(tree.rhs match {
+        case untpd.Tuple(rhsArgs) => untpd.Apply(step1,rhsArgs)
+        case rhsNotATuple => untpd.Apply(step1,rhsNotATuple)
+      },pt)
+    }
+    /** method tries normal update syntax, if that causes a type error, switch to curried mode
+      * not an effcient way to do this...
+      * Uses uncurried method in some ambiguous cases; should maybe give an error/warning.
+      */
+    def compatibilityMode(canCopy:untpd.Tree,update:untpd.Tree,lhsArgs:List[untpd.Tree]) = {
+      val trying = ctx.fresh.setNewTyperState
+      val uncurriedUpdate = cpy.Apply(canCopy)(update, lhsArgs :+ tree.rhs)(trying)
+      val tried =
+        try Some(adapt(typedUnadapted(uncurriedUpdate, pt)(trying), pt, uncurriedUpdate)(trying))
+        catch { case _: TypeError => None }
+      if(trying.reporter.hasErrors)
+        curriedUpdate(canCopy,update,lhsArgs)
+      else {
+        trying.typerState.commit()
+        tried.get
+      }
+    }
     tree.lhs match {
-      case lhs @ Apply(fn, args) =>
-        typed(cpy.Apply(lhs)(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
+      case lhs : untpd.Apply => compatibilityMode(lhs,untpd.Select(lhs.fun, nme.update),lhs.args)
+      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), lhsArgs)) if app == nme.apply =>
+        //todo: no idea what code produces this case, so this is untested:
         val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
         val wrappedUpdate =
-          if (targs.isEmpty) rawUpdate
-          else untpd.TypeApply(rawUpdate, targs map untpd.TypedSplice)
-        val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map untpd.TypedSplice) :+ tree.rhs)
-        typed(appliedUpdate, pt)
+          if (targs.isEmpty) rawUpdate else untpd.TypeApply(rawUpdate, targs map untpd.TypedSplice)
+        compatibilityMode(fn,wrappedUpdate,lhsArgs map untpd.TypedSplice)
       case lhs =>
         val lhsCore = typedUnadapted(lhs)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
