@@ -267,9 +267,10 @@ object DottyInjectedPlugin extends AutoPlugin {
     lazy val dottydoc = crossProject.in(file("dottydoc"))
       .jsSettings(
         libraryDependencies ++= Seq(
-          "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+          "org.scala-js" %%% "scalajs-dom" % "0.9.0",
+          "com.github.benhutchison" %%% "microjson" % "1.3",
           "com.github.benhutchison" %%% "prickle" % "1.1.10",
-          "com.lihaoyi" %%% "scalatags" % "0.5.4"
+          "com.lihaoyi" %%% "scalatags" % "0.5.5"
         )
       )
 
@@ -284,8 +285,9 @@ object DottyInjectedPlugin extends AutoPlugin {
       javaSource in Test     := baseDirectory.value / "test",
 
       libraryDependencies ++= Seq(
+        "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.0",
         "com.github.benhutchison" %% "prickle" % "1.1.10",
-        "com.lihaoyi" %% "scalatags" % "0.5.4"
+        "com.lihaoyi" %% "scalatags" % "0.5.5"
       ),
 
       // enable improved incremental compilation algorithm

@@ -104,11 +104,18 @@ object Phases {
       newPack
     }
 
-    override def run(implicit ctx: Context): Unit =
+    private[this] var totalRuns  = 0
+    private[this] var currentRun = 0
+
+    override def run(implicit ctx: Context): Unit = {
+      currentRun += 1
+      println(s"Generating schema for ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
       collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
+    }
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       // (1) Create package structure for all `units`, this will give us a complete structure
+      totalRuns = units.length
       val compUnits = super.runOn(units)
 
       // (2) Set parent of all package children
@@ -133,6 +140,7 @@ object Phases {
           case _ => ()
         }
 
+      println("Connecting parents to children...")
       for {
         parent <- packages.values
         child  <- parent.children
@@ -141,13 +149,20 @@ object Phases {
       // (3) Create documentation template from docstrings, with internal links
       packages.values.foreach { p =>
         mutateEntities(p) {
-          case e: Package   => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Class     => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: CaseClass => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Object    => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Trait     => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Val       => e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Def       => e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Package =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Class =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: CaseClass =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Object =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Trait =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Val =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
+          case e: Def =>
+            e.comment = commentCache(e.path.mkString("."))(e, packages)
           case _ => ()
         }
       }
@@ -155,10 +170,8 @@ object Phases {
       // (4) Write the finished model to JSON
       util.IndexWriters.writeJs(packages, "../js/out")
 
-
       // (5) Clear caches
-      // TODO: enable me!
-      //commentCache = Map.empty
+      commentCache = Map.empty
 
       // Return super's result
       compUnits

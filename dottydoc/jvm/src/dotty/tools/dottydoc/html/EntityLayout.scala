@@ -1,37 +1,33 @@
 package dotty.tools.dottydoc
-package js
 package html
 
-import scalatags.JsDom.all._
-import scalatags.JsDom.TypedTag
+import scalatags.Text.all._
 import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
+import model.Entities._
 
-object IndexLayout {
-  import model.Entities._
+case class EntityLayout(entity: Entity, packages: Map[String, Package]) {
   import CustomTags._
   import MemberLayout._
 
-  def layout(m: Entity) = m match {
-    case p: Package => h1(s"Package: ${p.name}")
-    case e => entity(e)
-  }
-
-  def entity(m: Entity) = div(
+  def html = div(
     cls := "mdl-layout mdl-js-layout mdl-layout--fixed-drawer",
     div(
       cls := "mdl-layout__drawer",
       span(
         cls := "mdl-layout-title subtitle",
-        m.path.dropRight(1).mkString(".")
+        entity.path.dropRight(1).mkString(".")
       ),
       span(
         cls := "mdl-layout-title",
-        m.name
+        entity match {
+          case p: Package => p.name.split("\\.").last
+          case e => e.name
+        }
       ),
       nav(
         cls := "related mdl-navigation",
-        companion(m),
+        companion,
         a(cls := "mdl-navigation__link", href := "#", "Source")
       ),
       span(
@@ -46,8 +42,8 @@ object IndexLayout {
       cls := "mdl-layout__content",
       div(
         cls := "page-content",
-        div(raw(m.comment.fold("")(_.body))),
-        m match {
+        div(raw(entity.comment.fold("")(_.body))),
+        entity match {
           case e: Entity with Members =>
             Seq(
               h5("Members"),
@@ -55,7 +51,7 @@ object IndexLayout {
                 cls := "mld-grid",
                 e.members
                   .collect { case x: Entity with Modifiers if !x.isPrivate => x}
-                  .flatMap(member(_, m))
+                  .flatMap(member(_, entity))
               )
             )
           case _ => ()
@@ -74,31 +70,40 @@ object IndexLayout {
   )
 
   private def relativePath(to: Entity) =
-    util.Traversing.relativePath(Index.currentEntity, to)
+    util.Traversing.relativePath(entity, to)
+
+  private def filteredName(str: String) =
+    str.replaceAll("\\$colon", ":")
 
   def packageView = nav(
     cls := "mdl-navigation packages",
     {
-      val keys: Seq[String] = Index.packages.keys.toSeq.sorted
+      val keys: Seq[String] = packages.keys.toSeq.sorted
       keys.flatMap { k =>
-        val pack = Index.packages(k)
-        (a(cls := "mdl-navigation__link package", href := relativePath(pack), k) ::
-        pack.children.sortBy(_.name).filter(_.kind == "package").map { c =>
-          a(cls := "mdl-navigation__link entity", href := relativePath(c), c.name)
-        })
+        val pack = packages(k)
+        val children =
+          pack.children.sortBy(_.name).filterNot(_.kind == "package").map { c =>
+            a(cls := "mdl-navigation__link entity", href := relativePath(c), filteredName(c.name))
+          }
+
+        if (children.length > 0)
+          a(cls := "mdl-navigation__link package", href := relativePath(pack), filteredName(k)) :: children
+        else Nil
       }
     }
   )
 
-  def companion(m: Entity) = {
-    val pack = m.path.dropRight(1).mkString(".")
-    Index.packages.get(pack)
-      .flatMap(_.children.find(e => e.name == m.name && e.path.last != m.path.last))
-      .map { p =>
+  def companion = {
+    val pack = entity.path.dropRight(1).mkString(".")
+    packages.get(pack)
+      .flatMap { p =>
+        p.children.find(e => e.name == entity.name && e.path.last != entity.path.last)
+      }
+      .map { c =>
         a(
           cls := "mdl-navigation__link",
-          href := p.path.last + ".html",
-          "Companion " + m.kind
+          href := c.path.last + ".html",
+          "Companion " + c.kind
         )
       }.getOrElse(span())
   }

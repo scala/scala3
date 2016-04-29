@@ -1,9 +1,8 @@
 package dotty.tools.dottydoc
-package js
 package html
 
-import scalatags.JsDom.all._
-import scalatags.JsDom.TypedTag
+import scalatags.Text.all._
+import scalatags.Text.TypedTag
 import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
 
@@ -26,13 +25,13 @@ object MemberLayout {
         val shortComment = div(
           cls := "mdl-cell mdl-cell--12-col summary-comment",
           raw(m.comment.fold("")(_.short))
-        ).render
+        )
 
         val fullComment = div(
           cls := "mdl-cell mdl-cell--12-col full-comment",
           style := "display: none;",
           raw(m.comment.fold("")(_.body))
-        ).render
+        )
 
 
         val hasLongerFullComment = m.comment.fold(false) { c =>
@@ -45,7 +44,7 @@ object MemberLayout {
             mdl-cell mdl-cell--12-col member
             ${if (hasLongerFullComment) "member-fullcomment" else ""}
             """,
-          onclick := { () => toggleBetween(shortComment, and = fullComment) },
+          //onclick := { () => toggleBetween(shortComment, and = fullComment) }, //FIXME!
           div(
             cls := "mdl-cell mdl-cell--12-col",
             span(cls := "member-name", m.modifiers.mkString(" ") + " " + m.kind + " " + m.name),

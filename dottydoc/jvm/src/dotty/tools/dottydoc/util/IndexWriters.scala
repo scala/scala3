@@ -4,15 +4,16 @@ package util
 object IndexWriters {
   import prickle._
   import model.Entities._
-  import model.Html._
+  import html.Html._
 
   def writeJs(packs: Map[String, Package], outPath: String): Unit = {
     for (pack <- packs.values) {
       println(s"""Writing '${pack.path.mkString(".")}'""")
       writeFile(
-        entityHtml(pack),
-        outPath + pack.path.mkString("/", "/", "/"),
-        "index.html")
+        entityHtml(pack, packs),
+        outPath + pack.path.dropRight(1).mkString("/", "/", "/"),
+        s"${pack.name.split("\\.").last}.html")
+        //s"index.html")
 
       for {
         child <- pack.children
@@ -20,7 +21,7 @@ object IndexWriters {
       } {
         println(s"""Writing '${child.path.mkString(".")}'""")
         writeFile(
-          entityHtml(child),
+          entityHtml(child, packs),
           outPath + child.path.dropRight(1).mkString("/", "/", "/"),
           child.path.last + ".html")
       }
