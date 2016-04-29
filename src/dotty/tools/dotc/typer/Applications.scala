@@ -925,7 +925,9 @@ trait Applications extends Compatibility { self: Typer =>
     /** Drop any implicit parameter section */
     def stripImplicit(tp: Type): Type = tp match {
       case mt: ImplicitMethodType if !mt.isDependent =>
-        mt.resultType // todo: make sure implicit method types are not dependent
+        mt.resultType
+          // todo: make sure implicit method types are not dependent?
+          // but check test case in /tests/pos/depmet_implicit_chaining_zw.scala
       case pt: PolyType =>
         pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
       case _ =>

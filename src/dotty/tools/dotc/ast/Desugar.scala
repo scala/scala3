@@ -46,7 +46,11 @@ object desugar {
      */
     override def ensureCompletions(implicit ctx: Context) =
       if (!(ctx.owner is Package))
-        if (ctx.owner is ModuleClass) ctx.owner.linkedClass.ensureCompleted()
+        if (ctx.owner.isClass) {
+          ctx.owner.ensureCompleted()
+          if (ctx.owner is ModuleClass)
+            ctx.owner.linkedClass.ensureCompleted()
+        }
         else ensureCompletions(ctx.outer)
 
     /** Return info of original symbol, where all references to siblings of the
