@@ -867,8 +867,6 @@ trait Applications extends Compatibility { self: Typer =>
    */
   def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
 
-    assert(alt1 ne alt2)
-
     /** Is class or module class `sym1` derived from class or module class `sym2`?
      *  Module classes also inherit the relationship from their companions.
      */
@@ -975,14 +973,20 @@ trait Applications extends Compatibility { self: Typer =>
             bestSoFar
         }
         val best = winner(alt, alts1)
-        def asGood(alts: List[TermRef]): List[TermRef] = alts match {
+        // A tricky corner case is where we have two methods that have the same signature
+        // when seen from a particulatr prefix. In that case the TermRefs of two
+        // alternatives are identical. Hence, we have to make sure (using `altSeen`) that we
+        // eliminate only one alternative that's identical to `best`.
+        // A test case is in neg/i1240.scala
+        def asGood(alts: List[TermRef], altSeen: Boolean): List[TermRef] = alts match {
           case alt :: alts1 =>
-            if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
-            else alt :: asGood(alts1)
+            if (!altSeen && (alt eq best)) asGood(alts1, altSeen = true)
+            else if (!isAsGood(alt, best)) asGood(alts1, altSeen)
+            else alt :: asGood(alts1, altSeen)
           case nil =>
             Nil
         }
-        best :: asGood(alts)
+        best :: asGood(alts, altSeen = false)
     }
   }
 
