@@ -41,13 +41,19 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         // Aftre erasure, all former Any members are now Object members
         val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
         val extendedScope = decls.cloneScope
-        defn.AnyClass.classInfo.decls.foreach(extendedScope.enter)
+        for (decl <- defn.AnyClass.classInfo.decls)
+          if (!decl.isConstructor) extendedScope.enter(decl)
         ref.copySymDenotation(
           info = transformInfo(ref.symbol,
               ClassInfo(pre, defn.ObjectClass, ps, extendedScope, selfInfo))
         )
       }
       else {
+        val oldSymbol = ref.symbol
+        val newSymbol =
+          if ((oldSymbol.owner eq defn.AnyClass) && oldSymbol.isConstructor)
+            defn.ObjectClass.primaryConstructor
+        else oldSymbol
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
@@ -55,10 +61,10 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         val oldFlags = ref.flags
         val newFlags = ref.flags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
         // TODO: define derivedSymDenotation?
-        if ((oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
+        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
         else {
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(owner = newOwner, initFlags = newFlags, info = newInfo)
+          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
     case ref =>
