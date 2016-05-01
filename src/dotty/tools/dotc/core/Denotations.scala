@@ -282,8 +282,15 @@ object Denotations {
             val info2 = denot2.info
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
-            val sym2Accessible = sym2.isAccessibleFrom(pre)
 
+            if (sym1.exists && sym2.exists &&
+                (sym1 ne sym2) && (sym1.owner eq sym2.owner) &&
+                !sym1.is(Bridge) && !sym2.is(Bridge))
+              // double definition of two methods with same signature in one class;
+              // don't merge them.
+              return NoDenotation
+
+            val sym2Accessible = sym2.isAccessibleFrom(pre)
             /** Does `sym1` come before `sym2` in the linearization of `pre`? */
             def precedes(sym1: Symbol, sym2: Symbol) = {
               def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
