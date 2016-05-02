@@ -1437,7 +1437,7 @@ object Types {
       asMemberOf(prefix) match {
         case NoDenotation => d.current
         case newd: SingleDenotation => newd
-        case newd => newd.atSignature(d.signature).orElse(d.current)
+        case newd => newd.atSignature(d.signature).checkUnique.orElse(d.current)
       }
 
     private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
@@ -1729,7 +1729,7 @@ object Types {
     override def loadDenot(implicit ctx: Context): Denotation = {
       val d = super.loadDenot
       if (sig eq Signature.OverloadedSignature) d
-      else d.atSignature(sig)
+      else d.atSignature(sig).checkUnique
     }
 
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
