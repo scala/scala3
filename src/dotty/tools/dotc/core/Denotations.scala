@@ -283,12 +283,7 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
 
-            if (sym1.exists && sym2.exists &&
-                (sym1 ne sym2) && (sym1.owner eq sym2.owner) &&
-                !sym1.is(Bridge) && !sym2.is(Bridge))
-              // double definition of two methods with same signature in one class;
-              // don't merge them.
-              return NoDenotation
+            if (isDoubleDef(sym1, sym2)) doubleDefError(denot1, denot2, pre)
 
             val sym2Accessible = sym2.isAccessibleFrom(pre)
             /** Does `sym1` come before `sym2` in the linearization of `pre`? */
@@ -425,8 +420,12 @@ object Denotations {
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     final def signature(implicit ctx: Context) = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation =
-      denot1.atSignature(sig, site, relaxed) orElse denot2.atSignature(sig, site, relaxed)
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
+      val atSig1 = denot1.atSignature(sig, site, relaxed)
+      val atSig2 = denot2.atSignature(sig, site, relaxed)
+      if (isDoubleDef(atSig1.symbol, atSig2.symbol)) doubleDefError(atSig1, atSig2, site)
+      atSig1.orElse(atSig2)
+    }
     def currentIfExists(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.currentIfExists, denot2.currentIfExists)
     def current(implicit ctx: Context): Denotation =
@@ -906,6 +905,28 @@ object Denotations {
    *  Produced by staticRef, consumed by requiredSymbol.
    */
   case class NoQualifyingRef(alts: List[SingleDenotation])(implicit ctx: Context) extends ErrorDenotation
+
+  /** A double defifinition
+   */
+  def isDoubleDef(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
+    (sym1.exists && sym2.exists &&
+    (sym1 ne sym2) && (sym1.owner eq sym2.owner) &&
+    !sym1.is(Bridge) && !sym2.is(Bridge))
+
+  def doubleDefError(denot1: SingleDenotation, denot2: SingleDenotation, pre: Type)(implicit ctx: Context): Unit = {
+    val sym1 = denot1.symbol
+    val sym2 = denot2.symbol
+    def fromWhere = if (pre == NoPrefix) "" else i"\nwhen seen as members of $pre"
+    throw new MergeError(
+      i"""cannot merge
+         |  $sym1: ${sym1.info}  and
+         |  $sym2: ${sym2.info};
+         |they are both defined in ${sym1.owner} but have matching signatures
+         |  ${denot1.info} and
+         |  ${denot2.info}$fromWhere""".stripMargin,
+      denot2.info, denot2.info)
+  }
+
 
   // --------------- PreDenotations -------------------------------------------------
 
