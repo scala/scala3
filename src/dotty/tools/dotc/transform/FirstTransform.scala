@@ -28,6 +28,7 @@ import StdNames._
  *   - ensures there are companion objects for all classes except module classes
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
+ *   - eliminate self tree in Template and self symbol in ClassInfo
  */
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -44,7 +45,14 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     this
   }
 
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp/*{
+  /** eliminate self symbol in ClassInfo */
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+    case tp@ClassInfo(_, _, _, _, self: Symbol) =>
+      tp.derivedClassInfo(selfInfo = self.info)
+    case _ =>
+      tp
+  }
+  /*
       tp match {
         //create companions for value classes that are not from currently compiled source file
         case tp@ClassInfo(_, cls, _, decls, _)
@@ -59,7 +67,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
         case _ => tp
       }
   }
-*/
+  */
+
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, _) if tree.symbol.exists =>
@@ -130,6 +139,11 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     val mcComp = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc)
     val classComp = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass)
     (modul, mcComp, classComp)
+  }
+
+  /** elimiate self in Template */
+  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    cpy.Template(impl)(self = EmptyValDef)
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
