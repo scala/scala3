@@ -1,6 +1,6 @@
 // A tricky case of overriding behavior
-// Note: It would be acceptable if this produced an error instead.
-// Bit testing this is tricky.
+// Note: It might be acceptable if this produced an error instead.
+// But testing this is tricky.
 abstract class Base[T] {
     def foo(x: T): String
 }
