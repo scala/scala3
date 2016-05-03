@@ -6,12 +6,14 @@ import js.Dynamic.global
 import js.JSApp
 import js.annotation.{ JSExport, JSName }
 import org.scalajs.dom
-import model.Entities._
+import dom.document
+import dom.webworkers.Worker
+import model._
 import html.EntityLayout
 
 @JSExport object DottyDocJS {
   @JSExport def main(target: dom.html.Div) = {
-    global.document.title = "Dotty " + EntityIndex.currentEntity.path.mkString(".")
+    document.title = "Dotty " + EntityIndex.currentEntity.path.mkString(".")
     target.appendChild(EntityLayout(EntityIndex.currentEntity).html.render)
     hljs.initHighlightingOnLoad()
   }

@@ -2,11 +2,13 @@ package dotty.tools.dottydoc
 package html
 
 import scalatags.Text.all._
-import model.Entities._
+import model.internal._
+import model._
 
 case class EntityPage(entity: Entity, packages: Map[String, Package]) {
-  import prickle._
   import CustomTags._
+  import model.pickling._
+  import prickle._
 
   private def relPath(to: String, from: Entity) =
     "../" * from.path.length + to
@@ -77,7 +79,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
     str.replaceAll("\\$colon", ":")
 
   private def relativePath(to: Entity) =
-    util.Traversing.relativePath(entity, to)
+    util.traversing.relativePath(entity, to)
 
   def packageView = nav(
     cls := "mdl-navigation packages",
@@ -86,9 +88,16 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
       keys.flatMap { k =>
         val pack = packages(k)
         val children =
-          pack.children.sortBy(_.name).filterNot(_.kind == "package").map { c =>
-            a(cls := "mdl-navigation__link entity", href := relativePath(c), filteredName(c.name))
-          }
+          pack.children
+            .sortBy(_.name)
+            .filterNot(_.kind == "package")
+            .map { entity =>
+              a(
+                cls := "mdl-navigation__link entity",
+                href := relativePath(entity),
+                filteredName(entity.name)
+              )
+            }
 
         if (children.length > 0)
           a(cls := "mdl-navigation__link package", href := relativePath(pack), filteredName(k)) :: children

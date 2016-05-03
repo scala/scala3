@@ -8,7 +8,7 @@ import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
 
 trait MemberLayout {
-  import model.Entities._
+  import model._
 
   def member(m: Entity, parent: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =

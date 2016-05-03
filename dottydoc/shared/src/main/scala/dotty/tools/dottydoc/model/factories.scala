@@ -9,7 +9,7 @@ import dotc.core.{ Flags => DottyFlags }
 import dotc.ast.Trees._
 import DottyFlags.FlagSet
 
-object EntityFactories {
+object factories {
   import dotty.tools.dotc.ast.tpd._
   import DottyFlags._
 

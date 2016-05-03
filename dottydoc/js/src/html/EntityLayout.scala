@@ -5,7 +5,7 @@ package html
 import scalatags.JsDom.all._
 import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
-import model.Entities._
+import model._
 
 case class EntityLayout(entity: Entity) extends MemberLayout {
   def html = div(

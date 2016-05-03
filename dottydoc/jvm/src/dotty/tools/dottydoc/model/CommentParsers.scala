@@ -8,7 +8,7 @@ import dotc.core.Contexts.Context
 object CommentParsers {
   import comment._
   import BodyParsers._
-  import Entities.{Entity, Package}
+  import model.internal._
 
   sealed class WikiParser
   extends CommentCleaner with CommentParser with CommentExpander {

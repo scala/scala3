@@ -15,11 +15,13 @@ object Phases {
   class DocPhase extends Phase {
     import model.comment.Comment
     import model.CommentParsers.wikiParser
-    import model.Entities._
-    import model.EntityFactories._
+    import model.factories._
+    import model._
+    import model.internal._
     import dotty.tools.dotc.core.Flags
     import dotty.tools.dotc.ast.tpd._
-    import util.Traversing._
+    import util.traversing._
+    import util.internal.setters._
 
     def phaseName = "docphase"
 
@@ -29,11 +31,13 @@ object Phases {
     def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
       val entity = op
 
-      val commentParser = { (entity: Entity, packs: Map[String, Package]) =>
-        wikiParser.parseHtml(symbol, entity, packs)(ctx)
-      }
+      if (entity != NonEntity) {
+        val commentParser = { (entity: Entity, packs: Map[String, Package]) =>
+          wikiParser.parseHtml(symbol, entity, packs)(ctx)
+        }
 
-      commentCache = commentCache + (entity.path.mkString(".") -> commentParser)
+        commentCache = commentCache + (entity.path.mkString(".") -> commentParser)
+      }
       entity
     }
 
@@ -43,8 +47,8 @@ object Phases {
       def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
         xs.map(collect(_, ps)).filter(_ != NonEntity)
 
-      def collectEntityMembers(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[EntityMember] =
-        collectList(xs, ps).asInstanceOf[List[EntityMember]]
+      def collectEntityMembers(xs: List[Tree], ps: List[String])(implicit ctx: Context) =
+        collectList(xs, ps).asInstanceOf[List[Entity with Members]]
 
       def collectMembers(tree: Tree, ps: List[String] = prev)(implicit ctx: Context): List[Entity] = tree match {
         case t: Template => collectList(t.body, ps)
@@ -55,34 +59,34 @@ object Phases {
         /** package */
         case pd @ PackageDef(pid, st) =>
           val newPath = prev :+ pid.name.toString
-          addEntity(Package(newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
+          addEntity(PackageImpl(newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
 
         /** trait */
         case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
           val name = n.toString
           val newPath = prev :+ name
-          Trait(name, collectMembers(rhs), flags(t), newPath)
+          TraitImpl(name, collectMembers(rhs), flags(t), newPath)
 
         /** objects, on the format "Object$" so drop the last letter */
         case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
           val name = n.toString.dropRight(1)
-          Object(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"))
+          ObjectImpl(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"))
 
         /** class / case class */
         case c @ TypeDef(name, rhs) if c.symbol.isClass =>
           val newPath = prev :+ name.toString
           (name.toString, collectMembers(rhs), flags(c), newPath, None) match {
-            case x if c.symbol.is(Flags.CaseClass) => CaseClass.tupled(x)
-            case x => Class.tupled(x)
+            case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
+            case x => ClassImpl.tupled(x)
           }
 
         /** def */
         case d: DefDef =>
-          Def(d.name.toString, flags(d), path(d), returnType(d.tpt))
+          DefImpl(d.name.toString, flags(d), path(d), returnType(d.tpt))
 
         /** val */
         case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-          Val(v.name.toString, flags(v), path(v), returnType(v.tpt))
+          ValImpl(v.name.toString, flags(v), path(v), returnType(v.tpt))
 
         case x => {
           //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
@@ -97,7 +101,7 @@ object Phases {
       val path    = p.path.mkString(".")
       val newPack = packages.get(path).map { ex =>
         val children = (ex.children ::: p.children).distinct.sortBy(_.name)
-        Package(p.name, children, p.path, None)
+        PackageImpl(p.name, children, p.path, None)
       }.getOrElse(p)
 
       packages = packages + (path -> newPack)
@@ -119,52 +123,18 @@ object Phases {
       val compUnits = super.runOn(units)
 
       // (2) Set parent of all package children
-      def setParent(ent: Entity, to: Entity): Unit =
-        ent match {
-          case e: Class =>
-            e.parent = Some(to)
-            e.members.foreach(setParent(_, e))
-          case e: CaseClass =>
-            e.parent = Some(to)
-            e.members.foreach(setParent(_, e))
-          case e: Object =>
-            e.parent = Some(to)
-            e.members.foreach(setParent(_, e))
-          case e: Trait =>
-            e.parent = Some(to)
-            e.members.foreach(setParent(_, e))
-          case e: Val =>
-            e.parent = Some(to)
-          case e: Def =>
-            e.parent = Some(to)
-          case _ => ()
-        }
-
-      println("Connecting parents to children...")
+      println("Connecting parents to children, finding companions...")
       for {
         parent <- packages.values
         child  <- parent.children
       } setParent(child, to = parent)
 
       // (3) Create documentation template from docstrings, with internal links
-      packages.values.foreach { p =>
-        mutateEntities(p) {
-          case e: Package =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Class =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: CaseClass =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Object =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Trait =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Val =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case e: Def =>
-            e.comment = commentCache(e.path.mkString("."))(e, packages)
-          case _ => ()
-        }
+      for {
+        pack <- packages.values
+      } mutateEntities(pack) { e =>
+        val comment = commentCache(e.path.mkString("."))(e, packages)
+        setComment(e, to = comment)
       }
 
       // (4) Write the finished model to JSON

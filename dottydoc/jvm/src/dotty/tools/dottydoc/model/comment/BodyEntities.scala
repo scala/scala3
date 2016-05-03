@@ -3,7 +3,6 @@ package model
 package comment
 
 import scala.collection._
-import Entities.Entity
 
 /** A body of text. A comment has a single body, which is composed of
   * at least one block. Inside every body is exactly one summary (see

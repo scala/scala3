@@ -1,8 +1,8 @@
 package dotty.tools.dottydoc
 package util
 
-object Traversing {
-  import model.Entities._
+object traversing {
+  import model._
 
   def mutateEntities(e: Entity)(trans: Entity => Unit): Unit = e match {
     case e: Entity with Members =>

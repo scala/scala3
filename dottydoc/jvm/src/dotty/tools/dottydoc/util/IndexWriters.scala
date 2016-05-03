@@ -2,9 +2,10 @@ package dotty.tools.dottydoc
 package util
 
 object IndexWriters {
-  import prickle._
-  import model.Entities._
   import html.EntityPage
+  import model.Package
+  import model.pickling._
+  import prickle._
 
   def writeJs(packs: Map[String, Package], outPath: String): Unit = {
     for (pack <- packs.values) {

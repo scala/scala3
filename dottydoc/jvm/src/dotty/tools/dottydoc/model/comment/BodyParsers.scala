@@ -3,7 +3,6 @@ package model
 package comment
 
 object BodyParsers {
-  import model.Entities.{Entity, Members}
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {
     def toHtml(origin: Entity): String = {
@@ -37,7 +36,7 @@ object BodyParsers {
       }
 
       def relativePath(target: Entity) =
-        util.Traversing.relativePath(origin, target)
+        util.traversing.relativePath(origin, target)
 
       def bodyToHtml(body: Body): String =
         (body.blocks map blockToHtml).mkString

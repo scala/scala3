@@ -10,8 +10,9 @@ import dotc.core.Symbols._
 import dotc.core.Types._
 import dotc.core.Names._
 import dotc.util.Positions._
+import model.internal._
 import model.comment._
-import model.Entities._
+import model._
 
 trait MemberLookup {
   /** Performs a lookup based on the provided (pruned) query string

@@ -10,7 +10,8 @@ import js.annotation.JSName
 object EntityIndex {
   import microjson._
   import prickle._
-  import model.Entities._
+  import model._
+  import model.pickling._
 
   lazy val packages: Map[String, Package] =
     //FIXME

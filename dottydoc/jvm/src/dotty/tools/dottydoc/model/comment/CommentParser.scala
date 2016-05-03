@@ -8,10 +8,10 @@ import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
-import Entities.{Entity, Package}
 
 trait CommentParser extends util.MemberLookup {
   import Regexes._
+  import model.internal._
 
   /** Parses a raw comment string into a `Comment` object.
    * @param packages     all packages parsed by Scaladoc tool, used for lookup
