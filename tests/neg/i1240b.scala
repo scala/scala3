@@ -1,17 +1,12 @@
-// yet another variant, testing super accessors
-
-trait T {
-  def foo[B](x: C[B]): C[B]
+// yet another variant, testing type parameters
+trait T[X] {
+  def foo(x: X): X
 }
-abstract class A extends T {
-  type C[X]
-  def foo[B](x: C[B]): C[B]       = {println("A.C"); x}
-  def foo[B](x: List[B]): List[B] = {println("A.List"); x}
+abstract class A[X] extends T[X] {
+  def foo(x: X): X           = {println("A.X"); x}
+  def foo(x: String): String = {println("A.String"); x}
 }
-trait U extends T {
-  def foo[B](x: C[B]): C[B] = super.foo[B](x)
+trait U[X] extends T[X] {
+  abstract override def foo(x: X): X = super.foo(x)
 }
-object Test extends A with U {
-  type C[X] = List[X]
-  def main(args: Array[String]) = foo(List(""))
-}
+object Test extends A[String] with U[String] // error: accidental override
