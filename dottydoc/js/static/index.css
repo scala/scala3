@@ -12,12 +12,64 @@ div.member.member-fullcomment:hover {
     cursor: pointer;
 }
 
-nav.packages {
+ul.packages {
     padding-top: 0 !important;
 }
 
-nav.packages > a.entity {
-    padding: 0.2em 4em !important;
+ul.packages > li.entity {
+    padding: 0;
+    transition: 0.3s;
+}
+
+ul.packages > li.entity.one {
+    margin-left: -48px;
+}
+
+ul.packages > li.entity.two {
+    margin-left: -96px;
+}
+
+ul.packages > li.entity:hover {
+    background-color: #efefef;
+    margin-left: 0px;
+}
+
+li.entity > a.entity-button {
+    float: left;
+    display: inline;
+    background-color: green;
+    height: 48px;
+    width: 48px;
+    line-height: 48px;
+    vertical-align: middle;
+    text-align: center;
+    text-decoration: none;
+    color: #fff;
+
+}
+
+li.entity > a.entity-name {
+    padding-left: 2em;
+    font-size: 14px;
+}
+
+li.entity > a.entity-button.object {
+    background-color: rgb(44, 108, 141);
+}
+
+li.entity > a.entity-button.class,
+li.entity > a.entity-button.caseclass {
+    background-color: rgb(68, 173, 125);
+}
+
+li.entity > a.entity-button.trait {
+    background-color: rgb(25, 170, 207);
+}
+
+li.entity > a.entity-button.shadowed {
+    -webkit-box-shadow: inset -2px 0px 5px -3px rgba(0,0,0,0.25);
+    -moz-box-shadow: inset -2px 0px 5px -3px rgba(0,0,0,0.25);
+    box-shadow: inset -2px 0px 5px -3px rgba(0,0,0,0.25);
 }
 
 div.search-container {

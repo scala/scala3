@@ -81,8 +81,8 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   private def relativePath(to: Entity) =
     util.traversing.relativePath(entity, to)
 
-  def packageView = nav(
-    cls := "mdl-navigation packages",
+  def packageView = ul(
+    cls := "mdl-list packages",
     {
       val keys: Seq[String] = packages.keys.toSeq.sorted
       keys.flatMap { k =>
@@ -94,15 +94,27 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
               ent.kind == "package" || (ent.kind == "object" && companion(ent).isDefined)
             }
             .map { entity =>
-              a(
-                cls := "mdl-navigation__link entity",
-                href := relativePath(entity),
-                filteredName(entity.name)
+              val comp = companion(entity)
+              val entityUrl = relativePath(entity)
+              val compUrl = comp.map(relativePath).getOrElse("#")
+              li(
+                cls := s"""mdl-list__item entity ${ if (comp.isDefined) "two" else "one" }""",
+                comp.map { _ => a(cls := "entity-button object", href := compUrl, "O") }.getOrElse(()),
+                a(
+                  cls := s"""entity-button shadowed ${entity.kind.replaceAll(" ", "")}""",
+                  href := entityUrl,
+                  entity.kind(0).toUpper.toString
+                ),
+                a(
+                  cls := "entity-name",
+                  href := entityUrl,
+                  filteredName(entity.name)
+                )
               )
             }
 
         if (children.length > 0)
-          a(cls := "mdl-navigation__link package", href := relativePath(pack), filteredName(k)) :: children
+          li(cls := "mdl-list__item package", href := relativePath(pack), filteredName(k)) :: children
         else Nil
       }
     }
