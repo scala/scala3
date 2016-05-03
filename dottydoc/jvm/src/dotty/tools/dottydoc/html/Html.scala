@@ -49,7 +49,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
             ),
             nav(
               cls := "related mdl-navigation",
-              companion,
+              companionAnchor,
               a(cls := "mdl-navigation__link", href := "#", "Source")
             ),
             span(
@@ -90,7 +90,9 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
         val children =
           pack.children
             .sortBy(_.name)
-            .filterNot(_.kind == "package")
+            .filterNot { ent =>
+              ent.kind == "package" || (ent.kind == "object" && companion(ent).isDefined)
+            }
             .map { entity =>
               a(
                 cls := "mdl-navigation__link entity",
@@ -106,19 +108,22 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
     }
   )
 
-  def companion = {
+  def companion(entity: Entity) = {
     val pack = entity.path.dropRight(1).mkString(".")
-    packages.get(pack)
-      .flatMap { p =>
-        p.children.find(e => e.name == entity.name && e.path.last != entity.path.last)
-      }
-      .map { c =>
-        a(
-          cls := "mdl-navigation__link",
-          href := c.path.last + ".html",
-          "Companion " + c.kind
-        )
-      }.getOrElse(span())
+    (for {
+      p     <- packages.get(pack)
+      child <- p.children.find(e => e.name == entity.name && e.path.last != entity.path.last)
+    } yield child)
+  }
+
+  def companionAnchor = {
+    companion(entity).map { c =>
+      a(
+        cls := "mdl-navigation__link",
+        href := c.path.last + ".html",
+        "Companion " + c.kind
+      )
+    }.getOrElse(span())
   }
 
   def searchView = div(
