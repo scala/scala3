@@ -130,9 +130,16 @@ object Phases {
 
       // (3) Create documentation template from docstrings, with internal links
       println("Creating documentation...")
-      for (pack <- packages.values) mutateEntities(pack) { e =>
-        val comment = commentParser.parse(e, packages)
-        setComment(e, to = comment)
+      val totalPackages  = packages.size
+      var currentPackage = 0
+      for (pack <- packages.values) {
+        currentPackage += 1
+        println(s"Documenting package ($currentPackage/$totalPackages): ${pack.name}")
+
+        mutateEntities(pack) { e =>
+          val comment = commentParser.parse(e, packages)
+          setComment(e, to = comment)
+        }
       }
 
       // (4) Write the finished model to JSON
