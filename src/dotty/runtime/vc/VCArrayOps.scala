@@ -43,22 +43,4 @@ class VCArrayOps[T](xs: Array[T]) extends ArrayOps[T] {
     else
       super.toArray[U]
   }
-
-  override def transpose[U](implicit asArray: T => Array[U]): Array[Array[U]] = {
-    val bb: Builder[Array[U], Array[Array[U]]] = Array.newBuilder(ClassTag[Array[U]](vcElementClass))
-    if (isEmpty) bb.result()
-    else {
-      def mkRowBuilder() = Array.newBuilder(ClassTag[U](arrayElementClass(vcElementClass)))
-      val bs = asArray(head) map (_ => mkRowBuilder())
-      for (xs <- this) {
-        var i = 0
-        for (x <- asArray(xs)) {
-          bs(i) += x
-          i += 1
-        }
-      }
-      for (b <- bs) bb += b.result()
-      bb.result()
-    }
-  }
 }

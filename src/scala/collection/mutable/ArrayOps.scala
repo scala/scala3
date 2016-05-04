@@ -84,6 +84,7 @@ trait ArrayOps[T] extends Any with ArrayLike[T, Array[T]] with CustomParalleliza
     b.result()
   }
 
+  //TODO: rewrite this method
   /** Transposes a two dimensional array.
     *
     *  @tparam U       Type of row elements.
@@ -94,8 +95,16 @@ trait ArrayOps[T] extends Any with ArrayLike[T, Array[T]] with CustomParalleliza
     val bb: Builder[Array[U], Array[Array[U]]] = Array.newBuilder(ClassTag[Array[U]](elementClass))
     if (isEmpty) bb.result()
     else {
-      def mkRowBuilder() = Array.newBuilder(ClassTag[U](arrayElementClass(elementClass)))
-      val bs = asArray(head) map (_ => mkRowBuilder())
+      val checkHead = asArray(head)
+      val ct = if (classOf[dotty.runtime.vc.VCArrayPrototype[_]].isAssignableFrom(elementClass)) {
+        if (checkHead.nonEmpty)
+          ClassTag(checkHead(0).getClass).asInstanceOf[ClassTag[U]]
+        //TODO: this ClassTag shouldn't be used in code below (checkHead is empty and mkRowBuilder can't be invoded)
+        else ClassTag.Object //change to null
+      } else ClassTag[U](arrayElementClass(elementClass))
+      //TODO: move ct generation inside mkRowBuilder
+      def mkRowBuilder() = Array.newBuilder(ct).asInstanceOf[ArrayBuilder[U]]
+      val bs = checkHead map (_ => mkRowBuilder())
       for (xs <- this) {
         var i = 0
         for (x <- asArray(xs)) {
@@ -103,7 +112,7 @@ trait ArrayOps[T] extends Any with ArrayLike[T, Array[T]] with CustomParalleliza
           i += 1
         }
       }
-      for (b <- bs) bb += b.result()
+      for (b <- bs) bb += b.result().asInstanceOf[Array[U]]
       bb.result()
     }
   }
