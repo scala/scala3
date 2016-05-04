@@ -13,11 +13,11 @@ import dotc.core.Symbols.Symbol
 object Phases {
 
   class DocPhase extends Phase {
-    import model.comment.Comment
-    import model.CommentParsers.wikiParser
-    import model.factories._
+    import model.CommentParsers.WikiParser
     import model._
+    import model.factories._
     import model.internal._
+    import model.comment.Comment
     import dotty.tools.dotc.core.Flags
     import dotty.tools.dotc.ast.tpd._
     import util.traversing._
@@ -25,19 +25,15 @@ object Phases {
 
     def phaseName = "docphase"
 
-    private[this] var commentCache: Map[String, (Entity, Map[String, Package]) => Option[Comment]] = Map.empty
+    private[this] val commentParser = new WikiParser
 
     /** Saves the commentParser function for later evaluation, for when the AST has been filled */
     def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
       val entity = op
 
-      if (entity != NonEntity) {
-        val commentParser = { (entity: Entity, packs: Map[String, Package]) =>
-          wikiParser.parseHtml(symbol, entity, packs)(ctx)
-        }
+      if (entity != NonEntity)
+        commentParser += (entity, symbol, ctx)
 
-        commentCache = commentCache + (entity.path.mkString(".") -> commentParser)
-      }
       entity
     }
 
@@ -113,7 +109,7 @@ object Phases {
 
     override def run(implicit ctx: Context): Unit = {
       currentRun += 1
-      println(s"Generating schema for ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
+      println(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
       collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
     }
 
@@ -123,17 +119,19 @@ object Phases {
       val compUnits = super.runOn(units)
 
       // (2) Set parent of all package children
-      println("Connecting parents to children, finding companions...")
-      for {
-        parent <- packages.values
-        child  <- parent.children
-      } setParent(child, to = parent)
+      //
+      // This step is unnecessary for now - member `parent` is not being used
+      //
+      //println("Connecting parents to children, finding companions...")
+      //for {
+      //  parent <- packages.values
+      //  child  <- parent.children
+      //} setParent(child, to = parent)
 
       // (3) Create documentation template from docstrings, with internal links
-      for {
-        pack <- packages.values
-      } mutateEntities(pack) { e =>
-        val comment = commentCache(e.path.mkString("."))(e, packages)
+      println("Creating documentation...")
+      for (pack <- packages.values) mutateEntities(pack) { e =>
+        val comment = commentParser.parse(e, packages)
         setComment(e, to = comment)
       }
 
@@ -141,7 +139,7 @@ object Phases {
       util.IndexWriters.writeJs(packages, "../js/out")
 
       // (5) Clear caches
-      commentCache = Map.empty
+      commentParser.clear()
 
       // Return super's result
       compUnits
