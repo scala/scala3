@@ -439,7 +439,19 @@ trait Implicits { self: Typer =>
           result
         case result: AmbiguousImplicits =>
           val deepPt = pt.deepenProto
-          if (deepPt ne pt) inferImplicit(deepPt, argument, pos) else result
+          if (deepPt ne pt) inferImplicit(deepPt, argument, pos)
+          else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
+            inferImplicit(pt, argument, pos)(ctx.addMode(Mode.OldOverloadingResolution)) match {
+              case altResult: SearchSuccess =>
+                ctx.migrationWarning(
+                  s"According to new implicit resolution rules, this will be ambiguous:\n ${result.explanation}",
+                  pos)
+                altResult
+              case _ =>
+                result
+            }
+          }
+          else result
         case _ =>
           assert(prevConstr eq ctx.typerState.constraint)
           result

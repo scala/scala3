@@ -119,8 +119,8 @@ class tests extends CompilerTest {
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
 
   val negCustomArgs = negDir + "customArgs/"
-  @Test def neg_typers = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
-  @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", List("-language:Scala2"))
+  @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
+  @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
   @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
   @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
   @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
