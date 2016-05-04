@@ -23,16 +23,20 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = eraseVCArrays(tp)
 
-  private def eraseVCArrays(tp: Type)(implicit ctx: Context): Type = tp match {
-    case JavaArrayType(ErasedValueType(tr, _)) =>
-      val cls = tr.symbol.asClass
-      defn.vcArrayOf(cls).typeRef
-    case tp: MethodType =>
-      val paramTypes = tp.paramTypes.mapConserve(eraseVCArrays)
-      val retType = eraseVCArrays(tp.resultType)
-      tp.derivedMethodType(tp.paramNames, paramTypes, retType)
-    case _ =>
-      tp
+  private def eraseVCArrays(tp: Type)(implicit ctx: Context): Type = {
+    val transform = new TypeMap {
+      //TODO: rewrite, don't create TypeMap for each invocation of eraseVCArrays
+      def apply(tp: Type) = mapOver {
+        tp match {
+          case JavaArrayType(ErasedValueType(tr, _)) =>
+            val cls = tr.symbol.asClass
+            defn.vcArrayOf(cls).typeRef
+          case _ =>
+            tp
+        }
+      }
+    }
+    transform(tp)
   }
 
   private def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
@@ -77,27 +81,43 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         val cls = tr.symbol.asClass
         val evt2uMethod = ref(evt2u(cls))
         //[V.evt2u$(arg1), V.evt2u$(arg2), ...]
-        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)), ref(tund.typeSymbol))
+        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)), TypeTree(tund))
         val mod = cls.companionModule
         //new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...], VCXCompanion)
         New(defn.vcArrayOf(cls).typeRef, List(underlyingArray, ref(mod)))
       case _ =>
-        tree
+        tree match {
+          case SeqLiteral(elems, tptr) =>
+            cpy.SeqLiteral(tree)(elems, TypeTree(transformTypeOfTree(tptr)))
+          case _ => tree
+        }
     }
 
-  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo): Tree =
-    tree.tpe match {
-      case JavaArrayType(ErasedValueType(tr, tund)) =>
-        val cls = tr.symbol.asClass
-        Typed(tree.expr, ref(defn.vcArrayOf(cls).typeRef))
-      case _ =>
-        tree
-    }
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
+
+  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
+
+  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
+
+  override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
+
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    def isArrayWithEVT(tpe: Any): Option[ErasedValueType] =
+      tpe match {
+        case JavaArrayType(evt@ErasedValueType(tr, underlying)) => Some(evt)
+        case JavaArrayType(ijat: JavaArrayType) => isArrayWithEVT(ijat)
+        case _ => None
+      }
     tree match {
       // newArray(args) => New VCXArray(newXArray(args'), V)
-      case ap@Apply(fun, List(compTpt, retTpt, dims))
+      case ap@Apply(fun, List(compTpt, retTpt, dims @SeqLiteral(elems, elemtpt)))
           if (fun.symbol == defn.newArrayMethod) =>
         val Literal(Constant(ins)) = retTpt
         ins match {
@@ -108,8 +128,18 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
             New(defn.vcArrayOf(cls).typeRef,
               List(newArray(underlying, arTpe, tree.pos, dims.asInstanceOf[JavaSeqLiteral]).ensureConforms(arTpe),
                 ref(mod)))
-          case _ =>
-            tree
+          case _: Type =>
+            val evtOpt = isArrayWithEVT(ins)
+            evtOpt match {
+              case Some(evt1@ErasedValueType(tr1, und1)) =>
+                val cls = tr1.symbol.asClass
+                val mod = cls.companionModule
+                val retTpt2 = eraseVCArrays(ins.asInstanceOf[Type])
+                val Literal(Constant(compTptType)) = compTpt
+                val compTpt2 = eraseVCArrays((compTptType.asInstanceOf[Type]))
+                newArray(compTpt2, retTpt2, tree.pos, dims.asInstanceOf[JavaSeqLiteral])
+              case _ => tree
+            }
         }
       // array.[]update(idx, elem) => array.arr().[]update(idx, elem)
       case Apply(Select(array, nme.primitive.arrayUpdate), List(idx, elem)) =>
@@ -128,12 +158,12 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
             val cls = tr.symbol.asClass
             if (undType.classSymbol.isPrimitiveValueClass)
               ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
-              .select(nme.primitive.arrayApply).appliedTo(idx))
+                .select(nme.primitive.arrayApply).appliedTo(idx))
             else
               ref(u2evt(cls)).appliedTo(array.select(nme.ARR).appliedToNone
                 .select(nme.primitive.arrayApply).appliedTo(idx).ensureConforms(undType))
           case _ =>
-            tree
+            transformTypeOfTree(tree)
         }
       // array.[]length() => array.arr().[]length()
       case Apply(Select(array, nme.primitive.arrayLength), Nil)
@@ -141,16 +171,7 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         array.select(nme.ARR).appliedToNone
           .select(nme.primitive.arrayLength).appliedToNone
       case _ =>
-        tree
+        transformTypeOfTree(tree)
     }
-  }
-
-  private var scala2genericWrapArray: Symbol = null
-  private var scala2genericArrayOps: Symbol = null
-
-  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    scala2genericWrapArray = defn.ScalaPredefModule.requiredMethod(nme.genericWrapArray)
-    scala2genericArrayOps = defn.ScalaPredefModule.requiredMethod(nme.genericArrayOps)
-    this
   }
 }
