@@ -25,12 +25,18 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
 
   private def eraseVCArrays(tp: Type)(implicit ctx: Context): Type = {
     val transform = new TypeMap {
-      //TODO: rewrite, don't create TypeMap for each invocation of eraseVCArrays
+      //TODO: rewrite, don't create new TypeMap for each invocation of eraseVCArrays
       def apply(tp: Type) = mapOver {
         tp match {
-          case JavaArrayType(ErasedValueType(tr, _)) =>
+          case JavaArrayType(ErasedValueType(tr, eund)) =>
             val cls = tr.symbol.asClass
             defn.vcArrayOf(cls).typeRef
+          //case tp: MethodType =>
+          //val paramTypes = tp.paramTypes.mapConserve(eraseVCArrays)
+          //val retType = eraseVCArrays(tp.resultType)
+          //tp.derivedMethodType(tp.paramNames, paramTypes, retType)
+          case ErasedValueType(tr, und) =>
+            ErasedValueType(tr, eraseVCArrays(und))
           case _ =>
             tp
         }
@@ -121,12 +127,14 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
           if (fun.symbol == defn.newArrayMethod) =>
         val Literal(Constant(ins)) = retTpt
         ins match {
-          case JavaArrayType(ErasedValueType(tr, underlying)) =>
+          case jat@JavaArrayType(ErasedValueType(tr, underlying)) =>
             val cls = tr.symbol.asClass
             val mod = cls.companionModule
-            val arTpe = JavaArrayType(underlying)
+            //TODO: und1 should be processed in case of EVT
+            val und1 = eraseVCArrays(underlying)
+            val arTpe = jat.derivedJavaArrayType(und1)
             New(defn.vcArrayOf(cls).typeRef,
-              List(newArray(underlying, arTpe, tree.pos, dims.asInstanceOf[JavaSeqLiteral]).ensureConforms(arTpe),
+              List(newArray(und1, arTpe, tree.pos, dims.asInstanceOf[JavaSeqLiteral]).ensureConforms(arTpe),
                 ref(mod)))
           case _: Type =>
             val evtOpt = isArrayWithEVT(ins)
@@ -138,7 +146,8 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
                 val Literal(Constant(compTptType)) = compTpt
                 val compTpt2 = eraseVCArrays((compTptType.asInstanceOf[Type]))
                 newArray(compTpt2, retTpt2, tree.pos, dims.asInstanceOf[JavaSeqLiteral])
-              case _ => tree
+              case _ =>
+                transformTypeOfTree(tree)
             }
         }
       // array.[]update(idx, elem) => array.arr().[]update(idx, elem)
