@@ -150,6 +150,8 @@ object ClassTag {
       case ObjectTYPE               => ClassTag.Object.asInstanceOf[ClassTag[T]]
       case NothingTYPE              => ClassTag.Nothing.asInstanceOf[ClassTag[T]]
       case NullTYPE                 => ClassTag.Null.asInstanceOf[ClassTag[T]]
+      case _ if classOf[dotty.runtime.vc.VCPrototype].isAssignableFrom(runtimeClass1) =>
+        Class.forName(s"${runtimeClass1.getName()}$$").newInstance().asInstanceOf[ClassTag[T]]
       case _                        => new ClassTag[T]{ def runtimeClass = runtimeClass1 }
     }
 

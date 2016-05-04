@@ -58,7 +58,11 @@ object ScalaRunTime {
     //  at scala.Array$.fill(Array.scala:281)
     //  at dotty.tools.dotc.core.Flags$.<init>(Flags.scala:139)
     // newInstance throws an exception if the erasure is Void.TYPE. see SI-5680
+    // TODO: update comment
+    // Vladimir: this method is used in the process of ClassTag generation in several methods of scala.Array
+    // ClassTag..MODULE$.apply(ScalaRunTime..MODULE$.arrayClass(ScalaRunTime..MODULE$.arrayClass(evidence$5.runtimeClass()))));
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
+    else if (classOf[dotty.runtime.vc.VCPrototype].isAssignableFrom(clazz)) ClassTag(clazz).wrap.runtimeClass
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
   }
 
