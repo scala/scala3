@@ -27,7 +27,6 @@ import scala.reflect.internal.util.Collections
 // TODO: Check secondary constructors.
 // TODO: check private fields
 class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
-
   import tpd._
 
   override def phaseName = "cspec"
@@ -139,8 +138,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     if (((methodOrClass.isClass && (!methodOrClass.is(Flags.Module) || !methodOrClass.isStatic)) ||
            methodOrClass.is(Flags.Method))
       && (methodOrClass.sourceFile ne null))  {
-      if (methodOrClass.name.toString == "map" && methodOrClass.owner.name.toString == "Iterator")
-        println("here")
+//      if (methodOrClass.name.toString == "map" && methodOrClass.owner.name.toString == "Iterator")
+//        println("here")
       if (ctx.phaseId > this.treeTransformPhase.id)
         assert(ctx.phaseId <= this.treeTransformPhase.id)
       val prev = specializationRequests.getOrElse(methodOrClass, List.empty)
@@ -229,8 +228,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
             }
 
           case other =>
-            if (other.name.toString == "next")
-              println("bla")
+//            if (other.name.toString == "next")
+//              println("bla")
             val tpe = if (other.isClassConstructor) other.info match {
               case oinfo: PolyType =>
                 val newConstructorBounds = originalClass.typeParams.map(x => specialization.mp(claz)(x.name))
@@ -307,8 +306,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     }
 
     def specializeSymbol(sym: Symbol): Type = {
-      if (sym.name.toString.contains("shortWrapper"))
-        println("hdd")
+//      if (sym.name.toString.contains("shortWrapper"))
+//        println("hdd")
       processed.put(sym, NoType)
       ctx.debuglog(s"started specializing type of $sym")
       val ret = sym.info match {
@@ -455,8 +454,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
                      (typeMap: (Type, List[Symbol], List[Type]) => (List[Symbol], List[Type]) => Type => Type)
                      (substFrom: List[Symbol] = Nil, substTo: List[Symbol] = Nil)
                      (implicit ctx: Context): DefDef = {
-    if (newSym.name.toString.contains("IterablePolyTransforms$spec2"))
-      println("hsdds")
+//    if (newSym.name.toString.contains("IterablePolyTransforms$spec2"))
+//      println("hsdds")
     val oldSym = oldTree.symbol
     originBySpecialized.put(newSym, oldSym)
     val origTParams = oldTree.tparams.map(_.symbol)
@@ -474,8 +473,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
       val abstractPolyType = oldSym.info.widenDealias
       val vparamTpes = vparams.flatten.map(_.tpe)
 
-      if (oldTree.uniqueId == 15973)
-        println("catch")
+//      if (oldTree.uniqueId == 15973)
+//        println("catch")
 
       val typesReplaced = new TreeTypeMap(
         treeMap = treemap,
@@ -539,8 +538,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asType
                 tpd.TypeDef(newMember)
               case t: ValDef =>
-                if (!newClassSym.info.decl(t.symbol.name).asSymDenotation.exists)
-                  println("wtf")
+//                if (!newClassSym.info.decl(t.symbol.name).asSymDenotation.exists)
+//                  println("wtf")
                 val newMember = newClassSym.info.decl(t.symbol.name).asSymDenotation.symbol.asTerm
                 tpd.ValDef(newMember, bodytreeTypeMap.apply(t.rhs))
               case _ => // just body. TTM this shit
@@ -557,8 +556,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
         val newBridges = {
           val bridgeSymbols = addBridges.getOrElse(tree.symbol.asClass, Nil)
-          if (bridgeSymbols.isEmpty)
-            println(s"generating no bridges for ${tree.symbol}")
+//          if (bridgeSymbols.isEmpty)
+//            println(s"generating no bridges for ${tree.symbol}")
           bridgeSymbols.map { case (nw, old) =>
             polyDefDef(nw.asTerm, tparams => vparamss => {
 
@@ -590,8 +589,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     assert(tree.isInstanceOf[TypeApply])
     val TypeApply(fun, args) = tree
 
-    if (fun.symbol.isPrimaryConstructor && fun.symbol.owner.name.toString.contains("ArrayBuf"))
-      println("here")
+//    if (fun.symbol.isPrimaryConstructor && fun.symbol.owner.name.toString.contains("ArrayBuf"))
+//      println("here")
 
 
     if (fun.symbol.isPrimaryConstructor && newSymbolMap.contains(fun.symbol.owner)) {
@@ -675,8 +674,8 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   def transormGenApply(tree: GenericApply[Type])(implicit ctx: Context): Tree = {
-    if (ctx.owner.name.toString.contains("next"))
-      println("heere")
+//    if (ctx.owner.name.toString.contains("next"))
+//      println("heere")
     tree match {
       case t: tpd.TypeApply =>
         val TypeApply(fun, _) = tree
@@ -714,8 +713,8 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer{
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
     if (sym.isClass && specPhase.originBySpecialized.contains(sym)) {
       val origSym = specPhase.originBySpecialized(sym)
-      if (origSym.symbol.name.toString.contains("IterablePolyTransforms"))
-        println("dd")
+//      if (origSym.symbol.name.toString.contains("IterablePolyTransforms"))
+//        println("dd")
       val specialization: OuterTargs = specPhase.newSymbolMap(origSym).find(_._2 == sym).get._1
 
       tp match {
@@ -737,8 +736,8 @@ class OuterSpecializeParents extends MiniPhaseTransform with InfoTransformer{
             }
           }
           val mappedParents: List[TypeRef] = betterParent(classParent) :: original :: others.map(betterParent).toList
-          if (mappedParents.map(_.typeSymbol).contains(sym))
-            println("fail")
+//          if (mappedParents.map(_.typeSymbol).contains(sym))
+//            println("fail")
           classInfo.derivedClassInfo(classParents = mappedParents)
         case _ =>
           ???
