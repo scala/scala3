@@ -40,16 +40,16 @@ class VCArrayBuilder[T](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
     this
   }
 
-  override def ++=(xs: TraversableOnce[T]): this.type = (xs.asInstanceOf[AnyRef]) match {
-    case xs: VCWrappedArray[_] =>
-      ensureSize(this.size + xs.length)
-      //TODO: check correctness
-      Array.copy(xs.array, 0, elems, this.size, xs.length)
-      size += xs.length
-      this
-    case _ =>
-      super.++=(xs)
-  }
+  //use impl from Growable
+//  override def ++=(xs: TraversableOnce[T]): this.type = (xs.asInstanceOf[AnyRef]) match {
+//    case xs: VCWrappedArray[_] =>
+//      ensureSize(this.size + xs.length)
+//      Array.copy(xs.array, 0, elems, this.size, xs.length)
+//      size += xs.length
+//      this
+//    case _ =>
+//      super.++=(xs)
+//  }
 
   def clear() = {
     size = 0
