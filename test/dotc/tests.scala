@@ -113,6 +113,10 @@ class tests extends CompilerTest {
   @Test def pos_vc_array_object = compileFile(runDir, "valueclasses-array-object", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_array_newarray = compileFile(runDir, "valueclasses-array-newarray", args = "-Ycheck:all" :: Nil)
   @Test def pos_vc_underlying_null = compileFile(runDir, "valueclasses-underlying-null", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_creation = compileFile(runDir, "valueclasses-array-creation", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_caseclasses = compileFile(runDir, "valueclasses-array-caseclasses", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_arrayops = compileFile(runDir, "valueclasses-array-arrayops", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_array = compileFile(runDir, "valueclasses-array-array", args = "-Ycheck:all" :: Nil)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
