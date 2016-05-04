@@ -152,7 +152,8 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
       case Apply(TypeApply(_, tptr :: _), _) if (tree.fun.symbol eq scala2ClassTagApplyMethod) => {
         val claz = tptr.tpe.classSymbol
         if (ValueClasses.isDerivedValueClass (claz) )
-          ref(claz.companionModule) else tree
+          //TODO: add ensureConforms to fix -Ycheck:all for array of instances of case class X[T](val x: T) extends AnyVal
+          ref(claz.companionModule).ensureConforms(tree.tpe) else tree
         }
       case _ => tree
     }
