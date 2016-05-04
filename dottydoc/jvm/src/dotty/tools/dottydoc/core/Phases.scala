@@ -118,34 +118,13 @@ object Phases {
       totalRuns = units.length
       val compUnits = super.runOn(units)
 
-      // (2) Set parent of all package children
-      //
-      // This step is unnecessary for now - member `parent` is not being used
-      //
-      //println("Connecting parents to children, finding companions...")
-      //for {
-      //  parent <- packages.values
-      //  child  <- parent.children
-      //} setParent(child, to = parent)
+      // (2) Create documentation template from docstrings, with internal links
+      commentParser.parse(packages)
 
-      // (3) Create documentation template from docstrings, with internal links
-      println("Creating documentation...")
-      val totalPackages  = packages.size
-      var currentPackage = 0
-      for (pack <- packages.values) {
-        currentPackage += 1
-        println(s"Documenting package ($currentPackage/$totalPackages): ${pack.name}")
-
-        mutateEntities(pack) { e =>
-          val comment = commentParser.parse(e, packages)
-          setComment(e, to = comment)
-        }
-      }
-
-      // (4) Write the finished model to JSON
+      // (3) Write the finished model to JSON
       util.IndexWriters.writeJs(packages, "../js/out")
 
-      // (5) Clear caches
+      // (4) Clear caches
       commentParser.clear()
 
       // Return super's result

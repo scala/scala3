@@ -9,6 +9,8 @@ object CommentParsers {
   import comment._
   import BodyParsers._
   import model.internal._
+  import util.traversing._
+  import util.internal.setters._
 
   class WikiParser extends CommentCleaner with CommentParser with CommentExpander {
     private[this] var commentCache: Map[String, (Entity, Map[String, Package]) => Option[Comment]] = Map.empty
@@ -45,11 +47,35 @@ object CommentParsers {
 
     def +=(entity: Entity, symbol: Symbol, ctx: Context) = add(entity, symbol, ctx)
 
-    def parse(entity: Entity, packs: Map[String, Package]): Option[Comment] =
+    def size: Int = commentCache.size
+
+    private def parse(entity: Entity, packs: Map[String, Package]): Option[Comment] =
       commentCache(entity.path.mkString("."))(entity, packs)
 
-    def clear(): Unit = commentCache = Map.empty
+    def parse(packs: Map[String, Package]): Unit = {
+      def rootPackages: List[String] = {
+        var currentDepth = Int.MaxValue
+        var packages: List[String] = Nil
 
-    def size: Int = commentCache.size
+        for (key <- packs.keys) {
+          val keyDepth = key.split(".").length
+          packages =
+            if (keyDepth < currentDepth) key :: Nil
+            else if (keyDepth == currentDepth) key :: packages
+            else packages
+        }
+
+        packages
+      }
+
+      for (pack <- rootPackages) {
+        mutateEntities(packs(pack)) { e =>
+          val comment = parse(e, packs)
+          setComment(e, to = comment)
+        }
+      }
+    }
+
+    def clear(): Unit = commentCache = Map.empty
   }
 }
