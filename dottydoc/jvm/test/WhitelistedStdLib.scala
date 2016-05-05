@@ -4,7 +4,7 @@ package dottydoc
 import scala.io.Source
 
 object WhitelistedStandardLib extends DottyDoc {
-  val files: Array[String] = {
+  val files: List[String] = {
     val whitelist = "../../test/dotc/scala-collections.whitelist"
 
     Source.fromFile(whitelist, "UTF8")
@@ -15,9 +15,9 @@ object WhitelistedStandardLib extends DottyDoc {
       .filter(_.nonEmpty)
       .filterNot(_.endsWith("package.scala"))
       .map("../." + _)
-      .toArray
+      .toList
   }
 
   override def main(args: Array[String]) =
-    super.main("-language:Scala2" +: files)
+    super.main("-language:Scala2" +: files.toArray)
 }

@@ -119,10 +119,11 @@ object Phases {
       val compUnits = super.runOn(units)
 
       // (2) Create documentation template from docstrings, with internal links
+      println("Generating documentation, this might take a while...")
       commentParser.parse(packages)
 
       // (3) Write the finished model to JSON
-      util.IndexWriters.writeJs(packages, "../js/out")
+      if (!ctx.settings.YDocNoWrite.value) util.IndexWriters.writeJs(packages, "../js/out")
 
       // (4) Clear caches
       commentParser.clear()

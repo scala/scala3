@@ -198,6 +198,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YpresentationDelay = IntSetting("-Ypresentation-delay", "Wait number of ms after typing before starting typechecking", 0, 0 to 999)
 
   /** Dottydoc specific settings */
+  val YDocNoWrite = BooleanSetting("-Ydoc-nowrite", "Doesn't write HTML files if set", false)
 
   val DocTitle = StringSetting (
     "-Ydoc-title",

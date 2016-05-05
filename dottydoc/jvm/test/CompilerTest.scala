@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 
 import dotc.core.Contexts
-import Contexts.{ Context, ContextBase }
+import Contexts.{ Context, ContextBase, FreshContext }
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dottydoc.core.Phases.DocPhase
@@ -10,17 +10,20 @@ import dottydoc.core.Phases.DocPhase
 trait DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
-  implicit var ctx: Contexts.Context = {
+  implicit var ctx: FreshContext = {
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
+    ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setSetting(ctx.settings.YDocNoWrite, true)
     base.initialize()(ctx)
     ctx
   }
 
   private def compilerWithChecker(assertion: DocPhase => Unit) = new DottyDocCompiler {
-    val docPhase = new DocPhase
+    private[this] val docPhase = new DocPhase
+
     override def phases =
       List(new FrontEnd) ::
       List(docPhase) ::
@@ -38,7 +41,7 @@ trait DottyTest {
     run.compile(source)
   }
 
-  def checkCompile(sources:List[String])(assertion: DocPhase => Unit): Unit = {
+  def checkCompile(sources: List[String])(assertion: DocPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
