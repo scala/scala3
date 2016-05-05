@@ -9,8 +9,7 @@ class TestWhitelistedCollections extends DottyTest {
     checkCompile(WhitelistedStandardLib.files) { doc =>
       val array = doc
         .packages("scala")
-        .children
-        .find(_.path.mkString(".") == "scala.Array")
+        .children.find(_.path.mkString(".") == "scala.Array")
         .get
 
       assert(array.comment.get.body.length > 0)
