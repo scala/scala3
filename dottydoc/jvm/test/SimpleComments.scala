@@ -15,7 +15,7 @@ class TestSimpleComments extends DottyTest {
       |trait HelloWorld
       """.stripMargin
 
-    checkCompile(source) { doc =>
+    checkSource(source) { doc =>
       val traitCmt = doc
         .packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")

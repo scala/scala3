@@ -1,23 +1,17 @@
 package dotty.tools
 package dottydoc
 
-import scala.io.Source
+import org.junit.Test
+import org.junit.Assert._
 
-object WhitelistedStandardLib extends DottyDoc {
-  val files: List[String] = {
-    val whitelist = "../../test/dotc/scala-collections.whitelist"
+class TestWhitelistedCollections extends DottyTest {
+  @Test def arrayHasDocumentation =
+    checkFiles(WhitelistedStandardLib.files) { doc =>
+      val array = doc
+        .packages("scala")
+        .children.find(_.path.mkString(".") == "scala.Array")
+        .get
 
-    Source.fromFile(whitelist, "UTF8")
-      .getLines()
-      .map(_.trim) // allow identation
-      .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-      .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-      .filter(_.nonEmpty)
-      .filterNot(_.endsWith("package.scala"))
-      .map("../." + _)
-      .toList
-  }
-
-  override def main(args: Array[String]) =
-    super.main("-language:Scala2" +: files.toArray)
+      assert(array.comment.get.body.length > 0)
+    }
 }

@@ -3,6 +3,7 @@ package dottydoc
 
 import dotc.core.Contexts
 import Contexts.{ Context, ContextBase, FreshContext }
+import dotc.util.SourceFile
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dottydoc.core.Phases.DocPhase
@@ -34,17 +35,24 @@ trait DottyTest {
       Nil
   }
 
-  def checkCompile(source: String)(assertion: DocPhase => Unit): Unit = {
+  def checkSource(source: String)(assertion: DocPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(source)
   }
 
-  def checkCompile(sources: List[String])(assertion: DocPhase => Unit): Unit = {
+  def checkFiles(sources: List[String])(assertion: DocPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(sources)
+  }
+
+  def checkSources(sourceFiles: List[SourceFile])(assertion: DocPhase => Unit): Unit = {
+    val c = compilerWithChecker(assertion)
+    c.rootContext(ctx)
+    val run = c.newRun
+    run.compileSources(sourceFiles)
   }
 }

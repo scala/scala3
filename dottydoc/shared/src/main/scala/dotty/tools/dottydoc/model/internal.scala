@@ -11,11 +11,11 @@ object internal {
 
   final case class PackageImpl(
     name: String,
-    members: List[Entity],
+    var members: List[Entity],
     path: List[String],
     var comment: Option[Comment] = None
   ) extends Package with Impl {
-    val children: List[Entity with Members] =
+    def children: List[Entity with Members] =
       members.collect { case x: Entity with Members => x }
   }
 

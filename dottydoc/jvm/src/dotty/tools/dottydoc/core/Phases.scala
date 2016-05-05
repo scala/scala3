@@ -94,10 +94,22 @@ object Phases {
     var packages: Map[String, Package] = Map.empty
 
     def addEntity(p: Package): Package = {
+      def mergedChildren(x1s: List[Entity], x2s: List[Entity]): List[Entity] = {
+        val (packs1, others1) = x1s.partition(_.kind == "package")
+        val (packs2, others2) = x2s.partition(_.kind == "package")
+
+        val others = others1 ::: others2
+        val packs  = (packs1 ::: packs2).groupBy(_.path).map(_._2.head)
+
+        (others ++ packs).sortBy(_.name)
+      }
+
       val path    = p.path.mkString(".")
-      val newPack = packages.get(path).map { ex =>
-        val children = (ex.children ::: p.children).distinct.sortBy(_.name)
-        PackageImpl(p.name, children, p.path, None)
+      val newPack = packages.get(path).map {
+        case ex: PackageImpl =>
+          if (!ex.comment.isDefined) ex.comment = p.comment
+          ex.members = mergedChildren(ex.members, p.members)
+          ex
       }.getOrElse(p)
 
       packages = packages + (path -> newPack)
