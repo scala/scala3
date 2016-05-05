@@ -30,7 +30,7 @@ object Positions {
    *  is roughly where the ^ would go if an error was diagnosed at that position.
    *  All quantities are encoded opaquely in a Long.
    */
-  class Position(val coords: Long) extends AnyVal {
+  class Position(val coords: Long) extends AnyVal with EqClass[Position] {
 
     /** Is this position different from NoPosition? */
     def exists = this != NoPosition

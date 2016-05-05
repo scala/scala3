@@ -22,7 +22,7 @@ object Constants {
   // For supporting java enumerations inside java annotations (see ClassfileParser)
   final val EnumTag    = 13
 
-  case class Constant(value: Any) extends printing.Showable {
+  case class Constant(value: Any) extends printing.Showable with EqClass[Constant] {
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
 

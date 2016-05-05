@@ -388,6 +388,7 @@ object StdNames {
     val emptyValDef: N          = "emptyValDef"
     val ensureAccessible : N    = "ensureAccessible"
     val eq: N                   = "eq"
+    val EqClass: N              = "EqClass"
     val equalsNumChar : N       = "equalsNumChar"
     val equalsNumNum : N        = "equalsNumNum"
     val equalsNumObject : N     = "equalsNumObject"

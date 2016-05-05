@@ -5,7 +5,7 @@ package util
 import Positions.{Position, NoPosition}
 
 /** A source position is comprised of a position in a source file */
-case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.SourcePosition {
+case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.SourcePosition with EqClass[SourcePosition] {
   def exists = pos.exists
 
   def lineContent: String = source.lineContent(point)

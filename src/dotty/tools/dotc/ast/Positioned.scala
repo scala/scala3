@@ -6,7 +6,7 @@ import util.DotClass
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned extends DotClass with Product {
+abstract class Positioned extends DotClass with Product with EqClass[Positioned] {
 
   private[this] var curPos: Position = _
 

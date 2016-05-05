@@ -70,7 +70,7 @@ object Types {
    *                       +- ErrorType
    *                       +- WildcardType
    */
-  abstract class Type extends DotClass with Hashable with printing.Showable {
+  abstract class Type extends DotClass with Hashable with printing.Showable with EqClass[Type] {
 
 // ----- Tests -----------------------------------------------------
 

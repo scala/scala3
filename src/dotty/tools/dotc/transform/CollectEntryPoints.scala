@@ -75,7 +75,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
       val javaPlatform = ctx.platform.asInstanceOf[JavaPlatform]
       if (javaPlatform.hasJavaMainMethod(companion))
         failNoForwarder("companion contains its own main method")
-      else if (companion != NoSymbol && companion.info.member(nme.main) != NoSymbol)
+      else if (companion.exists && companion.info.member(nme.main).exists)
       // this is only because forwarders aren't smart enough yet
         failNoForwarder("companion contains its own main method (implementation restriction: no main is allowed, regardless of signature)")
       else if (companion.flags is Flags.Trait)

@@ -861,7 +861,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
               "If possible, please file a bug on issues.scala-lang.org.")
 
           tp match {
-            case ThisType(ArrayClass)               => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+            case tp: ThisType if tp.cls == ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
             case ThisType(sym)                      => storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])
            // case t: SingletonType                 => primitiveOrClassToBType(t.classSymbol)
             case t: SingletonType                  => t.underlying.toTypeKind(ct)(storage)

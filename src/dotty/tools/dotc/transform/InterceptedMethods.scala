@@ -123,6 +123,13 @@ class InterceptedMethods extends MiniPhaseTransform {
           //    so we need replace that method name with Object_getClass to get correct behavior.
           //    See SI-5568.
           qual.selectWithSig(defn.Any_getClass).appliedToNone
+      case t if t.owner == defn.EqClassClass =>
+        tree match {
+          case Apply(Apply(Select(qual, _), args), implicitArgs) =>
+            qual.select(defn.Any_==).appliedToArgs(args)
+          case _ =>
+            tree
+        }
       case _ =>
         tree
     }
