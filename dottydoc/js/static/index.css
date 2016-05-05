@@ -8,6 +8,10 @@ span.subtitle {
     padding-top: 32px;
 }
 
+div.member {
+    min-height: 70px;
+}
+
 div.member.member-fullcomment:hover {
     cursor: pointer;
 }

@@ -14,7 +14,10 @@ object factories {
   import DottyFlags._
 
   def flags(t: Tree)(implicit ctx: Context): List[String] =
-    (t.symbol.flags & SourceModifierFlags).flagStrings.toList
+    (t.symbol.flags & SourceModifierFlags)
+      .flagStrings.toList
+      .filter(_ != "<trait>")
+      .filter(_ != "interface")
 
   def path(t: Tree)(implicit ctx: Context): List[String] = {
     def pathList(tpe: Type): List[String] = tpe match {

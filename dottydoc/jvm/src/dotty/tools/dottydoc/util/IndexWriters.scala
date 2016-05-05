@@ -14,7 +14,6 @@ object IndexWriters {
         EntityPage(pack, packs).render,
         outPath + pack.path.dropRight(1).mkString("/", "/", "/"),
         s"${pack.name.split("\\.").last}.html")
-        //s"index.html")
 
       for {
         child <- pack.children
