@@ -31,10 +31,10 @@ class DottyDocCompiler extends Compiler {
     List(new DocPhase) ::
     Nil
 
-    override def newRun(implicit ctx: Context): Run = {
-      reset()
-      new DocRun(this)(rootContext)
-    }
+  override def newRun(implicit ctx: Context): Run = {
+    reset()
+    new DocRun(this)(rootContext)
+  }
 }
 
 class DocRun(comp: Compiler)(implicit ctx: Context) extends Run(comp)(ctx) {

@@ -3,10 +3,11 @@ package dottydoc
 
 import scala.io.Source
 
-object WhitelistedStdLib extends DottyDoc {
-  override def main(args: Array[String]) = {
+object WhitelistedStandardLib extends DottyDoc {
+  val files: Array[String] = {
     val whitelist = "../../test/dotc/scala-collections.whitelist"
-    val stdlibFiles = Source.fromFile(whitelist, "UTF8")
+
+    Source.fromFile(whitelist, "UTF8")
       .getLines()
       .map(_.trim) // allow identation
       .filter(!_.startsWith("#")) // allow comment lines prefixed by #
@@ -15,7 +16,8 @@ object WhitelistedStdLib extends DottyDoc {
       .filterNot(_.endsWith("package.scala"))
       .map("../." + _)
       .toArray
-
-    super.main("-language:Scala2" +: stdlibFiles)
   }
+
+  override def main(args: Array[String]) =
+    super.main("-language:Scala2" +: files)
 }
