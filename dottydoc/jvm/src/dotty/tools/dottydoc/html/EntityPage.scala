@@ -98,7 +98,8 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
               // Filter out packages
               ent.kind == "package" ||
               // Filter out objects that have companions
-              (ent.kind == "object" && companion(ent).isDefined)
+              (ent.kind == "object" && companion(ent).isDefined) ||
+              ent.name == "AnyValCompanion"
             }
             .map { entity =>
               val comp = companion(entity)
