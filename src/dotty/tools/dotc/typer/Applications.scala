@@ -943,11 +943,11 @@ trait Applications extends Compatibility { self: Typer =>
      *  This relation might seem strange, but it models closely what happens for methods.
      *  Indeed, if we integrate the existing rules for methods into `<:s` we have now that
      *
-     *     (T1)T2  <:s  (U1)U2
+     *     (T)R  <:s  (U)R
      *
      *  iff
      *
-     *     T1 => T2  <:s  U1 => U2
+     *     T => R  <:s  U => R
      */
     def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if (ctx.mode.is(Mode.OldOverloadingResolution))
