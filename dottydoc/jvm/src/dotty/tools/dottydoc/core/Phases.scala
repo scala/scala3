@@ -130,14 +130,20 @@ object Phases {
       totalRuns = units.length
       val compUnits = super.runOn(units)
 
-      // (2) Create documentation template from docstrings, with internal links
+      // (2) Set parents of entities, needed for linking
+      for {
+        parent <- packages.values
+        child  <- parent.children
+      } setParent(child, to = parent)
+
+      // (3) Create documentation template from docstrings, with internal links
       println("Generating documentation, this might take a while...")
       commentParser.parse(packages)
 
-      // (3) Write the finished model to JSON
+      // (4) Write the finished model to JSON
       if (!ctx.settings.YDocNoWrite.value) util.IndexWriters.writeJs(packages, "../js/out")
 
-      // (4) Clear caches
+      // (5) Clear caches
       commentParser.clear()
 
       // Return super's result
