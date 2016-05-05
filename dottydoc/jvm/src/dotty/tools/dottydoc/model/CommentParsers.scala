@@ -58,11 +58,14 @@ object CommentParsers {
         var packages: List[String] = Nil
 
         for (key <- packs.keys) {
-          val keyDepth = key.split(".").length
+          val keyDepth = key.split("\\.").length
           packages =
-            if (keyDepth < currentDepth) key :: Nil
-            else if (keyDepth == currentDepth) key :: packages
-            else packages
+            if (keyDepth < currentDepth) {
+              currentDepth = keyDepth
+              key :: Nil
+            } else if (keyDepth == currentDepth) {
+              key :: packages
+            } else packages
         }
 
         packages
