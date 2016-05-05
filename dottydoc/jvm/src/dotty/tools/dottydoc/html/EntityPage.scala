@@ -75,8 +75,9 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
     )
   )
 
-  private def filteredName(str: String) =
-    str.replaceAll("\\$colon", ":")
+  private def filteredName(str: String) = str
+    .replaceAll("\\$colon", ":")
+    .replaceAll("\\$plus", "+")
 
   private def relativePath(to: Entity) =
     util.traversing.relativePath(entity, to)
