@@ -512,14 +512,14 @@ trait Implicits { self: Typer =>
         case _ => false
       }
       // A type `tp` is a valid `eqAny` argument if `tp` is a bottom type, or
-      // no implicit value of type `Eq[tp, tp]` exists. 
+      // no implicit value of type `Eq[tp, tp]` exists.
       def isValidEqAnyArg(tp: Type)(implicit ctx: Context) = {
         fullyDefinedType(tp, "eqAny argument", pos)
         defn.isBottomType(tp.dealias) || !hasEq(tp)
       }
       def areValidEqAnyArgs(tps: List[Type])(implicit ctx: Context) =
         tps.forall(isValidEqAnyArg) || {
-          println(i"invalid eqAny[$tps%, %]"); false
+          implicits.println(i"invalid eqAny[$tps%, %]"); false
         }
       val result = searchImplicit(pt)
       result match {
