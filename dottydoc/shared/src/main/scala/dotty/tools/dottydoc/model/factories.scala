@@ -7,7 +7,6 @@ import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
 import dotc.core.{ Flags => DottyFlags }
 import dotc.ast.Trees._
-import DottyFlags.FlagSet
 
 object factories {
   import dotty.tools.dotc.ast.tpd._

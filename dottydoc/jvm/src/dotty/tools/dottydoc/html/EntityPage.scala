@@ -9,6 +9,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import CustomTags._
   import model.pickling._
   import prickle._
+  import util.internal.setters._
 
   private def relPath(to: String, from: Entity) =
     "../" * from.path.length + to
@@ -68,7 +69,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
       )
     ),
     script(
-      raw(s"""|UnparsedIndex.currentEntity = ${Pickle.intoString(entity)};
+      raw(s"""|UnparsedIndex.currentEntity = ${Pickle.intoString(entity.flat)};
               |dotty.tools.dottydoc.js.DottyDocJS()
               |     .main(document.getElementById("entity-container"));
            """.stripMargin)

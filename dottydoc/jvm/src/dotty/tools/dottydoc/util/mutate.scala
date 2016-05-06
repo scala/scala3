@@ -36,4 +36,29 @@ object setters {
       e.parent = to
     case _ => ()
   }
+
+  implicit class FlattenedEntity(val ent: Entity) extends AnyVal {
+    /** Returns a flat copy if anything was changed (Entity with Members) else
+     *  the identity
+     */
+    def flat: Entity = {
+      def flattenMember: Entity => Entity = {
+        case e: PackageImpl   => e.copy(members = Nil)
+        case e: ObjectImpl    => e.copy(members = Nil)
+        case e: CaseClassImpl => e.copy(members = Nil)
+        case e: ClassImpl     => e.copy(members = Nil)
+        case e: TraitImpl     => e.copy(members = Nil)
+        case other            => other
+      }
+
+      ent match {
+        case e: PackageImpl   => e.copy(members = e.members.map(flattenMember))
+        case e: ObjectImpl    => e.copy(members = e.members.map(flattenMember))
+        case e: CaseClassImpl => e.copy(members = e.members.map(flattenMember))
+        case e: ClassImpl     => e.copy(members = e.members.map(flattenMember))
+        case e: TraitImpl     => e.copy(members = e.members.map(flattenMember))
+        case other            => other
+      }
+    }
+  }
 }
