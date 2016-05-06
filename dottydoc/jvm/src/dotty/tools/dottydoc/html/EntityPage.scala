@@ -75,10 +75,6 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
     )
   )
 
-  private def filteredName(str: String) = str
-    .replaceAll("\\$colon", ":")
-    .replaceAll("\\$plus", "+")
-
   private def relativePath(to: Entity) =
     util.traversing.relativePath(entity, to)
 
@@ -116,13 +112,13 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
                 a(
                   cls := "entity-name",
                   href := entityUrl,
-                  filteredName(entity.name)
+                  entity.name
                 )
               )
             }
 
         if (children.length > 0)
-          li(cls := "mdl-list__item package", href := relativePath(pack), filteredName(k)) :: children
+          li(cls := "mdl-list__item package", href := relativePath(pack), k) :: children
         else Nil
       }
     }
