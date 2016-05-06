@@ -10,10 +10,9 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eq[Str, Str] = Eq()
-  implicit def eqNum: Eq[Num, Num] = Eq()
-  implicit def eqOption[T, U, OT <: Option[T], OU <: Option[U]]
-    (implicit e: Eq[T, U]): Eq[OT, OU] = Eq()
+  implicit def eqStr: Eq[Str, Str] = Eq
+  implicit def eqNum: Eq[Num, Num] = Eq
+  implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None
@@ -44,7 +43,7 @@ object equality {
 
     class Fruit
 
-    implicit def eqFruit[A <: Fruit, B <: Fruit]: Eq[A, B] = Eq()
+    implicit def eqFruit: Eq[Fruit, Fruit] = Eq
 
     class Apple extends Fruit
     class Pear extends Fruit
