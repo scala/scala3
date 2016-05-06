@@ -14,6 +14,12 @@ object equality {
   implicit def eqNum: Eq[Num, Num] = Eq
   implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 
+  implicit def eqString: Eq[String, String] = Eq
+  implicit def eqInt: Eq[Int, Int] = Eq
+  implicit def eqNumber: Eq[Number, Number] = Eq
+  implicit def eqIntNumber: Eq[Int, Number] = Eq
+  implicit def eqNumberInt: Eq[Number, Int] = Eq
+
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None
 
@@ -23,6 +29,10 @@ object equality {
     val n = Num(2)
     val m = Num(3)
     n == m
+
+    val so: Object = "abc"
+    so == "abc"
+    "abc" == so
 
     Other(1) == Other(2)
 
@@ -56,6 +66,13 @@ object equality {
     p == f
     Some(new Apple) == Some(new Pear)
 
+    val i = 3
+    val bi = BigInt(i)
+    i == i
+    bi == bi
+    i == bi
+    bi == i
+
     n match {
       case None =>   // error
     }
@@ -75,5 +92,9 @@ object equality {
     Some(n) == Some(Other(3)) // error
     Some(Other(3)) == Some(n) // error
     n == z // error
+    "abc" == 1 // error
+    1 == "abc" // error
+    "abc" == bi // error
+    bi == "abc" // error
   }
 }
