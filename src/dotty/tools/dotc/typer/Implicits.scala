@@ -23,6 +23,8 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import Inferencing.fullyDefinedType
+import Trees._
 import Hashable._
 import config.Config
 import config.Printers._
@@ -414,6 +416,68 @@ trait Implicits { self: Typer =>
           throw ex
       }
   }
+
+  /** Find an implicit argument for parameter `formal`.
+   *  @param error  An error handler that gets an error message parameter
+   *                which is itself parameterized by another string,
+   *                indicating where the implicit parameter is needed
+   */
+  def inferImplicitArg(formal: Type, error: (String => String) => Unit, pos: Position)(implicit ctx: Context): Tree =
+    inferImplicit(formal, EmptyTree, pos) match {
+      case SearchSuccess(arg, _, _) =>
+        arg
+      case ambi: AmbiguousImplicits =>
+        error(where => s"ambiguous implicits: ${ambi.explanation} of $where")
+        EmptyTree
+      case failure: SearchFailure =>
+        val arg = synthesizedClassTag(formal, pos)
+        if (!arg.isEmpty) arg
+        else {
+          var msgFn = (where: String) =>
+            d"no implicit argument of type $formal found for $where" + failure.postscript
+          for {
+            notFound <- formal.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
+            Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
+          } {
+            msgFn = where =>
+              err.implicitNotFoundString(
+                raw,
+                formal.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+                formal.argInfos)
+          }
+          error(msgFn)
+          EmptyTree
+        }
+    }
+
+  /** If `formal` is of the form ClassTag[T], where `T` is a class type,
+   *  synthesize a class tag for `T`.
+   */
+  def synthesizedClassTag(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+    if (formal.isRef(defn.ClassTagClass))
+      formal.argTypes match {
+        case arg :: Nil =>
+          val tp = fullyDefinedType(arg, "ClassTag argument", pos)
+          tp.underlyingClassRef(refinementOK = false) match {
+            case tref: TypeRef =>
+              return ref(defn.ClassTagModule)
+                .select(nme.apply)
+                .appliedToType(tp)
+                .appliedTo(clsOf(tref))
+                .withPos(pos)
+            case _ =>
+          }
+        case _ =>
+      }
+    EmptyTree
+  }
+
+  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!ctx.isAfterTyper && !ltp.isError && !rtp.isError)
+      inferImplicitArg(
+        defn.EqType.appliedTo(ltp, rtp),
+        _ => d"Values of types $ltp and $rtp cannot be compared with == or !=",
+        pos)
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.

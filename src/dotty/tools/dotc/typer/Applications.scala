@@ -603,7 +603,17 @@ trait Applications extends Compatibility { self: Typer =>
           failedVal
         }
       }
-    else realApply
+    else {
+      val app = realApply
+      app match {
+        case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+          val op = fn.symbol
+          if (op == defn.Any_== || op == defn.Any_!=)
+            checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
+        case _ =>
+      }
+      app
+    }
   }
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
