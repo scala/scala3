@@ -361,6 +361,8 @@ trait Symbols { this: Context =>
 
 object Symbols {
 
+  implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
+
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)

@@ -26,6 +26,8 @@ object Names {
     def toTermName: TermName
   }
 
+  implicit def eqName: Eq[Name, Name] = Eq
+
   /** A name is essentially a string, with three differences
    *  1. Names belong in one of two name spaces: they are type names or term names.
    *     Term names have a sub-category of "local" field names.
