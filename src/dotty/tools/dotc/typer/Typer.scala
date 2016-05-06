@@ -1594,7 +1594,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         if (ctx.mode is Mode.Pattern) {
           tree match {
-            case _: RefTree | _: Literal if !isVarPattern(tree) => checkCanEqual(pt, wtp, tree.pos)
+            case _: RefTree | _: Literal if !isVarPattern(tree) =>
+              checkCanEqual(pt, wtp, tree.pos)(ctx.retractMode(Mode.Pattern))
             case _ =>
           }
           tree

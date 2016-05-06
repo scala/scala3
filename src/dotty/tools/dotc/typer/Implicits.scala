@@ -193,7 +193,7 @@ object Implicits {
 
   /** A successful search
    *  @param ref   The implicit reference that succeeded
-   *  @param tree  The typed tree that can needs to be inserted
+   *  @param tree  The typed tree that needs to be inserted
    *  @param ctx   The context after the implicit search
    */
   case class SearchSuccess(tree: tpd.Tree, ref: TermRef, tstate: TyperState) extends SearchResult {
@@ -472,12 +472,17 @@ trait Implicits { self: Typer =>
     EmptyTree
   }
 
-  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!ctx.isAfterTyper && !ltp.isError && !rtp.isError)
-      inferImplicitArg(
+  /** Check that equality tests between types `ltp` and `rtp` make sense */
+  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    def assumedCanEqual = ltp.isError || rtp.isError || ltp <:< rtp || rtp <:< ltp
+    if (!ctx.isAfterTyper && !assumedCanEqual) {
+      val res = inferImplicitArg(
         defn.EqType.appliedTo(ltp, rtp),
-        _ => d"Values of types $ltp and $rtp cannot be compared with == or !=",
+        _ => ctx.error(d"Values of types $ltp and $rtp cannot be compared with == or !=", pos),
         pos)
+      implicits.println(i"Eq witness found: $res: ${res.tpe}")
+    }
+  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -493,14 +498,41 @@ trait Implicits { self: Typer =>
     val prevConstr = ctx.typerState.constraint
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
-      val isearch =
-        if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
-        else new ImplicitSearch(pt, argument, pos)
-      val result = isearch.bestImplicit
+      // Search implicit argument with type `tp`
+      def searchImplicit(pt: Type) = {
+        val isearch =
+          if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
+          else new ImplicitSearch(pt, argument, pos)
+        isearch.bestImplicit
+      }
+      // Does there exist an implicit value of type `Eq[tp, tp]`?
+      def hasEq(tp: Type): Boolean = searchImplicit(defn.EqType.appliedTo(tp, tp)) match {
+        case result: SearchSuccess => result.ref.symbol != defn.Eq_eqAny
+        case result: AmbiguousImplicits => true
+        case _ => false
+      }
+      // A type `tp` is a valid `eqAny` argument if `tp` is a bottom type, or
+      // no implicit value of type `Eq[tp, tp]` exists. 
+      def isValidEqAnyArg(tp: Type)(implicit ctx: Context) = {
+        fullyDefinedType(tp, "eqAny argument", pos)
+        defn.isBottomType(tp.dealias) || !hasEq(tp)
+      }
+      def areValidEqAnyArgs(tps: List[Type])(implicit ctx: Context) =
+        tps.forall(isValidEqAnyArg) || {
+          println(i"invalid eqAny[$tps%, %]"); false
+        }
+      val result = searchImplicit(pt)
       result match {
         case result: SearchSuccess =>
-          result.tstate.commit()
-          result
+          result.tree match {
+            case TypeApply(fn, targs)
+            if fn.symbol == defn.Eq_eqAny &&
+               !areValidEqAnyArgs(targs.tpes)(ctx.fresh.setTyperState(result.tstate)) =>
+              NoImplicitMatches
+            case _ =>
+              result.tstate.commit()
+              result
+          }
         case result: AmbiguousImplicits =>
           val deepPt = pt.deepenProto
           if (deepPt ne pt) inferImplicit(deepPt, argument, pos)

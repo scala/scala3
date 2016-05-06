@@ -433,7 +433,7 @@ class Definitions {
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
   def EqModule(implicit ctx: Context) = EqClass.companionModule
 
-    def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethodRef(nme.eqAny)
+    def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethod(nme.eqAny)
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
