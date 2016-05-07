@@ -3408,6 +3408,12 @@ object Types {
     }
   }
 
+  abstract class TypeTraverser(implicit ctx: Context) extends TypeAccumulator[Unit] {
+    def traverse(tp: Type): Unit
+    def apply(x: Unit, tp: Type): Unit = traverse(tp)
+    protected def traverseChildren(tp: Type) = foldOver((), tp)
+  }
+
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def stopAtStatic = false
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
