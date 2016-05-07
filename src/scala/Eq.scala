@@ -1,6 +1,9 @@
 package scala
 
+import annotation.implicitNotFound
+
 /** A marker class indicating that values of kind `T` can be compared. */
+@implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 class Eq[-L, -R]
 
 /** Besides being a companion object, this object

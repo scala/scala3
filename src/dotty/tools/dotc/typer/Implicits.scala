@@ -477,9 +477,7 @@ trait Implicits { self: Typer =>
     def assumedCanEqual = ltp.isError || rtp.isError || ltp <:< rtp || rtp <:< ltp
     if (!ctx.isAfterTyper && !assumedCanEqual) {
       val res = inferImplicitArg(
-        defn.EqType.appliedTo(ltp, rtp),
-        _ => ctx.error(d"Values of types $ltp and $rtp cannot be compared with == or !=", pos),
-        pos)
+        defn.EqType.appliedTo(ltp, rtp), msgFun => ctx.error(msgFun(""), pos), pos)
       implicits.println(i"Eq witness found: $res: ${res.tpe}")
     }
   }
