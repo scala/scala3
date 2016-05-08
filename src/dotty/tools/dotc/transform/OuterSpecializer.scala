@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Symbols.{ClassSymbol, Symbol}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.CollectSummaries.SubstituteByParentMap
 import dotty.tools.dotc.transform.Summaries.OuterTargs
-import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
+import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 
 import scala.collection.mutable
 import scala.reflect.internal.util.Collections
@@ -91,6 +91,11 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     else {
       Nil
     }
+  }
+
+  override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
+    if (ctx.settings.lto.value.contains("specialize") || ctx.settings.lto.value.contains("all")) this
+    else TreeTransforms.NoTransform
   }
 
   /** was decl requested to be specialized */
