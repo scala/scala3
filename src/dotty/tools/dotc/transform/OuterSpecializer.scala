@@ -519,6 +519,24 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
     })
   }
 
+  private def newBridges(claz: ClassSymbol)(implicit ctx: Context) = {
+    val bridgeSymbols = addBridges.getOrElse(claz, Nil)
+    //          if (bridgeSymbols.isEmpty)
+    //            println(s"generating no bridges for ${tree.symbol}")
+    bridgeSymbols.map { case (nw, old) =>
+      polyDefDef(nw.asTerm, tparams => vparamss => {
+
+        val prefix = This(claz).select(old).appliedToTypes(tparams)
+        val argTypess = prefix.tpe.widen.paramTypess
+        val argss = Collections.map2(vparamss, argTypess) { (vparams, argTypes) =>
+          Collections.map2(vparams, argTypes) { (vparam, argType) => vparam.ensureConforms(argType) }
+        }
+        prefix.appliedToArgss(argss).ensureConforms(nw.info.finalResultType)
+      })
+    }
+
+  }
+
 
   override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val oldSym = tree.symbol
@@ -559,7 +577,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
                 val newMeth: Symbol = // todo: handle overloading
                 /*if(!t.symbol.is(Flags.Private)) t.symbol.matchingMember(newSym.info) // does not work. Signatures do not match anymore
                    else */
-                  t.symbol.asSymDenotation.matchingDecl(newClassSym, newClassSym.thisType).orElse(
+                  t.symbol.asSymDenotation.matchingDecl(newClassSym, newClassSym.thisType).filter(p => !(p is Flags.Bridge)).orElse(
                     variants.symbol
                   )
                 //x.matchingDecl(original.symbol.owner.asClass, x.owner.thisType).exists)
@@ -576,7 +594,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
               case _ => // just body. TTM this shit
                 bodytreeTypeMap.apply(original)
             }
-          }
+          }  ++ newBridges(newClassSym.asClass)
           val superArgs = treeRhs.parents.head match {
             case Apply(fn, args) => args
             case _ => Nil
@@ -585,28 +603,12 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
           tpd.ClassDef(newClassSym.asClass, constr, body, superArgs)
         }.toList
 
-        val newBridges = {
-          val bridgeSymbols = addBridges.getOrElse(tree.symbol.asClass, Nil)
-//          if (bridgeSymbols.isEmpty)
-//            println(s"generating no bridges for ${tree.symbol}")
-          bridgeSymbols.map { case (nw, old) =>
-            polyDefDef(nw.asTerm, tparams => vparamss => {
-
-              val prefix = This(oldSym.asClass).select(old).appliedToTypes(tparams)
-              val argTypess = prefix.tpe.widen.paramTypess
-              val argss = Collections.map2(vparamss, argTypess) { (vparams, argTypes) =>
-                Collections.map2(vparams, argTypes) { (vparam, argType) => vparam.ensureConforms(argType) }
-              }
-              prefix.appliedToArgss(argss).ensureConforms(nw.info.finalResultType)
-            })
-          }
-
-        }
+        val genericBridges = newBridges(oldSym.asClass)
 
         val newTrait =
-          if (newBridges.nonEmpty) {
+          if (genericBridges.nonEmpty) {
             val currentRhs = tree.rhs.asInstanceOf[Template]
-            cpy.TypeDef(tree)(rhs = cpy.Template(currentRhs)(body = currentRhs.body ++ newBridges))
+            cpy.TypeDef(tree)(rhs = cpy.Template(currentRhs)(body = currentRhs.body ++ genericBridges))
           } else tree
 
         val ret = Thicket(newTrait :: newClasses)
@@ -623,14 +625,16 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 //    if (fun.symbol.isPrimaryConstructor && fun.symbol.owner.name.toString.contains("ArrayBuf"))
 //      println("here")
 
+    val canonicalSymbol = canonical.getOrElse(fun.symbol, fun.symbol)
 
-    if (fun.symbol.isPrimaryConstructor && newSymbolMap.contains(fun.symbol.owner)) {
+
+    if (canonicalSymbol.isPrimaryConstructor && newSymbolMap.contains(canonicalSymbol.owner)) {
       val availableSpecializations = newSymbolMap(fun.symbol.owner)
-      val poly = fun.symbol.info.widen.asInstanceOf[PolyType]
-      val argsNames = fun.symbol.owner.asClass.classInfo.typeParams.map(_.name) zip args
+      val poly = canonicalSymbol.info.widen.asInstanceOf[PolyType]
+      val argsNames = canonicalSymbol.owner.asClass.classInfo.typeParams.map(_.name) zip args
       val availableClasses = availableSpecializations.filter {
         case (instantiations, symbol) => {
-          val mappings = instantiations.mp(fun.symbol.owner)
+          val mappings = instantiations.mp(canonicalSymbol.owner)
           argsNames.forall { case (name, arg) => arg.tpe <:< mappings(name).dropAlias }
         }
       }
@@ -643,13 +647,13 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
       val ideal = availableSpecializations.find {
         case (instantiations, symbol) => {
-          val mappings = instantiations.mp(fun.symbol.owner)
+          val mappings = instantiations.mp(canonicalSymbol.owner)
           argsNames.forall { case (name, arg) => arg.tpe =:= mappings(name).dropAlias }
         }
       }
 
       def rewrite(newClassSym: Symbol) = {
-        ctx.debuglog(s"new ${fun.symbol.owner} rewired to ${newClassSym}")
+        ctx.debuglog(s"new ${canonicalSymbol.owner} rewired to ${newClassSym}")
         tpd.New(newClassSym.typeRef)
           .select(newClassSym.primaryConstructor) // todo handle secondary cosntr
           .appliedToTypeTrees(args)
@@ -658,24 +662,24 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
       if (ideal.nonEmpty) {
         rewrite(ideal.get._2)
       } else if (bestVersions.length > 1) {
-        ctx.error(s"Several specialized variants fit for ${fun.symbol.name} of ${fun.symbol.owner}." +
+        ctx.error(s"Several specialized variants fit for ${canonicalSymbol.name} of ${canonicalSymbol.owner}." +
           s" Defaulting to no specialization. This is not supported yet. Variants: \n ${bestVersions.map { x => (x._2.name, x._2.info.widenDealias.show) }.mkString("\n")}")
         tree
       } else if (bestVersions.nonEmpty) {
         val newClassSym = bestVersions.head._2
-        ctx.debuglog(s"new ${fun.symbol.owner} rewired to ${newClassSym}")
+        ctx.debuglog(s"new ${canonicalSymbol.owner} rewired to ${newClassSym}")
         tpd.New(newClassSym.typeRef)
           .select(newClassSym.primaryConstructor) // todo handle secondary cosntr
           .appliedToTypeTrees(args)
       } else EmptyTree
-    } else if (newSymbolMap.contains(fun.symbol)) {
+    } else if (newSymbolMap.contains(canonicalSymbol)) {
       // not a constructor
       val poly = fun.symbol.info.widen.asInstanceOf[PolyType]
       val argsNames = poly.paramNames zip args
-      val availableSpecializations = newSymbolMap(fun.symbol)
+      val availableSpecializations = newSymbolMap(canonicalSymbol)
       val betterDefs = availableSpecializations.filter {
         case (instantiations, symbol) => {
-          val mappings = instantiations.mp(fun.symbol)
+          val mappings = instantiations.mp(canonicalSymbol)
           argsNames.forall { case (name, arg) => arg.tpe <:< mappings(name) }
         }
       }.toList
