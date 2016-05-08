@@ -472,15 +472,16 @@ trait Implicits { self: Typer =>
     EmptyTree
   }
 
+  private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) =
+    ltp.isError || rtp.isError || ltp <:< rtp || rtp <:< ltp
+
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = {
-    def assumedCanEqual = ltp.isError || rtp.isError || ltp <:< rtp || rtp <:< ltp
-    if (!ctx.isAfterTyper && !assumedCanEqual) {
+  def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = inferImplicitArg(
         defn.EqType.appliedTo(ltp, rtp), msgFun => ctx.error(msgFun(""), pos), pos)
       implicits.println(i"Eq witness found: $res: ${res.tpe}")
     }
-  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -496,41 +497,14 @@ trait Implicits { self: Typer =>
     val prevConstr = ctx.typerState.constraint
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
-      // Search implicit argument with type `tp`
-      def searchImplicit(pt: Type) = {
-        val isearch =
-          if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
-          else new ImplicitSearch(pt, argument, pos)
-        isearch.bestImplicit
-      }
-      // Does there exist an implicit value of type `Eq[tp, tp]`?
-      def hasEq(tp: Type): Boolean = searchImplicit(defn.EqType.appliedTo(tp, tp)) match {
-        case result: SearchSuccess => result.ref.symbol != defn.Eq_eqAny
-        case result: AmbiguousImplicits => true
-        case _ => false
-      }
-      // A type `tp` is a valid `eqAny` argument if `tp` is a bottom type, or
-      // no implicit value of type `Eq[tp, tp]` exists.
-      def isValidEqAnyArg(tp: Type)(implicit ctx: Context) = {
-        fullyDefinedType(tp, "eqAny argument", pos)
-        defn.isBottomType(tp.dealias) || !hasEq(tp)
-      }
-      def areValidEqAnyArgs(tps: List[Type])(implicit ctx: Context) =
-        tps.forall(isValidEqAnyArg) || {
-          implicits.println(i"invalid eqAny[$tps%, %]"); false
-        }
-      val result = searchImplicit(pt)
+      val isearch =
+        if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
+        else new ImplicitSearch(pt, argument, pos)
+      val result = isearch.bestImplicit
       result match {
         case result: SearchSuccess =>
-          result.tree match {
-            case TypeApply(fn, targs)
-            if fn.symbol == defn.Eq_eqAny &&
-               !areValidEqAnyArgs(targs.tpes)(ctx.fresh.setTyperState(result.tstate)) =>
-              NoImplicitMatches
-            case _ =>
-              result.tstate.commit()
-              result
-          }
+          result.tstate.commit()
+          result
         case result: AmbiguousImplicits =>
           val deepPt = pt.deepenProto
           if (deepPt ne pt) inferImplicit(deepPt, argument, pos)
@@ -606,6 +580,18 @@ trait Implicits { self: Typer =>
               case _ => false
             }
           }
+        // Does there exist an implicit value of type `Eq[tp, tp]`?
+        def hasEq(tp: Type): Boolean =
+          new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).bestImplicit match {
+            case result: SearchSuccess => result.ref.symbol != defn.Eq_eqAny
+            case result: AmbiguousImplicits => true
+            case _ => false
+          }
+        def validEqAnyArgs(tp1: Type, tp2: Type) = {
+          List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
+          assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2) ||
+            { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
+        }
         if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
@@ -613,8 +599,13 @@ trait Implicits { self: Typer =>
           implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
-        else
-          SearchSuccess(generated1, ref, ctx.typerState)
+        else generated1 match {
+          case TypeApply(fn, targs @ (arg1 :: arg2 :: Nil))
+          if fn.symbol == defn.Eq_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
+            nonMatchingImplicit(ref)
+          case _ =>
+            SearchSuccess(generated1, ref, ctx.typerState)
+        }
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
