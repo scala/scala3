@@ -62,6 +62,9 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
 
   val addBridges: mutable.HashMap[ClassSymbol, List[(Symbol, Symbol)]] = mutable.HashMap.empty
 
+  /** maps bridges back to original symbol */
+  val canonical: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
+
   val originBySpecialized: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
 
   /**
@@ -261,13 +264,16 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
             val currentBridge = addBridges.getOrElse(claz, Nil).filter(x => x._2 == other && x._1.signature == nw.signature)
 
 
+
             if (!other.isClassConstructor && (nw.signature.matchDegree(other.signature) != Signature.FullMatch) && currentBridge.isEmpty) {
               // bridge is needed
 
               {
                 val bridgeInSuper = ctx.newSymbol(claz, nw.name, nw.flags.&~(Flags.Accessor | Flags.ParamAccessor) | Flags.Bridge, nw.info).enteredAfter(this)
                 val lst = addBridges.getOrElse(claz, Nil)
+                canonical.put(bridgeInSuper, other)
                 addBridges.put(claz, (bridgeInSuper, other) :: lst)
+                // add spec?
               }
 
               {
@@ -275,7 +281,10 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
                   ctx.newSymbol(newClaz, nw.name, nw.flags.&~(Flags.Accessor | Flags.ParamAccessor) | Flags.Bridge, other.info)
                 val lst = addBridges.getOrElse(newClaz, Nil)
 
+                // add spec?
+
                 newDecls.enter(bridgeInSub)
+                canonical.put(bridgeInSub, nw)
                 addBridges.put(newClaz, (bridgeInSub, nw) :: lst)
               }
 
@@ -301,6 +310,28 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
       umap.put(specialization, newClaz)
       newSymbolMap.put(claz, umap)
       originBySpecialized.put(newClaz, claz)
+
+
+      val specializedByOrigin = newDecls.filter(x => x.isTerm && originBySpecialized.contains(x)).
+        map(x => (originBySpecialized(x), x)).toMap
+
+      // update specialized mappings for subclass
+      newDecls.foreach(newSym => {
+        if (newSym.isTerm && !newSym.isPrimaryConstructor && !newSym.is(Flags.Bridge)) {
+          val oldSym = originBySpecialized(newSym)
+          val oldSpeciazlizations = newSymbolMap.get(oldSym)
+          oldSpeciazlizations match {
+            case None =>
+            case Some(oldspecs) if oldspecs.nonEmpty=>
+              val newspec = oldspecs.map{case (oldargs, oldspecsym) =>
+                val updatedOldArgs = oldargs.mp(oldSym)
+                (OuterTargs((oldargs.mp - oldSym) + (newSym -> updatedOldArgs)) ++ specialization,
+                  specializedByOrigin(oldspecsym))
+              }
+              newSymbolMap.put(newSym, newspec)
+          }
+        }
+      })
 
       newClaz
     }
@@ -349,7 +380,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
           }
           else if (requestedSpecialization(sym) &&
             isSpecializable(sym, poly.paramNames.length)) {
-            generateMethodSpecializations(getSpecTypes(sym, poly))(poly, sym)
+            generateMethodSpecializations(getSpecTypes(sym, poly))(poly, sym)  // todo: this value is discarded. a bug?
             tp
           }
           else tp
