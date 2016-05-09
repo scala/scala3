@@ -12,7 +12,7 @@ theory behind these constructors is researched in
 a calculus for dependent object types.
 
 ####Current status:
- _Technology preview_: currently unsupported, may not be functionally complete, and not suitable for deployment in production.
+ _Technology preview_: currently unsupported, may be functionally incomplete or unsuitable for production use.
 
 ####Is it going to be the future Scala?
 Yes, eventually.
@@ -24,13 +24,13 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Feature                                                                                                 | Status              |
 |---------------------------------------------------------------------------------------------------------|---------------------|
 | Union, Intersection and [Literal singleton types](http://docs.scala-lang.org/sips/pending/42.type.html) | Implemented         |
-| Fast compilation (phase fusion)                                                                         | Implemented         |
+| Fast compilation(phase fusion)                                                                         | Implemented         |
 | [Trait parameters](http://docs.scala-lang.org/sips/pending/trait-parameters.html)                       | Implemented         |
 | [@Static methods and fields](https://github.com/scala/scala.github.com/pull/491)                        | Implemented         |
 | Colored Repl                                                                                            | Implemented         |
 | Sbt incremental build                                                                                   | Implemented         |
 | Non-blocking lazy vals                                                                                  | Implemented         |
-| Option-less pattern matching(based on [name-based patmat](https://github.com/scala/scala/pull/2848))    | Under consideration |
+| Option-less pattern matching(based on [name-based patmat](https://github.com/scala/scala/pull/2848))    | Implemented |
 |                                                                                                         |                     |
 | Non-boxed arrays of value classes                                                                       | In progress         |
 | Working contravariant implicits                                                                         | In progress         |
