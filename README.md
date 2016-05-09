@@ -33,8 +33,9 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Non-blocking lazy vals                          	| Implemented         	|
 |                                                 	|                     	|
 | Non-boxed arrays of value classes               	| In progress         	|
-| Auto-Specialization                             	| In progress         	|
-| Whole program optimizer                         	| In progress         	|
+| Auto-Specialization                             	| [In progress](https://github.com/dotty-linker/dotty)         	|
+| Whole program optimizer                         	| [In progress](https://github.com/dotty-linker/dotty)         	|
+| Library defined optimizations                   	| [In progress](https://github.com/dotty-linker/dotty)         	|
 |                                                 	|                     	|
 | HList & HMaps\Record types                      	| Under consideration 	|
 | Implicit functions                              	| Under consideration 	|
