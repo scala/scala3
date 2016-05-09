@@ -11,29 +11,72 @@ theory behind these constructors is researched in
 [DOT](http://www.cs.uwm.edu/~boyland/fool2012/papers/fool2012_submission_3.pdf),
 a calculus for dependent object types.
 
-The dotty compiler is largely a new design. It takes a more functional
-approach than current scalac, paired with aggressive caching to
-achieve good performance. Some parts, in particular those that have to
-do with configuration and input/output are ported from the Scala
-compiler. The compiler is fully functional, in particular it can
-compile itself. But there's more work needed (and planned) on
-polishing rough edges, improving diagnostics, improving compilation
-speed, and embedding in other tools.
+####Current status:
+ _Technology preview_: currently unsupported, may not be functionally complete, and are not suitable for deployment in production.
 
-We expect that, over time, some of the new technologies explored in
-this project will find their way into future versions of Scala. At
-present it is too early to say which ones and when.
+####Is it going to be the future Scala?
+Yes, eventually.
 
-If you want to try it out, to get started have a look at
+####Who's working on it?
+See [github contributors page](https://github.com/lampepfl/dotty/graphs/contributors).
+ 
+####What are the features that could make me consider trying it?  
+| Feature                                         	| Status              	|
+|-------------------------------------------------	|---------------------	|
+| Union, Intersection and Literal singleton types 	| Implemented         	|
+| Fast compilation (phase fusion)                 	| Implemented         	|
+| Working contravariant implicits                 	| Implemented         	|
+| Trait parameters                                	| Implemented         	|
+| @Static methods and fields                      	| Implemented         	|
+| Colored Repl                                    	| Implemented         	|
+| Sbt incremental build                           	| Implemented         	|
+| Non-blocking lazy vals                          	| Implemented         	|
+|                                                 	|                     	|
+| Non-boxed arrays of value classes               	| In progress         	|
+| Auto-Specialization                             	| In progress         	|
+| Whole program optimizer                         	| In progress         	|
+|                                                 	|                     	|
+| HList & HMaps\Record types                      	| Under consideration 	|
+| Implicit functions                              	| Under consideration 	|
+| Effects                                         	| Under consideration 	|
+| Auto-completion in repl                         	| Under consideration 	|
+| Spec name-based patmat                          	| Under consideration 	|
+| Multiverse equality                             	| Under consideration 	|
+| Exhaustivity checks in pattern matching          	| Under consideration 	|
+There are also plethora of small details such [per-callsite @tailrec annotations]
+
+####What are the complications that I can have If I start using Dotty?
+Dotty can use libraries compiled by scalac 2.11, but Scala scalac can't use libraries compiled by Dotty.<br>
+No existential types.<br>
+No macro support yet. We have big plans here.<br>
+No early initializers. No scala.DelayedInit. Use trait arguments instead.<br>
+Whole program optimizer will only work if all dependencies are compiled by Dotty.<br>
+
+
+####Can I write my code in a way that is going to be compatible with Scalac & Dotty?
+Yes, Dotty itself is a project that can be compiled by both Dotty and Scalac.<br>
+It's not very hard, and the biggest thing that you will likely miss is using macros.
+
+####How can I try it out?
 https://github.com/lampepfl/dotty/wiki/Getting-Started.
+Here’s example sbt project and instructions on how to set it up: https://github.com/smarter/dotty-example-project/ <br>
+We have colored REPL :-). You can invoke it by running `dotc -repl`.
+
+####We also have:
+Basic support for Scala.js,<br>
+[Prototype](https://github.com/scala-native/scala-native/tree/topic/dotty-support) of compilation to x86 native code(Shabalin)<br>
+
+####What about scalac:
+Scalac is basis for stability in scala. We expect scalac & dotty to coexist for long.
+        
+####Contributions are welcome!
+We invite you to help us build the future of Scala.<br>
+That's the best moment to participate, as everyone can make an impact.<br>
+
+####SI-2712?
+If scalac will put it into 2.12, we’ll mimic their behaviour. But we have bigger plans for
+HK-types.
+
+
 
 Developers mailing list is https://groups.google.com/forum/#!forum/dotty-internals.
-
-
-&nbsp;
-
-&nbsp;
-
-![YourKit](https://www.yourkit.com/images/yklogo.png) supports open source projects with its full-featured Java Profiler.
-
-YourKit, LLC is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/index.jsp).
