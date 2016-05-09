@@ -31,6 +31,7 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Sbt incremental build                                                                                   | Implemented         |
 | Non-blocking lazy vals                                                                                  | Implemented         |
 | Option-less pattern matching(based on [name-based patmat](https://github.com/scala/scala/pull/2848))    | Implemented |
+| Function arity adaptation                                                                               | Implemented |
 |                                                                                                         |                     |
 | Non-boxed arrays of value classes                                                                       | In progress         |
 | Working contravariant implicits                                                                         | In progress         |
