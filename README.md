@@ -42,8 +42,8 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Auto-completion in repl                         	| Under consideration 	|
 | Spec name-based patmat                          	| Under consideration 	|
 | Multiverse equality                             	| Under consideration 	|
-| Exhaustivity checks in pattern matching          	| Under consideration 	|
-There are also plethora of small details such [per-callsite @tailrec annotations]
+| Exhaustivity checks in pattern matching          | Under consideration 	|
+There are also plethora of small details such [per-callsite @tailrec annotations](https://github.com/lampepfl/dotty/issues/1221)
 
 ####What are the complications that I can have If I start using Dotty?
 Dotty can use libraries compiled by scalac 2.11, but Scala scalac can't use libraries compiled by Dotty.<br>
