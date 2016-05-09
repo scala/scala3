@@ -94,7 +94,7 @@ class OuterSpecializer extends MiniPhaseTransform  with InfoTransformer {
   }
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    if (ctx.settings.lto.value.contains("specialize") || ctx.settings.lto.value.contains("all")) this
+    if (ctx.settings.lto.value.contains("spec") || ctx.settings.lto.value.contains("all")) this
     else TreeTransforms.NoTransform
   }
 
