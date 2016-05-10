@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package repl
 
+import dotc.core.Contexts.Context
 import jline.console.ConsoleReader
 
 /** Adaptor for JLine

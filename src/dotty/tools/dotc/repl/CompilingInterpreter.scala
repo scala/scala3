@@ -78,6 +78,25 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
   /** whether to print out result lines */
   private var printResults: Boolean = true
+  private var delayOutput: Boolean = false
+
+  var previousOutput: List[String] = Nil
+
+  override def lastOutput() = {
+    val prev = previousOutput
+    previousOutput = Nil
+    prev
+  }
+
+  override def delayOutputDuring[T](operation: => T): T = {
+    val old = delayOutput
+    try {
+      delayOutput = true
+      operation
+    } finally {
+      delayOutput = old
+    }
+  }
 
   /** Temporarily be quiet */
   override def beQuietDuring[T](operation: => T): T = {
@@ -92,14 +111,18 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
 
   private def newReporter = new ConsoleReporter(Console.in, out) {
     override def printMessage(msg: String) = {
-      out.print(/*clean*/(msg) + "\n")
-        // Suppress clean for now for compiler messages
-        // Otherwise we will completely delete all references to
-        // line$object$ module classes. The previous interpreter did not
-        // have the project because the module class was written without the final `$'
-        // and therefore escaped the purge. We can turn this back on once
-        // we drop the final `$' from module classes.
-      out.flush()
+      if (!delayOutput) {
+        out.print(/*clean*/(msg) + "\n")
+          // Suppress clean for now for compiler messages
+          // Otherwise we will completely delete all references to
+          // line$object$ module classes. The previous interpreter did not
+          // have the project because the module class was written without the final `$'
+          // and therefore escaped the purge. We can turn this back on once
+          // we drop the final `$' from module classes.
+        out.flush()
+      } else {
+        previousOutput = (/*clean*/(msg) + "\n") :: previousOutput
+      }
     }
   }
 
@@ -188,7 +211,9 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
           Interpreter.Error // an error happened during compilation, e.g. a type error
         else {
           val (interpreterResultString, succeeded) = req.loadAndRun()
-          if (printResults || !succeeded)
+          if (delayOutput)
+            previousOutput = clean(interpreterResultString) :: previousOutput
+          else if (printResults || !succeeded)
             out.print(clean(interpreterResultString))
           if (succeeded) {
             prevRequests += req
@@ -727,10 +752,10 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
       return str
 
     val trailer = "..."
-    if (maxpr >= trailer.length+1)
-      return str.substring(0, maxpr-3) + trailer
-
-    str.substring(0, maxpr)
+    if (maxpr >= trailer.length-1)
+      str.substring(0, maxpr-3) + trailer + "\n"
+    else
+      str.substring(0, maxpr-1)
   }
 
   /** Clean up a string for output */

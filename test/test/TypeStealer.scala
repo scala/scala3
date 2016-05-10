@@ -6,7 +6,7 @@ import scala.tools.nsc.Settings
  * Dotty requires a mangled bootclasspath to start. It means that `console` mode of sbt doesn't work for us.
  * At least I(Dmitry) wasn't able to make sbt fork in console
  */
-object DottyRepl {
+object TypeStealer {
   def main(args: Array[String]): Unit = {
     def repl = new ILoop {}
 

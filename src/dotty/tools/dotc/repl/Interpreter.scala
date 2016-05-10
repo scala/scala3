@@ -33,4 +33,10 @@ trait Interpreter {
 
   /** Suppress output during evaluation of `operation`. */
   def beQuietDuring[T](operation: => T): T
+
+  /** Suppresses output and saves it for `lastOutput` to collect */
+  def delayOutputDuring[T](operation: => T): T
+
+  /** Gets the last output not printed immediately */
+  def lastOutput(): List[String]
 }

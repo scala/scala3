@@ -3,6 +3,7 @@ package dotc
 package repl
 
 import java.io.{BufferedReader, PrintWriter}
+import dotc.core.Contexts.Context
 
 
 /** Reads using standard JDK API */

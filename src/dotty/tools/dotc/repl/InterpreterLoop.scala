@@ -18,15 +18,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
  *  After instantiation, clients should call the `run` method.
  *
  *  @author Moez A. Abdel-Gawad
- *  @author  Lex Spoon
+ *  @author Lex Spoon
  *  @author Martin Odersky
  */
 class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Context) {
   import config._
 
-  private var in = input
-
   val interpreter = compiler.asInstanceOf[Interpreter]
+
+  private var in = input(interpreter)
 
   /** The context class loader at the time this object was created */
   protected val originalClassLoader =
@@ -74,10 +74,9 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
    *  line of input to be entered.
    */
   def firstLine(): String = {
-    val futLine = Future(in.readLine(prompt))
     interpreter.beQuietDuring(
       interpreter.interpret("val theAnswerToLifeInTheUniverseAndEverything = 21 * 2"))
-    Await.result(futLine, Duration.Inf)
+    in.readLine(prompt)
   }
 
   /** The main read-eval-print loop for the interpreter.  It calls
@@ -149,6 +148,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     val quitRegexp    = ":q(u(i(t)?)?)?"
     val loadRegexp    = ":l(o(a(d)?)?)?.*"
     val replayRegexp  = ":r(e(p(l(a(y)?)?)?)?)?.*"
+    val lastOutput    = interpreter.lastOutput()
 
     var shouldReplay: Option[String] = None
 
@@ -167,7 +167,12 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     else if (line startsWith ":")
       output.println("Unknown command.  Type :help for help.")
     else
-      shouldReplay = interpretStartingWith(line)
+      shouldReplay = lastOutput match { // don't interpret twice
+        case Nil => interpretStartingWith(line)
+        case oldRes =>
+          oldRes foreach output.print
+          Some(line)
+      }
 
     (true, shouldReplay)
   }
@@ -178,23 +183,11 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     * read, go ahead and interpret it.  Return the full string
     * to be recorded for replay, if any.
     */
-  def interpretStartingWith(code: String): Option[String] = {
+  def interpretStartingWith(code: String): Option[String] =
     interpreter.interpret(code) match {
       case Interpreter.Success => Some(code)
-      case Interpreter.Error => None
-      case Interpreter.Incomplete =>
-        if (in.interactive && code.endsWith("\n\n")) {
-          output.println("You typed two blank lines.  Starting a new command.")
-          None
-        } else {
-          val nextLine = in.readLine(continuationPrompt)
-          if (nextLine == null)
-            None  // end of file
-          else
-            interpretStartingWith(code + "\n" + nextLine)
-        }
+      case _ => None
     }
-  }
 /*
   def loadFiles(settings: Settings) {
     settings match {
