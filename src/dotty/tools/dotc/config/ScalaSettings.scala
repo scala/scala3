@@ -214,6 +214,13 @@ class ScalaSettings extends Settings.SettingGroup {
     ""
   )
 
+  val DocOutput = StringSetting (
+    "-Ydoc-output",
+    "outdir",
+    "The output directory in which to place the documentation",
+    "."
+  )
+
   val DocFooter = StringSetting (
     "-Ydoc-footer",
     "footer",

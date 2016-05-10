@@ -142,7 +142,13 @@ object Phases {
       commentParser.parse(packages)
 
       // (4) Write the finished model to JSON
-      if (!ctx.settings.YDocNoWrite.value) util.IndexWriters.writeJs(packages, "../js/out")
+      val outputDir = {
+        val out = ctx.settings.DocOutput.value
+        if (out.last == '/') out.dropRight(1)
+        else out
+      }
+      assert(outputDir == "../js/out")
+      if (!ctx.settings.YDocNoWrite.value) util.IndexWriters.writeJs(packages, outputDir)
 
       // (5) Clear caches
       commentParser.clear()
