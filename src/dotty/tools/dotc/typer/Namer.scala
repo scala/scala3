@@ -562,8 +562,8 @@ class Namer { typer: Typer =>
      *  to pick up the context at the point where the completer was created.
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
-      denot.info = typeSig(denot.symbol)
       addAnnotations(denot)
+      denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
     }
   }
