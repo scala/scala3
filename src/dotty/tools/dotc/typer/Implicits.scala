@@ -472,8 +472,20 @@ trait Implicits { self: Typer =>
     EmptyTree
   }
 
-  private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) =
-    ltp.isError || rtp.isError || ltp <:< rtp || rtp <:< ltp
+  private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
+    val lift = new TypeMap {
+      def apply(t: Type) = t match {
+        case t: TypeRef =>
+          t.info match {
+            case TypeBounds(lo, hi) if lo ne hi => hi
+            case _ => t
+          }
+        case _ =>
+          if (variance > 0) mapOver(t) else t
+      }
+    }
+    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp)
+  }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit =

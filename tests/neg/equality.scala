@@ -14,12 +14,17 @@ object equality {
   implicit def eqNum: Eq[Num, Num] = Eq
   implicit def eqOption[T, U](implicit e: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 
+  case class PString(a: String) extends Proxy {
+    def self = a
+  }
+
+/*
   implicit def eqString: Eq[String, String] = Eq
   implicit def eqInt: Eq[Int, Int] = Eq
   implicit def eqNumber: Eq[Number, Number] = Eq
   implicit def eqIntNumber: Eq[Int, Number] = Eq
   implicit def eqNumberInt: Eq[Number, Int] = Eq
-
+*/
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None
 
@@ -73,6 +78,9 @@ object equality {
     i == bi
     bi == i
 
+    val ps = PString("hello")
+    ps == "world"
+
     n match {
       case None =>   // error
     }
@@ -96,5 +104,6 @@ object equality {
     1 == "abc" // error
     "abc" == bi // error
     bi == "abc" // error
+    "world" == ps // error
   }
 }

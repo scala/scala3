@@ -238,9 +238,13 @@ abstract class CompilerTest {
 
     val nerrors = reporter.errorCount
     val xerrors = (expectedErrorsPerFile map {_.totalErrors}).sum
+    def expectedErrorFiles =
+      expectedErrorsPerFile.collect{
+        case er if er.totalErrors > 0 => er.fileName
+      }
     assert(nerrors == xerrors,
       s"""Wrong # of errors. Expected: $xerrors, found: $nerrors
-         |Files with expected errors: ${expectedErrorsPerFile.collect{ case er if er.totalErrors > 0 => er.fileName} }
+         |Files with expected errors: $expectedErrorFiles%, %
        """.stripMargin)
     // NEG TEST
     if (xerrors > 0) {
