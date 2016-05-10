@@ -12,7 +12,7 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
     cls := "page-content",
     div(raw(entity.comment.fold("")(_.body))),
     entity match {
-      case e: Entity with Members =>
+      case e: Entity with Members if e.members.nonEmpty =>
         Seq(
           h5("Members"),
           div(

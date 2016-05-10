@@ -11,8 +11,14 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import prickle._
   import util.internal.setters._
 
-  private def relPath(to: String, from: Entity) =
-    "../" * from.path.length + to
+  private def relPath(to: String, from: Entity) = {
+    val len = from.path.length + (from match {
+      case _: Package => 1
+      case _ => 0
+    })
+
+    "../" * len + to
+  }
 
   def render = "<!DOCTYPE html>" + html(
     head(
@@ -76,8 +82,13 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
     )
   )
 
-  private def relativePath(to: Entity) =
-    util.traversing.relativePath(entity, to)
+  private def relativePath(to: Entity) = {
+    val prefix = entity match {
+      case _: Package => "../"
+      case _ => ""
+    }
+    prefix + util.traversing.relativePath(entity, to)
+  }
 
   def packageView = ul(
     cls := "mdl-list packages",

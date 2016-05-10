@@ -12,8 +12,8 @@ object IndexWriters {
       println(s"""Writing '${pack.path.mkString(".")}'""")
       writeFile(
         EntityPage(pack, packs).render,
-        outPath + pack.path.dropRight(1).mkString("/", "/", "/"),
-        s"${pack.name.split("\\.").last}.html")
+        outPath + pack.path.mkString("/", "/", "/"),
+        "index.html")
 
       for {
         child <- pack.children
