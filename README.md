@@ -62,7 +62,7 @@ It's not very hard, and the biggest thing that you will likely miss is using mac
 
 ####How can I try it out?
 https://github.com/lampepfl/dotty/wiki/Getting-Started.
-Here’s example sbt project and instructions on how to set it up: https://github.com/smarter/dotty-example-project/ <br>
+Here’s an example sbt project and instructions on how to set it up: https://github.com/smarter/dotty-example-project/ <br>
 We have colored REPL :-). You can invoke it by running `dotc -repl`.
 
 ####We also have:
