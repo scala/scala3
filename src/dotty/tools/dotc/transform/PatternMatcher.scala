@@ -50,7 +50,16 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
   private var _id = 0 // left for debuging
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val Match(sel, cases) = tree
+
     val translated = new Translator()(ctx).translator.translateMatch(tree)
+
+    // check exhaustivity and unreachability
+    val engine = new SpaceEngine
+    if (!engine.skipCheck(sel.tpe)) {
+      engine.exhaustivity(tree)
+      engine.redundancy(tree)
+    }
 
     translated.ensureConforms(tree.tpe)
   }
@@ -1274,6 +1283,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))
         case _                                                    => (cases, None)
       }
+
 
       // checkMatchVariablePatterns(nonSyntheticCases) // only used for warnings
 

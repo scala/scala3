@@ -1,0 +1,5 @@
+./tests/patmat/t8511.scala:18: warning: match may not be exhaustive.
+It would fail on the following input: Baz(), Bar(_)
+  private def logic(head: Expr): String = head match {
+                                               ^
+one warning found

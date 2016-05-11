@@ -1,0 +1,7 @@
+object Enum extends Enumeration { val A, B, C = Value }
+
+object Test {
+  def foo(v : Enum.Value) = v match {
+    case Enum.B => println("B")
+  }
+}

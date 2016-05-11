@@ -1,0 +1,5 @@
+./tests/patmat/t9129.scala:21: warning: match may not be exhaustive.
+It would fail on the following input: Two(B2, A2), Two(_, A2)
+  def foo(c: C): Unit = c match {
+                          ^
+one warning found

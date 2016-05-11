@@ -1,0 +1,9 @@
+./tests/patmat/t9289.scala:9: warning: match may not be exhaustive.
+It would fail on the following input: module.LetR()
+  def patmat(tree: module.Tree) = tree match {
+                                       ^
+./tests/patmat/t9289.scala:20: warning: match may not be exhaustive.
+It would fail on the following input: module.LetR()
+  def patmat(tree: module.Tree) = tree match {
+                                       ^
+two warnings found
