@@ -12,7 +12,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import util.internal.setters._
 
   private def relPath(to: String, from: Entity) = {
-    val len = from.path.length + (from match {
+    val len = (from.path.length - 1) + (from match {
       case _: Package => 1
       case _ => 0
     })
@@ -30,7 +30,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
       script(`type` := "text/javascript", src := relPath("static/material.min.js", entity)),
       script(`type` := "text/javascript", src := relPath("static/highlight.pack.js", entity)),
       script(`type` := "text/javascript", src := relPath("index.js", entity)),
-      script(`type` := "text/javascript", src := relPath("target/scala-2.11/dottydoc-fastopt.js", entity)),
+      script(`type` := "text/javascript", src := relPath("static/dottydoc-fastopt.js", entity)),
       link(rel := "stylesheet", href := relPath("static/material-icons.css", entity)),
       link(rel := "stylesheet", href := relPath("static/material.min.css", entity)),
       link(rel := "stylesheet", href := relPath("static/github.css", entity)),

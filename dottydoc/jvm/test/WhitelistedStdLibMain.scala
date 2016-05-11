@@ -19,5 +19,5 @@ object WhitelistedStandardLib extends DottyDoc {
   }
 
   override def main(args: Array[String]) =
-    super.main("-language:Scala2" +: "-Ydoc-output" +: "../js/out" +: files.toArray)
+    super.main("-language:Scala2" +: "-Ydoc-output" +: "../../build/dottydoc" +: files.toArray)
 }

@@ -147,8 +147,7 @@ object Phases {
         if (out.last == '/') out.dropRight(1)
         else out
       }
-      assert(outputDir == "../js/out")
-      if (!ctx.settings.YDocNoWrite.value) util.IndexWriters.writeJs(packages, outputDir)
+      if (!ctx.settings.YDocNoWrite.value) (new util.OutputWriter).write(packages, outputDir)
 
       // (5) Clear caches
       commentParser.clear()

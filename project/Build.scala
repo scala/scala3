@@ -278,10 +278,11 @@ object DottyInjectedPlugin extends AutoPlugin {
     )
 
     lazy val dottydocJVM = dottydoc.jvm.dependsOn(dotty).settings(
-      resources in Compile   += (fastOptJS in (dottydocJS, Compile)).value.data,
-      scalaSource in Compile := baseDirectory.value / "src",
-      scalaSource in Test    := baseDirectory.value / "test",
-      javaSource in Test     := baseDirectory.value / "test",
+      resources in Compile         += (fastOptJS in (dottydocJS, Compile)).value.data,
+      resourceDirectory in Compile := baseDirectory.value / "resources",
+      scalaSource in Compile       := baseDirectory.value / "src",
+      scalaSource in Test          := baseDirectory.value / "test",
+      javaSource in Test           := baseDirectory.value / "test",
 
       libraryDependencies ++= Seq(
         "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.0",
