@@ -8,6 +8,7 @@ import Constants.Constant
 import DenotTransformers._, TreeTransforms._, Phases.Phase
 import TypeErasure.ErasedValueType, ValueClasses._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
+import ElimErasedValueType.elimEVT
 
 /** This phase erases arrays of value classes to their runtime representation.
  *
@@ -30,7 +31,7 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
         tp match {
           case JavaArrayType(ErasedValueType(tr, eund)) =>
             val cls = tr.symbol.asClass
-            defn.vcArrayOf(cls).typeRef
+            defn.vcDeepArrayOf(cls).typeRef
           //case tp: MethodType =>
           //val paramTypes = tp.paramTypes.mapConserve(eraseVCArrays)
           //val retType = eraseVCArrays(tp.resultType)
@@ -59,8 +60,9 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
       //box body implementation
       case _ if tree.name == nme.box && ValueClasses.isDerivedValueClass(tree.symbol.owner.companionClass) && !tree.symbol.is(Flags.Bridge) =>
         val List(List(param)) = tree.vparamss
-        val newParam = ref(param.symbol).ensureConforms(ValueClasses.underlyingOfValueClass(vc.asClass))
-        val newRhs = New(vc.typeRef, newParam :: Nil).ensureConforms(tree.tpt.tpe)
+        val newParam = ref(param.symbol)
+        val newRhs: Tree = if (param.tpt.symbol.isPrimitiveValueClass) newParam
+          else New(vc.typeRef, newParam.ensureConforms(elimEVT(ValueClasses.deepUnderlyingOfValueClass(vc.asClass))) :: Nil)
         newRhs
       case _ => tree.rhs
     }
@@ -84,13 +86,14 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
     tree.tpe match {
       // [arg1, arg2,  ...] => new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...])
       case JavaArrayType(ErasedValueType(tr, tund)) =>
+        val tund2 = elimEVT(tund)
         val cls = tr.symbol.asClass
         val evt2uMethod = ref(evt2u(cls))
         //[V.evt2u$(arg1), V.evt2u$(arg2), ...]
-        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)), TypeTree(tund))
+        val underlyingArray = JavaSeqLiteral(tree.elems.map(evt2uMethod.appliedTo(_)), TypeTree(tund2))
         val mod = cls.companionModule
         //new VCXArray([V.evt2u$(arg1), V.evt2u$(arg2), ...], VCXCompanion)
-        New(defn.vcArrayOf(cls).typeRef, List(underlyingArray, ref(mod)))
+        New(defn.vcDeepArrayOf(cls).typeRef, List(underlyingArray, ref(mod)))
       case _ =>
         tree match {
           case SeqLiteral(elems, tptr) =>
@@ -130,10 +133,11 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
           case jat@JavaArrayType(ErasedValueType(tr, underlying)) =>
             val cls = tr.symbol.asClass
             val mod = cls.companionModule
+            val und2 = elimEVT(underlying)
             //TODO: und1 should be processed in case of EVT
-            val und1 = eraseVCArrays(underlying)
+            val und1 = eraseVCArrays(und2)
             val arTpe = jat.derivedJavaArrayType(und1)
-            New(defn.vcArrayOf(cls).typeRef,
+            New(defn.vcDeepArrayOf(cls).typeRef,
               List(newArray(und1, arTpe, tree.pos, dims.asInstanceOf[JavaSeqLiteral]).ensureConforms(arTpe),
                 ref(mod)))
           case _: Type =>
@@ -144,7 +148,7 @@ class VCArrays extends MiniPhaseTransform with InfoTransformer {
                 val mod = cls.companionModule
                 val retTpt2 = eraseVCArrays(ins.asInstanceOf[Type])
                 val Literal(Constant(compTptType)) = compTpt
-                val compTpt2 = eraseVCArrays((compTptType.asInstanceOf[Type]))
+                val compTpt2 = eraseVCArrays((elimEVT(compTptType.asInstanceOf[Type])))
                 newArray(compTpt2, retTpt2, tree.pos, dims.asInstanceOf[JavaSeqLiteral])
               case _ =>
                 transformTypeOfTree(tree)

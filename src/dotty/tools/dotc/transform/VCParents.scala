@@ -31,7 +31,7 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             val cinfo = moduleClass.classInfo
             val decls1 = cinfo.decls.cloneScope
 
-            val underlying = underlyingOfValueClass(valueClass)
+            val underlying = deepUnderlyingOfValueClass(valueClass)
             // TODO: what should we do if these symbols already exist (box and runtimeClassSym)?
             val boxParamTpe = if (underlying.classSymbol.isPrimitiveValueClass) underlying else defn.ObjectType
             val boxSymTpe = if (underlying.classSymbol.isPrimitiveValueClass) valueClass.typeRef else defn.ObjectType
@@ -42,7 +42,7 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             decls1.enter(boxSym)
             decls1.enter(runtimeClassSym)
 
-            val superType = tpd.ref(defn.vcCompanionOf(valueClass))
+            val superType = tpd.ref(defn.vcDeepCompanionOf(valueClass))
               .select(nme.CONSTRUCTOR)
               .appliedToType(valueClass.typeRef)
               .tpe
@@ -56,7 +56,7 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
         }
       case valueClass: ClassDenotation if isDerivedValueClass(valueClass) =>
         val cinfo = valueClass.classInfo
-        val superType = defn.vcPrototypeOf(valueClass).typeRef
+        val superType = defn.vcDeepPrototypeOf(valueClass).typeRef
 
         val (p :: ps) = cinfo.classParents
         //TODO: remove assert to fix issue with i705-inner-value-class.scala
@@ -107,7 +107,7 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             val rcDef = runtimeClassDefDef(valueClass)
             val boxDef = boxDefDef(valueClass)
 
-            val superCall = New(defn.vcCompanionOf(valueClass).typeRef)
+            val superCall = New(defn.vcDeepCompanionOf(valueClass).typeRef)
               .select(nme.CONSTRUCTOR)
               .appliedToType(valueClass.typeRef)
               .appliedToNone
@@ -121,11 +121,22 @@ class VCParents extends MiniPhaseTransform with DenotTransformer {
             tree
         }
       case valueClass: ClassDenotation if isDerivedValueClass(valueClass) =>
-        val prototype = defn.vcPrototypeOf(valueClass).typeRef
+        val prototype = defn.vcDeepPrototypeOf(valueClass).typeRef
         val underlyingSym = valueClassUnbox(valueClass)
 
-        val superCallExpr = if (underlyingSym.info.classSymbol.isPrimitiveValueClass) ref(underlyingSym)
-          else ref(underlyingSym).ensureConforms(defn.ObjectType) //ensureConforms is required in case of Any is underlying type (-Ycheck)
+        def deepUndExpr(valueClass: Symbol): List[Symbol] = {
+          val vcMethod = valueClassUnbox(valueClass.asClass)
+          valueClass match {
+            case _ if isDerivedValueClass(vcMethod.info.resultType.classSymbol) =>
+              vcMethod :: deepUndExpr(vcMethod.info.resultType.classSymbol)
+            case _ => List(vcMethod)
+          }
+        }
+        val deepUnderlyingSyms = deepUndExpr(valueClass.symbol)
+        //TODO: add null checkings
+        val deepExpr = deepUnderlyingSyms.tail.foldLeft(ref(deepUnderlyingSyms.head))(_.select(_))
+        val superCallExpr = if (deepUnderlyingSyms.last.info.classSymbol.isPrimitiveValueClass) deepExpr
+        else deepExpr.ensureConforms(defn.ObjectType) //ensureConforms is required in case of Any is underlying type (-Ycheck)
         val superCall = New(prototype, List(superCallExpr))
         // TODO: manually do parameter forwarding: the prototype has a local field
         // so we don't need a field inside the value class
