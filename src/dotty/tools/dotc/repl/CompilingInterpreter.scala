@@ -2,7 +2,10 @@ package dotty.tools
 package dotc
 package repl
 
-import java.io.{File, PrintWriter, StringWriter, Writer}
+import java.io.{
+  File, PrintWriter, PrintStream, StringWriter, Writer, OutputStream,
+  ByteArrayOutputStream => ByteOutputStream
+}
 import java.lang.{Class, ClassLoader}
 import java.net.{URL, URLClassLoader}
 
@@ -384,6 +387,24 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
       names1 ++ names2
     }
 
+    /** Sets both System.{out,err} and Console.{out,err} to supplied
+     *  `os: OutputStream`
+     */
+    private def withOutput[T](os: ByteOutputStream)(op: ByteOutputStream => T) = {
+      val ps     = new PrintStream(os)
+      val oldOut = System.out
+      val oldErr = System.err
+      System.setOut(ps)
+      System.setErr(ps)
+
+      try {
+        Console.withOut(os)(Console.withErr(os)(op(os)))
+      } finally {
+        System.setOut(oldOut)
+        System.setErr(oldErr)
+      }
+    }
+
     /** load and run the code using reflection.
      *  @return  A pair consisting of the run's result as a string, and
      *           a boolean indicating whether the run succeeded without throwing
@@ -392,20 +413,20 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     def loadAndRun(): (List[String], Boolean) = {
       val interpreterResultObject: Class[_] =
         Class.forName(resultObjectName, true, classLoader)
-      val resultValMethod: java.lang.reflect.Method =
+      val valMethodRes: java.lang.reflect.Method =
         interpreterResultObject.getMethod("result")
       try {
-        val ps = new java.io.ByteArrayOutputStream()
-        Console.withOut(ps) {
-          val res = SyntaxHighlighting(resultValMethod.invoke(interpreterResultObject).toString).toArray
-          val prints = ps.toString("utf-8")
+        withOutput(new ByteOutputStream) { ps =>
+          val rawRes    = valMethodRes.invoke(interpreterResultObject).toString
+          val res       = new String(SyntaxHighlighting(rawRes).toArray)
+          val prints    = ps.toString("utf-8")
           val printList =
             if (prints == "") Nil
             else prints :: Nil
 
           if (!delayOutput) out.print(prints)
 
-          (printList :+ new String(res), true)
+          (printList :+ res, true)
         }
       } catch {
         case NonFatal(ex) =>
