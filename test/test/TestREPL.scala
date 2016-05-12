@@ -38,7 +38,8 @@ class TestREPL(script: String) extends REPL {
     out.close()
     val printed = out.toString
     val transcript = printed.drop(printed.indexOf(config.prompt))
-    if (transcript.toString != script) {
+    val transcriptNoColors = transcript.toString.replaceAll("\u001B\\[[;\\d]*m", "")
+    if (transcriptNoColors != script) {
       println("input differs from transcript:")
       println(transcript)
       assert(false)
