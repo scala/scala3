@@ -56,6 +56,17 @@ object ValueClasses {
   def underlyingOfValueClass(d: ClassDenotation)(implicit ctx: Context): Type =
     valueClassUnbox(d).info.resultType
 
+  def deepUnderlyingOfValueClass(d: ClassDenotation)(implicit ctx: Context): Type = {
+    import TypeErasure.ErasedValueType
+    val und = underlyingOfValueClass(d)
+    und match {
+      case _ if isDerivedValueClass(und.classSymbol) => deepUnderlyingOfValueClass(und.classSymbol.asClass)
+      case ErasedValueType(t, und) =>
+        deepUnderlyingOfValueClass(t.classSymbol.asClass)
+      case _ => und
+    }
+  }
+
   def isVCCompanion[T](ct: ClassTag[T]) = ct match {
     case _: VCIntCompanion[_] | _: VCShortCompanion[_] |
          _: VCLongCompanion[_] | _: VCByteCompanion[_] |

@@ -775,39 +775,49 @@ class Definitions {
   /** The type of the boxed class corresponding to primitive value type `tp`. */
   def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
 
-  lazy val vcPrototypeClassKeys: collection.Set[Symbol] =
-    defn.ScalaNumericValueClasses() + defn.BooleanClass + defn.ObjectClass
+  lazy val vcPrototypeTypeKeys: collection.Set[TypeRef] =
+    defn.ScalaNumericValueTypes + defn.BooleanType + defn.ObjectType
 
-  lazy val vcPrototype: Map[Symbol, Symbol] =
-    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
-  lazy val vcCompanion: Map[Symbol, Symbol] =
-    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
-  lazy val vcArray: Map[Symbol, Symbol] =
-    vcPrototypeClassKeys.map(vc => vc -> ctx.requiredClass(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
+  lazy val vcPrototypeTypes: Map[TypeName, TypeRef] =
+    vcPrototypeTypeKeys.map(vc => vc.name -> ctx.requiredClassRef(s"dotty.runtime.vc.VC${vc.name}Prototype")).toMap
+  lazy val vcCompanionTypes: Map[TypeName, TypeRef] =
+    vcPrototypeTypeKeys.map(vc => vc.name -> ctx.requiredClassRef(s"dotty.runtime.vc.VC${vc.name}Companion")).toMap
+  lazy val vcArrayTypes: Map[TypeName, TypeRef] =
+    vcPrototypeTypeKeys.map(vc => vc.name -> ctx.requiredClassRef(s"dotty.runtime.vc.VC${vc.name}Array")).toMap
 
-  lazy val VCArrayPrototypeClass = ctx.requiredClass(s"dotty.runtime.vc.VCArrayPrototype")
+  //TODO: rewrite
+  def vcPrototypeValues(implicit ctx: Context): Set[Symbol] = vcPrototypeTypes.values.toSet map {tr: TypeRef => tr.classSymbol}
 
-  lazy val vcPrototypeValues = vcPrototype.values.toSet
-
-  def VCArrayPrototypeType = VCArrayPrototypeClass.typeRef
+  lazy val VCArrayPrototypeType = ctx.requiredClassRef(s"dotty.runtime.vc.VCArrayPrototype")
+  def VCArrayPrototypeClass(implicit ctx: Context) = VCArrayPrototypeType.classSymbol
 
   lazy val VCPrototypeType = ctx.requiredClassRef(s"dotty.runtime.vc.VCPrototype")
-  def VCPrototypeClass = VCPrototypeType.classSymbol.asClass
+  def VCPrototypeClass(implicit ctx: Context) = VCPrototypeType.classSymbol
 
-  def vcPrototypeOf(vc: ClassDenotation) = {
-    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
-    vcPrototype.getOrElse(underlying, vcPrototype(defn.ObjectClass))
+  def vcRepresentationOf (vcReprs: Map[TypeName, TypeRef], vc: ClassDenotation)(
+    undFn: ClassDenotation => Symbol)(implicit ctx: Context): Symbol = {
+    val underlying = undFn(vc)
+    (if (underlying.isPrimitiveValueClass && vcReprs.isDefinedAt(underlying.name.asTypeName))
+      vcReprs(underlying.name.asTypeName) else vcReprs(defn.ObjectType.name)).classSymbol
   }
 
-  def vcCompanionOf(vc: ClassDenotation) = {
-    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
-    vcCompanion.getOrElse(underlying, vcCompanion(defn.ObjectClass))
-  }
+  def vcPrototypeOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcPrototypeTypes, vc)(
+    ValueClasses.underlyingOfValueClass(_).classSymbol)
 
-  def vcArrayOf(vc: ClassDenotation) = {
-    val underlying = ValueClasses.valueClassUnbox(vc).info.classSymbol
-    vcArray.getOrElse(underlying, vcArray(defn.ObjectClass))
-  }
+  def vcDeepPrototypeOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcPrototypeTypes, vc)(
+    ValueClasses.deepUnderlyingOfValueClass(_).classSymbol)
+
+  def vcCompanionOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcCompanionTypes, vc)(
+    ValueClasses.underlyingOfValueClass(_).classSymbol)
+
+  def vcDeepCompanionOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcCompanionTypes, vc)(
+    ValueClasses.deepUnderlyingOfValueClass(_).classSymbol)
+
+  def vcArrayOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcArrayTypes, vc)(
+    ValueClasses.underlyingOfValueClass(_).classSymbol)
+
+  def vcDeepArrayOf(vc: ClassDenotation)(implicit ctx: Context) = vcRepresentationOf(vcArrayTypes, vc)(
+    ValueClasses.deepUnderlyingOfValueClass(_).classSymbol)
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
