@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Try to autodetect real location of the script
+DOTTY_ROOT="`readlink \"$0\"`"             #  relative, symbolic links resolved
+if [[ "$DOTTY_ROOT" == "" ]]; then
+  DOTTY_ROOT="$0"
+fi
+DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
+DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" && pwd )`/.."  # absolute
+
+# CLASS_PATH is derived from the DOTTY_ROOT
+CLASS_PATH="-J-Xbootclasspath/a:.:$DOTTY_ROOT/target/scala-2.11/classes/"
+
+function runMain {
+    scala $CLASS_PATH $@
+}
+
+if [ -z "$1" ]; then
+    echo "usage: $0 MainClass args"
+    echo ""
+    echo "       missing class argument"
+    exit 1
+else
+    runMain "$@"
+fi
