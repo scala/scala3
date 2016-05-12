@@ -595,7 +595,7 @@ trait Implicits { self: Typer =>
         // Does there exist an implicit value of type `Eq[tp, tp]`?
         def hasEq(tp: Type): Boolean =
           new ImplicitSearch(defn.EqType.appliedTo(tp, tp), EmptyTree, pos).bestImplicit match {
-            case result: SearchSuccess => result.ref.symbol != defn.Eq_eqAny
+            case result: SearchSuccess => result.ref.symbol != defn.Predef_eqAny
             case result: AmbiguousImplicits => true
             case _ => false
           }
@@ -613,7 +613,7 @@ trait Implicits { self: Typer =>
         }
         else generated1 match {
           case TypeApply(fn, targs @ (arg1 :: arg2 :: Nil))
-          if fn.symbol == defn.Eq_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
+          if fn.symbol == defn.Predef_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
             nonMatchingImplicit(ref)
           case _ =>
             SearchSuccess(generated1, ref, ctx.typerState)

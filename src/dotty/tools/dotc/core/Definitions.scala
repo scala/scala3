@@ -244,6 +244,9 @@ class Definitions {
 
   lazy val DottyPredefModuleRef = ctx.requiredModuleRef("dotty.DottyPredef")
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
+
+    def Predef_eqAny(implicit ctx: Context) = DottyPredefModule.requiredMethod(nme.eqAny)
+
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
@@ -431,9 +434,6 @@ class Definitions {
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
-  def EqModule(implicit ctx: Context) = EqClass.companionModule
-
-    def Eq_eqAny(implicit ctx: Context) = EqModule.requiredMethod(nme.eqAny)
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
