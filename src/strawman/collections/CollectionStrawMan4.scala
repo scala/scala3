@@ -12,6 +12,8 @@ import annotation.tailrec
  *  strengths and weaknesses of different collection architectures.
  *
  *  For a test file, see tests/run/CollectionTests.scala.
+ *
+ *  Strawman4 is like strawman1, but built over views instead of by-name iterators
  */
 object CollectionStrawMan4 {
 

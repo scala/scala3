@@ -12,6 +12,15 @@ import annotation.tailrec
  *  strengths and weaknesses of different collection architectures.
  *
  *  For a test file, see tests/run/CollectionTests.scala.
+ *
+ *  Strawman5 is like strawman4, but using inheritance through ...Like traits
+ *  instead of decorators.
+ *
+ *   Advantage: Much easier to specialize. See partition for strict (buildable) collections
+ *   or drop for Lists.
+ *
+ *   Disadvantage: More "weird" types in base traits; some awkwardness with
+ *   @uncheckedVariance.
  */
 object CollectionStrawMan5 {
 
