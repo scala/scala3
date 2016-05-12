@@ -21,7 +21,7 @@ class TestREPL(script: String) extends REPL {
     override val output = new NewLinePrintWriter(out)
 
     override def context(ctx: Context) =
-      ctx.fresh.setSetting(ctx.settings.XreplNoColor, true)
+      ctx.fresh.setSetting(ctx.settings.color, "never")
 
     override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines

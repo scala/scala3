@@ -28,6 +28,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val help = BooleanSetting("-help", "Print a synopsis of standard options")
   val nowarn = BooleanSetting("-nowarn", "Generate no warnings.")
   val print = BooleanSetting("-print", "Print program with Scala-specific features removed.")
+  val color = ChoiceSetting("-color", "mode", "Colored output", List("always", "never", "auto"), "auto")
   val target = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
     List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"),
     "jvm-1.8")
@@ -94,7 +95,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val sourceReader = StringSetting("-Xsource-reader", "classname", "Specify a custom method for reading source files.", "")
   val XnoValueClasses = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth = IntSetting("-Xrepl-line-width", "Maximial number of columns per line for REPL output", 390)
-  val XreplNoColor = BooleanSetting("-Xrepl-no-color", "Removes syntax highlighting in REPL")
   val XoldPatmat = BooleanSetting("-Xoldpatmat", "Use the pre-2.10 pattern matcher. Otherwise, the 'virtualizing' pattern matcher is used in 2.10.")
   val XnoPatmatAnalysis = BooleanSetting("-Xno-patmat-analysis", "Don't perform exhaustivity/unreachability analysis. Also, ignore @switch annotation.")
   val XfullLubs = BooleanSetting("-Xfull-lubs", "Retains pre 2.10 behavior of less aggressive truncation of least upper bounds.")

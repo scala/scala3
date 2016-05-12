@@ -419,7 +419,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
         withOutput(new ByteOutputStream) { ps =>
           val rawRes    = valMethodRes.invoke(interpreterResultObject).toString
           val res       =
-            if (!ictx.settings.XreplNoColor.value)
+            if (List("auto", "always").contains(ictx.settings.color.value))
               new String(SyntaxHighlighting(rawRes).toArray)
             else rawRes
           val prints    = ps.toString("utf-8")
