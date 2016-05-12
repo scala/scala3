@@ -20,6 +20,9 @@ class TestREPL(script: String) extends REPL {
   override lazy val config = new REPL.Config {
     override val output = new NewLinePrintWriter(out)
 
+    override def context(ctx: Context) =
+      ctx.fresh.setSetting(ctx.settings.XreplNoColor, true)
+
     override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines
       def readLine(prompt: String): String = {
@@ -38,8 +41,7 @@ class TestREPL(script: String) extends REPL {
     out.close()
     val printed = out.toString
     val transcript = printed.drop(printed.indexOf(config.prompt))
-    val transcriptNoColors = transcript.toString.replaceAll("\u001B\\[[;\\d]*m", "")
-    if (transcriptNoColors != script) {
+    if (transcript.toString != script) {
       println("input differs from transcript:")
       println(transcript)
       assert(false)
