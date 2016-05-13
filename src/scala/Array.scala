@@ -14,6 +14,7 @@ import mutable.{ ArrayBuilder, ArraySeq }
 import scala.compat.Platform.arraycopy
 import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime.{ array_apply, array_update }
+import dotty.runtime.vc._
 
 /** Contains a fallback builder for arrays when the element type
   *  does not have a class tag. In that case a generic array is built.
@@ -115,13 +116,73 @@ object Array extends FallbackArrayBuilding {
     *  @param xs the elements to put in the array
     *  @return an array containing all elements from xs.
     */
-  // Subject to a compiler optimization in Cleanup.
-  // Array(e0, ..., en) is translated to { val a = new Array(3); a(i) = ei; a }
-  def apply[T: ClassTag](xs: T*): Array[T] = {
-    val array = new Array[T](xs.length)
+  def apply[T](xs: T*)(implicit ct: ClassTag[T]): Array[T] = {
     var i = 0
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
-    array
+    xs match {
+      case vcwra: VCWrappedArray[T] =>
+        (vcwra.array: Object) match {
+          case vcia: VCIntArray[_] =>
+            val oldUndArr = vcia.arr
+            val newArr = new Array[T](vcia.length)
+            val newUndArr = newArr.asInstanceOf[VCIntArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcoa: VCObjectArray[_] =>
+            val oldUndArr = vcoa.arr
+            val newArr = new Array[T](vcoa.length)
+            val newUndArr = newArr.asInstanceOf[VCObjectArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcba: VCByteArray[_] =>
+            val oldUndArr = vcba.arr
+            val newArr = new Array[T](vcba.length)
+            val newUndArr = newArr.asInstanceOf[VCByteArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcboola: VCBooleanArray[_] =>
+            val oldUndArr = vcboola.arr
+            val newArr = new Array[T](vcboola.length)
+            val newUndArr = newArr.asInstanceOf[VCBooleanArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcla: VCLongArray[_] =>
+            val oldUndArr = vcla.arr
+            val newArr = new Array[T](vcla.length)
+            val newUndArr = newArr.asInstanceOf[VCLongArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcfa: VCFloatArray[_] =>
+            val oldUndArr = vcfa.arr
+            val newArr = new Array[T](vcfa.length)
+            val newUndArr = newArr.asInstanceOf[VCFloatArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcda: VCDoubleArray[_] =>
+            val oldUndArr = vcda.arr
+            val newArr = new Array[T](vcda.length)
+            val newUndArr = newArr.asInstanceOf[VCDoubleArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcca: VCCharArray[_] =>
+            val oldUndArr = vcca.arr
+            val newArr = new Array[T](vcca.length)
+            val newUndArr = newArr.asInstanceOf[VCCharArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+          case vcsa: VCShortArray[_] =>
+            val oldUndArr = vcsa.arr
+            val newArr = new Array[T](vcsa.length)
+            val newUndArr = newArr.asInstanceOf[VCShortArray[_]].arr
+            for (x <- oldUndArr.iterator) { newUndArr(i) = x; i += 1 }
+            newArr
+        }
+      case _ =>
+        // Subject to a compiler optimization in Cleanup.
+        // Array(e0, ..., en) is translated to { val a = new Array(3); a(i) = ei; a }
+        val array = new Array[T](xs.length)
+        for (x <- xs.iterator) { array(i) = x; i += 1 }
+        array
+    }
   }
 
   /** Creates an array of `Boolean` objects */
