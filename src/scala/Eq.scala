@@ -2,7 +2,7 @@ package scala
 
 import annotation.implicitNotFound
 
-/** A marker trait indicating that values of kind `L` can be compared to values of type `R`. */
+/** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait Eq[-L, -R]
 
