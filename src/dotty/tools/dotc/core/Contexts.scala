@@ -29,6 +29,7 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
+import xsbti.AnalysisCallback
 
 object Contexts {
 
@@ -83,6 +84,12 @@ object Contexts {
     protected def compilerCallback_=(callback: CompilerCallback) =
       _compilerCallback = callback
     def compilerCallback: CompilerCallback = _compilerCallback
+
+    /** The sbt callback implementation if we are run from sbt, null otherwise */
+    private[this] var _sbtCallback: AnalysisCallback = _
+    protected def sbtCallback_=(callback: AnalysisCallback) =
+      _sbtCallback = callback
+    def sbtCallback: AnalysisCallback = _sbtCallback
 
     /** The current context */
     private[this] var _period: Period = _
@@ -426,6 +433,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setCompilerCallback(callback: CompilerCallback): this.type = { this.compilerCallback = callback; this }
+    def setSbtCallback(callback: AnalysisCallback): this.type = { this.sbtCallback = callback; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.withReporter(reporter))
     def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
