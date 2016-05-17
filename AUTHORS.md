@@ -45,3 +45,10 @@ The majority of the dotty codebase is new code, with the exception of the compon
 `dotty.tools.io`   
 
 > The I/O support library was adapted from current Scala compiler. Original authors were Paul Phillips and others.
+
+`dotty.test.DottyBytecodeTest`
+
+> Is an adaptation of the bytecode testing from
+> [scala/scala](https://github.com/scala/scala). It has been reworked to fit
+> the needs of dotty. Original authors include: Adrian Moors, Lukas Rytz,
+> Grzegorz Kossakowski, Paul Phillips
