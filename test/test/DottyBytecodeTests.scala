@@ -82,4 +82,28 @@ class TestBCode extends DottyBytecodeTest {
       assert(verifySwitch(methodNode, shouldFail = true))
     }
   }
+
+  /** Make sure that creating multidim arrays reduces to "multinewarray"
+   *  instruction
+   */
+  @Test def multidimArrays = {
+    val source = """
+                 |object Arr {
+                 |  def arr = Array.ofDim[Int](2, 1)
+                 |}""".stripMargin
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Arr$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method     = getMethod(moduleNode, "arr")
+
+      val hadCorrectInstr =
+        instructionsFromMethod(method)
+        .collect { case x @ NewArray(op, _, dims) if op == 197 && dims == 2 => x }
+        .length > 0
+
+      assert(hadCorrectInstr,
+             "Did not contain \"multianewarray\" instruction in:\n" +
+             instructionsFromMethod(method).mkString("\n"))
+    }
+  }
 }
