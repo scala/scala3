@@ -94,6 +94,22 @@ trait DottyBytecodeTest extends DottyTest {
   }
 
   /**************************** Comparison Methods ****************************/
+  def verifySwitch(method: MethodNode, shouldFail: Boolean = false, debug: Boolean = false): Boolean = {
+    val instructions = instructionsFromMethod(method)
+
+    val succ = instructions
+      .collect {
+        case x: TableSwitch  => x
+        case x: LookupSwitch => x
+      }
+      .length > 0
+
+    if (debug || !succ && !shouldFail || succ && shouldFail)
+      instructions.foreach(Console.err.println)
+
+    succ
+  }
+
   def sameBytecode(methA: MethodNode, methB: MethodNode) = {
     val isa = instructionsFromMethod(methA)
     val isb = instructionsFromMethod(methB)
