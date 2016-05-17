@@ -46,24 +46,40 @@ class TestBCode extends DottyBytecodeTest {
 
   /** This test verifies that simple matches with `@switch` annotations are
    *  indeed transformed to a switch
-   *
-   *  FIXME: once issue#1258 is resolved, this should be enabled!
    */
-  //@Test def basicTransfromAnnotated = {
-  //  val source = """
-  //               |object Foo {
-  //               |  import scala.annotation.switch
-  //               |  def foo(i: Int) = (i: @switch) match {
-  //               |    case 2 => println(2)
-  //               |    case 1 => println(1)
-  //               |  }
-  //               |}""".stripMargin
+  @Test def basicTransfromAnnotated = {
+    val source = """
+                 |object Foo {
+                 |  import scala.annotation.switch
+                 |  def foo(i: Int) = (i: @switch) match {
+                 |    case 2 => println(2)
+                 |    case 1 => println(1)
+                 |  }
+                 |}""".stripMargin
 
-  //  checkBCode(source) { dir =>
-  //    val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-  //    val moduleNode = loadClassNode(moduleIn.input)
-  //    val methodNode = getMethod(moduleNode, "foo")
-  //    assert(verifySwitch(methodNode))
-  //  }
-  //}
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def failTransform = {
+    val source = """
+                 |object Foo {
+                 |  import scala.annotation.switch
+                 |  def foo(i: Any) = (i: @switch) match {
+                 |    case x: String => println("string!")
+                 |    case x :: xs   => println("list!")
+                 |  }
+                 |}""".stripMargin
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+
+      assert(verifySwitch(methodNode, shouldFail = true))
+    }
+  }
 }

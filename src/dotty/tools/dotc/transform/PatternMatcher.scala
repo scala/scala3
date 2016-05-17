@@ -307,10 +307,15 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // TODO Deal with guards?
 
       def isSwitchableType(tpe: Type): Boolean = {
-        (tpe isRef defn.IntClass) ||
-        (tpe isRef defn.ByteClass) ||
-        (tpe isRef defn.ShortClass) ||
-        (tpe isRef defn.CharClass)
+        val actualTpe = tpe match {
+          case t @ AnnotatedType(inner, _) => inner
+          case x => x
+        }
+
+        (actualTpe isRef defn.IntClass) ||
+        (actualTpe isRef defn.ByteClass) ||
+        (actualTpe isRef defn.ShortClass) ||
+        (actualTpe isRef defn.CharClass)
       }
 
       object IntEqualityTestTreeMaker {
@@ -423,7 +428,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         Match(intScrut, newCases :+ defaultCase)
       }
 
-      if (isSwitchableType(scrut.tpe.widenDealias) && cases.forall(isSwitchCase)) {
+      val dealiased = scrut.tpe.widenDealias
+      if (isSwitchableType(dealiased) && cases.forall(isSwitchCase)) {
         val valuesToCases = cases.map(extractSwitchCase)
         val values = valuesToCases.map(_._1)
         if (values.tails.exists { tail => tail.nonEmpty && tail.tail.exists(doOverlap(_, tail.head)) }) {
@@ -433,6 +439,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           Some(makeSwitch(valuesToCases))
         }
       } else {
+        if (dealiased hasAnnotation defn.SwitchAnnot)
+          ctx.warning("failed to emit switch for `@switch` annotated match")
         None
       }
     }

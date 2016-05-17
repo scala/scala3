@@ -107,7 +107,7 @@ trait DottyBytecodeTest extends DottyTest {
     if (debug || !succ && !shouldFail || succ && shouldFail)
       instructions.foreach(Console.err.println)
 
-    succ
+    succ && !shouldFail || shouldFail && !succ
   }
 
   def sameBytecode(methA: MethodNode, methB: MethodNode) = {
