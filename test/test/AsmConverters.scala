@@ -5,7 +5,7 @@ import asm._
 import asm.tree._
 import scala.collection.JavaConverters._
 
-/** Makes using ASM from ByteCodeTests more convenient.
+/** Makes using ASM from tests more convenient.
  *
  * Wraps ASM instructions in case classes so that equals and toString work
  * for the purpose of bytecode diffing and pretty printing.

@@ -27,6 +27,24 @@ trait DottyBytecodeTest extends DottyTest {
   import AsmNode._
   import ASMConverters._
 
+  protected object Opcode {
+    val newarray       = 188
+    val anewarray      = 189
+    val multianewarray = 197
+
+    val boolean        = 4
+    val char           = 5
+    val float          = 6
+    val double         = 7
+    val byte           = 8
+    val short          = 9
+    val int            = 10
+    val long           = 11
+
+    val boxedUnit      = "scala/runtime/BoxedUnit"
+    val javaString     = "java/lang/String"
+  }
+
   private def bCodeCheckingComp(phase: TestGenBCode)(check: Directory => Unit) =
     new Compiler {
       override def phases = {
