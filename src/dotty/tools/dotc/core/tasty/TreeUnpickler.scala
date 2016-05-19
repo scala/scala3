@@ -646,7 +646,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val cls = ctx.owner.asClass
       def setClsInfo(parents: List[TypeRef], selfType: Type) =
         cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
-      setClsInfo(Nil, NoType)
+      val assumedSelfType =
+        if (cls.is(Module) && cls.owner.isClass)
+          TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
+        else NoType
+      setClsInfo(Nil, assumedSelfType)
       val localDummy = ctx.newLocalDummy(cls)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
@@ -659,7 +663,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         }
       }
       val parentRefs = ctx.normalizeToClassRefs(parents.map(_.tpe), cls, cls.unforcedDecls)
-       val self =
+      val self =
         if (nextByte == SELFDEF) {
           readByte()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
