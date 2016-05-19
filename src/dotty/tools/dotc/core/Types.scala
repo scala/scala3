@@ -1437,7 +1437,11 @@ object Types {
       asMemberOf(prefix) match {
         case NoDenotation => d.current
         case newd: SingleDenotation => newd
-        case newd => newd.atSignature(d.signature).checkUnique.orElse(d.current)
+        case newd =>
+          newd.atSignature(d.signature) match {
+            case newd1: SingleDenotation if newd1.exists => newd1
+            case _ => d.current
+          }
       }
 
     private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
