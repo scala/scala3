@@ -306,17 +306,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] = {
       // TODO Deal with guards?
 
-      def isSwitchableType(tpe: Type): Boolean = {
-        val actualTpe = tpe match {
-          case t @ AnnotatedType(inner, _) => inner
-          case x => x
-        }
-
-        (actualTpe isRef defn.IntClass) ||
-        (actualTpe isRef defn.ByteClass) ||
-        (actualTpe isRef defn.ShortClass) ||
-        (actualTpe isRef defn.CharClass)
-      }
+      def isSwitchableType(tpe: Type): Boolean =
+        (tpe isRef defn.IntClass) ||
+        (tpe isRef defn.ByteClass) ||
+        (tpe isRef defn.ShortClass) ||
+        (tpe isRef defn.CharClass)
 
       object IntEqualityTestTreeMaker {
         def unapply(treeMaker: EqualityTestTreeMaker): Option[Int] = treeMaker match {
