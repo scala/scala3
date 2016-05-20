@@ -406,7 +406,7 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     }
 
     /** load and run the code using reflection.
-     *  @return  A pair consisting of the run's result as a string, and
+     *  @return  A pair consisting of the run's result as a `List[String]`, and
      *           a boolean indicating whether the run succeeded without throwing
      *           an exception.
      */
@@ -417,12 +417,11 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
         interpreterResultObject.getMethod("result")
       try {
         withOutput(new ByteOutputStream) { ps =>
-          val rawRes    = valMethodRes.invoke(interpreterResultObject).toString
-          val res       =
-            if (List("auto", "always").contains(ictx.settings.color.value))
-              new String(SyntaxHighlighting(rawRes).toArray)
+          val rawRes = valMethodRes.invoke(interpreterResultObject).toString
+          val res =
+            if (ictx.useColors) new String(SyntaxHighlighting(rawRes).toArray)
             else rawRes
-          val prints    = ps.toString("utf-8")
+          val prints = ps.toString("utf-8")
           val printList = if (prints != "") prints :: Nil else Nil
 
           if (!delayOutput) out.print(prints)

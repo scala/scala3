@@ -370,6 +370,10 @@ object Contexts {
     /** Is the verbose option set? */
     def verbose: Boolean = base.settings.verbose.value
 
+    /** Should use colors when printing? */
+    def useColors: Boolean =
+      List("auto", "always") contains base.settings.color.value
+
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
     private var _condensed: CondensedContext = null

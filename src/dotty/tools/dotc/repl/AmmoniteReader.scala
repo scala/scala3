@@ -58,8 +58,7 @@ class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extend
       allFilters,
       displayTransform = (buffer, cursor) => {
         val coloredBuffer =
-          if (List("auto", "always").contains(ctx.settings.color.value))
-            SyntaxHighlighting(buffer)
+          if (ctx.useColors) SyntaxHighlighting(buffer)
           else buffer
 
         val ansiBuffer = Ansi.Str.parse(coloredBuffer)
