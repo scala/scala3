@@ -248,7 +248,7 @@ object Contexts {
       withPhase(phase.id)
 
     final def withPhaseNoLater(phase: Phase) =
-      if (ctx.phase.id > phase.id) withPhase(phase) else ctx
+      if (phase.exists && ctx.phase.id > phase.id) withPhase(phase) else ctx
 
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
