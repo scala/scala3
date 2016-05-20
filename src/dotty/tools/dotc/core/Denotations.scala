@@ -669,7 +669,6 @@ object Denotations {
                 next match {
                   case next: ClassDenotation =>
                     assert(!next.is(Package), s"illegal transformation of package denotation by transformer ${ctx.withPhase(transformer).phase}")
-                    next.resetFlag(Frozen)
                   case _ =>
                 }
                 next.insertAfter(cur)

@@ -379,53 +379,50 @@ object Flags {
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 
-  /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
-  final val Frozen = commonFlag(49, "<frozen>")
-
   /** An error symbol */
-  final val Erroneous = commonFlag(50, "<is-error>")
+  final val Erroneous = commonFlag(49, "<is-error>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
-  final val Lifted = commonFlag(51, "<lifted>")
+  final val Lifted = commonFlag(50, "<lifted>")
 
   /** Term member has been mixed in */
-  final val MixedIn = commonFlag(52, "<mixedin>")
+  final val MixedIn = commonFlag(51, "<mixedin>")
 
   /** Symbol is a generated specialized member */
-  final val Specialized = commonFlag(53, "<specialized>")
+  final val Specialized = commonFlag(52, "<specialized>")
 
   /** Symbol is a self name */
-  final val SelfName = termFlag(54, "<selfname>")
+  final val SelfName = termFlag(53, "<selfname>")
 
   /** Symbol is an implementation class of a Scala2 trait */
-  final val ImplClass = typeFlag(54, "<implclass>")
+  final val ImplClass = typeFlag(53, "<implclass>")
 
   final val SelfNameOrImplClass = SelfName.toCommonFlags
 
   /** An existentially bound symbol (Scala 2.x only) */
-  final val Scala2ExistentialCommon = commonFlag(55, "<existential>")
+  final val Scala2ExistentialCommon = commonFlag(54, "<existential>")
   final val Scala2Existential = Scala2ExistentialCommon.toTypeFlags
 
   /** An overloaded symbol (Scala 2.x only) */
-  final val Scala2Overloaded = termFlag(56, "<overloaded>")
+  final val Scala2Overloaded = termFlag(55, "<overloaded>")
 
   /** A module variable (Scala 2.x only) */
-  final val Scala2ModuleVar = termFlag(57, "<modulevar>")
+  final val Scala2ModuleVar = termFlag(56, "<modulevar>")
 
   /** A definition that's initialized before the super call (Scala 2.x only) */
-  final val Scala2PreSuper = termFlag(58, "<presuper>")
+  final val Scala2PreSuper = termFlag(57, "<presuper>")
 
   /** A macro (Scala 2.x only) */
-  final val Macro = commonFlag(59, "<macro>")
+  final val Macro = commonFlag(58, "<macro>")
 
   /** A method that is known to have inherited default parameters */
-  final val InheritedDefaultParams = termFlag(60, "<inherited-default-param>")
+  final val InheritedDefaultParams = termFlag(59, "<inherited-default-param>")
 
   /** A method that is known to have no default parameters */
-  final val NoDefaultParams = termFlag(61, "<no-default-param>")
+  final val NoDefaultParams = termFlag(60, "<no-default-param>")
 
   /** A denotation that is valid in all run-ids */
-  final val Permanent = commonFlag(62, "<permanent>")
+  final val Permanent = commonFlag(61, "<permanent>")
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
@@ -448,7 +445,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    CaseAccessorOrBaseTypeArg | Fresh | Erroneous | ImplicitCommon | Permanent | Synthetic |
     LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)

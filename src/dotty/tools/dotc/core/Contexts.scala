@@ -584,7 +584,7 @@ object Contexts {
     private[core] var lastSuperId = -1
 
     /** Allocate and return next free superclass id */
-    private[core] def nextSuperId: Int = {
+    private[core] def nextSuperId(): Int = {
       lastSuperId += 1
       if (lastSuperId >= classOfId.length) {
         val tmp = new Array[ClassSymbol](classOfId.length * 2)
@@ -593,6 +593,16 @@ object Contexts {
       }
       lastSuperId
     }
+
+    /** The last member-names generation number */
+    private[this] var myMNGen = 0
+
+    /** The next successive member-names generation number */
+    private[core] def nextMemberNamesGeneration(): Int = {
+      myMNGen += 1
+      myMNGen
+    }
+
 
     // Types state
     /** A table for hash consing unique types */
