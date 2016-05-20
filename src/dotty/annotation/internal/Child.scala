@@ -9,7 +9,8 @@ import scala.annotation.Annotation
  *    case class B() extends A
  *    case class C() extends A
  *
- *  Then `A` would carry the annotations `@Child[B] @Child[C]` where
- *  `B`, `C` are TypeRefs.
+ *  Then the class symbol `A` would carry the annotations 
+ *  `@Child[Bref] @Child[Cref]` where `Bref`, `Cref` are TypeRefs
+ *  referring to the class symbols of `B` and `C`
  */
 class Child[T] extends Annotation
