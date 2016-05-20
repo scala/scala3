@@ -573,7 +573,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
       }
       atReadPos(startCoord(denot).toIndex,
-          () => parseToCompletion(denot)(ctx.addMode(Mode.Scala2Unpickling)))
+          () => parseToCompletion(denot)(
+            ctx.addMode(Mode.Scala2Unpickling).withPhaseNoLater(ctx.picklerPhase)))
     } catch {
       case ex: RuntimeException => handleRuntimeException(ex)
     }
@@ -922,7 +923,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val start = readIndex
     val atp = readTypeRef()
     Annotation.deferred(
-      atp.typeSymbol, implicit ctx => atReadPos(start, () => readAnnotationContents(end)))
+      atp.typeSymbol, implicit ctx1 =>
+        atReadPos(start, () => readAnnotationContents(end)(ctx1.withPhase(ctx.phase))))
   }
 
   /* Read an abstract syntax tree */

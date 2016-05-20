@@ -5,7 +5,7 @@ import core._
 import Names._
 import StdNames.nme
 import Types._
-import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees._
 import Flags._
 import Contexts.Context

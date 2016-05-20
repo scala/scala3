@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Names._
-import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees._
 import Flags._
 import Types._

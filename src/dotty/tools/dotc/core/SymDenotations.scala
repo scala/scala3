@@ -1299,7 +1299,6 @@ object SymDenotations {
     override def invalidateInheritedInfo(): Unit = {
       myBaseClasses = null
       mySuperClassBits = null
-      myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
       myMemberCachePeriod = Nowhere
       memberNamesCache = SimpleMap.Empty
@@ -1418,42 +1417,6 @@ object SymDenotations {
 
     final override def typeParamCreationFlags = ClassTypeParamCreationFlags
 
-    private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
-
-    private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
-      var fp = FingerPrint()
-      var e = info.decls.lastEntry
-      while (e != null) {
-        fp.include(e.name)
-        e = e.prev
-      }
-      var ps = classParents
-      while (ps.nonEmpty) {
-        val parent = ps.head.typeSymbol
-        parent.denot match {
-          case parentDenot: ClassDenotation =>
-            fp.include(parentDenot.memberFingerPrint)
-            if (parentDenot.isFullyCompleted) parentDenot.setFlag(Frozen)
-          case _ =>
-        }
-        ps = ps.tail
-      }
-      fp
-    }
-
-    /** A bloom filter for the names of all members in this class.
-     *  Makes sense only for parent classes, and should definitely
-     *  not be used for package classes because cache never
-     *  gets invalidated.
-     */
-    def memberFingerPrint(implicit ctx: Context): FingerPrint =
-      if (myMemberFingerPrint != FingerPrint.unknown) myMemberFingerPrint
-      else {
-        val fp = computeMemberFingerPrint
-        if (isFullyCompleted) myMemberFingerPrint = fp
-        fp
-      }
-
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
 
@@ -1499,13 +1462,12 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls))
+      require((sym.denot.flagsUNSAFE is Private) ||
+              !(this is Frozen) ||
+              (scope ne this.unforcedDecls))
       scope.enter(sym)
 
-      if (myMemberFingerPrint != FingerPrint.unknown)
-        myMemberFingerPrint.include(sym.name)
-      if (myMemberCache != null)
-        myMemberCache invalidate sym.name
+      if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
@@ -1526,7 +1488,6 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
-      myMemberFingerPrint = FingerPrint.unknown
       if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
@@ -1574,31 +1535,26 @@ object SymDenotations {
     }
 
     private[core] def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
-      if (!inherited ||
-          !Config.useFingerPrints ||
-          (memberFingerPrint contains name)) {
-        Stats.record("computeNPMembersNamed after fingerprint")
-        ensureCompleted()
-        val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
-        if (debugTrace)  // DEBUG
-          println(s"$this.member($name), ownDenots = $ownDenots")
-        def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
-          case p :: ps =>
-            val denots1 = collect(denots, ps)
-            p.symbol.denot match {
-              case parentd: ClassDenotation =>
-                denots1 union
-                  parentd.nonPrivateMembersNamed(name, inherited = true)
-                    .mapInherited(ownDenots, denots1, thisType)
-              case _ =>
-                denots1
-            }
-          case nil =>
-            denots
-        }
-        if (name.isConstructorName) ownDenots
-        else collect(ownDenots, classParents)
-      } else NoDenotation
+      Stats.record("computeNPMembersNamed after fingerprint")
+      ensureCompleted()
+      val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
+      if (debugTrace) // DEBUG
+        println(s"$this.member($name), ownDenots = $ownDenots")
+      def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+        case p :: ps =>
+          val denots1 = collect(denots, ps)
+          p.symbol.denot match {
+            case parentd: ClassDenotation =>
+              denots1 union
+                parentd.nonPrivateMembersNamed(name, inherited = true)
+                .mapInherited(ownDenots, denots1, thisType)
+            case _ =>
+              denots1
+          }
+        case nil =>
+          denots
+      }
+      if (name.isConstructorName) ownDenots else collect(ownDenots, classParents)
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {

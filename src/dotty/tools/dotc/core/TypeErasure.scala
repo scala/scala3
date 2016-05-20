@@ -374,7 +374,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
           }
-        val erasedDecls = decls.filteredScope(d => !d.isType || d.isClass)
+        val erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass)
         tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
