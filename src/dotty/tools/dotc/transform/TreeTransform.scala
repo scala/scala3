@@ -174,32 +174,22 @@ object TreeTransforms {
  }
 
   /** A helper trait to transform annotations on MemberDefs */
-  trait AnnotationTransformer extends MiniPhaseTransform with InfoTransformer {
+  trait AnnotationTransformer extends MiniPhaseTransform with DenotTransformer {
 
     val annotationTransformer = mkTreeTransformer
     override final def treeTransformPhase = this
       // need to run at own phase because otherwise we get ahead of ourselves in transforming denotations
 
-    override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-      val info1 = transformInfo(ref.info, ref.symbol)
-
-      ref match {
-        case ref: SymDenotation =>
-          val annots1 =
-            if (!ref.symbol.isDefinedInCurrentRun) ref.annotations // leave annotations read from class files alone
-            else {
-              val annotTrees = ref.annotations.map(_.tree)
-              val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
-              if (annotTrees eq annotTrees1) ref.annotations
-              else annotTrees1.map(new ConcreteAnnotation(_))
-            }
-          if ((info1 eq ref.info) && (annots1 eq ref.annotations)) ref
-          else ref.copySymDenotation(info = info1, annotations = annots1)
-        case _ =>
-          if (info1 eq ref.info) ref
-          else ref.derivedSingleDenotation(ref.symbol, info1)
+    abstract override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+      super.transform(ref) match {
+        case ref1: SymDenotation if ref1.symbol.isDefinedInCurrentRun =>
+          val annotTrees = ref1.annotations.map(_.tree)
+          val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
+          if (annotTrees eq annotTrees1) ref1
+          else ref1.copySymDenotation(annotations = annotTrees1.map(new ConcreteAnnotation(_)))
+        case ref1 =>
+          ref1
       }
-    }
   }
 
   @sharable val NoTransform = new TreeTransform {
