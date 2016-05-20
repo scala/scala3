@@ -824,13 +824,21 @@ class Namer { typer: Typer =>
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       def isInline = sym.is(Final, butNot = Method)
+
+      // Widen rhs type and approximate `|' but keep ConstantTypes if
+      // definition is inline (i.e. final in Scala2).
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
         case tp: ConstantType if isInline => tp
         case _ => tp.widen.approximateUnion
       }
+
+      // Replace aliases to Unit by Unit itself. If we leave the alias in
+      // it would be erased to BoxedUnit.
+      def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
+
       val rhsCtx = ctx.addMode(Mode.InferringReturnType)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
-      def cookedRhsType = ctx.deskolemize(widenRhs(rhsType))
+      def cookedRhsType = ctx.deskolemize(dealiasIfUnit(widenRhs(rhsType)))
       lazy val lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists)
