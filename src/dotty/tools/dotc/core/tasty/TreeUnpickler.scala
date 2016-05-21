@@ -57,6 +57,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
 
   private var roots: Set[SymDenotation] = null
 
+  private var ownerTree: OwnerTree = _
+
   private def registerSym(addr: Addr, sym: Symbol) = {
     symAtAddr(addr) = sym
     unpickledSyms += sym
@@ -117,6 +119,45 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
 
     def skipParams(): Unit =
       while (nextByte == PARAMS || nextByte == TYPEPARAM) skipTree()
+
+    /** Record all directly nested definitions and templates in current tree
+     *  as `OwnerTree`s in `buf`
+     */
+    def scanTree(buf: ListBuffer[OwnerTree]): Unit = {
+      val start = currentAddr
+      val tag = readByte()
+      //println(s"scan tree at $currentAddr, tag = $tag")
+      tag match {
+        case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | TEMPLATE =>
+          val end = readEnd()
+          for (i <- 0 until numRefs(tag)) readNat()
+          buf += new OwnerTree(start, fork, end)
+        case tag =>
+          if (tag >= firstLengthTreeTag) {
+            val end = readEnd()
+            var nrefs = numRefs(tag)
+            if (nrefs < 0) {
+              for (i <- nrefs until 0) scanTree(buf)
+              goto(end)
+            }
+            else {
+              for (i <- 0 until nrefs) readNat()
+              scanTrees(buf, end)
+            }
+          }
+          else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
+          else if (tag >= firstASTTreeTag) scanTree(buf)
+          else if (tag >= firstNatTreeTag) readNat()
+      }
+    }
+
+    /** Record all directly nested definitions and templates between current address and `end`
+     *  as `OwnerTree`s in `buf`
+     */
+    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr): Unit = {
+      while (currentAddr.index < end.index) scanTree(buf)
+      assert(currentAddr.index == end.index)
+    }
 
     /** The next tag, following through SHARED tags */
     def nextUnsharedTag: Int = {
@@ -197,8 +238,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case SUPERtype =>
               SuperType(readType(), readType())
             case REFINEDtype =>
-              val parent = readType()
               var name: Name = readName()
+              val parent = readType()
               val ttag = nextUnsharedTag
               if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
               RefinedType(parent, name, rt => registeringType(rt, readType()))
@@ -437,7 +478,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     /** Read modifier list into triplet of flags, annotations and a privateWithin
-     *  boindary symbol.
+     *  boundary symbol.
      */
     def readModifiers(end: Addr)(implicit ctx: Context): (FlagSet, List[Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
@@ -664,6 +705,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         else NoType
       setClsInfo(Nil, assumedSelfType)
       val localDummy = ctx.newLocalDummy(cls)
+      registerSym(start, localDummy)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
@@ -716,12 +758,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     def readTopLevel()(implicit ctx: Context): List[Tree] = {
+      ownerTree = new OwnerTree(NoAddr, fork, reader.endAddr)
       @tailrec def read(acc: ListBuffer[Tree]): List[Tree] = nextByte match {
         case IMPORT | PACKAGE =>
           acc += readIndexedStat(NoSymbol)
-          if (!isAtEnd)
-            read(acc)
-          else acc.toList
+          if (!isAtEnd) read(acc) else acc.toList
         case _ => // top-level trees which are not imports or packages are not part of tree
           acc.toList
       }
@@ -967,5 +1008,34 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       normalizePos(res, parentPos)
       res
     }
+  }
+
+  class OwnerTree(val addr: Addr, reader: TreeReader, val end: Addr) {
+    lazy val children: List[OwnerTree] = {
+      val buf = new ListBuffer[OwnerTree]
+      reader.scanTrees(buf, end)
+      buf.toList
+    }
+    def findOwner(addr: Addr)(implicit ctx: Context): Symbol = {
+      //println(s"find owner $addr")
+      def search(cs: List[OwnerTree], current: Symbol): Symbol = cs match {
+        case ot :: cs1 =>
+          if (ot.addr.index == addr.index) {
+            //println(i"search ok $addr, owner = $current")
+            current
+          }
+          else if (ot.addr.index < addr.index && addr.index < ot.end.index) {
+            val encl = reader.symbolAt(ot.addr)
+            //println(s"search $addr in ${ot.children} with $encl")
+            search(ot.children, encl)
+          }
+          else
+            search(cs1, current)
+        case Nil =>
+          throw new Error("unattached tree")
+      }
+      search(children, NoSymbol)
+    }
+    override def toString = s"OwnerTree(${addr.index}, ${end.index}"
   }
 }
