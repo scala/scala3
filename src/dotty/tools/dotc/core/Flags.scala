@@ -525,6 +525,9 @@ object Flags {
   /** Either method or lazy */
   final val MethodOrLazy = Method | Lazy
 
+  /** Either method or lazy or deferred */
+  final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
+
   /** Labeled `private` or `final` */
   final val PrivateOrFinal = Private | Final
 
