@@ -53,7 +53,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   // I did not have the time to track down what caused the failure.
   // The testing scheme could well have produced a false negative.
   //
-  // private var stubs: Set[Symbol] = Set() 
+  // private var stubs: Set[Symbol] = Set()
 
   private var roots: Set[SymDenotation] = null
 
@@ -96,7 +96,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   class Completer(reader: TastyReader) extends LazyType {
     import reader._
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
-      treeAtAddr(currentAddr) = new TreeReader(reader).readIndexedDef()
+      treeAtAddr(currentAddr) =
+        new TreeReader(reader).readIndexedDef()(
+          ctx.withPhaseNoLater(ctx.picklerPhase))//(ctx.withOwner(owner))
     }
   }
 
@@ -951,7 +953,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] with DeferredPosition {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr}")
-      val res = op(reader)(ctx.addMode(Mode.AllowDependentFunctions))
+      val res = op(reader)(ctx.addMode(Mode.AllowDependentFunctions).withPhaseNoLater(ctx.picklerPhase))
       normalizePos(res, parentPos)
       res
     }
@@ -960,7 +962,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   class LazyAnnotationReader(sym: Symbol, reader: TreeReader)
       extends LazyAnnotation(sym) with DeferredPosition {
     def complete(implicit ctx: Context) = {
-      val res = reader.readTerm()
+      val res = reader.readTerm()(ctx.withPhaseNoLater(ctx.picklerPhase))
       normalizePos(res, parentPos)
       res
     }
