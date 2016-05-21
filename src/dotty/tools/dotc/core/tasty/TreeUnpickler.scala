@@ -371,10 +371,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     /** Create symbol of definition node and enter in symAtAddr map
-     *  @return  the largest subset of {NoInits, PureInterface} that a
-     *           trait owning this symbol can have as flags.
+     *  @return  the created symbol
      */
-    def createSymbol()(implicit ctx: Context): FlagSet = {
+    def createSymbol()(implicit ctx: Context): Symbol = {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
@@ -434,10 +433,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      if (isClass) NoInits
-      else if (sym.isType || sym.isConstructor || flags.is(Deferred)) NoInitsInterface
-      else if (tag == VALDEF) EmptyFlags
-      else NoInits
+      sym
     }
 
     /** Read modifier list into triplet of flags, annotations and a privateWithin
@@ -504,28 +500,33 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       (flags, annots.toList, privateWithin)
     }
 
-    /** Create symbols for a definitions in statement sequence between
+    /** Create symbols for the definitions in the statement sequence between
      *  current address and `end`.
      *  @return  the largest subset of {NoInits, PureInterface} that a
      *           trait owning the indexed statements can have as flags.
      */
     def indexStats(end: Addr)(implicit ctx: Context): FlagSet = {
-      val flagss =
-        until(end) {
-          nextByte match {
-            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
-              createSymbol()
-            case IMPORT =>
-              skipTree()
-              NoInitsInterface
-            case PACKAGE =>
-              processPackage { (pid, end) => implicit ctx => indexStats(end) }
-            case _ =>
-              skipTree()
-              EmptyFlags
-          }
+      var initsFlags = NoInitsInterface
+      while (currentAddr.index < end.index) {
+        nextByte match {
+          case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
+            val sym = createSymbol()
+            if (sym.isTerm && !sym.is(MethodOrLazyOrDeferred))
+              initsFlags = EmptyFlags
+            else if (sym.isClass ||
+              sym.is(Method, butNot = Deferred) && !sym.isConstructor)
+              initsFlags &= NoInits
+          case IMPORT =>
+            skipTree()
+          case PACKAGE =>
+            processPackage { (pid, end) => implicit ctx => indexStats(end) }
+          case _ =>
+            skipTree()
+            initsFlags = EmptyFlags
         }
-      (NoInitsInterface /: flagss)(_ & _)
+      }
+      assert(currentAddr.index == end.index)
+      initsFlags
     }
 
     /** Process package with given operation `op`. The operation takes as arguments
