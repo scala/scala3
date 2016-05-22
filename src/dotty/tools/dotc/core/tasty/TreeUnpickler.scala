@@ -22,6 +22,7 @@ import config.Printers.pickling
 class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   import TastyFormat._
   import TastyName._
+  import TreeUnpickler._
   import tpd._
 
   private var readPositions = false
@@ -45,18 +46,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
   private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
 
-  // Currently disabled set used for checking that all
-  // already encountered symbols are forward refereneces. This
-  // check fails in more complicated scenarios of separate
-  // compilation in dotty (for instance: compile all of `core`
-  // given the TASTY files of everything else in the compiler).
-  // I did not have the time to track down what caused the failure.
-  // The testing scheme could well have produced a false negative.
-  //
-  // private var stubs: Set[Symbol] = Set()
-
+  /** The root symbol denotation which are defined by the Tasty file associated with this
+   *  TreeUnpickler. Set by `enterTopLevel`.
+   */
   private var roots: Set[SymDenotation] = null
 
+  /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
 
   private def registerSym(addr: Addr, sym: Symbol) = {
@@ -69,7 +64,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
    */
   def enterTopLevel(roots: Set[SymDenotation])(implicit ctx: Context): Unit = {
     this.roots = roots
-    new TreeReader(reader).fork.indexStats(reader.endAddr)
+    var rdr = new TreeReader(reader).fork
+    ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
+    rdr.indexStats(reader.endAddr)
   }
 
   /** The unpickled trees */
@@ -123,17 +120,19 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     /** Record all directly nested definitions and templates in current tree
      *  as `OwnerTree`s in `buf`
      */
-    def scanTree(buf: ListBuffer[OwnerTree]): Unit = {
+    def scanTree(buf: ListBuffer[OwnerTree], mode: MemberDefMode = AllDefs): Unit = {
       val start = currentAddr
       val tag = readByte()
-      //println(s"scan tree at $currentAddr, tag = $tag")
       tag match {
         case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | TEMPLATE =>
           val end = readEnd()
           for (i <- 0 until numRefs(tag)) readNat()
-          buf += new OwnerTree(start, fork, end)
+          if (tag == TEMPLATE) scanTrees(buf, end, MemberDefsOnly)
+          if (mode != NoMemberDefs) buf += new OwnerTree(start, tag, fork, end)
+          goto(end)
         case tag =>
-          if (tag >= firstLengthTreeTag) {
+          if (mode == MemberDefsOnly) skipTree(tag)
+          else if (tag >= firstLengthTreeTag) {
             val end = readEnd()
             var nrefs = numRefs(tag)
             if (nrefs < 0) {
@@ -154,8 +153,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     /** Record all directly nested definitions and templates between current address and `end`
      *  as `OwnerTree`s in `buf`
      */
-    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr): Unit = {
-      while (currentAddr.index < end.index) scanTree(buf)
+    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr, mode: MemberDefMode): Unit = {
+      while (currentAddr.index < end.index) scanTree(buf, mode)
       assert(currentAddr.index == end.index)
     }
 
@@ -197,19 +196,25 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       until(end) { readNat(); readType().asInstanceOf[T] }
 
     /** Read referece to definition and return symbol created at that definition */
-    def readSymRef()(implicit ctx: Context): Symbol = {
-      val start = currentAddr
-      val addr = readAddr()
-      symAtAddr get addr match {
-        case Some(sym) => sym
-        case None =>
-          // Create a stub; owner might be wrong but will be overwritten later.
-          forkAt(addr).createSymbol()
-          val sym = symAtAddr(addr)
-          ctx.log(i"forward reference to $sym")
-          // stubs += sym
-          sym
-      }
+    def readSymRef()(implicit ctx: Context): Symbol = symbolAt(readAddr())
+
+    /** The symbol at given address; createa new one if none exists yet */
+    def symbolAt(addr: Addr)(implicit ctx: Context): Symbol = symAtAddr.get(addr) match {
+      case Some(sym) =>
+        sym
+      case None =>
+        val sym = forkAt(addr).createSymbol()(ctx.withOwner(ownerTree.findOwner(addr)))
+        ctx.log(i"forward reference to $sym")
+        sym
+    }
+
+    /** The symbol defined by current definition */
+    def symbolAtCurrent()(implicit ctx: Context): Symbol = symAtAddr.get(currentAddr) match {
+      case Some(sym) =>
+        assert(ctx.owner == sym.owner, i"owner discrepancy for $sym, expected: ${ctx.owner}, found: ${sym.owner}")
+        sym
+      case None =>
+        createSymbol()
     }
 
     /** Read a type */
@@ -414,7 +419,21 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     /** Create symbol of definition node and enter in symAtAddr map
      *  @return  the created symbol
      */
-    def createSymbol()(implicit ctx: Context): Symbol = {
+    def createSymbol()(implicit ctx: Context): Symbol = nextByte match {
+      case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
+        createMemberSymbol()
+      case TEMPLATE =>
+        val localDummy = ctx.newLocalDummy(ctx.owner)
+        registerSym(currentAddr, localDummy)
+        localDummy
+      case tag =>
+        throw new Error(s"illegal createSymbol at $currentAddr, tag = $tag")
+    }
+
+    /** Create symbol of member definition or parameter node and enter in symAtAddr map
+     *  @return  the created symbol
+     */
+    def createMemberSymbol()(implicit ctx: Context): Symbol = {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
@@ -451,22 +470,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case _ =>
             val completer = adjustIfModule(new Completer(subReader(start, end)))
             if (isClass)
-              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer,
-                  privateWithin, coord = start.index)
-            else {
-              val sym = symAtAddr.get(start) match {
-                case Some(preExisting) =>
-                  //assert(stubs contains preExisting, preExisting)
-                  //stubs -= preExisting
-                  preExisting
-                case none =>
-                  ctx.newNakedSymbol(start.index)
-              }
-              val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
-              sym.denot = denot
-              sym
-            }
-        } // TODO set position
+              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
+            else
+              ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord = start.index)
+        } // TODO set position somehow (but take care not to upset Symbol#isDefinedInCurrentRun)
       sym.annotations = annots
       ctx.enter(sym)
       registerSym(start, sym)
@@ -474,6 +481,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
+      goto(start)
       sym
     }
 
@@ -551,7 +559,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       while (currentAddr.index < end.index) {
         nextByte match {
           case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
-            val sym = createSymbol()
+            val sym = symbolAtCurrent()
+            skipTree()
             if (sym.isTerm && !sym.is(MethodOrLazyOrDeferred))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
@@ -586,7 +595,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
      *  `tag` starting at current address.
      */
     def indexParams(tag: Int)(implicit ctx: Context) =
-      while (nextByte == tag) createSymbol()
+      while (nextByte == tag) {
+        symbolAtCurrent()
+        skipTree()
+      }
 
     /** Create symbols for all type and value parameters of template starting
      *  at current address.
@@ -613,7 +625,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val end = readEnd()
 
       def readParams[T <: MemberDef](tag: Int)(implicit ctx: Context): List[T] = {
-        fork.indexParams(tag)
+        fork.indexParams(tag)(localContext(sym))
         readIndexedParams(tag)
       }
 
@@ -704,8 +716,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           TermRef.withSig(cls.owner.thisType, cls.name.sourceModuleName, Signature.NotAMethod)
         else NoType
       setClsInfo(Nil, assumedSelfType)
-      val localDummy = ctx.newLocalDummy(cls)
-      registerSym(start, localDummy)
+      val localDummy = symbolAtCurrent()
       assert(readByte() == TEMPLATE)
       val end = readEnd()
       val tparams = readIndexedParams[TypeDef](TYPEPARAM)
@@ -758,7 +769,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     def readTopLevel()(implicit ctx: Context): List[Tree] = {
-      ownerTree = new OwnerTree(NoAddr, fork, reader.endAddr)
       @tailrec def read(acc: ListBuffer[Tree]): List[Tree] = nextByte match {
         case IMPORT | PACKAGE =>
           acc += readIndexedStat(NoSymbol)
@@ -1010,32 +1020,62 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
   }
 
-  class OwnerTree(val addr: Addr, reader: TreeReader, val end: Addr) {
+  /** A lazy datastructure that records how definitions are nested in TASTY data.
+   *  The structure is lazy because it needs to be computed only for forward references
+   *  to symbols that happen before the referenced symbol is created (see `symbolAt`).
+   *  Such forward references are rare.
+   *
+   *  @param   addr    The address of tree representing an owning definition, NoAddr for root tree
+   *  @param   tag     The tag at `addr`. Used to determine which subtrees to scan for children
+   *                   (i.e. if `tag` is template, don't scan member defs, as these belong already
+   *                    to enclosing class).
+   *  @param   reader  The reader to be used for scanning for children
+   *  @param   end     The end of the owning definition
+   */
+  class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
+
+    /** All definitions that have the definition at `addr` as closest enclosing definition */
     lazy val children: List[OwnerTree] = {
       val buf = new ListBuffer[OwnerTree]
-      reader.scanTrees(buf, end)
+      reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
       buf.toList
     }
+
+    /** Find the owner of definition at `addr` */
     def findOwner(addr: Addr)(implicit ctx: Context): Symbol = {
-      //println(s"find owner $addr")
-      def search(cs: List[OwnerTree], current: Symbol): Symbol = cs match {
+      def search(cs: List[OwnerTree], current: Symbol): Symbol =
+        try cs match {
         case ot :: cs1 =>
-          if (ot.addr.index == addr.index) {
-            //println(i"search ok $addr, owner = $current")
+          if (ot.addr.index == addr.index)
             current
-          }
-          else if (ot.addr.index < addr.index && addr.index < ot.end.index) {
-            val encl = reader.symbolAt(ot.addr)
-            //println(s"search $addr in ${ot.children} with $encl")
-            search(ot.children, encl)
-          }
+          else if (ot.addr.index < addr.index && addr.index < ot.end.index)
+            search(ot.children, reader.symbolAt(ot.addr))
           else
             search(cs1, current)
         case Nil =>
-          throw new Error("unattached tree")
+          throw new TreeWithoutOwner
+      }
+      catch {
+        case ex: TreeWithoutOwner =>
+          println(i"no owner for $addr among $cs")  // DEBUG
+          throw ex
       }
       search(children, NoSymbol)
     }
+
     override def toString = s"OwnerTree(${addr.index}, ${end.index}"
   }
 }
+
+object TreeUnpickler {
+
+  /** An enumeration indicating which subtrees should be added to an OwnerTree. */
+  type MemberDefMode = Int
+  final val MemberDefsOnly = 0   // add only member defs; skip other statements
+  final val NoMemberDefs = 1     // add only statements that are not member defs
+  final val AllDefs = 2          // add everything
+
+  class TreeWithoutOwner extends Exception
+}
+
+
