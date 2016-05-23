@@ -92,12 +92,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   def toTermName(ref: NameRef): TermName = toTermName(tastyName(ref))
   def toTypeName(ref: NameRef): TypeName = toTermName(ref).toTypeName
 
-  class Completer(reader: TastyReader) extends LazyType {
+  class Completer(owner: Symbol, reader: TastyReader) extends LazyType {
     import reader._
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       treeAtAddr(currentAddr) =
         new TreeReader(reader).readIndexedDef()(
-          ctx.withPhaseNoLater(ctx.picklerPhase))//(ctx.withOwner(owner))
+          ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner))
     }
   }
 
@@ -463,12 +463,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.info = adjustIfModule(
-                new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter)
+                new Completer(ctx.owner, subReader(start, end)) with SymbolLoaders.SecondCompleter)
             rootd.flags = flags &~ Touched // allow one more completion
             rootd.privateWithin = privateWithin
             rootd.symbol
           case _ =>
-            val completer = adjustIfModule(new Completer(subReader(start, end)))
+            val completer = adjustIfModule(new Completer(ctx.owner, subReader(start, end)))
             if (isClass)
               ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
             else
