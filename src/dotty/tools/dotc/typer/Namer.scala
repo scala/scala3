@@ -562,8 +562,8 @@ class Namer { typer: Typer =>
      *  to pick up the context at the point where the completer was created.
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
-      denot.info = typeSig(denot.symbol)
       addAnnotations(denot)
+      denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
     }
   }
@@ -670,6 +670,8 @@ class Namer { typer: Typer =>
         ok
       }
 
+      addAnnotations(denot)
+
       val selfInfo =
         if (self.isEmpty) NoType
         else if (cls.is(Module)) {
@@ -699,7 +701,6 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      addAnnotations(denot)
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.setApplicableFlags(
