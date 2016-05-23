@@ -41,23 +41,36 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     this.positions = positions
   }
 
+  /** A map from addresses of definition entries to the symbols they define */
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
-  private val unpickledSyms = new mutable.HashSet[Symbol]
+
+  /** A temporary map from addresses of definition entries to the trees they define.
+   *  Used to remember trees of symbols that are created by a completion. Emptied
+   *  once the tree is inlined into a larger tree.
+   */
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
-  private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
+
+  /** A map from addresses of type entries to the types they define.
+   *  Currently only populated for types that might be recursively referenced
+   *  from within themselves (i.e. RefinedTypes, PolyTypes, MethodTypes).
+   */
+  private val typeAtAddr = new mutable.HashMap[Addr, Type]
 
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
   private var roots: Set[SymDenotation] = null
 
+  /** The root symbols that are defined in this Tasty file. This
+   *  is a subset of `roots.map(_.symbol)`.
+   */
+  private var seenRoots: Set[Symbol] = Set()
+
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
 
-  private def registerSym(addr: Addr, sym: Symbol) = {
+  private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
-    unpickledSyms += sym
-  }
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
@@ -466,6 +479,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
                 new Completer(ctx.owner, subReader(start, end)) with SymbolLoaders.SecondCompleter)
             rootd.flags = flags &~ Touched // allow one more completion
             rootd.privateWithin = privateWithin
+            seenRoots += rootd.symbol
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(ctx.owner, subReader(start, end)))
@@ -675,7 +689,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
             val companion = sym.scalacLinkedClass
-            if (companion != NoSymbol && unpickledSyms.contains(companion)) {
+
+            // Is the companion defined in the same Tasty file as `sym`?
+            // The only case top check here is if `sym` is a root. In this case
+            // `companion` might have been entered by the environment but it might
+            // been missing from the Tasty file. So we check explicitly for that.
+            def isCodefined =
+              roots.contains(companion.denot) == seenRoots.contains(companion)
+            if (companion.exists && isCodefined) {
               import transform.SymUtils._
               if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
