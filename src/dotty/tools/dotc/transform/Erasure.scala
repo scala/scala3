@@ -41,13 +41,19 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         // Aftre erasure, all former Any members are now Object members
         val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
         val extendedScope = decls.cloneScope
-        defn.AnyClass.classInfo.decls.foreach(extendedScope.enter)
+        for (decl <- defn.AnyClass.classInfo.decls)
+          if (!decl.isConstructor) extendedScope.enter(decl)
         ref.copySymDenotation(
           info = transformInfo(ref.symbol,
               ClassInfo(pre, defn.ObjectClass, ps, extendedScope, selfInfo))
         )
       }
       else {
+        val oldSymbol = ref.symbol
+        val newSymbol =
+          if ((oldSymbol.owner eq defn.AnyClass) && oldSymbol.isConstructor)
+            defn.ObjectClass.primaryConstructor
+        else oldSymbol
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
@@ -55,10 +61,10 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         val oldFlags = ref.flags
         val newFlags = ref.flags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
         // TODO: define derivedSymDenotation?
-        if ((oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
+        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
         else {
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(owner = newOwner, initFlags = newFlags, info = newInfo)
+          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
     case ref =>
@@ -553,43 +559,47 @@ object Erasure extends TypeTestsCasts{
             before match {
               case Nil => emittedBridges.toList
               case (oldMember: untpd.DefDef) :: oldTail =>
-                val oldSymbol = oldMember.symbol(beforeCtx)
-                val newSymbol = member.symbol(ctx)
-                assert(oldSymbol.name(beforeCtx) == newSymbol.name,
-                  s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
-                val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
-                val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
-                def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
-                val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
+                try {
+                  val oldSymbol = oldMember.symbol(beforeCtx)
+                  val newSymbol = member.symbol(ctx)
+                  assert(oldSymbol.name(beforeCtx) == newSymbol.name,
+                    s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
+                  val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
+                  val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
+                  def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
+                  val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
 
-                var minimalSet = Set[Symbol]()
-                // compute minimal set of bridges that are needed:
-                for (bridge <- neededBridges) {
-                  val isRequired = minimalSet.forall(nxtBridge => !(bridge.info =:= nxtBridge.info))
+                  var minimalSet = Set[Symbol]()
+                  // compute minimal set of bridges that are needed:
+                  for (bridge <- neededBridges) {
+                    val isRequired = minimalSet.forall(nxtBridge => !(bridge.info =:= nxtBridge.info))
 
-                  if (isRequired) {
-                    // check for clashes
-                    val clash: Option[Symbol] = oldSymbol.owner.info.decls.lookupAll(bridge.name).find {
-                      sym =>
-                        (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
-                    }.orElse(
+                    if (isRequired) {
+                      // check for clashes
+                      val clash: Option[Symbol] = oldSymbol.owner.info.decls.lookupAll(bridge.name).find {
+                        sym =>
+                          (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
+                      }.orElse(
                         emittedBridges.find(stat => (stat.name == bridge.name) && stat.tpe.widen =:= bridge.info.widen)
-                          .map(_.symbol)
-                      )
-                    clash match {
-                      case Some(cl) =>
-                        ctx.error(i"bridge for method ${newSymbol.showLocated(beforeCtx)} of type ${newSymbol.info(beforeCtx)}\n" +
-                          i"clashes with ${cl.symbol.showLocated(beforeCtx)} of type ${cl.symbol.info(beforeCtx)}\n" +
-                          i"both have same type after erasure: ${bridge.symbol.info}")
-                      case None => minimalSet += bridge
+                          .map(_.symbol))
+                      clash match {
+                        case Some(cl) =>
+                          ctx.error(i"bridge for method ${newSymbol.showLocated(beforeCtx)} of type ${newSymbol.info(beforeCtx)}\n" +
+                            i"clashes with ${cl.symbol.showLocated(beforeCtx)} of type ${cl.symbol.info(beforeCtx)}\n" +
+                            i"both have same type after erasure: ${bridge.symbol.info}")
+                        case None => minimalSet += bridge
+                      }
                     }
                   }
+
+                  val bridgeImplementations = minimalSet.map {
+                    sym => makeBridgeDef(member, sym)(ctx)
+                  }
+                  emittedBridges ++= bridgeImplementations
+                } catch {
+                  case ex: MergeError => ctx.error(ex.getMessage, member.pos)
                 }
 
-                val bridgeImplementations = minimalSet.map {
-                  sym => makeBridgeDef(member, sym)(ctx)
-                }
-                emittedBridges ++= bridgeImplementations
                 traverse(newTail, oldTail, emittedBridges)
               case notADefDef :: oldTail =>
                 traverse(after, oldTail, emittedBridges)

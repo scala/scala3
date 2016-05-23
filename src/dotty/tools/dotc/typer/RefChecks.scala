@@ -837,7 +837,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       if (tree.symbol is Macro) EmptyTree else tree
     }
 
-    override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
+    override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = try {
       val cls = ctx.owner
       checkOverloadedRestrictions(cls)
       checkParents(cls)
@@ -845,6 +845,10 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkAllOverrides(cls)
       checkDerivedValueClass(cls, tree.body)
       tree
+    } catch {
+      case ex: MergeError =>
+        ctx.error(ex.getMessage, tree.pos)
+        tree
     }
 
     override def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo) = {

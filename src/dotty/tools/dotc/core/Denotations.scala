@@ -122,11 +122,11 @@ object Denotations {
     /** The signature of the denotation. */
     def signature(implicit ctx: Context): Signature
 
-    /** Resolve overloaded denotation to pick the one with the given signature
+    /** Resolve overloaded denotation to pick the ones with the given signature
      *  when seen from prefix `site`.
      *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): SingleDenotation
+    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): Denotation
 
     /** The variant of this denotation that's current in the given context, or
      *  `NotDefinedHereDenotation` if this denotation does not exist at current phase, but
@@ -157,7 +157,10 @@ object Denotations {
      *  or NoDenotation if no satisfying alternative exists.
      *  @throws TypeError if there is at more than one alternative that satisfies `p`.
      */
-    def suchThat(p: Symbol => Boolean): SingleDenotation
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
+
+    /** If this is a SingleDenotation, return it, otherwise throw a TypeError */
+    def checkUnique(implicit ctx: Context): SingleDenotation = suchThat(alwaysTrue)
 
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
     def hasAltWith(p: SingleDenotation => Boolean): Boolean
@@ -227,13 +230,17 @@ object Denotations {
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
      */
-    def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation =
-      if (isOverloaded)
-        atSignature(targetType.signature, site, relaxed = true).matchingDenotation(site, targetType)
-      else if (exists && !site.memberInfo(symbol).matchesLoosely(targetType))
-        NoDenotation
-      else
-        asSingleDenotation
+    def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation = {
+      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
+      if (isOverloaded) {
+        atSignature(targetType.signature, site, relaxed = true) match {
+          case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
+          case md => md.suchThat(qualifies(_))
+        }
+      }
+      else if (exists && !qualifies(symbol)) NoDenotation
+      else asSingleDenotation
+     }
 
     /** Form a denotation by conjoining with denotation `that`.
      *
@@ -282,8 +289,10 @@ object Denotations {
             val info2 = denot2.info
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
-            val sym2Accessible = sym2.isAccessibleFrom(pre)
 
+            if (isDoubleDef(sym1, sym2)) doubleDefError(denot1, denot2, pre)
+
+            val sym2Accessible = sym2.isAccessibleFrom(pre)
             /** Does `sym1` come before `sym2` in the linearization of `pre`? */
             def precedes(sym1: Symbol, sym2: Symbol) = {
               def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
@@ -418,19 +427,21 @@ object Denotations {
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     final def signature(implicit ctx: Context) = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation =
-      denot1.atSignature(sig, site, relaxed) orElse denot2.atSignature(sig, site, relaxed)
+    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
+      derivedMultiDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
     def currentIfExists(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.currentIfExists, denot2.currentIfExists)
     def current(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       denot1.altsWith(p) ++ denot2.altsWith(p)
-    def suchThat(p: Symbol => Boolean): SingleDenotation = {
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
       val sd1 = denot1.suchThat(p)
       val sd2 = denot2.suchThat(p)
       if (sd1.exists)
-        if (sd2.exists) throw new TypeError(s"failure to disambiguate overloaded reference $this")
+        if (sd2.exists)
+          if (isDoubleDef(denot1.symbol, denot2.symbol)) doubleDefError(denot1, denot2)
+          else throw new TypeError(s"failure to disambiguate overloaded reference $this")
         else sd1
       else sd2
     }
@@ -480,7 +491,7 @@ object Denotations {
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       if (exists && p(symbol)) this :: Nil else Nil
 
-    def suchThat(p: Symbol => Boolean): SingleDenotation =
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
       if (exists && p(symbol)) this else NoDenotation
 
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
@@ -899,6 +910,27 @@ object Denotations {
    *  Produced by staticRef, consumed by requiredSymbol.
    */
   case class NoQualifyingRef(alts: List[SingleDenotation])(implicit ctx: Context) extends ErrorDenotation
+
+  /** A double definition
+   */
+  def isDoubleDef(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
+    (sym1.exists && sym2.exists &&
+    (sym1 ne sym2) && (sym1.owner eq sym2.owner) &&
+    !sym1.is(Bridge) && !sym2.is(Bridge))
+
+  def doubleDefError(denot1: Denotation, denot2: Denotation, pre: Type = NoPrefix)(implicit ctx: Context): Nothing = {
+    val sym1 = denot1.symbol
+    val sym2 = denot2.symbol
+    def fromWhere = if (pre == NoPrefix) "" else i"\nwhen seen as members of $pre"
+    throw new MergeError(
+      i"""cannot merge
+         |  $sym1: ${sym1.info}  and
+         |  $sym2: ${sym2.info};
+         |they are both defined in ${sym1.owner} but have matching signatures
+         |  ${denot1.info} and
+         |  ${denot2.info}$fromWhere""".stripMargin,
+      denot2.info, denot2.info)
+  }
 
   // --------------- PreDenotations -------------------------------------------------
 
