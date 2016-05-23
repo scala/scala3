@@ -153,7 +153,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     /** Record all directly nested definitions and templates between current address and `end`
      *  as `OwnerTree`s in `buf`
      */
-    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr, mode: MemberDefMode): Unit = {
+    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr, mode: MemberDefMode = AllDefs): Unit = {
       while (currentAddr.index < end.index) scanTree(buf, mode)
       assert(currentAddr.index == end.index)
     }
