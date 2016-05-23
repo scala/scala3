@@ -691,9 +691,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             val companion = sym.scalacLinkedClass
 
             // Is the companion defined in the same Tasty file as `sym`?
-            // The only case top check here is if `sym` is a root. In this case
+            // The only case to check here is if `sym` is a root. In this case
             // `companion` might have been entered by the environment but it might
-            // been missing from the Tasty file. So we check explicitly for that.
+            // be missing from the Tasty file. So we check explicitly for that.
             def isCodefined =
               roots.contains(companion.denot) == seenRoots.contains(companion)
             if (companion.exists && isCodefined) {
