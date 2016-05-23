@@ -1149,7 +1149,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
+      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags
       val info1 = if (info != null) info else this.info
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1299,7 +1299,6 @@ object SymDenotations {
     override def invalidateInheritedInfo(): Unit = {
       myBaseClasses = null
       mySuperClassBits = null
-      myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
       myMemberCachePeriod = Nowhere
       memberNamesCache = SimpleMap.Empty
@@ -1418,42 +1417,6 @@ object SymDenotations {
 
     final override def typeParamCreationFlags = ClassTypeParamCreationFlags
 
-    private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
-
-    private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
-      var fp = FingerPrint()
-      var e = info.decls.lastEntry
-      while (e != null) {
-        fp.include(e.name)
-        e = e.prev
-      }
-      var ps = classParents
-      while (ps.nonEmpty) {
-        val parent = ps.head.typeSymbol
-        parent.denot match {
-          case parentDenot: ClassDenotation =>
-            fp.include(parentDenot.memberFingerPrint)
-            if (parentDenot.isFullyCompleted) parentDenot.setFlag(Frozen)
-          case _ =>
-        }
-        ps = ps.tail
-      }
-      fp
-    }
-
-    /** A bloom filter for the names of all members in this class.
-     *  Makes sense only for parent classes, and should definitely
-     *  not be used for package classes because cache never
-     *  gets invalidated.
-     */
-    def memberFingerPrint(implicit ctx: Context): FingerPrint =
-      if (myMemberFingerPrint != FingerPrint.unknown) myMemberFingerPrint
-      else {
-        val fp = computeMemberFingerPrint
-        if (isFullyCompleted) myMemberFingerPrint = fp
-        fp
-      }
-
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
     private[this] var myMemberCachePeriod: Period = Nowhere
 
@@ -1499,13 +1462,8 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls))
       scope.enter(sym)
-
-      if (myMemberFingerPrint != FingerPrint.unknown)
-        myMemberFingerPrint.include(sym.name)
-      if (myMemberCache != null)
-        myMemberCache invalidate sym.name
+      if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
@@ -1513,7 +1471,6 @@ object SymDenotations {
      *  @pre `prev` and `replacement` have the same name.
      */
     def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
-      require(!(this is Frozen))
       unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null)
         myMemberCache invalidate replacement.name
@@ -1524,9 +1481,7 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
-      require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
-      myMemberFingerPrint = FingerPrint.unknown
       if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
@@ -1574,31 +1529,26 @@ object SymDenotations {
     }
 
     private[core] def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
-      if (!inherited ||
-          !Config.useFingerPrints ||
-          (memberFingerPrint contains name)) {
-        Stats.record("computeNPMembersNamed after fingerprint")
-        ensureCompleted()
-        val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
-        if (debugTrace)  // DEBUG
-          println(s"$this.member($name), ownDenots = $ownDenots")
-        def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
-          case p :: ps =>
-            val denots1 = collect(denots, ps)
-            p.symbol.denot match {
-              case parentd: ClassDenotation =>
-                denots1 union
-                  parentd.nonPrivateMembersNamed(name, inherited = true)
-                    .mapInherited(ownDenots, denots1, thisType)
-              case _ =>
-                denots1
-            }
-          case nil =>
-            denots
-        }
-        if (name.isConstructorName) ownDenots
-        else collect(ownDenots, classParents)
-      } else NoDenotation
+      Stats.record("computeNPMembersNamed after fingerprint")
+      ensureCompleted()
+      val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
+      if (debugTrace) // DEBUG
+        println(s"$this.member($name), ownDenots = $ownDenots")
+      def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+        case p :: ps =>
+          val denots1 = collect(denots, ps)
+          p.symbol.denot match {
+            case parentd: ClassDenotation =>
+              denots1 union
+                parentd.nonPrivateMembersNamed(name, inherited = true)
+                .mapInherited(ownDenots, denots1, thisType)
+            case _ =>
+              denots1
+          }
+        case nil =>
+          denots
+      }
+      if (name.isConstructorName) ownDenots else collect(ownDenots, classParents)
     }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
@@ -1686,6 +1636,11 @@ object SymDenotations {
     }
 
     private[this] var memberNamesCache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
+    private var memberNamesGeneration: Int = 0
+
+    private def checkMemberNamesUpToDate()(implicit ctx: Context): Unit =
+      if (baseClasses.exists(_.classDenot.memberNamesGeneration > memberNamesGeneration))
+        memberNamesCache = SimpleMap.Empty
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
@@ -1704,12 +1659,14 @@ object SymDenotations {
       if ((this is PackageClass) || !Config.cacheMemberNames)
         computeMemberNames // don't cache package member names; they might change
       else {
+        checkMemberNamesUpToDate()
         val cached = memberNamesCache(keepOnly)
         if (cached != null) cached
         else {
           val names = computeMemberNames
           if (isFullyCompleted) {
-            setFlag(Frozen)
+            if (memberNamesCache.size == 0)
+              memberNamesGeneration = ctx.nextMemberNamesGeneration()
             memberNamesCache = memberNamesCache.updated(keepOnly, names)
           }
           names

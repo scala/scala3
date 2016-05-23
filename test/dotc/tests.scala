@@ -119,10 +119,11 @@ class tests extends CompilerTest {
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")
 
   val negCustomArgs = negDir + "customArgs/"
-  @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
+  @Test def neg_typers = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
   @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", List("-language:Scala2"))
   @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)
   @Test def neg_i1050 = compileFile(negCustomArgs, "i1050", List("-strict"))
+  @Test def neg_i1240 = compileFile(negCustomArgs, "i1240")(allowDoubleBindings)
 
   val negTailcallDir = negDir + "tailcall/"
   @Test def neg_tailcall_t1672b = compileFile(negTailcallDir, "t1672b")
@@ -155,7 +156,8 @@ class tests extends CompilerTest {
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
-  @Test def dotc_core = compileDir(dotcDir, "core")("-Yno-double-bindings" :: allowDeepSubtypes)// twice omitted to make tests run faster
+  @Test def dotc_core = compileDir(dotcDir, "core")(allowDeepSubtypes)// twice omitted to make tests run faster
+  @Test def dotc_core_nocheck = compileDir(dotcDir, "core")(noCheckOptions)
 
 // This directory doesn't exist anymore
 //  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster

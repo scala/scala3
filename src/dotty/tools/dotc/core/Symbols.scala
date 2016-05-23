@@ -327,7 +327,7 @@ trait Symbols { this: Context =>
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ Frozen | Fresh,
+          initFlags = odenot.flags | Fresh,
           info = ttmap1.mapType(oinfo),
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations.mapConserve(ttmap1.apply))
@@ -398,10 +398,10 @@ object Symbols {
 
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean =
-      (if(isDefinedInCurrentRun) lastDenot else denot).isTerm
+      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
 
     final def isType(implicit ctx: Context): Boolean =
-      (if(isDefinedInCurrentRun) lastDenot else denot).isType
+      (if (defRunId == ctx.runId) lastDenot else denot).isType
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
 
@@ -534,7 +534,7 @@ object Symbols {
           case Some(id) =>
             id
           case None =>
-            val id = ctx.nextSuperId
+            val id = ctx.nextSuperId()
             ctx.superIdOfClass(this) = id
             ctx.classOfId(id) = this
             id
