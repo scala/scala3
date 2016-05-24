@@ -8,8 +8,15 @@ import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._
 
 
-/** Implements partial `isInstanceOf` evaluation according to the matrix on:
- *  https://github.com/lampepfl/dotty/issues/1255
+/** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
+ *
+ *  +-------------+----------------------------+----------------------------+------------------+
+ *  | Sel\sc      | trait                      | class                      | final class      |
+ *  +-------------+----------------------------+----------------------------+------------------+
+ *  | trait       |               ?            |               ?            | statically known |
+ *  | class       |               ?            | false if classes unrelated | statically known |
+ *  | final class | false if classes unrelated | false if classes unrelated | statically known |
+ *  +-------------+----------------------------+----------------------------+------------------+
  *
  *  This is a generalized solution to raising an error on unreachable match
  *  cases and warnings on other statically known results of `isInstanceOf`.
@@ -36,26 +43,28 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
      *  the correct warnings, or an error if statically known to be false in
      *  match
      */
-    def handleStaticallyKnown(tree: Select, scrutinee: Type, selector: Type, inMatch: Boolean, pos: Position): Tree =
-      if (!(scrutinee <:< selector) && inMatch) {
+    def handleStaticallyKnown(tree: Select, scrutinee: Type, selector: Type, inMatch: Boolean, pos: Position): Tree = {
+      val scrutineeSubSelector = scrutinee <:< selector
+      if (!scrutineeSubSelector && inMatch) {
         ctx.error(
           s"this case is unreachable due to `${selector.show}` not being a subclass of `${scrutinee.show}`",
           Position(pos.start - 5, pos.end - 5)
         )
         rewrite(tree, to = false)
-      } else if (!(scrutinee <:< selector) && !inMatch) {
+      } else if (!scrutineeSubSelector && !inMatch) {
         ctx.warning(
           s"this will always yield false since `${scrutinee.show}` is not a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
         rewrite(tree, to = false)
-      } else if (scrutinee <:< selector && !inMatch) {
+      } else if (scrutineeSubSelector && !inMatch) {
         ctx.warning(
-          s"this will always yield true since `${scrutinee.show}` is a subclass of `${selector.show}` (will be optimized away)",
+          s"this will always yield true if the scrutinee is non-null, since `${scrutinee.show}` is a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
         rewrite(tree, to = true)
-      } else /* if (scrutinee <:< selector && inMatch) */ rewrite(tree, to = true)
+      } else /* if (scrutineeSubSelector && inMatch) */ rewrite(tree, to = true)
+    }
 
     /** Rewrites cases with unrelated types */
     def handleFalseUnrelated(tree: Select, scrutinee: Type, selector: Type, inMatch: Boolean) =
@@ -74,12 +83,12 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
       }
 
     /** Rewrites the select to a boolean if `to` is false or if the qualifier
-     *  is a primitive.
+     *  is a value class.
      *
      *  If `to` is set to true and the qualifier is not a primitive, the
      *  instanceOf is replaced by a null check, since:
      *
-     *  `srutinee.isInstanceOf[Selector]` if `scrutinee eq null`
+     *  `scrutinee.isInstanceOf[Selector]` if `scrutinee eq null`
      */
     def rewrite(tree: Select, to: Boolean): Tree =
       if (!to || !tree.qualifier.tpe.widen.derivesFrom(defn.AnyRefAlias))
