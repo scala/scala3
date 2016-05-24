@@ -129,7 +129,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
-                  TYPEBOUNDS     Length low_Type high_Type
+                  TYPEBOUNDS     Length low_Type high_Type bindingKind_Nat?
                   TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATED      Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
@@ -494,6 +494,7 @@ object TastyFormat {
          SELFDEF | REFINEDtype => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype => -1
+    case TYPEBOUNDS => -2
     case _ => 0
   }
 }

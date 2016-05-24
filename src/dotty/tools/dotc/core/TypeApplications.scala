@@ -50,7 +50,7 @@ object TypeApplications {
    *
    *    [v1 X1: B1, ..., vn Xn: Bn] -> T
    *    ==>
-   *    Lambda$_v1...vn { type $hk_i: B_i, type $Apply = [X_i := this.$Arg_i] T }
+   *    ([X_i := this.$hk_i] T) { type v_i $hk_i: (new)B_i }
    */
   object TypeLambda {
     def apply(variances: List[Int],
