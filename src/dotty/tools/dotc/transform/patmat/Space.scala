@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package transform
+package patmat
 
 import core.Types._
 import core.Contexts._
@@ -12,8 +13,26 @@ import core.Symbols._
 import core.NameOps._
 import core.Constants._
 
-/** Space logic for checking exhaustivity and unreachability of
- *  pattern matching.
+/** Space logic for checking exhaustivity and unreachability of pattern matching.
+ *
+ *  The core idea of the algorithm is that patterns and types are value
+ *  spaces, which is recursively defined as follows:
+ *
+ *      1. `Empty` is a space
+ *      2. For a type T, `Typ(T)` is a space
+ *      3. A union of spaces `S1 | S2 | ...` is a space
+ *      4. For a case class Kon(x1: T1, x2: T2, .., xn: Tn), if S1, S2, ..., Sn
+ *          are spaces, then `Kon(S1, S2, ..., Sn)` is a space.
+ *      5. A constant `Const(value, T)` is a point in space
+ *      6. A stable identifier `Var(sym, T)` is a space
+ *
+ *  For the problem of exhaustivity check, its formulation in terms of space is as follows:
+ *
+ *      Is the space Typ(T) a subspace of the union of space covered by all the patterns?
+ *
+ *  The problem of unreachable patterns can be formulated as follows:
+ *
+ *      Is the space covered by a pattern a subspace of the space covered by previous patterns?
  */
 
 
@@ -41,7 +60,7 @@ trait SpaceLogic {
   /** Is the type `tp` decomposable? i.e. all values of the type can be covered
    *  by its decomposed types.
    *
-   * Abstract sealed class, OrType and Boolean can be decomposed.
+   * Abstract sealed class, OrType, Boolean and Java enums can be decomposed.
    */
   def canDecompose(tp: Type): Boolean
 
@@ -197,7 +216,7 @@ trait SpaceLogic {
     case (Const(_, tp1), Typ(tp2, _)) =>
       if (isSubType(tp1, tp2)) Empty else a
     case (Const(_, _), _) => a
-    case (Typ(tp1, _), Const(_, tp2)) =>  // Boolean
+    case (Typ(tp1, _), Const(_, tp2)) =>  // Boolean & Java enum
       if (isSubType(tp2, tp1) && canDecompose(tp1))
         minus(Or(partitions(tp1)), b)
       else a
@@ -215,10 +234,6 @@ trait SpaceLogic {
 class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import tpd._
 
-  def debug(s: String): Unit = {
-    if (ctx.debug) println(s)
-  }
-
   /** Return the space that represents the pattern `pat`
    *
    *  If roundUp is true, approximate extractors to its type,
@@ -227,10 +242,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def project(pat: Tree, roundUp: Boolean = true)(implicit ctx: Context): Space = pat match {
     case Literal(c) => Const(c, c.tpe)
     case _: BackquotedIdent => Var(pat.symbol, pat.tpe)
-    case Ident(_) => Typ(pat.tpe.stripAnnots, false)
-    case Select(_, _) =>
+    case Ident(_) =>
+      Typ(pat.tpe.stripAnnots, false)
+    case Select(_, _)  =>
       if (pat.symbol.is(Module))
         Typ(pat.tpe.stripAnnots, false)
+      else if (pat.symbol.is(Enum))
+        Const(Constant(pat.symbol), pat.tpe)
       else
         Var(pat.symbol, pat.tpe)
     case Alternative(trees) => Or(trees.map(project(_, roundUp)))
@@ -243,7 +261,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
     case _ =>
-      debug(s"========unkown tree: $pat========")
       Empty
   }
 
@@ -255,71 +272,61 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case (tp1: RefinedType, tp2: RefinedType) => isSubType(tp1.parent, tp2.parent)
     case (tp1: RefinedType, _) => isSubType(tp1.parent, tp2)
     case (_, tp2: RefinedType) => isSubType(tp1, tp2.parent)
-    case (_, _) =>
-      val res = tp1 <:< tp2
-      debug(s"$tp1 <: $tp2 ? $res")
-      res
+    case (_, _) => tp1 <:< tp2
   }
 
-  def isEqualType(tp1: Type, tp2: Type): Boolean = {
-    val res = tp1 =:= tp2
-    debug(s"$tp1 == $tp2 ? $res")
-    res
-  }
+  def isEqualType(tp1: Type, tp2: Type): Boolean = tp1 =:= tp2
 
   def signature(tp: Type): List[Type] = {
     val ktor = tp.classSymbol.primaryConstructor.info
-
-    debug(s"=======ktor: $ktor")
 
     val meth =
       if (ktor.isInstanceOf[MethodType]) ktor
       else
       tp match {
         case AppliedType(_, params) =>
-          debug(s"=======params: $params")
           val refined = params.map {
             // TypeBounds would generate an exception
             case tp: TypeBounds => tp.underlying
             case tp => tp
           }
-          debug(s"=======refined params: $refined")
           ktor.appliedTo(refined)
         case _ =>
           ktor
       }
 
-    val sign = meth.firstParamTypes.map(_.stripTypeVar).map(paramTp => refine(tp, paramTp))
-
-    debug(s"====signature of $tp: $sign")
-    sign
+    meth.firstParamTypes.map(_.stripTypeVar).map(refine(tp, _))
   }
 
-  def partitions(tp: Type): List[Space] = tp match {
-    case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
-    case _ if tp =:= ctx.definitions.BooleanType =>
-      List(
-        Const(Constant(true), ctx.definitions.BooleanType),
-        Const(Constant(false), ctx.definitions.BooleanType)
-      )
-    case _ =>
-      val children = tp.classSymbol.annotations.filter(_.symbol == ctx.definitions.ChildAnnot).map { annot =>
-        // refer to definition of Annotation.makeChild
-        val sym = annot.tree match {
-          case Apply(TypeApply(_, List(tpTree)), _) => tpTree.symbol.asClass
-        }
+  def partitions(tp: Type): List[Space] = {
+    val children = tp.classSymbol.annotations.filter(_.symbol == ctx.definitions.ChildAnnot).map { annot =>
+      // refer to definition of Annotation.makeChild
+      annot.tree match {
+        case Apply(TypeApply(_, List(tpTree)), _) => tpTree.symbol
+      }
+    }
 
-        if (sym.is(ModuleClass))
-          sym.classInfo.selfType
-        else if (sym.info.typeParams.length > 0 || tp.isInstanceOf[TypeRef])
-          refine(tp, sym.classInfo.symbolicTypeRef)
-        else
-          sym.info
-      } filter(_ <:< tp) // child may not always be subtype of parent: SI-4020
+    tp match {
+      case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
+      case _ if tp =:= ctx.definitions.BooleanType =>
+        List(
+          Const(Constant(true), ctx.definitions.BooleanType),
+          Const(Constant(false), ctx.definitions.BooleanType)
+        )
+      case _ if tp.classSymbol.is(Enum) =>
+        children.map(sym => Const(Constant(sym), tp))
+      case _ =>
+        val parts = children.map { sym =>
+          if (sym.is(ModuleClass))
+            sym.asClass.classInfo.selfType
+          else if (sym.info.typeParams.length > 0 || tp.isInstanceOf[TypeRef])
+            refine(tp, sym.asClass.classInfo.symbolicTypeRef)
+          else
+            sym.info
+        } filter(_ <:< tp) // child may not always be subtype of parent: SI-4020
 
-      debug(s"=========child of ${tp.show}: ${children.map(_.show).mkString(", ")}")
-
-      children.map(tp => Typ(tp, true))
+        parts.map(tp => Typ(tp, true))
+    }
   }
 
   /** Refine tp2 based on tp1
@@ -337,13 +344,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case _ => tp2
   }
 
-  /** Abstract sealed types,  or-types and Boolean can be decomposed */
-  def canDecompose(tp: Type): Boolean = {
+  /** Abstract sealed types,  or-types, Boolean and Java enums can be decomposed */
+  def canDecompose(tp: Type): Boolean =
     tp.typeSymbol.is(allOf(Abstract, Sealed)) ||
       tp.typeSymbol.is(allOf(Trait, Sealed)) ||
       tp.isInstanceOf[OrType] ||
-      tp =:= ctx.definitions.BooleanType
-  }
+      tp =:= ctx.definitions.BooleanType ||
+      tp.typeSymbol.is(Enum)
 
   def isCaseClass(tp: Type): Boolean = tp.classSymbol.isClass && tp.classSymbol.is(CaseClass)
 
@@ -428,27 +435,24 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     flatten(s).map(doShow(_, false)).distinct.mkString(", ")
   }
 
-  /** Does the type t have @unchecked annotation? */
-  def skipCheck(tp: Type): Boolean = tp match {
-    case AnnotatedType(tp, annot) => ctx.definitions.UncheckedAnnot == annot.symbol
-    case _ => false
+  def checkable(tp: Type): Boolean = tp match {
+    case AnnotatedType(tp, annot) =>
+      (ctx.definitions.UncheckedAnnot != annot.symbol) && checkable(tp)
+    case _ => true  // actually everything is checkable unless @unchecked
+
+      // tp.classSymbol.is(Sealed) ||
+      //   tp.isInstanceOf[OrType] ||
+      //   tp.classSymbol.is(Enum) ||
+      //   Boolean
+      //   Int
+      //   ...
   }
 
-  /** Widen a type and eliminate anonymous classes */
-  private def widen(tp: Type): Type = tp.widen match {
-    case tp:TypeRef if tp.symbol.isAnonymousClass =>
-      tp.symbol.asClass.typeRef.asSeenFrom(tp.prefix, tp.symbol.owner)
-    case tp => tp
-  }
-
-  def exhaustivity(_match: Match): Unit = {
+  def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = widen(sel.tpe)
+    val selTyp = sel.tpe.widen.elimAnonymousClass
 
-    debug(s"====patterns:\n${cases.map(_.pat).mkString("\n")}")
     val patternSpace = cases.map(x => project(x.pat)).reduce((a, b) => Or(List(a, b)))
-    debug(s"====selector:\n" + selTyp)
-    debug("====pattern space:\n" + show(patternSpace))
     val uncovered = simplify(minus(Typ(selTyp, true), patternSpace))
 
     if (uncovered != Empty) {
@@ -460,9 +464,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
   }
 
-  def redundancy(_match: Match): Unit = {
+  def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = widen(sel.tpe)
+    val selTyp = sel.tpe.widen.elimAnonymousClass
 
     // starts from the second, the first can't be redundant
     (1 until cases.length).foreach { i =>

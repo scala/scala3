@@ -90,6 +90,7 @@ class ClassfileParser(
     val jflags       = in.nextChar
     val isAnnotation = hasAnnotation(jflags)
     val sflags       = classTranslation.flags(jflags)
+    val isEnum       = (jflags & JAVA_ACC_ENUM) != 0
     val nameIdx      = in.nextChar
     currentClassName = pool.getClassName(nameIdx)
 
@@ -145,6 +146,15 @@ class ClassfileParser(
       setClassInfo(classRoot, classInfo)
       setClassInfo(moduleRoot, staticInfo)
     }
+
+    // eager load java enum definitions for exhaustivity check of pattern match
+    if (isEnum) {
+      instanceScope.toList.map(_.ensureCompleted())
+      staticScope.toList.map(_.ensureCompleted())
+      classRoot.setFlag(Flags.Enum)
+      moduleRoot.setFlag(Flags.Enum)
+    }
+
     result
   }
 

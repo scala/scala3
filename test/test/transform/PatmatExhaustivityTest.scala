@@ -1,10 +1,10 @@
 package test.transform
 
 import java.io._
+
 import scala.io.Source._
 import scala.reflect.io.Directory
 import org.junit.Test
-
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.ConsoleReporter
 
@@ -35,13 +35,45 @@ class PatmatExhaustivityTest {
     (file, checkContent, actual)
   }
 
-  @Test def patmatExhaustivity: Unit = {
-    val res = Directory(testsDir).deepFiles.toList.filter(_.extension == "scala").map { f =>
-      compileFile(f.jfile)
+  /** A single test with multiple files grouped in a folder */
+  private def compileDir(file: File) = {
+    val stringBuffer = new StringWriter()
+    val reporter = new ConsoleReporter(writer = new PrintWriter(stringBuffer))
+
+    val files = Directory(file.getPath).list.toList
+      .filter(f => f.extension == "scala" || f.extension == "java" )
+      .map(_.jfile.getPath)
+
+    try {
+      Main.process((options::files).toArray, reporter, null)
+    } catch {
+      case e: Throwable =>
+        println(s"Compile $file exception:")
+        e.printStackTrace()
     }
 
+    val actual = stringBuffer.toString.trim
+    val checkFilePath = file.getPath + File.separator + "expected.check"
+    val checkContent =
+      if (new File(checkFilePath).exists)
+        fromFile(checkFilePath).getLines.mkString("\n").trim
+      else ""
+
+    (file, checkContent, actual)
+  }
+
+  @Test def patmatExhaustivity: Unit = {
+    val res = Directory(testsDir).list.toList
+      .filter(f => f.extension == "scala" || f.isDirectory)
+      .map { f =>
+        if (f.isDirectory)
+          compileDir(f.jfile)
+        else
+          compileFile(f.jfile)
+      }
+
     val failed = res.filter { case (_, expected, actual) => expected != actual }
-    val ignored = Directory(testsDir).deepFiles.toList.filter(_.extension == "ignore")
+    val ignored = Directory(testsDir).list.toList.filter(_.extension == "ignore")
 
     failed.foreach { case (file, expected, actual) =>
       println(s"\n----------------- incorrect output for $file --------------\n" +

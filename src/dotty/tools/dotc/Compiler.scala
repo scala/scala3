@@ -8,12 +8,8 @@ import Symbols._
 import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
-import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
-import transform.TreeTransforms.{TreeTransform, TreeTransformer}
-import core.DenotTransformers.DenotTransformer
-import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 import dotty.tools.backend.sjs.GenSJSIR

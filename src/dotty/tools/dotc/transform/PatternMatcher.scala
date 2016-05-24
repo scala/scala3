@@ -24,6 +24,7 @@ import Applications._
 import TypeApplications._
 import SymUtils._, core.NameOps._
 import core.Mode
+import patmat._
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -56,9 +57,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
     // check exhaustivity and unreachability
     val engine = new SpaceEngine
-    if (!engine.skipCheck(sel.tpe)) {
-      engine.exhaustivity(tree)
-      engine.redundancy(tree)
+    if (engine.checkable(sel.tpe.widen.elimAnonymousClass)) {
+      engine.checkExhaustivity(tree)
+      engine.checkRedundancy(tree)
     }
 
     translated.ensureConforms(tree.tpe)
@@ -1275,7 +1276,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def translateMatch(match_ : Match): Tree = {
       val Match(sel, cases) = match_
 
-      val selectorTp = elimAnonymousClass(sel.tpe.widen/*withoutAnnotations*/)
+      val selectorTp = sel.tpe.widen.elimAnonymousClass/*withoutAnnotations*/
 
       val selectorSym = freshSym(sel.pos, selectorTp, "selector")
 
