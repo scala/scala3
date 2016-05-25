@@ -11,6 +11,7 @@ import util.Positions._
 import reporting.Diagnostic
 import printing.Showable
 import printing.Disambiguation.disambiguated
+import java.util.regex.Matcher.quoteReplacement
 
 object ErrorReporting {
 
@@ -124,7 +125,7 @@ object ErrorReporting {
     def implicitNotFoundString(raw: String, paramNames: List[String], args: List[Type]): String = {
       def translate(name: String): Option[String] = {
         val idx = paramNames.indexOf(name)
-        if (idx >= 0) Some(args(idx).show) else None
+        if (idx >= 0) Some(quoteReplacement(args(idx).show)) else None
       }
       """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
     }

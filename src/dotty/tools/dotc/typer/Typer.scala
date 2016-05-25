@@ -1469,14 +1469,22 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-      case _: MethodType | _: PolyType =>
-        def isUnary = wtp.firstParamTypes match {
+    def isUnary(tp: Type): Boolean = tp match {
+      case tp: MethodicType =>
+        tp.firstParamTypes match {
           case ptype :: Nil => !ptype.isRepeatedParam
           case _ => false
         }
-        if (pt.args.lengthCompare(1) > 0 && isUnary && ctx.canAutoTuple)
-          adaptToArgs(wtp, pt.tupled)
+      case tp: TermRef =>
+        tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      case _ =>
+        false
+    }
+
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+      case _: MethodType | _: PolyType =>
+        if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+          adaptInterpolated(tree, pt.tupled, original)
         else
           tree
       case _ => tryInsertApplyOrImplicit(tree, pt) {
@@ -1532,26 +1540,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             tree.withType(wtp.resultType)
           }
           val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
-            def where = d"parameter $pname of $methodStr"
-            inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
-              case SearchSuccess(arg, _, _) =>
-                arg
-              case ambi: AmbiguousImplicits =>
-                implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
-              case failure: SearchFailure =>
-                val arg = synthesizedClassTag(formal)
-                if (!arg.isEmpty) arg
-                else {
-                  var msg = d"no implicit argument of type $formal found for $where" + failure.postscript
-                  for (notFound <- formal.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot);
-                       Literal(Constant(raw: String)) <- notFound.argument(0))
-                    msg = err.implicitNotFoundString(
-                        raw,
-                        formal.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-                        formal.argInfos)
-                  implicitArgError(msg)
-                }
-            }
+            def implicitArgError(msg: String => String) =
+              errors += (() => msg(d"parameter $pname of $methodStr"))
+            inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
           }
           if (errors.nonEmpty) {
             // If there are several arguments, some arguments might already
@@ -1601,8 +1592,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else
           missingArgs
       case _ =>
-        if (tree.tpe <:< pt) tree
-        else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
+        if (ctx.mode is Mode.Pattern) {
+          tree match {
+            case _: RefTree | _: Literal if !isVarPattern(tree) =>
+              checkCanEqual(pt, wtp, tree.pos)(ctx.retractMode(Mode.Pattern))
+            case _ =>
+          }
+          tree
+        }
+        else if (tree.tpe <:< pt) tree
         else if (wtp.isInstanceOf[MethodType]) missingArgs
         else {
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
@@ -1610,29 +1608,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           adaptToSubType(wtp)
         }
     }
-
-    /** If `formal` is of the form ClassTag[T], where `T` is a class type,
-     *  synthesize a class tag for `T`.
-     */
-    def synthesizedClassTag(formal: Type): Tree = {
-      if (formal.isRef(defn.ClassTagClass))
-        formal.argTypes match {
-          case arg :: Nil =>
-            val tp = fullyDefinedType(arg, "ClassTag argument", tree.pos)
-            tp.underlyingClassRef(refinementOK = false) match {
-              case tref: TypeRef =>
-                return ref(defn.ClassTagModule)
-                  .select(nme.apply)
-                  .appliedToType(tp)
-                  .appliedTo(clsOf(tref))
-                  .withPos(tree.pos.endPos)
-              case _ =>
-            }
-          case _ =>
-        }
-      EmptyTree
-    }
-
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
       def lit = Literal(tpe.value).withPos(tree.pos)
@@ -1684,7 +1659,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case ErrorType =>
           tree
         case ref: TermRef =>
-          adaptOverloaded(ref)
+          pt match {
+            case pt: FunProto
+            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
+              adaptInterpolated(tree, pt.tupled, original)
+            case _ =>
+              adaptOverloaded(ref)
+          }
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
