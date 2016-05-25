@@ -172,8 +172,8 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
-      case tp @ RefinedType(parent, name) =>
-        tp.derivedRefinedType(this(parent), name, this(tp.refinedInfo, nestedCycleOK, nestedCycleOK))
+      case tp @ RefinedType(parent, name, rinfo) =>
+        tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference

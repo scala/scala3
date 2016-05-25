@@ -75,8 +75,8 @@ object Variances {
     case tp @ TypeBounds(lo, hi) =>
       if (lo eq hi) compose(varianceInType(hi)(tparam), tp.variance)
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
-    case tp @ RefinedType(parent, _) =>
-      varianceInType(parent)(tparam) & varianceInType(tp.refinedInfo)(tparam)
+    case tp @ RefinedType(parent, _, rinfo) =>
+      varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
     case tp @ MethodType(_, paramTypes) =>
       flip(varianceInTypes(paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
