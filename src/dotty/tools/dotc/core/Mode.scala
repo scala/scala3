@@ -81,5 +81,8 @@ object Mode {
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling = newMode(13, "Scala2Unpickling")
 
+  /** Use Scala2 scheme for overloading and implicit resolution */
+  val OldOverloadingResolution = newMode(14, "OldOverloadingResolution")
+
   val PatternOrType = Pattern | Type
 }

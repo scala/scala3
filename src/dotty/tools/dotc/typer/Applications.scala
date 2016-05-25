@@ -603,7 +603,17 @@ trait Applications extends Compatibility { self: Typer =>
           failedVal
         }
       }
-    else realApply
+    else {
+      val app = realApply
+      app match {
+        case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+          val op = fn.symbol
+          if (op == defn.Any_== || op == defn.Any_!=)
+            checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
+        case _ =>
+      }
+      app
+    }
   }
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
@@ -915,12 +925,53 @@ trait Applications extends Compatibility { self: Typer =>
 
             {
               implicit val ctx: Context = nestedCtx
-              isCompatible(tp1, constrained(tp2).resultType)
+              isAsSpecificValueType(tp1, constrained(tp2).resultType)
             }
           case _ => // (3b)
-            isCompatible(tp1, tp2)
+            isAsSpecificValueType(tp1, tp2)
         }
     }}
+
+    /** Test whether value type `tp1` is as specific as value type `tp2`.
+     *  Let's abbreviate this to `tp1 <:s tp2`.
+     *  Previously, `<:s` was the same as `<:`. This behavior is still
+     *  available under mode `Mode.OldOverloadingResolution`. The new behavior
+     *  is different, however. Here, `T <:s U` iff
+     *
+     *    flip(T) <: flip(U)
+     *
+     *  where `flip` changes top-level contravariant type aliases to covariant ones.
+     *  Intuitively `<:s` means subtyping `<:`, except that all top-level arguments
+     *  to contravariant parameters are compared as if they were covariant. E.g. given class
+     *
+     *     class Cmp[-X]
+     *
+     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, nested occurrences
+     *  of parameters are not affected.
+     *  So `T <: U` would imply `List[Cmp[U]] <:s List[Cmp[T]]`, as usual.
+     *
+     *  This relation might seem strange, but it models closely what happens for methods.
+     *  Indeed, if we integrate the existing rules for methods into `<:s` we have now that
+     *
+     *     (T)R  <:s  (U)R
+     *
+     *  iff
+     *
+     *     T => R  <:s  U => R
+     */
+    def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if (ctx.mode.is(Mode.OldOverloadingResolution))
+        isCompatible(tp1, tp2)
+      else {
+        val flip = new TypeMap {
+          def apply(t: Type) = t match {
+            case t: TypeAlias if variance > 0 && t.variance < 0 => t.derivedTypeAlias(t.alias, 1)
+            case t: TypeBounds => t
+            case _ => mapOver(t)
+          }
+        }
+        isCompatible(flip(tp1), flip(tp2))
+      }
 
     /** Drop any implicit parameter section */
     def stripImplicit(tp: Type): Type = tp match {
