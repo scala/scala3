@@ -11,13 +11,13 @@ import java.util.Optional;
  *  manipulate objects of this type.
  */
 public interface AbstractFile {
-  /** The name of this file, note that two files may have the same name. */
+  /** @return The name of this file, note that two files may have the same name. */
   String name();
 
-  /** The path of this file, this might be a virtual path of an unspecified format. */
+  /** @return The path of this file, this might be a virtual path of an unspecified format. */
   String path();
 
-  /** If this is a real file on disk, a `java.io.File` that corresponds to this file.
+  /** @return If this is a real file on disk, a `java.io.File` that corresponds to this file.
    *  Otherwise, an empty `Optional`.
    */
   Optional<File> jfile();

@@ -8,6 +8,8 @@ package dotty.tools.dotc.interfaces;
  *  See the method `process` of `dotty.tools.dotc.Driver` for more information.
  */
 public interface SimpleReporter {
-  /** Report a diagnostic. */
+  /** Report a diagnostic.
+   *  @param diag the diagnostic message to report
+   */
   void report(Diagnostic diag);
 }

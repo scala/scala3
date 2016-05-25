@@ -14,13 +14,13 @@ public interface Diagnostic {
   public static final int WARNING = 1;
   public static final int INFO = 0;
 
-  /** The message to report */
+  /** @return The message to report */
   String message();
 
-  /** Level of the diagnostic, can be either ERROR, WARNING or INFO */
+  /** @return Level of the diagnostic, can be either ERROR, WARNING or INFO */
   int level();
 
-  /** The position in a source file of the code that caused this diagnostic
+  /** @return The position in a source file of the code that caused this diagnostic
    *  to be emitted. */
   Optional<SourcePosition> position();
 }

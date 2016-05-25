@@ -12,33 +12,34 @@ package dotty.tools.dotc.interfaces;
  *  manipulate objects of this type.
  */
 public interface SourcePosition {
-  /** Content of the line which contains the point */
+  /** @return Content of the line which contains the point */
   String lineContent();
 
-  /** Offset to the point */
+  /** @return Offset to the point */
   int point();
-  /** Line number of the point, starting at 0 */
+  /** @return Line number of the point, starting at 0 */
   int line();
-  /** Column number of the point, starting at 0 */
+  /** @return Column number of the point, starting at 0 */
   int column();
 
-  /** Offset to the range start */
+  /** @return Offset to the range start */
   int start();
-  /** Line number of the range start, starting at 0 */
+  /** @return Line number of the range start, starting at 0 */
   int startLine();
-  /** Column number of the range start, starting at 0 */
+  /** @return Column number of the range start, starting at 0 */
   int startColumn();
 
-  /** Offset to the range end */
+  /** @return Offset to the range end */
   int end();
-  /** Line number of the range end, starting at 0 */
+  /** @return Line number of the range end, starting at 0 */
   int endLine();
-  /** Column number of the range end, starting at 0 */
+  /** @return Column number of the range end, starting at 0 */
   int endColumn();
 
   /** The source file corresponding to this position.
    *  The values returned by `point()`, `start()` and `end()`
    *  are indices in the array returned by `source().content()`.
+   *  @return source file for this position
    */
   SourceFile source();
 }
