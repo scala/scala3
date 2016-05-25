@@ -8,7 +8,7 @@ if [[ "$DOTTY_ROOT" == "" ]]; then
   DOTTY_ROOT="$0"
 fi
 DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
-DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" && pwd )`/.."  # absolute
+DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" >& /dev/null && pwd )`/.."  # absolute
 
 # Finds in dotty build file a line containing PATTERN
 # returns last "" escaped string in this line
