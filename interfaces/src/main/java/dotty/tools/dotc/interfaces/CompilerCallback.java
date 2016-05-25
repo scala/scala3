@@ -5,7 +5,7 @@ package dotty.tools.dotc.interfaces;
  *  You should implement this interface if you want to react to one or more of
  *  these events.
  *
- *  @see the method `process` of `dotty.tools.dotc.Driver` for more information.
+ *  See the method `process` of `dotty.tools.dotc.Driver` for more information.
  */
 public interface CompilerCallback {
   /** Called when a class has been generated.

@@ -8,6 +8,6 @@ import java.io.File;
  *  manipulate objects of this type.
  */
 public interface SourceFile extends AbstractFile {
-  /** The content of this file as seen by the compiler. */
+  /** @return The content of this file as seen by the compiler. */
   char[] content();
 }
