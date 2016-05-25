@@ -5,7 +5,7 @@ import dotty.tools.dotc.util.Positions._
 import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import core._
 import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
-import TypeUtils._, TypeErasure._
+import TypeUtils._, TypeErasure._, Flags._
 
 
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
@@ -25,10 +25,11 @@ import TypeUtils._, TypeErasure._
  *
  *  1.  evalTypeApply will establish the matrix and choose the appropriate
  *      handling for the case:
- *  2.  a) handleStaticallyKnown
- *      b) falseIfUnrelated with `scrutinee <:< selector`
- *      c) handleFalseUnrelated
- *      d) leave as is (aka `happens`)
+ *  2.  a) Sel/sc is a value class or scrutinee is `Any`
+ *      b) handleStaticallyKnown
+ *      c) falseIfUnrelated with `scrutinee <:< selector`
+ *      d) handleFalseUnrelated
+ *      e) leave as is (aka `happens`)
  *  3.  Rewrite according to step taken in `2`
  */
 class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
@@ -43,43 +44,43 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
      *  the correct warnings, or an error if statically known to be false in
      *  match
      */
-    def handleStaticallyKnown(tree: Select, scrutinee: Type, selector: Type, inMatch: Boolean, pos: Position): Tree = {
+    def handleStaticallyKnown(select: Select, scrutinee: Type, selector: Type, inMatch: Boolean, pos: Position): Tree = {
       val scrutineeSubSelector = scrutinee <:< selector
       if (!scrutineeSubSelector && inMatch) {
         ctx.error(
           s"this case is unreachable due to `${selector.show}` not being a subclass of `${scrutinee.show}`",
           Position(pos.start - 5, pos.end - 5)
         )
-        rewrite(tree, to = false)
+        rewrite(select, to = false)
       } else if (!scrutineeSubSelector && !inMatch) {
         ctx.warning(
           s"this will always yield false since `${scrutinee.show}` is not a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
-        rewrite(tree, to = false)
+        rewrite(select, to = false)
       } else if (scrutineeSubSelector && !inMatch) {
         ctx.warning(
           s"this will always yield true if the scrutinee is non-null, since `${scrutinee.show}` is a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
-        rewrite(tree, to = true)
-      } else /* if (scrutineeSubSelector && inMatch) */ rewrite(tree, to = true)
+        rewrite(select, to = true)
+      } else /* if (scrutineeSubSelector && inMatch) */ rewrite(select, to = true)
     }
 
     /** Rewrites cases with unrelated types */
-    def handleFalseUnrelated(tree: Select, scrutinee: Type, selector: Type, inMatch: Boolean) =
+    def handleFalseUnrelated(select: Select, scrutinee: Type, selector: Type, inMatch: Boolean) =
       if (inMatch) {
         ctx.error(
           s"will never match since `${selector.show}` is not a subclass of `${scrutinee.show}`",
-          Position(tree.pos.start - 5, tree.pos.end - 5)
+          Position(select.pos.start - 5, select.pos.end - 5)
         )
-        rewrite(tree, to = false)
+        rewrite(select, to = false)
       } else {
         ctx.warning(
           s"will always yield false since `${scrutinee.show}` is not a subclass of `${selector.show}`",
-          tree.pos
+          select.pos
         )
-        rewrite(tree, to = false)
+        rewrite(select, to = false)
       }
 
     /** Rewrites the select to a boolean if `to` is false or if the qualifier
@@ -106,25 +107,30 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           val scrutinee = erasure(s.qualifier.tpe.widen)
           val selector  = erasure(tree.args.head.tpe.widen)
 
-          val scTrait = scrutinee.typeSymbol is Flags.Trait
+          val scTrait = scrutinee.typeSymbol is Trait
           val scClass =
             scrutinee.typeSymbol.isClass &&
-            !(scrutinee.typeSymbol is Flags.Trait) &&
-            !(scrutinee.typeSymbol is Flags.Module)
+            !(scrutinee.typeSymbol is Trait) &&
+            !(scrutinee.typeSymbol is Module)
 
-          val scClassNonFinal = scClass && !scrutinee.typeSymbol.is(Flags.Final)
-          val scFinalClass    = scClass && (scrutinee.typeSymbol is Flags.Final)
+          val scClassNonFinal = scClass && !(scrutinee.typeSymbol is Final)
+          val scFinalClass    = scClass && (scrutinee.typeSymbol is Final)
 
-          val selTrait = selector.typeSymbol is Flags.Trait
+          val selTrait = selector.typeSymbol is Trait
           val selClass =
             selector.typeSymbol.isClass &&
-            !(selector.typeSymbol is Flags.Trait) &&
-            !(selector.typeSymbol is Flags.Module)
+            !(selector.typeSymbol is Trait) &&
+            !(selector.typeSymbol is Module)
 
-          val selClassNonFinal = scClass && !(selector.typeSymbol is Flags.Final)
-          val selFinalClass    = scClass && (selector.typeSymbol is Flags.Final)
+          val selClassNonFinal = scClass && !(selector.typeSymbol is Final)
+          val selFinalClass    = scClass && (selector.typeSymbol is Final)
 
           // Cases ---------------------------------
+          val valueClassesOrAny =
+            ValueClasses.isDerivedValueClass(scrutinee.typeSymbol) ||
+            ValueClasses.isDerivedValueClass(selector.typeSymbol)  ||
+            scrutinee == defn.ObjectType
+
           val knownStatically = scFinalClass
 
           val falseIfUnrelated =
@@ -137,13 +143,16 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
             (scTrait && selClassNonFinal)         ||
             (scTrait && selTrait)
 
-          val inMatch = s.qualifier.symbol is Flags.Case
+          val inMatch = s.qualifier.symbol is Case
 
-          if (knownStatically)
+          if (valueClassesOrAny) tree
+          else if (knownStatically)
             handleStaticallyKnown(s, scrutinee, selector, inMatch, tree.pos)
           else if (falseIfUnrelated && scrutinee <:< selector)
+            // scrutinee is a subtype of the selector, safe to rewrite
             rewrite(s, to = true)
           else if (falseIfUnrelated && !(selector <:< scrutinee))
+            // selector and scrutinee are unrelated
             handleFalseUnrelated(s, scrutinee, selector, inMatch)
           else if (happens) tree
           else tree
