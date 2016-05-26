@@ -6,7 +6,7 @@ if [[ "$DOTTY_ROOT" == "" ]]; then
   DOTTY_ROOT="$0"
 fi
 DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
-DOTTY_ROOT="$( cd "$DOTTY_ROOT" && pwd )/.."  # absolute
+DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
 
 # CLASS_PATH is derived from the DOTTY_ROOT
 CLASS_PATH="-J-Xbootclasspath/a:.:$DOTTY_ROOT/target/scala-2.11/classes/"
