@@ -249,14 +249,21 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
               else if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
             }
-            if (sym.maybeOwner.isClass) narrowTo(sym.owner.asClass)
+            def captureImplicitThis(x: Type): Unit = {
+              x match {
+                case TermRef(x, _) => captureImplicitThis(x)
+                case x: ThisType => narrowTo(x.tref.typeSymbol.asClass)
+                case _ =>
+              }
+            }
+            captureImplicitThis(tree.tpe)
           case tree: Select =>
             if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
             if (sym.owner.isTerm && !sym.is(Label))
-              liftedOwner(sym) = sym.enclosingClass.topLevelClass
+              liftedOwner(sym) = sym.enclosingPackageClass
                 // this will make methods in supercall constructors of top-level classes owned
                 // by the enclosing package, which means they will be static.
                 // On the other hand, all other methods will be indirectly owned by their
