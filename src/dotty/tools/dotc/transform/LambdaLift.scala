@@ -369,8 +369,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                // though the second condition seems weird, it's not true for symbols which are defined in some
                // weird combinations of super calls.
               (encClass, EmptyFlags)
-            } else
-              (topClass, JavaStatic)
+            } else if (encClass.is(ModuleClass, butNot = Package) && encClass.isStatic) // needed to not cause deadlocks in classloader. see t5375.scala
+              (encClass, EmptyFlags)
+            else (topClass, JavaStatic)
           }
           else (lOwner, EmptyFlags)
         local.copySymDenotation(
