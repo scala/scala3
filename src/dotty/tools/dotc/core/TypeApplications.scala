@@ -15,7 +15,34 @@ import StdNames.tpnme
 import util.Positions.Position
 import config.Printers._
 import collection.mutable
+   import dotty.tools.dotc.config.Config
 import java.util.NoSuchElementException
+
+object TypeApplicationsNewHK {
+  import TypeApplications._
+
+  object TypeLambda {
+    def apply(argBindingFns: List[RefinedType => TypeBounds],
+              bodyFn: RefinedType => Type)(implicit ctx: Context): Type = {
+      val argNames = argBindingFns.indices.toList.map(tpnme.hkArg)
+      RefinedType.recursive(bodyFn, argNames, argBindingFns)
+    }
+
+    def unapply(tp: Type)(implicit ctx: Context): Option[(List[TypeBounds], Type)] = {
+      def decompose(t: Type, acc: List[TypeBounds]): (List[TypeBounds], Type) = t match {
+        case t @ RefinedType(p, rname, rinfo: TypeBounds)
+        if rname.isHkArgName && rinfo.isBinding =>
+          decompose(p, rinfo.bounds :: acc)
+        case _ =>
+          (acc, t)
+      }
+      decompose(tp, Nil) match {
+        case (Nil, _) => None
+        case x => Some(x)
+      }
+    }
+  }
+}
 
 object TypeApplications {
 
@@ -51,6 +78,14 @@ object TypeApplications {
    *    [v1 X1: B1, ..., vn Xn: Bn] -> T
    *    ==>
    *    ([X_i := this.$hk_i] T) { type v_i $hk_i: (new)B_i }
+   *    
+   *    [X] -> List[X]
+   *    
+   *    List { type List$A = this.$hk_0 } { type $hk_0 }
+   *    
+   *    [X] -> X
+   *    
+   *    mu(this) this.$hk_0 & { type $hk_0 }
    */
   object TypeLambda {
     def apply(variances: List[Int],
