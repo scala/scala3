@@ -2596,6 +2596,13 @@ object Types {
       if (info eq this.info) this else SkolemType(info)
     override def hashCode: Int = identityHash
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+
+    private var myRepr: String = null
+    def repr(implicit ctx: Context) = {
+      if (myRepr == null) myRepr = ctx.freshName("?")
+      myRepr
+    }
+
     override def toString = s"Skolem($info)"
   }
 
