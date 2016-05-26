@@ -388,9 +388,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Replace references to type parameters with references to hk arguments `this.$hk_i`
    * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
    */
-  private[TypeApplications] def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
+  def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
     (rt: RefinedType) =>
-      new ctx.SafeSubstMap(tparams , argRefs(rt, tparams.length))
+      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
         .apply(self).asInstanceOf[T]
 
   /** Lambda abstract `self` with given type parameters. Examples:
