@@ -427,7 +427,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     if (untpd.isWildcardStarArg(tree))
       cases(
-        //ifPat = ascription(TypeTree(defn.SeqType.appliedTo(pt :: Nil)), isWildcard = true),
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
         ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
         wildName = nme.WILDCARD_STAR)
@@ -976,7 +975,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             typed(untpd.Bind(tree.name, arg).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
         val flags = if (tree.isType) BindDefinedType else EmptyFlags
-        val sym = ctx.newSymbol(ctx.owner, tree.name, flags, body1.tpe, coord = tree.pos)
+        val sym = ctx.newSymbol(ctx.owner, tree.name, flags | Case, body1.tpe, coord = tree.pos)
         assignType(cpy.Bind(tree)(tree.name, body1), sym)
     }
   }

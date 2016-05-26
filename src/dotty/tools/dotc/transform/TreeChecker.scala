@@ -119,7 +119,12 @@ class TreeChecker extends Phase with SymTransformer {
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squahsedPhase = ctx.squashed(prevPhase)
     ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
-    val checkingCtx = ctx.fresh.setReporter(new ThrowingReporter(ctx.reporter))
+
+    val checkingCtx = ctx
+        .fresh
+        .setMode(Mode.ImplicitsEnabled)
+        .setReporter(new ThrowingReporter(ctx.reporter))
+
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {
@@ -307,7 +312,9 @@ class TreeChecker extends Phase with SymTransformer {
     }.apply(tp)
 
     def checkNotRepeated(tree: Tree)(implicit ctx: Context): tree.type = {
-      assert(!tree.tpe.widen.isRepeatedParam, i"repeated parameter type not allowed here: $tree")
+      def allowedRepeated = (tree.symbol.flags is Case) && tree.tpe.widen.isRepeatedParam
+
+      assert(!tree.tpe.widen.isRepeatedParam || allowedRepeated, i"repeated parameter type not allowed here: $tree")
       tree
     }
 
@@ -322,6 +329,7 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
       assertDefined(tree)
+
       checkNotRepeated(super.typedIdent(tree, pt))
     }
 
