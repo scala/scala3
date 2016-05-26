@@ -91,11 +91,16 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
      *
      *  `scrutinee.isInstanceOf[Selector]` if `scrutinee eq null`
      */
-    def rewrite(tree: Select, to: Boolean): Tree =
-      if (!to || !tree.qualifier.tpe.widen.derivesFrom(defn.AnyRefAlias))
-        Literal(Constant(to))
-      else
-        Apply(tree.qualifier.select(defn.Object_ne), List(Literal(Constant(null))))
+    def rewrite(tree: Select, to: Boolean): Tree = {
+      val expr =
+        if (!to || !tree.qualifier.tpe.widen.derivesFrom(defn.AnyRefAlias))
+          Literal(Constant(to))
+        else
+          Apply(tree.qualifier.select(defn.Object_ne), List(Literal(Constant(null))))
+
+      if (!isPureExpr(tree.qualifier)) Block(List(tree.qualifier), expr)
+      else expr
+    }
 
     /** Attempts to rewrite TypeApply to either `scrutinee ne null` or a
      *  constant
