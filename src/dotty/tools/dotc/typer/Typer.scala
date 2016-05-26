@@ -427,7 +427,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     if (untpd.isWildcardStarArg(tree))
       cases(
-        ifPat = ascription(TypeTree(defn.SeqType.appliedTo(pt :: Nil)), isWildcard = true),
+        //ifPat = ascription(TypeTree(defn.SeqType.appliedTo(pt :: Nil)), isWildcard = true),
+        ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
         ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType)),
         wildName = nme.WILDCARD_STAR)
     else {

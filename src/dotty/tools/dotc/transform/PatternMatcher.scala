@@ -1094,6 +1094,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       */
     object WildcardPattern {
       def unapply(pat: Tree): Boolean = pat match {
+        case Typed(_, arg) if arg.tpe.isRepeatedParam => true
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
         case t if (tpd.isWildcardArg(t))            => true
         case x: Ident                              => isVarPattern(x)
@@ -1157,8 +1158,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       object TypeBound {
         def unapply(tree: Tree): Option[Type] = tree match {
-          case Typed(_, _)  => Some(tree.typeOpt)
-          case _                                      => None
+          case Typed(_, arg) if !arg.tpe.isRepeatedParam => Some(tree.typeOpt)
+          case _                                         => None
         }
       }
 
