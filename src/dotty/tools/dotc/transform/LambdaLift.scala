@@ -251,8 +251,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
             }
             def captureImplicitThis(x: Type): Unit = {
               x match {
-                case TermRef(x, _) => captureImplicitThis(x)
-                case x: ThisType => narrowTo(x.tref.typeSymbol.asClass)
+                case tr@TermRef(x, _) if (!tr.termSymbol.isStatic) => captureImplicitThis(x)
+                case x: ThisType if (!x.tref.typeSymbol.isStaticOwner) => narrowTo(x.tref.typeSymbol.asClass)
                 case _ =>
               }
             }
