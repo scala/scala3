@@ -23,6 +23,7 @@ import config.Printers
 class ReTyper extends Typer {
   import tpd._
 
+  /** Checks that the given tree has been typed */
   protected def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
     assert(tree.hasType, i"$tree ${tree.getClass} ${tree.uniqueId}")
     tree.withType(tree.typeOpt)
