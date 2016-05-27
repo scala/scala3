@@ -413,7 +413,7 @@ trait TypeAssigner {
           case Some(tparam) => tparam
           case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }
-        if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
+        if (tparam.isTypeParam) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
         else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
       case _ =>
         errorType(s"named and positional type arguments may not be mixed", arg.pos)

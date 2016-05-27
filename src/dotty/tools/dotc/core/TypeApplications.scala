@@ -75,10 +75,10 @@ object TypeApplications {
   /** Does the variance of `sym1` conform to the variance of `sym2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
    */
-  def varianceConforms(sym1: MemberInfo, sym2: MemberInfo)(implicit ctx: Context) =
+  def varianceConforms(sym1: MemberBinding, sym2: MemberBinding)(implicit ctx: Context) =
     sym1.memberVariance == sym2.memberVariance || sym2.memberVariance == 0
 
-  def variancesConform(syms1: List[MemberInfo], syms2: List[MemberInfo])(implicit ctx: Context) =
+  def variancesConform(syms1: List[MemberBinding], syms2: List[MemberBinding])(implicit ctx: Context) =
     syms1.corresponds(syms2)(varianceConforms)
 
   /** Extractor for
@@ -280,7 +280,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  with the bounds on its hk args. See `LambdaAbstract`, where these
    *  types get introduced, and see `isBoundedLambda` below for the test.
    */
-  final def typeParams(implicit ctx: Context): List[MemberInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: Context): List[MemberBinding] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
@@ -627,8 +627,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param args     = `U1, ..., Un`
    *  @param tparams  are assumed to be the type parameters of `T`.
    */
-  final def appliedTo(args: List[Type], typParams: List[MemberInfo])(implicit ctx: Context): Type = {
-    def matchParams(t: Type, tparams: List[MemberInfo], args: List[Type])(implicit ctx: Context): Type = args match {
+  final def appliedTo(args: List[Type], typParams: List[MemberBinding])(implicit ctx: Context): Type = {
+    def matchParams(t: Type, tparams: List[MemberBinding], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
@@ -673,7 +673,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: MemberInfo)(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(tparam: MemberBinding)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
       self
     case _ =>

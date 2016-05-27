@@ -939,7 +939,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
             args = args.take(tparams.length)
           }
-          def typedArg(arg: untpd.Tree, tparam: MemberInfo) = {
+          def typedArg(arg: untpd.Tree, tparam: MemberBinding) = {
             val (desugaredArg, argPt) =
               if (ctx.mode is Mode.Pattern)
                 (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.memberInfo)

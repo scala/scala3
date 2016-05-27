@@ -2051,7 +2051,7 @@ object Types {
    *                 given the refined type itself.
    */
   abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
-    extends RefinedOrRecType with BindingType with MemberInfo {
+    extends RefinedOrRecType with BindingType with MemberBinding {
 
     final def parent = myParent
     final def refinedInfo = myRefinedInfo
@@ -2090,8 +2090,11 @@ object Types {
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
 
-    // MemberInfo methods
-    def exists(implicit ctx: Context) = true
+    // MemberBinding methods
+    def isTypeParam(implicit ctx: Context) = refinedInfo match {
+      case tp: TypeBounds => tp.isBinding
+      case _ => false
+    }
     def memberName(implicit ctx: Context) = refinedName
     def memberInfo(implicit ctx: Context) = refinedInfo
     def memberInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = refinedInfo
