@@ -409,7 +409,7 @@ trait TypeAssigner {
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
-        val tparam = tparams.find(_.name == name) match {
+        val tparam = tparams.find(_.memberName == name) match {
           case Some(tparam) => tparam
           case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }

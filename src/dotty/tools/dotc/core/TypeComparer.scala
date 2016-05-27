@@ -534,7 +534,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeSymbol], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: List[MemberInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.member(tpnme.hkApply).info.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -647,7 +647,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
   }
 
-  /** Replace any top-level recursive type `{ z => T }` in `tp` with 
+  /** Replace any top-level recursive type `{ z => T }` in `tp` with
    *  `[z := anchor]T`.
    */
   private def fixRecs(anchor: SingletonType, tp: Type): Type = {
@@ -1117,8 +1117,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  in where we allow which interpretation.
    */
   private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type) = {
-    val tparams1 = tp1.typeParams
-    val tparams2 = tp2.typeParams
+    val tparams1 = tp1.typeParamSymbols // TODO revise for new hk scheme
+    val tparams2 = tp2.typeParamSymbols
     def onlyNamed(tparams: List[TypeSymbol]) = tparams.forall(!_.is(ExpandedName))
     if (tparams1.isEmpty || tparams2.isEmpty ||
         onlyNamed(tparams1) && onlyNamed(tparams2)) op(tp1, tp2)

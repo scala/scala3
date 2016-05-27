@@ -869,7 +869,7 @@ object Types {
         def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
         if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: RecType if refinementOK => tp.parent 
+      case tp: RecType if refinementOK => tp.parent
       case _ => NoType
     }
 
@@ -2051,7 +2051,7 @@ object Types {
    *                 given the refined type itself.
    */
   abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
-    extends RefinedOrRecType with BindingType {
+    extends RefinedOrRecType with BindingType with MemberInfo {
 
     final def parent = myParent
     final def refinedInfo = myRefinedInfo
@@ -2089,6 +2089,13 @@ object Types {
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
+
+    // MemberInfo methods
+    def exists(implicit ctx: Context) = true
+    def memberName(implicit ctx: Context) = refinedName
+    def memberInfo(implicit ctx: Context) = refinedInfo
+    def memberInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = refinedInfo
+    def memberVariance(implicit ctx: Context) = BindingKind.toVariance(refinedInfo.bounds.bindingKind)
 
     override def equals(that: Any) = that match {
       case that: RefinedType =>
