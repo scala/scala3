@@ -2188,16 +2188,20 @@ object Types {
   }
 
   object RecType {
+    /* Note: this might well fail for nested Recs.
+     *  Failing scenario: Rebind a nest rec, creates a new rec
+     *  but it still has RecThis references to the outer rec.
     def checkInst(tp: Type)(implicit ctx: Context): tp.type = {
       var binders: List[RecType] = Nil
       tp.foreachPart {
         case rt: RecType => binders = rt :: binders
-        case rt: RecThis => assert(binders contains rt.binder, tp)
+        case rt: RecThis => assert(binders contains rt.binder)
         case _ =>
       }
       tp
     }
-    def apply(parentExp: RecType => Type)(implicit ctx: Context): RecType = checkInst {
+    */
+    def apply(parentExp: RecType => Type)(implicit ctx: Context): RecType = {
       var rt = new RecType(parentExp)
       rt.parent match {
         case rt2: RecType =>
@@ -2206,7 +2210,7 @@ object Types {
       }
       unique(rt)
     }
-    def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = checkInst {
+    def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = {
       val rt = this(parentExp)
       //val self = RecThis(rt)
       def isSelfRef(t: Type) = t match {
