@@ -2,7 +2,7 @@ package dotty.tools.dotc.core
 
 import Names.Name
 import Contexts.Context
-import Types.Type
+import Types.{Type, TypeBounds}
 
 /** A common super trait of Symbol and Refinement.
  *  Used to capture the attributes of type parameters
@@ -19,13 +19,13 @@ trait MemberBinding {
   def memberName(implicit ctx: Context): Name
 
   /** The info of the member */
-  def memberInfo(implicit ctx: Context): Type
+  def memberBounds(implicit ctx: Context): TypeBounds
 
   /** The info of the member as seen from a prefix type.
    *  This can be different from `memberInfo` if the binding
    *  is a type symbol of a class.
    */
-  def memberInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type
+  def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds
 
   /** The variance of the type parameter
    *  @pre: isTypeParam = true

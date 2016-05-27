@@ -492,8 +492,8 @@ object Symbols {
     // MemberBinding methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
     def memberName(implicit ctx: Context): Name = name
-    def memberInfo(implicit ctx: Context) = denot.info
-    def memberInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
+    def memberBounds(implicit ctx: Context) = denot.info.bounds
+    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
     def memberVariance(implicit ctx: Context) = denot.variance
 
 // -------- Printing --------------------------------------------------------

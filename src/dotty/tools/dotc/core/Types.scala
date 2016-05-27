@@ -2096,8 +2096,8 @@ object Types {
       case _ => false
     }
     def memberName(implicit ctx: Context) = refinedName
-    def memberInfo(implicit ctx: Context) = refinedInfo
-    def memberInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = refinedInfo
+    def memberBounds(implicit ctx: Context) = refinedInfo.bounds
+    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = memberBounds
     def memberVariance(implicit ctx: Context) = BindingKind.toVariance(refinedInfo.bounds.bindingKind)
 
     override def equals(that: Any) = that match {
