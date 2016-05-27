@@ -2138,17 +2138,10 @@ object Parsers {
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
-        if (in.token == IMPORT) {
+        if (in.token == IMPORT)
           stats ++= importClause()
-        }
-        else if (isExprIntro) {
-          val t = expr(Location.InBlock)
-          stats += t
-          t match {
-            case _: Function => return stats.toList
-            case _ =>
-          }
-        }
+        else if (isExprIntro)
+          stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT) {
             val start = in.skipToken()
