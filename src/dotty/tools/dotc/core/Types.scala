@@ -107,7 +107,7 @@ object Types {
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
      */
-    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
           case TypeAlias(tp) => tp.isRef(sym)

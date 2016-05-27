@@ -306,12 +306,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] = {
       // TODO Deal with guards?
 
-      def isSwitchableType(tpe: Type): Boolean = {
+      def isSwitchableType(tpe: Type): Boolean =
         (tpe isRef defn.IntClass) ||
         (tpe isRef defn.ByteClass) ||
         (tpe isRef defn.ShortClass) ||
         (tpe isRef defn.CharClass)
-      }
 
       object IntEqualityTestTreeMaker {
         def unapply(treeMaker: EqualityTestTreeMaker): Option[Int] = treeMaker match {
@@ -423,7 +422,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         Match(intScrut, newCases :+ defaultCase)
       }
 
-      if (isSwitchableType(scrut.tpe.widenDealias) && cases.forall(isSwitchCase)) {
+      val dealiased = scrut.tpe.widenDealias
+      if (isSwitchableType(dealiased) && cases.forall(isSwitchCase)) {
         val valuesToCases = cases.map(extractSwitchCase)
         val values = valuesToCases.map(_._1)
         if (values.tails.exists { tail => tail.nonEmpty && tail.tail.exists(doOverlap(_, tail.head)) }) {
@@ -433,6 +433,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           Some(makeSwitch(valuesToCases))
         }
       } else {
+        if (dealiased hasAnnotation defn.SwitchAnnot)
+          ctx.warning("failed to emit switch for `@switch` annotated match")
         None
       }
     }
