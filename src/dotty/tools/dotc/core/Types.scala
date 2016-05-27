@@ -3127,7 +3127,10 @@ object Types {
 
   object BindingKind {
     def fromVariance(v: Int): BindingKind = new BindingKind((v + NonvariantBinding.n).toByte)
-    def toVariance(bk: BindingKind): Int = bk.n
+    def toVariance(bk: BindingKind): Int = {
+      assert(bk.n != 0)
+      bk.n - NonvariantBinding.n
+    }
   }
 
   // ----- Annotated and Import types -----------------------------------------------
