@@ -249,14 +249,21 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
               else if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
             }
-            if (sym.maybeOwner.isClass) narrowTo(sym.owner.asClass)
+            def captureImplicitThis(x: Type): Unit = {
+              x match {
+                case tr@TermRef(x, _) if (!tr.termSymbol.isStatic) => captureImplicitThis(x)
+                case x: ThisType if (!x.tref.typeSymbol.isStaticOwner) => narrowTo(x.tref.typeSymbol.asClass)
+                case _ =>
+              }
+            }
+            captureImplicitThis(tree.tpe)
           case tree: Select =>
             if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
           case tree: This =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
             if (sym.owner.isTerm && !sym.is(Label))
-              liftedOwner(sym) = sym.enclosingClass.topLevelClass
+              liftedOwner(sym) = sym.enclosingPackageClass
                 // this will make methods in supercall constructors of top-level classes owned
                 // by the enclosing package, which means they will be static.
                 // On the other hand, all other methods will be indirectly owned by their
@@ -362,8 +369,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                // though the second condition seems weird, it's not true for symbols which are defined in some
                // weird combinations of super calls.
               (encClass, EmptyFlags)
-            } else
-              (topClass, JavaStatic)
+            } else if (encClass.is(ModuleClass, butNot = Package) && encClass.isStatic) // needed to not cause deadlocks in classloader. see t5375.scala
+              (encClass, EmptyFlags)
+            else (topClass, JavaStatic)
           }
           else (lOwner, EmptyFlags)
         local.copySymDenotation(
