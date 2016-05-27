@@ -420,10 +420,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ => ifExpr
     }
     def ascription(tpt: Tree, isWildcard: Boolean) = {
+      val underlyingTreeTpe =
+        if (isRepeatedParamType(tpt)) TypeTree(defn.SeqType.appliedTo(pt :: Nil))
+        else tpt
+
       val expr1 =
-        if (isWildcard) tree.expr.withType(tpt.tpe)
+        if (isRepeatedParamType(tpt)) tree.expr.withType(defn.SeqType.appliedTo(pt :: Nil))
+        else if (isWildcard) tree.expr.withType(tpt.tpe)
         else typed(tree.expr, tpt.tpe.widenSkolem)
-      assignType(cpy.Typed(tree)(expr1, tpt), tpt)
+      assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
     }
     if (untpd.isWildcardStarArg(tree))
       cases(
