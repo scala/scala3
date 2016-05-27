@@ -2212,12 +2212,7 @@ object Types {
     }
     def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = {
       val rt = this(parentExp)
-      //val self = RecThis(rt)
-      def isSelfRef(t: Type) = t match {
-        case RecThis(binder) => binder eq rt
-        case _ => false
-      }
-      if (rt.existsPart(isSelfRef)) rt else rt.parent
+      if (rt.isReferredToBy(rt.parent)) rt else rt.parent
     }
   }
 
