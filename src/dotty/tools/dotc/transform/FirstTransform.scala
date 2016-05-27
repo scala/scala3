@@ -30,7 +30,7 @@ import StdNames._
  *   - stubs out native methods
  *   - eliminate self tree in Template and self symbol in ClassInfo
  */
-class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
+class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
@@ -46,12 +46,13 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
   }
 
   /** eliminate self symbol in ClassInfo */
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case tp@ClassInfo(_, _, _, _, self: Symbol) =>
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+    case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
       tp.derivedClassInfo(selfInfo = self.info)
     case _ =>
       tp
   }
+
   /*
       tp match {
         //create companions for value classes that are not from currently compiled source file

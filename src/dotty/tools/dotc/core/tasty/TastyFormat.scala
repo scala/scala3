@@ -485,4 +485,15 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
   }
+
+  /** @return If non-negative, the number of leading references of a length/trees entry.
+   *          If negative, minus the number of leading non-reference trees.
+   */
+  def numRefs(tag: Int) = tag match {
+    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
+         SELFDEF | REFINEDtype => 1
+    case RENAMED | PARAMtype => 2
+    case POLYtype | METHODtype => -1
+    case _ => 0
+  }
 }

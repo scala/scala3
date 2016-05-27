@@ -217,8 +217,8 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: RefinedType =>
       writeByte(REFINEDtype)
       withLength {
-        pickleType(tpe.parent)
         pickleName(tpe.refinedName)
+        pickleType(tpe.parent)
         pickleType(tpe.refinedInfo, richTypes = true)
       }
     case tpe: TypeAlias =>

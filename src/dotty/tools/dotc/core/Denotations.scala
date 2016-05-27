@@ -658,7 +658,13 @@ object Denotations {
               var startPid = nextTransformerId + 1
               val transformer = ctx.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
-              next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+              try {
+                next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+              } catch {
+                case ex: CyclicReference =>
+                  println(s"error while transforming $this") // DEBUG
+                  throw ex
+              }
               if (next eq cur)
                 startPid = cur.validFor.firstPhaseId
               else {
