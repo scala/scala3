@@ -3,12 +3,12 @@
 # it's based on miniboxing script and paulp's launcher script
 
 # Try to autodetect real location of the script
-DOTTY_ROOT="`readlink \"$0\"`"             #  relative, symbolic links resolved
+DOTTY_ROOT="$(readlink "$0")"              #  relative, symbolic links resolved
 if [[ "$DOTTY_ROOT" == "" ]]; then
   DOTTY_ROOT="$0"
 fi
-DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
-DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" >& /dev/null && pwd )`/.."  # absolute
+DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
+DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
 
 # Finds in dotty build file a line containing PATTERN
 # returns last "" escaped string in this line
