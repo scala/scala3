@@ -722,13 +722,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def addRefinement(tp: Type, sym: Symbol) = {
-            def subst(info: Type, rt: RefinedType) =
-              if (clazz.isClass) info.substThis(clazz.asClass, RefinedThis(rt))
-              else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
-            RefinedType(tp, sym.name, subst(sym.info, _))
-          }
-          (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
+          def subst(info: Type, rt: RecType) =
+            if (clazz.isClass) info.substThis(clazz.asClass, RecThis(rt))
+            else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+          def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
+          val refined = (parent /: decls.toList)(addRefinement)
+          RecType.closeOver(rt => subst(refined, rt))
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
