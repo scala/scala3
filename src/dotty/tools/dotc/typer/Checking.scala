@@ -174,6 +174,8 @@ object Checking {
         mapOver(tp)
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
+      case tp: RecType =>
+        tp.rebind(this(tp.parent))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -187,7 +189,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedType => true
+            case _: RefinedOrRecType => true
             case _ => false
           }
           if (isInteresting(pre)) {
@@ -433,12 +435,14 @@ trait Checking {
   }
 
   /** Check that any top-level type arguments in this type are feasible, i.e. that
-   *  their lower bound conforms to their upper cound. If a type argument is
+   *  their lower bound conforms to their upper bound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
    */
   def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
     case tp: RefinedType =>
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
+    case tp: RecType =>
+      tp.rebind(tp.parent)
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
       ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
       TypeAlias(hi)

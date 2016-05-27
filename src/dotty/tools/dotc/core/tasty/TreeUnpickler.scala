@@ -335,8 +335,13 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           }
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
+        case RECtype =>
+          RecType(rt => registeringType(rt, readType()))
         case REFINEDthis =>
-          RefinedThis(readTypeRef().asInstanceOf[RefinedType])
+          readTypeRef() match {
+            case t: RefinedType => RefinedThis(t)
+            case t: RecType => RecThis(t)
+          }
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
