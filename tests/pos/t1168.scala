@@ -1,6 +1,6 @@
 object Test extends App {
 
-  trait SpecialException {}
+  trait SpecialException extends Throwable {}
 
   try {
     throw new Exception

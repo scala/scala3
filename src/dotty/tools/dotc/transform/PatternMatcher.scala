@@ -56,7 +56,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val selector =
-      ctx.newSymbol(ctx.owner, ctx.freshName("ex").toTermName, Flags.Synthetic, defn.ThrowableType, coord = tree.pos)
+      ctx.newSymbol(ctx.owner, ctx.freshName("ex").toTermName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = tree.pos)
     val sel = Ident(selector.termRef).withPos(tree.pos)
     val rethrow = tpd.CaseDef(EmptyTree, EmptyTree, Throw(ref(selector)))
     val newCases = tpd.CaseDef(
@@ -80,7 +80,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     // assert(owner ne null); assert(owner ne NoSymbol)
     def freshSym(pos: Position, tp: Type = NoType, prefix: String = "x", owner: Symbol = ctx.owner) = {
       ctr += 1
-      ctx.newSymbol(owner, ctx.freshName(prefix + ctr).toTermName, Flags.Synthetic, tp, coord = pos)
+      ctx.newSymbol(owner, ctx.freshName(prefix + ctr).toTermName, Flags.Synthetic | Flags.Case, tp, coord = pos)
     }
 
     def newSynthCaseLabel(name: String, tpe:Type, owner: Symbol = ctx.owner) =
