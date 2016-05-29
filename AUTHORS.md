@@ -42,7 +42,7 @@ The majority of the dotty codebase is new code, with the exception of the compon
 > The utilities package is a mix of new and adapted components. The files in  [scala/scala](https://github.com/scala/scala) were originally authored by many people,
 > including Paul Phillips, Martin Odersky, Sean McDirmid, and others.
   
-`dotty.tools.io`   
+`dotty.tools.io`
 
 > The I/O support library was adapted from current Scala compiler. Original authors were Paul Phillips and others.
 
@@ -52,3 +52,12 @@ The majority of the dotty codebase is new code, with the exception of the compon
 > [scala/scala](https://github.com/scala/scala). It has been reworked to fit
 > the needs of dotty. Original authors include: Adrian Moors, Lukas Rytz,
 > Grzegorz Kossakowski, Paul Phillips
+
+`dotty.tools.dotc.sbt`
+
+> The sbt compiler phases are based on
+> https://github.com/adriaanm/scala/tree/sbt-api-consolidate/src/compiler/scala/tools/sbt
+> which attempts to integrate the sbt phases into scalac and is itself based on
+> the [compiler bridge in sbt 0.13](https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt),
+> but has been heavily adapted and refactored.
+> Original authors were Mark Harrah, Grzegorz Kossakowski, Martin Duhemm, Adriaan Moors and others.

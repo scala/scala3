@@ -519,7 +519,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
-      if (assocFile != null || (this.owner is PackageClass)) assocFile
+      if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
 
     final def classDenot(implicit ctx: Context): ClassDenotation =

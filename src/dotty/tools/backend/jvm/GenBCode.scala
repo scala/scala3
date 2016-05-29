@@ -389,6 +389,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val className = jclassName.replace('/', '.')
             if (ctx.compilerCallback != null)
               ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), className)
+            if (ctx.sbtCallback != null)
+              ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), outFile.file, className)
           }
           catch {
             case e: FileConflictException =>

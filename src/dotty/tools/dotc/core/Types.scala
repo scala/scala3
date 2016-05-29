@@ -415,8 +415,16 @@ object Types {
       memberExcluding(name, Flags.Private)
     }
 
-    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation =
-      findMember(name, widenIfUnstable, excluding)
+    final def memberExcluding(name: Name, excluding: FlagSet)(implicit ctx: Context): Denotation = {
+      // We need a valid prefix for `asSeenFrom`
+      val pre = this match {
+        case tp: ClassInfo =>
+          tp.typeRef
+        case _ =>
+          widenIfUnstable
+      }
+      findMember(name, pre, excluding)
+    }
 
     /** Find member of this type with given name and
      *  produce a denotation that contains the type of the member
@@ -2476,10 +2484,14 @@ object Types {
 
   abstract class ParamType extends BoundType {
     def paramNum: Int
+    def paramName: Name
   }
 
   abstract case class MethodParam(binder: MethodType, paramNum: Int) extends ParamType with SingletonType {
     type BT = MethodType
+
+    def paramName = binder.paramNames(paramNum)
+
     override def underlying(implicit ctx: Context): Type = binder.paramTypes(paramNum)
     def copyBoundType(bt: BT) = new MethodParamImpl(bt, paramNum)
 
@@ -2492,7 +2504,7 @@ object Types {
         false
     }
 
-    override def toString = s"MethodParam(${binder.paramNames(paramNum)})"
+    override def toString = s"MethodParam($paramName)"
   }
 
   class MethodParamImpl(binder: MethodType, paramNum: Int) extends MethodParam(binder, paramNum)
@@ -2522,9 +2534,11 @@ object Types {
       case _ => false
     }
 
+    def paramName = binder.paramNames(paramNum)
+
     override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)
     // no customized hashCode/equals needed because cycle is broken in PolyType
-    override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
+    override def toString = s"PolyParam($paramName)"
 
     override def computeHash = doHash(paramNum, binder.identityHash)
 
@@ -2776,9 +2790,9 @@ object Types {
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass || ctx.erasedTypes) tp
       else tp.substThis(cls.owner.asClass, prefix)
 
-    private var typeRefCache: Type = null
+    private var typeRefCache: TypeRef = null
 
-    def typeRef(implicit ctx: Context): Type = {
+    def typeRef(implicit ctx: Context): TypeRef = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (typeRefCache == null)
         typeRefCache =
@@ -2787,7 +2801,7 @@ object Types {
       typeRefCache
     }
 
-    def symbolicTypeRef(implicit ctx: Context): Type = TypeRef(prefix, cls)
+    def symbolicTypeRef(implicit ctx: Context): TypeRef = TypeRef(prefix, cls)
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
@@ -3398,6 +3412,12 @@ object Types {
       case t :: ts1 => foldOver(apply(x, t), ts1)
       case nil => x
     }
+  }
+
+  abstract class TypeTraverser(implicit ctx: Context) extends TypeAccumulator[Unit] {
+    def traverse(tp: Type): Unit
+    def apply(x: Unit, tp: Type): Unit = traverse(tp)
+    protected def traverseChildren(tp: Type) = foldOver((), tp)
   }
 
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {

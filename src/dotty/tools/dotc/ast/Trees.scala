@@ -559,7 +559,10 @@ object Trees {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
   }
 
-  /** qualifier # name */
+  /** qualifier # name
+   *  In Scala, this always refers to a type, but in a Java
+   *  compilation unit this might refer to a term.
+   */
   case class SelectFromTypeTree[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = SelectFromTypeTree[T]

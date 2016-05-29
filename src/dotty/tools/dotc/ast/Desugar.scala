@@ -958,7 +958,7 @@ object desugar {
    *  Example: Given
    *
    *      class C
-   *      type T1 extends C { type T <: A }
+   *      type T1 = C { type T <: A }
    *
    *  the refined type
    *
