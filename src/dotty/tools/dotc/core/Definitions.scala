@@ -668,7 +668,7 @@ class Definitions {
   private var myLambdaTraits: Set[Symbol] = Set()
 
   /** The set of HigherKindedXYZ traits encountered so far */
-  def lambdaTraits: Set[Symbol] = myLambdaTraits
+  def lambdaTraitsOBS: Set[Symbol] = myLambdaTraits
 
   private var LambdaTraitForVariances = mutable.Map[List[Int], ClassSymbol]()
 
@@ -689,7 +689,7 @@ class Definitions {
    *   - for each positive or negative variance v_i there is a parent trait Pj which
    *     is the same as LambdaXYZ except that it has `I` in i-th position.
    */
-  def LambdaTrait(vcs: List[Int]): ClassSymbol = {
+  def LambdaTraitOBS(vcs: List[Int]): ClassSymbol = {
     assert(vcs.nonEmpty)
 
     def varianceFlags(v: Int) = v match {
@@ -704,16 +704,16 @@ class Definitions {
         val paramDecls = newScope
         for (i <- 0 until vcs.length)
           newTypeParam(cls, tpnme.hkArg(i), varianceFlags(vcs(i)), paramDecls)
-        newTypeField(cls, tpnme.hkApply, Covariant, paramDecls)
+        newTypeField(cls, tpnme.hkApplyOBS, Covariant, paramDecls)
         val parentTraitRefs =
           for (i <- 0 until vcs.length if vcs(i) != 0)
-          yield LambdaTrait(vcs.updated(i, 0)).typeRef
+          yield LambdaTraitOBS(vcs.updated(i, 0)).typeRef
         denot.info = ClassInfo(
             ScalaPackageClass.thisType, cls, ObjectClass.typeRef :: parentTraitRefs.toList, paramDecls)
       }
     }
 
-    val traitName = tpnme.hkLambda(vcs)
+    val traitName = tpnme.hkLambdaOBS(vcs)
 
     def createTrait = {
       val cls = newClassSymbol(

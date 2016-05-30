@@ -479,8 +479,8 @@ object SymDenotations {
       name.decode == tpnme.REFINE_CLASS
 
     /** is this symbol a trait representing a type lambda? */
-    final def isLambdaTrait(implicit ctx: Context): Boolean =
-      isClass && name.startsWith(tpnme.hkLambdaPrefix) && owner == defn.ScalaPackageClass
+    final def isLambdaTraitOBS(implicit ctx: Context): Boolean =
+      isClass && name.startsWith(tpnme.hkLambdaPrefixOBS) && owner == defn.ScalaPackageClass
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
