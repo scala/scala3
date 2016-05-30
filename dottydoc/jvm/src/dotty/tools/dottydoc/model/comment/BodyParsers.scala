@@ -6,37 +6,7 @@ object BodyParsers {
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {
     def toHtml(origin: Entity): String = {
-      def inlineToHtml(inl: Inline): String = inl match {
-        case Chain(items)     => (items map inlineToHtml).mkString
-        case Italic(in)       => s"<i>${inlineToHtml(in)}</i>"
-        case Bold(in)         => s"<b>${inlineToHtml(in)}</b>"
-        case Underline(in)    => s"<u>${inlineToHtml(in)}</u>"
-        case Superscript(in)  => s"<sup>${inlineToHtml(in)}</sup>"
-        case Subscript(in)    => s"<sub>${inlineToHtml(in) }</sub>"
-        case Link(raw, title) => s"""<a href=$raw target="_blank">${inlineToHtml(title)}</a>"""
-        case Monospace(in)    => s"<code>${inlineToHtml(in)}</code>"
-        case Text(text)       => text
-        case Summary(in)      => inlineToHtml(in)
-        case HtmlTag(tag)     => tag
-        case EntityLink(target, link) => enityLinkToHtml(target, link)
-      }
-
-      def enityLinkToHtml(target: Inline, link: LinkTo) = link match {
-        case Tooltip(_) => inlineToHtml(target)
-        case LinkToExternal(n, url) => s"""<a href="$url">$n</a>"""
-        case LinkToEntity(t: Entity) => t match {
-          // Entity is a package member
-          case e: Entity with Members =>
-            s"""<a href="${relativePath(t)}">${inlineToHtml(target)}</a>"""
-          // Entity is a Val / Def
-          case x => x.parent.fold(inlineToHtml(target)) { xpar =>
-            s"""<a href="${relativePath(xpar)}#${x.name}">${inlineToHtml(target)}</a>"""
-          }
-        }
-      }
-
-      def relativePath(target: Entity) =
-        util.traversing.relativePath(origin, target)
+      val inlineToHtml = InlineToHtml(origin)
 
       def bodyToHtml(body: Body): String =
         (body.blocks map blockToHtml).mkString
@@ -71,6 +41,42 @@ object BodyParsers {
       }
 
       bodyToHtml(body)
+    }
+  }
+
+  case class InlineToHtml(origin: Entity) {
+    def apply(inline: Inline) = toHtml(inline)
+
+    def relativePath(target: Entity) =
+      util.traversing.relativePath(origin, target)
+
+    def toHtml(inline: Inline): String = inline match {
+      case Chain(items)     => (items map toHtml).mkString
+      case Italic(in)       => s"<i>${toHtml(in)}</i>"
+      case Bold(in)         => s"<b>${toHtml(in)}</b>"
+      case Underline(in)    => s"<u>${toHtml(in)}</u>"
+      case Superscript(in)  => s"<sup>${toHtml(in)}</sup>"
+      case Subscript(in)    => s"<sub>${toHtml(in) }</sub>"
+      case Link(raw, title) => s"""<a href=$raw target="_blank">${toHtml(title)}</a>"""
+      case Monospace(in)    => s"<code>${toHtml(in)}</code>"
+      case Text(text)       => text
+      case Summary(in)      => toHtml(in)
+      case HtmlTag(tag)     => tag
+      case EntityLink(target, link) => enityLinkToHtml(target, link)
+    }
+
+    def enityLinkToHtml(target: Inline, link: LinkTo) = link match {
+      case Tooltip(_) => toHtml(target)
+      case LinkToExternal(n, url) => s"""<a href="$url">$n</a>"""
+      case LinkToEntity(t: Entity) => t match {
+        // Entity is a package member
+        case e: Entity with Members =>
+          s"""<a href="${relativePath(t)}">${toHtml(target)}</a>"""
+        // Entity is a Val / Def
+        case x => x.parent.fold(toHtml(target)) { xpar =>
+          s"""<a href="${relativePath(xpar)}#${x.name}">${toHtml(target)}</a>"""
+        }
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ import org.scalajs.dom.html.{Anchor, Div}
 
 trait MemberLayout {
   import model._
+  import comment._
 
   def member(m: Entity, parent: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =
@@ -66,9 +67,15 @@ trait MemberLayout {
       case xs => s
     }
 
+    def link(rv: MaterializableLink) = rv match {
+      case ml: MaterializedLink =>
+        span(cls := "return-value", ": ", raw(ml.target))
+      case un: UnsetLink =>
+        span(cls := "return-value", ": " + shorten(un.query))
+    }
+
     m match {
-      case v: Val => span(cls := "return-value", ": " + shorten(v.returnValue))
-      case d: Def => span(cls := "return-value", ": " + shorten(d.returnValue))
+      case rv: ReturnValue => link(rv.returnValue)
       case _ => span()
     }
   }

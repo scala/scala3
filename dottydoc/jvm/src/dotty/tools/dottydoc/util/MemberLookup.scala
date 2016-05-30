@@ -30,7 +30,12 @@ trait MemberLookup {
 
     /** Looks for the specified entity among `ent`'s members */
     def localLookup(ent: Entity with Members, searchStr: String): LinkTo =
-      ent.members.find(_.name == searchStr).fold(notFound)(e => LinkToEntity(e))
+      ent
+        .members
+        .collect { case x if x.name == searchStr => x }
+        .sortBy(_.path.last)
+        .headOption
+        .fold(notFound)(e => LinkToEntity(e))
 
     /** Looks for an entity down in the structure, if the search list is Nil,
      *  the search stops
@@ -43,8 +48,8 @@ trait MemberLookup {
         case x :: xs  =>
           ent
             .members
-            .collect { case e: Entity with Members => e }
-            .find(_.name == x)
+            .collect { case e: Entity with Members if e.name == x => e }
+            .headOption
             .fold(notFound)(e => downwardLookup(e, xs))
       }
 
@@ -71,8 +76,10 @@ trait MemberLookup {
         localLookup(e, x)
       case (x :: _, e: Entity with Members) if x == entity.name =>
         downwardLookup(e, querys)
-      case _ =>
-        globalLookup
+      case (x :: xs, _) =>
+        if (xs.nonEmpty)
+          globalLookup
+        else lookup(entity, packages, "scala." + query, pos)
     }
   }
 
@@ -82,5 +89,5 @@ trait MemberLookup {
     title: Inline,
     pos: Position,
     query: String
-  ): Inline = EntityLink(title, lookup(entity, packages, query, pos))
+  ): EntityLink = EntityLink(title, lookup(entity, packages, query, pos))
 }

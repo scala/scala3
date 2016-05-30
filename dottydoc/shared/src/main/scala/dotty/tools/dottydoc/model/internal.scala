@@ -1,7 +1,7 @@
 package dotty.tools.dottydoc
 package model
 
-import comment.Comment
+import comment.{ Comment, MaterializableLink }
 
 object internal {
 
@@ -55,7 +55,7 @@ object internal {
     name: String,
     modifiers: List[String],
     path: List[String],
-    returnValue: String,
+    var returnValue: MaterializableLink,
     var comment: Option[Comment] = None
   ) extends Def with Impl
 
@@ -63,7 +63,7 @@ object internal {
     name: String,
     modifiers: List[String],
     path: List[String],
-    returnValue: String,
+    var returnValue: MaterializableLink,
     var comment: Option[Comment] = None
   ) extends Val with Impl
 }

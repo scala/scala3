@@ -1,7 +1,7 @@
 package dotty.tools.dottydoc
 package model
 
-import comment.Comment
+import comment.{ Comment, MaterializableLink }
 
 trait Entity {
   def name: String
@@ -40,7 +40,7 @@ trait Modifiers {
 }
 
 trait ReturnValue {
-  def returnValue: String
+  def returnValue: MaterializableLink
 }
 
 trait Package extends Entity with Members {

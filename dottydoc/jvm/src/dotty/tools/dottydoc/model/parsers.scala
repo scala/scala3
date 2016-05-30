@@ -4,11 +4,13 @@ package model
 
 import dotc.core.Symbols.Symbol
 import dotc.core.Contexts.Context
+import dotc.util.Positions.NoPosition
 
-object CommentParsers {
+object parsers {
   import comment._
   import BodyParsers._
   import model.internal._
+  import util.MemberLookup
   import util.traversing._
   import util.internal.setters._
 
@@ -80,5 +82,23 @@ object CommentParsers {
     }
 
     def clear(): Unit = commentCache = Map.empty
+  }
+
+  class ReturnTypeParser extends MemberLookup {
+    def link(packs: Map[String, Package]): Unit =
+      for (pack <- packs.values) mutateEntities(pack) { ent =>
+        if (ent.isInstanceOf[ReturnValue])
+          setReturnValue(ent, returnValue(ent, ent.asInstanceOf[ReturnValue], packs))
+      }
+
+    private def returnValue(ent: Entity, rv: ReturnValue, packs: Map[String, Package]): MaterializableLink = {
+      if (rv.returnValue.isInstanceOf[UnsetLink]) {
+        val unset        = rv.returnValue.asInstanceOf[UnsetLink]
+        val el           = makeEntityLink(ent, packs, unset.title, NoPosition, unset.query)
+        val inlineToHtml = InlineToHtml(ent)
+
+        MaterializedLink(inlineToHtml(unset.title), inlineToHtml(el))
+      } else rv.returnValue
+    }
   }
 }

@@ -13,7 +13,7 @@ import dotc.core.Symbols.Symbol
 object Phases {
 
   class DocPhase extends Phase {
-    import model.CommentParsers.WikiParser
+    import model.parsers.{ WikiParser, ReturnTypeParser }
     import model._
     import model.factories._
     import model.internal._
@@ -26,6 +26,7 @@ object Phases {
     def phaseName = "docphase"
 
     private[this] val commentParser = new WikiParser
+    private[this] val returnLinker  = new ReturnTypeParser
 
     /** Saves the commentParser function for later evaluation, for when the AST has been filled */
     def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
@@ -79,11 +80,11 @@ object Phases {
 
         /** def */
         case d: DefDef =>
-          DefImpl(filteredName(d.name.toString), flags(d), path(d), returnType(d.tpt))
+          DefImpl(filteredName(d.name.toString), flags(d), path(d), returnType(d, d.tpt))
 
         /** val */
         case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-          ValImpl(filteredName(v.name.toString), flags(v), path(v), returnType(v.tpt))
+          ValImpl(filteredName(v.name.toString), flags(v), path(v), returnType(v, v.tpt))
 
         case x => {
           //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
@@ -136,6 +137,10 @@ object Phases {
         parent <- packages.values
         child  <- parent.children
       } setParent(child, to = parent)
+
+
+      // (3) Set returntypes to correct entities
+      returnLinker.link(packages)
 
       // (3) Create documentation template from docstrings, with internal links
       println("Generating documentation, this might take a while...")

@@ -11,7 +11,13 @@ object traversing {
     case e: Entity => trans(e)
   }
 
-  def relativePath(from: Entity, to: Entity) =
-    "../" * (from.path.length - 1) +
+  def relativePath(from: Entity, to: Entity) = {
+    val offset = from match {
+      case _: Val | _: Def => 2
+      case _ => 1
+    }
+
+    "../" * (from.path.length - offset) +
     to.path.mkString("", "/", ".html")
+  }
 }

@@ -1,6 +1,7 @@
 package dotty.tools.dottydoc
 package model
 
+import comment._
 import dotty.tools.dotc
 import dotc.core.Types._
 import dotc.core.Contexts.Context
@@ -8,9 +9,12 @@ import dotc.core.Symbols.Symbol
 import dotc.core.{ Flags => DottyFlags }
 import dotc.ast.Trees._
 
+
 object factories {
   import dotty.tools.dotc.ast.tpd._
   import DottyFlags._
+
+  type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
   def flags(t: Tree)(implicit ctx: Context): List[String] =
     (t.symbol.flags & SourceModifierFlags)
@@ -37,11 +41,23 @@ object factories {
     pathList(ref)
   }
 
-  // TODO: should be updated to link to local entities
-  def returnType(t: Tree)(implicit ctx: Context): String =
-    t.show
+  def returnType(t: Tree, tpt: TypeTree)(implicit ctx: Context): MaterializableLink = {
+    def cleanTitle(title: String): String = title match {
+      case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
+      case _ => title
+    }
+
+    def cleanQuery(query: String): String = query match {
+      case x if x matches "[^\\[]+\\[[^\\]]+\\]" => x.takeWhile(_ != '[')
+      case _ => query
+    }
+
+    UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
+  }
 
   def filteredName(str: String) = str
     .replaceAll("\\$colon", ":")
     .replaceAll("\\$plus", "+")
+    .replaceAll("\\$less", "<")
+    .replaceAll("\\$eq", "=")
 }

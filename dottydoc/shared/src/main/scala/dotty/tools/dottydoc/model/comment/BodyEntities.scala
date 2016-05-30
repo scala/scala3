@@ -87,6 +87,15 @@ final case class HtmlTag(data: String) extends Inline {
 final case class Summary(text: Inline) extends Inline
 
 sealed trait LinkTo
-final case class LinkToEntity(entity: Entity) extends LinkTo
 final case class LinkToExternal(name: String, url: String) extends LinkTo
 final case class Tooltip(name: String) extends LinkTo
+
+/** Linking directly to entities is not picklable because of cyclic references */
+final case class LinkToEntity(entity: Entity) extends LinkTo
+
+/** Use MaterializableLink for entities that need be picklable */
+sealed trait MaterializableLink {
+  def title: Any
+}
+final case class UnsetLink(title: Inline, query: String) extends MaterializableLink
+final case class MaterializedLink(title: String, target: String) extends MaterializableLink
