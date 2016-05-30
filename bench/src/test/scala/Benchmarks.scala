@@ -1,17 +1,14 @@
 package dotty.tools.benchmarks
 
-import java.lang.annotation.Annotation
-import java.lang.reflect.Method
 
-import org.junit.runner.Request
-import org.junit.runner.notification.RunNotifier
 import org.scalameter.Key.reports._
 import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
-import org.scalameter.{Context, History, persistence, currentContext}
+import org.scalameter.{Context, History, currentContext, persistence}
 import org.scalameter.reporting.RegressionReporter.Tester
+import test.CompilerTest
 
-import scala.collection.mutable.ListBuffer
+import scala.io.Source
 
 // decorator of persitor to expose info for debugging
 class DecoratorPersistor(p: Persistor) extends SerializationPersistor {
@@ -39,10 +36,28 @@ class DecoratorPersistor(p: Persistor) extends SerializationPersistor {
   }
 }
 
-abstract class TestsToBenchmarkConverter
-(targetClass: Class[_],
- filterAnnot: Class[_ <: java.lang.annotation.Annotation] = classOf[org.junit.Test].asInstanceOf[Class[_ <: java.lang.annotation.Annotation]])
-  extends OnlineRegressionReport {
+object BenchTests extends OnlineRegressionReport {
+  val outputDir = "./out/"
+
+  val compiler = new CompilerTest {
+    override val defaultOutputDir: String = outputDir
+  }
+
+  implicit val defaultOptions = List("-d", outputDir)
+  val scala2mode = List("-language:Scala2")
+
+  val dottyDir  = "./src/dotty/"
+
+  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+    .map(_.trim) // allow identation
+    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+    .filter(_.nonEmpty)
+    .toList
+
+  def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
+
+  def dotty = compiler.compileDir(dottyDir, ".",  List("-deep", "-strict"))
 
   // NOTE: use `val persistor = ...` would cause persistor ignore command line options for `resultDir`
   override def persistor = new DecoratorPersistor(super.persistor)
@@ -54,24 +69,17 @@ abstract class TestsToBenchmarkConverter
   override def historian: RegressionReporter.Historian = RegressionReporter.Historian.Complete()
 
   override def executor: Executor = LocalExecutor(warmer, aggregator, measurer)
-  val testNames = getMethodsAnnotatedWith(targetClass, filterAnnot).map(_.getName).sorted
 
-
-  val tests = testNames.map{name =>
-    val runner = Request.method(targetClass, name).getRunner
-    (name, Gen.single("test")(name).map(Request.method(targetClass, _).getRunner))}.toMap
-  //Gen.enumeration("test")(testNames:_*)
 
   def setup =
-    performance of targetClass.getSimpleName in {
-      for (test <- testNames)
-        measure.method(test) in {
-          using(tests(test)) curve test in {
-            r =>
-              val dummy = new RunNotifier()
-              r.run(dummy)
-          }
-        }
+    performance of "dotty" in {
+      measure.method("stdlib") in {
+        using(Gen.unit("test")) curve "stdlib" in { r => stdLib }
+      }
+
+      measure.method("dotty-src") in {
+        using(Gen.unit("test")) curve "dotty-src" in { r => dotty }
+      }
     }
 
   /** workaround to fix problem in ScalaMeter
@@ -89,22 +97,4 @@ abstract class TestsToBenchmarkConverter
     super.executeTests()
   }
 
-  def getMethodsAnnotatedWith(clazz: Class[_], annotation: Class[_ <: java.lang.annotation.Annotation]): List[Method] = {
-    val methods = ListBuffer[Method]()
-    var klass: Class[_] = clazz
-    while (klass ne classOf[AnyRef]) {
-      val allMethods = klass.getDeclaredMethods
-      import scala.collection.JavaConversions._
-      for (method <- allMethods) {
-        if (annotation == null || method.isAnnotationPresent(annotation)) {
-          val annotInstance: Annotation = method.getAnnotation(annotation)
-          methods.add(method)
-        }
-      }
-      klass = klass.getSuperclass
-    }
-    methods.toList
-  }
 }
-
-object dotcTests extends TestsToBenchmarkConverter(classOf[dotc.tests])
