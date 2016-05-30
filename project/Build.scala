@@ -13,6 +13,8 @@ object DottyBuild extends Build {
 
   val JENKINS_BUILD = "dotty.jenkins.build"
 
+  val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd"
+
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
@@ -81,7 +83,7 @@ object DottyBuild extends Build {
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
       // get libraries onboard
-      partestDeps := Seq("me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd",
+      partestDeps := Seq(scalaCompiler,
                          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
                          "org.scala-lang" % "scala-library" % scalaVersion.value % "test"),
       libraryDependencies ++= partestDeps.value,
@@ -242,8 +244,10 @@ object DottyBuild extends Build {
 
       baseDirectory in (Test,run) := (baseDirectory in dotty).value,
 
-      libraryDependencies ++= Seq("com.storm-enroute" %% "scalameter" % "0.6" % Test,
-        "com.novocode" % "junit-interface" % "0.11"),
+      libraryDependencies ++= Seq(
+        scalaCompiler % Test,
+        "com.storm-enroute" %% "scalameter" % "0.6" % Test
+      ),
 
       fork in Test := true,
       parallelExecution in Test := false,
