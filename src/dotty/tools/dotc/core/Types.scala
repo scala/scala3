@@ -3021,6 +3021,9 @@ object Types {
 
   object ErrorType extends ErrorType
 
+  /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
+  object TryDynamicCallType extends ErrorType
+
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =

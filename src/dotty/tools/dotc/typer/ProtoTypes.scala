@@ -430,6 +430,8 @@ object ProtoTypes {
       (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }
 
+  @sharable object AssignProto extends UncachedGroundType with MatchAlways
+
   private[ProtoTypes] class WildApproxMap(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = wildApprox(tp, this)
   }

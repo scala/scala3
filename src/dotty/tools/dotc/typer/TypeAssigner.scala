@@ -196,11 +196,16 @@ trait TypeAssigner {
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
     if (reallyExists(mbr)) site.select(name, mbr)
-    else {
+    else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
+      TryDynamicCallType
+    } else {
       if (!site.isErroneous) {
         ctx.error(
           if (name == nme.CONSTRUCTOR) d"$site does not have a constructor"
-          else d"$name is not a member of $site", pos)
+          else if (site.derivesFrom(defn.DynamicClass)) {
+            d"$name is not a member of $site\n" +
+            "possible cause: maybe a wrong Dynamic method signature?"
+          } else d"$name is not a member of $site", pos)
       }
       ErrorType
     }
