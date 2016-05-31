@@ -44,6 +44,9 @@ object factories {
   def returnType(t: Tree, tpt: TypeTree)(implicit ctx: Context): MaterializableLink = {
     def cleanTitle(title: String): String = title match {
       case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
+      case x if x matches "[^\\[]+\\[[^\\]]+\\]" =>
+        val Array(tpe, params) = x.dropRight(1).split("\\[")
+        s"""$tpe[${params.split(",").map(x => cleanTitle(x.trim)).mkString(", ")}]"""
       case _ => title
     }
 
