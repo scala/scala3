@@ -2079,11 +2079,6 @@ object Types {
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
-      if (Config.newHK && refinedName.isHkArgName)
-        refinedInfo match {
-          case TypeAlias(TypeRef(RecThis(_), `refinedName`)) => assert(false, this)
-          case _ =>
-        }
       if (refinedName == tpnme.hkApplyOBS)
         parent.stripTypeVar match {
           case RefinedType(_, name, _) if name.isHkArgName => // ok
