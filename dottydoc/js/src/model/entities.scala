@@ -24,8 +24,6 @@ trait Entity extends sjs.Any {
   val name: String = sjs.native
 
   val path: sjs.Array[String] = sjs.native
-
-  val parent: Entity = sjs.native
 }
 
 @sjs.native
@@ -34,22 +32,27 @@ trait Members extends sjs.Any {
 }
 
 @sjs.native
+trait Modifiers extends sjs.Any {
+  val modifiers: sjs.Array[String] = sjs.native
+}
+
+@sjs.native
 trait Package extends Entity with Members
 
 @sjs.native
-trait Class extends Entity with Members
+trait Class extends Entity with Members with Modifiers
 
 @sjs.native
-trait CaseClass extends Entity with Members
+trait CaseClass extends Entity with Members with Modifiers
 
 @sjs.native
-trait Object extends Class
+trait Object extends Class with Modifiers
 
 @sjs.native
 trait Trait extends Class
 
 @sjs.native
-trait Def extends Entity
+trait Def extends Entity with Modifiers
 
 @sjs.native
 trait Val extends Def
