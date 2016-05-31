@@ -287,6 +287,7 @@ object DottyInjectedPlugin extends AutoPlugin {
       libraryDependencies ++= Seq(
         "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.0",
         "com.github.benhutchison" %% "prickle" % "1.1.10",
+        "io.spray" %%  "spray-json" % "1.3.2",
         "com.lihaoyi" %% "scalatags" % "0.5.5",
         "com.novocode" % "junit-interface" % "0.11" % "test"
       ),

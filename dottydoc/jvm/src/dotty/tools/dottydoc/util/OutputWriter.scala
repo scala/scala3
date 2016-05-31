@@ -1,14 +1,13 @@
 package dotty.tools.dottydoc
 package util
 
+import java.io.{File => JFile, BufferedInputStream, FileInputStream, FileOutputStream, BufferedOutputStream}
+import html.EntityPage
+import model.Package
+import spray.json._
+import model.json._
 
 class OutputWriter {
-  import java.io.{File => JFile, BufferedInputStream, FileInputStream, FileOutputStream, BufferedOutputStream}
-  import html.EntityPage
-  import model.Package
-  import model.pickling._
-  import prickle._
-
   def write(packs: Map[String, Package], outPath: String): Unit = {
     // Write all packages to `outPath`
     for (pack <- packs.values) {
@@ -32,7 +31,8 @@ class OutputWriter {
     }
 
     // Write full index to outPath
-    val pickled = Pickle.intoString(packs)
+    //val pickled = Pickle.intoString(packs)
+    val pickled = packs.toJson
     val js = "UnparsedIndex = {}; UnparsedIndex.packages = " + pickled + ";"
     println("Writing index.js...")
     writeFile(js, outPath + "/", "index.js")
