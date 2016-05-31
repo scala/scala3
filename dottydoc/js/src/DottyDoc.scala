@@ -16,6 +16,9 @@ import html.EntityLayout
     document.title = "Dotty " + EntityIndex.currentEntity.path.mkString(".")
     target.appendChild(EntityLayout(EntityIndex.currentEntity).html.render)
     hljs.initHighlightingOnLoad()
+
+    val searchInput = document.getElementById("search").asInstanceOf[dom.html.Input]
+    searchInput.onkeyup = Search(searchInput)
   }
 }
 
