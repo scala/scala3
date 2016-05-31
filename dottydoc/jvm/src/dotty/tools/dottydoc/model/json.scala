@@ -33,14 +33,19 @@ object json extends DefaultJsonProtocol {
   }
 
   implicit object EntityJsonFormat extends RootJsonFormat[Entity] {
+    private def addKind(json: JsValue, kind: String): JsValue = json match {
+      case json: JsObject => JsObject(json.fields + ("kind" -> JsString(kind)))
+      case other => other
+    }
+
     def write(e: Entity) = e match {
-      case e: PackageImpl   => e.toJson
-      case e: ClassImpl     => e.toJson
-      case e: CaseClassImpl => e.toJson
-      case e: TraitImpl     => e.toJson
-      case e: ObjectImpl    => e.toJson
-      case e: DefImpl       => e.toJson
-      case e: ValImpl       => e.toJson
+      case e: PackageImpl   => addKind(e.toJson, "package")
+      case e: ClassImpl     => addKind(e.toJson, "class")
+      case e: CaseClassImpl => addKind(e.toJson, "case class")
+      case e: TraitImpl     => addKind(e.toJson, "trait")
+      case e: ObjectImpl    => addKind(e.toJson, "object")
+      case e: DefImpl       => addKind(e.toJson, "def")
+      case e: ValImpl       => addKind(e.toJson, "val")
     }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }

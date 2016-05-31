@@ -1,10 +1,10 @@
 package dotty.tools.dottydoc
 package js
 
-import scala.scalajs.js
-import js.Dynamic.global
-import js.JSApp
-import js.annotation.{ JSExport, JSName }
+import scala.scalajs.{ js => sjs }
+import sjs.Dynamic.global
+import sjs.JSApp
+import sjs.annotation.{ JSExport, JSName }
 import org.scalajs.dom
 import dom.document
 import dom.webworkers.Worker
@@ -20,6 +20,6 @@ import html.EntityLayout
 }
 
 /** Library wrapper for highlighting */
-@js.native object hljs extends js.Object {
-  def initHighlightingOnLoad(): js.Any = js.native
+@sjs.native object hljs extends sjs.Object {
+  def initHighlightingOnLoad(): sjs.Any = sjs.native
 }
