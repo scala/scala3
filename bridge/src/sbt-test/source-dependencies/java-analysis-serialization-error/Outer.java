@@ -1,0 +1,1 @@
+public class Outer { private class T extends Thread {} }

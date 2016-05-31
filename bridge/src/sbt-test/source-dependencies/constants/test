@@ -1,0 +1,12 @@
+# Marked as pending, see https://github.com/sbt/sbt/issues/1543
+# Tests if source dependencies are tracked properly
+# for compile-time constants (like final vals in top-level objects)
+# see https://issues.scala-lang.org/browse/SI-7173 for details
+# why compile-time constants can be tricky to track due to early inlining
+
+$ copy-file changes/B.scala B.scala
+
+$ copy-file changes/A1.scala A.scala
+> run 1
+$ copy-file changes/A2.scala A.scala
+> run 2

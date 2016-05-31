@@ -53,7 +53,7 @@ The majority of the dotty codebase is new code, with the exception of the compon
 > the needs of dotty. Original authors include: Adrian Moors, Lukas Rytz,
 > Grzegorz Kossakowski, Paul Phillips
 
-`dotty.tools.dotc.sbt`
+`dotty.tools.dotc.sbt and everything in bridge/`
 
 > The sbt compiler phases are based on
 > https://github.com/adriaanm/scala/tree/sbt-api-consolidate/src/compiler/scala/tools/sbt

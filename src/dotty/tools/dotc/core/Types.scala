@@ -2145,7 +2145,12 @@ object Types {
       unique(new CachedAndType(tp1, tp2))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      if (tp1 eq tp2) tp1 else apply(tp1, tp2)
+      if ((tp1 eq tp2) || (tp2 eq defn.AnyType))
+        tp1
+      else if (tp1 eq defn.AnyType)
+        tp2
+      else
+        apply(tp1, tp2)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
@@ -3450,7 +3455,7 @@ object Types {
           case TypeBounds(_, hi) =>
             apply(x, hi)
           case tp: ThisType =>
-            apply(x, tp.underlying)
+            apply(x, tp.tref)
           case tp: ConstantType =>
             apply(x, tp.underlying)
           case tp: MethodParam =>

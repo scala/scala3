@@ -194,6 +194,58 @@ object DottyBuild extends Build {
       addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
     )
 
+  lazy val `dotty-bridge` = project.in(file("bridge")).
+    dependsOn(dotty).
+    settings(
+      overrideScalaVersionSetting,
+
+      description := "sbt compiler bridge for Dotty",
+      resolvers += Resolver.typesafeIvyRepo("releases"),
+      libraryDependencies ++= Seq(
+        "org.scala-sbt" % "interface" % sbtVersion.value,
+        "org.scala-sbt" % "api" % sbtVersion.value % "test",
+        "org.specs2" %% "specs2" % "2.3.11" % "test"
+      ),
+      version := "0.1.1-SNAPSHOT",
+      // The sources should be published with crossPaths := false, the binaries
+      // are unused so it doesn't matter.
+      crossPaths := false,
+
+      fork in Test := true,
+      parallelExecution in Test := false
+    ).
+    settings(ScriptedPlugin.scriptedSettings: _*).
+    settings(
+      ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
+      ScriptedPlugin.scriptedBufferLog := false
+      // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
+      // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
+      /*,
+      ScriptedPlugin.scriptedPrescripted := { f =>
+        IO.write(inj, """
+import sbt._
+import Keys._
+
+object DottyInjectedPlugin extends AutoPlugin {
+  override def requires = plugins.JvmPlugin
+  override def trigger = allRequirements
+
+  override val projectSettings = Seq(
+    scalaVersion := "0.1-SNAPSHOT",
+    scalaOrganization := "ch.epfl.lamp",
+    scalacOptions += "-language:Scala2",
+    scalaBinaryVersion  := "2.11",
+    autoScalaLibrary := false,
+    libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
+    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
+  )
+}
+""")
+      }
+      */
+    )
+
+
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
    *  This sandbox is compiled with dotty with support for Scala.js. It can be

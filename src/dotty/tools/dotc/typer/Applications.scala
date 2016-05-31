@@ -1146,11 +1146,17 @@ trait Applications extends Compatibility { self: Typer =>
             alts
         }
 
-        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts filter ( alt =>
-            if (!ctx.isAfterTyper) isApplicable(alt, targs, args, resultType)
-            else isDirectlyApplicable(alt, targs, args, resultType)
+        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
+          val alts2 = alts.filter(alt =>
+            isDirectlyApplicable(alt, targs, args, resultType)
           )
+          if (alts2.isEmpty && !ctx.isAfterTyper)
+            alts.filter(alt =>
+              isApplicable(alt, targs, args, resultType)
+            )
+          else
+            alts2
+        }
 
         val alts1 = narrowBySize(alts)
         //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
