@@ -363,7 +363,18 @@ trait ImplicitRunInfo { self: RunInfo =>
         computeIScope(cacheResult = false)
       else implicitScopeCache get tp match {
         case Some(is) => is
-        case None => computeIScope(cacheResult = seen.isEmpty)
+        case None =>
+          // Implicit scopes are tricky to cache because of loops. For example
+          // in `tests/pos/implicit-scope-loop.scala`, the scope of B contains
+          // the scope of A which contains the scope of B. We break the loop
+          // by returning EmptyTermRefSet in `collectCompanions` for types
+          // that we have already seen, but this means that we cannot cache
+          // the computed scope of A, it is incomplete.
+          // Keeping track of exactly where these loops happen would require a
+          // lot of book-keeping, instead we choose to be conservative and only
+          // cache scopes before any type has been seen. This is unfortunate
+          // because loops are very common for types in scala.collection.
+          computeIScope(cacheResult = seen.isEmpty)
       }
     }
 
