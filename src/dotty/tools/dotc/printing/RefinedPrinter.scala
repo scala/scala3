@@ -124,12 +124,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           def contains(tp1: Type, tp2: Type): Boolean =
             tp1.eq(tp2) || {
               tp1.stripTypeVar match {
-                case tp1: RefinedType => contains(tp1.parent, tp2)
+                case tp1: RefinedOrRecType => contains(tp1.parent, tp2)
                 case _ => false
               }
             }
           def apply(t: Type): Type = t match {
-            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
+            case TypeRef(RecThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
               // Make up a name that prints as "Xi". Need to be careful we do not
               // accidentally unique-hash to something else. That's why we can't
               // use prefix = NoPrefix or a WithFixedSym instance.
