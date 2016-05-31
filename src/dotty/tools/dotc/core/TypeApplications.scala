@@ -536,20 +536,19 @@ class TypeApplications(val self: Type) extends AnyVal {
           .apply(tp).asInstanceOf[T]
 
     def expand(tp: Type) =
-      if (Config.newHK) {
-        println(s"lamda abstract $self wrt $tparams")
+      if (Config.newHK)
         TypeLambda(
           tparams.map(tparam =>
             tparam.memberBoundsAsSeenFrom(self)
               .withBindingKind(BindingKind.fromVariance(tparam.variance))
               .recursify(tparams)),
           tp.recursify(tparams))
-      }
       else
         TypeLambda.applyOBS(
           tparams.map(_.variance),
           tparams.map(tparam => internalize(self.memberInfo(tparam).bounds)),
           internalize(tp))
+
     assert(!isHK, self)
     self match {
       case self: TypeAlias =>
@@ -585,11 +584,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             inst(tp)
         }}
       val reduced = instTop(self)
-      if (inst.isSafe) {
-        println(i"reduce $self ---> $reduced")
-        reduced
-      }
-      else self
+      if (inst.isSafe) reduced else self
     case self1 => self1
   }
 
