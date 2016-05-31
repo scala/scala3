@@ -354,10 +354,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2: RefinedType =>
       def compareRefinedSlow: Boolean = {
         val name2 = tp2.refinedName
-        val tp2reduced = if (name2.isHkArgName) tp2.BetaReduce else tp2
-        if (tp2reduced ne tp2reduced) isSubType(tp1, tp2reduced)
-        else isSubType(tp1, tp2.parent) &&
-               (name2 == nme.WILDCARD || hasMatchingMember(name2, tp1, tp2))
+        if (name2.isHkArgName) {
+          val tp2reduced = tp2.BetaReduce
+          if (Config.newHK && (tp2reduced ne tp2)) return isSubType(tp1, tp2reduced)
+          if (Config.newHK && tp2.isTypeParam) return compareHkLambda(tp2, tp1, inOrder = false)
+          if (Config.newHK && !tp1.isHKApply) return compareHkApply(tp2, tp1, inOrder = false)
+        }
+        isSubType(tp1, tp2.parent) &&
+          (name2 == nme.WILDCARD || hasMatchingMember(name2, tp1, tp2))
       }
       def compareRefined: Boolean = {
         val tp1w = tp1.widen
@@ -497,10 +501,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
+      if (Config.newHK && tp1.refinedName.isHkArgName) {
+        val tp1reduced = tp1.BetaReduce
+        if (Config.newHK && (tp1reduced ne tp1)) return isSubType(tp1reduced, tp2)
+        if (Config.newHK && tp1.isTypeParam) return compareHkLambda(tp1, tp2, inOrder = true)
+        if (Config.newHK && !tp2.isHKApply) return compareHkApply(tp1, tp2, inOrder = true)
+      }
       isNewSubType(tp1.parent, tp2) ||
-      compareHkApply(tp1, tp2, inOrder = true) ||
-      compareHkLambda(tp1, tp2, inOrder = true) ||
-      compareAliasedRefined(tp1, tp2, inOrder = true)
+      !Config.newHK && compareHkLambda(tp1, tp2, inOrder = true) ||
+      !Config.newHK && compareAliasedRefined(tp1, tp2, inOrder = true)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
