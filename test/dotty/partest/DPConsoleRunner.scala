@@ -245,32 +245,6 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     } getOrElse true
   }
 
-  // override because Dotty currently doesn't handle separate compilation well,
-  // so we ignore groups (tests suffixed with _1 and _2)
-  override def groupedFiles(sources: List[File]): List[List[File]] = {
-    val grouped = sources groupBy (_.group)
-    val flatGroup = List(grouped.keys.toList.sorted.map({ k => grouped(k) sortBy (_.getName) }).flatten)
-    try { // try/catch because of bug in partest that throws exception
-      if (flatGroup != super.groupedFiles(sources))
-        throw new java.lang.UnsupportedOperationException()
-    } catch {
-      case e: java.lang.UnsupportedOperationException =>
-        val genlogFWriter = new FileWriter(DPConfig.genLog.jfile, true)
-        val genlogWriter = new PrintWriter(genlogFWriter, true)
-        genlogWriter.println("Warning: Overriding compilation groups for tests: " + sources)
-        genlogWriter.close
-        genlogFWriter.close
-    }
-    flatGroup
-  }
-
-  // override to avoid separate compilation of scala and java sources
-  override def mixedCompileGroup(allFiles: List[File]): List[CompileRound] = List(OnlyDotty(allFiles))
-  case class OnlyDotty(fs: List[File]) extends CompileRound {
-    def description = s"dotc $fsString"
-    lazy val result = { pushTranscript(description) ; attemptCompile(fs) }
-  }
-
   // override to add dotty and scala jars to classpath
   override def extraClasspath = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
 

@@ -410,7 +410,8 @@ abstract class CompilerTest {
       nr: Int = 0, oldOutput: String = defaultOutputDir): Unit = {
 
     val partestOutput = dest.jfile.getParentFile + JFile.separator + dest.stripExtension + "-" + kind + ".obj"
-    val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f)
+    val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f) ++
+      List(s"-classpath $partestOutput") // Required for separate compilation tests
 
     getExisting(dest).isDifferent(source, flags, nerr) match {
       case NotExists => copyFiles(source, dest, partestOutput, flags, nerr, kind)
