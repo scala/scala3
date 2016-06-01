@@ -1,19 +1,8 @@
-main > div.page-content {
-    padding: 30px 60px;
-}
-
+/* Sidebar ------------------------------------------------------------------ */
 span.subtitle {
     font-size: 12px;
     line-height: 0 !important;
     padding-top: 32px;
-}
-
-div.member {
-    min-height: 70px;
-}
-
-div.member.member-fullcomment:hover {
-    cursor: pointer;
 }
 
 ul.packages {
@@ -106,6 +95,11 @@ span#docs-title {
     padding-top: 2em;
 }
 
+/* Entity ------------------------------------------------------------------- */
+main > div.page-content {
+    padding: 30px 60px;
+}
+
 span.member-name, span.return-value {
     font-family: "Roboto","Helvetica","Arial",sans-serif;
     font-weight: 400;
@@ -113,4 +107,35 @@ span.member-name, span.return-value {
     margin: 24px 0 16px;
     letter-spacing: .04em;
     line-height: 24px;
+}
+
+div.member {
+    min-height: 70px;
+}
+
+div.member.member-fullcomment:hover {
+    cursor: pointer;
+}
+
+/* Search results ----------------------------------------------------------- */
+main#search-results {
+    display: none;
+}
+
+/*
+main#search-results > div#toplevel-results {
+    float: left;
+    width: 50%;
+}
+*/
+
+main#search-results > div#toplevel-results > div.mdl-card.package-result {
+    margin: 20px auto;
+    width: 80%;
+}
+
+main#search-results > button#close-button {
+    position: fixed;
+    top: 1em;
+    right: 1em;
 }

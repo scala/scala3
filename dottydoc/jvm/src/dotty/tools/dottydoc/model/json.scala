@@ -33,10 +33,6 @@ object json extends DefaultJsonProtocol {
   }
 
   implicit object EntityJsonFormat extends RootJsonFormat[Entity] {
-    private def addKind(json: JsValue, kind: String): JsValue = json match {
-      case json: JsObject => JsObject(json.fields + ("kind" -> JsString(kind)))
-      case other => other
-    }
 
     def write(e: Entity) = e match {
       case e: PackageImpl   => addKind(e.toJson, "package")
@@ -51,8 +47,13 @@ object json extends DefaultJsonProtocol {
   }
 
   implicit object PackageFormat extends RootJsonFormat[Package] {
-    def write(obj: Package) = obj match { case obj: PackageImpl => obj.toJson }
+    def write(obj: Package) = obj match { case obj: PackageImpl => addKind(obj.toJson, "package") }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
+  }
+
+  private def addKind(json: JsValue, kind: String): JsValue = json match {
+    case json: JsObject => JsObject(json.fields + ("kind" -> JsString(kind)))
+    case other => other
   }
 
   implicit val valFormat: JsonFormat[ValImpl] = lazyFormat(jsonFormat(ValImpl, "name", "modifiers", "path", "returnValue", "comment"))

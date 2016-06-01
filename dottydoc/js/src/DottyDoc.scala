@@ -18,7 +18,7 @@ import html.EntityLayout
     hljs.initHighlightingOnLoad()
 
     val searchInput = document.getElementById("search").asInstanceOf[dom.html.Input]
-    searchInput.onkeyup = Search(searchInput)
+    searchInput.onkeyup = new Search(searchInput).search()
   }
 }
 

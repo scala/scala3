@@ -8,8 +8,8 @@ import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
 
 trait MemberLayout {
-  import model._
-  import comment._
+  import dotty.tools.dottydoc.model._
+  import dotty.tools.dottydoc.model.comment._
 
   def member(m: Entity, parent: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =

@@ -31,7 +31,6 @@ class OutputWriter {
     }
 
     // Write full index to outPath
-    //val pickled = Pickle.intoString(packs)
     val pickled = packs.toJson
     val js = "UnparsedIndex = {}; UnparsedIndex.packages = " + pickled + ";"
     println("Writing index.js...")

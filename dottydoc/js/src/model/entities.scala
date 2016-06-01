@@ -4,6 +4,7 @@ package js
 package model
 
 import scala.scalajs.{ js => sjs }
+import sjs.annotation.ScalaJSDefined
 
 /** This file defines the interface for which to interact with the searchable
  *  index. To use the normal operations available on the traits on the JVM:
@@ -17,47 +18,47 @@ import scala.scalajs.{ js => sjs }
  *  interface, this is simply due to the fact that they're not necessary for
  *  search - YET. They could be added, for instance `comment` is missing.
  */
-@sjs.native
-trait Entity extends sjs.Any {
-  val kind: String = sjs.native
+@ScalaJSDefined
+trait Entity extends sjs.Object {
+  val kind: String
 
-  val name: String = sjs.native
+  val name: String
 
-  val path: sjs.Array[String] = sjs.native
+  val path: sjs.Array[String]
 }
 
-@sjs.native
-trait Members extends sjs.Any {
-  val members: sjs.Array[Entity] = sjs.native
+@ScalaJSDefined
+trait Members extends sjs.Object {
+  val members: sjs.Array[Entity]
 }
 
-@sjs.native
-trait Modifiers extends sjs.Any {
-  val modifiers: sjs.Array[String] = sjs.native
+@ScalaJSDefined
+trait Modifiers extends sjs.Object {
+  val modifiers: sjs.Array[String]
 }
 
-@sjs.native
+@ScalaJSDefined
 trait Package extends Entity with Members
 
-@sjs.native
+@ScalaJSDefined
 trait Class extends Entity with Members with Modifiers
 
-@sjs.native
-trait CaseClass extends Entity with Members with Modifiers
+@ScalaJSDefined
+trait CaseClass extends Class
 
-@sjs.native
-trait Object extends Class with Modifiers
+@ScalaJSDefined
+trait Object extends Class
 
-@sjs.native
+@ScalaJSDefined
 trait Trait extends Class
 
-@sjs.native
+@ScalaJSDefined
 trait Def extends Entity with Modifiers
 
-@sjs.native
+@ScalaJSDefined
 trait Val extends Def
 
-@sjs.native
+@ScalaJSDefined
 trait Var extends Def
 
 object ops {
@@ -70,5 +71,12 @@ object ops {
         case x if EntitiesWithMembers contains x.kind =>
           x.asInstanceOf[Entity with Members]
       }
+
+    def withMembers(mbrs: sjs.Array[Entity]): Package = new Package {
+      val kind = p.kind
+      val name = p.name
+      val path = p.path
+      val members = mbrs
+    }
   }
 }

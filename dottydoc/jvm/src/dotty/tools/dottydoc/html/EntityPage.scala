@@ -70,6 +70,10 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
           main(
             id := "entity-container",
             cls := "mdl-layout__content"
+          ),
+          main(
+            id := "search-results",
+            cls := "mdl-layout__content"
           )
         )
       )
