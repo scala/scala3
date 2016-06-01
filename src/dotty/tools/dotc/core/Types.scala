@@ -959,10 +959,12 @@ object Types {
           pre.refinedInfo match {
             case TypeAlias(alias) =>
               if (pre.refinedName ne name) loop(pre.parent)
-              else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.hkApplyOBS) betaReduce(alias) else NoType // (2) // ### use TypeApplication's betaReduce
+                case _ =>
+                  if (!pre.refinementRefersToThis) alias
+                  else if (name == tpnme.hkApplyOBS) betaReduce(alias)
+                  else NoType
               }
             case _ => loop(pre.parent)
           }
