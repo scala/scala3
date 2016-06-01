@@ -3131,8 +3131,7 @@ object Types {
   class BindingKind(val n: Byte) extends AnyVal {
     def join(that: BindingKind) =
       if (this == that) this
-      else if (this == NoBinding) that
-      else if (that == NoBinding) this
+      else if (this == NoBinding || that == NoBinding) NoBinding
       else NonvariantBinding
   }
 
