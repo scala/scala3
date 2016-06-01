@@ -2,7 +2,10 @@ package dotty.tools
 package dotc
 package repl
 
-import java.io.{File, PrintWriter, StringWriter, Writer}
+import java.io.{
+  File, PrintWriter, PrintStream, StringWriter, Writer, OutputStream,
+  ByteArrayOutputStream => ByteOutputStream
+}
 import java.lang.{Class, ClassLoader}
 import java.net.{URL, URLClassLoader}
 
@@ -24,6 +27,7 @@ import dotty.tools.backend.jvm.GenBCode
 import Symbols._, Types._, Contexts._, StdNames._, Names._, NameOps._
 import Decorators._
 import scala.util.control.NonFatal
+import printing.SyntaxHighlighting
 
 /** An interpreter for Scala code which is based on the `dotc` compiler.
  *
@@ -210,11 +214,11 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
         if (!req.compile())
           Interpreter.Error // an error happened during compilation, e.g. a type error
         else {
-          val (interpreterResultString, succeeded) = req.loadAndRun()
+          val (resultStrings, succeeded) = req.loadAndRun()
           if (delayOutput)
-            previousOutput = clean(interpreterResultString) :: previousOutput
+            previousOutput = resultStrings.map(clean) ::: previousOutput
           else if (printResults || !succeeded)
-            out.print(clean(interpreterResultString))
+            resultStrings.map(x => out.print(clean(x)))
           if (succeeded) {
             prevRequests += req
             Interpreter.Success
@@ -383,24 +387,53 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
       names1 ++ names2
     }
 
+    /** Sets both System.{out,err} and Console.{out,err} to supplied
+     *  `os: OutputStream`
+     */
+    private def withOutput[T](os: ByteOutputStream)(op: ByteOutputStream => T) = {
+      val ps     = new PrintStream(os)
+      val oldOut = System.out
+      val oldErr = System.err
+      System.setOut(ps)
+      System.setErr(ps)
+
+      try {
+        Console.withOut(os)(Console.withErr(os)(op(os)))
+      } finally {
+        System.setOut(oldOut)
+        System.setErr(oldErr)
+      }
+    }
+
     /** load and run the code using reflection.
-     *  @return  A pair consisting of the run's result as a string, and
+     *  @return  A pair consisting of the run's result as a `List[String]`, and
      *           a boolean indicating whether the run succeeded without throwing
      *           an exception.
      */
-    def loadAndRun(): (String, Boolean) = {
+    def loadAndRun(): (List[String], Boolean) = {
       val interpreterResultObject: Class[_] =
         Class.forName(resultObjectName, true, classLoader)
-      val resultValMethod: java.lang.reflect.Method =
+      val valMethodRes: java.lang.reflect.Method =
         interpreterResultObject.getMethod("result")
       try {
-        (resultValMethod.invoke(interpreterResultObject).toString, true)
+        withOutput(new ByteOutputStream) { ps =>
+          val rawRes = valMethodRes.invoke(interpreterResultObject).toString
+          val res =
+            if (ictx.useColors) new String(SyntaxHighlighting(rawRes).toArray)
+            else rawRes
+          val prints = ps.toString("utf-8")
+          val printList = if (prints != "") prints :: Nil else Nil
+
+          if (!delayOutput) out.print(prints)
+
+          (printList :+ res, true)
+        }
       } catch {
         case NonFatal(ex) =>
           def cause(ex: Throwable): Throwable =
             if (ex.getCause eq null) ex else cause(ex.getCause)
           val orig = cause(ex)
-          (stringFrom(str => orig.printStackTrace(str)), false)
+          (stringFrom(str => orig.printStackTrace(str)) :: Nil, false)
       }
     }
 

@@ -25,6 +25,11 @@ class REPL extends Driver {
 
   lazy val config = new REPL.Config
 
+  override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+    val (strs, ctx) = super.setup(args, rootCtx)
+    (strs, config.context(ctx))
+  }
+
   override def newCompiler(implicit ctx: Context): Compiler =
     new repl.CompilingInterpreter(config.output, ctx)
 
@@ -44,6 +49,8 @@ object REPL {
     val prompt             = "scala> "
     val continuationPrompt = "     | "
     val version            = ".next (pre-alpha)"
+
+    def context(ctx: Context): Context = ctx
 
     /** The default input reader */
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
