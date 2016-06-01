@@ -8,7 +8,7 @@ object Config {
   final val cacheMemberNames = true
   final val cacheImplicitScopes = true
 
-  final val newHK = false
+  final val newHK = true
 
   final val checkCacheMembersNamed = false
 
