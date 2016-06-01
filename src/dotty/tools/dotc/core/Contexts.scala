@@ -372,7 +372,7 @@ object Contexts {
 
     /** Should use colors when printing? */
     def useColors: Boolean =
-      List("auto", "always") contains base.settings.color.value
+      base.settings.color.value == "always"
 
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
