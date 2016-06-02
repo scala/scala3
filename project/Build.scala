@@ -26,7 +26,7 @@ object DottyBuild extends Build {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
       version in Global := "0.1-SNAPSHOT",
-      organization in Global := "org.scala-lang",
+      organization in Global := "ch.epfl.lamp",
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
       homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
