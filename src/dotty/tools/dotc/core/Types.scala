@@ -3216,7 +3216,9 @@ object Types {
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
-      if (optBounds eq this.optBounds) this else WildcardType(optBounds.asInstanceOf[TypeBounds])
+      if (optBounds eq this.optBounds) this
+      else if (!optBounds.exists) WildcardType
+      else WildcardType(optBounds.asInstanceOf[TypeBounds])
     override def computeHash = doHash(optBounds)
   }
 

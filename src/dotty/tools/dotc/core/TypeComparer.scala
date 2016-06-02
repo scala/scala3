@@ -355,7 +355,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       def compareRefinedSlow: Boolean = {
         val name2 = tp2.refinedName
         if (name2.isHkArgName) {
-          val tp2reduced = tp2.BetaReduce
+          val tp2reduced = tp2.BetaReduce()
           if (Config.newHK && (tp2reduced ne tp2)) return isSubType(tp1, tp2reduced)
           if (Config.newHK && tp2.isTypeParam) return compareHkLambda(tp2, tp1, inOrder = false)
           if (Config.newHK && !tp1.isHKApply) return compareHkApply(tp2, tp1, inOrder = false)
@@ -502,7 +502,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
       if (Config.newHK && tp1.refinedName.isHkArgName) {
-        val tp1reduced = tp1.BetaReduce
+        val tp1reduced = tp1.BetaReduce()
         if (Config.newHK && (tp1reduced ne tp1)) return isSubType(tp1reduced, tp2)
         if (Config.newHK && tp1.isTypeParam) return compareHkLambda(tp1, tp2, inOrder = true)
         if (Config.newHK && !tp2.isHKApply) return compareHkApply(tp1, tp2, inOrder = true)
