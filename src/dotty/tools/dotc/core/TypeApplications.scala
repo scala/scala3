@@ -236,9 +236,15 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def etaExpandIfHK(tparams: List[Symbol], args: List[Type])(implicit ctx: Context): List[Type] =
+  def etaExpandIfHK(tparams: List[MemberBinding], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.infoOrCompleter))
+    else {
+      def bounds(tparam: MemberBinding) = tparam match {
+        case tparam: Symbol => tparam.infoOrCompleter
+        case tparam: RefinedType => tparam.memberBounds
+      }
+      args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(bounds(tparam)))
+    }
 
   /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
   def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
@@ -374,7 +380,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = {
     val tparams = typeParams
-    assert(tparams.isEmpty || tparams.head.isInstanceOf[Symbol])
+    assert(tparams.isEmpty || tparams.head.isInstanceOf[Symbol], self)
     tparams.asInstanceOf[List[TypeSymbol]]
   }
 

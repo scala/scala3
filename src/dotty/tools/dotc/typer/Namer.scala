@@ -989,7 +989,7 @@ class Namer { typer: Typer =>
         if (args.nonEmpty) {
           val tycon = tp.withoutArgs(args)
           val tycon1 = this(tycon)
-          val tparams = tycon.typeParamSymbols
+          val tparams = tycon.typeParams
           val args1 = if (args.length == tparams.length) etaExpandIfHK(tparams, args) else args
           if ((tycon1 eq tycon) && (args1 eq args)) tp else tycon1.appliedTo(args1)
         } else mapOver(tp)
