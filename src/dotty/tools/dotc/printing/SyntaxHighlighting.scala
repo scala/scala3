@@ -89,8 +89,9 @@ object SyntaxHighlighting {
             append('<', { x => x == "<-" || x == "<:" || x == "<%" }, keyword)
           case '>'  =>
             append('>', { x => x == ">:" }, keyword)
-          case '#'  if prev != ' ' && prev != '.' =>
-            newBuf append keyword("#")
+          case '#'  =>
+            if (prev != ' ' && prev != '.') newBuf append keyword("#")
+            else newBuf += n
             prev = '#'
           case '@'  =>
             appendWhile('@', _ != ' ', annotation)
@@ -100,12 +101,14 @@ object SyntaxHighlighting {
             appendLiteral('\'')
           case '`'  =>
             appendTo('`', _ == '`', none)
-          case c if c.isUpper && keywordStart =>
-            appendWhile(c, !typeEnders.contains(_), typeDef)
-          case c if numberStart(c) =>
-            appendWhile(c, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
-          case c =>
-            newBuf += c; prev = c
+          case _    => {
+            if (n.isUpper && keywordStart)
+              appendWhile(n, !typeEnders.contains(_), typeDef)
+            else if (numberStart(n))
+              appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
+            else
+              newBuf += n; prev = n
+          }
         }
       }
     }
