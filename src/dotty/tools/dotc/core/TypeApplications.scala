@@ -452,8 +452,10 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => self.refinedName == tpnme.hkApplyOBS || self.isTypeParam
-    case self: RecType => self.parent.isHK
-    case TypeBounds(_, hi) => hi.isHK
+    case self: SingletonType => false
+    case self: TypeVar => self.origin.isHK
+    case self: WildcardType => self.optBounds.isHK
+    case self: TypeProxy => self.underlying.isHK
     case _ => false
   }
 
