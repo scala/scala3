@@ -1575,9 +1575,19 @@ object Types {
       }
     }
 
-    protected def asMemberOf(prefix: Type)(implicit ctx: Context) =
-      if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
-      else prefix.member(name)
+    protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation = {
+      // we might now get cycles over members that are in a refinement but that lack
+      // a symbol. Without the following precaution i974.scala stackoverflows when compiled
+      // with new hk scheme.
+      val saved = lastDenotation
+      if (name.isTypeName && lastDenotation != null && (lastDenotation.symbol ne NoSymbol))
+        lastDenotation = ctx.anyTypeDenot
+      try
+        if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
+        else prefix.member(name)
+      finally
+        if (lastDenotation eq ctx.anyTypeDenot) lastDenotation = saved
+    }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
@@ -2091,6 +2101,15 @@ object Types {
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
+      if (false && Config.newHK && refinedName.isHkArgName && refinedInfo.isInstanceOf[TypeAlias]) {
+        parent.stripTypeVar match {
+          case TypeApplications.TypeLambda(_, _) =>
+            println(i"fshy: $this")
+            println(s"fshy: $this")
+            new Error().printStackTrace()
+          case _ =>
+        }
+      }
       if (refinedName == tpnme.hkApplyOBS)
         parent.stripTypeVar match {
           case RefinedType(_, name, _) if name.isHkArgName => // ok
