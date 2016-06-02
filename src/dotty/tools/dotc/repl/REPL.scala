@@ -52,6 +52,19 @@ object REPL {
 
     def context(ctx: Context): Context = ctx
 
+    /** The first interpreted commands always take a couple of seconds due to
+     *  classloading. To bridge the gap, we warm up the interpreter by letting it
+     *  interpret at least a dummy line while waiting for the first line of input
+     *  to be entered.
+     */
+    val initialCommands: List[String] =
+      "val theAnswerToLifeInTheUniverseAndEverything = 21 * 2" :: Nil
+
+    /** We also allow the use of setting cleanup commands in the same manner.
+     *  This is mainly due to supporting the SBT options to specify these commands
+     */
+    val cleanupCommands: List[String] = Nil
+
     /** The default input reader */
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
       val emacsShell = System.getProperty("env.emacs", "") != ""
