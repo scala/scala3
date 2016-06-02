@@ -228,6 +228,65 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     }
   }
 
+  private def loadAndSetValue(objectName: String, value: AnyRef) = {
+    /** This terrible string is the wrapped class's full name inside the
+     *  classloader:
+     *  lineX$object$$iw$$iw$list$object
+     */
+    val objName: String = List(
+      currentLineName + INTERPRETER_WRAPPER_SUFFIX,
+      INTERPRETER_IMPORT_WRAPPER,
+      INTERPRETER_IMPORT_WRAPPER,
+      objectName
+    ).mkString("$")
+
+    try {
+      val resObj: Class[_] = Class.forName(objName, true, classLoader)
+      val setMethod = resObj.getDeclaredMethods.find(_.getName == "set")
+
+      setMethod.fold(false) { method =>
+        method.invoke(resObj, value) == null
+      }
+    } catch {
+      case NonFatal(_) =>
+        // Unable to set value on object due to exception during reflection
+        false
+    }
+  }
+
+  /** This bind is implemented by creating an object with a set method and a
+   *  field `value`. The value is then set via Java reflection.
+   *
+   *  Example: We want to bind a value `List(1,2,3)` to identifier `list` from
+   *  sbt. The bind method accomplishes this by creating the following:
+   *  {{{
+   *    object ContainerObjectWithUniqueID {
+   *      var value: List[Int] = _
+   *      def set(x: Any) = value = x.asInstanceOf[List[Int]]
+   *    }
+   *    val list = ContainerObjectWithUniqueID.value
+   *  }}}
+   *
+   *  Between the object being created and the value being assigned, the value
+   *  inside the object is set via reflection.
+   */
+  override def bind(id: String, boundType: String, value: AnyRef)(implicit ctx: Context): Interpreter.Result =
+    interpret(
+      """
+        |object %s {
+        |  var value: %s = _
+        |  def set(x: Any) = value = x.asInstanceOf[%s]
+        |}
+      """.stripMargin.format(id + INTERPRETER_WRAPPER_SUFFIX, boundType, boundType)
+    ) match {
+      case Interpreter.Success if loadAndSetValue(id + INTERPRETER_WRAPPER_SUFFIX, value) =>
+        val line = "val %s = %s.value".format(id, id + INTERPRETER_WRAPPER_SUFFIX)
+        interpret(line)
+      case Interpreter.Error | Interpreter.Incomplete =>
+        out.println("Set failed in bind(%s, %s, %s)".format(id, boundType, value))
+        Interpreter.Error
+    }
+
   /** Trait collecting info about one of the statements of an interpreter request */
   private trait StatementInfo {
     /** The statement */
@@ -737,6 +796,9 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
     nextLineNo += 1
     INTERPRETER_LINE_PREFIX + num
   }
+
+  private def currentLineName =
+    INTERPRETER_LINE_PREFIX + (nextLineNo - 1)
 
   /** next result variable number to use */
   private var nextVarNameNo = 0

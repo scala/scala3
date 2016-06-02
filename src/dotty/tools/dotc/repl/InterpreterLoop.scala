@@ -170,6 +170,11 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     interpreter.beQuietDuring(interpreter.interpret(cmd))
   }
 
+  def silentlyBind(values: Array[(String, Any)]): Unit = values.foreach { case (id, value) =>
+    interpreter.beQuietDuring(
+      interpreter.bind(id, value.asInstanceOf[AnyRef].getClass.getName, value.asInstanceOf[AnyRef]))
+  }
+
   /** Interpret expressions starting with the first line.
     * Read lines until a complete compilation unit is available
     * or until a syntax error has been seen.  If a full unit is
@@ -201,6 +206,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
       if (!ctx.reporter.hasErrors) { // if there are already errors, no sense to continue
         printWelcome()
         silentlyRun(config.initialCommands)
+        silentlyBind(config.boundValues)
         repl(in.readLine(prompt))
         silentlyRun(config.cleanupCommands)
       }

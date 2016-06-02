@@ -65,6 +65,9 @@ object REPL {
      */
     val cleanupCommands: List[String] = Nil
 
+    /** We also allow binding initial values */
+    val boundValues: Array[(String, Any)] = Array.empty[(String, Any)]
+
     /** The default input reader */
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
       val emacsShell = System.getProperty("env.emacs", "") != ""
