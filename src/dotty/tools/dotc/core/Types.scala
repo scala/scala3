@@ -114,7 +114,9 @@ object Types {
           case TypeAlias(tp) => tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
-      case this1: RefinedOrRecType =>
+      case this1: RefinedType =>
+        !this1.isTypeParam && this1.parent.isRef(sym)
+      case this1: RecType =>
         this1.parent.isRef(sym)
       case _ =>
         false
@@ -894,6 +896,14 @@ object Types {
      */
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
+
+    /** Useful for diagnsotics: The underlying type if this type is a type proxy,
+     *  otherwise NoType
+     */
+    def underlyingIfProxy(implicit ctx: Context) = this match {
+      case this1: TypeProxy => this1.underlying
+      case _ => NoType
+    }
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
