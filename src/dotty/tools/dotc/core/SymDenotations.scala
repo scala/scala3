@@ -92,6 +92,11 @@ trait SymDenotations { this: Context =>
         explain("denotation is not a SymDenotation")
     }
   }
+
+  /** An anonymous type denotation with an info `>: Nothing <: Any`. Used to
+   *  avoid stackoverflows when computing members of TypeRefs
+   */
+  lazy val anyTypeDenot = new JointRefDenotation(NoSymbol, TypeBounds.empty, Period.allInRun(ctx.runId))
 }
 
 object SymDenotations {
