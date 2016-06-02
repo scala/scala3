@@ -922,8 +922,8 @@ object Scanners {
           getFraction()
         }
       } else (ch: @switch) match {
-        case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' if base == 10 =>
-          getFraction()
+        case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' =>
+          if (base == 10) getFraction()
         case 'l' | 'L' =>
           nextChar()
           token = LONGLIT

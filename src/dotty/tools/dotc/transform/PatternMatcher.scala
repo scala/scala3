@@ -434,7 +434,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         }
       } else {
         if (dealiased hasAnnotation defn.SwitchAnnot)
-          ctx.warning("failed to emit switch for `@switch` annotated match")
+          ctx.warning("failed to emit switch for `@switch` annotated match", scrut.pos)
         None
       }
     }
