@@ -580,9 +580,6 @@ class ClassfileParser(
    *  parameters. For Java annotations we need to fake it by making up the constructor.
    *  Note that default getters have type Nothing. That's OK because we need
    *  them only to signal that the corresponding parameter is optional.
-   *  If the constructor takes as last parameter an array, it can also accept
-   *  a vararg argument. We solve this by creating two constructors, one with
-   *  an array, the other with a repeated parameter.
    */
   def addAnnotationConstructor(classInfo: Type, tparams: List[TypeSymbol] = Nil)(implicit ctx: Context): Unit = {
     def addDefaultGetter(attr: Symbol, n: Int) =
@@ -618,13 +615,26 @@ class ClassfileParser(
         }
 
         addConstr(paramTypes)
+
+        // The code below added an extra constructor to annotations where the
+        // last parameter of the constructor is an Array[X] for some X, the
+        // array was replaced by a vararg argument. Unfortunately this breaks
+        // inference when doing:
+        //   @Annot(Array())
+        // The constructor is overloaded so the expected type of `Array()` is
+        // WildcardType, and the type parameter of the Array apply method gets
+        // instantiated to `Nothing` instead of `X`.
+        // I'm leaving this commented out in case we improve inference to make this work.
+        // Note that if this is reenabled then JavaParser will also need to be modified
+        // to add the extra constructor (this was not implemented before).
+        /*
         if (paramTypes.nonEmpty)
           paramTypes.last match {
             case defn.ArrayOf(elemtp) =>
               addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
             case _ =>
         }
-
+        */
     }
   }
 
