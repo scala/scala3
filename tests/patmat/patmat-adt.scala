@@ -50,4 +50,9 @@ object PatmatADT {
   def foo5(tree: Tree) : Any = tree match {
     case LetL(CharLit) =>
   }
+
+  def foo6[T](l: List[T]): Boolean = l match {
+    case x::xs => true
+    case Nil => false
+  }
 }

@@ -116,7 +116,7 @@ trait SpaceLogic {
       ss.exists(subspace(a, _)) ||
       (canDecompose(tp1) && subspace(Or(partitions(tp1)), b))
     case (Typ(tp1, _), Kon(tp2, ss)) =>
-      isSubType(tp1, tp2) && subspace(Kon(tp2, signature(tp2).map(tp => Typ(tp, false))), b)
+      isSubType(tp1, tp2) && subspace(Kon(tp2, signature(tp2).map(Typ(_, false))), b)
     case (Kon(tp1, ss), Typ(tp2, _)) =>
       isSubType(tp1, tp2) ||
       simplify(a) == Empty ||
@@ -188,7 +188,7 @@ trait SpaceLogic {
         minus(Or(partitions(tp1)), b)
       else a
     case (Typ(tp1, _), Kon(tp2, ss)) =>
-      if (isSubType(tp1, tp2)) minus(Kon(tp2, signature(tp2).map(tp => Typ(tp, false))), b)
+      if (isSubType(tp1, tp2)) minus(Kon(tp2, signature(tp2).map(Typ(_, false))), b)
       else if (isSubType(tp2, tp1) && canDecompose(tp1))
         minus(Or(partitions(tp1)), b)
       else a
@@ -242,15 +242,17 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def project(pat: Tree, roundUp: Boolean = true)(implicit ctx: Context): Space = pat match {
     case Literal(c) => Const(c, c.tpe)
     case _: BackquotedIdent => Var(pat.symbol, pat.tpe)
-    case Ident(_) =>
-      Typ(pat.tpe.stripAnnots, false)
-    case Select(_, _)  =>
-      if (pat.symbol.is(Module))
-        Typ(pat.tpe.stripAnnots, false)
-      else if (pat.symbol.is(Enum))
-        Const(Constant(pat.symbol), pat.tpe)
-      else
-        Var(pat.symbol, pat.tpe)
+    case Ident(_) | Select(_, _) =>
+      pat.tpe.stripAnnots match {
+        case tp: TermRef =>
+          if (pat.symbol.is(Enum))
+            Const(Constant(pat.symbol), tp)
+          else if (tp.underlyingIterator.exists(_.classSymbol.is(Module)))
+            Typ(tp.widenTermRefExpr.stripAnnots, false)
+          else
+            Var(pat.symbol, tp)
+        case tp => Typ(tp, false)
+      }
     case Alternative(trees) => Or(trees.map(project(_, roundUp)))
     case Bind(_, pat) => project(pat)
     case UnApply(_, _, pats) =>
@@ -295,6 +297,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           ktor
       }
 
+    // refine path-dependent type in params. refer to t9672
     meth.firstParamTypes.map(_.stripTypeVar).map(refine(tp, _))
   }
 
@@ -415,19 +418,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_" else "List(_)"
         else if (tp.classSymbol.is(CaseClass))
         // use constructor syntax for case class
-          showType(tp) + signature(tp).map(_ => "_").mkString("(", ",", ")")
+          showType(tp) + signature(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (signature(tp).nonEmpty)
-          tp.classSymbol.name + signature(tp).map(_ => "_").mkString("(", ",", ")")
+          tp.classSymbol.name + signature(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (decomposed) "_: " + showType(tp)
         else "_"
       case Kon(tp, params) =>
         if (ctx.definitions.isTupleType(tp))
-          "(" + params.map(p => doShow(p)).mkString(", ") + ")"
+          "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.widen.classSymbol.showFullName == "scala.collection.immutable.::")
-          if (mergeList) params.map(p => doShow(p, mergeList)).mkString(", ")
-          else params.map(p => doShow(p, true)).mkString("List(", ", ", ")")
+          if (mergeList) params.map(doShow(_, mergeList)).mkString(", ")
+          else params.map(doShow(_, true)).filter(_ != "Nil").mkString("List(", ", ", ")")
         else
-          showType(tp) + params.map(p => doShow(p)).mkString("(", ", ", ")")
+          showType(tp) + params.map(doShow(_)).mkString("(", ", ", ")")
       case Or(_) =>
         throw new Exception("incorrect flatten result " + s)
     }
@@ -435,10 +438,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     flatten(s).map(doShow(_, false)).distinct.mkString(", ")
   }
 
-  def checkable(tp: Type): Boolean = tp match {
-    case AnnotatedType(tp, annot) =>
-      (ctx.definitions.UncheckedAnnot != annot.symbol) && checkable(tp)
-    case _ => true  // actually everything is checkable unless @unchecked
+  def checkable(tree: Match): Boolean = {
+    def isCheckable(tp: Type): Boolean = tp match {
+      case AnnotatedType(tp, annot) =>
+        (ctx.definitions.UncheckedAnnot != annot.symbol) && isCheckable(tp)
+      case _ => true // actually everything is checkable unless @unchecked
 
       // tp.classSymbol.is(Sealed) ||
       //   tp.isInstanceOf[OrType] ||
@@ -446,6 +450,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       //   Boolean
       //   Int
       //   ...
+    }
+
+    val Match(sel, cases) = tree
+    isCheckable(sel.tpe.widen.elimAnonymousClass)
   }
 
   def checkExhaustivity(_match: Match): Unit = {

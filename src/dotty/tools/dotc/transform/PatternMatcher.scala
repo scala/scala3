@@ -51,13 +51,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
   private var _id = 0 // left for debuging
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val Match(sel, cases) = tree
-
     val translated = new Translator()(ctx).translator.translateMatch(tree)
 
     // check exhaustivity and unreachability
     val engine = new SpaceEngine
-    if (engine.checkable(sel.tpe.widen.elimAnonymousClass)) {
+    if (engine.checkable(tree)) {
       engine.checkExhaustivity(tree)
       engine.checkRedundancy(tree)
     }

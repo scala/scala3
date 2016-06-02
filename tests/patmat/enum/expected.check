@@ -2,4 +2,8 @@
 It would fail on the following input: SATURDAY, FRIDAY, THURSDAY, SUNDAY
   day match {
       ^
-one warning found
+./tests/patmat/enum/patmat-enum.scala:15: warning: match may not be exhaustive.
+It would fail on the following input: SATURDAY, FRIDAY, THURSDAY
+  day match {
+      ^
+two warnings found
