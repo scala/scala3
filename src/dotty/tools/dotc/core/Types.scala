@@ -3031,7 +3031,10 @@ object Types {
       case _ => this
     }
 
-    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = derivedTypeBounds(lo, hi, bk)
+    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = this match {
+      case tp: TypeAlias => assert(bk == NoBinding); this
+      case _ => derivedTypeBounds(lo, hi, bk)
+    }
 
     //def checkBinding: this.type = { assert(isBinding); this }
 
@@ -3082,7 +3085,7 @@ object Types {
     }
 
     override def toString = {
-      def bkString = if (isBinding) s"|bk=${BindingKind.toVariance(bindingKind)}" else ""
+      def bkString = if (isBinding) s"|v=${BindingKind.toVariance(bindingKind)}" else ""
       if (lo eq hi) s"TypeAlias($lo, $variance)"
       else s"TypeBounds($lo, $hi$bkString)"
     }
