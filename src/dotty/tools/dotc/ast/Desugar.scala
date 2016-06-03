@@ -616,16 +616,20 @@ object desugar {
    *
    *       { cases }
    *  ==>
-   *       x$1 => x$1 match { cases }
+   *       x$1 => (x$1 @unchecked) match { cases }
    *
    *  If `nparams` != 1, expand instead to
    *
-   *       (x$1, ..., x$n) => (x$0, ..., x${n-1}) match { cases }
+   *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1)(implicit ctx: Context) = {
+  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context) = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
-    Function(params, Match(selector, cases))
+
+    if (unchecked)
+      Function(params, Match(Annotated(New(ref(defn.UncheckedAnnotType)), selector), cases))
+    else
+      Function(params, Match(selector, cases))
   }
 
   /** Map n-ary function `(p1, ..., pn) => body` where n != 1 to unary function as follows:
@@ -753,7 +757,7 @@ object desugar {
         case VarPattern(named, tpt) =>
           Function(derivedValDef(named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
-          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil)
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, unchecked = false)
       }
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
@@ -799,7 +803,7 @@ object desugar {
         val cases = List(
           CaseDef(pat, EmptyTree, Literal(Constant(true))),
           CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
-        Apply(Select(rhs, nme.withFilter), Match(EmptyTree, cases))
+        Apply(Select(rhs, nme.withFilter), makeCaseLambda(cases))
       }
 
       /** Is pattern `pat` irrefutable when matched against `rhs`?

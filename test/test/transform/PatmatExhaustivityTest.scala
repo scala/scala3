@@ -10,15 +10,15 @@ import dotty.tools.dotc.reporting.ConsoleReporter
 
 class PatmatExhaustivityTest {
   val testsDir = "./tests/patmat"
-  val options = "-Ystop-after:splitter"  // no need for code generation
-                                         // patmatexhaust-huge.scala crash compiler
+  // stop-after: patmatexhaust-huge.scala crash compiler
+  val options = List("-Ystop-after:splitter")
 
   private def compileFile(file: File) = {
     val stringBuffer = new StringWriter()
     val reporter = new ConsoleReporter(writer = new PrintWriter(stringBuffer))
 
     try {
-      Main.process(Array(file.getPath, options), reporter, null)
+      Main.process((file.getPath::options).toArray, reporter, null)
     } catch {
       case e: Throwable =>
         println(s"Compile $file exception:")
@@ -45,7 +45,7 @@ class PatmatExhaustivityTest {
       .map(_.jfile.getPath)
 
     try {
-      Main.process((options::files).toArray, reporter, null)
+      Main.process((options ++ files).toArray, reporter, null)
     } catch {
       case e: Throwable =>
         println(s"Compile $file exception:")

@@ -258,7 +258,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case UnApply(_, _, pats) =>
       if (pat.tpe.classSymbol.is(CaseClass))
         Kon(pat.tpe.stripAnnots, pats.map(pat => project(pat, roundUp)))
-      else if (roundUp) Typ(pat.tpe, false)
+      else if (roundUp) Typ(pat.tpe.stripAnnots, false)
       else Empty
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
@@ -392,9 +392,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case _ => tp.show.stripSuffix("$")
     }
 
-    val text = tp match {
+    val text = tp.stripAnnots match {
       case tp: OrType => showType(tp.tp1) + " | " + showType(tp.tp2)
-      case _ => refine(tp)
+      case tp => refine(tp)
     }
 
     if (text.isEmpty) enclosingCls.show.stripSuffix("$")
