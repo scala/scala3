@@ -52,6 +52,34 @@ object REPL {
 
     def context(ctx: Context): Context = ctx
 
+    /** The first interpreted commands always take a couple of seconds due to
+     *  classloading. To bridge the gap, we warm up the interpreter by letting
+     *  it interpret at least a dummy line while waiting for the first line of
+     *  input to be entered.
+     */
+    val initialCommands: List[String] =
+      "val theAnswerToLifeInTheUniverseAndEverything = 21 * 2" :: Nil
+
+    /** Before exiting, the interpreter will also run the cleanup commands
+     *  issued in the variable below. This is useful if your REPL creates
+     *  things during its run that should be dealt with before shutdown.
+     */
+    val cleanupCommands: List[String] = Nil
+
+    /** Initial values in the REPL can also be bound from runtime. Override
+     *  this variable in the following manner to bind a variable at the start
+     *  of the REPL session:
+     *
+     *  {{{
+     *  override val boundValues = Array("exampleList" -> List(1, 1, 2, 3, 5))
+     *  }}}
+     *
+     *  This is useful if you've integrated the REPL as part of your project
+     *  and already have objects available during runtime that you'd like to
+     *  inspect.
+     */
+    val boundValues: Array[(String, Any)] = Array.empty[(String, Any)]
+
     /** The default input reader */
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
       val emacsShell = System.getProperty("env.emacs", "") != ""
