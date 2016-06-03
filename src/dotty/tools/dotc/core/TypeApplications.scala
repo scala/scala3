@@ -594,7 +594,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  A binding is top-level if it can be reached by
    *
-   *   - following aliases
+   *   - following aliases unless the type is a LazyRef
+   *     (need to keep cycle breakers around, see i974.scala)
    *   - dropping refinements and rec-types
    *   - going from a wildcard type to its upper bound
    *
@@ -606,12 +607,12 @@ class TypeApplications(val self: Type) extends AnyVal {
    *                       is never suppressed, because then we are only interested
    *                       in subtyping relative to the current context.
    */
-  def BetaReduce(shortLived: Boolean = false)(implicit ctx: Context): Type = self.dealias match {
+  def BetaReduce(shortLived: Boolean = false)(implicit ctx: Context): Type = self.strictDealias match {
     case self1 @ RefinedType(_, rname, _) if Config.newHK && rname.isHkArgName && self1.typeParams.isEmpty =>
       val inst = new InstMap(self, shortLived)
       def instTop(tp: Type): Type =
         if (!inst.isSafe) tp
-        else tp.dealias match {
+        else tp.strictDealias match {
           case tp: RecType =>
             inst.localRecs += tp
             tp.rebind(instTop(tp.parent))
@@ -629,6 +630,8 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
           case tp @ WildcardType(bounds @ TypeBounds(lo, hi)) =>
             tp.derivedWildcardType(bounds.derivedTypeBounds(inst(lo), instTop(hi)))
+          case tp: LazyRef =>
+            instTop(tp.ref)
           case tp =>
             inst.tyconIsHK = tp.isHK
             val res = inst(tp)
@@ -639,7 +642,14 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
             res
         }
-      val reduced = instTop(self)
+      def isLazy(tp: Type): Boolean = tp.strictDealias match {
+        case tp: RefinedOrRecType => isLazy(tp.parent)
+        case tp @ WildcardType(bounds @ TypeBounds(lo, hi)) => isLazy(hi)
+        case tp: LazyRef => true
+        case _ => false
+      }
+      val reduced =
+        if (isLazy(self1)) LazyRef(() => instTop(self)) else instTop(self)
       if (inst.isSafe) reduced else self
     case _ => self
   }
