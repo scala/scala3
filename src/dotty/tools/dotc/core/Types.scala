@@ -1576,13 +1576,17 @@ object Types {
     }
 
     protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation = {
+      // we might now get cycles over members that are in a refinement but that lack
+      // a symbol. Without the following precaution i974.scala stackoverflows when compiled
+      // with new hk scheme.
       val saved = lastDenotation
-      if (name.isTypeName) lastDenotation = ctx.anyTypeDenot
+      if (name.isTypeName && lastDenotation != null && (lastDenotation.symbol ne NoSymbol))
+        lastDenotation = ctx.anyTypeDenot
       try
         if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
         else prefix.member(name)
       finally
-        lastDenotation = saved
+        if (lastDenotation eq ctx.anyTypeDenot) lastDenotation = saved
     }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
