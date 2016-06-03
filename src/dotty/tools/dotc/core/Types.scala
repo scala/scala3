@@ -1587,7 +1587,7 @@ object Types {
       // a symbol. Without the following precaution i974.scala stackoverflows when compiled
       // with new hk scheme.
       val saved = lastDenotation
-      if (name.isTypeName && lastDenotation != null && (lastDenotation.symbol ne NoSymbol))
+      if (prefix.isInstanceOf[RecThis] && name.isTypeName)
         lastDenotation = ctx.anyTypeDenot
       try
         if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
