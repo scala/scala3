@@ -455,7 +455,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
     def toPrefix(sym: Symbol): String =
-      if (sym eq defn.LanguageModuleClass) "" else toPrefix(sym.owner) + sym.name + "."
+      if (!sym.exists || (sym eq defn.LanguageModuleClass) || (sym eq defn.Scala2LanguageModuleRef)) ""
+      else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = (
          ctx.importInfo != null
@@ -476,6 +477,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   def scala2Mode =
     featureEnabled(defn.LanguageModuleClass, nme.Scala2)
+
+  def dynamicsEnabled =
+    featureEnabled(defn.Scala2LanguageModuleClass, nme.dynamics)
 
   def testScala2Mode(msg: String, pos: Position) = {
     if (scala2Mode) migrationWarning(msg, pos)

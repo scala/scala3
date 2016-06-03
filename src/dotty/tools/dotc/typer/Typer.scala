@@ -1092,7 +1092,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
     if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.pos)
-    assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
+    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
+    if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
+      val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
+      ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
+          cls, isRequired, cdef.pos)
+    }
+    cdef1
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:
