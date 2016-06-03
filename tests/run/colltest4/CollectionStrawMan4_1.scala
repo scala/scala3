@@ -217,7 +217,7 @@ object CollectionStrawMan4 {
     def fromIterable[B](coll: Iterable[B]): ListBuffer[B] = coll match {
       case pd @ View.Partitioned(partition: View.Partition[B]) =>
         partition.distribute(new ListBuffer[B]())
-        pd.forced.get.asInstanceOf[ListBuffer[B]]
+        new ListBuffer[B] ++= pd.forced.get
       case _ =>
         new ListBuffer[B] ++= coll
     }
