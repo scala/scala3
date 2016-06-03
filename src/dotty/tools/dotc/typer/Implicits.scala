@@ -106,7 +106,7 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    val refs: List[TermRef] = {
+    lazy val refs: List[TermRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
       buf.toList
@@ -284,10 +284,13 @@ trait ImplicitRunInfo { self: RunInfo =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
+        case tp: TypeRef if tp.symbol.isLambdaTrait =>
+          defn.AnyType
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
-            AndType(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
+            if (cls.isLambdaTrait) tp
+            else AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
           val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
@@ -323,7 +326,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addParentScope(parent: TypeRef): Unit = {
                 iscopeRefs(parent) foreach addRef
                 for (param <- parent.typeParams)
-                  comps ++= iscopeRefs(pre.member(param.name).info)
+                  comps ++= iscopeRefs(tp.member(param.name).info)
               }
               val companion = cls.companionModule
               if (companion.exists) addRef(companion.valRef)
@@ -338,8 +341,6 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
     }
 
-    def ofTypeImplicits(comps: TermRefSet) = new OfTypeImplicits(tp, comps)(ctx)
-
    /** The implicit scope of type `tp`
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
@@ -349,9 +350,12 @@ trait ImplicitRunInfo { self: RunInfo =>
         ctx.typerState.ephemeral = false
         try {
           val liftedTp = if (isLifted) tp else liftToClasses(tp)
-          val result =
-            if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
-            else ofTypeImplicits(collectCompanions(tp))
+          val refs =
+            if (liftedTp ne tp)
+              iscope(liftedTp, isLifted = true).companionRefs
+            else
+              collectCompanions(tp)
+          val result = new OfTypeImplicits(tp, refs)(ctx)
           if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
           else if (cacheResult) implicitScopeCache(tp) = result
           result
@@ -363,7 +367,18 @@ trait ImplicitRunInfo { self: RunInfo =>
         computeIScope(cacheResult = false)
       else implicitScopeCache get tp match {
         case Some(is) => is
-        case None => computeIScope(cacheResult = seen.isEmpty)
+        case None =>
+          // Implicit scopes are tricky to cache because of loops. For example
+          // in `tests/pos/implicit-scope-loop.scala`, the scope of B contains
+          // the scope of A which contains the scope of B. We break the loop
+          // by returning EmptyTermRefSet in `collectCompanions` for types
+          // that we have already seen, but this means that we cannot cache
+          // the computed scope of A, it is incomplete.
+          // Keeping track of exactly where these loops happen would require a
+          // lot of book-keeping, instead we choose to be conservative and only
+          // cache scopes before any type has been seen. This is unfortunate
+          // because loops are very common for types in scala.collection.
+          computeIScope(cacheResult = seen.isEmpty)
       }
     }
 
