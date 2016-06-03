@@ -3333,8 +3333,6 @@ object Types {
       tp.derivedSuperType(thistp, supertp)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
       tp.derivedAndOrType(tp1, tp2)
-    protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
-      tp.derivedSkolemType(info)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
@@ -3419,7 +3417,7 @@ object Types {
           derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
 
         case tp: SkolemType =>
-          derivedSkolemType(tp, this(tp.info))
+          tp
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
@@ -3522,9 +3520,6 @@ object Types {
       if (tp1.exists && tp2.exists) tp.derivedAndOrType(tp1, tp2)
       else if (tp.isAnd) approx(hi = tp1 & tp2)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
       else approx(lo = tp1 & tp2)
-    override protected def derivedSkolemType(tp: SkolemType, info: Type) =
-      if (info.exists) tp.derivedSkolemType(info)
-      else NoType
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
       if (underlying.exists) tp.derivedAnnotatedType(underlying, annot)
       else NoType
