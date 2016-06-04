@@ -2254,14 +2254,32 @@ object Types {
       tp
     }
     */
+
+    /** Create a RecType, normalizing its contents. This means:
+     *
+     *   1. Nested Rec types on the type's spine are merged with the outer one.
+     *   2. Any refinement of the form `type T = z.T` on the spine of the type
+     *      where `z` refers to the created rec-type is replaced by
+     *      `type T`. This avoids infinite recursons later when we
+     *      try to follow these references.
+     *   TODO: Figure out how to guarantee absence of cycles
+     *         of length > 1
+     */
     def apply(parentExp: RecType => Type)(implicit ctx: Context): RecType = {
-      var rt = new RecType(parentExp)
-      rt.parent match {
-        case rt2: RecType =>
-          rt = rt2.derivedRecType(rt2.parent.substRecThis(rt, RecThis(rt2)))
-        case _ =>
+      val rt = new RecType(parentExp)
+      def normalize(tp: Type): Type = tp.stripTypeVar match {
+        case tp: RecType =>
+          normalize(tp.parent.substRecThis(tp, RecThis(rt)))
+        case tp @ RefinedType(parent, rname, rinfo) =>
+          val rinfo1 = rinfo match {
+            case TypeAlias(TypeRef(RecThis(`rt`), `rname`)) => TypeBounds.empty
+            case _ => rinfo
+          }
+          tp.derivedRefinedType(normalize(parent), rname, rinfo1)
+        case tp =>
+          tp
       }
-      unique(rt)
+      unique(rt.derivedRecType(normalize(rt.parent)))
     }
     def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = {
       val rt = this(parentExp)
@@ -2747,7 +2765,11 @@ object Types {
       case that: RecThis => this.binder eq that.binder
       case _ => false
     }
-    override def toString = s"RecThis(${binder.hashCode})"
+    override def toString =
+      try s"RecThis(${binder.hashCode})"
+      catch {
+        case ex: NullPointerException => s"RecThis(<under construction>)"
+      }
   }
 
   // ----- Skolem types -----------------------------------------------

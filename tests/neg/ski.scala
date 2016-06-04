@@ -17,8 +17,8 @@ trait S2[x <: Term, y <: Term] extends Term {
   type eval = S2[x, y]
 }
 trait S3[x <: Term, y <: Term, z <: Term] extends Term {
-  type ap[v <: Term] = eval#ap[v] // error
-  type eval = x#ap[z]#ap[y#ap[z]]#eval // error // error
+  type ap[v <: Term] = eval#ap[v] // error: not a legal path
+  type eval = x#ap[z]#ap[y#ap[z]]#eval // error: not a legal path // error: not a legal path
 }
 
 // The K combinator
@@ -31,8 +31,8 @@ trait K1[x <: Term] extends Term {
   type eval = K1[x]
 }
 trait K2[x <: Term, y <: Term] extends Term {
-  type ap[z <: Term] = eval#ap[z] // error
-  type eval = x#eval // error
+  type ap[z <: Term] = eval#ap[z] // error: not a legal path
+  type eval = x#eval // error: not a legal path
 }
 
 // The I combinator
@@ -41,8 +41,8 @@ trait I extends Term {
   type eval = I
 }
 trait I1[x <: Term] extends Term {
-  type ap[y <: Term] = eval#ap[y] // error
-  type eval = x#eval // error
+  type ap[y <: Term] = eval#ap[y] // error: not a legal path
+  type eval = x#eval // error: not a legal path
 }
 
 // Constants
@@ -64,9 +64,10 @@ case class Equals[A >: B <:B , B]()
 
 object Test {
   type T1 = Equals[Int, Int]     // compiles fine
-  type T2 = Equals[String, Int]  // error
+  type T2 = Equals[String, Int]  // error: Type argument String does not conform to upper bound Int
+
   type T3 = Equals[I#ap[c]#eval, c]
-  type T3a = Equals[I#ap[c]#eval, d] // error
+  type T3a = Equals[I#ap[c]#eval, d] // error: Type argument I1[c]#eval does not conform to upper bound d
 
   // Ic -> c
   type T4 = Equals[I#ap[c]#eval, c]
@@ -75,29 +76,29 @@ object Test {
   type T5 = Equals[K#ap[c]#ap[d]#eval, c]
 
   // KKcde -> d
-  type T6 = Equals[K#ap[K]#ap[c]#ap[d]#ap[e]#eval, d]
+  type T6 = Equals[K#ap[K]#ap[c]#ap[d]#ap[e]#eval, d] // error: Type argument K2[K1[_ <: Term] @UnsafeNonvariant#x, e]#eval does not conform to upper bound d
 
   // SIIIc -> Ic
-  type T7 = Equals[S#ap[I]#ap[I]#ap[I]#ap[c]#eval, c]
+  type T7 = Equals[S#ap[I]#ap[I]#ap[I]#ap[c]#eval, c] // error: not a legal path // error: Type argument I1[_ <: Term]#eval#ap[_]#eval does not conform to upper bound c
 
   // SKKc -> Ic
   type T8 = Equals[S#ap[K]#ap[K]#ap[c]#eval, c]
 
   // SIIKc -> KKc
-  type T9 = Equals[S#ap[I]#ap[I]#ap[K]#ap[c]#eval, K#ap[K]#ap[c]#eval]
+  type T9 = Equals[S#ap[I]#ap[I]#ap[K]#ap[c]#eval, K#ap[K]#ap[c]#eval] // error: Type argument K2[K1[_ <: Term] @UnsafeNonvariant#x, _ <: Term]#eval does not conform to upper bound K2[K, c]#eval
 
   // SIKKc -> K(KK)c
-  type T10 = Equals[S#ap[I]#ap[K]#ap[K]#ap[c]#eval, K#ap[K#ap[K]]#ap[c]#eval]
+  type T10 = Equals[S#ap[I]#ap[K]#ap[K]#ap[c]#eval, K#ap[K#ap[K]]#ap[c]#eval] // error: Type argument K2[K1[_ <: Term] @UnsafeNonvariant#x, _ <: Term]#eval does not conform to upper bound K2[K1[K], c]#eval
 
   // SIKIc -> KIc
-  type T11 = Equals[S#ap[I]#ap[K]#ap[I]#ap[c]#eval, K#ap[I]#ap[c]#eval]
+  type T11 = Equals[S#ap[I]#ap[K]#ap[I]#ap[c]#eval, K#ap[I]#ap[c]#eval] // error: not a legal path // error: Type argument I1[_ <: Term]#eval#ap[_]#eval does not conform to upper bound K2[I, c]#eval
 
   // SKIc -> Ic
   type T12 = Equals[S#ap[K]#ap[I]#ap[c]#eval, c]
 
   // R = S(K(SI))K  (reverse)
   type R = S#ap[K#ap[S#ap[I]]]#ap[K]
-  type T13 = Equals[R#ap[c]#ap[d]#eval, d#ap[c]#eval]
+  type T13 = Equals[R#ap[c]#ap[d]#eval, d#ap[c]#eval] // error: Type argument S3[I, S2[I, _ <: Term] @UnsafeNonvariant#y, _ <: Term]#eval does not conform to upper bound d#eval
 
   type b[a <: Term] = S#ap[K#ap[a]]#ap[S#ap[I]#ap[I]]
 
@@ -106,27 +107,27 @@ object Test {
     type eval = A0
   }
   trait A1 extends Term {
-    type ap[x <: Term] = x#ap[A0]#eval // error
+    type ap[x <: Term] = x#ap[A0]#eval // error: not a legal path
     type eval = A1
   }
   trait A2 extends Term {
-    type ap[x <: Term] = x#ap[A1]#eval // error
+    type ap[x <: Term] = x#ap[A1]#eval // error: not a legal path
     type eval = A2
   }
 
   type NN1 = b[R]#ap[b[R]]#ap[A0]
-  type T13a = Equals[NN1#eval, c]
+  type T13a = Equals[NN1#eval, c] // error: Type argument Test.NN1#eval does not conform to upper bound c
 
   // Double iteration
   type NN2 = b[R]#ap[b[R]]#ap[A1]
-  type T14 = Equals[NN2#eval, c]
+  type T14 = Equals[NN2#eval, c] // error: Type argument Test.NN2#eval does not conform to upper bound c
 
   // Triple iteration
   type NN3 = b[R]#ap[b[R]]#ap[A2]
-  type T15 = Equals[NN3#eval, c]
+  type T15 = Equals[NN3#eval, c] // error: Type argument Test.NN3#eval does not conform to upper bound c
 
   trait An extends Term {
-    type ap[x <: Term] = x#ap[An]#eval // error
+    type ap[x <: Term] = x#ap[An]#eval // error: not a legal path
     type eval = An
   }
 
