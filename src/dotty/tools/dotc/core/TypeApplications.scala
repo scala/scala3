@@ -565,12 +565,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     assert(!isHK, self)
     self match {
       case self: TypeAlias =>
-        self.derivedTypeAlias(expand(self.alias.BetaReduce))
+        self.derivedTypeAlias(expand(self.alias.normalizeHkApply))
       case self @ TypeBounds(lo, hi) =>
         if (Config.newHK)
-          self.derivedTypeBounds(lo, expand(hi.BetaReduce))
+          self.derivedTypeBounds(lo, expand(hi.normalizeHkApply))
         else
-          self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi.BetaReduce)))
+          self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi.normalizeHkApply)))
       case _ => expand(self)
     }
   }
@@ -603,7 +603,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   - dropping refinements and rec-types
    *   - going from a wildcard type to its upper bound
    */
-  def BetaReduce(implicit ctx: Context): Type = self.strictDealias match {
+  def normalizeHkApply(implicit ctx: Context): Type = self.strictDealias match {
     case self1 @ RefinedType(_, rname, _) if Config.newHK && rname.isHkArgName && self1.typeParams.isEmpty =>
       val inst = new InstMap(self)
 
@@ -840,8 +840,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
     assert(args.nonEmpty)
     matchParams(self, typParams, args) match {
-      case refined @ RefinedType(_, pname, _) if pname.isHkArgName && !Config.newHK =>
-        TypeRef(refined, tpnme.hkApplyOBS)
+      case refined @ RefinedType(_, pname, _) if pname.isHkArgName =>
+        if (Config.newHK) refined.betaReduce
+        else TypeRef(refined, tpnme.hkApplyOBS)
       case refined =>
         refined
     }
