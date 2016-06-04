@@ -2131,9 +2131,43 @@ object Types {
       this
     }
 
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
+    def betaReduce(implicit ctx: Context): Type = refinedInfo match {
+      case TypeAlias(alias) =>
+        def instantiate(rt: RecType) = new TypeMap {
+          def apply(t: Type) = t match {
+            case TypeRef(RecThis(`rt`), `refinedName`) => alias
+            case tp: TypeRef =>
+              val pre1 = apply(tp.prefix)
+              if (pre1 ne tp.prefix) tp.newLikeThis(pre1) else tp
+            case _ => mapOver(t)
+          }
+        }
+        def substAlias(tp: Type): Type = tp.safeDealias match {
+          case tp @ RefinedType(p, rname, rinfo) if tp.isTypeParam =>
+            if (rname == refinedName) p // check bounds?
+            else tp.derivedRefinedType(substAlias(p), rname, rinfo)
+          case tp: RecType =>
+            val p1 = substAlias(tp.parent)
+            if (p1 ne tp.parent) tp.rebind(instantiate(tp)(p1))
+            else tp
+          case _ =>
+            tp
+        }
+        val reduced = substAlias(parent)
+        if (reduced ne parent) {
+          hk.println(i"REDUCE $this ----> ${reduced}")
+          reduced
+        }
+        else this
+      case _ =>
+        this
+    }
+
+    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
+      else
+        RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
+          .betaReduce
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =

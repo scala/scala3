@@ -286,7 +286,7 @@ trait ConstraintHandling {
           else if (fromBelow) defn.NothingType
           else defn.AnyType
         case bound: RefinedType =>
-          bound.BetaReduce
+          bound.normalizeHkApply
         case _ =>
           bound
       }
