@@ -649,7 +649,14 @@ class TypeApplications(val self: Type) extends AnyVal {
         case _ => false
       }
       val reduced =
-        if (isLazy(self1)) LazyRef(() => instTop(self)) else instTop(self)
+        if (isLazy(self1)) {
+          // A strange dance is needed here to make 974.scala compile.
+          val res = LazyRef(() => instTop(self))
+          res.ref         // without this line, pickling 974.scala fails with an assertion error
+                          // saying that we address a RecThis outside its Rec (in the case of RecThis of pickleNewType)
+          res             // without this line, typing 974.scala gives a stackoverflow in asSeenFrom.
+        }
+        else instTop(self)
       if (inst.isSafe) reduced else self
     case _ => self
   }
