@@ -1586,14 +1586,20 @@ object Types {
       // we might now get cycles over members that are in a refinement but that lack
       // a symbol. Without the following precaution i974.scala stackoverflows when compiled
       // with new hk scheme.
-      val saved = lastDenotation
-      if (prefix.isInstanceOf[RecThis] && name.isTypeName)
+      val savedDenot = lastDenotation
+      val savedSymbol = lastSymbol
+      if (prefix.isInstanceOf[RecThis] && name.isTypeName) {
         lastDenotation = ctx.anyTypeDenot
+        lastSymbol = NoSymbol
+      }
       try
         if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
         else prefix.member(name)
       finally
-        if (lastDenotation eq ctx.anyTypeDenot) lastDenotation = saved
+        if (lastDenotation eq ctx.anyTypeDenot) {
+          lastDenotation = savedDenot
+          lastSymbol = savedSymbol
+        }
     }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
