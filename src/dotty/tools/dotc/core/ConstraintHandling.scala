@@ -286,7 +286,7 @@ trait ConstraintHandling {
           else if (fromBelow) defn.NothingType
           else defn.AnyType
         case bound: RefinedType =>
-          bound.BetaReduce(shortLived = true)
+          bound.BetaReduce
         case _ =>
           bound
       }
