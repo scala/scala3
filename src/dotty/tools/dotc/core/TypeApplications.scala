@@ -47,19 +47,20 @@ object TypeApplications {
   def variancesConform(syms1: List[MemberBinding], syms2: List[MemberBinding])(implicit ctx: Context) =
     syms1.corresponds(syms2)(varianceConforms)
 
-  def fallbackTypeParams(n: Int)(implicit ctx: Context): List[MemberBinding] = {
-    def memberBindings(n: Int): Type =
-      if (n == 0) NoType
-      else
+  def fallbackTypeParams(variances: List[Int])(implicit ctx: Context): List[MemberBinding] = {
+    def memberBindings(vs: List[Int]): Type = vs match {
+      case Nil => NoType
+      case v :: vs1 =>
         RefinedType(
-            memberBindings(n - 1),
-            tpnme.hkArg(n - 1),
-            TypeBounds.empty.withBindingKind(NonvariantBinding))
+            memberBindings(vs1),
+            tpnme.hkArg(vs1.length),
+            TypeBounds.empty.withBindingKind(BindingKind.fromVariance(v)))
+    }
     def decompose(t: Type, acc: List[MemberBinding]): List[MemberBinding] = t match {
       case t: RefinedType => decompose(t.parent, t :: acc)
       case NoType => acc
     }
-    decompose(memberBindings(n), Nil)
+    decompose(memberBindings(variances), Nil)
   }
 
   /** Extractor for
@@ -343,7 +344,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         else tsym.infoOrCompleter match {
           case completer: TypeParamsCompleter =>
             val tparams = completer.completerTypeParams(tsym)
-            if (Config.newHK) tparams
+            if (Config.newHK) fallbackTypeParams(tparams.map(_.variance))
             else defn.LambdaTraitOBS(tparams.map(_.variance)).typeParams
           case _ =>
             if (!tsym.isCompleting || tsym.isAliasType) tsym.info.typeParams
@@ -861,7 +862,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
         // This happens when unpickling e.g. scala$collection$generic$GenMapFactory$$CC
         ctx.warning(i"encountered F-bounded higher-kinded type parameters for ${self.symbol}; assuming they are invariant")
-        if (Config.newHK) fallbackTypeParams(args.length)
+        if (Config.newHK) fallbackTypeParams(args map alwaysZero)
         else defn.LambdaTraitOBS(args map alwaysZero).typeParams
       case _ =>
         typeParams
