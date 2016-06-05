@@ -175,8 +175,14 @@ object Inferencing {
 
   /** Recursively widen and also follow type declarations and type aliases. */
   def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.info.bounds.hi)
-    case tp: AnnotatedType => tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
+    case tp: TypeRef if !tp.symbol.isClass =>
+      widenForMatchSelector(tp.info.bounds.hi)
+    case tp: AnnotatedType =>
+      tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
+    case tp @ RefinedType(parent, rname, rinfo) if !parent.typeSymbol.isClass =>
+      tp.derivedRefinedType(widenForMatchSelector(parent), rname, rinfo)
+    case tp: RecType if !tp.parent.typeSymbol.isClass =>
+      tp.derivedRecType(widenForMatchSelector(tp.parent))
     case tp => tp
   }
 
@@ -212,7 +218,7 @@ object Inferencing {
     val qualifies = (tvar: TypeVar) =>
       (tree contains tvar.owningTree) || ownedBy.exists && tvar.owner == ownedBy
     def interpolate() = Stats.track("interpolateUndetVars") {
-      val tp = tree.tpe.widen
+      val tp = tree.tpe.widen  // TODO add `.BetaReduce` ?
       constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
       constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
