@@ -1653,7 +1653,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case SearchSuccess(inferred, _, _) =>
           adapt(inferred, pt)
         case failure: SearchFailure =>
-          if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
+          if (
+            pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits] ||
+            tree.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
+          ) tree
           else err.typeMismatch(tree, pt, failure)
       }
     }
