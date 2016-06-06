@@ -36,11 +36,16 @@ object Checking {
   /** A general checkBounds method that can be used for TypeApply nodes as
    *  well as for AppliedTypeTree nodes.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) =
+  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
+    (args, boundss).zipped.foreach { (arg, bound) =>
+      if (!bound.isHK && arg.tpe.isHK)
+        ctx.error(d"missing type parameter(s) for $arg", arg.pos)
+    }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
+  }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
