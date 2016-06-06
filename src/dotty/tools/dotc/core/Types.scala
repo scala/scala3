@@ -2135,7 +2135,7 @@ object Types {
     }
 
     def betaReduce(implicit ctx: Context): Type = refinedInfo match {
-      case TypeAlias(alias) =>
+      case TypeAlias(alias) if refinedName.isHkArgName =>
         def instantiate(rt: RecType) = new TypeMap {
           def apply(t: Type) = t match {
             case TypeRef(RecThis(`rt`), `refinedName`) => alias
