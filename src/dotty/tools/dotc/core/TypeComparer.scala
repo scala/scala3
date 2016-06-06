@@ -375,7 +375,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               compareAliasedRefined(tp2, tp1, inOrder = false)
           }
         else // fast path, in particular for refinements resulting from parameterization.
-          isSubType(tp1, skipped2) &&
+          isSubType(tp1, skipped2) && // TODO swap?
           isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2)
       }
       compareRefined
@@ -495,9 +495,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
-      isNewSubType(tp1.parent, tp2) ||
       compareHkApply(tp1, tp2, inOrder = true) ||
       compareHkLambda(tp1, tp2, inOrder = true) ||
+      isNewSubType(tp1.parent, tp2) ||
       compareAliasedRefined(tp1, tp2, inOrder = true)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
