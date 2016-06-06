@@ -875,13 +875,16 @@ object Types {
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: AnnotatedType => tp.underlying.underlyingClassRef(refinementOK)
+      case tp: AnnotatedType =>
+        tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
         def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
-        if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
+        if (refinementOK || tp.isTypeParam || isParamName) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: RecType if refinementOK => tp.parent
-      case _ => NoType
+      case tp: RecType =>
+        tp.underlying.underlyingClassRef(refinementOK)
+      case _ =>
+        NoType
     }
 
     /** The iterator of underlying types as long as type is a TypeProxy.
