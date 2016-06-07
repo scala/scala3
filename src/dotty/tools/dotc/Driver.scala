@@ -31,7 +31,7 @@ abstract class Driver extends DotClass {
           ctx.error(ex.getMessage) // signals that we should fail compilation.
           ctx.reporter
       }
-    else emptyReporter
+    else ctx.reporter
 
   protected def initCtx = (new ContextBase).initialCtx
 
