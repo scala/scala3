@@ -1,0 +1,16 @@
+# Dotty: This test has been disabled because super accessors are introduced
+# in PostTyper but the sbt phase is run before PostTyper so that tests like
+# "constants" succeed.
+
+# This test verifies that adding/removing calls to super in traits properly
+# recompiles subclasses.  super calls introduce accessors that are not in
+# the public API, so this is not picked up by the usual API change detection.
+
+> run 1
+
+$ copy-file changes/B2.scala B.scala
+> run 5
+
+$ copy-file changes/B3.scala B.scala
+> run 21
+
