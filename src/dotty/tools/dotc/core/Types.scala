@@ -2265,6 +2265,8 @@ object Types {
           tp match {
             case tp: TypeRef => apply(x, tp.prefix)
             case tp: RecThis => RecType.this eq tp.binder
+            case tp: LazyRef => true // Assume a reference to be safe.
+              // TODO: Check that all accumulators handle LazyRefs correctly
             case _ => foldOver(x, tp)
           }
         }
