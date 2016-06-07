@@ -3708,6 +3708,9 @@ object Types {
       case tp: JavaArrayType =>
         this(x, tp.elemType)
 
+      case tp: LazyRef =>
+        this(x, tp.ref)
+
       case tp: ProtoType =>
         tp.fold(x, this)
 
