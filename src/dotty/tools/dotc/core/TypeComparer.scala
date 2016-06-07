@@ -381,7 +381,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRefined
     case tp2: RecType =>
       val tp1stable = ensureStableSingleton(tp1)
-      isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.substRecThis(tp2, tp1stable))
+      isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.parent.substRecThis(tp2, tp1stable))
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
