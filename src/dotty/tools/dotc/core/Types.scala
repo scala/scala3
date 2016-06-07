@@ -2765,7 +2765,11 @@ object Types {
 
     def paramName = binder.paramNames(paramNum)
 
-    override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)
+    override def underlying(implicit ctx: Context): Type = {
+      val bounds = binder.paramBounds
+      if (bounds == null) NoType // this can happen if the PolyType is not initialized yet
+      else bounds(paramNum)
+    }
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam($paramName)"
 

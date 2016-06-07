@@ -494,7 +494,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: SingletonType => -1
     case self: TypeVar => self.origin.knownHK
     case self: WildcardType => self.optBounds.knownHK
+    case self: PolyParam => self.underlying.knownHK
     case self: TypeProxy => self.underlying.knownHK
+    case NoType => 0
     case _ => -1
   }
 
