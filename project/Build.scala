@@ -332,7 +332,6 @@ object DottyInjectedPlugin extends AutoPlugin {
 
    lazy val publishing = Seq(
      publishMavenStyle := true,
-     publishMavenStyle := true,
      publishArtifact := true,
      publishTo := {
        val nexus = "https://oss.sonatype.org/"
