@@ -63,7 +63,11 @@ object LazyVals {
   }
 
   @inline def compareAndSet(t: Object, off: Long, e: Long, v: Long) = unsafe.compareAndSwapLong(t, off, e, v)
-  @inline def get(t: Object, off: Long) = unsafe.getLongVolatile(t, off)
+  @inline def get(t: Object, off: Long) = {
+    if (debug)
+      println(s"get($t, $off)")
+    unsafe.getLongVolatile(t, off)
+  }
 
   val processors: Int = java.lang.Runtime.getRuntime.availableProcessors()
   val base: Int = 8 * processors * processors
