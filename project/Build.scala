@@ -50,7 +50,8 @@ object DottyBuild extends Build {
       autoScalaLibrary := false,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    )
+    ).
+    settings(publishing)
 
   lazy val dotty = project.in(file(".")).
     dependsOn(`dotty-interfaces`).
@@ -244,7 +245,8 @@ object DottyInjectedPlugin extends AutoPlugin {
 """)
       }
       */
-    )
+    ).
+    settings(publishing)
 
 
   /** A sandbox to play with the Scala.js back-end of dotty.
@@ -348,6 +350,13 @@ object DottyInjectedPlugin extends AutoPlugin {
        )
      )
    )
+
+   lazy val `dotty-core` = project
+     .dependsOn(`dotty-interfaces`)
+     .dependsOn(dotty)
+     .dependsOn(`dotty-bridge`)
+     .settings(publishing)
+     .aggregate(dotty, `dotty-interfaces`, `dotty-bridge`)
 
   // Partest tasks
   lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
