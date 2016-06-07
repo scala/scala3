@@ -79,6 +79,11 @@ object Config {
    */
   final val checkProjections = false
 
+  /** If this flag is set it is checked that &/| only apply to types
+   *  that are either both hk types or both * types.
+   */
+  final val checkKinds = true
+
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
 

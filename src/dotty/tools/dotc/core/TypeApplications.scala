@@ -473,6 +473,31 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => false
   }
 
+  /** Computes the kind of `self` without forcing anything.
+   *  @return   1   if type is known to be higher-kinded
+   *           -1   if type is known to be a * type
+   *            0   if kind of `self` is unknown (because symbols have not yet completed)
+   */
+  def knownHK(implicit ctx: Context): Int = self match {
+    case self: TypeRef =>
+      val tsym = self.symbol
+      if (tsym.isClass) -1
+      else tsym.infoOrCompleter match {
+        case completer: TypeParamsCompleter =>
+          if (completer.completerTypeParams(tsym).nonEmpty) 1 else -1
+        case _ =>
+          if (!tsym.isCompleting || tsym.isAliasType) tsym.info.knownHK
+          else 0
+      }
+    case self: RefinedType =>
+      if (self.isTypeParam) 1 else -1
+    case self: SingletonType => -1
+    case self: TypeVar => self.origin.knownHK
+    case self: WildcardType => self.optBounds.knownHK
+    case self: TypeProxy => self.underlying.knownHK
+    case _ => -1
+  }
+
   /** is receiver of the form T#$Apply? */
   def isHKApply(implicit ctx: Context): Boolean = self match {
     case self @ RefinedType(_, name, _) => Config.newHK && name.isHkArgName && !self.isTypeParam
@@ -666,7 +691,10 @@ class TypeApplications(val self: Type) extends AnyVal {
           res             // without this line, typing 974.scala gives a stackoverflow in asSeenFrom.
         }
         else instTop(self)
-      if (reduced ne self) hk.println(i"reduce $self  -->  $reduced")
+      if (reduced ne self) {
+        hk.println(i"reduce $self  -->  $reduced / ${inst.tyconIsHK}")
+        //hk.println(s"reduce $self  -->  $reduced")
+      }
       reduced
     case _ => self
   }
