@@ -192,7 +192,8 @@ object DottyBuild extends Build {
       addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
       addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
       addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
-    )
+    ).
+    settings(publishing)
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
@@ -274,6 +275,27 @@ object DottyBuild extends Build {
         res
       }
     )
+
+   lazy val publishing = Seq(
+     publishMavenStyle := true,
+     publishMavenStyle := true,
+     publishArtifact := true,
+     publishTo := {
+       val nexus = "https://oss.sonatype.org/"
+       if (isSnapshot.value)
+         Some("snapshots" at nexus + "content/repositories/snapshots")
+       else
+         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+     },
+     publishArtifact in Test := false,
+     homepage := Some(url("https://github.com/lampepfl/dotty")),
+     scmInfo := Some(
+       ScmInfo(
+         url("https://github.com/lampepfl/dotty"),
+         "scm:git:git@github.com:lampepfl/dotty.git"
+       )
+     )
+   )
 
   // Partest tasks
   lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
