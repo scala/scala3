@@ -935,7 +935,7 @@ class Namer { typer: Typer =>
     //val toParameterize = tparamSyms.nonEmpty && !isDerived
     //val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     def abstracted(tp: Type): Type =
-      if (tparamSyms.nonEmpty && !isDerived) tp.LambdaAbstract(tparamSyms)
+      if (tparamSyms.nonEmpty && !tp.isHK) tp.LambdaAbstract(tparamSyms)
       //else if (toParameterize) tp.parameterizeWith(tparamSyms)
       else tp
 
