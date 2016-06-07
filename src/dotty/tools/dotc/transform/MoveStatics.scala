@@ -35,6 +35,25 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
       val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]
 
+      def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
+        if (orig eq null) return EmptyTree
+
+        val staticFields = newBody.filter(x => x.isInstanceOf[ValDef] && x.symbol.hasAnnotation(defn.ScalaStaticAnnot)).asInstanceOf[List[ValDef]]
+        val newBodyWithStaticConstr =
+          if (staticFields.nonEmpty) {
+            /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
+            val staticCostructor = ctx.newSymbol(orig.symbol, Names.STATIC_CONSTRUCTOR, Flags.Synthetic  | Flags.Method, MethodType(Nil, defn.UnitType))
+            staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot))
+            staticCostructor.entered
+
+            val staticAssigns = staticFields.map(x => Assign(ref(x.symbol), x.rhs.changeOwner(x.symbol, staticCostructor)))
+            tpd.DefDef(staticCostructor, Block(staticAssigns, tpd.unitLiteral)) :: newBody
+          } else newBody
+
+        val oldTemplate = orig.rhs.asInstanceOf[Template]
+        cpy.TypeDef(orig)(rhs = cpy.Template(orig.rhs)(oldTemplate.constr, oldTemplate.parents, oldTemplate.self, newBodyWithStaticConstr))
+      }
+
       def move(module: TypeDef, companion: TypeDef): List[Tree] = {
         if (!module.symbol.is(Flags.Module)) move(companion, module)
         else {
@@ -42,24 +61,6 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
             (if(companion ne null) {companion.rhs.asInstanceOf[Template].body} else Nil) ++
             module.rhs.asInstanceOf[Template].body
           val (newModuleBody, newCompanionBody) = allMembers.partition(x => {assert(x.symbol.exists); x.symbol.owner == module.symbol})
-          def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
-            if (orig eq null) return EmptyTree
-
-            val staticFields = newBody.filter(x => x.isInstanceOf[ValDef] && x.symbol.hasAnnotation(defn.ScalaStaticAnnot)).asInstanceOf[List[ValDef]]
-            val newBodyWithStaticConstr =
-              if (staticFields.nonEmpty) {
-                /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
-                val staticCostructor = ctx.newSymbol(orig.symbol, Names.STATIC_CONSTRUCTOR, Flags.Synthetic  | Flags.Method, MethodType(Nil, defn.UnitType))
-                staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-                staticCostructor.entered
-
-                val staticAssigns = staticFields.map(x => Assign(ref(x.symbol), x.rhs.changeOwner(x.symbol, staticCostructor)))
-                tpd.DefDef(staticCostructor, Block(staticAssigns, tpd.unitLiteral)) :: newBody
-              } else newBody
-
-            val oldTemplate = orig.rhs.asInstanceOf[Template]
-            cpy.TypeDef(orig)(rhs = cpy.Template(orig.rhs)(oldTemplate.constr, oldTemplate.parents, oldTemplate.self, newBodyWithStaticConstr))
-          }
           Trees.flatten(rebuild(companion, newCompanionBody) :: rebuild(module, newModuleBody) :: Nil)
         }
       }
@@ -68,7 +69,7 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
           yield
             if (classes.tail.isEmpty)
               if (classes.head.symbol.is(Flags.Module)) move(classes.head, null)
-              else List(classes.head)
+              else List(rebuild(classes.head, classes.head.rhs.asInstanceOf[Template].body))
             else move(classes.head, classes.tail.head)
       Trees.flatten(newPairs.toList.flatten ++ others)
     } else trees
