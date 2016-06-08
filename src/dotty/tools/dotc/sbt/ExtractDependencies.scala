@@ -164,7 +164,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
     sym.isEffectiveRoot ||
     sym.isAnonymousFunction ||
     sym.isAnonymousClass ||
-    sym.isLambdaTrait
+    sym.isLambdaTraitOBS
 
   private def addInheritanceDependency(sym: Symbol): Unit =
     _topLevelInheritanceDependencies += sym.topLevelClass
