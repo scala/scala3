@@ -149,6 +149,7 @@ class tests extends CompilerTest {
   @Test def compileMixed = compileLine(
       """tests/pos/B.scala
         |./scala-scala/src/library/scala/collection/immutable/Seq.scala
+        |./scala-scala/src/library/scala/collection/parallel/ParSeq.scala
         |./scala-scala/src/library/scala/package.scala
         |./scala-scala/src/library/scala/collection/GenSeqLike.scala
         |./scala-scala/src/library/scala/collection/SeqLike.scala
