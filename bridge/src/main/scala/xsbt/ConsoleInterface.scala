@@ -9,6 +9,7 @@ import scala.tools.nsc.interpreter.InteractiveReader
 import scala.tools.nsc.reporters.Reporter
 import scala.tools.nsc.util.ClassPath
 
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.repl.REPL
 import dotty.tools.dotc.repl.REPL.Config
 
@@ -39,7 +40,8 @@ class ConsoleInterface {
     val repl = ConsoleInterface.customRepl(
       initialCommands :: Nil,
       cleanupCommands :: Nil,
-      bindNames zip bindValues
+      bindNames zip bindValues,
+      loader
     )
     repl.process(completeArgs)
   }
@@ -49,11 +51,13 @@ object ConsoleInterface {
   def customConfig(
     initCmds: List[String],
     cleanupCmds: List[String],
-    boundVals: Array[(String, Any)]
+    boundVals: Array[(String, Any)],
+    loader: ClassLoader
   ) = new Config {
     override val initialCommands: List[String] = initCmds
     override val cleanupCommands: List[String] = cleanupCmds
     override val boundValues: Array[(String, Any)] = boundVals
+    override val classLoader: Option[ClassLoader] = Option(loader)
   }
 
   def customRepl(cfg: Config): REPL = new REPL {
@@ -63,6 +67,7 @@ object ConsoleInterface {
   def customRepl(
     initCmds: List[String],
     cleanupCmds: List[String],
-    boundVals: Array[(String, Any)]
-  ): REPL = customRepl(customConfig(initCmds, cleanupCmds, boundVals))
+    boundVals: Array[(String, Any)],
+    loader: ClassLoader
+  ): REPL = customRepl(customConfig(initCmds, cleanupCmds, boundVals, loader))
 }

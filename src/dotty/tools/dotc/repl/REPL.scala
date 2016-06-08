@@ -4,7 +4,10 @@ package repl
 
 import core.Contexts.Context
 import reporting.Reporter
-import java.io.{BufferedReader, File, FileReader, PrintWriter}
+import io.{AbstractFile, PlainFile, VirtualDirectory}
+import scala.reflect.io.{PlainDirectory, Directory}
+import java.io.{BufferedReader, File => JFile, FileReader, PrintWriter}
+import java.net.{URL, URLClassLoader}
 
 /** A compiler which stays resident between runs.
  *  Usage:
@@ -31,7 +34,7 @@ class REPL extends Driver {
   }
 
   override def newCompiler(implicit ctx: Context): Compiler =
-    new repl.CompilingInterpreter(config.output, ctx)
+    new repl.CompilingInterpreter(config.output, ctx, config.classLoader)
 
   override def sourcesRequired = false
 
@@ -79,6 +82,9 @@ object REPL {
      *  inspect.
      */
     val boundValues: Array[(String, Any)] = Array.empty[(String, Any)]
+
+    /** To pass a custom ClassLoader to the Dotty REPL, overwride this value */
+    val classLoader: Option[ClassLoader] = None
 
     /** The default input reader */
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
