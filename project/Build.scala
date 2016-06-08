@@ -25,7 +25,8 @@ object DottyBuild extends Build {
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
-      version in Global := "0.1-SNAPSHOT",
+      version in Global :=
+        "0.1-SNAPSHOT-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash,
       organization in Global := "ch.epfl.lamp",
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
@@ -208,7 +209,8 @@ object DottyBuild extends Build {
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
-      version := "0.1.1-SNAPSHOT",
+      version :=
+        "0.1.1-SNAPSHOT-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash,
       // The sources should be published with crossPaths := false, the binaries
       // are unused so it doesn't matter.
       crossPaths := false,
