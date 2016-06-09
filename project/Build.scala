@@ -211,9 +211,12 @@ object DottyBuild extends Build {
       ),
       version :=
         "0.1.1-SNAPSHOT-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash,
-      // The sources should be published with crossPaths := false, the binaries
-      // are unused so it doesn't matter.
+      // The sources should be published with crossPaths := false since they
+      // need to be compiled by the project using the bridge.
       crossPaths := false,
+
+      // Don't publish any binaries for the bridge because of the above
+      publishArtifact in (Compile, packageBin) := false,
 
       fork in Test := true,
       parallelExecution in Test := false
