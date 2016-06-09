@@ -375,8 +375,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               compareAliasedRefined(tp2, tp1, inOrder = false)
           }
         else // fast path, in particular for refinements resulting from parameterization.
-          isSubType(tp1, skipped2) && // TODO swap?
-          isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2)
+          isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
+          isSubType(tp1, skipped2) // TODO swap?
       }
       compareRefined
     case tp2: RecType =>
