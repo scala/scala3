@@ -656,19 +656,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           subtyping.println(i"type params = $hkTypeParams")
           if (inOrder) unifyWith(other)
           else testLifted(other, app, hkTypeParams, unifyWith)
-
-        case tp => // TODO check this is the right way to do it.
-          other.typeConstructor.widen match {
-            case tycon: TypeRef =>
-              tycon.isEtaExpandable &&
-              tycon.typeParams.length == tp.typeParams.length &&
-              !ctx.mode.is(Mode.TypevarsMissContext) && {
-                val app1 = EtaExpansion(tycon).appliedTo(app.argInfos)
-                if (inOrder) isSubType(app1, other) else isSubType(other, app1)
-              }
-            case _ =>
-              false
-          }
+        case _ =>
+          false
       }
     }
     Config.newHK && app.isHKApply && !other.isHKApply && {
