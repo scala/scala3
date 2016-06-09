@@ -659,12 +659,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           // why only handle the case where one of the sides is a typevar or poly param?
           // If the LHS is a hk application, then the normal logic already handles
-          // all cases. Indeed, say you have
+          // all other cases. Indeed, say you have
           //
           //     type C[T] <: List[T]
           //
-          // Then to verify `C[Int] <: List[Int]`, use compareRefinedslow to
-          // get `C <: List` verify that
+          // where C is an abstract type. Then to verify `C[Int] <: List[Int]`,
+          // use compareRefinedslow to get `C <: List` and verify that
           //
           //      C#List$T = C$$hk0 = Int
           //
