@@ -467,10 +467,44 @@ object Types {
         case _ =>
           NoDenotation
       }
-      def goRec(tp: RecType) = {
-        //println(s"find member $pre . $name in $tp")
-        go(tp.parent).mapInfo(_.substRecThis(tp, pre))
-      }
+      def goRec(tp: RecType) =
+        if (tp.parent == null) NoDenotation
+        else {
+          //println(s"find member $pre . $name in $tp")
+
+          // We have to be careful because we might open the same (wrt eq) recursive type
+          // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
+          // call below. To avoid this problem we do a defensive copy of the recursive
+          // type first. But if we do this always we risk being inefficient and we run into
+          // stackoverflows when compiling pos/hk.scala. So we only do a copy if the type
+          // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
+          // Furthermore, if this happens we mark the original recursive type with `openedTwice`
+          // which means that we always defensively copy the type in the future. This second
+          // measure is necessary because findMember calls might be cached, so do not
+          // necessarily appear in nested order.
+          // Without the defensive copy, Typer.scala fails to compile at the line
+          //
+          //      untpd.rename(lhsCore, setterName).withType(setterType), WildcardType)
+          //
+          // because the subtype check
+          //
+          //      ThisTree[Untyped]#ThisTree[Typed] <: Tree[Typed]
+          //
+          // fails (in fact it thinks the underlying type of the LHS is `Tree[Untyped]`.)
+          //
+          // Without the without the `openedTwice` trick, Typer.scala fails to Ycheck
+          // at phase resolveSuper.
+          val rt =
+            if (tp.opened) { // defensive copy
+              tp.openedTwice = true
+              RecType(rt => tp.parent.substRecThis(tp, RecThis(rt)))
+            } else tp
+          rt.opened = true
+          try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
+          finally {
+            if (!rt.openedTwice) rt.opened = false
+          }
+        }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo =
@@ -546,7 +580,7 @@ object Types {
       try go(this)
       catch {
         case ex: Throwable =>
-          core.println(i"findMember exception for $this member $name")
+          core.println(i"findMember exception for $this member $name, pre = $pre")
           throw ex // DEBUG
       }
       finally {
@@ -2241,6 +2275,10 @@ object Types {
   }
 
   class RecType(parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
+
+    // See discussion in findMember#goRec why these vars are needed
+    private[Types] var opened: Boolean = false
+    private[Types] var openedTwice: Boolean = false
 
     val parent = parentExp(this)
 
