@@ -338,6 +338,7 @@ object DottyInjectedPlugin extends AutoPlugin {
    lazy val publishing = Seq(
      publishMavenStyle := true,
      publishArtifact := true,
+     isSnapshot := version.value.contains("SNAPSHOT"),
      publishTo := {
        val nexus = "https://oss.sonatype.org/"
        if (isSnapshot.value)
@@ -390,13 +391,6 @@ object DottyInjectedPlugin extends AutoPlugin {
        </developers>
      )
    )
-
-   lazy val `dotty-core` = project
-     .dependsOn(`dotty-interfaces`)
-     .dependsOn(dotty)
-     .dependsOn(`dotty-bridge`)
-     .settings(publishing)
-     .aggregate(dotty, `dotty-interfaces`, `dotty-bridge`)
 
   // Partest tasks
   lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
