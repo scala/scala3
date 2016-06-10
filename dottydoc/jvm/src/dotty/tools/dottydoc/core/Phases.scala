@@ -80,7 +80,7 @@ object Phases {
 
         /** def */
         case d: DefDef =>
-          DefImpl(filteredName(d.name.toString), flags(d), path(d), returnType(d, d.tpt))
+          DefImpl(filteredName(d.name.toString), flags(d), path(d), returnType(d, d.tpt), typeParams(d), paramLists(d))
 
         /** val */
         case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>

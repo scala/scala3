@@ -44,13 +44,13 @@ trait ReturnValue {
 }
 
 trait Package extends Entity with Members {
-  override val kind = "package"
+  val kind = "package"
 
   def children: List[Entity with Members]
 }
 
 trait Class extends Entity with Members with Modifiers {
-  override val kind = "class"
+  val kind = "class"
 }
 
 trait CaseClass extends Class {
@@ -66,23 +66,25 @@ trait Object extends Class {
 }
 
 trait Def extends Entity with Modifiers with ReturnValue {
-  override val kind = "def"
+  def typeParams: List[String]
+  def paramLists: List[List[(String, MaterializableLink)]]
+  val kind = "def"
 }
 
-trait Val extends Def {
-  override val kind = "val"
+trait Val extends Entity with Modifiers with ReturnValue {
+  val kind = "val"
 }
 
-trait Var extends Def {
-  override val kind = "var"
+trait Var extends Entity with Modifiers with ReturnValue {
+  val kind = "var"
 }
 
 trait NonEntity extends Entity {
-  override val name    = ""
-  override val comment = None
-  override val path    = Nil
-  override val kind    = ""
-  override val parent  = NonEntity
+  val name    = ""
+  val comment = None
+  val path    = Nil
+  val kind    = ""
+  val parent  = NonEntity
 }
 
 final case object NonEntity extends NonEntity

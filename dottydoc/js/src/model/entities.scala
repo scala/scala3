@@ -21,9 +21,7 @@ import sjs.annotation.ScalaJSDefined
 @ScalaJSDefined
 trait Entity extends sjs.Object {
   val kind: String
-
   val name: String
-
   val path: sjs.Array[String]
 }
 
@@ -53,13 +51,15 @@ trait Object extends Class
 trait Trait extends Class
 
 @ScalaJSDefined
-trait Def extends Entity with Modifiers
+trait Def extends Entity with Modifiers {
+  val typeParams: sjs.Array[String]
+}
 
 @ScalaJSDefined
-trait Val extends Def
+trait Val extends Entity with Modifiers
 
 @ScalaJSDefined
-trait Var extends Def
+trait Var extends Entity with Modifiers
 
 object ops {
   val EntitiesWithMembers =
@@ -78,5 +78,12 @@ object ops {
       val path = p.path
       val members = mbrs
     }
+  }
+
+  implicit class EntityOps(val ent: Entity) {
+    def typeParams: sjs.Array[String] =
+      if (ent.kind == "def")
+        ent.asInstanceOf[Def].typeParams
+      else sjs.Array()
   }
 }

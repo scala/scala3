@@ -48,7 +48,10 @@ trait MemberLayout {
           onclick := { () => toggleBetween(shortComment, and = fullComment) },
           div(
             cls := "mdl-cell mdl-cell--12-col",
-            span(cls := "member-name", m.modifiers.mkString(" ") + " " + m.kind + " " + m.name),
+            span(
+              cls := "member-name",
+              m.modifiers.mkString(" ") + " " + m.kind + " " + m.name + typeParams(m)
+            ),
             returnValue(m, parent)
           ),
           shortComment,
@@ -57,6 +60,11 @@ trait MemberLayout {
         Seq(divs)
       case x => Seq(h1("ERROR: " + x.name))
     }
+  }
+
+  def typeParams(m: Entity): String = m match {
+    case d: Def if d.typeParams.nonEmpty => d.typeParams.mkString("[", ", ", "]")
+    case _ => ""
   }
 
   def returnValue(m: Entity with Modifiers, parent: Entity) = {

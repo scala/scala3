@@ -57,7 +57,7 @@ object json extends DefaultJsonProtocol {
   }
 
   implicit val valFormat: JsonFormat[ValImpl] = lazyFormat(jsonFormat(ValImpl, "name", "modifiers", "path", "returnValue", "comment"))
-  implicit val defFormat: JsonFormat[DefImpl] = lazyFormat(jsonFormat(DefImpl, "name", "modifiers", "path", "returnValue", "comment"))
+  implicit val defFormat: JsonFormat[DefImpl] = lazyFormat(jsonFormat(DefImpl, "name", "modifiers", "path", "returnValue", "paramTypes", "paramLists", "comment"))
   implicit val objFormat: JsonFormat[ObjectImpl] = lazyFormat(jsonFormat(ObjectImpl, "name", "members", "modifiers", "path", "comment"))
   implicit val traitormat: JsonFormat[TraitImpl] = lazyFormat(jsonFormat(TraitImpl, "name", "members", "modifiers", "path", "comment"))
   implicit val cclassFormat: JsonFormat[CaseClassImpl] = lazyFormat(jsonFormat(CaseClassImpl, "name", "members", "modifiers", "path", "comment"))

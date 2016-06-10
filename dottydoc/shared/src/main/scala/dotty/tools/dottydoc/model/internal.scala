@@ -56,6 +56,8 @@ object internal {
     modifiers: List[String],
     path: List[String],
     var returnValue: MaterializableLink,
+    var typeParams: List[String] = Nil,
+    var paramLists: List[List[(String, MaterializableLink)]] = Nil,
     var comment: Option[Comment] = None
   ) extends Def with Impl
 

@@ -58,6 +58,13 @@ object factories {
     UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
   }
 
+  def typeParams(t: DefDef)(implicit ctx: Context): List[String] =
+    t.tparams.map(_.symbol.name.toString)
+
+  def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
+    Nil
+  }
+
   def filteredName(str: String) = str
     .replaceAll("\\$colon", ":")
     .replaceAll("\\$plus", "+")
