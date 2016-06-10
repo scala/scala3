@@ -38,14 +38,23 @@ object TypeApplications {
     case _ => tp
   }
 
-  /** Does the variance of `sym1` conform to the variance of `sym2`?
+  /** Does variance `v1` conform to variance `v2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
    */
-  def varianceConforms(sym1: MemberBinding, sym2: MemberBinding)(implicit ctx: Context) =
-    sym1.memberVariance == sym2.memberVariance || sym2.memberVariance == 0
+  def varianceConforms(v1: Int, v2: Int)(implicit ctx: Context): Boolean =
+    v1 == v2 || v2 == 0
 
-  def variancesConform(syms1: List[MemberBinding], syms2: List[MemberBinding])(implicit ctx: Context) =
-    syms1.corresponds(syms2)(varianceConforms)
+  /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
+   */
+  def varianceConforms(tparam1: MemberBinding, tparam2: MemberBinding)(implicit ctx: Context): Boolean =
+    varianceConforms(tparam1.memberVariance, tparam2.memberVariance)
+
+  /** Doe the variances of type parameters `tparams1` conform to the variances
+   *  of corresponding type parameters `tparams2`?
+   *  This is only the case of `tparams1` and `tparams2` have the same length.
+   */
+  def variancesConform(tparams1: List[MemberBinding], tparams2: List[MemberBinding])(implicit ctx: Context): Boolean =
+    tparams1.corresponds(tparams2)(varianceConforms)
 
   def fallbackTypeParams(variances: List[Int])(implicit ctx: Context): List[MemberBinding] = {
     def memberBindings(vs: List[Int]): Type = vs match {
@@ -102,7 +111,7 @@ object TypeApplications {
     def unapply(tp: Type)(implicit ctx: Context): Option[(/*List[Int], */List[TypeBounds], Type)] =
       if (Config.newHK) {
         def decompose(t: Type, acc: List[TypeBounds]): (List[TypeBounds], Type) = t match {
-          case t @ RefinedType(p, rname, rinfo: TypeBounds) if rname.isHkArgName && rinfo.isBinding =>
+          case t @ RefinedType(p, rname, rinfo: TypeBounds) if t.isTypeParam =>
             decompose(p, rinfo.bounds :: acc)
           case t: RecType =>
             decompose(t.parent, acc)

@@ -609,15 +609,25 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     tryInfer(projection.prefix.typeConstructor.dealias)
   }
 
-  /** If `projection` is a hk projection T#$apply with a constrainable poly param
-   *  as type constructor and `other` is not a hk projection, then perform the following
-   *  steps:
+  /** Handle subtype tests
+   *
+   *      app <:< other   if inOrder = true
+   *      other <:< app   if inOrder = false
+   *
+   *  where `app` is an hk application but `other` is not.
+   *
+   *  As a first step, if `app` appears on the right, try to normalize it using
+   *  `normalizeHkApply`, if that gives a different type proceed with a regular subtype
+   *  test using that type instead of `app`.
+   *
+   *  Otherwise, if `app` has constrainable poly param as type constructor,
+   *  perform the following steps:
    *
    *   (1) If not `inOrder` then perform the next steps until they all succeed
    *       for each base type of other which
-   *        - derives from a class bound of `projection`,
-   *        - has the same number of type parameters than `projection`
-   *        - has type parameter variances which conform to those of `projection`.
+   *        - derives from a class bound of `app`,
+   *        - has the same number of type parameters as `app`
+   *        - has type parameter variances which conform to those of `app`.
    *       If `inOrder` then perform the same steps on the original `other` type.
    *
    *   (2) Try to eta expand the constructor of `other`.
@@ -627,7 +637,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   (3b) In normal mode, try to unify the projection's hk constructor parameter with
    *        the eta expansion of step(2)
    *
-   *   (4) If `inOrder`, test `projection <: other` else test `other <: projection`.
+   *   (4) If `inOrder`, test `app <: other` else test `other <: app`.
    */
   def compareHkApply(app: RefinedType, other: Type, inOrder: Boolean): Boolean = {
     def tryInfer(tp: Type): Boolean = ctx.traceIndented(i"compareHK($app, $other, inOrder = $inOrder, constr = $tp)", subtyping) {
@@ -676,7 +686,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     }
     Config.newHK && app.isHKApply && !other.isHKApply && {
-      val reduced = app.normalizeHkApply
+      val reduced = if (inOrder) app else app.normalizeHkApply
       if (reduced ne app)
         if (inOrder) isSubType(reduced, other) else isSubType(other, reduced)
       else tryInfer(app.typeConstructor.dealias)
@@ -689,10 +699,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       args.length == other.typeParams.length && {
         val applied = other.appliedTo(argRefs(rt, args.length))
         if (inOrder) isSubType(body, applied)
-        else body match {
-          case body: TypeBounds => body.contains(applied) // Can be dropped?
-          case _ => isSubType(applied, body)
-        }
+        else isSubType(applied, body)
       }
     case _ =>
       false
