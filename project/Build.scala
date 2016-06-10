@@ -26,7 +26,7 @@ object DottyBuild extends Build {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
       version in Global :=
-        "0.1-SNAPSHOT-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash,
+        "0.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
       organization in Global := "ch.epfl.lamp",
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
@@ -210,7 +210,7 @@ object DottyBuild extends Build {
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
       version :=
-        "0.1.1-SNAPSHOT-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash,
+        "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
       // The sources should be published with crossPaths := false since they
       // need to be compiled by the project using the bridge.
       crossPaths := false,
