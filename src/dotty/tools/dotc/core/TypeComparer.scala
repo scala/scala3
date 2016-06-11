@@ -368,11 +368,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               // This twist is needed to make collection/generic/ParFactory.scala compile
               fourthTry(tp1, tp2) || compareRefinedSlow
             case _ =>
-              compareHkApply(tp2, tp1, inOrder = false) ||
-              compareHkLambda(tp2, tp1, inOrder = false) ||
-              compareRefinedSlow ||
-              fourthTry(tp1, tp2) ||
-              compareAliasedRefined(tp2, tp1, inOrder = false)
+              if (tp2.isTypeParam) {
+                compareHkLambda(tp1, tp2) ||
+                fourthTry(tp1, tp2)
+              }
+              else {
+                compareHkApply(tp2, tp1, inOrder = false) ||
+                compareRefinedSlow ||
+                fourthTry(tp1, tp2) ||
+                compareAliasedRefined(tp2, tp1, inOrder = false)
+              }
           }
         else // fast path, in particular for refinements resulting from parameterization.
           isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
@@ -502,7 +507,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
       compareHkApply(tp1, tp2, inOrder = true) ||
-      compareHkLambda(tp1, tp2, inOrder = true) ||
       isNewSubType(tp1.parent, tp2) ||
       compareAliasedRefined(tp1, tp2, inOrder = true)
     case tp1: RecType =>
@@ -700,13 +704,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** Compare type lambda with non-lambda type. */
-  def compareHkLambda(rt: RefinedType, other: Type, inOrder: Boolean) = rt match {
-    case TypeLambda(args, body) =>
-      args.length == other.typeParams.length && {
-        val applied = other.appliedTo(argRefs(rt, args.length))
-        if (inOrder) isSubType(body, applied)
-        else isSubType(applied, body)
+  def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean = tp1.stripTypeVar match {
+    case TypeLambda(args1, body1) =>
+      //println(i"comparing $tp1 <:< $tp2")
+      tp2 match {
+        case TypeLambda(args2, body2) =>
+          args1.corresponds(args2)((arg1, arg2) =>
+            varianceConforms(BindingKind.toVariance(arg1.bindingKind),
+                              BindingKind.toVariance(arg2.bindingKind))) &&
+          // don't compare bounds; it would go in the wrong sense anyway.
+          isSubType(body1, body2)
+        case _ => false
       }
+    case RefinedType(parent1, _, _) =>
+      compareHkLambda(parent1, tp2)
     case _ =>
       false
   }
@@ -1536,13 +1547,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }
     else super.compareHkApply(app, other, inOrder)
 
-  override def compareHkLambda(rt: RefinedType, other: Type, inOrder: Boolean) =
-    if (!Config.newHK && rt.refinedName == tpnme.hkApplyOBS ||
-        Config.newHK && rt.isTypeParam)
-      traceIndented(i"compareHkLambda $rt, $other, $inOrder") {
-        super.compareHkLambda(rt, other, inOrder)
+  override def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean =
+    if (tp2.isTypeParam)
+      traceIndented(i"compareHkLambda $tp1, $tp2") {
+        super.compareHkLambda(tp1, tp2)
       }
-    else super.compareHkLambda(rt, other, inOrder)
+    else super.compareHkLambda(tp1, tp2)
 
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }
