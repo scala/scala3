@@ -266,19 +266,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Empty
   }
 
-  /** Is `tp1` a subtype of `tp2`?
-   *
-   *  Ignore type parameters in comparison due to erasure, i.e., Some[Int] <: Some[T]
-   */
-  def isSubType(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
-    case (tp1: RefinedType, tp2: RefinedType) => isSubType(tp1.parent, tp2.parent)
-    case (tp1: RefinedType, _) => isSubType(tp1.parent, tp2)
-    case (_, tp2: RefinedType) => isSubType(tp1, tp2.parent)
-    case (_, _) => tp1 <:< tp2
-  }
+  /** Is `tp1` a subtype of `tp2`?  */
+  def isSubType(tp1: Type, tp2: Type): Boolean = tp1 <:< tp2
 
   def isEqualType(tp1: Type, tp2: Type): Boolean = tp1 =:= tp2
 
+  /** Parameter types of the case class type `tp`  */
   def signature(tp: Type): List[Type] = {
     val ktor = tp.classSymbol.primaryConstructor.info
 
@@ -325,10 +318,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           else if (sym.info.typeParams.length > 0 || tp.isInstanceOf[TypeRef])
             refine(tp, sym.asClass.classInfo.symbolicTypeRef)
           else
-            sym.info
-        } filter(_ <:< tp) // child may not always be subtype of parent: SI-4020
+            sym.typeRef
+        } filter { tpe =>
+          // Child class may not always be subtype of parent:
+          // GADT & path-dependent types
+          isSubType(tpe, tp)
+        }
 
-        parts.map(tp => Typ(tp, true))
+        parts.map(Typ(_, true))
     }
   }
 
