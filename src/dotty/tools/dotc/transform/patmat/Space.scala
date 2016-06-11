@@ -251,7 +251,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             Typ(tp.widenTermRefExpr.stripAnnots, false)
           else
             Var(pat.symbol, tp)
-        case tp => Typ(tp, false)
+        case tp => Typ(erase(tp), false)
       }
     case Alternative(trees) => Or(trees.map(project(_, roundUp)))
     case Bind(_, pat) => project(pat)
@@ -261,9 +261,20 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else if (roundUp) Typ(pat.tpe.stripAnnots, false)
       else Empty
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
-    case Typed(expr, _) => Typ(expr.tpe.stripAnnots, true)
+    case Typed(expr, _) => Typ(erase(expr.tpe.stripAnnots), true)
     case _ =>
       Empty
+  }
+
+  /* Erase a type binding according to erasure rule */
+  def erase(tp: Type): Type = {
+    def doErase(tp: Type): Type = tp match {
+      case tp: RefinedType => erase(tp.parent)
+      case _ => tp
+    }
+
+    val origin = doErase(tp)
+    if (origin =:= defn.ArrayType) tp else origin
   }
 
   /** Is `tp1` a subtype of `tp2`?  */
