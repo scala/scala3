@@ -973,29 +973,6 @@ class Namer { typer: Typer =>
     }
     ensureUpToDate(sym.typeRef, dummyInfo)
     ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
-
-    if (Config.newHK) sym.info
-    else etaExpandArgsOBS.apply(sym.info)
-  }
-
-  /** Eta expand all class types C appearing as arguments to a higher-kinded
-   *  type parameter to type lambdas, e.g. [HK0] => C[HK0]. This is necessary
-   *  because in `typedAppliedTypeTree` we might have missed some eta expansions
-   *  of arguments in F-bounds, because the recursive type was initialized with
-   *  TypeBounds.empty.
-   */
-  def etaExpandArgsOBS(implicit ctx: Context) = new TypeMap {
-    def apply(tp: Type): Type = tp match {
-      case tp: RefinedType =>
-        val args = tp.argInfos.mapconserve(this)
-        if (args.nonEmpty) {
-          val tycon = tp.withoutArgs(args)
-          val tycon1 = this(tycon)
-          val tparams = tycon.typeParams
-          val args1 = if (args.length == tparams.length) etaExpandIfHK(tparams, args) else args
-          if ((tycon1 eq tycon) && (args1 eq args)) tp else tycon1.appliedTo(args1)
-        } else mapOver(tp)
-      case _ => mapOver(tp)
-    }
+    sym.info
   }
 }

@@ -634,7 +634,6 @@ trait Applications extends Compatibility { self: Typer =>
     typedFn.tpe.widen match {
       case pt: PolyType =>
         if (typedArgs.length <= pt.paramBounds.length && !isNamed)
-          typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
           if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
             val arg = typedArgs.head
             checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
@@ -643,9 +642,6 @@ trait Applications extends Compatibility { self: Typer =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
-
-  def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
-    if (Config.newHK) tree else tree.withType(tree.tpe.etaExpandIfHK(bound))
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
    *  It is performed during typer as creation of generic arrays needs a classTag.

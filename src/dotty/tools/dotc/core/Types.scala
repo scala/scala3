@@ -507,9 +507,7 @@ object Types {
         }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
-        val rinfo =
-          if (tp.refinementRefersToThis) tp.refinedInfo.substRefinedThis(tp, pre)
-          else tp.refinedInfo
+        val rinfo = tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo =
             if (rinfo.isAlias) rinfo
@@ -577,6 +575,7 @@ object Types {
           ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
       }
 
+      //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
         case ex: Throwable =>
@@ -1014,11 +1013,10 @@ object Types {
             case TypeAlias(alias) =>
               if (pre.refinedName ne name) loop(pre.parent)
               else alias match {
-                case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
+                case TypeRef(RefinedThis(`pre`), aliasName) =>
+                  lookupRefined(aliasName) // (1)
                 case _ =>
-                  if (!pre.refinementRefersToThis) alias
-                  else if (name == tpnme.hkApplyOBS) betaReduce(alias)
-                  else NoType
+                  alias
               }
             case _ => loop(pre.parent)
           }
@@ -1715,13 +1713,6 @@ object Types {
       else if (isType) {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
-        else if (name == tpnme.hkApplyOBS && prefix.classNotLambda) {
-          // After substitution we might end up with a type like
-          // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
-          // where C is a class. In that case we eta expand `C`.
-          if (defn.isBottomType(prefix)) prefix.classSymbol.typeRef
-          else derivedSelect(prefix.EtaExpandCore)
-        }
         else if (Config.splitProjections)
           prefix match {
             case prefix: AndType =>
@@ -1999,9 +1990,7 @@ object Types {
   }
 
   object TypeRef {
-    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) =
-      if (name == tpnme.hkApplyOBS && prefix.classNotLambda)
-        assert(false, s"bad type : $prefix.$name does not allow $$Apply projection")
+    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) = ()
 
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef = {
@@ -2134,28 +2123,12 @@ object Types {
     final def parent = myParent
     final def refinedInfo = myRefinedInfo
 
-    private var refinementRefersToThisCache: Boolean = _
-    private var refinementRefersToThisKnown: Boolean = false
-
-    def refinementRefersToThis(implicit ctx: Context): Boolean = {
-      if (!refinementRefersToThisKnown) {
-        refinementRefersToThisCache = refinedInfo.containsRefinedThis(this)
-        refinementRefersToThisKnown = true
-      }
-      refinementRefersToThisCache
-    }
-
     override def underlying(implicit ctx: Context) = parent
 
     private def badInst =
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
-      if (refinedName == tpnme.hkApplyOBS)
-        parent.stripTypeVar match {
-          case RefinedType(_, name, _) if name.isHkArgName => // ok
-          case _ => badInst
-        }
       this
     }
 
