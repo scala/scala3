@@ -126,7 +126,7 @@ object TypeApplications {
       def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
         case Nil =>
           n == 0
-        case TypeRef(RefinedThis(rt), sel) :: args1 =>
+        case TypeRef(RecThis(rt), sel) :: args1 if false =>
           rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
         case _ =>
           false
@@ -211,10 +211,6 @@ object TypeApplications {
       }
       args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(bounds(tparam)))
     }
-
-  /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
-  def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
-    List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
 
   /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
   def argRefs(rt: RecType, n: Int)(implicit ctx: Context) =
@@ -454,14 +450,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Replace references to type parameters with references to hk arguments `this.$hk_i`
    * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
    */
-  def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
-    (rt: RefinedType) =>
-      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
-        .apply(self).asInstanceOf[T]
-
-  /** Replace references to type parameters with references to hk arguments `this.$hk_i`
-   * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
-   */
   def recursify[T <: Type](tparams: List[MemberBinding])(implicit ctx: Context): RecType => T =
     tparams match {
       case (_: Symbol) :: _ =>
@@ -484,15 +472,6 @@ class TypeApplications(val self: Type) extends AnyVal {
    *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> _ <: U)
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
-
-    /** Replace references to type parameters with references to hk arguments `this.$hk_i`
-     * Care is needed not to cause cycles, hence `SafeSubstMap`.
-     */
-    def internalize[T <: Type](tp: T) =
-      (rt: RefinedType) =>
-        new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
-          .apply(tp).asInstanceOf[T]
-
     def expand(tp: Type) =
       TypeLambda(
         tparams.map(tparam =>
@@ -712,8 +691,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     def substHkArgs = new TypeMap {
       def apply(tp: Type): Type = tp match {
-        case TypeRef(RefinedThis(rt), name) if rt.eq(self) && name.isHkArgName =>
-          args(name.hkArgIndex)
         case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgName =>
           args(name.hkArgIndex)
         case _ =>

@@ -403,8 +403,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tpe)
       case tp: ThisType =>
         apiThis(tp.cls)
-      case RefinedThis(binder) =>
-        apiThis(binder.typeSymbol)
+      case RecThis(binder) =>
+        apiThis(binder.typeSymbol) // !!! this is almost certainly wrong !!!
       case tp: ParamType =>
         new api.ParameterRef(tp.paramName.toString)
       case tp: LazyRef =>

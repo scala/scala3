@@ -179,24 +179,6 @@ trait Substituters { this: Context =>
           .mapOver(tp)
     }
 
-  final def substRefinedThis(tp: Type, from: Type, to: Type, theMap: SubstRefinedThisMap): Type =
-    tp match {
-      case tp @ RefinedThis(binder) =>
-        if (binder eq from) to else tp
-      case tp: NamedType =>
-        if (tp.currentSymbol.isStatic) tp
-        else tp.derivedSelect(substRefinedThis(tp.prefix, from, to, theMap))
-      case _: ThisType | _: BoundType | NoPrefix =>
-        tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(substRefinedThis(tp.parent, from, to, theMap), tp.refinedName, substRefinedThis(tp.refinedInfo, from, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substRefinedThis(tp.alias, from, to, theMap))
-      case _ =>
-        (if (theMap != null) theMap else new SubstRefinedThisMap(from, to))
-          .mapOver(tp)
-    }
-
   final def substRecThis(tp: Type, from: Type, to: Type, theMap: SubstRecThisMap): Type =
     tp match {
       case tp @ RecThis(binder) =>
@@ -282,10 +264,6 @@ trait Substituters { this: Context =>
 
   final class SubstThisMap(from: ClassSymbol, to: Type) extends DeepTypeMap {
     def apply(tp: Type): Type = substThis(tp, from, to, this)
-  }
-
-  final class SubstRefinedThisMap(from: Type, to: Type) extends DeepTypeMap {
-    def apply(tp: Type): Type = substRefinedThis(tp, from, to, this)
   }
 
   final class SubstRecThisMap(from: Type, to: Type) extends DeepTypeMap {

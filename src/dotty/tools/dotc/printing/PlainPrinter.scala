@@ -247,8 +247,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
-      case tp: RefinedThis =>
-        s"${nameString(tp.binder.typeSymbol)}{...}.this"
       case tp: SkolemType =>
         if (homogenizedView) toText(tp.info) else tp.repr
     }

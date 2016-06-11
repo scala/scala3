@@ -259,8 +259,7 @@ object TastyFormat {
   final val TYPEREFdirect = 66
   final val TERMREFpkg = 67
   final val TYPEREFpkg = 68
-  final val REFINEDthis = 69
-  final val RECthis = REFINEDthis // !!!
+  final val RECthis = 69
   final val BYTEconst = 70
   final val SHORTconst = 71
   final val CHARconst = 72

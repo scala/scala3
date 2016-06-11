@@ -1190,10 +1190,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(
-              tp1.parent & tp2.parent,
-              tp1.refinedName,
-              tp1.refinedInfo & tp2.refinedInfo.substRefinedThis(tp2, RefinedThis(tp1)))
+          tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, tp1.refinedInfo & tp2.refinedInfo)
         case _ =>
           NoType
       }
