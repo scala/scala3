@@ -25,7 +25,8 @@ object DottyBuild extends Build {
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
-      version in Global := "0.1-SNAPSHOT",
+      version in Global :=
+        "0.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
       organization in Global := "ch.epfl.lamp",
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
@@ -50,7 +51,8 @@ object DottyBuild extends Build {
       autoScalaLibrary := false,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    )
+    ).
+    settings(publishing)
 
   lazy val dotty = project.in(file(".")).
     dependsOn(`dotty-interfaces`).
@@ -207,10 +209,14 @@ object DottyBuild extends Build {
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
-      version := "0.1.1-SNAPSHOT",
-      // The sources should be published with crossPaths := false, the binaries
-      // are unused so it doesn't matter.
+      version :=
+        "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
+      // The sources should be published with crossPaths := false since they
+      // need to be compiled by the project using the bridge.
       crossPaths := false,
+
+      // Don't publish any binaries for the bridge because of the above
+      publishArtifact in (Compile, packageBin) := false,
 
       fork in Test := true,
       parallelExecution in Test := false
@@ -244,7 +250,8 @@ object DottyInjectedPlugin extends AutoPlugin {
 """)
       }
       */
-    )
+    ).
+    settings(publishing)
 
 
   /** A sandbox to play with the Scala.js back-end of dotty.
@@ -330,8 +337,8 @@ object DottyInjectedPlugin extends AutoPlugin {
 
    lazy val publishing = Seq(
      publishMavenStyle := true,
-     publishMavenStyle := true,
      publishArtifact := true,
+     isSnapshot := version.value.contains("SNAPSHOT"),
      publishTo := {
        val nexus = "https://oss.sonatype.org/"
        if (isSnapshot.value)
@@ -341,11 +348,47 @@ object DottyInjectedPlugin extends AutoPlugin {
      },
      publishArtifact in Test := false,
      homepage := Some(url("https://github.com/lampepfl/dotty")),
+     licenses += ("BSD New",
+       url("https://github.com/lampepfl/dotty/blob/master/LICENSE.md")),
      scmInfo := Some(
        ScmInfo(
          url("https://github.com/lampepfl/dotty"),
          "scm:git:git@github.com:lampepfl/dotty.git"
        )
+     ),
+     pomExtra := (
+       <developers>
+         <developer>
+           <id>odersky</id>
+           <name>Martin Odersky</name>
+           <email>martin.odersky@epfl.ch</email>
+           <url>https://github.com/odersky</url>
+         </developer>
+         <developer>
+           <id>DarkDimius</id>
+           <name>Dmitry Petrashko</name>
+           <email>me@d-d.me</email>
+           <url>https://d-d.me</url>
+         </developer>
+         <developer>
+           <id>smarter</id>
+           <name>Guillaume Martres</name>
+           <email>smarter@ubuntu.com</email>
+           <url>http://guillaume.martres.me</url>
+         </developer>
+         <developer>
+           <id>felixmulder</id>
+           <name>Felix Mulder</name>
+           <email>felix.mulder@gmail.com</email>
+           <url>http://felixmulder.com</url>
+         </developer>
+         <developer>
+           <id>liufengyun</id>
+           <name>Liu Fengyun</name>
+           <email>liufengyun@chaos-lab.com</email>
+           <url>http://chaos-lab.com</url>
+         </developer>
+       </developers>
      )
    )
 

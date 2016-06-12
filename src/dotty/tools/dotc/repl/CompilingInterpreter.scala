@@ -60,7 +60,11 @@ import printing.SyntaxHighlighting
  * @param ictx  The context to use for initialization of the interpreter,
  *              needed to access the current classpath.
  */
-class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler with Interpreter {
+class CompilingInterpreter(
+  out: PrintWriter,
+  ictx: Context,
+  parentClassLoader: Option[ClassLoader]
+) extends Compiler with Interpreter {
   import ast.untpd._
   import CompilingInterpreter._
 
@@ -136,8 +140,6 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   /** the compiler's classpath, as URL's */
   val compilerClasspath: List[URL] = ictx.platform.classPath(ictx).asURLs
 
-  protected def parentClassLoader: ClassLoader = classOf[Interpreter].getClassLoader
-
   /* A single class loader is used for all commands interpreted by this Interpreter.
      It would also be possible to create a new class loader for each command
      to interpret.  The advantages of the current approach are:
@@ -153,8 +155,10 @@ class CompilingInterpreter(out: PrintWriter, ictx: Context) extends Compiler wit
   */
   /** class loader used to load compiled code */
   val classLoader: ClassLoader = {
-    val parent = new URLClassLoader(compilerClasspath.toArray, parentClassLoader)
-    new AbstractFileClassLoader(virtualDirectory, parent)
+    lazy val parent = new URLClassLoader(compilerClasspath.toArray,
+                                         classOf[Interpreter].getClassLoader)
+
+    new AbstractFileClassLoader(virtualDirectory, parentClassLoader.getOrElse(parent))
   }
 
   // Set the current Java "context" class loader to this interpreter's class loader
