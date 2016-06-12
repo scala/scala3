@@ -302,7 +302,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
 
     // refine path-dependent type in params. refer to t9672
-    meth.firstParamTypes.map(_.stripTypeVar).map(refine(tp, _))
+    meth.firstParamTypes.map(_.stripTypeVar).map { ptp =>
+      (tp, ptp) match {
+        case (TypeRef(ref1: TypeProxy, _), TypeRef(ref2: TypeProxy, name)) =>
+          if (ref1.underlying <:< ref2.underlying) TypeRef(ref1, name) else ptp
+        case _ => ptp
+      }
+    }
   }
 
   def partitions(tp: Type): List[Space] = {
