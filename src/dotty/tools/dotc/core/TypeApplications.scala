@@ -264,21 +264,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.cls.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
-        if (tsym.isClass) tsym.typeParams
-        else tsym.infoOrCompleter match {
-          case completer: TypeParamsCompleter =>
-            val tparams = completer.completerTypeParams(tsym)
-            fallbackTypeParams(tparams.map(_.variance))
-          case _ =>
-            if (!tsym.isCompleting || tsym.isAliasType) tsym.info.typeParams
-            else
-              // We are facing a problem when computing the type parameters of an uncompleted
-              // abstract type. We can't access the bounds of the symbol yet because that
-              // would cause a cause a cyclic reference. So we return `Nil` instead
-              // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
-              // for reading a TypeRef show what's needed.
-              Nil
-        }
+        if (tsym.isClass) tsym.typeParams else tsym.info.typeParams
       case self: RefinedType =>
         val precedingParams = self.parent.typeParams.filterNot(_.memberName == self.refinedName)
         if (self.isTypeParam) precedingParams :+ self else precedingParams
