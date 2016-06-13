@@ -49,9 +49,15 @@ trait MemberLayout {
           div(
             cls := "mdl-cell mdl-cell--12-col member-definition",
             span(
-              cls := "member-name",
-              s"""${m.modifiers.mkString(" ")} ${m.kind} ${m.name}${typeParams(m)}${paramList(m)}"""
+              cls := "member-modifiers-kind",
+              m.modifiers.mkString(" ") + " " + m.kind
             ),
+            span(
+              cls := "member-name",
+              m.name
+            ),
+            spanWith("member-type-params no-left-margin", typeParams(m)),
+            spanWith("member-param-list no-left-margin", paramList(m)),
             returnValue(m, parent)
           ),
           shortComment,
@@ -62,9 +68,18 @@ trait MemberLayout {
     }
   }
 
+  def spanWith(clazz: String, contents: String) = contents match {
+    case "" => None
+    case _  => Some(span(cls := clazz, contents))
+  }
+
   def paramList(m: Entity): String = m match {
     case d: Def if d.paramLists.nonEmpty =>
-      d.paramLists.map(xs => xs map { case (x, y: UnsetLink) => s"$x: ${y.query}" } mkString ("(", ", ", ")")).mkString("")
+      d.paramLists.map { xs =>
+        xs.map {
+          case (x, y: UnsetLink) => s"$x: ${y.query}"
+        }.mkString ("(", ", ", ")")
+      }.mkString("")
     case _ => ""
   }
 
@@ -83,14 +98,14 @@ trait MemberLayout {
 
     def link(rv: MaterializableLink) = rv match {
       case ml: MaterializedLink =>
-        span(cls := "return-value", ": ", raw(ml.target))
+        span(cls := "member-return-value no-left-margin", ": ", raw(ml.target))
       case un: UnsetLink =>
-        span(cls := "return-value", ": " + shorten(un.query))
+        span(cls := "member-return-value no-left-margin", ": " + shorten(un.query))
     }
 
     m match {
-      case rv: ReturnValue => link(rv.returnValue)
-      case _ => span()
+      case rv: ReturnValue => Some(link(rv.returnValue))
+      case _ => None
     }
   }
 }

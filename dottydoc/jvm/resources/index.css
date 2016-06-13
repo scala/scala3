@@ -1,5 +1,5 @@
 /* Fonts -------------------------------------------------------------------- */
-@import url(https://fonts.googleapis.com/css?family=Source+Code+Pro);
+@import url(https://fonts.googleapis.com/css?family=Source+Code+Pro:400,700,600);
 
 /* Sidebar ------------------------------------------------------------------ */
 span.subtitle {
@@ -109,6 +109,19 @@ div.member-definition {
     font-size: 16px;
     margin: 24px 0 16px;
     line-height: 24px;
+}
+
+div.member-definition > span+span {
+    margin-left: 10px;
+}
+
+div.member-definition > span.no-left-margin {
+    margin-left: 0;
+}
+
+div.member-definition > span.member-name {
+    color: #458;
+    font-weight: 600;
 }
 
 div.member {
