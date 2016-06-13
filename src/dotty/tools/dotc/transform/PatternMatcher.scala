@@ -41,7 +41,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
-  override def runsAfter = Set(classOf[ElimRepeated])
+  override def runsAfter = Set(classOf[TryCatchPatterns])
 
   override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
@@ -103,8 +103,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def flatMap(prev: Tree, b: Symbol, next: Tree): Tree
       def flatMapCond(cond: Tree, res: Tree, nextBinder: Symbol, next: Tree): Tree
       def flatMapGuard(cond: Tree, next: Tree): Tree
-      def ifThenElseZero(c: Tree, thenp: Tree): Tree =
-        If(c, thenp, zero)
+      def ifThenElseZero(c: Tree, thenp: Tree): Tree = c match {
+        case Literal(Constant(true))  => thenp
+        case Literal(Constant(false)) => zero
+        case _                        => If(c, thenp, zero)
+      }
       protected def zero: Tree
     }
 
@@ -293,7 +296,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def analyzeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type, suppression: Suppression): Unit = {}
 
     def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] = {
-      // TODO Deal with guards?
 
       def isSwitchableType(tpe: Type): Boolean =
         (tpe isRef defn.IntClass) ||
@@ -1220,7 +1222,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case WildcardPattern()                                        => noStep()
         case ConstantPattern(const)                                   => equalityTestStep(binder, binder, const)
         case Alternative(alts)                                        => alternativesStep(alts)
-        case _                                                        => ctx.error(unsupportedPatternMsg, pos) ; noStep()
+        case e                                                        =>
+          println(tree)
+          println(e)
+          ctx.error(unsupportedPatternMsg, pos) ; noStep()
       }
       def translate(): List[TreeMaker] = nextStep() merge (_.translate())
 
