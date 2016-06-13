@@ -245,6 +245,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
+      case self: TypeLambda =>
+        self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams else tsym.info.typeParams
@@ -712,7 +714,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil => t
     }
     assert(args.nonEmpty)
-    if (Config.newHK && self.isHK) AppliedType(self, args)
+    if (Config.newHK && self.isHK) HKApply(self, args)
     else matchParams(self, typParams, args) match {
       case refined @ RefinedType(_, pname, _) if !Config.newHK && pname.isHkArgNameOLD =>
         refined.betaReduceOLD
