@@ -6,6 +6,8 @@ import dotty.tools.dotc
 import dotc.core.Types._
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.SymDenotations._
+import dotty.tools.dotc.core.Names.TypeName
 import dotc.core.{ Flags => DottyFlags }
 import dotc.ast.Trees._
 
@@ -22,18 +24,18 @@ object factories {
       .filter(_ != "<trait>")
       .filter(_ != "interface")
 
-  def path(t: Tree)(implicit ctx: Context): List[String] = {
-    def pathList(tpe: Type): List[String] = tpe match {
-      case t: ThisType =>
-        pathList(t.tref)
-      case t: NamedType if t.prefix == NoPrefix  && t.name.toString == "<root>" =>
-        Nil
-      case t: NamedType if t.prefix == NoPrefix =>
-        t.name.toString :: Nil
-      case t: NamedType =>
-        pathList(t.prefix) :+ t.name.toString
-    }
+  private def pathList(tpe: Type): List[String] = tpe match {
+    case t: ThisType =>
+      pathList(t.tref)
+    case t: NamedType if t.prefix == NoPrefix  && t.name.toString == "<root>" =>
+      Nil
+    case t: NamedType if t.prefix == NoPrefix =>
+      t.name.toString :: Nil
+    case t: NamedType =>
+      pathList(t.prefix) :+ t.name.toString
+  }
 
+  def path(t: Tree)(implicit ctx: Context): List[String] = {
     val ref =
       if (t.symbol.isTerm) t.symbol.termRef
       else t.symbol.typeRef
@@ -68,6 +70,32 @@ object factories {
     case t: TypeDef if t.rhs.isInstanceOf[Template] =>
       // Get the names from the constructor method `DefDef`
       typeParams(t.rhs.asInstanceOf[Template].constr)
+  }
+
+  val product = """Product[1-9][0-9]*""".r
+
+  def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {
+    case cd: ClassDenotation =>
+      def isJavaLangObject(prefix: Type): Boolean =
+        prefix match {
+          case TypeRef(ThisType(TypeRef(NoPrefix, outerName)), innerName) =>
+            outerName.toString == "lang" && innerName.toString == "Object"
+          case _ => false
+        }
+
+      def isProductWithArity(prefix: Type): Boolean = prefix match {
+        case TypeRef(TermRef(TermRef(NoPrefix, root), scala), prod) =>
+          root.toString == "_root_" &&
+          scala.toString == "scala" &&
+          product.findFirstIn(prod.toString).isDefined
+        case _ => false
+      }
+
+      cd.classParents.collect {
+        case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
+          UnsetLink(Text(t.name.toString), pathList(t).mkString("."))
+      }
+    case _ => Nil
   }
 
   def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {

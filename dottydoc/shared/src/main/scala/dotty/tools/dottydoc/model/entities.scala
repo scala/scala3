@@ -28,6 +28,10 @@ trait Entity {
   }
 }
 
+trait SuperTypes {
+  def superTypes: List[MaterializableLink]
+}
+
 trait Members {
   def members: List[Entity]
 }
@@ -53,19 +57,19 @@ trait Package extends Entity with Members {
   def children: List[Entity with Members]
 }
 
-trait Class extends Entity with Modifiers with TypeParams with Members {
+trait Class extends Entity with Modifiers with TypeParams with SuperTypes with Members {
   val kind = "class"
 }
 
-trait CaseClass extends Entity with Modifiers with TypeParams with Members {
+trait CaseClass extends Entity with Modifiers with TypeParams with SuperTypes with Members {
   override val kind = "case class"
 }
 
-trait Trait extends Entity with Modifiers with TypeParams with Members {
+trait Trait extends Entity with Modifiers with TypeParams with SuperTypes with Members {
   override val kind = "trait"
 }
 
-trait Object extends Entity with Modifiers with Members {
+trait Object extends Entity with Modifiers with SuperTypes with Members {
   override val kind = "object"
 }
 

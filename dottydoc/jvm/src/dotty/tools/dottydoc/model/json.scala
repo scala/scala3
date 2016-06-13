@@ -56,12 +56,19 @@ object json extends DefaultJsonProtocol {
     case other => other
   }
 
-  implicit val valFormat: JsonFormat[ValImpl] = lazyFormat(jsonFormat(ValImpl, "name", "modifiers", "path", "returnValue", "comment"))
-  implicit val defFormat: JsonFormat[DefImpl] = lazyFormat(jsonFormat(DefImpl, "name", "modifiers", "path", "returnValue", "typeParams", "paramLists", "comment"))
-  implicit val objFormat: JsonFormat[ObjectImpl] = lazyFormat(jsonFormat(ObjectImpl, "name", "members", "modifiers", "path", "comment"))
-  implicit val traitormat: JsonFormat[TraitImpl] = lazyFormat(jsonFormat(TraitImpl, "name", "members", "modifiers", "path", "typeParams", "comment"))
-  implicit val cclassFormat: JsonFormat[CaseClassImpl] = lazyFormat(jsonFormat(CaseClassImpl, "name", "members", "modifiers", "path", "typeParams", "comment"))
-  implicit val classFormat: JsonFormat[ClassImpl] = lazyFormat(jsonFormat(ClassImpl, "name", "members", "modifiers", "path", "typeParams", "comment"))
-  implicit val packageFormat: JsonFormat[PackageImpl] = lazyFormat(jsonFormat(PackageImpl, "name", "members", "path", "comment"))
+  implicit val valFormat: JsonFormat[ValImpl] =
+    lazyFormat(jsonFormat(ValImpl, "name", "modifiers", "path", "returnValue", "comment"))
+  implicit val defFormat: JsonFormat[DefImpl] =
+    lazyFormat(jsonFormat(DefImpl, "name", "modifiers", "path", "returnValue", "typeParams", "paramLists", "comment"))
+  implicit val objFormat: JsonFormat[ObjectImpl] =
+    lazyFormat(jsonFormat(ObjectImpl, "name", "members", "modifiers", "path", "superTypes", "comment"))
+  implicit val traitormat: JsonFormat[TraitImpl] =
+    lazyFormat(jsonFormat(TraitImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
+  implicit val cclassFormat: JsonFormat[CaseClassImpl] =
+    lazyFormat(jsonFormat(CaseClassImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
+  implicit val classFormat: JsonFormat[ClassImpl] =
+    lazyFormat(jsonFormat(ClassImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
+  implicit val packageFormat: JsonFormat[PackageImpl] =
+    lazyFormat(jsonFormat(PackageImpl, "name", "members", "path", "comment"))
 }
 

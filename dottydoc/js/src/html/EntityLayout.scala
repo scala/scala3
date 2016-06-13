@@ -6,6 +6,7 @@ import scalatags.JsDom.all._
 import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div}
 import dotty.tools.dottydoc.model._
+import dotty.tools.dottydoc.model.comment.{ UnsetLink, Text }
 
 case class EntityLayout(entity: Entity) extends MemberLayout {
   def html = div(
@@ -35,8 +36,18 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
     }
 
     val typeParams = entity match {
-      case t: TypeParams =>
+      case t: TypeParams if t.typeParams.nonEmpty =>
         Some(span(cls := "entity-type-params no-left-margin", t.typeParams.mkString("[", ", ", "]")))
+      case _ => None
+    }
+
+    val superTypes = entity match {
+      case st: SuperTypes => Some(span(
+        cls := "entity-super-types",
+        st.superTypes.collect {
+          case unset: UnsetLink => unset.title.asInstanceOf[Text].text
+        }.mkString(" extends ", " with ", "")
+      ))
       case _ => None
     }
 
@@ -44,6 +55,7 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
     Some(span(cls := "entity-kind", entity.kind)) ::
     Some(span(cls := "entity-name", entity.name)) ::
     typeParams ::
+    superTypes ::
     Nil
 
   }.flatten
