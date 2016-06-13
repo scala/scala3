@@ -62,7 +62,11 @@ object factories {
     t.tparams.map(_.symbol.name.toString)
 
   def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
-    Nil
+    def getParams(xs: List[ValDef]): List[(String, MaterializableLink)] = xs map { vd =>
+      (vd.name.toString, UnsetLink(Text(vd.tpt.show), vd.tpt.show))
+    }
+
+    t.vparamss.map(getParams)
   }
 
   def filteredName(str: String) = str

@@ -47,10 +47,10 @@ trait MemberLayout {
             """,
           onclick := { () => toggleBetween(shortComment, and = fullComment) },
           div(
-            cls := "mdl-cell mdl-cell--12-col",
+            cls := "mdl-cell mdl-cell--12-col member-definition",
             span(
               cls := "member-name",
-              m.modifiers.mkString(" ") + " " + m.kind + " " + m.name + typeParams(m)
+              s"""${m.modifiers.mkString(" ")} ${m.kind} ${m.name}${typeParams(m)}${paramList(m)}"""
             ),
             returnValue(m, parent)
           ),
@@ -60,6 +60,12 @@ trait MemberLayout {
         Seq(divs)
       case x => Seq(h1("ERROR: " + x.name))
     }
+  }
+
+  def paramList(m: Entity): String = m match {
+    case d: Def if d.paramLists.nonEmpty =>
+      d.paramLists.map(xs => xs map { case (x, y: UnsetLink) => s"$x: ${y.query}" } mkString ("(", ", ", ")")).mkString("")
+    case _ => ""
   }
 
   def typeParams(m: Entity): String = m match {

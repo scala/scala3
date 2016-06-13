@@ -53,6 +53,7 @@ trait Trait extends Class
 @ScalaJSDefined
 trait Def extends Entity with Modifiers {
   val typeParams: sjs.Array[String]
+  //val paramLists: sjs.Array[sjs.Array[(String, _)]]
 }
 
 @ScalaJSDefined
