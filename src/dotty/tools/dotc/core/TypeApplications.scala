@@ -143,11 +143,7 @@ object TypeApplications {
    *
    *     T { type p_1 v_1= U_1; ...; type p_n v_n= U_n }
    *
-   *  where v_i, p_i are the variances and names of the type parameters of T,
-   *  If `T`'s class symbol is a lambda trait, follow the refined type with a
-   *  projection
-   *
-   *      T { ... } # $Apply
+   *  where v_i, p_i are the variances and names of the type parameters of T.
    */
   object AppliedType {
     def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = tp.appliedTo(args)
@@ -175,28 +171,6 @@ object TypeApplications {
         collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
       case _ =>
         None
-    }
-
-    private def unapp(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
-      case _: RefinedType =>
-        val tparams = tp.classSymbol.typeParams
-        if (tparams.isEmpty) None
-        else {
-          val argBuf = new mutable.ListBuffer[Type]
-          def stripArgs(tp: Type, n: Int): Type =
-            if (n == 0) tp
-            else tp match {
-              case tp @ RefinedType(parent, pname, rinfo) if pname == tparams(n - 1).name =>
-                val res = stripArgs(parent, n - 1)
-                if (res.exists) argBuf += rinfo.argInfo
-                res
-              case _ =>
-                NoType
-            }
-          val res = stripArgs(tp, tparams.length)
-          if (res.exists) Some((res, argBuf.toList)) else None
-        }
-      case _ => None
     }
   }
 
@@ -420,14 +394,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(implicit ctx: Context): Type = self match {
     case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
-      self.info.bounds.hi.stripTypeVar.safeDealias
-    case _ =>
-      self
-  }
-
-  /** Dealias type if it can be done without forcing anything */
-  def saferDealias(implicit ctx: Context): Type = self match {
-    case self: TypeRef if self.denot.exists && self.symbol.isAliasType && self.symbol.isCompleted =>
       self.info.bounds.hi.stripTypeVar.safeDealias
     case _ =>
       self
