@@ -58,8 +58,17 @@ object factories {
     UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
   }
 
-  def typeParams(t: DefDef)(implicit ctx: Context): List[String] =
-    t.tparams.map(_.symbol.name.toString)
+  def typeParams(t: Tree)(implicit ctx: Context): List[String] = t match {
+    case t: DefDef =>
+      def variance(s: Symbol) =
+        if (s is Covariant) "+"
+        else if (s is Contravariant) "-"
+        else ""
+      t.tparams.map(p => variance(p.symbol) + p.show)
+    case t: TypeDef if t.rhs.isInstanceOf[Template] =>
+      // Get the names from the constructor method `DefDef`
+      typeParams(t.rhs.asInstanceOf[Template].constr)
+  }
 
   def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
     def getParams(xs: List[ValDef]): List[(String, MaterializableLink)] = xs map { vd =>

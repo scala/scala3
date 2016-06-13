@@ -103,6 +103,19 @@ main > div.page-content {
     padding: 30px 60px;
 }
 
+div.entity-title {
+    color: #34495e;
+    margin: 1.5em 0 1.5em;
+}
+
+div.entity-title > span {
+    font-size: 2.0em;
+}
+
+div.entity-title > span+span {
+    margin-left: 9px;
+}
+
 div.member-definition {
     font-family: "Source Code Pro", sans-serif;
     font-weight: 400;
@@ -113,10 +126,6 @@ div.member-definition {
 
 div.member-definition > span+span {
     margin-left: 10px;
-}
-
-div.member-definition > span.no-left-margin {
-    margin-left: 0;
 }
 
 div.member-definition > span.member-name {
@@ -158,4 +167,9 @@ main#search-results > button#close-button {
     position: fixed;
     top: 1em;
     right: 1em;
+}
+
+/* Helper classes ----------------------------------------------------------- */
+.no-left-margin {
+    margin-left: 0 !important;
 }

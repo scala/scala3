@@ -62,7 +62,7 @@ object Phases {
         case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
           val name = filteredName(n.toString)
           val newPath = prev :+ name
-          TraitImpl(name, collectMembers(rhs), flags(t), newPath)
+          TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t))
 
         /** objects, on the format "Object$" so drop the last letter */
         case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
@@ -73,7 +73,7 @@ object Phases {
         case c @ TypeDef(n, rhs) if c.symbol.isClass =>
           val name = filteredName(n.toString)
           val newPath = prev :+ name
-          (name, collectMembers(rhs), flags(c), newPath, None) match {
+          (name, collectMembers(rhs), flags(c), newPath, typeParams(c), None) match {
             case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
             case x => ClassImpl.tupled(x)
           }

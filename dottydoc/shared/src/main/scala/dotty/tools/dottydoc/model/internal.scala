@@ -24,6 +24,7 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
+    var typeParams: List[String] = Nil,
     var comment: Option[Comment] = None
   ) extends Class with Impl
 
@@ -32,6 +33,7 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
+    var typeParams: List[String] = Nil,
     var comment: Option[Comment] = None
   ) extends CaseClass with Impl
 
@@ -40,6 +42,7 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
+    var typeParams: List[String] = Nil,
     var comment: Option[Comment] = None
   ) extends Trait with Impl
 

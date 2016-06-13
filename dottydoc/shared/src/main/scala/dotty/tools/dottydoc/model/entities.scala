@@ -39,6 +39,10 @@ trait Modifiers {
     modifiers.contains("private")
 }
 
+trait TypeParams {
+  def typeParams: List[String]
+}
+
 trait ReturnValue {
   def returnValue: MaterializableLink
 }
@@ -49,24 +53,23 @@ trait Package extends Entity with Members {
   def children: List[Entity with Members]
 }
 
-trait Class extends Entity with Members with Modifiers {
+trait Class extends Entity with Modifiers with TypeParams with Members {
   val kind = "class"
 }
 
-trait CaseClass extends Class {
+trait CaseClass extends Entity with Modifiers with TypeParams with Members {
   override val kind = "case class"
 }
 
-trait Trait extends Class {
+trait Trait extends Entity with Modifiers with TypeParams with Members {
   override val kind = "trait"
 }
 
-trait Object extends Class {
+trait Object extends Entity with Modifiers with Members {
   override val kind = "object"
 }
 
-trait Def extends Entity with Modifiers with ReturnValue {
-  def typeParams: List[String]
+trait Def extends Entity with Modifiers with TypeParams with ReturnValue {
   def paramLists: List[List[(String, MaterializableLink)]]
   val kind = "def"
 }

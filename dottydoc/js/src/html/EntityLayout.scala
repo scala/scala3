@@ -10,6 +10,7 @@ import dotty.tools.dottydoc.model._
 case class EntityLayout(entity: Entity) extends MemberLayout {
   def html = div(
     cls := "page-content",
+    div(cls := "entity-title", entityTitle),
     div(raw(entity.comment.fold("")(_.body))),
     entity match {
       case e: Entity with Members if e.members.nonEmpty =>
@@ -25,4 +26,25 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
       case _ => ()
     }
   )
+
+  def entityTitle = {
+    val modifiers = entity match {
+      case m: Modifiers if m.modifiers.nonEmpty =>
+        Some(span(cls := "entity-modifiers", m.modifiers.mkString(" ")))
+      case _ => None
+    }
+
+    val typeParams = entity match {
+      case t: TypeParams =>
+        Some(span(cls := "entity-type-params no-left-margin", t.typeParams.mkString("[", ", ", "]")))
+      case _ => None
+    }
+
+    modifiers ::
+    Some(span(cls := "entity-kind", entity.kind)) ::
+    Some(span(cls := "entity-name", entity.name)) ::
+    typeParams ::
+    Nil
+
+  }.flatten
 }
