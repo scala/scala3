@@ -4,9 +4,10 @@ package typer
 
 import core._
 import ast._
+import config.Config.newHK
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
-import TypeApplications.AppliedType
+import TypeApplications.{AppliedType, TypeLambdaOLD}
 import util.Positions._
 import config.Printers._
 import ast.Trees._
@@ -431,9 +432,9 @@ trait TypeAssigner {
     val argBindingFns = tparams.map(tparam =>
       tparam.info.bounds
         .withBindingKind(BindingKind.fromVariance(tparam.variance))
-        .recursify(tparams))
-    val bodyFn = body.tpe.recursify(tparams)
-    tree.withType(TypeApplications.TypeLambda(argBindingFns, bodyFn))
+        .recursifyOLD(tparams))
+    val bodyFn = body.tpe.recursifyOLD(tparams)
+    tree.withType(TypeApplications.TypeLambdaOLD(argBindingFns, bodyFn))
   }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =

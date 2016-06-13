@@ -365,11 +365,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               fourthTry(tp1, tp2) || compareRefinedSlow
             case _ =>
               if (tp2.isTypeParam) {
-                compareHkLambda(tp1, tp2) ||
+                compareHkLambdaOLD(tp1, tp2) ||
                 fourthTry(tp1, tp2)
               }
               else {
-                compareHkApply(tp2, tp1, inOrder = false) ||
+                compareHkApplyOLD(tp2, tp1, inOrder = false) ||
                 compareRefinedSlow ||
                 fourthTry(tp1, tp2) ||
                 compareAliasedRefined(tp2, tp1, inOrder = false)
@@ -502,7 +502,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
-      compareHkApply(tp1, tp2, inOrder = true) ||
+      compareHkApplyOLD(tp1, tp2, inOrder = true) ||
       isNewSubType(tp1.parent, tp2) ||
       compareAliasedRefined(tp1, tp2, inOrder = true)
     case tp1: RecType =>
@@ -588,7 +588,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *   (4) If `inOrder`, test `app <: other` else test `other <: app`.
    */
-  def compareHkApply(app: RefinedType, other: Type, inOrder: Boolean): Boolean = {
+  def compareHkApplyOLD(app: RefinedType, other: Type, inOrder: Boolean): Boolean = {
     def tryInfer(tp: Type): Boolean = ctx.traceIndented(i"compareHK($app, $other, inOrder = $inOrder, constr = $tp)", subtyping) {
       tp match {
         case tp: TypeVar => tryInfer(tp.underlying)
@@ -597,7 +597,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           def unifyWith(liftedOther: Type): Boolean = {
             subtyping.println(i"unify with $liftedOther")
             liftedOther.typeConstructor.widen match {
-              case tycon: TypeRef if tycon.isEtaExpandable && tycon.typeParams.nonEmpty =>
+              case tycon: TypeRef if tycon.isEtaExpandableOLD && tycon.typeParams.nonEmpty =>
                 val (ok, app1) =
                   if (ctx.mode.is(Mode.TypevarsMissContext))
                     (true, EtaExpansion(tycon).appliedTo(app.argInfos))
@@ -643,11 +643,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** Compare type lambda with non-lambda type. */
-  def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean = tp1.stripTypeVar match {
-    case TypeLambda(args1, body1) =>
+  def compareHkLambdaOLD(tp1: Type, tp2: RefinedType): Boolean = tp1.stripTypeVar match {
+    case TypeLambdaOLD(args1, body1) =>
       //println(i"comparing $tp1 <:< $tp2")
       tp2 match {
-        case TypeLambda(args2, body2) =>
+        case TypeLambdaOLD(args2, body2) =>
           args1.corresponds(args2)((arg1, arg2) =>
             varianceConforms(BindingKind.toVariance(arg1.bindingKind),
                               BindingKind.toVariance(arg2.bindingKind))) &&
@@ -656,7 +656,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ => false
       }
     case RefinedType(parent1, _, _) =>
-      compareHkLambda(parent1, tp2)
+      compareHkLambdaOLD(parent1, tp2)
     case _ =>
       false
   }
@@ -1165,9 +1165,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val bindings: List[RecType => TypeBounds] =
         (tparams1, tparams2).zipped.map { (tparam1, tparam2) =>
           val b1: RecType => TypeBounds =
-            tparam1.memberBoundsAsSeenFrom(tp1).recursify(tparams1)
+            tparam1.memberBoundsAsSeenFrom(tp1).recursifyOLD(tparams1)
           val b2: RecType => TypeBounds =
-            tparam2.memberBoundsAsSeenFrom(tp2).recursify(tparams2)
+            tparam2.memberBoundsAsSeenFrom(tp2).recursifyOLD(tparams2)
           (rt: RecType) => (b1(rt) & b2(rt))
             .withBindingKind(
               BindingKind.fromVariance(
@@ -1176,7 +1176,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val app1: RecType => Type = rt => tp1.appliedTo(argRefs(rt, tparams1.length))
       val app2: RecType => Type = rt => tp2.appliedTo(argRefs(rt, tparams2.length))
       val body: RecType => Type = rt => op(app1(rt), app2(rt))
-      TypeLambda(bindings, body)
+      TypeLambdaOLD(bindings, body)
     }
   }
 
@@ -1459,19 +1459,19 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
-  override def compareHkApply(app: RefinedType, other: Type, inOrder: Boolean) =
+  override def compareHkApplyOLD(app: RefinedType, other: Type, inOrder: Boolean) =
     if (app.isHKApply)
       traceIndented(i"compareHkApply $app, $other, $inOrder, ${app.normalizeHkApply}") {
-        super.compareHkApply(app, other, inOrder)
+        super.compareHkApplyOLD(app, other, inOrder)
       }
-    else super.compareHkApply(app, other, inOrder)
+    else super.compareHkApplyOLD(app, other, inOrder)
 
-  override def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean =
+  override def compareHkLambdaOLD(tp1: Type, tp2: RefinedType): Boolean =
     if (tp2.isTypeParam)
       traceIndented(i"compareHkLambda $tp1, $tp2") {
-        super.compareHkLambda(tp1, tp2)
+        super.compareHkLambdaOLD(tp1, tp2)
       }
-    else super.compareHkLambda(tp1, tp2)
+    else super.compareHkLambdaOLD(tp1, tp2)
 
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }

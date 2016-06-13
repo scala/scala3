@@ -56,7 +56,7 @@ object TypeApplications {
   def variancesConform(tparams1: List[MemberBinding], tparams2: List[MemberBinding])(implicit ctx: Context): Boolean =
     tparams1.corresponds(tparams2)(varianceConforms)
 
-  def fallbackTypeParams(variances: List[Int])(implicit ctx: Context): List[MemberBinding] = {
+  def fallbackTypeParamsOLD(variances: List[Int])(implicit ctx: Context): List[MemberBinding] = {
     def memberBindings(vs: List[Int]): Type = vs match {
       case Nil => NoType
       case v :: vs1 =>
@@ -78,7 +78,7 @@ object TypeApplications {
    *    ==>
    *    ([X_i := this.$hk_i] T) { type v_i $hk_i: (new)B_i }
    */
-  object TypeLambda {
+  object TypeLambdaOLD {
     def apply(argBindingFns: List[RecType => TypeBounds],
               bodyFn: RecType => Type)(implicit ctx: Context): Type = {
       val argNames = argBindingFns.indices.toList.map(tpnme.hkArg)
@@ -118,7 +118,7 @@ object TypeApplications {
    */
   object EtaExpansion {
     def apply(tycon: TypeRef)(implicit ctx: Context) = {
-      assert(tycon.isEtaExpandable)
+      if (!Config.newHK) assert(tycon.isEtaExpandableOLD)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
@@ -132,7 +132,7 @@ object TypeApplications {
           false
       }
       tp match {
-        case TypeLambda(argBounds, AppliedType(fn: TypeRef, args))
+        case TypeLambdaOLD(argBounds, AppliedType(fn: TypeRef, args))
         if argsAreForwarders(args, tp.typeParams.length) => Some(fn)
         case _ => None
       }
@@ -329,7 +329,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Is self type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
-    case self: RefinedType => self.isTypeParam
+    case self: RefinedType => !Config.newHK && self.isTypeParam
     case self: SingletonType => false
     case self: TypeVar => self.origin.isHK
     case self: WildcardType => self.optBounds.isHK
@@ -354,7 +354,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           else 0
       }
     case self: RefinedType =>
-      if (self.isTypeParam) 1 else -1
+      if (!Config.newHK && self.isTypeParam) 1 else -1
     case self: SingletonType => -1
     case self: TypeVar => self.origin.knownHK
     case self: WildcardType => self.optBounds.knownHK
@@ -402,7 +402,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Replace references to type parameters with references to hk arguments `this.$hk_i`
    * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
    */
-  def recursify[T <: Type](tparams: List[MemberBinding])(implicit ctx: Context): RecType => T =
+  def recursifyOLD[T <: Type](tparams: List[MemberBinding])(implicit ctx: Context): RecType => T =
     tparams match {
       case (_: Symbol) :: _ =>
         (rt: RecType) =>
@@ -422,15 +422,17 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *      type T[X] = U        becomes    type T = [X] -> U
    *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> _ <: U)
+   *
+   *  TODO: Handle parameterized lower bounds
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
-      TypeLambda(
+      TypeLambdaOLD(
         tparams.map(tparam =>
           tparam.memberBoundsAsSeenFrom(self)
             .withBindingKind(BindingKind.fromVariance(tparam.variance))
-            .recursify(tparams)),
-        tp.recursify(tparams))
+            .recursifyOLD(tparams)),
+        tp.recursifyOLD(tparams))
 
     assert(!isHK, self)
     self match {
@@ -527,7 +529,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  In that case we can look for parameterized base types of the type
    *  to eta expand them.
    */
-  def isEtaExpandable(implicit ctx: Context) = self match {
+  def isEtaExpandableOLD(implicit ctx: Context) = self match {
     case self: TypeRef => self.symbol.isClass
     case _ => false
   }
@@ -603,7 +605,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (hkParams.isEmpty) self
     else {
       def adaptArg(arg: Type): Type = arg match {
-        case arg @ TypeLambda(tparamBounds, body) if
+        case arg @ TypeLambdaOLD(tparamBounds, body) if
              !arg.typeParams.corresponds(hkParams)(_.memberVariance == _.memberVariance) &&
              arg.typeParams.corresponds(hkParams)(varianceConforms) =>
           def adjustVariance(bounds: TypeBounds, tparam: MemberBinding): TypeBounds =
@@ -613,7 +615,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             case _ => (x => tp)
           }
           val adjusted = (tparamBounds, hkParams).zipped.map(adjustVariance)
-          TypeLambda(adjusted.map(lift), lift(body))
+          TypeLambdaOLD(adjusted.map(lift), lift(body))
         case arg @ TypeAlias(alias) =>
           arg.derivedTypeAlias(adaptArg(alias))
         case arg @ TypeBounds(lo, hi) =>
@@ -653,7 +655,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     else self.stripTypeVar match {
       case EtaExpansion(self1) =>
         self1.appliedTo(args)
-      case TypeLambda(_, body) if !args.exists(_.isInstanceOf[TypeBounds]) =>
+      case TypeLambdaOLD(_, body) if !args.exists(_.isInstanceOf[TypeBounds]) =>
         substHkArgs(body)
       case self: PolyType =>
         self.instantiate(args)
@@ -703,7 +705,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
         // This happens when unpickling e.g. scala$collection$generic$GenMapFactory$$CC
         ctx.warning(i"encountered F-bounded higher-kinded type parameters for ${self.symbol}; assuming they are invariant")
-        fallbackTypeParams(args map alwaysZero)
+        fallbackTypeParamsOLD(args map alwaysZero)
       case _ =>
         typeParams
     }
