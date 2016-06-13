@@ -2600,7 +2600,12 @@ object Types {
       else duplicate(paramNames, paramBounds, resType)
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context) =
-      PolyType(paramNames)(
+      if (this.variances.isEmpty)
+        PolyType(paramNames)(
+          x => paramBounds mapConserve (_.subst(this, x).bounds),
+          x => resType.subst(this, x))
+      else
+        TypeLambda(paramNames, variances)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => resType.subst(this, x))
 
@@ -2682,9 +2687,9 @@ object Types {
   abstract case class HKApply(tycon: Type, args: List[Type])
   extends CachedProxyType with TermOrHkType {
     override def underlying(implicit ctx: Context): Type = tycon
-    def derivedHKApply(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
+    def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
-      else HKApply(tycon, args)
+      else tycon.appliedTo(args)
     override def computeHash = doHash(tycon, args)
 
     def upperBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
@@ -3406,6 +3411,8 @@ object Types {
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
+    protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+      tp.derivedAppliedType(tycon, args)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
       tp.derivedAndOrType(tp1, tp2)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
@@ -3487,6 +3494,17 @@ object Types {
         case tp: TypeVar =>
           val inst = tp.instanceOpt
           if (inst.exists) apply(inst) else tp
+
+        case tp: HKApply =>
+          def mapArg(arg: Type, tparam: MemberBinding): Type = {
+            val saved = variance
+            if (tparam.memberVariance < 0) variance = -variance
+            else if (tparam.memberVariance == 0) variance = 0
+            try this(arg)
+            finally variance = saved
+          }
+          derivedAppliedType(tp, this(tp.tycon),
+              tp.args.zipWithConserve(tp.tycon.typeParams)(mapArg))
 
         case tp: AndOrType =>
           derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
@@ -3591,6 +3609,9 @@ object Types {
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
       if (thistp.exists && supertp.exists) tp.derivedSuperType(thistp, supertp)
       else NoType
+    override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+      if (tycon.exists && args.forall(_.exists)) tp.derivedAppliedType(tycon, args)
+      else approx() // This is rather coarse, but to do better is a bit complicated
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
       if (tp1.exists && tp2.exists) tp.derivedAndOrType(tp1, tp2)
       else if (tp.isAnd) approx(hi = tp1 & tp2)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
@@ -3682,6 +3703,9 @@ object Types {
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
+
+      case tp @ HKApply(tycon, args) =>
+        foldOver(this(x, tycon), args)
 
       case tp: AndOrType =>
         this(this(x, tp.tp1), tp.tp2)
