@@ -43,22 +43,23 @@ object factories {
     pathList(ref)
   }
 
-  def returnType(t: Tree, tpt: TypeTree)(implicit ctx: Context): MaterializableLink = {
-    def cleanTitle(title: String): String = title match {
-      case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
-      case x if x matches "[^\\[]+\\[[^\\]]+\\]" =>
-        val Array(tpe, params) = x.dropRight(1).split("\\[")
-        s"""$tpe[${params.split(",").map(x => cleanTitle(x.trim)).mkString(", ")}]"""
-      case _ => title
-    }
+  private val product = """Product[1-9][0-9]*""".r
 
-    def cleanQuery(query: String): String = query match {
-      case x if x matches "[^\\[]+\\[[^\\]]+\\]" => x.takeWhile(_ != '[')
-      case _ => query
-    }
-
-    UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
+  private def cleanTitle(title: String): String = title match {
+    case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
+    case x if x matches "[^\\[]+\\[[^\\]]+\\]" =>
+      val Array(tpe, params) = x.dropRight(1).split("\\[")
+      s"""$tpe[${params.split(",").map(x => cleanTitle(x.trim)).mkString(", ")}]"""
+    case _ => title
   }
+
+  private def cleanQuery(query: String): String = query match {
+    case x if x matches "[^\\[]+\\[[^\\]]+\\]" => x.takeWhile(_ != '[')
+    case _ => query
+  }
+
+  def returnType(t: Tree, tpt: TypeTree)(implicit ctx: Context): MaterializableLink =
+    UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
 
   def typeParams(t: Tree)(implicit ctx: Context): List[String] = t match {
     case t: DefDef =>
@@ -72,7 +73,13 @@ object factories {
       typeParams(t.rhs.asInstanceOf[Template].constr)
   }
 
-  val product = """Product[1-9][0-9]*""".r
+  def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
+    def getParams(xs: List[ValDef]): List[(String, MaterializableLink)] = xs map { vd =>
+      (vd.name.toString, UnsetLink(Text(vd.tpt.show), vd.tpt.show))
+    }
+
+    t.vparamss.map(getParams)
+  }
 
   def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {
     case cd: ClassDenotation =>
@@ -97,24 +104,4 @@ object factories {
       }
     case _ => Nil
   }
-
-  def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
-    def getParams(xs: List[ValDef]): List[(String, MaterializableLink)] = xs map { vd =>
-      (vd.name.toString, UnsetLink(Text(vd.tpt.show), vd.tpt.show))
-    }
-
-    t.vparamss.map(getParams)
-  }
-
-  def filteredName(str: String) = str
-    .replaceAll("\\$colon", ":")
-    .replaceAll("\\$plus", "+")
-    .replaceAll("\\$minus", "-")
-    .replaceAll("\\$less", "<")
-    .replaceAll("\\$greater", ">")
-    .replaceAll("\\$eq", "=")
-    .replaceAll("\\$bang", "!")
-    .replaceAll("\\$amp", "&")
-    .replaceAll("\\$bar", "|")
-    .replaceAll("\\$up", "^")
 }

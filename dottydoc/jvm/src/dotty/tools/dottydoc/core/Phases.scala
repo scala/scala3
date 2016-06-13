@@ -60,18 +60,18 @@ object Phases {
 
         /** trait */
         case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
-          val name = filteredName(n.toString)
+          val name = n.decode.toString
           val newPath = prev :+ name
           TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t), superTypes(t))
 
         /** objects, on the format "Object$" so drop the last letter */
         case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
-          val name = filteredName(n.toString.dropRight(1))
+          val name = n.decode.toString.dropRight(1)
           ObjectImpl(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
 
         /** class / case class */
         case c @ TypeDef(n, rhs) if c.symbol.isClass =>
-          val name = filteredName(n.toString)
+          val name = n.decode.toString
           val newPath = prev :+ name
           (name, collectMembers(rhs), flags(c), newPath, typeParams(c), superTypes(c), None) match {
             case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
@@ -80,11 +80,11 @@ object Phases {
 
         /** def */
         case d: DefDef =>
-          DefImpl(filteredName(d.name.toString), flags(d), path(d), returnType(d, d.tpt), typeParams(d), paramLists(d))
+          DefImpl(d.name.decode.toString, flags(d), path(d), returnType(d, d.tpt), typeParams(d), paramLists(d))
 
         /** val */
         case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-          ValImpl(filteredName(v.name.toString), flags(v), path(v), returnType(v, v.tpt))
+          ValImpl(v.name.decode.toString, flags(v), path(v), returnType(v, v.tpt))
 
         case x => {
           //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
