@@ -83,6 +83,17 @@ object Variances {
       flip(varianceInTypes(paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
+    case tp @ HKApply(tycon, args) =>
+      def varianceInArgs(v: Variance, args: List[Type], tparams: List[MemberBinding]): Variance =
+        args match {
+          case arg :: args1 =>
+            varianceInArgs(
+              v & compose(varianceInType(arg)(tparam), tparams.head.memberVariance),
+              args1, tparams.tail)
+          case nil =>
+            v
+        }
+      varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
     case tp @ PolyType(_) =>
       flip(varianceInTypes(tp.paramBounds)(tparam)) & varianceInType(tp.resultType)(tparam)
     case AnnotatedType(tp, annot) =>
