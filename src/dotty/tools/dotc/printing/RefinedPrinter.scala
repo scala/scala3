@@ -95,10 +95,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   override def toText(tp: Type): Text = controlled {
-    def argText(arg: Type): Text = arg match {
-      case arg: TypeBounds => "_" ~ toTextGlobal(arg)
-      case _ => toTextGlobal(arg)
-    }
     def toTextTuple(args: List[Type]): Text =
       "(" ~ toTextGlobal(args, ", ") ~ ")"
     def toTextFunction(args: List[Type]): Text =
@@ -185,25 +181,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     "{" ~ toText(trees, "\n") ~ "}"
-
-  /** The text for a TypeLambda
-   *
-   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
-   *
-   *  where
-   *  @param  paramNames  = p_1, ..., p_n
-   *  @param  variances   = v_1, ..., v_n
-   *  @param  argBoundss  = B_1, ..., B_n
-   *  @param  body        = T
-   */
-  def typeLambdaText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
-    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
-      varianceString(variance) ~ name ~ toText(bounds)
-    changePrec(GlobalPrec) {
-      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
-      "] -> " ~ toTextGlobal(body)
-    }
-  }
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 

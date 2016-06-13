@@ -110,6 +110,30 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def toTextRefinement(rt: RefinedType) =
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
+  protected def argText(arg: Type): Text = arg match {
+    case arg: TypeBounds => "_" ~ toTextGlobal(arg)
+    case _ => toTextGlobal(arg)
+  }
+
+  /** The text for a TypeLambda
+   *
+   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
+   *
+   *  where
+   *  @param  paramNames  = p_1, ..., p_n
+   *  @param  variances   = v_1, ..., v_n
+   *  @param  argBoundss  = B_1, ..., B_n
+   *  @param  body        = T
+   */
+  protected def typeLambdaText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
+    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
+      varianceString(variance) ~ name ~ toText(bounds)
+    changePrec(GlobalPrec) {
+      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
+      "] -> " ~ toTextGlobal(body)
+    }
+  }
+
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
    */
@@ -174,6 +198,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
+      case tp: TypeLambda =>
+        typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
+      case HKApply(tycon, args) =>
+        toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
@@ -186,7 +214,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else toText(tp.origin)
         }
       case tp: LazyRef =>
-        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")"
+        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")" // TODO: only print this during debug mode?
       case _ =>
         tp.fallbackToText(this)
     }
