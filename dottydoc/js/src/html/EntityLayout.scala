@@ -46,7 +46,7 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
         cls := "entity-super-types",
         st.superTypes.collect {
           case unset: UnsetLink => unset.title.asInstanceOf[Text].text
-        }.mkString(" extends ", " with ", "")
+        }.mkString("extends ", " with ", "")
       ))
       case _ => None
     }

@@ -109,6 +109,12 @@ object factories {
   def filteredName(str: String) = str
     .replaceAll("\\$colon", ":")
     .replaceAll("\\$plus", "+")
+    .replaceAll("\\$minus", "-")
     .replaceAll("\\$less", "<")
+    .replaceAll("\\$greater", ">")
     .replaceAll("\\$eq", "=")
+    .replaceAll("\\$bang", "!")
+    .replaceAll("\\$amp", "&")
+    .replaceAll("\\$bar", "|")
+    .replaceAll("\\$up", "^")
 }

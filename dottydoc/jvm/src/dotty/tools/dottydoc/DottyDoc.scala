@@ -7,7 +7,7 @@ import dotc.config.Printers.dottydoc
 import dotc.core.Contexts._
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
-import dotc.{Compiler, Driver, Run}
+import dotc.{ CompilationUnit, Compiler, Driver, Run }
 import io.PlainFile
 
 import scala.util.control.NonFatal
@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
  */
 class DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] =
-    List(new FrontEnd) ::
+    List(new DocFrontEnd) ::
     List(new DocPhase) ::
     Nil
 
@@ -35,6 +35,11 @@ class DottyDocCompiler extends Compiler {
     reset()
     new DocRun(this)(rootContext)
   }
+}
+
+class DocFrontEnd extends FrontEnd {
+  override protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
+    unit.isJava
 }
 
 class DocRun(comp: Compiler)(implicit ctx: Context) extends Run(comp)(ctx) {

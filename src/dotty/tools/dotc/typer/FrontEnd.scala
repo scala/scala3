@@ -57,7 +57,7 @@ class FrontEnd extends Phase {
     case _ => NoSymbol
   }
 
-  private def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
+  protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =
     unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
