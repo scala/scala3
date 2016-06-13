@@ -62,7 +62,7 @@ object TypeApplications {
       case v :: vs1 =>
         RefinedType(
             memberBindings(vs1),
-            tpnme.hkArg(vs1.length),
+            tpnme.hkArgOLD(vs1.length),
             TypeBounds.empty.withBindingKind(BindingKind.fromVariance(v)))
     }
     def decompose(t: Type, acc: List[MemberBinding]): List[MemberBinding] = t match {
@@ -81,11 +81,11 @@ object TypeApplications {
   object TypeLambdaOLD {
     def apply(argBindingFns: List[RecType => TypeBounds],
               bodyFn: RecType => Type)(implicit ctx: Context): Type = {
-      val argNames = argBindingFns.indices.toList.map(tpnme.hkArg)
+      val argNames = argBindingFns.indices.toList.map(tpnme.hkArgOLD)
       var idx = 0
       RecType.closeOver(rt =>
         (bodyFn(rt) /: argBindingFns) { (parent, argBindingFn) =>
-          val res = RefinedType(parent, tpnme.hkArg(idx), argBindingFn(rt))
+          val res = RefinedType(parent, tpnme.hkArgOLD(idx), argBindingFn(rt))
           idx += 1
           res
         })
@@ -134,7 +134,7 @@ object TypeApplications {
           case Nil =>
             n == 0
           case TypeRef(RecThis(rt), sel) :: args1 if false =>
-            rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
+            rt.eq(tp) && sel == tpnme.hkArgOLD(n - 1) && argsAreForwarders(args1, n - 1)
           case _ =>
             false
         }
@@ -196,15 +196,15 @@ object TypeApplications {
     }
 
   /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
-  def argRefs(rt: RecType, n: Int)(implicit ctx: Context) =
-    List.range(0, n).map(i => RecThis(rt).select(tpnme.hkArg(i)))
+  def argRefsOLD(rt: RecType, n: Int)(implicit ctx: Context) =
+    List.range(0, n).map(i => RecThis(rt).select(tpnme.hkArgOLD(i)))
 
   private class InstMapOLD(fullType: Type)(implicit ctx: Context) extends TypeMap {
     var localRecs: Set[RecType] = Set.empty
     var keptRefs: Set[Name] = Set.empty
     var tyconIsHK: Boolean = true
     def apply(tp: Type): Type = tp match {
-      case tp @ TypeRef(RecThis(rt), sel) if sel.isHkArgName && localRecs.contains(rt) =>
+      case tp @ TypeRef(RecThis(rt), sel) if sel.isHkArgNameOLD && localRecs.contains(rt) =>
         fullType.member(sel).info match {
           case TypeAlias(alias) => apply(alias)
           case _ => keptRefs += sel; tp
@@ -212,7 +212,7 @@ object TypeApplications {
       case tp: TypeVar if !tp.inst.exists =>
         val bounds = tp.instanceOpt.orElse(ctx.typeComparer.bounds(tp.origin))
         bounds.foreachPart {
-          case TypeRef(RecThis(rt), sel) if sel.isHkArgName && localRecs.contains(rt) =>
+          case TypeRef(RecThis(rt), sel) if sel.isHkArgNameOLD && localRecs.contains(rt) =>
             keptRefs += sel
           case _ =>
         }
@@ -377,9 +377,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => -1
   }
 
-  /** is receiver of the form T#$Apply? */
-  def isHKApply(implicit ctx: Context): Boolean = self match {
-    case self @ RefinedType(_, name, _) => name.isHkArgName && !self.isTypeParam
+  /** is receiver a higher-kinded application? */
+  def isHKApplyOLD(implicit ctx: Context): Boolean = self match {
+    case self @ RefinedType(_, name, _) => name.isHkArgNameOLD && !self.isTypeParam
     case _ => false
   }
 
@@ -418,7 +418,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     tparams match {
       case (_: Symbol) :: _ =>
         (rt: RecType) =>
-          new ctx.SafeSubstMap(tparams.asInstanceOf[List[Symbol]], argRefs(rt, tparams.length))
+          new ctx.SafeSubstMap(tparams.asInstanceOf[List[Symbol]], argRefsOLD(rt, tparams.length))
             .apply(self).asInstanceOf[T]
       case _ =>
         def mapRefs(rt: RecType) = new TypeMap {
@@ -494,7 +494,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   - going from a wildcard type to its upper bound
    */
   def normalizeHkApplyOLD(implicit ctx: Context): Type = self.strictDealias match {
-    case self1 @ RefinedType(_, rname, _) if rname.isHkArgName && self1.typeParams.isEmpty =>
+    case self1 @ RefinedType(_, rname, _) if rname.isHkArgNameOLD && self1.typeParams.isEmpty =>
       val inst = new InstMapOLD(self)
 
       def instTop(tp: Type): Type = tp.strictDealias match {
@@ -503,12 +503,12 @@ class TypeApplications(val self: Type) extends AnyVal {
           tp.rebind(instTop(tp.parent))
         case tp @ RefinedType(parent, rname, rinfo) =>
           rinfo match {
-            case TypeAlias(TypeRef(RecThis(rt), sel)) if sel.isHkArgName && inst.localRecs.contains(rt) =>
+            case TypeAlias(TypeRef(RecThis(rt), sel)) if sel.isHkArgNameOLD && inst.localRecs.contains(rt) =>
               val bounds @ TypeBounds(_, _) = self.member(sel).info
               instTop(tp.derivedRefinedType(parent, rname, bounds.withBindingKind(NoBinding)))
             case _ =>
               val parent1 = instTop(parent)
-              if (rname.isHkArgName &&
+              if (rname.isHkArgNameOLD &&
                 !inst.tyconIsHK &&
                 !inst.keptRefs.contains(rname)) parent1
               else tp.derivedRefinedType(parent1, rname, inst(rinfo))
@@ -680,8 +680,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case TypeLambdaOLD(_, body) if !args.exists(_.isInstanceOf[TypeBounds]) =>
         def substHkArgs = new TypeMap {
           def apply(tp: Type): Type = tp match {
-            case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgName =>
-              args(name.hkArgIndex)
+            case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgNameOLD =>
+              args(name.hkArgIndexOLD)
             case _ =>
               mapOver(tp)
           }
@@ -714,8 +714,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     assert(args.nonEmpty)
     if (Config.newHK && self.isHK) AppliedType(self, args)
     else matchParams(self, typParams, args) match {
-      case refined @ RefinedType(_, pname, _) if pname.isHkArgName =>
-        refined.betaReduce // TODO Move to matchparams
+      case refined @ RefinedType(_, pname, _) if !Config.newHK && pname.isHkArgNameOLD =>
+        refined.betaReduceOLD
       case refined =>
         refined
     }

@@ -126,13 +126,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               }
             }
           def apply(t: Type): Type = t match {
-            case TypeRef(RecThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
+            case TypeRef(RecThis(rt), name) if name.isHkArgNameOLD && contains(tp, rt) =>
               // Make up a name that prints as "Xi". Need to be careful we do not
               // accidentally unique-hash to something else. That's why we can't
               // use prefix = NoPrefix or a WithFixedSym instance.
               TypeRef.withSymAndName(
                 defn.EmptyPackageClass.thisType, defn.AnyClass,
-                paramNames(name.hkArgIndex).toTypeName)
+                paramNames(name.hkArgIndexOLD).toTypeName)
             case _ =>
               mapOver(t)
           }

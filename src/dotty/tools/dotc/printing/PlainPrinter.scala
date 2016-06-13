@@ -202,7 +202,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeLambda =>
         typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
       case HKApply(tycon, args) =>
-        toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
+        toTextLocal(tycon) ~ "[!" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.

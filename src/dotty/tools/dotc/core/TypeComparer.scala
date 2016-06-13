@@ -700,7 +700,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           false
       }
     }
-    app.isHKApply && !other.isHKApply && {
+    app.isHKApplyOLD && !other.isHKApplyOLD && {
       val reduced = if (inOrder) app else app.normalizeHkApplyOLD
       if (reduced ne app)
         if (inOrder) isSubType(reduced, other) else isSubType(other, reduced)
@@ -1253,8 +1253,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               BindingKind.fromVariance(
                 (tparam1.memberVariance + tparam2.memberVariance) / 2))
         }
-      val app1: RecType => Type = rt => tp1.appliedTo(argRefs(rt, tparams1.length))
-      val app2: RecType => Type = rt => tp2.appliedTo(argRefs(rt, tparams2.length))
+      val app1: RecType => Type = rt => tp1.appliedTo(argRefsOLD(rt, tparams1.length))
+      val app2: RecType => Type = rt => tp2.appliedTo(argRefsOLD(rt, tparams2.length))
       val body: RecType => Type = rt => op(app1(rt), app2(rt))
       TypeLambdaOLD(bindings, body)
     }
@@ -1540,7 +1540,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
   override def compareHkApplyOLD(app: RefinedType, other: Type, inOrder: Boolean) =
-    if (app.isHKApply)
+    if (app.isHKApplyOLD)
       traceIndented(i"compareHkApply $app, $other, $inOrder, ${app.normalizeHkApplyOLD}") {
         super.compareHkApplyOLD(app, other, inOrder)
       }

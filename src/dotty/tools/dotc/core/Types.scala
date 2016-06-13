@@ -477,7 +477,8 @@ object Types {
           // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
           // call below. To avoid this problem we do a defensive copy of the recursive
           // type first. But if we do this always we risk being inefficient and we run into
-          // stackoverflows when compiling pos/hk.scala. So we only do a copy if the type
+          // stackoverflows when compiling pos/hk.scala under the refinement encoding
+          // of hk-types. So we only do a copy if the type
           // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
           // Furthermore, if this happens we mark the original recursive type with `openedTwice`
           // which means that we always defensively copy the type in the future. This second
@@ -894,7 +895,7 @@ object Types {
       case _ => this
     }
 
-    /** If this is a TypeAlias type, its alias otherwise this type itself */
+    /** If this is a TypeAlias type, its alias, otherwise this type itself */
     final def followTypeAlias(implicit ctx: Context): Type = this match {
       case TypeAlias(alias) => alias
       case _ => this
@@ -1575,6 +1576,7 @@ object Types {
       // we might now get cycles over members that are in a refinement but that lack
       // a symbol. Without the following precaution i974.scala stackoverflows when compiled
       // with new hk scheme.
+      // TODO: Do we still need the complications here?
       val savedDenot = lastDenotation
       val savedSymbol = lastSymbol
       if (prefix.isInstanceOf[RecThis] && name.isTypeName) {
@@ -1772,7 +1774,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = {
       val res = info
-      assert(res != this, this)
+      assert(res != this, this)  // TODO drop
       res
     }
   }
@@ -2083,8 +2085,8 @@ object Types {
       this
     }
 
-    def betaReduce(implicit ctx: Context): Type = refinedInfo match {
-      case TypeAlias(alias) if refinedName.isHkArgName =>
+    def betaReduceOLD(implicit ctx: Context): Type = refinedInfo match {
+      case TypeAlias(alias) if refinedName.isHkArgNameOLD =>
         def instantiate(rt: RecType) = new TypeMap {
           def apply(t: Type) = t match {
             case TypeRef(RecThis(`rt`), `refinedName`) => alias
@@ -2128,7 +2130,7 @@ object Types {
         // A Y-check error (incompatible types involving hk lambdas) for dotty itself.
         // TODO: investigate and, if possible, drop after revision.
         val normalizedRefinedInfo = refinedInfo.substRecThis(dummyRec, dummyRec)
-        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduce
+        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduceOLD
       }
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
@@ -2137,6 +2139,7 @@ object Types {
       else parent
 
     // MemberBinding methods
+    // TODO: Needed?
     def isTypeParam(implicit ctx: Context) = refinedInfo match {
       case tp: TypeBounds => tp.isBinding
       case _ => false
@@ -3239,6 +3242,7 @@ object Types {
   /** A value class defining the interpretation of a TypeBounds
    *  as either a regular type bounds or a binding (i.e. introduction) of a
    *  higher-kinded type parameter.
+   *  TODO: drop
    */
   class BindingKind(val n: Byte) extends AnyVal {
     def join(that: BindingKind) =
