@@ -6,6 +6,7 @@ import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, De
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
+import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.annotation.switch
@@ -50,8 +51,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp: RefinedType =>
-          tp.normalizeHkApply
+        case tp: RefinedType if !Config.newHK =>
+          tp.normalizeHkApplyOLD
         case tp: SkolemType =>
           homogenize(tp.info)
         case tp: LazyRef =>

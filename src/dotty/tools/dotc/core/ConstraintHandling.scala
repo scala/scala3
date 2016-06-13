@@ -287,8 +287,8 @@ trait ConstraintHandling {
           if (!addParamBound(bound)) NoType
           else if (fromBelow) defn.NothingType
           else defn.AnyType
-        case bound: RefinedType =>
-          bound.normalizeHkApply
+        case bound: RefinedType if !Config.newHK =>
+          bound.normalizeHkApplyOLD
         case _ =>
           bound
       }

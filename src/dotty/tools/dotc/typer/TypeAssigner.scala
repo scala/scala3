@@ -427,14 +427,16 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.TypeLambdaTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) = {
-    val tparams = tparamDefs.map(_.symbol)
-    val argBindingFns = tparams.map(tparam =>
-      tparam.info.bounds
-        .withBindingKind(BindingKind.fromVariance(tparam.variance))
-        .recursifyOLD(tparams))
-    val bodyFn = body.tpe.recursifyOLD(tparams)
-    tree.withType(TypeApplications.TypeLambdaOLD(argBindingFns, bodyFn))
+  def assignType(tree: untpd.TypeLambdaTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
+    if (newHK) tree.withType(TypeLambda.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
+    else {
+      val tparams = tparamDefs.map(_.symbol)
+      val argBindingFns = tparams.map(tparam =>
+        tparam.info.bounds
+          .withBindingKind(BindingKind.fromVariance(tparam.variance))
+          .recursifyOLD(tparams))
+      val bodyFn = body.tpe.recursifyOLD(tparams)
+      tree.withType(TypeLambdaOLD(argBindingFns, bodyFn))
   }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =

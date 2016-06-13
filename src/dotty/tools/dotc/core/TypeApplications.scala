@@ -117,26 +117,33 @@ object TypeApplications {
    *  @param tycon     C
    */
   object EtaExpansion {
-    def apply(tycon: TypeRef)(implicit ctx: Context) = {
+    def apply(tycon: Type)(implicit ctx: Context) = {
       if (!Config.newHK) assert(tycon.isEtaExpandableOLD)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
-    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
-      def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
-        case Nil =>
-          n == 0
-        case TypeRef(RecThis(rt), sel) :: args1 if false =>
-          rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
-        case _ =>
-          false
+    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] =
+      if (Config.newHK)
+        tp match {
+          case tp @ TypeLambda(tparams, AppliedType(fn: TypeRef, args))
+          if (args == tparams.map(_.toArg)) => Some(fn)
+          case _ => None
+        }
+      else {
+        def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
+          case Nil =>
+            n == 0
+          case TypeRef(RecThis(rt), sel) :: args1 if false =>
+            rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
+          case _ =>
+            false
+        }
+        tp match {
+          case TypeLambdaOLD(argBounds, AppliedType(fn: TypeRef, args))
+          if argsAreForwarders(args, tp.typeParams.length) => Some(fn)
+          case _ => None
+        }
       }
-      tp match {
-        case TypeLambdaOLD(argBounds, AppliedType(fn: TypeRef, args))
-        if argsAreForwarders(args, tp.typeParams.length) => Some(fn)
-        case _ => None
-      }
-    }
   }
 
   /** Extractor for type application T[U_1, ..., U_n]. This is the refined type
@@ -169,6 +176,8 @@ object TypeApplications {
             None
         }
         collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
+      case HKApply(tycon, args) =>
+        Some((tycon, args))
       case _ =>
         None
     }
@@ -190,7 +199,7 @@ object TypeApplications {
   def argRefs(rt: RecType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RecThis(rt).select(tpnme.hkArg(i)))
 
-  private class InstMap(fullType: Type)(implicit ctx: Context) extends TypeMap {
+  private class InstMapOLD(fullType: Type)(implicit ctx: Context) extends TypeMap {
     var localRecs: Set[RecType] = Set.empty
     var keptRefs: Set[Name] = Set.empty
     var tyconIsHK: Boolean = true
@@ -330,6 +339,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => !Config.newHK && self.isTypeParam
+    case self: TypeLambda => true
+    case self: HKApply => false
     case self: SingletonType => false
     case self: TypeVar => self.origin.isHK
     case self: WildcardType => self.optBounds.isHK
@@ -355,6 +366,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       }
     case self: RefinedType =>
       if (!Config.newHK && self.isTypeParam) 1 else -1
+    case self: TypeLambda => 1
+    case self: HKApply => -1
     case self: SingletonType => -1
     case self: TypeVar => self.origin.knownHK
     case self: WildcardType => self.optBounds.knownHK
@@ -371,8 +384,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** True if it can be determined without forcing that the class symbol
-   *  of this application exists and is not a lambda trait.
-   *  Equivalent to
+   *  of this application exists. Equivalent to
    *
    *    self.classSymbol.exists
    *
@@ -421,25 +433,34 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Lambda abstract `self` with given type parameters. Examples:
    *
    *      type T[X] = U        becomes    type T = [X] -> U
-   *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> _ <: U)
+   *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> U)
    *
    *  TODO: Handle parameterized lower bounds
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
-      TypeLambdaOLD(
-        tparams.map(tparam =>
-          tparam.memberBoundsAsSeenFrom(self)
-            .withBindingKind(BindingKind.fromVariance(tparam.variance))
-            .recursifyOLD(tparams)),
-        tp.recursifyOLD(tparams))
+      if (Config.newHK) TypeLambda.fromSymbols(tparams, tp)
+      else
+        TypeLambdaOLD(
+          tparams.map(tparam =>
+            tparam.memberBoundsAsSeenFrom(self)
+              .withBindingKind(BindingKind.fromVariance(tparam.variance))
+              .recursifyOLD(tparams)),
+          tp.recursifyOLD(tparams))
 
     assert(!isHK, self)
-    self match {
+    if (Config.newHK) self match {
       case self: TypeAlias =>
-        self.derivedTypeAlias(expand(self.alias.normalizeHkApply))
+        self.derivedTypeAlias(expand(self.alias))
       case self @ TypeBounds(lo, hi) =>
-        self.derivedTypeBounds(lo, expand(hi.normalizeHkApply))
+        self.derivedTypeBounds(lo, expand(hi))
+      case _ => expand(self)
+    }
+    else self match {
+      case self: TypeAlias =>
+        self.derivedTypeAlias(expand(self.alias.normalizeHkApplyOLD))
+      case self @ TypeBounds(lo, hi) =>
+        self.derivedTypeBounds(lo, expand(hi.normalizeHkApplyOLD))
       case _ => expand(self)
     }
   }
@@ -472,9 +493,9 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   - dropping refinements and rec-types
    *   - going from a wildcard type to its upper bound
    */
-  def normalizeHkApply(implicit ctx: Context): Type = self.strictDealias match {
+  def normalizeHkApplyOLD(implicit ctx: Context): Type = self.strictDealias match {
     case self1 @ RefinedType(_, rname, _) if rname.isHkArgName && self1.typeParams.isEmpty =>
-      val inst = new InstMap(self)
+      val inst = new InstMapOLD(self)
 
       def instTop(tp: Type): Type = tp.strictDealias match {
         case tp: RecType =>
@@ -605,6 +626,13 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (hkParams.isEmpty) self
     else {
       def adaptArg(arg: Type): Type = arg match {
+        case arg @ TypeLambda(tparams, body) if
+             !tparams.corresponds(hkParams)(_.memberVariance == _.memberVariance) &&
+             tparams.corresponds(hkParams)(varianceConforms) =>
+          TypeLambda(tparams.map(_.memberName), hkParams.map(_.memberVariance))(
+            tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
+            tl => arg.resultType.subst(arg, tl)
+          )
         case arg @ TypeLambdaOLD(tparamBounds, body) if
              !arg.typeParams.corresponds(hkParams)(_.memberVariance == _.memberVariance) &&
              arg.typeParams.corresponds(hkParams)(varianceConforms) =>
@@ -643,22 +671,22 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  3. If `T` is a polytype, instantiate it to `U1,...,Un`.
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
-    def substHkArgs = new TypeMap {
-      def apply(tp: Type): Type = tp match {
-        case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgName =>
-          args(name.hkArgIndex)
-        case _ =>
-          mapOver(tp)
-      }
-    }
     if (args.isEmpty || ctx.erasedTypes) self
-    else self.stripTypeVar match {
+    else self.stripTypeVar match { // TODO investigate why we can't do safeDealias here
+      case self: PolyType if !args.exists(_.isInstanceOf[TypeBounds]) =>
+        self.instantiate(args)
       case EtaExpansion(self1) =>
         self1.appliedTo(args)
       case TypeLambdaOLD(_, body) if !args.exists(_.isInstanceOf[TypeBounds]) =>
+        def substHkArgs = new TypeMap {
+          def apply(tp: Type): Type = tp match {
+            case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgName =>
+              args(name.hkArgIndex)
+            case _ =>
+              mapOver(tp)
+          }
+        }
         substHkArgs(body)
-      case self: PolyType =>
-        self.instantiate(args)
       case self1 =>
         self1.safeDealias.appliedTo(args, typeParams)
     }
@@ -684,7 +712,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil => t
     }
     assert(args.nonEmpty)
-    matchParams(self, typParams, args) match {
+    if (Config.newHK && self.isHK) AppliedType(self, args)
+    else matchParams(self, typParams, args) match {
       case refined @ RefinedType(_, pname, _) if pname.isHkArgName =>
         refined.betaReduce // TODO Move to matchparams
       case refined =>
@@ -700,17 +729,25 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(implicit ctx: Context) = {
-    val safeTypeParams = self match {
-      case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
-        // This happens when unpickling e.g. scala$collection$generic$GenMapFactory$$CC
-        ctx.warning(i"encountered F-bounded higher-kinded type parameters for ${self.symbol}; assuming they are invariant")
-        fallbackTypeParamsOLD(args map alwaysZero)
-      case _ =>
-        typeParams
+  final def safeAppliedTo(args: List[Type])(implicit ctx: Context) =
+    if (Config.newHK)
+      self match {
+        case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
+          AppliedType(self, args)
+        case _ =>
+          appliedTo(args, typeParams)
+      }
+    else {
+      val safeTypeParams = self match {
+        case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
+          // This happens when unpickling e.g. scala$collection$generic$GenMapFactory$$CC
+          ctx.warning(i"encountered F-bounded higher-kinded type parameters for ${self.symbol}; assuming they are invariant")
+          fallbackTypeParamsOLD(args map alwaysZero)
+        case _ =>
+          typeParams
+      }
+      appliedTo(args, safeTypeParams)
     }
-    appliedTo(args, safeTypeParams)
-  }
 
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
@@ -733,7 +770,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
     if (self derivesFrom base)
-      base.typeParams map (param => self.member(param.name).info.argInfo)
+      self match {
+        case self: HKApply => self.upperBound.baseArgInfos(base)
+        case _ => base.typeParams.map(param => self.member(param.name).info.argInfo)
+      }
     else
       Nil
 
@@ -758,7 +798,10 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The first type argument of the base type instance wrt `base` of this type */
   final def firstBaseArgInfo(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
     case param :: _ if self derivesFrom base =>
-      self.member(param.name).info.argInfo
+      self match {
+        case self: HKApply => self.upperBound.firstBaseArgInfo(base)
+        case _ => self.member(param.name).info.argInfo
+      }
     case _ =>
       NoType
   }
@@ -780,6 +823,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp.wrapIfMember(parent.baseTypeWithArgs(base))
       case tp: TermRef =>
         tp.underlying.baseTypeWithArgs(base)
+      case tp: HKApply =>
+        tp.upperBound.baseTypeWithArgs(base)
       case AndType(tp1, tp2) =>
         tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
       case OrType(tp1, tp2) =>
@@ -834,12 +879,16 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The core type without any type arguments.
    *  @param `typeArgs` must be the type arguments of this type.
    */
-  final def withoutArgs(typeArgs: List[Type]): Type = typeArgs match {
-    case _ :: typeArgs1 =>
-      val RefinedType(tycon, _, _) = self
-      tycon.withoutArgs(typeArgs1)
-    case nil =>
-      self
+  final def withoutArgs(typeArgs: List[Type]): Type = self match {
+    case HKApply(tycon, args) => tycon
+    case _ =>
+      typeArgs match {
+        case _ :: typeArgs1 =>
+          val RefinedType(tycon, _, _) = self
+          tycon.withoutArgs(typeArgs1)
+        case nil =>
+          self
+      }
   }
 
   final def typeConstructor(implicit ctx: Context): Type = self.stripTypeVar match {
