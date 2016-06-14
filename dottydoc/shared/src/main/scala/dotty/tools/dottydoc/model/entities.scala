@@ -1,7 +1,7 @@
 package dotty.tools.dottydoc
 package model
 
-import comment.{ Comment, MaterializableLink }
+import comment.{ Comment, MaterializableLink, Reference, NamedReference }
 
 trait Entity {
   def name: String
@@ -48,7 +48,7 @@ trait TypeParams {
 }
 
 trait ReturnValue {
-  def returnValue: MaterializableLink
+  def returnValue: Reference
 }
 
 trait Package extends Entity with Members {
@@ -74,7 +74,7 @@ trait Object extends Entity with Modifiers with SuperTypes with Members {
 }
 
 trait Def extends Entity with Modifiers with TypeParams with ReturnValue {
-  def paramLists: List[List[(String, MaterializableLink)]]
+  def paramLists: List[List[NamedReference]]
   val kind = "def"
 }
 

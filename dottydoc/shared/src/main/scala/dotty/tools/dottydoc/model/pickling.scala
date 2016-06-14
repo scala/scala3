@@ -19,7 +19,14 @@ object pickling {
 
   implicit val entityLinkPicker: PicklerPair[MaterializableLink] = CompositePickler[MaterializableLink]
     .concreteType[UnsetLink]
+    .concreteType[NoLink]
     .concreteType[MaterializedLink]
+
+  implicit val referencePicker: PicklerPair[Reference] = CompositePickler[Reference]
+    .concreteType[TypeReference]
+    .concreteType[OrTypeReference]
+    .concreteType[AndTypeReference]
+    .concreteType[NamedReference]
 
   implicit val entityPickler: PicklerPair[Entity] = CompositePickler[Entity]
     .concreteType[NonEntity.type]

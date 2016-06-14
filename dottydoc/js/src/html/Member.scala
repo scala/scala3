@@ -5,7 +5,7 @@ package html
 import scalatags.JsDom.all._
 import scalatags.JsDom.TypedTag
 import org.scalajs.dom
-import org.scalajs.dom.html.{Anchor, Div}
+import org.scalajs.dom.html.{Anchor, Div, Span}
 
 trait MemberLayout {
   import dotty.tools.dottydoc.model._
@@ -76,11 +76,20 @@ trait MemberLayout {
   def paramList(m: Entity): String = m match {
     case d: Def if d.paramLists.nonEmpty =>
       d.paramLists.map { xs =>
-        xs.map {
-          case (x, y: UnsetLink) => s"$x: ${y.query}"
+        xs.map { tr =>
+          // FIXME: should not cast like this - it won't be guaranteed to be a
+          // TypeReference after Or/Types for paramlists have been implemented
+          tr.title + ": " + decodeLink(tr.ref.asInstanceOf[TypeReference].tpeLink)
         }.mkString ("(", ", ", ")")
       }.mkString("")
     case _ => ""
+  }
+
+  def decodeLink: MaterializableLink => String = {
+    case MaterializedLink(t, _) => t
+    case NoLink(t, _) => t
+    //FIXME: there should be no UnsetLinks - either MaterializedLink or NoLink
+    case UnsetLink(_, q) => q
   }
 
   def typeParams(m: Entity): String = m match {
@@ -96,15 +105,36 @@ trait MemberLayout {
       case xs => s
     }
 
-    def link(rv: MaterializableLink) = rv match {
-      case ml: MaterializedLink =>
-        span(cls := "member-return-value no-left-margin", ": ", raw(ml.target))
-      case un: UnsetLink =>
-        span(cls := "member-return-value no-left-margin", ": " + shorten(un.query))
+    def link(rv: Reference): Span = {
+      def decodeTpeLink: MaterializableLink => Span  = {
+        case ml: MaterializedLink =>
+          println(s"received tpeLink: $ml")
+          span(cls := "member-return-value", a(href := ml.target, ml.title)).render
+        case un: UnsetLink =>
+          span(cls := "member-return-value", shorten(un.query)).render
+        case no: NoLink =>
+          span(cls := "member-return-value", shorten(no.title)).render
+      }
+
+      rv match {
+        case rv: TypeReference =>
+          val returnValue = decodeTpeLink(rv.tpeLink)
+
+          if (rv.paramLinks.nonEmpty) span(
+            returnValue,
+            "[", rv.paramLinks.map(decodeTpeLink), "]" //FIXME: does not get spacing and commas
+          ).render
+          else returnValue
+        case _ => ??? /** TODO: should not happen currently, but when
+                       *  `returnValue` in factories is changes - this will get
+                       *  triggered
+                       */
+      }
+
     }
 
     m match {
-      case rv: ReturnValue => Some(link(rv.returnValue))
+      case rv: ReturnValue => Some(span(cls := "no-left-margin", ": ", link(rv.returnValue)))
       case _ => None
     }
   }

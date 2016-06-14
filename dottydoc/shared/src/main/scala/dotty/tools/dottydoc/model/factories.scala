@@ -46,7 +46,9 @@ object factories {
   private val product = """Product[1-9][0-9]*""".r
 
   private def cleanTitle(title: String): String = title match {
+    // matches Entity.this.Something
     case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
+    // Matches Entity[P, ...]
     case x if x matches "[^\\[]+\\[[^\\]]+\\]" =>
       val Array(tpe, params) = x.dropRight(1).split("\\[")
       s"""$tpe[${params.split(",").map(x => cleanTitle(x.trim)).mkString(", ")}]"""
@@ -58,8 +60,26 @@ object factories {
     case _ => query
   }
 
-  def returnType(t: Tree, tpt: TypeTree)(implicit ctx: Context): MaterializableLink =
-    UnsetLink(Text(cleanTitle(tpt.show)), cleanQuery(tpt.show))
+  def returnType(t: TypeTree)(implicit ctx: Context): Reference = {
+    def tpeWithParamTpes(t: Type): List[String] = t match {
+      case ref @ RefinedType(parent, rn) =>
+        val name = ref.refinedInfo match {
+          case ta: TypeAlias => ta.alias.asInstanceOf[NamedType].name.decode.toString
+          case _ => rn.decode.toString.split("\\$").last
+        }
+        tpeWithParamTpes(parent) ++ (name :: Nil)
+      case TypeRef(_, name) => name.decode.toString :: Nil
+      case OrType(left, right) => "ortype" :: Nil
+      case AndType(left, right) => "andtype" :: Nil
+      case AnnotatedType(tpe, _) => tpeWithParamTpes(tpe)
+      case c: ConstantType => c.show :: Nil
+    }
+
+    val List(retTpe, params @ _*) = tpeWithParamTpes(t.tpe)
+
+    //TODO: should not be a TypeReference but a Reference because of Or/And-types
+    TypeReference(retTpe, UnsetLink(Text(retTpe), retTpe), params.map(x => UnsetLink(Text(x), x)).toList)
+  }
 
   def typeParams(t: Tree)(implicit ctx: Context): List[String] = t match {
     case t: DefDef =>
@@ -73,9 +93,12 @@ object factories {
       typeParams(t.rhs.asInstanceOf[Template].constr)
   }
 
-  def paramLists(t: DefDef)(implicit ctx: Context): List[List[(String, MaterializableLink)]] = {
-    def getParams(xs: List[ValDef]): List[(String, MaterializableLink)] = xs map { vd =>
-      (vd.name.toString, UnsetLink(Text(vd.tpt.show), vd.tpt.show))
+  def paramLists(t: DefDef)(implicit ctx: Context): List[List[NamedReference]] = {
+    def getParams(xs: List[ValDef]): List[NamedReference] = xs map { vd =>
+      val name = vd.name.decode.toString
+      //TODO: should not be a TypeReference but a Reference since the argument can be an Or/And-types
+      val ref  = TypeReference(name, UnsetLink(Text(vd.tpt.show), vd.tpt.show), Nil)
+      NamedReference(name, ref)
     }
 
     t.vparamss.map(getParams)

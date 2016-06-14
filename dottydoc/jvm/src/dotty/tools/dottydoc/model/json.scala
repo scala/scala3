@@ -22,15 +22,32 @@ object json extends DefaultJsonProtocol {
   }
 
   implicit val matLinkFormat = lazyFormat(jsonFormat(MaterializedLink, "title", "target"))
+  implicit val noLinkFormat  = lazyFormat(jsonFormat(NoLink, "title", "target"))
   implicit val unsLinkFormat = lazyFormat(jsonFormat(UnsetLink, "title", "query"))
 
   implicit object MaterializableLinkFormat extends RootJsonFormat[MaterializableLink] {
     def write(obj: MaterializableLink) = obj match {
       case obj: MaterializedLink => obj.toJson
       case obj: UnsetLink => obj.toJson
+      case obj: NoLink => obj.toJson
     }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }
+
+  implicit object ReferenceFormat extends RootJsonFormat[Reference] {
+    def write(obj: Reference) = obj match {
+      case obj: AndTypeReference => obj.toJson
+      case obj: OrTypeReference  => obj.toJson
+      case obj: TypeReference    => obj.toJson
+      case obj: NamedReference   => obj.toJson
+    }
+    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
+  }
+
+  implicit val tpeRefFormat   = lazyFormat(jsonFormat(TypeReference, "title", "tpeLink", "paramLinks"))
+  implicit val orRefFormat    = lazyFormat(jsonFormat(OrTypeReference, "left", "right"))
+  implicit val andRefFormat   = lazyFormat(jsonFormat(AndTypeReference, "left", "right"))
+  implicit val namedRefFormat = lazyFormat(jsonFormat(NamedReference, "title", "ref"))
 
   implicit object EntityJsonFormat extends RootJsonFormat[Entity] {
 

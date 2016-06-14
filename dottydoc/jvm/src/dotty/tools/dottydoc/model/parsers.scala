@@ -86,19 +86,34 @@ object parsers {
 
   class ReturnTypeParser extends MemberLookup {
     def link(packs: Map[String, Package]): Unit =
-      for (pack <- packs.values) mutateEntities(pack) { ent =>
-        if (ent.isInstanceOf[ReturnValue])
-          setReturnValue(ent, returnValue(ent, ent.asInstanceOf[ReturnValue], packs))
+      for (pack <- packs.values) mutateEntities(pack) {
+        case ent: ReturnValue =>
+          setReturnValue(ent, returnValue(ent, ent, packs))
+        case _ => ()
       }
 
-    private def returnValue(ent: Entity, rv: ReturnValue, packs: Map[String, Package]): MaterializableLink = {
-      if (rv.returnValue.isInstanceOf[UnsetLink]) {
-        val unset        = rv.returnValue.asInstanceOf[UnsetLink]
-        val el           = makeEntityLink(ent, packs, unset.title, NoPosition, unset.query)
-        val inlineToHtml = InlineToHtml(ent)
+    private def returnValue(ent: Entity, rv: ReturnValue, packs: Map[String, Package]): Reference =
+      rv.returnValue match {
+        case rv @ TypeReference(_, UnsetLink(t, query), tps) =>
+          val inlineToHtml = InlineToHtml(ent)
+          val title = inlineToHtml(t)
 
-        MaterializedLink(inlineToHtml(unset.title), inlineToHtml(el))
-      } else rv.returnValue
-    }
+          def handleEntityLink(title: String, lt: LinkTo): MaterializableLink = lt match {
+            case Tooltip(str)           => NoLink(title, str)
+            case LinkToExternal(_, url) => MaterializedLink(title, url)
+            case LinkToEntity(target)   => MaterializedLink(title, util.traversing.relativePath(ent, target))
+          }
+
+          val target = handleEntityLink(title, makeEntityLink(ent, packs, t, NoPosition, query).link)
+
+          val tpTargets = tps.map {
+            case UnsetLink(t, query) =>
+              handleEntityLink(inlineToHtml(t), makeEntityLink(ent, packs, t, NoPosition, query).link)
+            case x => x
+          }
+
+          rv.copy(tpeLink = target, paramLinks = tpTargets)
+        case _ => rv.returnValue
+      }
   }
 }

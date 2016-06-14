@@ -4,7 +4,7 @@ package internal
 
 object setters {
   import model._
-  import comment.{ Comment, MaterializableLink }
+  import comment.{ Comment, MaterializableLink, Reference }
   import internal._
 
   def setComment(ent: Entity, to: Option[Comment]) = ent match {
@@ -18,9 +18,9 @@ object setters {
   }
 
 
-  def setReturnValue(ent: Entity, to: MaterializableLink) = ent match {
-    case x: DefImpl => x.returnValue = to
-    case x: ValImpl => x.returnValue = to
+  def setReturnValue(ent: Entity, ref: Reference) = ent match {
+    case x: DefImpl => x.returnValue = ref
+    case x: ValImpl => x.returnValue = ref
     case _          => ()
   }
 
