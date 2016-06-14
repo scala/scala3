@@ -193,9 +193,9 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
-    case bounds: TypeBounds => bounds
-    case _ => param.binder.paramBounds(param.paramNum)
+  final def bounds(param: PolyParam): TypeBounds = {
+    val e = constraint.entry(param)
+    if (e.exists) e.bounds else param.binder.paramBounds(param.paramNum)
   }
 
   /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
