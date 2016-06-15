@@ -10,6 +10,7 @@ import ast.tpd
 import core.Decorators._
 import core.TypeApplications._
 import core.Symbols._
+import core.StdNames._
 import core.NameOps._
 import core.Constants._
 
@@ -401,7 +402,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp: ThisType => refine(tp.tref)
       case tp: NamedType =>
         val pre = refinePrefix(tp.prefix)
-        if (pre.isEmpty) tp.name.show.stripSuffix("$")
+        if (tp.name == tpnme.hkApply) pre
+        else if (pre.isEmpty) tp.name.show.stripSuffix("$")
         else pre + "." + tp.name.show.stripSuffix("$")
       case _ => tp.show.stripSuffix("$")
     }
@@ -472,7 +474,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.elimAnonymousClass
+    val selTyp = sel.tpe.widen.elimAnonymousClass.dealias
+
 
     val patternSpace = cases.map(x => project(x.pat)).reduce((a, b) => Or(List(a, b)))
     val uncovered = simplify(minus(Typ(selTyp, true), patternSpace))
