@@ -187,6 +187,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
+      case tp: TypeLambda =>
+        typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
       case tp: PolyType =>
         def paramText(name: TypeName, bounds: TypeBounds) =
           toText(polyParamName(name)) ~ polyHash(tp) ~ toText(bounds)
@@ -199,8 +201,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
-      case tp: TypeLambda =>
-        typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
       case HKApply(tycon, args) =>
         toTextLocal(tycon) ~ "[!" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
