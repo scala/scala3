@@ -1693,6 +1693,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case _ =>
               adaptOverloaded(ref)
           }
+        case tl: TypeLambda =>
+          adaptType(tree.tpe)
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
