@@ -632,6 +632,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
+      case tp @ HKApply(tycon, args) =>
+        val tycon1 = tycon.safeDealias
+        def mapArg(arg: Type) = arg match {
+          case arg: TypeRef if isBound(arg) => arg.symbol.info
+          case _ => arg
+        }
+        if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
+        else tp.derivedAppliedType(tycon, args.map(mapArg))
       case _ =>
         tp
     }
