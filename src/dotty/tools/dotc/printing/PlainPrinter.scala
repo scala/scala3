@@ -229,7 +229,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
   /** If -uniqid is set, the hashcode of the polytype, after a # */
-  protected def polyHash(pt: PolyType): Text =
+  protected def polyHash(pt: GenericType): Text =
     "#" + pt.hashCode provided ctx.settings.uniqid.value
 
   /** If -uniqid is set, the unique id of symbol, after a # */

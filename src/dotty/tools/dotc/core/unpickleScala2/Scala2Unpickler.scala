@@ -82,8 +82,8 @@ object Scala2Unpickler {
         paramNames,
         paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
-    case tp @ PolyType(paramNames) =>
-      tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
+    case tp: PolyType =>
+      tp.derivedPolyType(tp.paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =

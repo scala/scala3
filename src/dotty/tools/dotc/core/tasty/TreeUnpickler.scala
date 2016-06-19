@@ -311,7 +311,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               result
             case PARAMtype =>
               readTypeRef() match {
-                case binder: PolyType => PolyParam(binder, readNat())
+                case binder: GenericType => PolyParam(binder, readNat())
                 case binder: MethodType => MethodParam(binder, readNat())
               }
             case CLASSconst =>

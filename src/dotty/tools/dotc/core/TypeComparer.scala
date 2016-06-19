@@ -559,6 +559,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    */
   def compareHkApply2(tp1: Type, tp2: Type, tycon2: Type, args2: List[Type]): Boolean = {
     val tparams = tycon2.typeParams
+    assert(tparams.nonEmpty)
 
     def isMatchingApply(tp1: Type): Boolean = tp1 match {
       case HKApply(tycon1, args1) =>
@@ -1087,10 +1088,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       formals2.isEmpty
   }
 
-  /** Do poly types `poly1` and `poly2` have type parameters that
+  /** Do generic types `poly1` and `poly2` have type parameters that
    *  have the same bounds (after renaming one set to the other)?
    */
-  private def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
+  private def matchingTypeParams(poly1: GenericType, poly2: GenericType): Boolean =
     (poly1.paramBounds corresponds poly2.paramBounds)((b1, b2) =>
       isSameType(b1, b2.subst(poly2, poly1)))
 
@@ -1312,7 +1313,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else if (tparams1.length != tparams2.length) mergeConflict(tp1, tp2)
     else if (Config.newHK) {
       val numArgs = tparams1.length
-      def argRefs(tl: PolyType) = List.range(0, numArgs).map(PolyParam(tl, _))
+      def argRefs(tl: GenericType) = List.range(0, numArgs).map(PolyParam(tl, _))
       TypeLambda(
         paramNames = tpnme.syntheticLambdaParamNames(numArgs),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
@@ -1382,10 +1383,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           mergeConflict(tp1, tp2)
       }
-    case tp1: PolyType =>
+    case tp1: GenericType =>
       tp2 match {
-        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedPolyType(
+        case tp2: GenericType if matchingTypeParams(tp1, tp2) =>
+          tp1.derivedGenericType(
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -1438,10 +1439,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           mergeConflict(tp1, tp2)
       }
-    case tp1: PolyType =>
+    case tp1: GenericType =>
       tp2 match {
-        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedPolyType(
+        case tp2: GenericType if matchingTypeParams(tp1, tp2) =>
+          tp1.derivedGenericType(
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
         case _ =>
