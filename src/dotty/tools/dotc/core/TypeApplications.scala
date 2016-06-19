@@ -118,7 +118,8 @@ object TypeApplications {
    */
   object EtaExpansion {
     def apply(tycon: Type)(implicit ctx: Context) = {
-      if (!Config.newHK) assert(tycon.isEtaExpandableOLD)
+      if (Config.newHK) assert(tycon.typeParams.nonEmpty, tycon)
+      else assert(tycon.isEtaExpandableOLD)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
@@ -733,9 +734,11 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.instantiate(args)
       case self: AndOrType =>
         self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
+      case self: TypeBounds =>
+        self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
         LazyRef(() => self.ref.appliedTo(args, typParams))
-      case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
+      case _ if typParams.nonEmpty && typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case _ =>
         matchParams(self, typParams, args) match {
