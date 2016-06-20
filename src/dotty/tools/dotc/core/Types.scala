@@ -462,12 +462,12 @@ object Types {
           goParam(tp)
         case tp: RecType =>
           goRec(tp)
-        case tp: HKApply =>
-          go(tp.upperBound)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
           tp.cls.findMember(name, pre, excluded)
+        case tp: TypeLambda =>
+          go(tp.resType)
         case AndType(l, r) =>
           goAnd(l, r)
         case OrType(l, r) =>
@@ -2302,7 +2302,7 @@ object Types {
 
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
+      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       if (Config.checkKinds)
         assert((tp1.knownHK - tp2.knownHK).abs <= 1, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
@@ -2742,7 +2742,7 @@ object Types {
     protected def checkInst(implicit ctx: Context): this.type = {
       def check(tycon: Type): Unit = tycon.stripTypeVar match {
         case tycon: TypeRef if !tycon.symbol.isClass =>
-        case _: PolyParam | ErrorType =>
+        case _: PolyParam | ErrorType | _: WildcardType =>
         case _: TypeLambda =>
           assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
@@ -3554,6 +3554,7 @@ object Types {
             try this(arg)
             finally variance = saved
           }
+          assert(tp.args.length == tp.typeParams.length, tp)
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 

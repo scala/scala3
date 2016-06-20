@@ -1624,12 +1624,8 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
   override def compareHkApply2(tp1: Type, tp2: Type, tycon2: Type, args2: List[Type]): Boolean = {
-    def addendum = tycon2 match {
-      case param2: PolyParam =>
-        i": it's a polyparam with entry ${ctx.typerState.constraint.entry(param2)}"
-      case _ =>
-    }
-    traceIndented(i"compareHkApply $tp1, $tp2, $addendum") {
+    def addendum = ""
+    traceIndented(i"compareHkApply $tp1, $tp2$addendum") {
       super.compareHkApply2(tp1, tp2, tycon2, args2)
     }
   }
