@@ -38,3 +38,6 @@ scala-scala
 # Ignore output files but keep the directory
 out/
 !out/.keep
+
+# Ignore build-file
+.packages

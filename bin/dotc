@@ -21,7 +21,6 @@ function getLastStringOnLineWith {
 SCALA_VERSION=$(getLastStringOnLineWith "scalaVersion in")
 SCALA_BINARY_VERSION=2.11
 SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
-DOTTY_VERSION=$(getLastStringOnLineWith "version in")
 JLINE_VERSION=$(getLastStringOnLineWith "jline")
 SBT_VERSION=$(grep "sbt.version=" "$DOTTY_ROOT/project/build.properties" | sed 's/sbt.version=//')
 bootcp=true
@@ -31,54 +30,97 @@ programName=$(basename "$0")
 # uncomment next line to enable debug output
 #debug=true
 
-
-
 declare -a java_args scala_args residual_args
 unset verbose quiet cygwin toolcp colors saved_stty CDPATH
 
+function build_jar {
+    # Usage:
+    #   build_jar package path/to/jar/dir ['/some/sed/command']
+    #
+    #   Last arg is optional
+    cd $DOTTY_ROOT >& /dev/null
+    local build_output=$(sbt "$1")
+    local jar=$(echo $build_output | sed -n 's/.*Packaging //g; s/ \.\.\..*//g; /^\/.*/p')
+
+    local sedjar="$3"
+    if [ "$sedjar" == "" ]; then
+        sedjar="/.*\.jar/p"
+    fi
+
+    if [ "$jar" == "" ]; then
+        # Didn't build a jar - could've run sbt by oneself, get latest jar in target:
+        jar="$DOTTY_ROOT/$2/$(ls -1t "$2" | sed -n "$sedjar" | awk 'NR==1')"
+    fi
+
+    cd - >& /dev/null
+
+    echo $jar
+}
+
+function update_packages {
+    echo "$INTERFACES_JAR" >  $DOTTY_ROOT/.packages
+    echo "$MAIN_JAR"       >> $DOTTY_ROOT/.packages
+    echo "$TEST_JAR"       >> $DOTTY_ROOT/.packages
+}
+
+function build_all {
+    echo "The script is going to build the required jar files"
+
+    printf "Building dotty-interfaces..."
+    INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)
+    printf "done\n"
+
+    printf "Building dotty..."
+    MAIN_JAR=$(build_jar package target/scala-2.11)
+    printf "done\n"
+
+    printf "Building tests..."
+    TEST_JAR=$(build_jar test:package target/scala-2.11 '/dotty.*-tests\.jar/p')
+    printf "done\n"
+
+    update_packages
+}
+
+
+# Check if .packages file does not exist - if so assume old build and rebuild all
+if  [ ! -f "$DOTTY_ROOT/.packages" ]; then
+    build_all
+else
+    IFS=$'\r\n' GLOBIGNORE='*' command eval 'JARS=($(cat $DOTTY_ROOT/.packages))'
+
+    if [ "${#JARS[@]}" == "3" ]; then
+        INTERFACES_JAR="${JARS[0]}"
+        MAIN_JAR="${JARS[1]}"
+        TEST_JAR="${JARS[2]}"
+    else
+        echo "Corrupted .packages file"
+        build_all
+    fi
+fi
+
+################# After this point, jar variables will be set #################
+function check_jar {
+    # Usage:
+    #   check_jar "name" "path/to/package.jar" "sources/dir" 'lambda to exec on failure'
+    local new_files="$(find "$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
+    if [ ! -z "$new_files" ]; then
+        printf "New files detected in $1, rebuilding..."
+        eval "$4"
+        printf "done\n"
+        update_packages
+    fi
+}
+
+check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
+check_jar "dotty"            $MAIN_JAR       "src"        'MAIN_JAR=$(build_jar package target/scala-2.11)'
+check_jar "dotty-tests"      $TEST_JAR       "test"       'TEST_JAR=$(build_jar test:package target/scala-2.11 /dotty.*-tests\.jar/p)'
+
+# dotc.build test places bootstrapped jar here
+DOTTY_JAR=$DOTTY_ROOT/dotty.jar
 
 CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
 ReplMain=dotty.tools.dotc.repl.Main
-
-
-
-# autodetecting the compiler jars. this is the location where sbt 'packages' them
-INTERFACES_JAR=$DOTTY_ROOT/interfaces/target/dotty-interfaces-$DOTTY_VERSION.jar
-MAIN_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION.jar
-TEST_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION-tests.jar
-DOTTY_JAR=$DOTTY_ROOT/dotty.jar
-
-function checkjar {
-  if [ ! -f "$1" ]
-  then
-    echo "The script is going to build the required jar file $1 by running \"sbt $2\""
-    cd $DOTTY_ROOT
-    sbt "$2"
-    cd -
-    if [ ! -f "$1" ]
-    then
-      echo "The required jar file has not been built by sbt. Please run \"sbt $2\""
-      exit 1
-    else
-      echo "The required jar file was built successfully."
-    fi
-  else
-    NEW_FILES="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$1")"
-    if [ ! -z "$NEW_FILES" ]; 
-    then
-      echo "new files detected. rebuilding"
-      cd $DOTTY_ROOT
-      sbt "$2"
-      touch "$1"
-      cd -
-    fi
-  fi
-}
-
-checkjar $INTERFACES_JAR dotty-interfaces/package interfaces
-checkjar $MAIN_JAR package src
-checkjar $TEST_JAR test:package test
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]
@@ -201,8 +243,8 @@ trap onExit INT
 # If using the boot classpath, also pass an empty classpath
 # to java to suppress "." from materializing.
 classpathArgs () {
-  if [[ "true" == $bootstrapped ]]; then 
-    checkjar $DOTTY_JAR "test:runMain dotc.build" src
+  if [[ "true" == $bootstrapped ]]; then
+    check_jar "dotty-bootstrapped" $DOTTY_JAR "target" 'build_jar "test:runMain dotc.build" target' &> /dev/null
     toolchain="$DOTTY_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR:$SBT_INTERFACE_JAR"
   else
     toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$JLINE_JAR:$SBT_INTERFACE_JAR"
