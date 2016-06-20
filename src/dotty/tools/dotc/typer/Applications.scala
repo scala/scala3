@@ -709,11 +709,11 @@ trait Applications extends Compatibility { self: Typer =>
       // try first for non-overloaded, then for overloaded ocurrences
       def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
         tryEither {
-          implicit ctx => typedExpr(untpd.Select(qual, name), genericProto)
+          implicit ctx => typedExpr(untpd.Select(qual, name), specificProto)
         } {
           (sel, _) =>
             tryEither {
-              implicit ctx => typedExpr(untpd.Select(qual, name), specificProto)
+              implicit ctx => typedExpr(untpd.Select(qual, name), genericProto)
             } {
               (_, _) => fallBack(sel)
             }
