@@ -730,8 +730,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
     assert(args.nonEmpty)
     self.stripTypeVar match {
-      case self: TypeLambda if !args.exists(_.isInstanceOf[TypeBounds]) =>
-        self.instantiate(args)
+      case self: TypeLambda =>
+        if (!args.exists(_.isInstanceOf[TypeBounds])) self.instantiate(args)
+        else self match {
+          case EtaExpansion(selfTycon) => selfTycon.appliedTo(args)
+          case _ => HKApply(self, args)
+        }
       case self: AndOrType =>
         self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
       case self: TypeBounds =>
