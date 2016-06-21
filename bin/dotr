@@ -23,6 +23,7 @@ function runMain {
 
     if [ "$jbin" == "" ]; then
         echo "java bin not detected - please specify with \$JAVA_BIN or install java to a default location"
+        exit 1
     else
         eval "$jbin $CLASS_PATH $@"
     fi
