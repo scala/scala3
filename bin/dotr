@@ -7,12 +7,40 @@ if [[ "$DOTTY_ROOT" == "" ]]; then
 fi
 DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
 DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
+SCALA_VERSION=$(grep "scalaVersion in" "$DOTTY_ROOT/project/Build.scala"|sed -n 's/.*\"\(.*\)\".*/\1/'p)
 
-# CLASS_PATH is derived from the DOTTY_ROOT
-CLASS_PATH="-J-Xbootclasspath/a:.:$DOTTY_ROOT/target/scala-2.11/classes/"
+function find_jar {
+    # Usage:
+    #   find_jar path/to/location file.jar
+    local artifact="$1/$2"
+
+    if [ ! -f "$artifact" ]; then
+        artifact=$(find "$HOME/.coursier/cache" -iname "$2")
+    fi
+
+    echo "$artifact"
+}
+
+# Autodetecting the scala-library location, in case it wasn't provided by an environment variable
+if [ "$SCALA_LIBRARY_JAR" == "" ]; then
+    SCALA_LIBRARY_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-library/jars" "scala-library-$SCALA_VERSION.jar")
+fi
+
+# CLASS_PATH is derived from the DOTTY_ROOT and SCALA_LIBRARY_JAR
+CLASS_PATH="-Xbootclasspath/a:.:$DOTTY_ROOT/target/scala-2.11/classes/:.:$SCALA_LIBRARY_JAR"
 
 function runMain {
-    scala $CLASS_PATH $@
+    local jbin=$(which "java")
+
+    if [ ! -z "$JAVA_BIN" ]; then
+        jbin=$JAVA_BIN
+    fi
+
+    if [ "$jbin" == "" ]; then
+        echo "java bin not detected - please specify with \$JAVA_BIN or install java to a default location"
+    else
+        eval "$jbin $CLASS_PATH $@"
+    fi
 }
 
 if [ -z "$1" ]; then
