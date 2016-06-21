@@ -122,30 +122,37 @@ CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
 ReplMain=dotty.tools.dotc.repl.Main
 
+function find_jar {
+    # Usage:
+    #   find_jar path/to/location file.jar
+    local artifact="$1/$2"
+
+    if [ ! -f "$artifact" ]; then
+        artifact=$(find "$HOME/.coursier/cache" -iname "$2")
+    fi
+
+    echo "$artifact"
+}
+
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
-if [ "$SCALA_LIBRARY_JAR" == "" ]
-then
-  SCALA_LIBRARY_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-$SCALA_VERSION.jar
-  # this is location where sbt stores it in ivy cache
-fi
-# save as for scala-library now for scala-reflect
-if [ "$SCALA_REFLECT_JAR" == "" ]
-then
-  SCALA_REFLECT_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-$SCALA_VERSION.jar
-fi
-if [ "$SCALA_COMPILER_JAR" == "" ]
-then
-  SCALA_COMPILER_JAR=$HOME/.ivy2/cache/me.d-d/scala-compiler/jars/scala-compiler-$SCALA_COMPILER_VERSION.jar
+if [ "$SCALA_LIBRARY_JAR" == "" ]; then
+    SCALA_LIBRARY_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-library/jars" "scala-library-$SCALA_VERSION.jar")
 fi
 
-if [ "$JLINE_JAR" == "" ]
-then
-  JLINE_JAR=$HOME/.ivy2/cache/jline/jline/jars/jline-$JLINE_VERSION.jar
+if [ "$SCALA_REFLECT_JAR" == "" ]; then
+    SCALA_REFLECT_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars" "scala-reflect-$SCALA_VERSION.jar")
 fi
 
-if [ "$SBT_INTERFACE_JAR" == "" ]
-then
-  SBT_INTERFACE_JAR=$HOME/.ivy2/cache/org.scala-sbt/interface/jars/interface-$SBT_VERSION.jar
+if [ "$SCALA_COMPILER_JAR" == "" ]; then
+    SCALA_COMPILER_JAR=$(find_jar "$HOME/.ivy2/cache/me.d-d/scala-compiler/jars" "scala-compiler-$SCALA_COMPILER_VERSION.jar")
+fi
+
+if [ "$JLINE_JAR" == "" ]; then
+    JLINE_JAR=$(find_jar "$HOME/.ivy2/cache/jline/jline/jars" "jline-$JLINE_VERSION.jar")
+fi
+
+if [ "$SBT_INTERFACE_JAR" == "" ]; then
+    SBT_INTERFACE_JAR=$(find_jar "$HOME/.ivy2/cache/org.scala-sbt/interface/jars" "interface-$SBT_VERSION.jar")
 fi
 
 if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR"  -o ! -f "$SCALA_COMPILER_JAR"  -o ! -f "$JLINE_JAR" -o ! -f "$SBT_INTERFACE_JAR" ]
