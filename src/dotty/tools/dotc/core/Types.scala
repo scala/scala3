@@ -1436,6 +1436,9 @@ object Types {
       else computeDenot
     }
 
+    /** Hook for adding debug check code when denotations are assigned */
+    final def checkDenot()(implicit ctx: Context) = {}
+
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
       val savedEphemeral = ctx.typerState.ephemeral
@@ -1471,6 +1474,7 @@ object Types {
 
           // Don't use setDenot here; double binding checks can give spurious failures after erasure
           lastDenotation = d
+          checkDenot()
           lastSymbol = d.symbol
           checkedPeriod = ctx.period
         }
@@ -1542,6 +1546,7 @@ object Types {
       // additional checks that intercept `denot` can be added here
 
       lastDenotation = denot
+      checkDenot()
       lastSymbol = denot.symbol
       checkedPeriod = Nowhere
     }
@@ -3462,8 +3467,7 @@ object Types {
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
     protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
-      if (tycon.typeParams.isEmpty) tycon
-      else tp.derivedAppliedType(tycon, args)
+      tp.derivedAppliedType(tycon, args)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
       tp.derivedAndOrType(tp1, tp2)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
