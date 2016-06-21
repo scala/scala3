@@ -31,7 +31,7 @@ object Scala2Unpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType {
+  case class TempPolyType(tparams: List[TypeSymbol], tpe: Type) extends UncachedGroundType {
     override def fallbackToText(printer: Printer): Text =
       "[" ~ printer.dclsText(tparams, ", ") ~ "]" ~ printer.toText(tpe)
   }
@@ -195,8 +195,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     case _ => errorBadSignature(s"a runtime exception occurred: $ex", Some(ex))
   }
 
-  private var postReadOp: Context => Unit = null
-
   def run()(implicit ctx: Context) =
     try {
       var i = 0
@@ -204,10 +202,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (entries(i) == null && isSymbolEntry(i)) {
           val savedIndex = readIndex
           readIndex = index(i)
-          entries(i) = readSymbol()
-          if (postReadOp != null) {
-            postReadOp(ctx)
-            postReadOp = null
+          val sym = readSymbol()
+          entries(i) = sym
+          sym.infoOrCompleter match {
+            case info: ClassUnpickler => info.init()
+            case _ =>
           }
           readIndex = savedIndex
         }
@@ -493,20 +492,20 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
-        val infoRef = readNat()
-        postReadOp = implicit ctx => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
+        var infoRef = readNat()
+        if (isSymbolRef(infoRef)) infoRef = readNat()
         if (isClassRoot)
           completeRoot(
-            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol))
+            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol, infoRef))
         else if (isModuleClassRoot)
           completeRoot(
-            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule))
+            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef))
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
           ctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
           def completer(cls: Symbol) = {
-            val unpickler = new LocalUnpickler() withDecls symScope(cls)
+            val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (implicit ctx =>
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
@@ -589,8 +588,27 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   object localMemberUnpickler extends LocalUnpickler
 
-  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
-    (new LocalUnpickler with SymbolLoaders.SecondCompleter {
+  class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
+    private def readTypeParams()(implicit ctx: Context): List[TypeSymbol] = {
+      val tag = readByte()
+      val end = readNat() + readIndex
+      if (tag == POLYtpe) {
+        val unusedRestperef = readNat()
+        until(end, readSymbolRef).asInstanceOf[List[TypeSymbol]]
+      } else Nil
+    }
+    private def loadTypeParams(implicit ctx: Context) =
+      atReadPos(index(infoRef), readTypeParams)
+
+    /** Force reading type params early, we need them in setClassInfo of subclasses. */
+    def init()(implicit ctx: Context) = loadTypeParams
+
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+      loadTypeParams
+  }
+
+  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int) =
+    (new ClassUnpickler(infoRef) with SymbolLoaders.SecondCompleter {
       override def startCoord(denot: SymDenotation): Coord = start
     }) withDecls symScope(cls) withSourceModule (_ => module)
 
@@ -756,7 +774,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, readSymbolRef)
-        if (typeParams.nonEmpty) TempPolyType(typeParams, restpe.widenExpr)
+        if (typeParams.nonEmpty) TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
         else ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()

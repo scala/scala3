@@ -307,9 +307,14 @@ class Namer { typer: Typer =>
         // have no implementation.
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
+        val completer = tree match {
+          case tree: TypeDef => new TypeDefCompleter(tree)(cctx)
+          case _ => new Completer(tree)(cctx)
+        }
+
         recordSym(ctx.newSymbol(
           ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
-          adjustIfModule(new Completer(tree)(cctx), tree),
+          adjustIfModule(completer, tree),
           privateWithinClass(tree.mods), tree.pos), tree)
       case tree: Import =>
         recordSym(ctx.newSymbol(
@@ -489,32 +494,11 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(implicit ctx: Context) extends TypeParamsCompleter {
+  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
     protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 
-    private var myTypeParams: List[TypeSymbol] = null
-    private var nestedCtx: Context = null
-
-    def completerTypeParams(sym: Symbol): List[TypeSymbol] = {
-      if (myTypeParams == null) {
-        //println(i"completing type params of $sym in ${sym.owner}")
-        myTypeParams = original match {
-          case tdef: TypeDef =>
-            nestedCtx = localContext(sym).setNewScope
-            locally {
-              implicit val ctx: Context = nestedCtx
-              completeParams(tdef.tparams)
-              tdef.tparams.map(symbolOfTree(_).asType)
-            }
-          case _ =>
-            Nil
-        }
-      }
-      myTypeParams
-    }
-
-    private def typeSig(sym: Symbol): Type = original match {
+    protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym is Module) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
@@ -522,9 +506,6 @@ class Namer { typer: Typer =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
-      case original: TypeDef =>
-        assert(!original.isClassDef)
-        typeDefSig(original, sym, completerTypeParams(sym))(nestedCtx)
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
@@ -567,6 +548,28 @@ class Namer { typer: Typer =>
       denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
     }
+  }
+
+  class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
+    private var myTypeParams: List[TypeSymbol] = null
+    private var nestedCtx: Context = null
+    assert(!original.isClassDef)
+
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
+      if (myTypeParams == null) {
+        //println(i"completing type params of $sym in ${sym.owner}")
+        nestedCtx = localContext(sym).setNewScope
+        myTypeParams = {
+          implicit val ctx: Context = nestedCtx
+          completeParams(original.tparams)
+          original.tparams.map(symbolOfTree(_).asType)
+        }
+      }
+      myTypeParams
+    }
+
+    override protected def typeSig(sym: Symbol): Type =
+      typeDefSig(original, sym, completerTypeParams(sym)(ictx))(nestedCtx)
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
