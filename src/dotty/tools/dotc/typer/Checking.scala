@@ -194,7 +194,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedOrRecType => true
+            case _: RefinedOrRecType | _: HKApply => true
             case _ => false
           }
           if (isInteresting(pre)) {
@@ -223,6 +223,9 @@ object Checking {
     val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.addMode(Mode.CheckCyclic))
     try checker.checkInfo(info)
     catch {
+          case ex: AssertionError =>
+            println(s"assertion error for $info")
+            throw ex
       case ex: CyclicReference =>
         if (reportErrors) {
           ctx.error(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)

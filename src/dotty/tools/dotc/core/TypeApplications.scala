@@ -4,7 +4,7 @@ package core
 import Types._
 import Contexts._
 import Symbols._
-import SymDenotations.TypeParamsCompleter
+import SymDenotations.{LazyType, TypeParamsCompleter}
 import Decorators._
 import util.Stats._
 import util.common._
@@ -191,7 +191,8 @@ object TypeApplications {
     else {
       def bounds(tparam: MemberBinding) = tparam match {
         case tparam: Symbol => tparam.infoOrCompleter
-        case tparam: RefinedType => tparam.memberBounds
+        case tparam: RefinedType if !Config.newHK => tparam.memberBounds
+        case tparam: LambdaParam => tparam.memberBounds
       }
       args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(bounds(tparam)))
     }
@@ -380,7 +381,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: WildcardType => self.optBounds.knownHK
     case self: PolyParam => self.underlying.knownHK
     case self: TypeProxy => self.underlying.knownHK
-    case NoType => 0
+    case NoType | _: LazyType => 0
     case _ => -1
   }
 
@@ -742,7 +743,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
         LazyRef(() => self.ref.appliedTo(args, typParams))
-      case _ if typParams.nonEmpty && typParams.head.isInstanceOf[LambdaParam] =>
+      case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case _ =>
         matchParams(self, typParams, args) match {
