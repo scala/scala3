@@ -135,6 +135,13 @@ object Scala2Unpickler {
     denot.info = ClassInfo( // final info, except possibly for typeparams ordering
       denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
     denot.updateTypeParams(tparams)
+
+    // Curiously the following line is needed to make pos/i859.scala compile.
+    // This test simply accesses scala.tools.nsc.Global. I could not track down why
+    // the reference is needed - referencing any field of the type parameter
+    // does the trick, no completion is needed (in fact such completion would
+    // cause cyclic references elsewhere).
+    assert(denot.typeParams.forall(_.exists))
   }
 }
 
