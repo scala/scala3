@@ -94,11 +94,11 @@ function build_all {
     printf "done\n"
 
     printf "Building dotty..."
-    MAIN_JAR=$(build_jar package target/scala-2.11)
+    MAIN_JAR=$(build_jar package "target/scala-$SCALA_BINARY_VERSION")
     printf "done\n"
 
     printf "Building tests..."
-    TEST_JAR=$(build_jar test:package target/scala-2.11 '/dotty.*-tests\.jar/p')
+    TEST_JAR=$(build_jar test:package "target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
     printf "done\n"
 
     update_packages
@@ -115,7 +115,7 @@ else
         MAIN_JAR="${JARS[1]}"
         TEST_JAR="${JARS[2]}"
     else
-        echo "Corrupted .packages file"
+        echo "Failed to parse .packages file"
         build_all
     fi
 fi
@@ -134,5 +134,5 @@ function check_jar {
 }
 
 check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty"            $MAIN_JAR       "src"        'MAIN_JAR=$(build_jar package target/scala-2.11)'
-check_jar "dotty-tests"      $TEST_JAR       "test"       'TEST_JAR=$(build_jar test:package target/scala-2.11 /dotty.*-tests\.jar/p)'
+check_jar "dotty"            $MAIN_JAR       "src"        'MAIN_JAR=$(build_jar package target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-tests"      $TEST_JAR       "test"       'TEST_JAR=$(build_jar test:package target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
