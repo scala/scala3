@@ -93,8 +93,7 @@ object DottyBuild extends Build {
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "jline" % "jline" % "2.12",
-                                  "org.scala-sbt" % "interface" % sbtVersion.value),
-
+                                  "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
@@ -205,7 +204,7 @@ object DottyBuild extends Build {
       description := "sbt compiler bridge for Dotty",
       resolvers += Resolver.typesafeIvyRepo("releases"),
       libraryDependencies ++= Seq(
-        "org.scala-sbt" % "interface" % sbtVersion.value,
+        "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
