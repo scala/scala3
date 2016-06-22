@@ -104,3 +104,4 @@ final case class TypeReference(title: String, tpeLink: MaterializableLink, param
 final case class OrTypeReference(left: Reference, right: Reference) extends Reference
 final case class AndTypeReference(left: Reference, right: Reference) extends Reference
 final case class NamedReference(title: String, ref: Reference) extends Reference
+final case class ConstantReference(title: String) extends Reference

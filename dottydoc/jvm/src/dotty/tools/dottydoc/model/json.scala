@@ -36,10 +36,11 @@ object json extends DefaultJsonProtocol {
 
   implicit object ReferenceFormat extends RootJsonFormat[Reference] {
     def write(obj: Reference) = obj match {
-      case obj: AndTypeReference => obj.toJson
-      case obj: OrTypeReference  => obj.toJson
-      case obj: TypeReference    => obj.toJson
-      case obj: NamedReference   => obj.toJson
+      case obj: AndTypeReference  => obj.toJson
+      case obj: OrTypeReference   => obj.toJson
+      case obj: TypeReference     => obj.toJson
+      case obj: NamedReference    => obj.toJson
+      case obj: ConstantReference => obj.toJson
     }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }
@@ -48,6 +49,7 @@ object json extends DefaultJsonProtocol {
   implicit val orRefFormat    = lazyFormat(jsonFormat(OrTypeReference, "left", "right"))
   implicit val andRefFormat   = lazyFormat(jsonFormat(AndTypeReference, "left", "right"))
   implicit val namedRefFormat = lazyFormat(jsonFormat(NamedReference, "title", "ref"))
+  implicit val constRefFormat = lazyFormat(jsonFormat(ConstantReference, "title"))
 
   implicit object EntityJsonFormat extends RootJsonFormat[Entity] {
 

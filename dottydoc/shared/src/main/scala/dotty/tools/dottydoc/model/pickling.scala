@@ -27,6 +27,7 @@ object pickling {
     .concreteType[OrTypeReference]
     .concreteType[AndTypeReference]
     .concreteType[NamedReference]
+    .concreteType[ConstantReference]
 
   implicit val entityPickler: PicklerPair[Entity] = CompositePickler[Entity]
     .concreteType[NonEntity.type]

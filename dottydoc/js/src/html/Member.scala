@@ -122,15 +122,30 @@ trait MemberLayout {
 
           if (rv.paramLinks.nonEmpty) span(
             returnValue,
-            "[", rv.paramLinks.map(decodeTpeLink), "]" //FIXME: does not get spacing and commas
+            "[",
+            rv.paramLinks
+              .map(decodeTpeLink)
+              .flatMap { sp =>
+                Seq(sp, span(cls := "type-separator no-left-margin", ",").render)
+              }
+              .dropRight(1),
+            "]"
           ).render
           else returnValue
-        case _ => ??? /** TODO: should not happen currently, but when
-                       *  `returnValue` in factories is changes - this will get
-                       *  triggered
-                       */
-      }
 
+        case OrTypeReference(left, right) => span(
+          cls := "member-return-value or-type",
+          link(left),
+          span(cls := "type-separator", "|"),
+          link(right)
+        ).render
+        case AndTypeReference(left, right) => span(
+          cls := "member-return-value and-type",
+          link(left),
+          span(cls := "type-separator", "&"),
+          link(right)
+        ).render
+      }
     }
 
     m match {

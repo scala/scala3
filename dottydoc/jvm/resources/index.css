@@ -146,6 +146,11 @@ div.summary-comment {
     margin-left: 0;
 }
 
+span.member-return-value > span.type-separator {
+    margin: 0 10px;
+}
+
+
 /* Search results ----------------------------------------------------------- */
 main#search-results {
     display: none;

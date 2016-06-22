@@ -61,24 +61,37 @@ object factories {
   }
 
   def returnType(t: TypeTree)(implicit ctx: Context): Reference = {
-    def tpeWithParamTpes(t: Type): List[String] = t match {
-      case ref @ RefinedType(parent, rn) =>
-        val name = ref.refinedInfo match {
-          case ta: TypeAlias => ta.alias.asInstanceOf[NamedType].name.decode.toString
-          case _ => rn.decode.toString.split("\\$").last
+    def typeRef(name: String, params: List[MaterializableLink]) =
+      TypeReference(name, UnsetLink(Text(name), name), params)
+
+    def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
+      case ref @ RefinedType(parent, rn) => {
+        val paramName = ref.refinedInfo match {
+          case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
+            ta.alias.asInstanceOf[NamedType].name.decode.toString
+          case _ =>
+            rn.decode.toString.split("\\$").last
         }
-        tpeWithParamTpes(parent) ++ (name :: Nil)
-      case TypeRef(_, name) => name.decode.toString :: Nil
-      case OrType(left, right) => "ortype" :: Nil
-      case AndType(left, right) => "andtype" :: Nil
-      case AnnotatedType(tpe, _) => tpeWithParamTpes(tpe)
-      case c: ConstantType => c.show :: Nil
+        val param = UnsetLink(Text(paramName), paramName)
+        expandTpe(parent, param :: params)
+      }
+      case TypeRef(_, name) =>
+        typeRef(name.decode.toString, params)
+      case OrType(left, right) =>
+        OrTypeReference(expandTpe(left), expandTpe(right))
+      case AndType(left, right) =>
+        AndTypeReference(expandTpe(left), expandTpe(right))
+      case AnnotatedType(tpe, _) =>
+        expandTpe(tpe)
+      case ExprType(tpe) =>
+        expandTpe(tpe)
+      case c: ConstantType =>
+        ConstantReference(c.show)
+      case tt: ThisType =>
+        expandTpe(tt.underlying)
     }
 
-    val List(retTpe, params @ _*) = tpeWithParamTpes(t.tpe)
-
-    //TODO: should not be a TypeReference but a Reference because of Or/And-types
-    TypeReference(retTpe, UnsetLink(Text(retTpe), retTpe), params.map(x => UnsetLink(Text(x), x)).toList)
+    expandTpe(t.tpe)
   }
 
   def typeParams(t: Tree)(implicit ctx: Context): List[String] = t match {
