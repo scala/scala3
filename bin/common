@@ -29,7 +29,7 @@ function find_jar {
     local artifact="$1/$2"
 
     if [ ! -f "$artifact" ]; then
-        artifact=$(find "$HOME/.coursier/cache" -iname "$2")
+        artifact=$(find "$HOME/.coursier/cache" -iname "$2" 2> /dev/null)
     fi
 
     echo "$artifact"
