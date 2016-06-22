@@ -57,7 +57,7 @@ trait MemberLayout {
               m.name
             ),
             spanWith("member-type-params no-left-margin", typeParams(m)),
-            spanWith("member-param-list no-left-margin", paramList(m)),
+            span(cls := "member-param-list no-left-margin", paramList(m)),
             returnValue(m, parent)
           ),
           shortComment,
@@ -73,23 +73,63 @@ trait MemberLayout {
     case _  => Some(span(cls := clazz, contents))
   }
 
-  def paramList(m: Entity): String = m match {
+  def paramList(m: Entity): Span = m match {
     case d: Def if d.paramLists.nonEmpty =>
-      d.paramLists.map { xs =>
-        xs.map { tr =>
-          // FIXME: should not cast like this - it won't be guaranteed to be a
-          // TypeReference after Or/Types for paramlists have been implemented
-          tr.title + ": " + decodeLink(tr.ref.asInstanceOf[TypeReference].tpeLink)
-        }.mkString ("(", ", ", ")")
-      }.mkString("")
-    case _ => ""
+      span(
+        cls := "member-param-lists",
+        d.paramLists.map { xs =>
+          span(
+            cls := "param-list",
+            "(",
+            xs.flatMap { tr =>
+              Seq(
+                span(cls := "param-name", tr.title).render,
+                span(cls := "type-separator no-left-margin", ":").render,
+                span(referenceToLinks(tr.ref)).render,
+                span(cls := "type-separator no-left-margin", ",").render
+              )
+            }.dropRight(1),
+            ")"
+          ).render
+        }
+      ).render
+    case _ => span().render
   }
 
-  def decodeLink: MaterializableLink => String = {
-    case MaterializedLink(t, _) => t
-    case NoLink(t, _) => t
-    //FIXME: there should be no UnsetLinks - either MaterializedLink or NoLink
-    case UnsetLink(_, q) => q
+  def referenceToLinks(ref: Reference): Span = {
+    def linkToAnchor(link: MaterializableLink) = link match {
+      case MaterializedLink(t, url) => a(href := url, t).render
+      case NoLink(t, _) => span(t).render
+
+      //FIXME: there should be no UnsetLinks - either MaterializedLink or NoLink
+      case UnsetLink(_, q) => span(q).render
+    }
+
+    ref match {
+      case ref: TypeReference if ref.paramLinks.nonEmpty => span(
+        linkToAnchor(ref.tpeLink),
+        "[",
+        ref
+          .paramLinks
+          .map(linkToAnchor)
+          .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render))
+          .dropRight(1),
+        "]"
+      ).render
+      case ref: TypeReference => span(linkToAnchor(ref.tpeLink)).render
+
+      case OrTypeReference(left, right) => span(
+        referenceToLinks(left),
+        span(cls := "type-separator", "|"),
+        referenceToLinks(right)
+      ).render
+
+      case AndTypeReference(left, right) => span(
+        referenceToLinks(left),
+        span(cls := "type-separator", "&"),
+        referenceToLinks(right)
+      ).render
+    }
   }
 
   def typeParams(m: Entity): String = m match {

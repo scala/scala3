@@ -107,12 +107,8 @@ object factories {
   }
 
   def paramLists(t: DefDef)(implicit ctx: Context): List[List[NamedReference]] = {
-    def getParams(xs: List[ValDef]): List[NamedReference] = xs map { vd =>
-      val name = vd.name.decode.toString
-      //TODO: should not be a TypeReference but a Reference since the argument can be an Or/And-types
-      val ref  = TypeReference(name, UnsetLink(Text(vd.tpt.show), vd.tpt.show), Nil)
-      NamedReference(name, ref)
-    }
+    def getParams(xs: List[ValDef]): List[NamedReference] =
+      xs.map(vd => NamedReference(vd.name.decode.toString, returnType(vd.tpt)))
 
     t.vparamss.map(getParams)
   }
