@@ -394,11 +394,19 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2 @ TypeLambda(tparams2, body2) =>
       def compareHkLambda = tp1.stripTypeVar match {
         case tp1 @ TypeLambda(tparams1, body1) =>
-          val boundsConform =
-            tparams1.corresponds(tparams2)((tparam1, tparam2) =>
-              isSubType(tparam2.memberBounds.subst(tp2, tp1), tparam1.memberBounds))
-          val bodiesConform = isSubType(body1, body2.subst(tp2, tp1))
-          variancesConform(tparams1, tparams2) && boundsConform && bodiesConform
+          // Don't compare bounds of lambdas, or t2994 will fail
+          // The issue is that, logically, bounds should compare contravariantly,
+          // so the bounds checking should look like this:
+          // 
+          //   tparams1.corresponds(tparams2)((tparam1, tparam2) =>
+          //     isSubType(tparam2.memberBounds.subst(tp2, tp1), tparam1.memberBounds))
+          //
+          // But that would invalidate a pattern such as
+          // `[X0 <: Number] -> Number   <:<    [X0] -> Any`
+          // This wpuld mean that there is no convenient means anymore to express a kind
+          // as a supertype. The fix is to delay the checking of bounds so that only
+          // bounds of * types are checked.
+          variancesConform(tparams1, tparams2) && isSubType(body1, body2.subst(tp2, tp1))
         case _ =>
           fourthTry(tp1, tp2)
       }
