@@ -448,6 +448,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
               case _ =>
             }
+          case tref: TypeRef if tref.symbol.isClass && !ctx.isAfterTyper =>
+            val setBefore = ctx.mode is Mode.GADTflexible
+            tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
+            if (!setBefore) ctx.retractMode(Mode.GADTflexible)
           case _ =>
         }
         ascription(tpt1, isWildcard = true)
