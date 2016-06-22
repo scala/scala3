@@ -2729,7 +2729,7 @@ object Types {
     override def computeHash = doHash(tycon, args)
 
     def upperBound(implicit ctx: Context): Type = tycon match {
-      case tp: TypeProxy => tp.underlying.appliedTo(args)
+      case tp: TypeProxy => tp.underlying.bounds.hi.appliedTo(args)
       case _ => defn.AnyType
     }
 
