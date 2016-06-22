@@ -56,6 +56,7 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
       d.is(NoGetterNeeded) ||
       d.initial.asInstanceOf[SymDenotation].is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
       d.is(Module) && d.isStatic ||
+      d.hasAnnotation(defn.ScalaStaticAnnot) ||
       d.isSelfSym
     if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
       val maybeStable = if (d.isStable) Stable else EmptyFlags

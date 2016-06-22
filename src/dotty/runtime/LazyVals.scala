@@ -10,14 +10,24 @@ object LazyVals {
 
   final val BITS_PER_LAZY_VAL = 2L
   final val LAZY_VAL_MASK = 3L
+  final val debug = false
 
-  @inline def STATE(cur: Long, ord: Int) = (cur >> (ord * BITS_PER_LAZY_VAL)) & LAZY_VAL_MASK
+  @inline def STATE(cur: Long, ord: Int) = {
+    val r = (cur >> (ord * BITS_PER_LAZY_VAL)) & LAZY_VAL_MASK
+    if (debug)
+      println(s"STATE($cur, $ord) = $r")
+    r
+  }
   @inline def CAS(t: Object, offset: Long, e: Long, v: Int, ord: Int) = {
+    if (debug)
+      println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
     val n = (e & mask) | (v << (ord * BITS_PER_LAZY_VAL))
     compareAndSet(t, offset, e, n)
   }
   @inline def setFlag(t: Object, offset: Long, v: Int, ord: Int) = {
+    if (debug)
+      println(s"setFlag($t, $offset, $v, $ord)")
     var retry = true
     while (retry) {
       val cur = get(t, offset)
@@ -35,6 +45,8 @@ object LazyVals {
     }
   }
   @inline def wait4Notification(t: Object, offset: Long, cur: Long, ord: Int) = {
+    if (debug)
+      println(s"wait4Notification($t, $offset, $cur, $ord)")
     var retry = true
     while (retry) {
       val cur = get(t, offset)
@@ -51,7 +63,11 @@ object LazyVals {
   }
 
   @inline def compareAndSet(t: Object, off: Long, e: Long, v: Long) = unsafe.compareAndSwapLong(t, off, e, v)
-  @inline def get(t: Object, off: Long) = unsafe.getLongVolatile(t, off)
+  @inline def get(t: Object, off: Long) = {
+    if (debug)
+      println(s"get($t, $off)")
+    unsafe.getLongVolatile(t, off)
+  }
 
   val processors: Int = java.lang.Runtime.getRuntime.availableProcessors()
   val base: Int = 8 * processors * processors
@@ -68,7 +84,12 @@ object LazyVals {
     monitors(id)
   }
 
-  @inline def getOffset(clz: Class[_], name: String) = unsafe.objectFieldOffset(clz.getDeclaredField(name))
+  @inline def getOffset(clz: Class[_], name: String) = {
+    val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
+    if (debug)
+      println(s"getOffset($clz, $name) = $r")
+    r
+  }
 
   object Names {
     final val state = "STATE"

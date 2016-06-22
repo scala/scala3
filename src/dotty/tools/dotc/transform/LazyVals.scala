@@ -26,7 +26,7 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
 import Erasure.Boxing.adaptToType
 
-class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with NeedsCompanions {
+class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   import LazyVals._
 
   import tpd._
@@ -48,11 +48,6 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter = Set(classOf[Mixin])
-
-  def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
-    def hasLazyVal(cls: ClassSymbol) = cls.info.decls.exists(_.is(Flags.Lazy))
-    hasLazyVal(cls) || cls.mixins.exists(hasLazyVal)
-  }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree =
    transformLazyVal(tree)
@@ -341,26 +336,28 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
         val tpe = x.tpe.widen.resultType.widen
         val claz = x.symbol.owner.asClass
         val thizClass = Literal(Constant(claz.info))
-        val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
         val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
         var offsetSymbol: TermSymbol = null
         var flag: Tree = EmptyTree
         var ord = 0
 
+        def offsetName(id: Int) = (StdNames.nme.LAZY_FIELD_OFFSET + (if(x.symbol.owner.is(Flags.Module)) "_m_" else "") + id.toString).toTermName
+
         // compute or create appropriate offsetSymol, bitmap and bits used by current ValDef
-        appendOffsetDefs.get(companion.moduleClass) match {
+        appendOffsetDefs.get(claz) match {
           case Some(info) =>
             val flagsPerLong = (64 / dotty.runtime.LazyVals.BITS_PER_LAZY_VAL).toInt
             info.ord += 1
             ord = info.ord % flagsPerLong
             val id = info.ord / flagsPerLong
+            val offsetById = offsetName(id)
             if (ord != 0) { // there are unused bits in already existing flag
-              offsetSymbol = companion.moduleClass.info.decl((StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName)
+              offsetSymbol = claz.info.decl(offsetById)
                 .suchThat(sym => (sym is Flags.Synthetic) && sym.isTerm)
                  .symbol.asTerm
             } else { // need to create a new flag
-              offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
+              offsetSymbol = ctx.newSymbol(claz, offsetById, Flags.Synthetic, defn.LongType).enteredAfter(this)
               offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
               val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
               val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
@@ -370,13 +367,13 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer with Nee
             }
 
           case None =>
-            offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
+            offsetSymbol = ctx.newSymbol(claz, offsetName(0), Flags.Synthetic, defn.LongType).enteredAfter(this)
             offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
             val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
             val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
-            appendOffsetDefs += (companion.moduleClass -> new OffsetInfo(List(offsetTree), ord))
+            appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
         }
 
         val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName

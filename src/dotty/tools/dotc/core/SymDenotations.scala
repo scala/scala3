@@ -594,6 +594,10 @@ object SymDenotations {
     final def isPrimaryConstructor(implicit ctx: Context) =
       isConstructor && owner.primaryConstructor == symbol
 
+    /** Does this symbol denote the static constructor of its enclosing class? */
+    final def isStaticConstructor(implicit ctx: Context) =
+      name.isStaticConstructorName
+
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
 
@@ -1001,7 +1005,7 @@ object SymDenotations {
       if (!canMatchInheritedSymbols) Iterator.empty
       else overriddenFromType(owner.info)
 
-    /** Returns all all matching symbols defined in parents of the selftype. */
+    /** Returns all matching symbols defined in parents of the selftype. */
     final def extendedOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
       if (!canMatchInheritedSymbols) Iterator.empty
       else overriddenFromType(owner.asClass.classInfo.selfType)
@@ -1499,7 +1503,7 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls))
+      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls) || sym.hasAnnotation(defn.ScalaStaticAnnot))
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)

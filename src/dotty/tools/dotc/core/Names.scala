@@ -335,6 +335,7 @@ object Names {
 
   // can't move CONSTRUCTOR/EMPTY_PACKAGE to `nme` because of bootstrap failures in `encode`.
   val CONSTRUCTOR = termName("<init>")
+  val STATIC_CONSTRUCTOR = termName("<clinit>")
   val EMPTY_PACKAGE = termName("<empty>")
 
   val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)

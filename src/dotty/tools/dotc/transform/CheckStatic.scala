@@ -32,6 +32,7 @@ import TypeUtils._
   *     is not allowed to inherit classes that define a term member with name `foo`.
   *  5. Only `@static` methods and vals are supported in companions of traits.
   *     Java8 supports those, but not vars, and JavaScript does not have interfaces at all.
+  *  6. `@static` Lazy vals are currently unsupported.
   */
 class CheckStatic extends MiniPhaseTransform { thisTransformer =>
   import ast.tpd._
@@ -57,17 +58,18 @@ class CheckStatic extends MiniPhaseTransform { thisTransformer =>
         }
 
         val companion = ctx.owner.companionClass
+        def clashes = companion.asClass.membersNamed(defn.name)
+
         if (!companion.exists) {
-          ctx.error("object that conatin @static members should have companion class", defn.pos)
-        }
-
-        val clashes = companion.asClass.membersNamed(defn.name)
-        if (clashes.exists) {
+          ctx.error("object that contains @static members should have companion class", defn.pos)
+        } else if (clashes.exists) {
           ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
-        }
-
-        if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
-          ctx.error("Companions of traits cannot define mutable @static fields")
+         } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
+          ctx.error("Companions of traits cannot define mutable @static fields", defn.pos)
+        } else if (defn.symbol.is(Flags.Lazy)) {
+          ctx.error("Lazy @static fields are not supported", defn.pos)
+        } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
+          ctx.error("@static members cannot override or implement non-static ones", defn.pos)
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
