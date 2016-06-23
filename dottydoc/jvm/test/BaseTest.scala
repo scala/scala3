@@ -6,7 +6,7 @@ import Contexts.{ Context, ContextBase, FreshContext }
 import dotc.util.SourceFile
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
-import dottydoc.core.Phases.DocPhase
+import dottydoc.core.DocPhase
 
 trait DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords

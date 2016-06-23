@@ -1,7 +1,7 @@
 package dotty.tools
 package dottydoc
 
-import core.Phases.DocPhase
+import core.{ AddImplicitsPhase, DocPhase }
 import dotc.config.CompilerCommand
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts._
@@ -28,6 +28,7 @@ import scala.util.control.NonFatal
 class DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] =
     List(new DocFrontEnd) ::
+    List(new AddImplicitsPhase) ::
     List(new DocPhase) ::
     Nil
 
@@ -35,6 +36,20 @@ class DottyDocCompiler extends Compiler {
     reset()
     new DocRun(this)(rootContext)
   }
+}
+
+/** TODO: this object is only temporary, should be factored out, just wanted it to demo dottydoc */
+object ImplicitlyAdded {
+  import dotc.core.Symbols.Symbol
+  import dotc.ast.tpd.DefDef
+  import scala.collection.mutable
+
+  private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
+  def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
+
+  def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
+    s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
+  })
 }
 
 class DocFrontEnd extends FrontEnd {

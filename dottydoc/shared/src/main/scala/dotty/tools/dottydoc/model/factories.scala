@@ -4,6 +4,7 @@ package model
 import comment._
 import dotty.tools.dotc
 import dotc.core.Types._
+import dotc.core.Flags
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.SymDenotations._
@@ -24,27 +25,14 @@ object factories {
       .filter(_ != "<trait>")
       .filter(_ != "interface")
 
-  private def pathList(tpe: Type): List[String] = tpe match {
-    case t: ThisType =>
-      pathList(t.tref)
-    case t: NamedType if t.prefix == NoPrefix  && t.name.toString == "<root>" =>
-      Nil
-    case t: NamedType if t.prefix == NoPrefix =>
-      t.name.toString :: Nil
-    case t: NamedType =>
-      pathList(t.prefix) :+ t.name.toString
+  def path(sym: Symbol)(implicit ctx: Context): List[String] = sym match {
+    case sym if sym.name.decode.toString == "<root>" => Nil
+    case sym if sym is Flags.Module => path(sym.owner) :+ sym.name.decode.toString.dropRight(1)
+    case sym => path(sym.owner) :+ sym.name.decode.toString
   }
 
-  def path(t: Tree)(implicit ctx: Context): List[String] = {
-    val ref =
-      if (t.symbol.isTerm) t.symbol.termRef
-      else t.symbol.typeRef
-
-    pathList(ref)
-  }
 
   private val product = """Product[1-9][0-9]*""".r
-
   private def cleanTitle(title: String): String = title match {
     // matches Entity.this.Something
     case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
@@ -60,8 +48,8 @@ object factories {
     case _ => query
   }
 
-  def returnType(t: TypeTree)(implicit ctx: Context): Reference = {
-    def typeRef(name: String, params: List[MaterializableLink]) =
+  def returnType(t: Type)(implicit ctx: Context): Reference = {
+    def typeRef(name: String, params: List[MaterializableLink] = Nil) =
       TypeReference(name, UnsetLink(Text(name), name), params)
 
     def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
@@ -89,26 +77,30 @@ object factories {
         ConstantReference(c.show)
       case tt: ThisType =>
         expandTpe(tt.underlying)
+      case ci: ClassInfo =>
+        typeRef(ci.cls.show)
+      case ta: TypeAlias =>
+        expandTpe(ta.alias.widenDealias)
+      case mt: MethodType =>
+        expandTpe(mt.resultType)
+      case pt: PolyType =>
+        expandTpe(pt.resultType)
+      case pp: PolyParam =>
+        typeRef(pp.paramName.decode.toString)
     }
 
-    expandTpe(t.tpe)
+    expandTpe(t)
   }
 
-  def typeParams(t: Tree)(implicit ctx: Context): List[String] = t match {
-    case t: DefDef =>
-      def variance(s: Symbol) =
-        if (s is Covariant) "+"
-        else if (s is Contravariant) "-"
-        else ""
-      t.tparams.map(p => variance(p.symbol) + p.show)
-    case t: TypeDef if t.rhs.isInstanceOf[Template] =>
-      // Get the names from the constructor method `DefDef`
-      typeParams(t.rhs.asInstanceOf[Template].constr)
-  }
+  def typeParams(sym: Symbol)(implicit ctx: Context): List[String] =
+    sym.denot.info match {
+      case pt: PolyType => pt.paramNames.map(_.decode.toString)
+      case _ => Nil
+    }
 
   def paramLists(t: DefDef)(implicit ctx: Context): List[List[NamedReference]] = {
     def getParams(xs: List[ValDef]): List[NamedReference] =
-      xs.map(vd => NamedReference(vd.name.decode.toString, returnType(vd.tpt)))
+      xs.map(vd => NamedReference(vd.name.decode.toString, returnType(vd.tpt.tpe)))
 
     t.vparamss.map(getParams)
   }
@@ -132,7 +124,7 @@ object factories {
 
       cd.classParents.collect {
         case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
-          UnsetLink(Text(t.name.toString), pathList(t).mkString("."))
+          UnsetLink(Text(t.name.toString), path(t.symbol).mkString("."))
       }
     case _ => Nil
   }
