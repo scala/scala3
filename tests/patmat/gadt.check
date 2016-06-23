@@ -10,4 +10,8 @@ It would fail on the following input: Or(_, _)
 It would fail on the following input: BooleanLit(_), IntLit(_)
   def foo4b(x: Expr) = x match {
                          ^
-three warnings found
+./tests/patmat/gadt.scala:55: warning: match may not be exhaustive.
+It would fail on the following input: Sum(_, _)
+  def foo5b[T <: Int](x: Expr[T]) = x match {
+                                      ^
+four warnings found

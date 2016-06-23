@@ -14,10 +14,14 @@ import core.StdNames._
 import core.NameOps._
 import core.Constants._
 
-/** Space logic for checking exhaustivity and unreachability of pattern matching.
+/** Space logic for checking exhaustivity and unreachability of pattern matching
  *
- *  The core idea of the algorithm is that patterns and types are value
- *  spaces, which is recursively defined as follows:
+ *  Space can be thought of as a set of possible values. A type or a pattern
+ *  both refer to spaces. The space of a type is the values that inhabit the
+ *  type. The space of a pattern is the values that can be covered by the
+ *  pattern.
+ *
+ *  Space is recursively defined as follows:
  *
  *      1. `Empty` is a space
  *      2. For a type T, `Typ(T)` is a space
@@ -279,7 +283,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /** Is `tp1` a subtype of `tp2`?  */
-  def isSubType(tp1: Type, tp2: Type): Boolean = tp1 <:< tp2
+  def isSubType(tp1: Type, tp2: Type): Boolean = {
+    // expose is important due to type bounds
+    // check SI-9657 and tests/patmat/gadt.scala
+    tp1 <:< expose(tp2)
+  }
 
   def isEqualType(tp1: Type, tp2: Type): Boolean = tp1 =:= tp2
 
@@ -472,6 +480,59 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     isCheckable(sel.tpe.widen.elimAnonymousClass)
   }
 
+
+  /** Expose refined type to eliminate reference to type variables
+   *
+   *  A = B                      M { type T = A }        ~~>  M { type T = B }
+   *
+   *  A <: X :> Y                M { type T = A }        ~~>  M { type T <: X :> Y }
+   *
+   *  A <: X :> Y  B <: U :> V   M { type T <: A :> B }  ~~>  M { type T <: X :> B }
+   *
+   *  A = X  B = Y               M { type T <: A :> B }  ~~>  M { type T <: X :> Y }
+   */
+  def expose(tp: Type): Type = {
+    def follow(tp: Type, up: Boolean): Type = tp match {
+      case tp: TypeProxy =>
+        tp.underlying match {
+          case TypeBounds(lo, hi) =>
+            follow(if (up) hi else lo, up)
+          case _ =>
+            tp
+        }
+      case OrType(tp1, tp2) =>
+        OrType(follow(tp1, up), follow(tp2, up))
+      case AndType(tp1, tp2) =>
+        AndType(follow(tp1, up), follow(tp2, up))
+    }
+
+    tp match {
+      case tp: RefinedType =>
+        tp.refinedInfo match {
+          case tpa : TypeAlias =>
+            val hi = follow(tpa.alias, true)
+            val lo = follow(tpa.alias, false)
+            val refined = if (hi =:= lo)
+              tpa.derivedTypeAlias(hi)
+            else
+              tpa.derivedTypeBounds(lo, hi)
+
+            tp.derivedRefinedType(
+              expose(tp.parent),
+              tp.refinedName,
+              refined
+            )
+          case tpb @ TypeBounds(lo, hi) =>
+            tp.derivedRefinedType(
+              expose(tp.parent),
+              tp.refinedName,
+              tpb.derivedTypeBounds(follow(lo, false), follow(hi, true))
+            )
+        }
+      case _ => tp
+    }
+  }
+
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.elimAnonymousClass.dealias
@@ -491,7 +552,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.elimAnonymousClass
+    // ignore selector type for now
+    // val selTyp = sel.tpe.widen.elimAnonymousClass.dealias
 
     // starts from the second, the first can't be redundant
     (1 until cases.length).foreach { i =>

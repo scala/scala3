@@ -46,4 +46,13 @@ object Test {
     case _: Sum => true
     case _: Or => true
   }
+
+  def foo5a[T <: Int](x: Expr[T]) = x match {
+    case _: IntLit => true
+    case _: Sum => true
+  }
+
+  def foo5b[T <: Int](x: Expr[T]) = x match {
+    case _: IntLit => true
+  }
 }
