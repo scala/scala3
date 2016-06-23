@@ -51,23 +51,25 @@ class DocPhase extends Phase {
       val defs = (tree match {
         case t: Template => collectList(t.body, ps)
         case _ => Nil
-      }) ++ implicitlyAddedMembers.flatMap(defFromSymbol)
+      }) ++ implicitlyAddedMembers.flatMap(addedFromSymbol)
 
       defs
     }
 
-    def defFromSymbol(sym: Symbol): List[Entity] = {
+    def addedFromSymbol(sym: Symbol): List[Entity] = {
       val defs = sym.info.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
         track(sym, ctx) {
-          println(meth.show)
           DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), Nil/*paramLists(???)*/)
         }
       }.toList
 
-      println(s"Implicitly added to ${tree.symbol.show}:")
-      defs.foreach(println)
-      println("-------")
-      defs
+      val vals = sym.info.fields.map { value =>
+        track(sym, ctx) {
+          ValImpl(value.symbol.name.decode.toString, Nil, path(value.symbol), returnType(value.info))
+        }
+      }
+
+      defs ++ vals
     }
 
 
