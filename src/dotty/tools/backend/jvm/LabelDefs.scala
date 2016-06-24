@@ -121,6 +121,7 @@ class LabelDefs extends MiniPhaseTransform {
           val visitedNow = new mutable.HashMap[Symbol, Tree]()
           val treesToAppend = new ArrayBuffer[Tree]() // order matters. parents should go first
           treesToAppend += labelDefs(entrySym)
+          labelDefs -= entrySym
           queue.clear()
 
           var visited = 0
@@ -141,6 +142,7 @@ class LabelDefs extends MiniPhaseTransform {
                     if (callCount > 1) {
                       if (!treesToAppend.contains(defTree)) {
                         treesToAppend += defTree
+                        labelDefs -= callSym
                         queue += call
 
                       }
