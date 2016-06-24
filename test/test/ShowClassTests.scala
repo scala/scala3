@@ -96,11 +96,6 @@ class ShowClassTests extends DottyTest {
   }
 
   @Test
-  def loadJavaClasses() = {
-    showPackage("scala.tools.jline", 0)
-  }
-
-  @Test
   def loadMoreClasses() = {
     showClasses("scala.collection.JavaConversions")
     showClasses("scala.collection.convert.Wrappers")

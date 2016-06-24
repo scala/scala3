@@ -90,7 +90,7 @@ object REPL {
     def input(in: Interpreter)(implicit ctx: Context): InteractiveReader = {
       val emacsShell = System.getProperty("env.emacs", "") != ""
       //println("emacsShell="+emacsShell) //debug
-      if (ctx.settings.Xnojline.value || emacsShell) new SimpleReader()
+      if (emacsShell) new SimpleReader()
       else InteractiveReader.createDefault(in)
     }
 
