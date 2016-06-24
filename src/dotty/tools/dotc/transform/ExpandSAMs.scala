@@ -75,6 +75,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
             EmptyTree,
             Literal(Constant(false)))
         cpy.Match(applyRhs)(paramRef, cases.map(translateCase) :+ defaultCase)
+          .subst(List(param.symbol), List(paramRef.symbol))
       case _ =>
         tru
     }
