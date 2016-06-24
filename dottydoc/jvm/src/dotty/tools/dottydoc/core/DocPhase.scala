@@ -58,13 +58,13 @@ class DocPhase extends Phase {
 
     def addedFromSymbol(sym: Symbol): List[Entity] = {
       val defs = sym.info.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
-        track(sym, ctx) {
+        track(meth.symbol, ctx) {
           DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), Nil/*paramLists(???)*/)
         }
       }.toList
 
       val vals = sym.info.fields.map { value =>
-        track(sym, ctx) {
+        track(value.symbol, ctx) {
           ValImpl(value.symbol.name.decode.toString, Nil, path(value.symbol), returnType(value.info))
         }
       }

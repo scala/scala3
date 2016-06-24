@@ -49,22 +49,24 @@ object factories {
   }
 
   def returnType(t: Type)(implicit ctx: Context): Reference = {
-    def typeRef(name: String, params: List[MaterializableLink] = Nil) =
-      TypeReference(name, UnsetLink(Text(name), name), params)
+    def typeRef(name: String, query: String = "", params: List[MaterializableLink] = Nil) = {
+      val realQuery = if (query != "") query else name
+      TypeReference(name, UnsetLink(Text(name), realQuery), params)
+    }
 
     def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
       case ref @ RefinedType(parent, rn) => {
-        val paramName = ref.refinedInfo match {
+        val paramName = (ref.refinedInfo match {
           case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
-            ta.alias.asInstanceOf[NamedType].name.decode.toString
-          case _ =>
-            rn.decode.toString.split("\\$").last
-        }
+            ta.alias.asInstanceOf[NamedType].name.show
+          case _ => rn.show
+        }).split("\\$").last
         val param = UnsetLink(Text(paramName), paramName)
         expandTpe(parent, param :: params)
       }
-      case TypeRef(_, name) =>
-        typeRef(name.decode.toString, params)
+      case TypeRef(_, n) =>
+        val name = n.decode.toString.split("\\$").last
+        typeRef(name, params = params)
       case OrType(left, right) =>
         OrTypeReference(expandTpe(left), expandTpe(right))
       case AndType(left, right) =>
@@ -86,7 +88,13 @@ object factories {
       case pt: PolyType =>
         expandTpe(pt.resultType)
       case pp: PolyParam =>
-        typeRef(pp.paramName.decode.toString)
+        val paramName = pp.paramName.show
+        val name =
+          if (paramName.contains('$'))
+            paramName.split("\\$\\$").last
+          else paramName
+
+        typeRef(name)
     }
 
     expandTpe(t)
@@ -94,7 +102,8 @@ object factories {
 
   def typeParams(sym: Symbol)(implicit ctx: Context): List[String] =
     sym.denot.info match {
-      case pt: PolyType => pt.paramNames.map(_.decode.toString)
+      case pt: PolyType =>
+        pt.paramNames.map(_.show.split("\\$").last)
       case _ => Nil
     }
 
