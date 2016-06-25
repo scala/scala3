@@ -36,11 +36,16 @@ object Checking {
   /** A general checkBounds method that can be used for TypeApply nodes as
    *  well as for AppliedTypeTree nodes.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) =
+  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
+    (args, boundss).zipped.foreach { (arg, bound) =>
+      if (!bound.isHK && arg.tpe.isHK)
+        ctx.error(d"missing type parameter(s) for $arg", arg.pos)
+    }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
+  }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
@@ -172,8 +177,10 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
-      case tp @ RefinedType(parent, name) =>
-        tp.derivedRefinedType(this(parent), name, this(tp.refinedInfo, nestedCycleOK, nestedCycleOK))
+      case tp @ RefinedType(parent, name, rinfo) =>
+        tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
+      case tp: RecType =>
+        tp.rebind(this(tp.parent))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -187,7 +194,7 @@ object Checking {
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
-            case _: RefinedType => true
+            case _: RefinedOrRecType => true
             case _ => false
           }
           if (isInteresting(pre)) {
@@ -433,12 +440,14 @@ trait Checking {
   }
 
   /** Check that any top-level type arguments in this type are feasible, i.e. that
-   *  their lower bound conforms to their upper cound. If a type argument is
+   *  their lower bound conforms to their upper bound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
    */
   def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
     case tp: RefinedType =>
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
+    case tp: RecType =>
+      tp.rebind(tp.parent)
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
       ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
       TypeAlias(hi)

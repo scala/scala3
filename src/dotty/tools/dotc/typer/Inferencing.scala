@@ -175,8 +175,14 @@ object Inferencing {
 
   /** Recursively widen and also follow type declarations and type aliases. */
   def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.info.bounds.hi)
-    case tp: AnnotatedType => tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
+    case tp: TypeRef if !tp.symbol.isClass =>
+      widenForMatchSelector(tp.info.bounds.hi)
+    case tp: AnnotatedType =>
+      tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
+    case tp @ RefinedType(parent, rname, rinfo) if !parent.typeSymbol.isClass =>
+      tp.derivedRefinedType(widenForMatchSelector(parent), rname, rinfo)
+    case tp: RecType if !tp.parent.typeSymbol.isClass =>
+      tp.derivedRecType(widenForMatchSelector(tp.parent))
     case tp => tp
   }
 

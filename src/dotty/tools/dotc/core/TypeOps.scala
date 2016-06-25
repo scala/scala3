@@ -6,6 +6,7 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._, Denotations.SingleDenotation
 import config.Printers._
 import util.Positions._
+import NameOps._
 import Decorators._
 import StdNames._
 import Annotations._
@@ -157,6 +158,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tp
     case tp: RefinedType =>
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
+        .normalizeHkApply
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) =>
@@ -226,17 +228,22 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               return tp1.derivedRefinedType(
                 approximateUnion(OrType(tp1.parent, tp2.parent)),
                 tp1.refinedName,
-                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo).substRefinedThis(tp2, RefinedThis(tp1)))
+                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo))
                 //.ensuring { x => println(i"approx or $tp1 | $tp2 = $x\n constr = ${ctx.typerState.constraint}"); true } // DEBUG
             case _ =>
           }
         case _ =>
       }
+
       tp1 match {
+        case tp1: RecType =>
+          tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
           approximateUnion(next(tp1) | tp2)
         case _ =>
           tp2 match {
+            case tp2: RecType =>
+              tp2.rebind(approximateOr(tp1, tp2.parent))
             case tp2: TypeProxy if !isClassRef(tp2) =>
               approximateUnion(tp1 | next(tp2))
             case _ =>
@@ -252,15 +259,31 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
     else tp match {
       case tp: OrType =>
-        approximateOr(tp.tp1, tp.tp2)
+        approximateOr(tp.tp1, tp.tp2)  // Maybe refactor using liftToRec?
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
       case tp: RefinedType =>
         tp.derivedRefinedType(approximateUnion(tp.parent), tp.refinedName, tp.refinedInfo)
+      case tp: RecType =>
+        tp.rebind(approximateUnion(tp.parent))
       case _ =>
         tp
     }
   }
+
+  /** Not currently needed:
+   *
+  def liftToRec(f: (Type, Type) => Type)(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    def f2(tp1: Type, tp2: Type): Type = tp2 match {
+      case tp2: RecType => tp2.rebind(f(tp1, tp2.parent))
+      case _ => f(tp1, tp2)
+    }
+    tp1 match {
+      case tp1: RecType => tp1.rebind(f2(tp1.parent, tp2))
+      case _ => f2(tp1, tp2)
+    }
+  }
+  */
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
@@ -361,11 +384,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty // A map of all formal parent parameter
 
     // Strip all refinements from parent type, populating `refinements` and `formals` maps.
-    def normalizeToRef(tp: Type): TypeRef = tp.dealias match {
+    def normalizeToRef(tp: Type): TypeRef = tp.dealias.normalizeHkApply match {
       case tp: TypeRef =>
         tp
-      case tp @ RefinedType(tp1, name: TypeName) =>
-        tp.refinedInfo match {
+      case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
+        rinfo match {
           case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
             // Don't record refinements of the form X = this.X (These can arise using named parameters).
             typr.println(s"dropping refinement $tp")

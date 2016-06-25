@@ -146,6 +146,9 @@ object Denotations {
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
 
+    /** A denotation with the info of this denotation transformed using `f` */
+    def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation
+
     /** If this denotation does not exist, fallback to alternative */
     final def orElse(that: => Denotation) = if (this.exists) this else that
 
@@ -242,7 +245,7 @@ object Denotations {
       }
       else if (exists && !qualifies(symbol)) NoDenotation
       else asSingleDenotation
-     }
+    }
 
     /** Form a denotation by conjoining with denotation `that`.
      *
@@ -456,6 +459,8 @@ object Denotations {
       else if (!d2.exists) d1
       else derivedMultiDenotation(d1, d2)
     }
+    def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation =
+      derivedMultiDenotation(denot1.mapInfo(f), denot2.mapInfo(f))
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     override def toString = alternatives.mkString(" <and> ")
@@ -487,6 +492,9 @@ object Denotations {
     def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info)) this
       else newLikeThis(symbol, info)
+
+    def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation =
+      derivedSingleDenotation(symbol, f(info))
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 

@@ -260,13 +260,16 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               val parent = readType()
               val ttag = nextUnsharedTag
               if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
-              RefinedType(parent, name, rt => registeringType(rt, readType()))
+              RefinedType(parent, name, readType())
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
-              TypeBounds(readType(), readType())
+              val lo = readType()
+              val hi = readType()
+              val bk = ifBefore(end)(new BindingKind(readNat().toByte), NoBinding)
+              TypeBounds(lo, hi, bk)
             case TYPEALIAS =>
               val alias = readType()
               val variance =
@@ -322,8 +325,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           readPackageRef().termRef
         case TYPEREF =>
           val name =  readName().toTypeName
-          if (name.isLambdaTraitName) // Make sure curresponding lambda trait exists
-            defn.LambdaTrait(name.lambdaTraitVariances)
           TypeRef(readType(), name)
         case TERMREF =>
           readNameSplitSig() match {
@@ -332,8 +333,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           }
         case THIS =>
           ThisType.raw(readType().asInstanceOf[TypeRef])
-        case REFINEDthis =>
-          RefinedThis(readTypeRef().asInstanceOf[RefinedType])
+        case RECtype =>
+          RecType(rt => registeringType(rt, readType()))
+        case RECthis =>
+          RecThis(readTypeRef().asInstanceOf[RecType])
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())

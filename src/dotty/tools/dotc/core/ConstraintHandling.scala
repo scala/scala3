@@ -239,6 +239,8 @@ trait ConstraintHandling {
       def addParamBound(bound: PolyParam) =
         if (fromBelow) addLess(bound, param) else addLess(param, bound)
 
+      assert(param.isHK == bound.isHK, s"$param / $bound / $fromBelow")
+
       /** Drop all constrained parameters that occur at the toplevel in `bound` and
        *  handle them by `addLess` calls.
        *  The preconditions make sure that such parameters occur only
@@ -285,6 +287,8 @@ trait ConstraintHandling {
           if (!addParamBound(bound)) NoType
           else if (fromBelow) defn.NothingType
           else defn.AnyType
+        case bound: RefinedType =>
+          bound.normalizeHkApply
         case _ =>
           bound
       }

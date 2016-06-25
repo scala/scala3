@@ -92,6 +92,11 @@ trait SymDenotations { this: Context =>
         explain("denotation is not a SymDenotation")
     }
   }
+
+  /** An anonymous type denotation with an info `>: Nothing <: Any`. Used to
+   *  avoid stackoverflows when computing members of TypeRefs
+   */
+  lazy val anyTypeDenot = new JointRefDenotation(NoSymbol, TypeBounds.empty, Period.allInRun(ctx.runId))
 }
 
 object SymDenotations {
@@ -477,10 +482,6 @@ object SymDenotations {
      */
     final def isRefinementClass(implicit ctx: Context): Boolean =
       name.decode == tpnme.REFINE_CLASS
-
-    /** is this symbol a trait representing a type lambda? */
-    final def isLambdaTrait(implicit ctx: Context): Boolean =
-      isClass && name.startsWith(tpnme.hkLambdaPrefix) && owner == defn.ScalaPackageClass
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
@@ -1121,10 +1122,11 @@ object SymDenotations {
 
     def debugString = toString + "#" + symbol.id // !!! DEBUG
 
-        def hasSkolems(tp: Type): Boolean = tp match {
+    def hasSkolems(tp: Type): Boolean = tp match {
       case tp: SkolemType => true
       case tp: NamedType => hasSkolems(tp.prefix)
       case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
+      case tp: RecType => hasSkolems(tp.parent)
       case tp: PolyType => tp.paramBounds.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: MethodType => tp.paramTypes.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: ExprType => hasSkolems(tp.resType)

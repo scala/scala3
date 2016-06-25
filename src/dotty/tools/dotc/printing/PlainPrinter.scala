@@ -13,6 +13,8 @@ import scala.annotation.switch
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
+  private var openRecs: List[RecType] = Nil
+
   protected def maxToTextRecursions = 100
 
   protected final def controlled(op: => Text): Text =
@@ -48,15 +50,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp @ TypeRef(_, tpnme.hkApply) =>
-          val tp1 = tp.reduceProjection
-          if (tp1 eq tp) tp else homogenize(tp1)
+        case tp: RefinedType =>
+          tp.normalizeHkApply
+        case tp: SkolemType =>
+          homogenize(tp.info)
         case tp: LazyRef =>
           homogenize(tp.ref)
         case _ =>
           tp
       }
     else tp
+
+  private def selfRecName(n: Int) = s"z$n"
 
   /** Render elements alternating with `sep` string */
   protected def toText(elems: Traversable[Showable], sep: String) =
@@ -110,7 +115,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case RefinedType(parent, _) => refinementChain(parent.stripTypeVar)
+      case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
 
@@ -130,6 +135,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val parent :: (refined: List[RefinedType @unchecked]) =
           refinementChain(tp).reverse
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
+      case tp: RecType =>
+        try {
+          openRecs = tp :: openRecs
+          "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
+        }
+        finally openRecs = openRecs.tail
       case AndType(tp1, tp2) =>
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>
@@ -232,11 +243,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case tp: RefinedThis =>
-        s"${nameString(tp.binder.typeSymbol)}{...}.this"
+      case tp: RecThis =>
+        val idx = openRecs.reverse.indexOf(tp.binder)
+        if (idx >= 0) selfRecName(idx + 1)
+        else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info)
-        else "<unknown instance of type " ~ toTextGlobal(tp.info) ~ ">"
+        if (homogenizedView) toText(tp.info) else tp.repr
     }
   }
 

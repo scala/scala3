@@ -529,9 +529,7 @@ object StdNames {
 
     val synthSwitch: N          = "$synthSwitch"
 
-    val hkApply: N              = "$Apply"
     val hkArgPrefix: N          = "$hk"
-    val hkLambdaPrefix: N       = "Lambda$"
     val hkArgPrefixHead: Char   = hkArgPrefix.head
     val hkArgPrefixLength: Int  = hkArgPrefix.length
 
@@ -744,11 +742,7 @@ object StdNames {
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
 
-    def hkLambda(vcs: List[Int]): TypeName = hkLambdaPrefix ++ vcs.map(varianceSuffix).mkString
     def hkArg(n: Int): TypeName = hkArgPrefix ++ n.toString
-
-    def varianceSuffix(v: Int): Char = varianceSuffixes.charAt(v + 1)
-    val varianceSuffixes = "NIP"
 
     final val Conforms = encode("<:<")
   }

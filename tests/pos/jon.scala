@@ -4,5 +4,5 @@ object Test {
 
   val x = List(List, Vector)
 
-  val y: List[scala.collection.generic.SeqFactory] = x
+  val y: List[scala.collection.generic.SeqFactory[_]] = x
 }

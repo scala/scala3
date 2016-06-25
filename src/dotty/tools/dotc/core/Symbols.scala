@@ -367,7 +367,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with printing.Showable {
+  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends DotClass with MemberBinding with printing.Showable {
 
     type ThisName <: Name
 
@@ -488,6 +488,13 @@ object Symbols {
      *  from source.
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+
+    // MemberBinding methods
+    def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
+    def memberName(implicit ctx: Context): Name = name
+    def memberBounds(implicit ctx: Context) = denot.info.bounds
+    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
+    def memberVariance(implicit ctx: Context) = denot.variance
 
 // -------- Printing --------------------------------------------------------
 

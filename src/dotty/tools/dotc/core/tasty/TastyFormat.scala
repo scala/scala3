@@ -103,7 +103,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFpkg            fullyQualified_NameRef
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
-                  REFINEDthis           refinedType_ASTRef
+                  RECthis               recType_ASTRef
                   SHARED                path_ASTRef
 
   Constant      = UNITconst
@@ -126,10 +126,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFsymbol         sym_ASTRef qual_Type
                   TYPEREFpkg            fullyQualified_NameRef
                   TYPEREF               possiblySigned_NameRef qual_Type
+                  RECtype               parent_Type
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
-                  TYPEBOUNDS     Length low_Type high_Type
+                  TYPEBOUNDS     Length low_Type high_Type bindingKind_Nat?
                   TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATED      Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
@@ -258,7 +259,7 @@ object TastyFormat {
   final val TYPEREFdirect = 66
   final val TERMREFpkg = 67
   final val TYPEREFpkg = 68
-  final val REFINEDthis = 69
+  final val RECthis = 69
   final val BYTEconst = 70
   final val SHORTconst = 71
   final val CHARconst = 72
@@ -277,6 +278,7 @@ object TastyFormat {
   final val IMPLICITarg = 101
   final val PRIVATEqualified = 102
   final val PROTECTEDqualified = 103
+  final val RECtype = 104
 
   final val IDENT = 112
   final val SELECT = 113
@@ -417,7 +419,7 @@ object TastyFormat {
     case TYPEREFdirect => "TYPEREFdirect"
     case TERMREFpkg => "TERMREFpkg"
     case TYPEREFpkg => "TYPEREFpkg"
-    case REFINEDthis => "REFINEDthis"
+    case RECthis => "RECthis"
     case BYTEconst => "BYTEconst"
     case SHORTconst => "SHORTconst"
     case CHARconst => "CHARconst"
@@ -426,6 +428,7 @@ object TastyFormat {
     case FLOATconst => "FLOATconst"
     case DOUBLEconst => "DOUBLEconst"
     case STRINGconst => "STRINGconst"
+    case RECtype => "RECtype"
 
     case IDENT => "IDENT"
     case SELECT => "SELECT"
@@ -494,6 +497,7 @@ object TastyFormat {
          SELFDEF | REFINEDtype => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype => -1
+    case TYPEBOUNDS => -2
     case _ => 0
   }
 }

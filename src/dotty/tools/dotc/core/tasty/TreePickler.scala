@@ -76,6 +76,10 @@ class TreePickler(pickler: TastyPickler) {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
     case None =>
+      // See pos/t1957.scala for an example where this can happen.
+      // I believe it's a bug in typer: the type of an implicit argument refers
+      // to a closure parameter outside the closure itself. TODO: track this down, so that we
+      // can eliminate this case.
       ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
       pickleForwardSymRef(sym)
   }
@@ -207,8 +211,8 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
-    case tpe: RefinedThis =>
-      writeByte(REFINEDthis)
+    case tpe: RecThis =>
+      writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
       assert(binderAddr != null, tpe.binder)
       writeRef(binderAddr.asInstanceOf[Addr])
@@ -221,6 +225,9 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tpe.parent)
         pickleType(tpe.refinedInfo, richTypes = true)
       }
+    case tpe: RecType =>
+      writeByte(RECtype)
+      pickleType(tpe.parent)
     case tpe: TypeAlias =>
       writeByte(TYPEALIAS)
       withLength {
@@ -233,7 +240,11 @@ class TreePickler(pickler: TastyPickler) {
       }
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
-      withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
+      withLength {
+        pickleType(tpe.lo, richTypes)
+        pickleType(tpe.hi, richTypes)
+        if (tpe.isBinding) writeNat(tpe.bindingKind.n)
+      }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATED)
       withLength { pickleType(tpe.tpe, richTypes); pickleTree(tpe.annot.tree) }

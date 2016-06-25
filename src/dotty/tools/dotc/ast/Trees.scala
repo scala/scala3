@@ -594,6 +594,12 @@ object Trees {
     def forwardTo = tpt
   }
 
+  /** [typeparams] -> tpt */
+  case class TypeLambdaTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])
+    extends TypTree[T] {
+    type ThisTree[-T >: Untyped] = TypeLambdaTree[T]
+  }
+
   /** => T */
   case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])
   extends TypTree[T] {
@@ -851,6 +857,7 @@ object Trees {
     type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
+    type TypeLambdaTree = Trees.TypeLambdaTree[T]
     type ByNameTypeTree = Trees.ByNameTypeTree[T]
     type TypeBoundsTree = Trees.TypeBoundsTree[T]
     type Bind = Trees.Bind[T]
@@ -1028,6 +1035,10 @@ object Trees {
         case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args))
       }
+      def TypeLambdaTree(tree: Tree)(tparams: List[TypeDef], body: Tree): TypeLambdaTree = tree match {
+        case tree: TypeLambdaTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
+        case _ => finalize(tree, untpd.TypeLambdaTree(tparams, body))
+      }
       def ByNameTypeTree(tree: Tree)(result: Tree): ByNameTypeTree = tree match {
         case tree: ByNameTypeTree if result eq tree.result => tree
         case _ => finalize(tree, untpd.ByNameTypeTree(result))
@@ -1160,6 +1171,8 @@ object Trees {
           cpy.RefinedTypeTree(tree)(transform(tpt), transformSub(refinements))
         case AppliedTypeTree(tpt, args) =>
           cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
+        case TypeLambdaTree(tparams, body) =>
+          cpy.TypeLambdaTree(tree)(transformSub(tparams), transform(body))
         case ByNameTypeTree(result) =>
           cpy.ByNameTypeTree(tree)(transform(result))
         case TypeBoundsTree(lo, hi) =>
@@ -1264,6 +1277,9 @@ object Trees {
             this(this(x, tpt), refinements)
           case AppliedTypeTree(tpt, args) =>
             this(this(x, tpt), args)
+          case TypeLambdaTree(tparams, body) =>
+            implicit val ctx: Context = localCtx
+            this(this(x, tparams), body)
           case ByNameTypeTree(result) =>
             this(x, result)
           case TypeBoundsTree(lo, hi) =>
