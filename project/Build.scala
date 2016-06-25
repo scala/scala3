@@ -9,6 +9,9 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 object DottyBuild extends Build {
 
+  val baseVersion = "0.1"
+  val isNightly = sys.props.get("NIGHTLYBUILD") == Some("yes")
+
   val jenkinsMemLimit = List("-Xmx1300m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
@@ -25,8 +28,12 @@ object DottyBuild extends Build {
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
-      version in Global :=
-        "0.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
+      version in Global := {
+        if (isNightly)
+          baseVersion + "-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+        else
+          baseVersion + "-SNAPSHOT"
+      },
       organization in Global := "ch.epfl.lamp",
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
@@ -208,8 +215,12 @@ object DottyBuild extends Build {
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
-      version :=
-        "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-SNAPSHOT",
+      version := {
+        if (isNightly)
+          "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+        else
+          "0.1.1-SNAPSHOT"
+      },
       // The sources should be published with crossPaths := false since they
       // need to be compiled by the project using the bridge.
       crossPaths := false,
@@ -333,6 +344,12 @@ object DottyInjectedPlugin extends AutoPlugin {
         res
       }
     )
+
+   lazy val `scala-library` = project
+    .settings(
+      libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
+    )
+    .settings(publishing)
 
    lazy val publishing = Seq(
      publishMavenStyle := true,
