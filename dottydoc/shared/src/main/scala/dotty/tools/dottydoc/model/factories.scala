@@ -107,11 +107,18 @@ object factories {
       case _ => Nil
     }
 
-  def paramLists(t: DefDef)(implicit ctx: Context): List[List[NamedReference]] = {
-    def getParams(xs: List[ValDef]): List[NamedReference] =
-      xs.map(vd => NamedReference(vd.name.decode.toString, returnType(vd.tpt.tpe)))
+  def paramLists(tpe: Type)(implicit ctx: Context): List[List[NamedReference]] = tpe match {
+    case pt: PolyType =>
+      paramLists(pt.resultType)
 
-    t.vparamss.map(getParams)
+    case mt: MethodType =>
+      mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
+        NamedReference(name.decode.toString, returnType(tpe))
+      } :: paramLists(mt.resultType)
+
+    case annot: AnnotatedType => paramLists(annot.tpe)
+    case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
+          _: ExprType  | _: OrType      | _: AndType) => Nil // return types should not be in the paramlist
   }
 
   def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {

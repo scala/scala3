@@ -84,16 +84,9 @@ object parsers {
     def clear(): Unit = commentCache = Map.empty
   }
 
-  class ReturnTypeParser extends MemberLookup {
-    def link(packs: Map[String, Package]): Unit =
-      for (pack <- packs.values) mutateEntities(pack) {
-        case ent: ReturnValue =>
-          setReturnValue(ent, returnValue(ent, ent, packs))
-        case _ => ()
-      }
-
-    private def returnValue(ent: Entity, rv: ReturnValue, packs: Map[String, Package]): Reference =
-      rv.returnValue match {
+  sealed trait TypeLinker extends MemberLookup {
+    protected def linkReference(ent: Entity, rv: Reference, packs: Map[String, Package]): Reference =
+      rv match {
         case rv @ TypeReference(_, UnsetLink(t, query), tps) =>
           val inlineToHtml = InlineToHtml(ent)
           val title = inlineToHtml(t)
@@ -113,7 +106,37 @@ object parsers {
           }
 
           rv.copy(tpeLink = target, paramLinks = tpTargets)
-        case _ => rv.returnValue
+        case rv @ OrTypeReference(left, right) =>
+          rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
+        case rv @ AndTypeReference(left, right) =>
+          rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
+        case rv @ NamedReference(_, ref) => rv.copy(ref = linkReference(ent, ref, packs))
+        case _ => rv
+      }
+
+    def link(packs: Map[String, Package]): Unit
+  }
+
+  class ReturnTypeLinker extends TypeLinker {
+    def link(packs: Map[String, Package]): Unit =
+      for (pack <- packs.values) mutateEntities(pack) {
+        case ent: ReturnValue =>
+          setReturnValue(ent, linkReference(ent, ent.returnValue, packs))
+        case _ => ()
+      }
+  }
+
+  class ParamListLinker extends TypeLinker {
+    def link(packs: Map[String, Package]): Unit =
+      for (pack <- packs.values) mutateEntities(pack) {
+        case ent: Def =>
+          val newParamLists = for {
+            list <- ent.paramLists
+            newList = list.map(linkReference(ent, _, packs))
+          } yield newList.asInstanceOf[List[NamedReference]]
+
+          setParamLists(ent, newParamLists)
+        case _ => ()
       }
   }
 }

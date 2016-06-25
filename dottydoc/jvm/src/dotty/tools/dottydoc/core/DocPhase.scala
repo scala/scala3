@@ -11,7 +11,7 @@ import dotc.core.Phases.Phase
 import dotc.core.Symbols.Symbol
 
 class DocPhase extends Phase {
-  import model.parsers.{ WikiParser, ReturnTypeParser }
+  import model.parsers.{ WikiParser, ReturnTypeLinker, ParamListLinker }
   import model._
   import model.factories._
   import model.internal._
@@ -24,7 +24,10 @@ class DocPhase extends Phase {
   def phaseName = "docphase"
 
   private[this] val commentParser = new WikiParser
-  private[this] val returnLinker  = new ReturnTypeParser
+  private[this] val linkers =
+    new ReturnTypeLinker ::
+    new ParamListLinker  ::
+    Nil
 
   /** Saves the commentParser function for later evaluation, for when the AST has been filled */
   def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
@@ -59,11 +62,11 @@ class DocPhase extends Phase {
     def addedFromSymbol(sym: Symbol): List[Entity] = {
       val defs = sym.info.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
         track(meth.symbol, ctx) {
-          DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), Nil/*paramLists(???)*/)
+          DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), paramLists(meth.info))
         }
       }.toList
 
-      val vals = sym.info.fields.map { value =>
+      val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
         track(value.symbol, ctx) {
           ValImpl(value.symbol.name.decode.toString, Nil, path(value.symbol), returnType(value.info))
         }
@@ -104,7 +107,7 @@ class DocPhase extends Phase {
 
       /** def */
       case d: DefDef =>
-        DefImpl(d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d))
+        DefImpl(d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
 
       /** val */
       case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
@@ -164,7 +167,7 @@ class DocPhase extends Phase {
 
 
     // (3) Set returntypes to correct entities
-    returnLinker.link(packages)
+    for (linker <- linkers) linker.link(packages)
 
     // (3) Create documentation template from docstrings, with internal links
     println("Generating documentation, this might take a while...")
