@@ -292,6 +292,14 @@ trait ImplicitRunInfo { self: RunInfo =>
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
+        case tp: HKApply =>
+          def applyArg(arg: Type) = arg match {
+            case TypeBounds(lo, hi) => AndType.make(lo, hi)
+            case _ => arg
+          }
+          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
+        case tp: TypeLambda =>
+          apply(tp.resType)
         case _ =>
           mapOver(tp)
       }
