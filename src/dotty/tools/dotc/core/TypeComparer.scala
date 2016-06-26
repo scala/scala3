@@ -392,12 +392,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
     case tp2 @ TypeLambda(tparams2, body2) =>
-      def compareHkLambda = tp1.stripTypeVar match {
+      def compareHkLambda: Boolean = tp1.stripTypeVar match {
         case tp1 @ TypeLambda(tparams1, body1) =>
           // Don't compare bounds of lambdas, or t2994 will fail
           // The issue is that, logically, bounds should compare contravariantly,
           // so the bounds checking should look like this:
-          // 
+          //
           //   tparams1.corresponds(tparams2)((tparam1, tparam2) =>
           //     isSubType(tparam2.memberBounds.subst(tp2, tp1), tparam1.memberBounds))
           //
@@ -408,6 +408,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // bounds of * types are checked.
           variancesConform(tparams1, tparams2) && isSubType(body1, body2.subst(tp2, tp1))
         case _ =>
+          if (!tp1.isHK) {
+            tp2 match {
+              case EtaExpansion(tycon2) if tycon2.symbol.isClass =>
+                return isSubType(tp1, tycon2)
+              case _ =>
+            }
+          }
           fourthTry(tp1, tp2)
       }
       compareHkLambda
@@ -1269,7 +1276,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
       else if (erased) erasedGlb(tp1, tp2, isJava = false)
-      else liftIfHK(tp1, tp2, AndType(_, _))
+      else liftIfHK(tp1, tp2, AndType(_, _), _ & _)
     }
   }
 
@@ -1293,7 +1300,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else if (erased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _))
+      else liftIfHK(tp1, tp2, OrType(_, _), _ | _)
     }
   }
 
@@ -1314,11 +1321,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  allowing both interpretations. A possible remedy is to be somehow stricter
    *  in where we allow which interpretation.
    */
-  private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type) = {
+  private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
-    if (tparams1.isEmpty || tparams2.isEmpty) op(tp1, tp2)
-    else if (tparams1.length != tparams2.length) mergeConflict(tp1, tp2)
+    if (!Config.newHK && tparams1.isEmpty || tparams2.isEmpty) op(tp1, tp2)
+    else if (Config.newHK && tparams1.isEmpty)
+      if (tparams2.isEmpty) op(tp1, tp2)
+      else tp2 match {
+        case EtaExpansion(tycon2) if tycon2.symbol.isClass => original(tp1, tycon2) // TODO: Roll isClass into EtaExpansion?
+        case _ => mergeConflict(tp1, tp2)
+      }
+    else if (Config.newHK && tparams2.isEmpty) {
+      tp1 match {
+        case EtaExpansion(tycon1) if tycon1.symbol.isClass => original(tycon1, tp2)
+        case _ => mergeConflict(tp1, tp2)
+      }
+    }
+    else if (!Config.newHK && (tparams1.isEmpty || tparams2.isEmpty)) op(tp1, tp2)
+    else if (!Config.newHK && tparams1.length != tparams2.length) mergeConflict(tp1, tp2)
     else if (Config.newHK) {
       val numArgs = tparams1.length
       def argRefs(tl: GenericType) = List.range(0, numArgs).map(PolyParam(tl, _))
@@ -1330,7 +1350,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           tl.lifted(tparams1, tparam1.memberBoundsAsSeenFrom(tp1)).bounds &
           tl.lifted(tparams2, tparam2.memberBoundsAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          op(tl.lifted(tparams1, tp1).appliedTo(argRefs(tl)),
+          original(tl.lifted(tparams1, tp1).appliedTo(argRefs(tl)),
              tl.lifted(tparams2, tp2).appliedTo(argRefs(tl))))
     }
     else {
@@ -1389,12 +1409,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(names1, names2, nme.syntheticParamName),
               formals1, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
+          tp2 match {
+            case tp2 @ MethodType(names2, formals2) =>
+              println(
+                TypeComparer.explained(implicit ctx => isSameType(formals1.head, formals2.head)))
+            case _ =>
+          }
           mergeConflict(tp1, tp2)
       }
-    case tp1: GenericType =>
+    case tp1: PolyType =>
       tp2 match {
-        case tp2: GenericType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedGenericType(
+        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
+          tp1.derivedPolyType(
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
