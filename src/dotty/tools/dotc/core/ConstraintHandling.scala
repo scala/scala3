@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers._
+import TypeApplications.EtaExpansion
 import collection.mutable
 
 /** Methods for adding constraints and solving them.
@@ -239,8 +240,6 @@ trait ConstraintHandling {
       def addParamBound(bound: PolyParam) =
         if (fromBelow) addLess(bound, param) else addLess(param, bound)
 
-      assert(param.isHK == bound.isHK, s"$param / $bound / $fromBelow")
-
       /** Drop all constrained parameters that occur at the toplevel in `bound` and
        *  handle them by `addLess` calls.
        *  The preconditions make sure that such parameters occur only
@@ -297,7 +296,13 @@ trait ConstraintHandling {
         case bound: PolyParam if constraint contains bound =>
           addParamBound(bound)
         case _ =>
-          val pbound = prune(bound)
+          var pbound = prune(bound)
+          if (pbound.isHK && !param.isHK) {
+            param match {
+              case EtaExpansion(tycon) if tycon.symbol.isClass => pbound = tycon
+              case _ =>
+            }
+          }
           pbound.exists && (
             if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
