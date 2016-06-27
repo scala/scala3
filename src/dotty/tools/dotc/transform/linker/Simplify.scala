@@ -547,7 +547,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       val valsToDrop = defined -- timesUsed.keySet
       val copiesToReplaceAsDuplicates = copies.filter { x =>
         val rhs = dropCasts(x._2)
-        !rhs.symbol.owner.isClass && !rhs.symbol.is(Flags.Method) && !rhs.symbol.is(Flags.Mutable)
+        rhs.isInstanceOf[Literal] || (!rhs.symbol.owner.isClass && !rhs.symbol.is(Flags.Method) && !rhs.symbol.is(Flags.Mutable))
       }
       // todo: if a non-synthetic val is duplicate of a synthetic one, rename a synthetic one and drop synthetic flag?
 
