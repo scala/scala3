@@ -779,6 +779,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case self: AndOrType =>
         self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
+      case self: TypeAlias =>
+        self.derivedTypeAlias(self.alias.appliedTo(args))
       case self: TypeBounds =>
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
