@@ -9,13 +9,14 @@ import NameOps._
 import dotty.tools.dotc.ast.tpd
 import Symbols._
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Types.{ExprType, MethodType, MethodicType, NoPrefix, NoType, TermRef, ThisType, Type}
+import dotty.tools.dotc.core.Types.{ConstantType,ExprType, MethodType, MethodicType, NoPrefix, NoType, TermRef, ThisType, Type}
 import dotty.tools.dotc.transform.{Erasure, TreeTransforms}
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo, TreeTransform}
 import dotty.tools.dotc.transform.SymUtils._
 import Decorators._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
+import dotty.tools.dotc.typer.ConstFold
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -75,6 +76,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case None => true
       }
     case t: This => true
+    case t: Literal => true
     case _ => false
   }
 
@@ -88,7 +90,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   type Transformer = () => (Tree => Tree)
   type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
 
-  private lazy val _optimizations = Seq(inlineCaseIntrinsics, inlineOptions, inlineLabelsCalledOnce, devalify, dropNoEffects, inlineLocalObjects/*, varify*/)
+  private lazy val _optimizations = Seq(inlineCaseIntrinsics, inlineOptions, inlineLabelsCalledOnce, devalify, dropNoEffects, inlineLocalObjects/*, varify*/, constantFold)
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (!tree.symbol.is(Flags.Label)) {
       var rhs0 = tree.rhs
@@ -165,6 +167,28 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t => t
     }
     ("inlineCaseIntrinsics", BeforeAndAfterErasure, NoVisitor, transformer)
+  }}
+  
+  val constantFold: Optimization = { (ctx0: Context) => {
+    implicit val ctx = ctx0
+    val transformer: Transformer = () => {
+      case If(t: Literal, thenp, elsep) =>
+        if (t.const.booleanValue) thenp
+        else elsep
+      case t: Literal => t
+      case t: Match if (t.selector.tpe.isInstanceOf[ConstantType] && t.cases.forall(x => x.pat.tpe.isInstanceOf[ConstantType] || (tpd.isWildcardArg(x.pat) && x.guard.isEmpty))) =>
+        val selectorValue = t.selector.tpe.asInstanceOf[ConstantType].value
+        val better = t.cases.find(x => tpd.isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
+        if (better.nonEmpty) better.get.body
+        else t
+      case t =>
+        val s = ConstFold.apply(t)
+        if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
+          val constant = s.tpe.asInstanceOf[ConstantType].value
+          Literal(constant)
+        } else t
+    }
+    ("constantFold", BeforeAndAfterErasure, NoVisitor, transformer)
   }}
 
   val inlineLocalObjects: Optimization = { (ctx0: Context) => {
@@ -355,6 +379,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             rec :: args.map(keepOnlySideEffects)
         }
         Block(prefix, tpd.unitLiteral)
+      case t @ TypeApply(Select(rec, _), List(testType)) if t.symbol.eq(defn.Any_asInstanceOf) && testType.tpe.widenDealias.typeSymbol.exists =>
+        val receiverType = TypeErasure.erasure(rec.tpe)
+        val erazedTestedType = TypeErasure.erasure(testType.tpe)
+        if (receiverType.derivesFrom(erazedTestedType.typeSymbol))
+          EmptyTree
+        else t
       case _ => t
     }
   }
