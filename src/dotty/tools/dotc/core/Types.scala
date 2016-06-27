@@ -462,6 +462,8 @@ object Types {
           goParam(tp)
         case tp: RecType =>
           goRec(tp)
+        case tp: HKApply =>
+          goApply(tp)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -546,6 +548,16 @@ object Types {
             pre,
             safeIntersection = ctx.pendingMemberSearches.contains(name))
         }
+      }
+
+      def goApply(tp: HKApply) = tp.tycon match {
+        case tl: TypeLambda =>
+          val res =
+            go(tl.resType).mapInfo(info =>
+              tl.derivedTypeLambda(tl.paramNames, tl.paramBounds, info).appliedTo(tp.args))
+          //println(i"remapping $tp . $name to ${res.info}")// " / ${res.toString}")
+          res
+        case _ => go(tp.underlying)
       }
 
       def goThis(tp: ThisType) = {
@@ -2674,14 +2686,21 @@ object Types {
   class TypeLambda(paramNames: List[TypeName], override val variances: List[Int])(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)
   extends GenericType(paramNames)(paramBoundsExp, resultTypeExp) with ValueType {
 
-    assert(resType.isValueType, this)
+    assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
 
-    def derivedTypeLambda(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context) =
-      derivedGenericType(paramNames, paramBounds, resType)
+    def derivedTypeLambda(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
+      resType match {
+        case resType @ TypeAlias(alias) =>
+          resType.derivedTypeAlias(duplicate(paramNames, paramBounds, alias))
+        case resType @ TypeBounds(lo, hi) =>
+          resType.derivedTypeBounds(lo, duplicate(paramNames, paramBounds, hi))
+        case _ =>
+          derivedGenericType(paramNames, paramBounds, resType)
+      }
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): TypeLambda =
       TypeLambda(paramNames, variances)(
