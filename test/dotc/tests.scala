@@ -136,6 +136,10 @@ class tests extends CompilerTest {
   @Test def neg_tailcall2 = compileFile(negTailcallDir, "tailrec-2")
   @Test def neg_tailcall3 = compileFile(negTailcallDir, "tailrec-3")
 
+  @Test def neg_nopredef = compileFile(negCustomArgs, "nopredef", List("-Yno-predef"))
+  @Test def neg_noimports = compileFile(negCustomArgs, "noimports", List("-Yno-imports"))
+  @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
+
   @Test def run_all = runFiles(runDir)
 
   val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()

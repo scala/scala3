@@ -128,7 +128,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ylogcp = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val Ynogenericsig = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
-  val nopredef = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
+  val YnoPredef = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val noAdaptedArgs = BooleanSetting("-Yno-adapted-args", "Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.")
   val selfInAnnots = BooleanSetting("-Yself-in-annots", "Include a \"self\" identifier inside of annotations.")
   val Yshowtrees = BooleanSetting("-Yshow-trees", "(Requires -Xprint:) Print detailed ASTs in formatted form.")
