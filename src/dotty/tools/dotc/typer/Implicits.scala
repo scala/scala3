@@ -295,6 +295,7 @@ trait ImplicitRunInfo { self: RunInfo =>
         case tp: HKApply =>
           def applyArg(arg: Type) = arg match {
             case TypeBounds(lo, hi) => AndType.make(lo, hi)
+            case _: WildcardType => defn.AnyType
             case _ => arg
           }
           (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
