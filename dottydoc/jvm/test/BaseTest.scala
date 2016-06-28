@@ -6,7 +6,7 @@ import Contexts.{ Context, ContextBase, FreshContext }
 import dotc.util.SourceFile
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
-import dottydoc.core.DocPhase
+import dottydoc.core.DocASTPhase
 
 trait DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
@@ -22,8 +22,8 @@ trait DottyTest {
     ctx
   }
 
-  private def compilerWithChecker(assertion: DocPhase => Unit) = new DottyDocCompiler {
-    private[this] val docPhase = new DocPhase
+  private def compilerWithChecker(assertion: DocASTPhase => Unit) = new DottyDocCompiler {
+    private[this] val docPhase = new DocASTPhase
 
     override def phases =
       List(new FrontEnd) ::
@@ -35,21 +35,21 @@ trait DottyTest {
       Nil
   }
 
-  def checkSource(source: String)(assertion: DocPhase => Unit): Unit = {
+  def checkSource(source: String)(assertion: DocASTPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(source)
   }
 
-  def checkFiles(sources: List[String])(assertion: DocPhase => Unit): Unit = {
+  def checkFiles(sources: List[String])(assertion: DocASTPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(sources)
   }
 
-  def checkSources(sourceFiles: List[SourceFile])(assertion: DocPhase => Unit): Unit = {
+  def checkSources(sourceFiles: List[SourceFile])(assertion: DocASTPhase => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     c.rootContext(ctx)
     val run = c.newRun

@@ -1,7 +1,8 @@
 package dotty.tools
 package dottydoc
 
-import core.{ AddImplicitsPhase, DocPhase }
+import core._
+import core.transform._
 import dotc.config.CompilerCommand
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts._
@@ -9,8 +10,6 @@ import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dotc.{ CompilationUnit, Compiler, Driver, Run }
 import io.PlainFile
-
-import scala.util.control.NonFatal
 
 /** Custom Compiler with phases for the documentation tool
  *
@@ -26,30 +25,19 @@ import scala.util.control.NonFatal
  *    5. Serve content using Scala.js
  */
 class DottyDocCompiler extends Compiler {
-  override def phases: List[List[Phase]] =
-    List(new DocFrontEnd) ::
-    List(new AddImplicitsPhase) ::
-    List(new DocPhase) ::
-    Nil
+  override def phases: List[List[Phase]] = List(
+    List(new DocFrontEnd),
+    List(new AddImplicitsPhase),
+    List(new DocASTPhase),
+    List(DocMiniTransformations(new ReturnTypeLinker,
+                                new ParamListTypeLinker)),
+    List(new PrintPhase)
+  )
 
   override def newRun(implicit ctx: Context): Run = {
     reset()
     new DocRun(this)(rootContext)
   }
-}
-
-/** TODO: this object is only temporary, should be factored out, just wanted it to demo dottydoc */
-object ImplicitlyAdded {
-  import dotc.core.Symbols.Symbol
-  import dotc.ast.tpd.DefDef
-  import scala.collection.mutable
-
-  private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
-  def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
-
-  def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
-    s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
-  })
 }
 
 class DocFrontEnd extends FrontEnd {

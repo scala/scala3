@@ -10,11 +10,11 @@ import dotc.core.Contexts.Context
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.Symbol
 
-class DocPhase extends Phase {
-  import model.parsers.{ WikiParser, ReturnTypeLinker, ParamListLinker }
+class DocASTPhase extends Phase {
   import model._
   import model.factories._
   import model.internal._
+  import model.parsers.WikiParser
   import model.comment.Comment
   import dotty.tools.dotc.core.Flags
   import dotty.tools.dotc.ast.tpd._
@@ -24,10 +24,6 @@ class DocPhase extends Phase {
   def phaseName = "docphase"
 
   private[this] val commentParser = new WikiParser
-  private[this] val linkers =
-    new ReturnTypeLinker ::
-    new ParamListLinker  ::
-    Nil
 
   /** Saves the commentParser function for later evaluation, for when the AST has been filled */
   def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
@@ -41,7 +37,7 @@ class DocPhase extends Phase {
 
   /** Build documentation hierarchy from existing tree */
   def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
-    val implicitlyAddedMembers = ImplicitlyAdded.defs(tree.symbol)//denot.info)
+    val implicitlyAddedMembers = ctx.base.defs(tree.symbol)
 
     def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
       xs.map(collect(_, ps)).filter(_ != NonEntity)
@@ -165,24 +161,15 @@ class DocPhase extends Phase {
       child  <- parent.children
     } setParent(child, to = parent)
 
-
-    // (3) Set returntypes to correct entities
-    for (linker <- linkers) linker.link(packages)
-
     // (3) Create documentation template from docstrings, with internal links
     println("Generating documentation, this might take a while...")
     commentParser.parse(packages)
 
-    // (4) Write the finished model to JSON
-    val outputDir = {
-      val out = ctx.settings.DocOutput.value
-      if (out.last == '/') out.dropRight(1)
-      else out
-    }
-    if (!ctx.settings.YDocNoWrite.value) (new util.OutputWriter).write(packages, outputDir)
-
-    // (5) Clear caches
+    // (4) Clear caches
     commentParser.clear()
+
+    // (5) Update Doc AST in ctx.base
+    for (kv <- packages) ctx.base.packages += kv
 
     // Return super's result
     compUnits

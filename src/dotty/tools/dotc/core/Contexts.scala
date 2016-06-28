@@ -492,7 +492,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
+  private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
@@ -576,6 +576,17 @@ object Contexts {
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
       doc.map(d => _docstrings += (sym -> d))
+
+    private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
+    def packages[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
+
+    /** Should perhaps factorize this into caches that get flushed */
+    private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
+    def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
+
+    def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
+      s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
+    })
   }
 
   /** The essential mutable state of a context base, collected into a common class */
