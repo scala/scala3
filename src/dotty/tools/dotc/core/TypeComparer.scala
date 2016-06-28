@@ -578,13 +578,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
     def isMatchingApply(tp1: Type): Boolean = tp1 match {
       case HKApply(tycon1, args1) =>
-        tycon1 match {
+        tycon1.dealias match {
           case tycon1: PolyParam =>
             (tycon1 == tycon2 ||
              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
             isSubArgs(args1, args2, tparams)
           case tycon1: TypeRef =>
-            tycon2 match {
+            tycon2.dealias match {
               case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
                 isSubType(tycon1.prefix, tycon2.prefix) &&
                 isSubArgs(args1, args2, tparams)
