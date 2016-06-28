@@ -430,6 +430,13 @@ class Definitions {
     lazy val Long_LSR_Int = LongType.member(nme.LSR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
     )
+    lazy val Long_plusR   = LongClass.requiredMethodRef(nme.PLUS, List(LongType))
+    def Long_+ = Long_plusR.symbol
+    lazy val Long_mulR   = LongClass.requiredMethodRef(nme.MUL, List(LongType))
+    def Long_* = Long_mulR.symbol
+    lazy val Long_divR   = LongClass.requiredMethodRef(nme.DIV, List(LongType))
+    def Long_/ = Long_divR.symbol
+
   lazy val FloatType: TypeRef = valueTypeRef("scala.Float", BoxedFloatType, java.lang.Float.TYPE, FloatEnc)
   def FloatClass(implicit ctx: Context) = FloatType.symbol.asClass
   lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", BoxedDoubleType, java.lang.Double.TYPE, DoubleEnc)
@@ -490,6 +497,11 @@ class Definitions {
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
   lazy val ClassCastExceptionClass   = ctx.requiredClass("java.lang.ClassCastException")
+  lazy val ArithmeticExceptionClass  = ctx.requiredClass("java.lang.ArithmeticException")
+    lazy val ArithmeticExceptionClass_stringConstructor  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef StringClass)
+      case _ => false
+    }).symbol.asTerm
   lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
 
