@@ -1327,16 +1327,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (!Config.newHK && tparams1.isEmpty || tparams2.isEmpty) op(tp1, tp2)
     else if (Config.newHK && tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else tp2 match {
-        case EtaExpansion(tycon2) if tycon2.symbol.isClass => original(tp1, tycon2) // TODO: Roll isClass into EtaExpansion?
-        case _ => mergeConflict(tp1, tp2)
-      }
-    else if (Config.newHK && tparams2.isEmpty) {
-      tp1 match {
-        case EtaExpansion(tycon1) if tycon1.symbol.isClass => original(tycon1, tp2)
-        case _ => mergeConflict(tp1, tp2)
-      }
-    }
+      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.memberBoundsAsSeenFrom(tp2))))
+    else if (Config.newHK && tparams2.isEmpty)
+      original(tp1.appliedTo(tp1.typeParams.map(_.memberBoundsAsSeenFrom(tp1))), tp2)
     else if (!Config.newHK && (tparams1.isEmpty || tparams2.isEmpty)) op(tp1, tp2)
     else if (!Config.newHK && tparams1.length != tparams2.length) mergeConflict(tp1, tp2)
     else if (Config.newHK) {
@@ -1493,7 +1486,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case bounds: TypeBounds => i"type bounds $bounds"
       case _ => tp.show
     }
-    throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
+    if (true) throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
+    else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}")
   }
 
   /** Merge two lists of names. If names in corresponding positions match, keep them,
