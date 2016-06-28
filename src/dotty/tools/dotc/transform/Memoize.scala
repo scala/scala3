@@ -36,6 +36,27 @@ import Decorators._
 
   override def phaseName = "memoize"
 
+  /* Makes sure that, after getters and constructors gen, there doesn't
+   * exist non-deferred definitions that are not implemented. */
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+    def errorLackImplementation(t: Tree) = {
+      val firstPhaseId = t.symbol.initial.validFor.firstPhaseId
+      val definingPhase = ctx.withPhase(firstPhaseId).phase.prev
+      throw new AssertionError(
+        i"Non-deferred definition introduced by $definingPhase lacks implementation: $t")
+    }
+    tree match {
+      case ddef: DefDef
+        if !ddef.symbol.is(Deferred) && ddef.rhs == EmptyTree =>
+          errorLackImplementation(ddef)
+      case tdef: TypeDef
+        if tdef.symbol.isClass && !tdef.symbol.is(Deferred) && tdef.rhs == EmptyTree =>
+        errorLackImplementation(tdef)
+      case _ =>
+    }
+    super.checkPostCondition(tree)
+  }
+
   /** Should run after mixin so that fields get generated in the
    *  class that contains the concrete getter rather than the trait
    *  that defines it.
