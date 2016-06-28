@@ -197,9 +197,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
 // ------ Reading types -----------------------------------------------------
 
     /** Read names in an interleaved sequence of (parameter) names and types/bounds */
-    def readParamNames[N <: Name](end: Addr): List[N] =
+    def readParamNames(end: Addr): List[Name] =
       until(end) {
-        val name = readName().asInstanceOf[N]
+        val name = readName()
         skipTree()
         name
       }
@@ -244,11 +244,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       def readLengthType(): Type = {
         val end = readEnd()
 
-        def readNamesSkipParams[N <: Name]: (List[N], TreeReader) = {
+        def readNamesSkipParams: (List[Name], TreeReader) = {
           val nameReader = fork
           nameReader.skipTree() // skip result
           val paramReader = nameReader.fork
-          (nameReader.readParamNames[N](end), paramReader)
+          (nameReader.readParamNames(end), paramReader)
         }
 
         val result =
@@ -288,24 +288,24 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               registerSym(start, sym)
               TypeRef.withFixedSym(NoPrefix, sym.name, sym)
             case LAMBDAtype =>
-              val (rawNames, paramReader) = readNamesSkipParams[TypeName]
+              val (rawNames, paramReader) = readNamesSkipParams
               val (variances, paramNames) = rawNames
-                .map(name => (prefixToVariance(name.head), name.tail.asTypeName)).unzip
+                .map(name => (prefixToVariance(name.head), name.tail.toTypeName)).unzip
               val result = TypeLambda(paramNames, variances)(
                 pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
                 pt => readType())
               goto(end)
               result
             case POLYtype =>
-              val (names, paramReader) = readNamesSkipParams[TypeName]
-              val result = PolyType(names)(
+              val (names, paramReader) = readNamesSkipParams
+              val result = PolyType(names.map(_.toTypeName))(
                 pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
                 pt => readType())
               goto(end)
               result
             case METHODtype =>
-              val (names, paramReader) = readNamesSkipParams[TermName]
-              val result = MethodType(names, paramReader.readParamTypes[Type](end))(
+              val (names, paramReader) = readNamesSkipParams
+              val result = MethodType(names.map(_.toTermName), paramReader.readParamTypes[Type](end))(
                 mt => registeringType(mt, readType()))
               goto(end)
               result
