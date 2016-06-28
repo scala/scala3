@@ -94,7 +94,7 @@ object transform {
             newClass.comment
           )
         }
-        case cc: CaseClass => transformEntity(cc, _.cclassTransformation) { cc =>
+        case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
           CaseClassImpl(
             cc.name,
             cc.members.map(traverse),
@@ -180,7 +180,7 @@ object transform {
 
     private[transform] def packageTransformation(p: Package)(implicit ctx: Context) = (transformPackage orElse identity)(p)
     private[transform] def classTransformation(cls: Class)(implicit ctx: Context) = (transformClass orElse identity)(cls)
-    private[transform] def cclassTransformation(cc: CaseClass)(implicit ctx: Context) = (transformCaseClass orElse identity)(cc)
+    private[transform] def caseClassTransformation(cc: CaseClass)(implicit ctx: Context) = (transformCaseClass orElse identity)(cc)
     private[transform] def traitTransformation(trt: Trait)(implicit ctx: Context) = (transformTrait orElse identity)(trt)
     private[transform] def objectTransformation(obj: Object)(implicit ctx: Context) = (transformObject orElse identity)(obj)
     private[transform] def defTransformation(df: Def)(implicit ctx: Context) = (transformDef orElse identity)(df)
