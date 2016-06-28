@@ -785,6 +785,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
         LazyRef(() => self.ref.appliedTo(args, typParams))
+      case self: TypeRef if self.symbol == defn.NothingClass =>
+        self
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>
