@@ -685,7 +685,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         canConstrain(param1) && canInstantiate ||
           isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2)
       case tycon1: TypeProxy =>
-        isSubType(tycon1.underlying.applyIfParameterized(args1), tp2)
+        isSubType(tycon1.underlying.bounds.hi.applyIfParameterized(args1), tp2)
       case _ =>
         false
     }
