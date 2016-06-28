@@ -14,7 +14,7 @@ import util.MemberLookup
 import util.traversing._
 import util.internal.setters._
 
-class ReturnTypeLinker extends DocMiniPhase with TypeLinker {
+class LinkReturnTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val returnValue = linkReference(df, df.returnValue, ctx.base.packages[Package].toMap)
     df.copy(returnValue = returnValue)
@@ -26,7 +26,7 @@ class ReturnTypeLinker extends DocMiniPhase with TypeLinker {
   }
 }
 
-class ParamListTypeLinker extends DocMiniPhase with TypeLinker {
+class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val newParamLists = for {
       list <- df.paramLists
