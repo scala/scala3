@@ -27,7 +27,7 @@ import io.PlainFile
 class DottyDocCompiler extends Compiler {
   override def phases: List[List[Phase]] = List(
     List(new DocFrontEnd),
-    List(new AddImplicitsPhase),
+    List(new DocImplicitsPhase),
     List(new DocASTPhase),
     List(DocMiniTransformations(new ReturnTypeLinker,
                                 new ParamListTypeLinker)),
