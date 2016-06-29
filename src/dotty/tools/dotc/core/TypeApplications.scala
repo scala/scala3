@@ -245,16 +245,22 @@ class TypeApplications(val self: Type) extends AnyVal {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
+      case self: TypeLambda =>
+        self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
-        if (tsym.isClass) tsym.typeParams else tsym.info.typeParams
+        if (tsym.isClass) tsym.typeParams
+        else if (!tsym.isCompleting) tsym.info.typeParams
+        else Nil
       case self: RefinedType =>
         val precedingParams = self.parent.typeParams.filterNot(_.memberName == self.refinedName)
         if (self.isTypeParam) precedingParams :+ self else precedingParams
       case self: RecType =>
         self.parent.typeParams
-      case self: SingletonType =>
+      case _: HKApply | _: SingletonType =>
         Nil
+      case self: WildcardType =>
+        self.optBounds.typeParams
       case self: TypeProxy =>
         self.underlying.typeParams
       case _ =>
@@ -342,7 +348,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeLambda => true
     case self: HKApply => false
     case self: SingletonType => false
-    case self: TypeVar => self.origin.isHK
+    case self: TypeVar => self.origin.isHK // discrepancy with typeParams, why?
     case self: WildcardType => self.optBounds.isHK
     case self: TypeProxy => self.underlying.isHK
     case _ => false
@@ -439,7 +445,11 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
-      if (Config.newHK) TypeLambda.fromSymbols(tparams, tp)
+      if (Config.newHK)
+        TypeLambda(
+          tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.variance))(
+            tl => tparams.map(tparam => tl.lifted(tparams, tparam.info).bounds),
+            tl => tl.lifted(tparams, tp))
       else
         TypeLambdaOLD(
           tparams.map(tparam =>
@@ -579,6 +589,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.EtaExpand(self.typeParamSymbols)
   }
 
+  /** If self is not higher-kinded, eta expand it. */
+  def ensureHK(implicit ctx: Context): Type =
+    if (isHK) self else EtaExpansion(self)
+
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
   def etaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
     val hkParams = bound.hkTypeParams
@@ -687,8 +701,10 @@ class TypeApplications(val self: Type) extends AnyVal {
           }
         }
         substHkArgs(body)
-      case self1 =>
-        self1.safeDealias.appliedTo(args, typeParams)
+      case self1: WildcardType =>
+        self1
+      case _ =>
+        self.safeDealias.appliedTo(args, typeParams)
     }
   }
 
@@ -712,17 +728,30 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil => t
     }
     assert(args.nonEmpty)
-    if (Config.newHK && self.isHK) AppliedType(self, args)
-    else matchParams(self, typParams, args) match {
-      case refined @ RefinedType(_, pname, _) if !Config.newHK && pname.isHkArgNameOLD =>
-        refined.betaReduceOLD
-      case refined =>
-        refined
+    self.stripTypeVar match {
+      case self: TypeLambda if !args.exists(_.isInstanceOf[TypeBounds]) =>
+        self.instantiate(args)
+      case self: AndOrType =>
+        self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
+      case self: LazyRef =>
+        LazyRef(() => self.ref.appliedTo(args, typParams))
+      case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
+        HKApply(self, args)
+      case _ =>
+        matchParams(self, typParams, args) match {
+          case refined @ RefinedType(_, pname, _) if !Config.newHK && pname.isHkArgNameOLD =>
+            refined.betaReduceOLD
+          case refined =>
+            refined
+        }
     }
   }
 
   final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
   final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+
+  final def applyIfParameterized(args: List[Type])(implicit ctx: Context): Type =
+    if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
    *  the typeconstructor. Instead, if the type constructor is completing, we make
@@ -733,7 +762,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (Config.newHK)
       self match {
         case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
-          AppliedType(self, args)
+          HKApply(self, args)
         case _ =>
           appliedTo(args, typeParams)
       }
