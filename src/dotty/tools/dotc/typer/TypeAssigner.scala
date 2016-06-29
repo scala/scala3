@@ -98,7 +98,7 @@ trait TypeAssigner {
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
-            args = base.typeParams.map(_.memberBounds)
+            args = base.typeParams.map(_.paramBounds)
           base.appliedTo(args)
         case tp @ RefinedType(parent, name, rinfo) if variance > 0 =>
           val parent1 = apply(tp.parent)
@@ -412,7 +412,7 @@ trait TypeAssigner {
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
-        val tparam = tparams.find(_.memberName == name) match {
+        val tparam = tparams.find(_.paramName == name) match {
           case Some(tparam) => tparam
           case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }

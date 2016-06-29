@@ -392,7 +392,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // so the bounds checking should look like this:
           //
           //   tparams1.corresponds(tparams2)((tparam1, tparam2) =>
-          //     isSubType(tparam2.memberBounds.subst(tp2, tp1), tparam1.memberBounds))
+          //     isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
           //
           // But that would invalidate a pattern such as
           // `[X0 <: Number] -> Number   <:<    [X0] -> Any`
@@ -685,10 +685,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams`.
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[MemberBinding]): Boolean =
+  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): Boolean =
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
-      val v = tparams.head.memberVariance
+      val v = tparams.head.paramVariance
       (v > 0 || isSubType(args2.head, args1.head)) &&
       (v < 0 || isSubType(args1.head, args2.head))
     }
@@ -698,7 +698,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[MemberBinding], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -1215,19 +1215,19 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val tparams2 = tp2.typeParams
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.memberBoundsAsSeenFrom(tp2))))
+      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramBoundsAsSeenFrom(tp2))))
     else if (tparams2.isEmpty)
-      original(tp1.appliedTo(tp1.typeParams.map(_.memberBoundsAsSeenFrom(tp1))), tp2)
+      original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
     else {
       val numArgs = tparams1.length
       def argRefs(tl: GenericType) = List.range(0, numArgs).map(PolyParam(tl, _))
       TypeLambda(
         paramNames = tpnme.syntheticLambdaParamNames(numArgs),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          (tparam1.memberVariance + tparam2.memberVariance) / 2))(
+          (tparam1.paramVariance + tparam2.paramVariance) / 2))(
         paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          tl.lifted(tparams1, tparam1.memberBoundsAsSeenFrom(tp1)).bounds &
-          tl.lifted(tparams2, tparam2.memberBoundsAsSeenFrom(tp2)).bounds),
+          tl.lifted(tparams1, tparam1.paramBoundsAsSeenFrom(tp1)).bounds &
+          tl.lifted(tparams2, tparam2.paramBoundsAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
           original(tl.lifted(tparams1, tp1).appliedTo(argRefs(tl)),
              tl.lifted(tparams2, tp2).appliedTo(argRefs(tl))))

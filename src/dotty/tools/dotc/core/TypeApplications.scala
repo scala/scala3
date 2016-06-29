@@ -46,14 +46,14 @@ object TypeApplications {
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
-  def varianceConforms(tparam1: MemberBinding, tparam2: MemberBinding)(implicit ctx: Context): Boolean =
-    varianceConforms(tparam1.memberVariance, tparam2.memberVariance)
+  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
+    varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
 
   /** Doe the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case of `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[MemberBinding], tparams2: List[MemberBinding])(implicit ctx: Context): Boolean =
+  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
     tparams1.corresponds(tparams2)(varianceConforms)
 
   /** Extractor for
@@ -95,13 +95,13 @@ object TypeApplications {
           refinements = rt :: refinements
           tycon = rt.parent.stripTypeVar
         }
-        def collectArgs(tparams: List[MemberBinding],
+        def collectArgs(tparams: List[TypeParamInfo],
                         refinements: List[RefinedType],
                         argBuf: mutable.ListBuffer[Type]): Option[(Type, List[Type])] = refinements match {
           case Nil if tparams.isEmpty && argBuf.nonEmpty =>
             Some((tycon, argBuf.toList))
           case RefinedType(_, rname, rinfo) :: refinements1
-          if tparams.nonEmpty && rname == tparams.head.memberName =>
+          if tparams.nonEmpty && rname == tparams.head.paramName =>
             collectArgs(tparams.tail, refinements1, argBuf += rinfo.argInfo)
           case _ =>
             None
@@ -116,12 +116,12 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def etaExpandIfHK(tparams: List[MemberBinding], args: List[Type])(implicit ctx: Context): List[Type] =
+  def etaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
     else {
-      def bounds(tparam: MemberBinding) = tparam match {
+      def bounds(tparam: TypeParamInfo) = tparam match {
         case tparam: Symbol => tparam.infoOrCompleter
-        case tparam: LambdaParam => tparam.memberBounds
+        case tparam: LambdaParam => tparam.paramBounds
       }
       args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(bounds(tparam)))
     }
@@ -183,7 +183,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  with the bounds on its hk args. See `LambdaAbstract`, where these
    *  types get introduced, and see `isBoundedLambda` below for the test.
    */
-  final def typeParams(implicit ctx: Context): List[MemberBinding] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
@@ -195,7 +195,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         else if (!tsym.isCompleting) tsym.info.typeParams
         else Nil
       case self: RefinedType =>
-        self.parent.typeParams.filterNot(_.memberName == self.refinedName)
+        self.parent.typeParams.filterNot(_.paramName == self.refinedName)
       case self: RecType =>
         self.parent.typeParams
       case _: HKApply | _: SingletonType =>
@@ -210,7 +210,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** If `self` is a higher-kinded type, its type parameters $hk_i, otherwise Nil */
-  final def hkTypeParams(implicit ctx: Context): List[MemberBinding] =
+  final def hkTypeParams(implicit ctx: Context): List[TypeParamInfo] =
     if (isHK) typeParams else Nil
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
@@ -450,9 +450,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     else {
       def adaptArg(arg: Type): Type = arg match {
         case arg @ TypeLambda(tparams, body) if
-             !tparams.corresponds(hkParams)(_.memberVariance == _.memberVariance) &&
+             !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
-          TypeLambda(tparams.map(_.memberName), hkParams.map(_.memberVariance))(
+          TypeLambda(tparams.map(_.paramName), hkParams.map(_.paramVariance))(
             tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
@@ -501,12 +501,12 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param args     = `U1, ..., Un`
    *  @param tparams  are assumed to be the type parameters of `T`.
    */
-  final def appliedTo(args: List[Type], typParams: List[MemberBinding])(implicit ctx: Context): Type = {
-    def matchParams(t: Type, tparams: List[MemberBinding], args: List[Type])(implicit ctx: Context): Type = args match {
+  final def appliedTo(args: List[Type], typParams: List[TypeParamInfo])(implicit ctx: Context): Type = {
+    def matchParams(t: Type, tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
-          matchParams(RefinedType(t, tparam.memberName, arg.toBounds(tparam)), tparams1, args1)
+          matchParams(RefinedType(t, tparam.paramName, arg.toBounds(tparam)), tparams1, args1)
         } catch {
           case ex: MatchError =>
             println(s"applied type mismatch: $self with underlying ${self.underlyingIfProxy}, args = $args, typeParams = $typParams") // !!! DEBUG
@@ -563,11 +563,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: MemberBinding)(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(tparam: TypeParamInfo)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
       self
     case _ =>
-      val v = tparam.memberVariance
+      val v = tparam.paramVariance
       /* Not neeeded.
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
