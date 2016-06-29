@@ -7,6 +7,7 @@ import Types.{Type, TypeBounds}
 /** A common super trait of Symbol and Refinement.
  *  Used to capture the attributes of type parameters
  *  which can be implemented as either symbols or refinements.
+ *  TODO: Rename (TypeParamInfo?)
  */
 trait MemberBinding {
 

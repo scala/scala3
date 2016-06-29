@@ -138,6 +138,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  LAMBDAtype     Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
                   POLYtype       Length result_Type NamesTypes      // needed for refinements
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
@@ -326,7 +327,8 @@ object TastyFormat {
   final val ORtype = 172
   final val METHODtype = 174
   final val POLYtype = 175
-  final val PARAMtype = 176
+  final val LAMBDAtype = 176
+  final val PARAMtype = 177
   final val ANNOTATION = 178
 
   final val firstSimpleTreeTag = UNITconst
@@ -500,4 +502,8 @@ object TastyFormat {
     case TYPEBOUNDS => -2
     case _ => 0
   }
+
+  /** Map between variances and name prefixes */
+  val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
+  val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
 }

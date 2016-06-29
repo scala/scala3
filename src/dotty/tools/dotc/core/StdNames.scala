@@ -529,9 +529,9 @@ object StdNames {
 
     val synthSwitch: N          = "$synthSwitch"
 
-    val hkArgPrefix: N          = "$hk"
-    val hkArgPrefixHead: Char   = hkArgPrefix.head
-    val hkArgPrefixLength: Int  = hkArgPrefix.length
+    val hkArgPrefixOLD: N          = "$hk"
+    val hkArgPrefixHeadOLD: Char   = hkArgPrefixOLD.head
+    val hkArgPrefixLengthOLD: Int  = hkArgPrefixOLD.length
 
     // unencoded operators
     object raw {
@@ -737,12 +737,16 @@ object StdNames {
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
-    @switch def syntheticTypeParamName(i: Int): TypeName = "T" + i
+    def syntheticTypeParamName(i: Int): TypeName = "T" + i
+    def syntheticLambdaParamName(i: Int): TypeName = "X" + i
 
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
 
-    def hkArg(n: Int): TypeName = hkArgPrefix ++ n.toString
+    def syntheticLambdaParamNames(num: Int): List[TypeName] =
+      (0 until num).map(syntheticLambdaParamName)(breakOut)
+
+    def hkArgOLD(n: Int): TypeName = hkArgPrefixOLD ++ n.toString
 
     final val Conforms = encode("<:<")
   }

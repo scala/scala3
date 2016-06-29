@@ -56,6 +56,7 @@ object Types {
    *        |              +- PolyParam
    *        |              +- RefinedOrRecType -+-- RefinedType
    *        |              |                   -+-- RecType
+   *        |              +- HKApply
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
@@ -65,8 +66,8 @@ object Types {
    *                       +- OrType
    *                       +- MethodType -----+- ImplicitMethodType
    *                       |                  +- JavaMethodType
-   *                       +- PolyType
    *                       +- ClassInfo
+   *                       +- PolyType --------- TypeLambda
    *                       |
    *                       +- NoType
    *                       +- NoPrefix
@@ -476,7 +477,8 @@ object Types {
           // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
           // call below. To avoid this problem we do a defensive copy of the recursive
           // type first. But if we do this always we risk being inefficient and we run into
-          // stackoverflows when compiling pos/hk.scala. So we only do a copy if the type
+          // stackoverflows when compiling pos/hk.scala under the refinement encoding
+          // of hk-types. So we only do a copy if the type
           // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
           // Furthermore, if this happens we mark the original recursive type with `openedTwice`
           // which means that we always defensively copy the type in the future. This second
@@ -893,7 +895,7 @@ object Types {
       case _ => this
     }
 
-    /** If this is a TypeAlias type, its alias otherwise this type itself */
+    /** If this is a TypeAlias type, its alias, otherwise this type itself */
     final def followTypeAlias(implicit ctx: Context): Type = this match {
       case TypeAlias(alias) => alias
       case _ => this
@@ -1326,8 +1328,14 @@ object Types {
   /** A marker trait for types that apply only to type symbols */
   trait TypeType extends Type
 
-  /** A marker trait for types that apply only to term symbols */
-  trait TermType extends Type
+  /** A marker trait for types that apply only to term symbols or that
+   *  represent higher-kinded types.
+   */
+  trait TermOrHkType extends Type
+
+  /** A marker trait for types that apply only to term symbols.
+   */
+  trait TermType extends TermOrHkType
 
   /** A marker trait for types that can be types of values or prototypes of value types */
   trait ValueTypeOrProto extends TermType
@@ -1568,6 +1576,7 @@ object Types {
       // we might now get cycles over members that are in a refinement but that lack
       // a symbol. Without the following precaution i974.scala stackoverflows when compiled
       // with new hk scheme.
+      // TODO: Do we still need the complications here?
       val savedDenot = lastDenotation
       val savedSymbol = lastSymbol
       if (prefix.isInstanceOf[RecThis] && name.isTypeName) {
@@ -1765,7 +1774,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = {
       val res = info
-      assert(res != this, this)
+      assert(res != this, this)  // TODO drop
       res
     }
   }
@@ -2076,8 +2085,8 @@ object Types {
       this
     }
 
-    def betaReduce(implicit ctx: Context): Type = refinedInfo match {
-      case TypeAlias(alias) if refinedName.isHkArgName =>
+    def betaReduceOLD(implicit ctx: Context): Type = refinedInfo match {
+      case TypeAlias(alias) if refinedName.isHkArgNameOLD =>
         def instantiate(rt: RecType) = new TypeMap {
           def apply(t: Type) = t match {
             case TypeRef(RecThis(`rt`), `refinedName`) => alias
@@ -2121,7 +2130,7 @@ object Types {
         // A Y-check error (incompatible types involving hk lambdas) for dotty itself.
         // TODO: investigate and, if possible, drop after revision.
         val normalizedRefinedInfo = refinedInfo.substRecThis(dummyRec, dummyRec)
-        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduce
+        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduceOLD
       }
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
@@ -2130,6 +2139,7 @@ object Types {
       else parent
 
     // MemberBinding methods
+    // TODO: Needed?
     def isTypeParam(implicit ctx: Context) = refinedInfo match {
       case tp: TypeBounds => tp.isBinding
       case _ => false
@@ -2563,7 +2573,7 @@ object Types {
   }
 
   abstract case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-    extends CachedGroundType with BindingType with TermType with MethodOrPoly {
+    extends CachedGroundType with BindingType with TermOrHkType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     val resType = resultTypeExp(this)
@@ -2571,6 +2581,9 @@ object Types {
     assert(resType ne null)
 
     override def resultType(implicit ctx: Context) = resType
+
+    /** If this is a type lambda, the variances of its parameters, otherwise Nil.*/
+    def variances: List[Int] = Nil
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
@@ -2590,17 +2603,33 @@ object Types {
       else duplicate(paramNames, paramBounds, resType)
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context) =
-      PolyType(paramNames)(
+      if (this.variances.isEmpty)
+        PolyType(paramNames)(
+          x => paramBounds mapConserve (_.subst(this, x).bounds),
+          x => resType.subst(this, x))
+      else
+        TypeLambda(paramNames, variances)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => resType.subst(this, x))
 
+    def lifted(tparams: List[MemberBinding], t: Type)(implicit ctx: Context): Type =
+      tparams match {
+        case LambdaParam(poly, _) :: _ =>
+          t.subst(poly, this)
+        case tparams: List[Symbol] =>
+          t.subst(tparams, tparams.indices.toList.map(PolyParam(this, _)))
+      }
+
     override def equals(other: Any) = other match {
       case other: PolyType =>
-        other.paramNames == this.paramNames && other.paramBounds == this.paramBounds && other.resType == this.resType
+        other.paramNames == this.paramNames &&
+        other.paramBounds == this.paramBounds &&
+        other.resType == this.resType &&
+        other.variances == this.variances
       case _ => false
     }
     override def computeHash = {
-      doHash(paramNames, resType, paramBounds)
+      doHash(variances ::: paramNames, resType, paramBounds)
     }
 
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
@@ -2616,13 +2645,75 @@ object Types {
 
     def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
       if (tparams.isEmpty) resultType
-      else {
-        def transform(pt: PolyType, tp: Type) =
-          tp.subst(tparams, (0 until tparams.length).toList map (PolyParam(pt, _)))
-        apply(tparams map (_.name.asTypeName))(
-          pt => tparams map (tparam => transform(pt, tparam.info).bounds),
-          pt => transform(pt, resultType))
+      else apply(tparams map (_.name.asTypeName))(
+          pt => tparams.map(tparam => pt.lifted(tparams, tparam.info).bounds),
+          pt => pt.lifted(tparams, resultType))
+  }
+
+  // ----- HK types: TypeLambda, LambdaParam, HKApply ---------------------
+
+  /** A type lambda of the form `[v_0 X_0, ..., v_n X_n] => T` */
+  class TypeLambda(paramNames: List[TypeName], variances: List[Int])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+  extends PolyType(paramNames)(paramBoundsExp, resultTypeExp) {
+
+    lazy val typeParams: List[LambdaParam] =
+      paramNames.indices.toList.map(new LambdaParam(this, _))
+
+    override def toString = s"TypeLambda($variances, $paramNames, $paramBounds, $resType)"
+
+  }
+
+  /** The parameter of a type lambda */
+  case class LambdaParam(tl: TypeLambda, n: Int) extends MemberBinding {
+    def isTypeParam(implicit ctx: Context) = true
+    def memberName(implicit ctx: Context): TypeName = tl.paramNames(n)
+    def memberBounds(implicit ctx: Context): TypeBounds = tl.paramBounds(n)
+    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = memberBounds
+    def memberVariance(implicit ctx: Context): Int = tl.variances(n)
+    def toArg: Type = PolyParam(tl, n)
+  }
+
+  object TypeLambda {
+    def apply(paramNames: List[TypeName], variances: List[Int])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
+      unique(new TypeLambda(paramNames, variances)(paramBoundsExp, resultTypeExp))
+    }
+    def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
+      if (tparams.isEmpty) resultType
+      else apply(tparams map (_.name.asTypeName), tparams.map(_.variance))(
+          pt => tparams.map(tparam => pt.lifted(tparams, tparam.info).bounds),
+          pt => pt.lifted(tparams, resultType))
+     def unapply(tl: TypeLambda): Some[(List[LambdaParam], Type)] =
+      Some((tl.typeParams, tl.resType))
+  }
+
+  /** A higher kinded type application `C[T_1, ..., T_n]` */
+  abstract case class HKApply(tycon: Type, args: List[Type])
+  extends CachedProxyType with TermOrHkType {
+    override def underlying(implicit ctx: Context): Type = tycon
+    def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
+      if ((tycon eq this.tycon) && (args eq this.args)) this
+      else tycon.appliedTo(args)
+    override def computeHash = doHash(tycon, args)
+
+    def upperBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
+      case tp: TypeProxy => tp.underlying.appliedTo(args)
+      case _ => tycon
+    }
+
+    protected def checkInst(implicit ctx: Context): this.type = {
+      tycon.stripTypeVar match {
+        case _: TypeRef | _: PolyParam | _: WildcardType | ErrorType =>
+        case _ => assert(false, s"illegal type constructor in $this")
       }
+      this
+    }
+  }
+
+  final class CachedHKApply(tycon: Type, args: List[Type]) extends HKApply(tycon, args)
+
+  object HKApply {
+    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) =
+      unique(new CachedHKApply(tycon, args)).checkInst
   }
 
   // ----- Bound types: MethodParam, PolyParam --------------------------
@@ -3021,8 +3112,8 @@ object Types {
    */
   abstract case class TypeBounds(lo: Type, hi: Type)(val bindingKind: BindingKind) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermType])
-    assert(hi.isInstanceOf[TermType])
+    assert(lo.isInstanceOf[TermOrHkType])
+    assert(hi.isInstanceOf[TermOrHkType])
 
     def variance: Int = 0
     def isBinding = bindingKind != NoBinding
@@ -3151,6 +3242,7 @@ object Types {
   /** A value class defining the interpretation of a TypeBounds
    *  as either a regular type bounds or a binding (i.e. introduction) of a
    *  higher-kinded type parameter.
+   *  TODO: drop
    */
   class BindingKind(val n: Byte) extends AnyVal {
     def join(that: BindingKind) =
@@ -3225,7 +3317,7 @@ object Types {
   object ErrorType extends ErrorType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermOrHkType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
@@ -3323,6 +3415,8 @@ object Types {
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
+    protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+      tp.derivedAppliedType(tycon, args)
     protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
       tp.derivedAndOrType(tp1, tp2)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
@@ -3404,6 +3498,17 @@ object Types {
         case tp: TypeVar =>
           val inst = tp.instanceOpt
           if (inst.exists) apply(inst) else tp
+
+        case tp: HKApply =>
+          def mapArg(arg: Type, tparam: MemberBinding): Type = {
+            val saved = variance
+            if (tparam.memberVariance < 0) variance = -variance
+            else if (tparam.memberVariance == 0) variance = 0
+            try this(arg)
+            finally variance = saved
+          }
+          derivedAppliedType(tp, this(tp.tycon),
+              tp.args.zipWithConserve(tp.tycon.typeParams)(mapArg))
 
         case tp: AndOrType =>
           derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
@@ -3508,6 +3613,9 @@ object Types {
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
       if (thistp.exists && supertp.exists) tp.derivedSuperType(thistp, supertp)
       else NoType
+    override protected def derivedAppliedType(tp: HKApply, tycon: Type, args: List[Type]): Type =
+      if (tycon.exists && args.forall(_.exists)) tp.derivedAppliedType(tycon, args)
+      else approx() // This is rather coarse, but to do better is a bit complicated
     override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
       if (tp1.exists && tp2.exists) tp.derivedAndOrType(tp1, tp2)
       else if (tp.isAnd) approx(hi = tp1 & tp2)  // if one of tp1d, tp2d exists, it is the result of tp1d & tp2d
@@ -3599,6 +3707,9 @@ object Types {
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
+
+      case tp @ HKApply(tycon, args) =>
+        foldOver(this(x, tycon), args)
 
       case tp: AndOrType =>
         this(this(x, tp.tp1), tp.tp2)
