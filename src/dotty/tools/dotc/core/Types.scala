@@ -152,6 +152,10 @@ object Types {
         case tp: TypeRef =>
           val sym = tp.symbol
           if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
+        case tp: TypeLambda =>
+          tp.resType.derivesFrom(cls)
+        case tp: HKApply =>
+          tp.tycon.derivesFrom(cls)
         case tp: TypeProxy =>
           tp.underlying.derivesFrom(cls)
         case tp: AndType =>
@@ -458,6 +462,8 @@ object Types {
           goParam(tp)
         case tp: RecType =>
           goRec(tp)
+        case tp: HKApply =>
+          go(tp.upperBound)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -512,6 +518,7 @@ object Types {
             if (!rt.openedTwice) rt.opened = false
           }
         }
+
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo = tp.refinedInfo
@@ -540,6 +547,7 @@ object Types {
             safeIntersection = ctx.pendingMemberSearches.contains(name))
         }
       }
+
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
         if (d.exists)
@@ -2708,14 +2716,14 @@ object Types {
   /** A higher kinded type application `C[T_1, ..., T_n]` */
   abstract case class HKApply(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
-    override def underlying(implicit ctx: Context): Type = tycon
+    override def underlying(implicit ctx: Context): Type = upperBound
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
 
     override def computeHash = doHash(tycon, args)
 
-    def upperBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
+    def upperBound(implicit ctx: Context): Type = tycon match {
       case tp: TypeProxy => tp.underlying.appliedTo(args)
       case _ => defn.AnyType
     }
