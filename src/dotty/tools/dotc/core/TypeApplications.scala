@@ -494,7 +494,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: SingletonType => -1
     case self: TypeVar => self.origin.knownHK
     case self: WildcardType => self.optBounds.knownHK
+    case self: PolyParam => self.underlying.knownHK
     case self: TypeProxy => self.underlying.knownHK
+    case NoType => 0
     case _ => -1
   }
 
@@ -666,13 +668,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           instTop(tp.ref)
         case tp =>
           inst.tyconIsHK = tp.isHK
-          val res = inst(tp)
-          tp match {
-            case tp: WildcardType =>
-              println(s"inst $tp --> $res")
-            case _ =>
-          }
-          res
+          inst(tp)
       }
 
       def isLazy(tp: Type): Boolean = tp.strictDealias match {
