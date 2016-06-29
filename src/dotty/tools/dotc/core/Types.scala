@@ -2108,15 +2108,7 @@ object Types {
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else {
-        // `normalizedRefinedInfo` is `refinedInfo` reduced everywhere via `reduceProjection`.
-        // (this is achieved as a secondary effect of substRecThis).
-        // It turns out this normalization is now needed; without it there's
-        // A Y-check error (incompatible types involving hk lambdas) for dotty itself.
-        // TODO: investigate and, if possible, drop after revision.
-        val normalizedRefinedInfo = refinedInfo.substRecThis(dummyRec, dummyRec)
-        RefinedType(parent, refinedName, normalizedRefinedInfo)
-      }
+      else RefinedType(parent, refinedName, refinedInfo)
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
@@ -2338,7 +2330,7 @@ object Types {
     final override def signature(implicit ctx: Context): Signature = {
       if (ctx.runId != mySignatureRunId) {
         mySignature = computeSignature
-        mySignatureRunId = ctx.runId
+        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
       }
       mySignature
     }

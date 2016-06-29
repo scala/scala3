@@ -743,6 +743,8 @@ object StdNames {
       (0 until num).map(syntheticLambdaParamName)(breakOut)
 
     final val Conforms = encode("<:<")
+
+    final val Uninstantiated: TypeName = "?$"
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {
