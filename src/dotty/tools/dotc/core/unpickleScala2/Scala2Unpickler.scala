@@ -620,9 +620,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
-      case tp @ RefinedType(parent, name) =>
+      case tp @ RefinedType(parent, name, rinfo) =>
         val parent1 = elim(tp.parent)
-        tp.refinedInfo match {
+        rinfo match {
           case TypeAlias(info: TypeRef) if isBound(info) =>
             RefinedType(parent1, name, info.symbol.info)
           case info: TypeRef if isBound(info) =>

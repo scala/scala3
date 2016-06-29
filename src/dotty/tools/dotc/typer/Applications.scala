@@ -741,7 +741,7 @@ trait Applications extends Compatibility { self: Typer =>
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case RefinedType(parent, _) => isSubTypeOfParent(subtp, parent)
+        case tp: RefinedType => isSubTypeOfParent(subtp, tp.parent)
         case _ => false
       }
 

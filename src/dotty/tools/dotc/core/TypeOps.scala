@@ -364,8 +364,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def normalizeToRef(tp: Type): TypeRef = tp.dealias match {
       case tp: TypeRef =>
         tp
-      case tp @ RefinedType(tp1, name: TypeName) =>
-        tp.refinedInfo match {
+      case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
+        rinfo match {
           case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
             // Don't record refinements of the form X = this.X (These can arise using named parameters).
             typr.println(s"dropping refinement $tp")

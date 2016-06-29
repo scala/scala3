@@ -465,7 +465,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           def isNullable(tp: Type): Boolean = tp.dealias match {
             case tp: TypeRef => tp.symbol.isNullableClass
-            case RefinedType(parent, _) => isNullable(parent)
+            case tp: RefinedType => isNullable(tp.parent)
             case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
@@ -738,9 +738,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  @return  The parent type of `tp2` after skipping the matching refinements.
    */
   private def skipMatching(tp1: Type, tp2: RefinedType): Type = tp1 match {
-    case tp1 @ RefinedType(parent1, name1)
+    case tp1 @ RefinedType(parent1, name1, rinfo1: TypeAlias)
     if name1 == tp2.refinedName &&
-       tp1.refinedInfo.isInstanceOf[TypeAlias] &&
        !tp2.refinementRefersToThis &&
        !tp1.refinementRefersToThis =>
       tp2.parent match {

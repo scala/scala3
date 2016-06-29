@@ -123,7 +123,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           def contains(tp1: Type, tp2: Type): Boolean =
             tp1.eq(tp2) || {
               tp1.stripTypeVar match {
-                case RefinedType(parent, _) => contains(parent, tp2)
+                case tp1: RefinedType => contains(tp1.parent, tp2)
                 case _ => false
               }
             }

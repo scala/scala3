@@ -1035,7 +1035,7 @@ object Types {
 
     /** the self type of the underlying classtype */
     def givenSelfType(implicit ctx: Context): Type = this match {
-      case tp @ RefinedType(parent, name) => tp.wrapIfMember(parent.givenSelfType)
+      case tp: RefinedType => tp.wrapIfMember(tp.parent.givenSelfType)
       case tp: ThisType => tp.tref.givenSelfType
       case tp: TypeProxy => tp.underlying.givenSelfType
       case _ => NoType
@@ -2029,10 +2029,11 @@ object Types {
    *  @param infoFn: A function that produces the info of the refinement declaration,
    *                 given the refined type itself.
    */
-  abstract case class RefinedType(parent: Type, refinedName: Name)
+  abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
     extends CachedProxyType with BindingType with ValueType {
 
-    val refinedInfo: Type
+    final def parent = myParent
+    final def refinedInfo = myRefinedInfo
 
     private var refinementRefersToThisCache: Boolean = _
     private var refinementRefersToThisKnown: Boolean = false
@@ -2053,7 +2054,7 @@ object Types {
     def checkInst(implicit ctx: Context): this.type = {
       if (refinedName == tpnme.hkApply)
         parent.stripTypeVar match {
-          case RefinedType(_, name) if name.isHkArgName => // ok
+          case RefinedType(_, name, _) if name.isHkArgName => // ok
           case _ => badInst
         }
       this
@@ -2076,16 +2077,18 @@ object Types {
       case _ =>
         false
     }
-    override def computeHash = doHash(refinedName, refinedInfo, parent)
+    override def computeHash = {
+      assert(parent.exists)
+      doHash(refinedName, refinedInfo, parent)
+    }
+
     override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | $hashCode)"
   }
 
-  class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName) {
-    val refinedInfo = infoFn(this)
-  }
+  class CachedRefinedType(refinedName: Name) extends RefinedType(NoType, refinedName, NoType)
 
-  class PreHashedRefinedType(parent: Type, refinedName: Name, override val refinedInfo: Type, hc: Int)
-  extends RefinedType(parent, refinedName) {
+  class PreHashedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type, hc: Int)
+  extends RefinedType(parent, refinedName, refinedInfo) {
     myHash = hc
     override def computeHash = unsupported("computeHash")
   }
@@ -2095,9 +2098,22 @@ object Types {
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
+    def recursive(parentFn: RefinedType => Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): RefinedType = {
+      val refinements: List[RefinedType] = names.map(new CachedRefinedType(_))
+      val last = refinements.last
+      (refinements, infoFns).zipped.foreach((rt, infoFn) => rt.myRefinedInfo = infoFn(last))
+      (parentFn(last) /: refinements) { (parent, rt) =>
+        rt.myParent = parent
+        ctx.base.uniqueRefinedTypes.enterIfNew(rt).checkInst
+      }.asInstanceOf[RefinedType]
+    }
+
     def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
       assert(!ctx.erasedTypes || ctx.mode.is(Mode.Printing))
-      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
+      val res: RefinedType = new CachedRefinedType(name)
+      res.myParent = parent
+      res.myRefinedInfo = infoFn(res)
+      ctx.base.uniqueRefinedTypes.enterIfNew(res).checkInst
     }
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
@@ -2668,8 +2684,8 @@ object Types {
       }
       def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
         case tp: OrType => true
+        case tp: RefinedType => isOrType(tp.parent)
         case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
-        case RefinedType(parent, _) => isOrType(parent)
         case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
         case _ => false
       }
@@ -2860,6 +2876,7 @@ object Types {
     assert(hi.isInstanceOf[TermType])
 
     def variance: Int = 0
+    def isBinding = bindingKind != NoBinding
 
     override def underlying(implicit ctx: Context): Type = hi
 
@@ -2875,6 +2892,8 @@ object Types {
       case tp: TypeAlias => tp.derivedTypeAlias(tp.alias, variance)
       case _ => this
     }
+
+    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = derivedTypeBounds(lo, hi, bk)
 
     def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
