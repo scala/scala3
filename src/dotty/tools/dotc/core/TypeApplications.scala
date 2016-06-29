@@ -364,9 +364,9 @@ class TypeApplications(val self: Type) extends AnyVal {
           val sym = self.parent.classSymbol
           if (sym.isLambdaTraitOBS) return sym.typeParams
         }
-        val precedingParams = self.parent.typeParams
+        val precedingParams = self.parent.typeParams.filterNot(_.memberName == self.refinedName)
         if (Config.newHK && self.isTypeParam) precedingParams :+ self
-        else precedingParams.filterNot(_.memberName == self.refinedName)
+        else precedingParams
       case self: RecType =>
         self.parent.typeParams
       case self: SingletonType =>

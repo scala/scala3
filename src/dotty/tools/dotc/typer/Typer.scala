@@ -1674,11 +1674,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def adaptType(tp: Type): Tree = {
       val tree1 =
-        if (pt != AnyTypeConstructorProto && tp.typeParamSymbols.nonEmpty) {
-          println(i"lam abs $tp with tparams ${tp.typeParamSymbols}%, %")
-          tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
-        }
-        else tree
+        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        else tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
       if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }
