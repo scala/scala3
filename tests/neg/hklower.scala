@@ -1,4 +1,4 @@
-class Test {
+class Test { // error: conflicting bounds
 
   type T[X] // OK
   type U[X] = T[X] // OK
