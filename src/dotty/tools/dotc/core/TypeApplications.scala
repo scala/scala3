@@ -744,7 +744,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self1: WildcardType =>
         self1
       case _ =>
-        self.safeDealias.appliedTo(args, typeParams)
+        self.appliedTo(args, typeParams)
     }
   }
 
@@ -768,7 +768,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil => t
     }
     assert(args.nonEmpty)
-    self.stripTypeVar match {
+    self.stripTypeVar.safeDealias match {
       case self: TypeLambda =>
         if (!args.exists(_.isInstanceOf[TypeBounds])) self.instantiate(args)
         else {
@@ -785,10 +785,12 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
         LazyRef(() => self.ref.appliedTo(args, typParams))
+      case self: TypeRef if self.symbol == defn.NothingClass =>
+        self
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
-      case _ =>
-        matchParams(self, typParams, args) match {
+      case dealiased =>
+        matchParams(dealiased, typParams, args) match {
           case refined @ RefinedType(_, pname, _) if !Config.newHK && pname.isHkArgNameOLD =>
             refined.betaReduceOLD
           case refined =>
