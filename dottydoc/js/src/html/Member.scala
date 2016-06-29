@@ -8,8 +8,7 @@ import org.scalajs.dom
 import org.scalajs.dom.html.{Anchor, Div, Span}
 
 trait MemberLayout {
-  import dotty.tools.dottydoc.model._
-  import dotty.tools.dottydoc.model.comment._
+  import js.model._
 
   def member(m: Entity, parent: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =
@@ -21,8 +20,9 @@ trait MemberLayout {
         short.style.display = "block"
       }
 
-    m match {
-      case m: Entity with Modifiers =>
+    m.kind match {
+      case "class" | "case class" | "object" | "trait" | "def" | "val" =>
+        val entity = m.asInstanceOf[Entity with Modifiers]
         val shortComment = div(
           cls := "mdl-cell mdl-cell--12-col summary-comment",
           raw(m.comment.fold("")(_.short))
@@ -50,7 +50,7 @@ trait MemberLayout {
             cls := "mdl-cell mdl-cell--12-col member-definition",
             span(
               cls := "member-modifiers-kind",
-              m.modifiers.mkString(" ") + " " + m.kind
+              entity.modifiers.mkString(" ") + " " + m.kind
             ),
             span(
               cls := "member-name",
@@ -58,13 +58,13 @@ trait MemberLayout {
             ),
             spanWith("member-type-params no-left-margin", typeParams(m)),
             span(cls := "member-param-list no-left-margin", paramList(m)),
-            returnValue(m, parent)
+            returnValue(entity, parent)
           ),
           shortComment,
           fullComment
         )
         Seq(divs)
-      case x => Seq(h1("ERROR: " + x.name))
+      case _ => Seq(h1("ERROR: " + m.name))
     }
   }
 
@@ -73,67 +73,82 @@ trait MemberLayout {
     case _  => Some(span(cls := clazz, contents))
   }
 
-  def paramList(m: Entity): Span = m match {
-    case d: Def if d.paramLists.nonEmpty =>
-      span(
-        cls := "member-param-lists",
-        d.paramLists.map { xs =>
-          span(
-            cls := "param-list",
-            "(",
-            xs.flatMap { tr =>
-              Seq(
-                span(cls := "param-name", tr.title).render,
-                span(cls := "type-separator no-left-margin", ":").render,
-                span(referenceToLinks(tr.ref)).render,
-                span(cls := "type-separator no-left-margin", ",").render
-              )
-            }.dropRight(1),
-            ")"
-          ).render
-        }
-      ).render
+  def paramList(m: Entity): Span = m.kind match {
+    case "def" =>
+      val d = m.asInstanceOf[Def]
+      if (d.paramLists.nonEmpty)
+        span(
+          cls := "member-param-lists",
+          d.paramLists.map { xs =>
+            span(
+              cls := "param-list",
+              "(",
+              xs.flatMap { tr =>
+                Seq(
+                  span(cls := "param-name", tr.title).render,
+                  span(cls := "type-separator no-left-margin", ":").render,
+                  span(referenceToLinks(tr.ref)).render,
+                  span(cls := "type-separator no-left-margin", ",").render
+                )
+              }.toList.dropRight(1),
+              ")"
+            ).render
+          }.toList
+        ).render
+      else span().render
     case _ => span().render
   }
 
   def referenceToLinks(ref: Reference): Span = {
-    def linkToAnchor(link: MaterializableLink) = link match {
-      case MaterializedLink(t, url) => a(href := url, t).render
-      case NoLink(t, _) => span(t).render
+    def linkToAnchor(link: MaterializableLink) = link.kind match {
+      case "MaterializedLink" =>
+        val (t, url) = (link.asInstanceOf[MaterializedLink].title, link.asInstanceOf[MaterializedLink].target)
+        a(href := url, t).render
+      case "NoLink" => span(link.title).render
 
       //FIXME: there should be no UnsetLinks - either MaterializedLink or NoLink
-      case UnsetLink(_, q) => span(q).render
+      case "UnsetLink" => span(link.title).render
     }
 
-    ref match {
-      case ref: TypeReference if ref.paramLinks.nonEmpty => span(
-        linkToAnchor(ref.tpeLink),
-        "[",
-        ref
-          .paramLinks
-          .map(linkToAnchor)
-          .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render))
-          .dropRight(1),
-        "]"
-      ).render
-      case ref: TypeReference => span(linkToAnchor(ref.tpeLink)).render
+    ref.kind match {
+      case "TypeReference" =>
+        val tref = ref.asInstanceOf[TypeReference]
+        if (tref.paramLinks.nonEmpty) span(
+          linkToAnchor(tref.tpeLink),
+          "[",
+          tref
+            .paramLinks
+            .map(linkToAnchor)
+            .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render))
+            .toList.dropRight(1),
+          "]"
+        ).render
+      else span(linkToAnchor(tref.tpeLink)).render
 
-      case OrTypeReference(left, right) => span(
-        referenceToLinks(left),
-        span(cls := "type-separator", "|"),
-        referenceToLinks(right)
-      ).render
+      case "OrTypeReference" =>
+        val (left, right) = (ref.asInstanceOf[OrTypeReference].left, ref.asInstanceOf[OrTypeReference].right)
+        span(
+          referenceToLinks(left),
+          span(cls := "type-separator", "|"),
+          referenceToLinks(right)
+        ).render
 
-      case AndTypeReference(left, right) => span(
-        referenceToLinks(left),
-        span(cls := "type-separator", "&"),
-        referenceToLinks(right)
-      ).render
+      case "AndTypeReference" =>
+        val (left, right) = (ref.asInstanceOf[AndTypeReference].left, ref.asInstanceOf[AndTypeReference].right)
+        span(
+          referenceToLinks(left),
+          span(cls := "type-separator", "&"),
+          referenceToLinks(right)
+        ).render
     }
   }
 
-  def typeParams(m: Entity): String = m match {
-    case d: Def if d.typeParams.nonEmpty => d.typeParams.mkString("[", ", ", "]")
+  def typeParams(m: Entity): String = m.kind match {
+    case "def" =>
+      val d = m.asInstanceOf[Def]
+      if (d.typeParams.nonEmpty)
+        d.typeParams.mkString("[", ", ", "]")
+      else ""
     case _ => ""
   }
 
@@ -146,50 +161,59 @@ trait MemberLayout {
     }
 
     def link(rv: Reference): Span = {
-      def decodeTpeLink: MaterializableLink => Span  = {
-        case ml: MaterializedLink =>
-          println(s"received tpeLink: $ml")
+      def decodeTpeLink(link: MaterializableLink): Span = link.kind match {
+        case "MaterializedLink" =>
+          val ml = link.asInstanceOf[MaterializedLink]
           span(cls := "member-return-value", a(href := ml.target, ml.title)).render
-        case un: UnsetLink =>
+        case "UnsetLink" =>
+          val un = link.asInstanceOf[UnsetLink]
           span(cls := "member-return-value", shorten(un.query)).render
-        case no: NoLink =>
+        case "NoLink" =>
+          val no = link.asInstanceOf[NoLink]
           span(cls := "member-return-value", shorten(no.title)).render
       }
 
-      rv match {
-        case rv: TypeReference =>
-          val returnValue = decodeTpeLink(rv.tpeLink)
+      rv.kind match {
+        case "TypeReference" =>
+          val trv = rv.asInstanceOf[TypeReference]
+          val returnValue = decodeTpeLink(trv.tpeLink)
 
-          if (rv.paramLinks.nonEmpty) span(
+          if (trv.paramLinks.nonEmpty) span(
             returnValue,
             "[",
-            rv.paramLinks
+            trv.paramLinks
               .map(decodeTpeLink)
               .flatMap { sp =>
                 Seq(sp, span(cls := "type-separator no-left-margin", ",").render)
               }
-              .dropRight(1),
+              .toList.dropRight(1),
             "]"
           ).render
           else returnValue
 
-        case OrTypeReference(left, right) => span(
-          cls := "member-return-value or-type",
-          link(left),
-          span(cls := "type-separator", "|"),
-          link(right)
-        ).render
-        case AndTypeReference(left, right) => span(
-          cls := "member-return-value and-type",
-          link(left),
-          span(cls := "type-separator", "&"),
-          link(right)
-        ).render
+        case "OrTypeReference" =>
+          val (left, right) = (rv.asInstanceOf[OrTypeReference].left, rv.asInstanceOf[OrTypeReference].right)
+          span(
+            cls := "member-return-value or-type",
+            link(left),
+            span(cls := "type-separator", "|"),
+            link(right)
+          ).render
+        case "AndTypeReference" =>
+          val (left, right) = (rv.asInstanceOf[AndTypeReference].left, rv.asInstanceOf[AndTypeReference].right)
+          span(
+            cls := "member-return-value and-type",
+            link(left),
+            span(cls := "type-separator", "&"),
+            link(right)
+          ).render
       }
     }
 
-    m match {
-      case rv: ReturnValue => Some(span(cls := "no-left-margin", ": ", link(rv.returnValue)))
+    m.kind match {
+      case "def" =>
+        val rv = m.asInstanceOf[ReturnValue]
+        Some(span(cls := "no-left-margin", ": ", link(rv.returnValue)))
       case _ => None
     }
   }

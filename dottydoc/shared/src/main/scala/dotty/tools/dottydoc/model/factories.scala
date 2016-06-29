@@ -51,7 +51,7 @@ object factories {
   def returnType(t: Type)(implicit ctx: Context): Reference = {
     def typeRef(name: String, query: String = "", params: List[MaterializableLink] = Nil) = {
       val realQuery = if (query != "") query else name
-      TypeReference(name, UnsetLink(Text(name), realQuery), params)
+      TypeReference(name, UnsetLink(name, realQuery), params)
     }
 
     def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
@@ -61,7 +61,7 @@ object factories {
             ta.alias.asInstanceOf[NamedType].name.show
           case _ => rn.show
         }).split("\\$").last
-        val param = UnsetLink(Text(paramName), paramName)
+        val param = UnsetLink(paramName, paramName)
         expandTpe(parent, param :: params)
       }
       case TypeRef(_, n) =>
@@ -140,7 +140,7 @@ object factories {
 
       cd.classParents.collect {
         case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
-          UnsetLink(Text(t.name.toString), path(t.symbol).mkString("."))
+          UnsetLink(t.name.toString, path(t.symbol).mkString("."))
       }
     case _ => Nil
   }

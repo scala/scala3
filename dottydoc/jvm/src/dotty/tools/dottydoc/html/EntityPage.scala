@@ -2,13 +2,12 @@ package dotty.tools.dottydoc
 package html
 
 import scalatags.Text.all._
-import model.internal._
 import model._
 
 case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import CustomTags._
-  import model.pickling._
-  import prickle._
+  import spray.json._
+  import model.json._
   import util.internal.setters._
 
   private def relPath(to: String, from: Entity) = {
@@ -79,7 +78,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
       )
     ),
     script(
-      raw(s"""|UnparsedIndex.currentEntity = ${Pickle.intoString(entity.flat)};
+      raw(s"""|UnparsedIndex.currentEntity = ${entity.flat.toJson};
               |dotty.tools.dottydoc.js.DottyDocJS()
               |     .main(document.getElementById("entity-container"));
            """.stripMargin)

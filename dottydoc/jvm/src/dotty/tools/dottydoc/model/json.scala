@@ -27,20 +27,20 @@ object json extends DefaultJsonProtocol {
 
   implicit object MaterializableLinkFormat extends RootJsonFormat[MaterializableLink] {
     def write(obj: MaterializableLink) = obj match {
-      case obj: MaterializedLink => obj.toJson
-      case obj: UnsetLink => obj.toJson
-      case obj: NoLink => obj.toJson
+      case obj: MaterializedLink => addKind(obj.toJson, "MaterializedLink")
+      case obj: UnsetLink => addKind(obj.toJson, "UnsetLink")
+      case obj: NoLink => addKind(obj.toJson, "NoLink")
     }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }
 
   implicit object ReferenceFormat extends RootJsonFormat[Reference] {
     def write(obj: Reference) = obj match {
-      case obj: AndTypeReference  => obj.toJson
-      case obj: OrTypeReference   => obj.toJson
-      case obj: TypeReference     => obj.toJson
-      case obj: NamedReference    => obj.toJson
-      case obj: ConstantReference => obj.toJson
+      case obj: AndTypeReference  => addKind(obj.toJson, "AndTypeReference")
+      case obj: OrTypeReference   => addKind(obj.toJson, "OrTypeReference")
+      case obj: TypeReference     => addKind(obj.toJson, "TypeReference")
+      case obj: NamedReference    => addKind(obj.toJson, "NamedReference")
+      case obj: ConstantReference => addKind(obj.toJson, "ConstantReference")
     }
     def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }

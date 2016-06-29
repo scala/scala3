@@ -94,8 +94,8 @@ final case class Tooltip(name: String) extends LinkTo
 final case class LinkToEntity(entity: Entity) extends LinkTo
 
 /** Use MaterializableLink for entities that need be picklable */
-sealed trait MaterializableLink { def title: Any }
-final case class UnsetLink(title: Inline, query: String) extends MaterializableLink
+sealed trait MaterializableLink { def title: String }
+final case class UnsetLink(title: String, query: String) extends MaterializableLink
 final case class MaterializedLink(title: String, target: String) extends MaterializableLink
 final case class NoLink(title: String, target: String) extends MaterializableLink
 

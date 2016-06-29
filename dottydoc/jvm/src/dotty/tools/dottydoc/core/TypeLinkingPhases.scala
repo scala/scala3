@@ -42,7 +42,7 @@ trait TypeLinker extends MemberLookup {
     rv match {
       case rv @ TypeReference(_, UnsetLink(t, query), tps) =>
         val inlineToHtml = InlineToHtml(ent)
-        val title = inlineToHtml(t)
+        val title = t
 
         def handleEntityLink(title: String, lt: LinkTo): MaterializableLink = lt match {
           case Tooltip(str)           => NoLink(title, str)
@@ -50,11 +50,11 @@ trait TypeLinker extends MemberLookup {
           case LinkToEntity(target)   => MaterializedLink(title, util.traversing.relativePath(ent, target))
         }
 
-        val target = handleEntityLink(title, makeEntityLink(ent, packs, t, NoPosition, query).link)
+        val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
 
         val tpTargets = tps.map {
           case UnsetLink(t, query) =>
-            handleEntityLink(inlineToHtml(t), makeEntityLink(ent, packs, t, NoPosition, query).link)
+            handleEntityLink(t, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
           case x => x
         }
 
