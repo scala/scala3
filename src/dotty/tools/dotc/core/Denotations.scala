@@ -601,7 +601,8 @@ object Denotations {
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
       case denot: SymDenotation if ctx.stillValid(denot) =>
-        assert(ctx.runId > validFor.runId, s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
+        assert(ctx.runId > validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
+            s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
         var d: SingleDenotation = denot
         do {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
