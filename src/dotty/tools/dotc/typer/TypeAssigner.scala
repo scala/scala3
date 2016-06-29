@@ -103,7 +103,8 @@ trait TypeAssigner {
           val refinedInfo1 = apply(rinfo)
           if (toAvoid(refinedInfo1)) {
             typr.println(s"dropping refinement from $tp")
-            parent1
+            if (name.isTypeName) tp.derivedRefinedType(parent1, name, TypeBounds.empty)
+            else parent1
           } else {
             tp.derivedRefinedType(parent1, name, refinedInfo1)
           }
@@ -144,7 +145,7 @@ trait TypeAssigner {
    *  which are accessible.
    *
    *  Also performs the following normalizations on the type `tpe`.
-   *  (1) parameter accessors are alwys dereferenced.
+   *  (1) parameter accessors are always dereferenced.
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
    */
