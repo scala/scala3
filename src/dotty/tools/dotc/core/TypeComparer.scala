@@ -368,20 +368,31 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               // This twist is needed to make collection/generic/ParFactory.scala compile
               fourthTry(tp1, tp2) || compareRefinedSlow
             case _ =>
-              compareHkApply(tp2, tp1, inOrder = false) ||
-              compareHkLambda(tp2, tp1, inOrder = false) ||
-              compareRefinedSlow ||
-              fourthTry(tp1, tp2) ||
-              compareAliasedRefined(tp2, tp1, inOrder = false)
+              if (tp2.isTypeParam) {
+                compareHkLambda(tp1, tp2) ||
+                fourthTry(tp1, tp2)
+              }
+              else {
+                compareHkApply(tp2, tp1, inOrder = false) ||
+                compareRefinedSlow ||
+                fourthTry(tp1, tp2) ||
+                compareAliasedRefined(tp2, tp1, inOrder = false)
+              }
           }
         else // fast path, in particular for refinements resulting from parameterization.
-          isSubType(tp1, skipped2) && // TODO swap?
-          isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2)
+          isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
+          isSubType(tp1, skipped2) // TODO swap?
       }
       compareRefined
     case tp2: RecType =>
-      val tp1stable = ensureStableSingleton(tp1)
-      isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.parent.substRecThis(tp2, tp1stable))
+      tp1.safeDealias match {
+        case tp1: RecType =>
+          val rthis1 = RecThis(tp1)
+          isSubType(tp1.parent, tp2.parent.substRecThis(tp2, rthis1))
+        case _ =>
+          val tp1stable = ensureStableSingleton(tp1)
+          isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.parent.substRecThis(tp2, tp1stable))
+       }
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
@@ -496,7 +507,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
       compareHkApply(tp1, tp2, inOrder = true) ||
-      compareHkLambda(tp1, tp2, inOrder = true) ||
       isNewSubType(tp1.parent, tp2) ||
       compareAliasedRefined(tp1, tp2, inOrder = true)
     case tp1: RecType =>
@@ -609,15 +619,25 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     tryInfer(projection.prefix.typeConstructor.dealias)
   }
 
-  /** If `projection` is a hk projection T#$apply with a constrainable poly param
-   *  as type constructor and `other` is not a hk projection, then perform the following
-   *  steps:
+  /** Handle subtype tests
+   *
+   *      app <:< other   if inOrder = true
+   *      other <:< app   if inOrder = false
+   *
+   *  where `app` is an hk application but `other` is not.
+   *
+   *  As a first step, if `app` appears on the right, try to normalize it using
+   *  `normalizeHkApply`, if that gives a different type proceed with a regular subtype
+   *  test using that type instead of `app`.
+   *
+   *  Otherwise, if `app` has constrainable poly param as type constructor,
+   *  perform the following steps:
    *
    *   (1) If not `inOrder` then perform the next steps until they all succeed
    *       for each base type of other which
-   *        - derives from a class bound of `projection`,
-   *        - has the same number of type parameters than `projection`
-   *        - has type parameter variances which conform to those of `projection`.
+   *        - derives from a class bound of `app`,
+   *        - has the same number of type parameters as `app`
+   *        - has type parameter variances which conform to those of `app`.
    *       If `inOrder` then perform the same steps on the original `other` type.
    *
    *   (2) Try to eta expand the constructor of `other`.
@@ -627,7 +647,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   (3b) In normal mode, try to unify the projection's hk constructor parameter with
    *        the eta expansion of step(2)
    *
-   *   (4) If `inOrder`, test `projection <: other` else test `other <: projection`.
+   *   (4) If `inOrder`, test `app <: other` else test `other <: app`.
    */
   def compareHkApply(app: RefinedType, other: Type, inOrder: Boolean): Boolean = {
     def tryInfer(tp: Type): Boolean = ctx.traceIndented(i"compareHK($app, $other, inOrder = $inOrder, constr = $tp)", subtyping) {
@@ -676,7 +696,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     }
     Config.newHK && app.isHKApply && !other.isHKApply && {
-      val reduced = app.normalizeHkApply
+      val reduced = if (inOrder) app else app.normalizeHkApply
       if (reduced ne app)
         if (inOrder) isSubType(reduced, other) else isSubType(other, reduced)
       else tryInfer(app.typeConstructor.dealias)
@@ -684,16 +704,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** Compare type lambda with non-lambda type. */
-  def compareHkLambda(rt: RefinedType, other: Type, inOrder: Boolean) = rt match {
-    case TypeLambda(args, body) =>
-      args.length == other.typeParams.length && {
-        val applied = other.appliedTo(argRefs(rt, args.length))
-        if (inOrder) isSubType(body, applied)
-        else body match {
-          case body: TypeBounds => body.contains(applied) // Can be dropped?
-          case _ => isSubType(applied, body)
-        }
+  def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean = tp1.stripTypeVar match {
+    case TypeLambda(args1, body1) =>
+      //println(i"comparing $tp1 <:< $tp2")
+      tp2 match {
+        case TypeLambda(args2, body2) =>
+          args1.corresponds(args2)((arg1, arg2) =>
+            varianceConforms(BindingKind.toVariance(arg1.bindingKind),
+                              BindingKind.toVariance(arg2.bindingKind))) &&
+          // don't compare bounds; it would go in the wrong sense anyway.
+          isSubType(body1, body2)
+        case _ => false
       }
+    case RefinedType(parent1, _, _) =>
+      compareHkLambda(parent1, tp2)
     case _ =>
       false
   }
@@ -1523,13 +1547,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }
     else super.compareHkApply(app, other, inOrder)
 
-  override def compareHkLambda(rt: RefinedType, other: Type, inOrder: Boolean) =
-    if (!Config.newHK && rt.refinedName == tpnme.hkApplyOBS ||
-        Config.newHK && rt.isTypeParam)
-      traceIndented(i"compareHkLambda $rt, $other, $inOrder") {
-        super.compareHkLambda(rt, other, inOrder)
+  override def compareHkLambda(tp1: Type, tp2: RefinedType): Boolean =
+    if (tp2.isTypeParam)
+      traceIndented(i"compareHkLambda $tp1, $tp2") {
+        super.compareHkLambda(tp1, tp2)
       }
-    else super.compareHkLambda(rt, other, inOrder)
+    else super.compareHkLambda(tp1, tp2)
 
   override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }

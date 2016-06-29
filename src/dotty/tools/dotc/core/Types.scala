@@ -2151,15 +2151,6 @@ object Types {
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
-      if (false && Config.newHK && refinedName.isHkArgName && refinedInfo.isInstanceOf[TypeAlias]) {
-        parent.stripTypeVar match {
-          case TypeApplications.TypeLambda(_, _) =>
-            println(i"fshy: $this")
-            println(s"fshy: $this")
-            new Error().printStackTrace()
-          case _ =>
-        }
-      }
       if (refinedName == tpnme.hkApplyOBS)
         parent.stripTypeVar match {
           case RefinedType(_, name, _) if name.isHkArgName => // ok
@@ -2190,12 +2181,16 @@ object Types {
           case _ =>
             tp
         }
-        val reduced = substAlias(parent)
-        if (reduced ne parent) {
-          hk.println(i"REDUCE $this ----> ${reduced}")
-          reduced
+        parent match {
+          case parent: LazyRef =>
+            LazyRef(() => derivedRefinedType(parent.ref, refinedName, refinedInfo))
+          case _ =>
+            val reduced = substAlias(parent)
+            if (reduced ne parent) {
+              hk.println(i"REDUCE $this ----> ${reduced}")
+              reduced
+            } else this
         }
-        else this
       case _ =>
         this
     }
@@ -2304,7 +2299,6 @@ object Types {
             case tp: TypeRef => apply(x, tp.prefix)
             case tp: RecThis => RecType.this eq tp.binder
             case tp: LazyRef => true // Assume a reference to be safe.
-              // TODO: Check that all accumulators handle LazyRefs correctly
             case _ => foldOver(x, tp)
           }
         }
@@ -2315,22 +2309,13 @@ object Types {
     override def computeHash = doHash(parent)
 
     override def toString = s"RecType($parent | $hashCode)"
+
+    private def checkInst(implicit ctx: Context): this.type = {
+      this
+    }
   }
 
   object RecType {
-    /* Note: this might well fail for nested Recs.
-     *  Failing scenario: Rebind a nest rec, creates a new rec
-     *  but it still has RecThis references to the outer rec.
-    def checkInst(tp: Type)(implicit ctx: Context): tp.type = {
-      var binders: List[RecType] = Nil
-      tp.foreachPart {
-        case rt: RecType => binders = rt :: binders
-        case rt: RecThis => assert(binders contains rt.binder)
-        case _ =>
-      }
-      tp
-    }
-    */
 
     /** Create a RecType, normalizing its contents. This means:
      *
@@ -2356,7 +2341,7 @@ object Types {
         case tp =>
           tp
       }
-      unique(rt.derivedRecType(normalize(rt.parent)))
+      unique(rt.derivedRecType(normalize(rt.parent))).checkInst
     }
     def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = {
       val rt = this(parentExp)
