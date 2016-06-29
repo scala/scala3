@@ -116,12 +116,8 @@ object Types {
           case TypeAlias(tp) => tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
-      case this1: RefinedType =>
-        !this1.isTypeParam && this1.parent.isRef(sym)
-      case this1: RecType =>
-        this1.parent.isRef(sym)
-      case _ =>
-        false
+      case this1: RefinedOrRecType => this1.parent.isRef(sym)
+      case _ => false
     }
 
     /** Is this type a (neither aliased nor applied) reference to class `sym`? */
@@ -939,7 +935,7 @@ object Types {
         tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
         def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
-        if (refinementOK || tp.isTypeParam || isParamName) tp.underlying.underlyingClassRef(refinementOK)
+        if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
       case tp: RecType =>
         tp.underlying.underlyingClassRef(refinementOK)
@@ -2099,8 +2095,7 @@ object Types {
    *  @param infoFn: A function that produces the info of the refinement declaration,
    *                 given the refined type itself.
    */
-  abstract case class RefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
-    extends RefinedOrRecType with BindingType with MemberBinding {
+  abstract case class RefinedType(parent: Type, refinedName: Name, refinedInfo: Type) extends RefinedOrRecType {
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -2109,42 +2104,6 @@ object Types {
 
     def checkInst(implicit ctx: Context): this.type = {
       this
-    }
-
-    def betaReduceOLD(implicit ctx: Context): Type = refinedInfo match {
-      case TypeAlias(alias) if refinedName.isHkArgNameOLD =>
-        def instantiate(rt: RecType) = new TypeMap {
-          def apply(t: Type) = t match {
-            case TypeRef(RecThis(`rt`), `refinedName`) => alias
-            case tp: TypeRef =>
-              val pre1 = apply(tp.prefix)
-              if (pre1 ne tp.prefix) tp.newLikeThis(pre1) else tp
-            case _ => mapOver(t)
-          }
-        }
-        def substAlias(tp: Type): Type = tp.safeDealias match {
-          case tp @ RefinedType(p, rname, rinfo) if tp.isTypeParam =>
-            if (rname == refinedName) p // check bounds?
-            else tp.derivedRefinedType(substAlias(p), rname, rinfo)
-          case tp: RecType =>
-            val p1 = substAlias(tp.parent)
-            if (p1 ne tp.parent) tp.rebind(instantiate(tp)(p1))
-            else tp
-          case _ =>
-            tp
-        }
-        parent match {
-          case parent: LazyRef =>
-            LazyRef(() => derivedRefinedType(parent.ref, refinedName, refinedInfo))
-          case _ =>
-            val reduced = substAlias(parent)
-            if (reduced ne parent) {
-              hk.println(i"REDUCE $this ----> ${reduced}")
-              reduced
-            } else this
-        }
-      case _ =>
-        this
     }
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): Type =
@@ -2156,24 +2115,13 @@ object Types {
         // A Y-check error (incompatible types involving hk lambdas) for dotty itself.
         // TODO: investigate and, if possible, drop after revision.
         val normalizedRefinedInfo = refinedInfo.substRecThis(dummyRec, dummyRec)
-        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduceOLD
+        RefinedType(parent, refinedName, normalizedRefinedInfo)
       }
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
-
-    // MemberBinding methods
-    // TODO: Needed?
-    def isTypeParam(implicit ctx: Context) = refinedInfo match {
-      case tp: TypeBounds => tp.isBinding
-      case _ => false
-    }
-    def memberName(implicit ctx: Context) = refinedName
-    def memberBounds(implicit ctx: Context) = refinedInfo.bounds
-    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = memberBounds
-    def memberVariance(implicit ctx: Context) = BindingKind.toVariance(refinedInfo.bounds.bindingKind)
 
     override def equals(that: Any) = that match {
       case that: RefinedType =>
@@ -2623,7 +2571,7 @@ object Types {
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): GenericType
 
-    def lifted(tparams: List[MemberBinding], t: Type)(implicit ctx: Context): Type =
+    def lifted(tparams: List[TypeParamInfo], t: Type)(implicit ctx: Context): Type =
       tparams match {
         case LambdaParam(poly, _) :: _ =>
           t.subst(poly, this)
@@ -2710,12 +2658,12 @@ object Types {
   }
 
   /** The parameter of a type lambda */
-  case class LambdaParam(tl: TypeLambda, n: Int) extends MemberBinding {
+  case class LambdaParam(tl: TypeLambda, n: Int) extends TypeParamInfo {
     def isTypeParam(implicit ctx: Context) = true
-    def memberName(implicit ctx: Context): TypeName = tl.paramNames(n)
-    def memberBounds(implicit ctx: Context): TypeBounds = tl.paramBounds(n)
-    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = memberBounds
-    def memberVariance(implicit ctx: Context): Int = tl.variances(n)
+    def paramName(implicit ctx: Context): TypeName = tl.paramNames(n)
+    def paramBounds(implicit ctx: Context): TypeBounds = tl.paramBounds(n)
+    def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = paramBounds
+    def paramVariance(implicit ctx: Context): Int = tl.variances(n)
     def toArg: Type = PolyParam(tl, n)
   }
 
@@ -2756,7 +2704,7 @@ object Types {
       case _ => defn.AnyType
     }
 
-    def typeParams(implicit ctx: Context): List[MemberBinding] = {
+    def typeParams(implicit ctx: Context): List[TypeParamInfo] = {
       val tparams = tycon.typeParams
       if (tparams.isEmpty) TypeLambda.any(args.length).typeParams else tparams
     }
@@ -3574,10 +3522,10 @@ object Types {
           if (inst.exists) apply(inst) else tp
 
         case tp: HKApply =>
-          def mapArg(arg: Type, tparam: MemberBinding): Type = {
+          def mapArg(arg: Type, tparam: TypeParamInfo): Type = {
             val saved = variance
-            if (tparam.memberVariance < 0) variance = -variance
-            else if (tparam.memberVariance == 0) variance = 0
+            if (tparam.paramVariance < 0) variance = -variance
+            else if (tparam.paramVariance == 0) variance = 0
             try this(arg)
             finally variance = saved
           }

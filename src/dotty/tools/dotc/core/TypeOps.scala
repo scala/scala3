@@ -158,7 +158,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tp
     case tp: RefinedType =>
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
-        .normalizeHkApplyOLD
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) =>
@@ -386,7 +385,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     // Strip all refinements from parent type, populating `refinements` and `formals` maps.
     def normalizeToRef(tp: Type): TypeRef = {
       def fail = throw new TypeError(s"unexpected parent type: $tp")
-      tp.dealias.normalizeHkApplyOLD match {
+      tp.dealias match {
         case tp: TypeRef =>
           tp
         case tp @ RefinedType(tp1, name: TypeName, rinfo) =>

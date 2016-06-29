@@ -257,7 +257,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: TypeLambda =>
       writeByte(LAMBDAtype)
       val paramNames = tpe.typeParams.map(tparam =>
-        varianceToPrefix(tparam.memberVariance) +: tparam.memberName)
+        varianceToPrefix(tparam.paramVariance) +: tparam.paramName)
       pickleMethodic(tpe.resultType, paramNames, tpe.paramBounds)
     case tpe: MethodType if richTypes =>
       writeByte(METHODtype)

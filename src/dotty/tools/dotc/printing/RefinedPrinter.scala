@@ -113,36 +113,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isFunctionClass(cls)) return toTextFunction(args)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
-      case tp @ TypeLambdaOLD(argBoundss, body) =>
-        val variances = argBoundss.map(b => BindingKind.toVariance(b.bindingKind))
-        val prefix = ((('X' - 'A') + lambdaNestingLevel) % 26 + 'A').toChar
-        val paramNames = argBoundss.indices.toList.map(prefix.toString + _)
-        val instantiate = new TypeMap {
-          def contains(tp1: Type, tp2: Type): Boolean =
-            tp1.eq(tp2) || {
-              tp1.stripTypeVar match {
-                case tp1: RefinedOrRecType => contains(tp1.parent, tp2)
-                case _ => false
-              }
-            }
-          def apply(t: Type): Type = t match {
-            case TypeRef(RecThis(rt), name) if name.isHkArgNameOLD && contains(tp, rt) =>
-              // Make up a name that prints as "Xi". Need to be careful we do not
-              // accidentally unique-hash to something else. That's why we can't
-              // use prefix = NoPrefix or a WithFixedSym instance.
-              TypeRef.withSymAndName(
-                defn.EmptyPackageClass.thisType, defn.AnyClass,
-                paramNames(name.hkArgIndexOLD).toTypeName)
-            case _ =>
-              mapOver(t)
-          }
-        }
-        val instArgs = argBoundss.map(instantiate).asInstanceOf[List[TypeBounds]]
-        val instBody = instantiate(body).dropAlias
-        lambdaNestingLevel += 1
-        try
-          return typeLambdaText(paramNames, variances, instArgs, instBody)
-        finally lambdaNestingLevel -=1
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
