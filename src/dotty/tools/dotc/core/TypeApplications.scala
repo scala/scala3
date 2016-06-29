@@ -483,25 +483,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  3. If `T` is a polytype, instantiate it to `U1,...,Un`.
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
-    if (args.isEmpty || ctx.erasedTypes) self
-    else self.stripTypeVar match { // TODO investigate why we can't do safeDealias here
-      case self: GenericType if !args.exists(_.isInstanceOf[TypeBounds]) =>
-        self.instantiate(args)
-      case EtaExpansion(self1) =>
-        self1.appliedTo(args)
-      case self1: WildcardType =>
-        self1
-      case _ =>
-        self.appliedTo(args, typeParams)
-    }
-  }
-
-  /** Encode application `T[U1, ..., Un]` without simplifications, where
-   *  @param self     = `T`
-   *  @param args     = `U1, ..., Un`
-   *  @param tparams  are assumed to be the type parameters of `T`.
-   */
-  final def appliedTo(args: List[Type], typParams: List[TypeParamInfo])(implicit ctx: Context): Type = {
+    val typParams = self.typeParams
     def matchParams(t: Type, tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
@@ -515,8 +497,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case nil => t
     }
-    assert(args.nonEmpty)
-    self.stripTypeVar.safeDealias match {
+    if (args.isEmpty || ctx.erasedTypes) self
+    else self.stripTypeVar.safeDealias match {
       case self: TypeLambda =>
         if (!args.exists(_.isInstanceOf[TypeBounds])) self.instantiate(args)
         else {
@@ -525,6 +507,8 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (reducer.allReplaced) reduced
           else HKApply(self, args)
         }
+      case self: PolyType =>
+        self.instantiate(args)
       case self: AndOrType =>
         self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
       case self: TypeAlias =>
@@ -532,7 +516,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeBounds =>
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
-        LazyRef(() => self.ref.appliedTo(args, typParams))
+        LazyRef(() => self.ref.appliedTo(args))
+      case self: WildcardType =>
+        self
       case self: TypeRef if self.symbol == defn.NothingClass =>
         self
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
@@ -557,7 +543,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       HKApply(self, args)
     case _ =>
-      appliedTo(args, typeParams)
+      appliedTo(args)
   }
 
   /** Turn this type, which is used as an argument for
