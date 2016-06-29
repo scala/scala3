@@ -384,28 +384,37 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty // A map of all formal parent parameter
 
     // Strip all refinements from parent type, populating `refinements` and `formals` maps.
-    def normalizeToRef(tp: Type): TypeRef = tp.dealias.normalizeHkApplyOLD match {
-      case tp: TypeRef =>
-        tp
-      case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
-        rinfo match {
-          case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
-            // Don't record refinements of the form X = this.X (These can arise using named parameters).
-            typr.println(s"dropping refinement $tp")
-          case _ =>
-            val prevInfo = refinements(name)
-            refinements = refinements.updated(name,
-              if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
-            formals = formals.updated(name, tp1.typeParamNamed(name))
-        }
-        normalizeToRef(tp1)
-      case ErrorType =>
-        defn.AnyType
-      case AnnotatedType(tpe, _) =>
-        normalizeToRef(tpe)
-      case _ =>
-        throw new TypeError(s"unexpected parent type: $tp")
+    def normalizeToRef(tp: Type): TypeRef = {
+      def fail = throw new TypeError(s"unexpected parent type: $tp")
+      tp.dealias.normalizeHkApplyOLD match {
+        case tp: TypeRef =>
+          tp
+        case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
+          rinfo match {
+            case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
+              // Don't record refinements of the form X = this.X (These can arise using named parameters).
+              typr.println(s"dropping refinement $tp")
+            case _ =>
+              val prevInfo = refinements(name)
+              refinements = refinements.updated(name,
+                if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
+              formals = formals.updated(name, tp1.typeParamNamed(name))
+          }
+          normalizeToRef(tp1)
+        case ErrorType =>
+          defn.AnyType
+        case AnnotatedType(tpe, _) =>
+          normalizeToRef(tpe)
+        case HKApply(tycon: TypeRef, args) =>
+          tycon.info match {
+            case TypeAlias(alias) => normalizeToRef(alias.appliedTo(args))
+            case _ => fail
+          }
+        case _ =>
+          fail
+      }
     }
+
     val parentRefs = parents map normalizeToRef
 
     // Enter all refinements into current scope.

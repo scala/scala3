@@ -290,8 +290,8 @@ object Types {
       case _ => NoSymbol
     }
 
-    /** The least class or trait of which this type is a subtype, or
-     *  NoSymbol if none exists (either because this type is not a
+    /** The least class or trait of which this type is a subtype or parameterized
+     *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
@@ -302,6 +302,8 @@ object Types {
         if (sym.isClass) sym else tp.underlying.classSymbol
       case tp: ClassInfo =>
         tp.cls
+      case tp: TypeLambda =>
+        tp.resType.classSymbol
       case tp: SingletonType =>
         NoSymbol
       case tp: TypeProxy =>
@@ -330,6 +332,8 @@ object Types {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym.asClass :: Nil else tp.underlying.classSymbols
+      case tp: TypeLambda =>
+        tp.resType.classSymbols
       case tp: TypeProxy =>
         tp.underlying.classSymbols
       case AndType(l, r) =>
@@ -878,7 +882,7 @@ object Types {
         if (tp1.exists) tp1.dealias else tp
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
-      case tp => tp
+      case _ => this
     }
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
@@ -1191,8 +1195,8 @@ object Types {
 
     /** Turn type into a function type.
      *  @pre this is a non-dependent method type.
-     *  @param drop  The number of trailing parameters that should be dropped
-     *               when forming the function type.
+     *  @param dropLast  The number of trailing parameters that should be dropped
+     *                   when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
@@ -1331,16 +1335,12 @@ object Types {
   /** A marker trait for types that apply only to term symbols or that
    *  represent higher-kinded types.
    */
-  trait TermOrHkType extends Type
-
-  /** A marker trait for types that apply only to term symbols.
-   */
-  trait TermType extends TermOrHkType
+  trait TermType extends Type
 
   /** A marker trait for types that can be types of values or prototypes of value types */
   trait ValueTypeOrProto extends TermType
 
-  /** A marker trait for types that can be types of values */
+  /** A marker trait for types that can be types of values or that are higher-kinded  */
   trait ValueType extends ValueTypeOrProto
 
   /** A marker trait for types that are guaranteed to contain only a
@@ -2573,7 +2573,7 @@ object Types {
   }
 
   abstract case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-    extends CachedGroundType with BindingType with TermOrHkType with MethodOrPoly {
+    extends CachedGroundType with BindingType with TermType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     val resType = resultTypeExp(this)
@@ -2592,7 +2592,7 @@ object Types {
       case _ => false
     }
 
-    def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
+    final def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       resultType.substParams(this, argTypes)
 
     def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[TypeBounds] =
@@ -2653,8 +2653,10 @@ object Types {
   // ----- HK types: TypeLambda, LambdaParam, HKApply ---------------------
 
   /** A type lambda of the form `[v_0 X_0, ..., v_n X_n] => T` */
-  class TypeLambda(paramNames: List[TypeName], variances: List[Int])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends PolyType(paramNames)(paramBoundsExp, resultTypeExp) {
+  class TypeLambda(paramNames: List[TypeName], override val variances: List[Int])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+  extends PolyType(paramNames)(paramBoundsExp, resultTypeExp) with ValueType {
+
+    assert(resType.isValueType, this)
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
@@ -2684,27 +2686,45 @@ object Types {
           pt => pt.lifted(tparams, resultType))
      def unapply(tl: TypeLambda): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
+
+    def any(n: Int)(implicit ctx: Context) =
+      apply(tpnme.syntheticLambdaParamNames(n), List.fill(n)(0))(
+        pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
   /** A higher kinded type application `C[T_1, ..., T_n]` */
   abstract case class HKApply(tycon: Type, args: List[Type])
-  extends CachedProxyType with TermOrHkType {
+  extends CachedProxyType with ValueType {
     override def underlying(implicit ctx: Context): Type = tycon
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
+
     override def computeHash = doHash(tycon, args)
 
     def upperBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
       case tp: TypeProxy => tp.underlying.appliedTo(args)
-      case _ => tycon
+      case _ => defn.AnyType
     }
 
+    def typeParams(implicit ctx: Context): List[MemberBinding] = {
+      val tparams = tycon.typeParams
+      if (tparams.isEmpty) TypeLambda.any(args.length).typeParams else tparams
+    }
+/*
+   def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
+    case tp: TypeRef =>
+      val lb = tp.info.bounds.lo.typeParams.length == args.lengt
+    case _ => defn.NothingType
+  }
+*/
     protected def checkInst(implicit ctx: Context): this.type = {
-      tycon.stripTypeVar match {
-        case _: TypeRef | _: PolyParam | _: WildcardType | ErrorType =>
+      def check(tycon: Type): Unit = tycon.stripTypeVar match {
+        case _: TypeRef | _: PolyParam | ErrorType =>
+        case tycon: AnnotatedType => check(tycon.underlying)
         case _ => assert(false, s"illegal type constructor in $this")
       }
+      check(tycon)
       this
     }
   }
@@ -3112,8 +3132,8 @@ object Types {
    */
   abstract case class TypeBounds(lo: Type, hi: Type)(val bindingKind: BindingKind) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermOrHkType])
-    assert(hi.isInstanceOf[TermOrHkType])
+    assert(lo.isInstanceOf[TermType])
+    assert(hi.isInstanceOf[TermType])
 
     def variance: Int = 0
     def isBinding = bindingKind != NoBinding
@@ -3317,7 +3337,7 @@ object Types {
   object ErrorType extends ErrorType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermOrHkType {
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
@@ -3508,7 +3528,7 @@ object Types {
             finally variance = saved
           }
           derivedAppliedType(tp, this(tp.tycon),
-              tp.args.zipWithConserve(tp.tycon.typeParams)(mapArg))
+              tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
         case tp: AndOrType =>
           derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))

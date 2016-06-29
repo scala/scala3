@@ -17,7 +17,6 @@ import SymDenotations._
 import Annotations._
 import Names._
 import NameOps._
-import Applications._
 import Flags._
 import Decorators._
 import ErrorReporting._
