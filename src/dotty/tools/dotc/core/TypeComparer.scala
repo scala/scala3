@@ -657,6 +657,21 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (inOrder) unifyWith(other)
           else testLifted(other, app, hkTypeParams, unifyWith)
         case _ =>
+          // why only handle the case where one of the sides is a typevar or poly param?
+          // If the LHS is a hk application, then the normal logic already handles
+          // all other cases. Indeed, say you have
+          //
+          //     type C[T] <: List[T]
+          //
+          // where C is an abstract type. Then to verify `C[Int] <: List[Int]`,
+          // use compareRefinedslow to get `C <: List` and verify that
+          //
+          //      C#List$T = C$$hk0 = Int
+          //
+          // If the RHS is a hk application, we can also go through
+          // the normal logic because lower bounds are not parameterized.
+          // If were to re-introduce parameterized lower bounds of hk types
+          // we'd have to add some logic to handle them here.
           false
       }
     }

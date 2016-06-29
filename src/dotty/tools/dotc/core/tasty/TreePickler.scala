@@ -76,6 +76,10 @@ class TreePickler(pickler: TastyPickler) {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
     case None =>
+      // See pos/t1957.scala for an example where this can happen.
+      // I believe it's a bug in typer: the type of an implicit argument refers
+      // to a closure parameter outside the closure itself. TODO: track this down, so that we
+      // can eliminate this case.
       ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
       pickleForwardSymRef(sym)
   }

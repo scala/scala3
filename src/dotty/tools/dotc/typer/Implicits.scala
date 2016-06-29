@@ -284,12 +284,12 @@ trait ImplicitRunInfo { self: RunInfo =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
-        case tp: TypeRef if tp.symbol.isLambdaTrait =>
+        case tp: TypeRef if tp.symbol.isLambdaTraitOBS =>
           defn.AnyType
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
-            if (cls.isLambdaTrait) tp
+            if (cls.isLambdaTraitOBS) tp
             else AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
           val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
           (lead /: tp.classSymbols)(joinClass)
