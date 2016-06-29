@@ -211,11 +211,6 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
-    case tpe: RefinedThis =>
-      writeByte(REFINEDthis)
-      val binderAddr = pickledTypes.get(tpe.binder)
-      assert(binderAddr != null, tpe.binder)
-      writeRef(binderAddr.asInstanceOf[Addr])
     case tpe: RecThis =>
       writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)

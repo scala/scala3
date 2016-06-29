@@ -949,8 +949,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.memberBounds)
               else
                 (arg, WildcardType)
-            val arg1 = typed(desugaredArg, argPt)
-            adaptTypeArg(arg1, tparam.memberBounds)
+            typed(desugaredArg, argPt)
           }
           args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
         }

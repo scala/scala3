@@ -51,7 +51,7 @@ object Types {
    *        |              |                +--- SuperType
    *        |              |                +--- ConstantType
    *        |              |                +--- MethodParam
-   *        |              |                +----RefinedThis
+   *        |              |                +----RecThis
    *        |              |                +--- SkolemType
    *        |              +- PolyParam
    *        |              +- RefinedOrRecType -+-- RefinedType
@@ -507,9 +507,7 @@ object Types {
         }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
-        val rinfo =
-          if (tp.refinementRefersToThis) tp.refinedInfo.substRefinedThis(tp, pre)
-          else tp.refinedInfo
+        val rinfo = tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo =
             if (rinfo.isAlias) rinfo
@@ -577,6 +575,7 @@ object Types {
           ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
       }
 
+      //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
         case ex: Throwable =>
@@ -964,62 +963,14 @@ object Types {
      *
      *      P { type T = String, type R = P{...}.T } # R  -->  String
      *
-     *  (2) The refinement is a fully instantiated type lambda, and the projected name is "$apply".
-     *      In this case the rhs of the apply is returned with all references to lambda argument types
-     *      substituted by their definitions.
-     *
      *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
       def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
-          object instantiate extends TypeMap {
-            var isSafe = true
-            def apply(tp: Type): Type =
-              if (!isSafe) tp
-              else tp match {
-              case TypeRef(RefinedThis(`pre`), name) if name.isHkArgName =>
-                member(name).info match {
-                  case TypeAlias(alias) => alias
-                  case _ => isSafe = false; tp
-                }
-              case tp: TypeVar if !tp.inst.exists =>
-                isSafe = false
-                tp
-              case _ =>
-                mapOver(tp)
-            }
-          }
-          def instArg(tp: Type): Type = tp match {
-            case tp @ TypeAlias(TypeRef(RefinedThis(`pre`), name)) if name.isHkArgName =>
-              member(name).info match {
-                case TypeAlias(alias) => tp.derivedTypeAlias(alias) // needed to keep variance
-                case bounds => bounds
-              }
-            case _ =>
-              instantiate(tp)
-          }
-          def instTop(tp: Type): Type = tp.stripTypeVar match {
-            case tp: RefinedType =>
-              tp.derivedRefinedType(instTop(tp.parent), tp.refinedName, instArg(tp.refinedInfo))
-            case _ =>
-              instantiate(tp)
-          }
-          /** Reduce rhs of $hkApply to make it stand alone */
-          def betaReduce(tp: Type) = {
-            val reduced = instTop(tp)
-            if (instantiate.isSafe) reduced else NoType
-          }
           pre.refinedInfo match {
             case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent)
-              else alias match {
-                case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ =>
-                  if (!pre.refinementRefersToThis) alias
-                  else if (name == tpnme.hkApplyOBS) betaReduce(alias)
-                  else NoType
-              }
+              if (pre.refinedName ne name) loop(pre.parent) else alias
             case _ => loop(pre.parent)
           }
         case pre: RecType =>
@@ -1029,8 +980,6 @@ object Types {
             candidate
           }
           else NoType
-        case RefinedThis(binder) =>
-          binder.lookupRefined(name)
         case SkolemType(tp) =>
           tp.lookupRefined(name)
         case pre: WildcardType =>
@@ -1218,10 +1167,6 @@ object Types {
     /** As substThis, but only is class is a static owner (i.e. a globally accessible object) */
     final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp, null)
-
-    /** Substitute all occurrences of `SkolemType(binder)` by `tp` */
-    final def substRefinedThis(binder: Type, tp: Type)(implicit ctx: Context): Type =
-      ctx.substRefinedThis(this, binder, tp, null)
 
     /** Substitute all occurrences of `RecThis(binder)` by `tp` */
     final def substRecThis(binder: RecType, tp: Type)(implicit ctx: Context): Type =
@@ -1643,7 +1588,7 @@ object Types {
      *  to an (unbounded) wildcard type.
      *
      *  (2) Reduce a type-ref `T { X = U; ... } # X`  to   `U`
-     *  provided `U` does not refer with a RefinedThis to the
+     *  provided `U` does not refer with a RecThis to the
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(implicit ctx: Context): Type = {
@@ -1715,13 +1660,6 @@ object Types {
       else if (isType) {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
-        else if (name == tpnme.hkApplyOBS && prefix.classNotLambda) {
-          // After substitution we might end up with a type like
-          // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
-          // where C is a class. In that case we eta expand `C`.
-          if (defn.isBottomType(prefix)) prefix.classSymbol.typeRef
-          else derivedSelect(prefix.EtaExpandCore)
-        }
         else if (Config.splitProjections)
           prefix match {
             case prefix: AndType =>
@@ -1999,9 +1937,7 @@ object Types {
   }
 
   object TypeRef {
-    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) =
-      if (name == tpnme.hkApplyOBS && prefix.classNotLambda)
-        assert(false, s"bad type : $prefix.$name does not allow $$Apply projection")
+    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) = ()
 
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef = {
@@ -2128,22 +2064,8 @@ object Types {
    *  @param infoFn: A function that produces the info of the refinement declaration,
    *                 given the refined type itself.
    */
-  abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
+  abstract case class RefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
     extends RefinedOrRecType with BindingType with MemberBinding {
-
-    final def parent = myParent
-    final def refinedInfo = myRefinedInfo
-
-    private var refinementRefersToThisCache: Boolean = _
-    private var refinementRefersToThisKnown: Boolean = false
-
-    def refinementRefersToThis(implicit ctx: Context): Boolean = {
-      if (!refinementRefersToThisKnown) {
-        refinementRefersToThisCache = refinedInfo.containsRefinedThis(this)
-        refinementRefersToThisKnown = true
-      }
-      refinementRefersToThisCache
-    }
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -2151,11 +2073,6 @@ object Types {
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
-      if (refinedName == tpnme.hkApplyOBS)
-        parent.stripTypeVar match {
-          case RefinedType(_, name, _) if name.isHkArgName => // ok
-          case _ => badInst
-        }
       this
     }
 
@@ -2197,9 +2114,15 @@ object Types {
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else
-        RefinedType(parent, refinedName, rt => refinedInfo.substRefinedThis(this, RefinedThis(rt)))
-          .betaReduce
+      else {
+        // `normalizedRefinedInfo` is `refinedInfo` reduced everywhere via `reduceProjection`.
+        // (this is achieved as a secondary effect of substRecThis).
+        // It turns out this normalization is now needed; without it there's
+        // A Y-check error (incompatible types involving hk lambdas) for dotty itself.
+        // TODO: investigate and, if possible, drop after revision.
+        val normalizedRefinedInfo = refinedInfo.substRecThis(dummyRec, dummyRec)
+        RefinedType(parent, refinedName, normalizedRefinedInfo).betaReduce
+      }
 
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
@@ -2232,36 +2155,16 @@ object Types {
     override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
   }
 
-  class CachedRefinedType(refinedName: Name) extends RefinedType(NoType, refinedName, NoType)
-
-  class PreHashedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type, hc: Int)
+  class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type, hc: Int)
   extends RefinedType(parent, refinedName, refinedInfo) {
     myHash = hc
     override def computeHash = unsupported("computeHash")
   }
 
   object RefinedType {
-    def make(parent: Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): Type =
+    def make(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): Type =
       if (names.isEmpty) parent
-      else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
-
-    def recursive(parentFn: RefinedType => Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): RefinedType = {
-      val refinements: List[RefinedType] = names.map(new CachedRefinedType(_))
-      val last = refinements.last
-      (refinements, infoFns).zipped.foreach((rt, infoFn) => rt.myRefinedInfo = infoFn(last))
-      (parentFn(last) /: refinements) { (parent, rt) =>
-        rt.myParent = parent
-        ctx.base.uniqueRefinedTypes.enterIfNew(rt).checkInst
-      }.asInstanceOf[RefinedType]
-    }
-
-    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
-      assert(!ctx.erasedTypes || ctx.mode.is(Mode.Printing))
-      val res: RefinedType = new CachedRefinedType(name)
-      res.myParent = parent
-      res.myRefinedInfo = infoFn(res)
-      ctx.base.uniqueRefinedTypes.enterIfNew(res).checkInst
-    }
+      else make(RefinedType(parent, names.head, infos.head), names.tail, infos.tail)
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
       assert(!ctx.erasedTypes)
@@ -2722,7 +2625,7 @@ object Types {
       }
   }
 
-  // ----- Bound types: MethodParam, PolyParam, RefinedThis --------------------------
+  // ----- Bound types: MethodParam, PolyParam --------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: Type
@@ -2804,22 +2707,6 @@ object Types {
       case _ =>
         false
     }
-  }
-
-  /** a this-reference to an enclosing refined type `binder`. */
-  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
-    type BT = RefinedType
-    override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RefinedThis(bt)
-
-    // need to customize hashCode and equals to prevent infinite recursion for
-    // refinements that refer to the refinement type via this
-    override def computeHash = addDelta(binder.identityHash, 41)
-    override def equals(that: Any) = that match {
-      case that: RefinedThis => this.binder eq that.binder
-      case _ => false
-    }
-    override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
   /** a self-reference to an enclosing recursive type. */
@@ -3891,6 +3778,8 @@ object Types {
   }
 
   class MergeError(msg: String, val tp1: Type, val tp2: Type) extends TypeError(msg)
+
+  @sharable val dummyRec = new RecType(rt => NoType)
 
   // ----- Debug ---------------------------------------------------------
 

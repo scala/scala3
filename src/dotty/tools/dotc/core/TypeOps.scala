@@ -228,7 +228,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               return tp1.derivedRefinedType(
                 approximateUnion(OrType(tp1.parent, tp2.parent)),
                 tp1.refinedName,
-                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo).substRefinedThis(tp2, RefinedThis(tp1)))
+                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo))
                 //.ensuring { x => println(i"approx or $tp1 | $tp2 = $x\n constr = ${ctx.typerState.constraint}"); true } // DEBUG
             case _ =>
           }

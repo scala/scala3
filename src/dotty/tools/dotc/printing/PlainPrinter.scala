@@ -50,9 +50,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp @ TypeRef(_, tpnme.hkApplyOBS) =>
-          val tp1 = tp.reduceProjection
-          if (tp1 eq tp) tp else homogenize(tp1)
         case tp: RefinedType =>
           tp.normalizeHkApply
         case tp: SkolemType =>
@@ -250,8 +247,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
-      case tp: RefinedThis =>
-        s"${nameString(tp.binder.typeSymbol)}{...}.this"
       case tp: SkolemType =>
         if (homogenizedView) toText(tp.info) else tp.repr
     }

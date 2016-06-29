@@ -81,7 +81,6 @@ object TypeApplications {
   object TypeLambda {
     def apply(argBindingFns: List[RecType => TypeBounds],
               bodyFn: RecType => Type)(implicit ctx: Context): Type = {
-      assert(Config.newHK)
       val argNames = argBindingFns.indices.toList.map(tpnme.hkArg)
       var idx = 0
       RecType.closeOver(rt =>
@@ -92,54 +91,19 @@ object TypeApplications {
         })
     }
 
-    def applyOBS(variances: List[Int],
-              argBoundsFns: List[RefinedType => TypeBounds],
-              bodyFn: RefinedType => Type)(implicit ctx: Context): Type = {
-      def argRefinements(parent: Type, i: Int, bs: List[RefinedType => TypeBounds]): Type = bs match {
-        case b :: bs1 =>
-          argRefinements(RefinedType(parent, tpnme.hkArg(i), b), i + 1, bs1)
-        case nil =>
-          parent
-      }
-      assert(variances.nonEmpty)
-      assert(argBoundsFns.length == variances.length)
-      RefinedType(
-        argRefinements(defn.LambdaTraitOBS(variances).typeRef, 0, argBoundsFns),
-        tpnme.hkApplyOBS, bodyFn(_).bounds.withVariance(1))
-    }
-
-    def unapply(tp: Type)(implicit ctx: Context): Option[(/*List[Int], */List[TypeBounds], Type)] =
-      if (Config.newHK) {
-        def decompose(t: Type, acc: List[TypeBounds]): (List[TypeBounds], Type) = t match {
-          case t @ RefinedType(p, rname, rinfo: TypeBounds) if t.isTypeParam =>
-            decompose(p, rinfo.bounds :: acc)
-          case t: RecType =>
-            decompose(t.parent, acc)
-          case _ =>
-            (acc, t)
-        }
-        decompose(tp, Nil) match {
-          case (Nil, _) => None
-          case x => Some(x)
-//          case (bindings, tp) => Some((Nil, bindings, tp))
-        }
-      }
-      else tp match {
-        case app @ RefinedType(parent, tpnme.hkApplyOBS, refinedInfo) =>
-          val cls = parent.typeSymbol
-          val variances = cls.typeParams.map(_.variance)
-          def collectBounds(t: Type, acc: List[TypeBounds]): List[TypeBounds] = t match {
-            case t @ RefinedType(p, rname, rinfo) =>
-              assert(rname.isHkArgName)
-              collectBounds(p, rinfo.bounds :: acc)
-            case TypeRef(_, lname) =>
-              assert(lname.isLambdaTraitNameOBS)
-              acc
-          }
-          val argBounds = collectBounds(parent, Nil)
-          Some((argBounds, refinedInfo.argInfo))
+    def unapply(tp: Type)(implicit ctx: Context): Option[( /*List[Int], */ List[TypeBounds], Type)] = {
+      def decompose(t: Type, acc: List[TypeBounds]): (List[TypeBounds], Type) = t match {
+        case t @ RefinedType(p, rname, rinfo: TypeBounds) if t.isTypeParam =>
+          decompose(p, rinfo.bounds :: acc)
+        case t: RecType =>
+          decompose(t.parent, acc)
         case _ =>
-          None
+          (acc, t)
+      }
+      decompose(tp, Nil) match {
+        case (Nil, _) => None
+        case x => Some(x)
+      }
     }
   }
 
@@ -162,7 +126,7 @@ object TypeApplications {
       def argsAreForwarders(args: List[Type], n: Int): Boolean = args match {
         case Nil =>
           n == 0
-        case TypeRef(RefinedThis(rt), sel) :: args1 =>
+        case TypeRef(RecThis(rt), sel) :: args1 if false =>
           rt.eq(tp) && sel == tpnme.hkArg(n - 1) && argsAreForwarders(args1, n - 1)
         case _ =>
           false
@@ -179,17 +143,13 @@ object TypeApplications {
    *
    *     T { type p_1 v_1= U_1; ...; type p_n v_n= U_n }
    *
-   *  where v_i, p_i are the variances and names of the type parameters of T,
-   *  If `T`'s class symbol is a lambda trait, follow the refined type with a
-   *  projection
-   *
-   *      T { ... } # $Apply
+   *  where v_i, p_i are the variances and names of the type parameters of T.
    */
   object AppliedType {
     def apply(tp: Type, args: List[Type])(implicit ctx: Context): Type = tp.appliedTo(args)
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
-      case tp: RefinedType if Config.newHK =>
+      case tp: RefinedType =>
         var refinements: List[RefinedType] = Nil
         var tycon = tp.stripTypeVar
         while (tycon.isInstanceOf[RefinedType]) {
@@ -209,38 +169,8 @@ object TypeApplications {
             None
         }
         collectArgs(tycon.typeParams, refinements, new mutable.ListBuffer[Type])
-      case TypeRef(prefix, tpnme.hkApplyOBS) if !Config.newHK =>
-        unapp(prefix)
       case _ =>
-        if (Config.newHK) None
-        else unapp(tp) match {
-          case Some((tycon: TypeRef, _)) if tycon.symbol.isLambdaTraitOBS =>
-            // We are seeing part of a lambda abstraction, not an applied type
-            None
-          case x => x
-        }
-    }
-
-    private def unapp(tp: Type)(implicit ctx: Context): Option[(Type, List[Type])] = tp match {
-      case _: RefinedType =>
-        val tparams = tp.classSymbol.typeParams
-        if (tparams.isEmpty) None
-        else {
-          val argBuf = new mutable.ListBuffer[Type]
-          def stripArgs(tp: Type, n: Int): Type =
-            if (n == 0) tp
-            else tp match {
-              case tp @ RefinedType(parent, pname, rinfo) if pname == tparams(n - 1).name =>
-                val res = stripArgs(parent, n - 1)
-                if (res.exists) argBuf += rinfo.argInfo
-                res
-              case _ =>
-                NoType
-            }
-          val res = stripArgs(tp, tparams.length)
-          if (res.exists) Some((res, argBuf.toList)) else None
-        }
-      case _ => None
+        None
     }
   }
 
@@ -257,49 +187,8 @@ object TypeApplications {
     }
 
   /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
-  def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
-    List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
-
-  /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
   def argRefs(rt: RecType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RecThis(rt).select(tpnme.hkArg(i)))
-
-  /** Merge `tp1` and `tp2` under a common lambda, combining them with `op`.
-   *  @param tparams1   The type parameters of `tp1`
-   *  @param tparams2   The type parameters of `tp2`
-   *  @pre tparams1.length == tparams2.length
-   *  Produces the type lambda
-   *
-   *     [v1 X1 B1, ..., vn Xn Bn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
-   *
-   *  where
-   *
-   *   - variances `vi` are the variances of corresponding type parameters for `tp1`
-   *     or `tp2`, or are 0 of the latter disagree.
-   *   - bounds `Bi` are the intersection of the corresponding type parameter bounds
-   *     of `tp1` and `tp2`.
-   */
-  def hkCombineOBS(tp1: Type, tp2: Type,
-      tparams1: List[TypeSymbol], tparams2: List[TypeSymbol], op: (Type, Type) => Type)
-      (implicit ctx: Context): Type = {
-    val variances = (tparams1, tparams2).zipped.map { (tparam1, tparam2) =>
-      val v1 = tparam1.variance
-      val v2 = tparam2.variance
-      if (v1 == v2) v1 else 0
-    }
-    val bounds: List[RefinedType => TypeBounds] =
-      (tparams1, tparams2).zipped.map { (tparam1, tparam2) =>
-        val b1: RefinedType => TypeBounds =
-          tp1.memberInfo(tparam1).bounds.internalizeFrom(tparams1)
-        val b2: RefinedType => TypeBounds =
-          tp2.memberInfo(tparam2).bounds.internalizeFrom(tparams2)
-        (rt: RefinedType) => b1(rt) & b2(rt)
-      }
-    val app1: RefinedType => Type = rt => tp1.appliedTo(argRefs(rt, tparams1.length))
-    val app2: RefinedType => Type = rt => tp2.appliedTo(argRefs(rt, tparams2.length))
-    val body: RefinedType => Type = rt => op(app1(rt), app2(rt))
-    TypeLambda.applyOBS(variances, bounds, body)
-  }
 
   private class InstMap(fullType: Type)(implicit ctx: Context) extends TypeMap {
     var localRecs: Set[RecType] = Set.empty
@@ -349,33 +238,10 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.cls.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
-        if (tsym.isClass) tsym.typeParams
-        else tsym.infoOrCompleter match {
-          case completer: TypeParamsCompleter =>
-            val tparams = completer.completerTypeParams(tsym)
-            if (Config.newHK) fallbackTypeParams(tparams.map(_.variance))
-            else defn.LambdaTraitOBS(tparams.map(_.variance)).typeParams
-          case _ =>
-            if (!tsym.isCompleting || tsym.isAliasType) tsym.info.typeParams
-            else
-              // We are facing a problem when computing the type parameters of an uncompleted
-              // abstract type. We can't access the bounds of the symbol yet because that
-              // would cause a cause a cyclic reference. So we return `Nil` instead
-              // and try to make up for it later. The acrobatics in Scala2Unpicker#readType
-              // for reading a TypeRef show what's needed.
-              Nil
-        }
+        if (tsym.isClass) tsym.typeParams else tsym.info.typeParams
       case self: RefinedType =>
-        // inlined and optimized version of
-        //   val sym = self.LambdaTrait
-        //   if (sym.exists) return sym.typeParams
-        if (!Config.newHK && self.refinedName == tpnme.hkApplyOBS) {
-          val sym = self.parent.classSymbol
-          if (sym.isLambdaTraitOBS) return sym.typeParams
-        }
         val precedingParams = self.parent.typeParams.filterNot(_.memberName == self.refinedName)
-        if (Config.newHK && self.isTypeParam) precedingParams :+ self
-        else precedingParams
+        if (self.isTypeParam) precedingParams :+ self else precedingParams
       case self: RecType =>
         self.parent.typeParams
       case self: SingletonType =>
@@ -389,9 +255,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a higher-kinded type, its type parameters $hk_i, otherwise Nil */
   final def hkTypeParams(implicit ctx: Context): List[MemberBinding] =
-    if (Config.newHK)
-      if (isHK) typeParams else Nil
-    else LambdaTraitOBS.typeParams
+    if (isHK) typeParams else Nil
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = typeParams match {
@@ -462,19 +326,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** The Lambda trait underlying a type lambda */
-  def LambdaTraitOBS(implicit ctx: Context): Symbol = self.stripTypeVar match {
-    case RefinedType(_, tpnme.hkApplyOBS, _) =>
-      val sym = self.classSymbol
-      if (sym.isLambdaTraitOBS) sym else NoSymbol
-    case TypeBounds(lo, hi) => hi.LambdaTraitOBS
-    case _ => NoSymbol
-  }
-
   /** Is self type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
-    case self: RefinedType => self.refinedName == tpnme.hkApplyOBS || self.isTypeParam
+    case self: RefinedType => self.isTypeParam
     case self: SingletonType => false
     case self: TypeVar => self.origin.isHK
     case self: WildcardType => self.optBounds.isHK
@@ -511,8 +366,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** is receiver of the form T#$Apply? */
   def isHKApply(implicit ctx: Context): Boolean = self match {
-    case self @ RefinedType(_, name, _) => Config.newHK && name.isHkArgName && !self.isTypeParam
-    case TypeRef(_, name) => !Config.newHK && (name == tpnme.hkApplyOBS)
+    case self @ RefinedType(_, name, _) => name.isHkArgName && !self.isTypeParam
     case _ => false
   }
 
@@ -520,18 +374,18 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  of this application exists and is not a lambda trait.
    *  Equivalent to
    *
-   *    self.classSymbol.exists && !self.classSymbol.isLambdaTrait
+   *    self.classSymbol.exists
    *
    *  but without forcing anything.
    */
-  def classNotLambda(implicit ctx: Context): Boolean = self.stripTypeVar match {
+  def safeIsClassRef(implicit ctx: Context): Boolean = self.stripTypeVar match {
     case self: RefinedOrRecType =>
-      self.parent.classNotLambda
+      self.parent.safeIsClassRef
     case self: TypeRef =>
       self.denot.exists && {
         val sym = self.symbol
-        if (sym.isClass) !sym.isLambdaTraitOBS
-        else sym.isCompleted && self.info.isAlias && self.info.bounds.hi.classNotLambda
+        sym.isClass ||
+        sym.isCompleted && self.info.isAlias
       }
     case _ =>
       false
@@ -545,22 +399,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
   }
 
-  /** Dealias type if it can be done without forcing anything */
-  def saferDealias(implicit ctx: Context): Type = self match {
-    case self: TypeRef if self.denot.exists && self.symbol.isAliasType && self.symbol.isCompleted =>
-      self.info.bounds.hi.stripTypeVar.safeDealias
-    case _ =>
-      self
-  }
-
-  /** Replace references to type parameters with references to hk arguments `this.$hk_i`
-   * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
-   */
-  def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
-    (rt: RefinedType) =>
-      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
-        .apply(self).asInstanceOf[T]
-
   /** Replace references to type parameters with references to hk arguments `this.$hk_i`
    * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
    */
@@ -571,7 +409,6 @@ class TypeApplications(val self: Type) extends AnyVal {
           new ctx.SafeSubstMap(tparams.asInstanceOf[List[Symbol]], argRefs(rt, tparams.length))
             .apply(self).asInstanceOf[T]
       case _ =>
-        assert(Config.newHK)
         def mapRefs(rt: RecType) = new TypeMap {
           def apply(t: Type): Type = t match {
             case rthis: RecThis if tparams contains rthis.binder.parent => RecThis(rt)
@@ -587,38 +424,20 @@ class TypeApplications(val self: Type) extends AnyVal {
    *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> _ <: U)
    */
   def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
-
-    /** Replace references to type parameters with references to hk arguments `this.$hk_i`
-     * Care is needed not to cause cycles, hence `SafeSubstMap`.
-     */
-    def internalize[T <: Type](tp: T) =
-      (rt: RefinedType) =>
-        new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
-          .apply(tp).asInstanceOf[T]
-
     def expand(tp: Type) =
-      if (Config.newHK)
-        TypeLambda(
-          tparams.map(tparam =>
-            tparam.memberBoundsAsSeenFrom(self)
-              .withBindingKind(BindingKind.fromVariance(tparam.variance))
-              .recursify(tparams)),
-          tp.recursify(tparams))
-      else
-        TypeLambda.applyOBS(
-          tparams.map(_.variance),
-          tparams.map(tparam => internalize(self.memberInfo(tparam).bounds)),
-          internalize(tp))
+      TypeLambda(
+        tparams.map(tparam =>
+          tparam.memberBoundsAsSeenFrom(self)
+            .withBindingKind(BindingKind.fromVariance(tparam.variance))
+            .recursify(tparams)),
+        tp.recursify(tparams))
 
     assert(!isHK, self)
     self match {
       case self: TypeAlias =>
         self.derivedTypeAlias(expand(self.alias.normalizeHkApply))
       case self @ TypeBounds(lo, hi) =>
-        if (Config.newHK)
-          self.derivedTypeBounds(lo, expand(hi.normalizeHkApply))
-        else
-          self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi.normalizeHkApply)))
+        self.derivedTypeBounds(lo, expand(hi.normalizeHkApply))
       case _ => expand(self)
     }
   }
@@ -652,7 +471,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *   - going from a wildcard type to its upper bound
    */
   def normalizeHkApply(implicit ctx: Context): Type = self.strictDealias match {
-    case self1 @ RefinedType(_, rname, _) if Config.newHK && rname.isHkArgName && self1.typeParams.isEmpty =>
+    case self1 @ RefinedType(_, rname, _) if rname.isHkArgName && self1.typeParams.isEmpty =>
       val inst = new InstMap(self)
 
       def instTop(tp: Type): Type = tp.strictDealias match {
@@ -709,7 +528,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  to eta expand them.
    */
   def isEtaExpandable(implicit ctx: Context) = self match {
-    case self: TypeRef => self.symbol.isClass && !self.name.isLambdaTraitNameOBS
+    case self: TypeRef => self.symbol.isClass
     case _ => false
   }
 
@@ -782,7 +601,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def adaptHkVariances(bound: Type)(implicit ctx: Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
-    else if (Config.newHK) {
+    else {
       def adaptArg(arg: Type): Type = arg match {
         case arg @ TypeLambda(tparamBounds, body) if
              !arg.typeParams.corresponds(hkParams)(_.memberVariance == _.memberVariance) &&
@@ -795,25 +614,6 @@ class TypeApplications(val self: Type) extends AnyVal {
           }
           val adjusted = (tparamBounds, hkParams).zipped.map(adjustVariance)
           TypeLambda(adjusted.map(lift), lift(body))
-        case arg @ TypeAlias(alias) =>
-          arg.derivedTypeAlias(adaptArg(alias))
-        case arg @ TypeBounds(lo, hi) =>
-          arg.derivedTypeBounds(lo, adaptArg(hi))
-        case _ =>
-          arg
-      }
-      adaptArg(self)
-    }
-    else {
-      def adaptArg(arg: Type): Type = arg match {
-        case arg: TypeRef if arg.symbol.isLambdaTraitOBS &&
-             !arg.symbol.typeParams.corresponds(hkParams)(_.variance == _.memberVariance) &&
-             arg.symbol.typeParams.corresponds(hkParams)(varianceConforms) =>
-          arg.prefix.select(bound.LambdaTraitOBS)
-        case arg: RefinedType =>
-          arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
-        case arg: RecType =>
-          arg.derivedRecType(adaptArg(arg.parent))
         case arg @ TypeAlias(alias) =>
           arg.derivedTypeAlias(adaptArg(alias))
         case arg @ TypeBounds(lo, hi) =>
@@ -843,8 +643,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     def substHkArgs = new TypeMap {
       def apply(tp: Type): Type = tp match {
-        case TypeRef(RefinedThis(rt), name) if rt.eq(self) && name.isHkArgName =>
-          args(name.hkArgIndex)
         case TypeRef(RecThis(rt), name) if rt.eq(self) && name.isHkArgName =>
           args(name.hkArgIndex)
         case _ =>
@@ -886,8 +684,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     assert(args.nonEmpty)
     matchParams(self, typParams, args) match {
       case refined @ RefinedType(_, pname, _) if pname.isHkArgName =>
-        if (Config.newHK) refined.betaReduce
-        else TypeRef(refined, tpnme.hkApplyOBS)
+        refined.betaReduce // TODO Move to matchparams
       case refined =>
         refined
     }
@@ -906,8 +703,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
         // This happens when unpickling e.g. scala$collection$generic$GenMapFactory$$CC
         ctx.warning(i"encountered F-bounded higher-kinded type parameters for ${self.symbol}; assuming they are invariant")
-        if (Config.newHK) fallbackTypeParams(args map alwaysZero)
-        else defn.LambdaTraitOBS(args map alwaysZero).typeParams
+        fallbackTypeParams(args map alwaysZero)
       case _ =>
         typeParams
     }
@@ -1069,34 +865,5 @@ class TypeApplications(val self: Type) extends AnyVal {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
     case _ => firstBaseArgInfo(defn.SeqClass)
-  }
-
-  /** Does this type contain RefinedThis type with `target` as its underling
-   *  refinement type?
-   */
-  def containsRefinedThis(target: Type)(implicit ctx: Context): Boolean = {
-    def recur(tp: Type): Boolean = tp.stripTypeVar match {
-      case RefinedThis(tp) =>
-        tp eq target
-      case tp: NamedType =>
-        if (tp.symbol.isClass) !tp.symbol.isStatic && recur(tp.prefix)
-        else tp.info match {
-          case TypeAlias(alias) => recur(alias)
-          case _ => recur(tp.prefix)
-        }
-      case tp: RefinedType =>
-        recur(tp.refinedInfo) || recur(tp.parent)
-      case tp: RecType =>
-        recur(tp.parent)
-      case tp: TypeBounds =>
-        recur(tp.lo) || recur(tp.hi)
-      case tp: AnnotatedType =>
-        recur(tp.underlying)
-      case tp: AndOrType =>
-        recur(tp.tp1) || recur(tp.tp2)
-      case _ =>
-        false
-    }
-    !Config.newHK && recur(self)
   }
 }
