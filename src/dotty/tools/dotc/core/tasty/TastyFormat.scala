@@ -130,7 +130,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
-                  TYPEBOUNDS     Length low_Type high_Type bindingKind_Nat?
+                  TYPEBOUNDS     Length low_Type high_Type
                   TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATED      Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
