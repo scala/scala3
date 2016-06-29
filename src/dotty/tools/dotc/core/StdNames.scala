@@ -529,10 +529,6 @@ object StdNames {
 
     val synthSwitch: N          = "$synthSwitch"
 
-    val hkArgPrefixOLD: N          = "$hk"
-    val hkArgPrefixHeadOLD: Char   = hkArgPrefixOLD.head
-    val hkArgPrefixLengthOLD: Int  = hkArgPrefixOLD.length
-
     // unencoded operators
     object raw {
       final val AMP  : N  = "&"
@@ -745,8 +741,6 @@ object StdNames {
 
     def syntheticLambdaParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticLambdaParamName)(breakOut)
-
-    def hkArgOLD(n: Int): TypeName = hkArgPrefixOLD ++ n.toString
 
     final val Conforms = encode("<:<")
   }

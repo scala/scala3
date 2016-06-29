@@ -51,8 +51,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp: RefinedType if !Config.newHK =>
-          tp.normalizeHkApplyOLD
         case tp: SkolemType =>
           homogenize(tp.info)
         case tp: LazyRef =>
