@@ -114,7 +114,9 @@ object Types {
           case TypeAlias(tp) => tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
-      case this1: RefinedOrRecType =>
+      case this1: RefinedType =>
+        !this1.isTypeParam && this1.parent.isRef(sym)
+      case this1: RecType =>
         this1.parent.isRef(sym)
       case _ =>
         false
@@ -895,6 +897,14 @@ object Types {
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
 
+    /** Useful for diagnsotics: The underlying type if this type is a type proxy,
+     *  otherwise NoType
+     */
+    def underlyingIfProxy(implicit ctx: Context) = this match {
+      case this1: TypeProxy => this1.underlying
+      case _ => NoType
+    }
+
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
@@ -959,10 +969,12 @@ object Types {
           pre.refinedInfo match {
             case TypeAlias(alias) =>
               if (pre.refinedName ne name) loop(pre.parent)
-              else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.hkApplyOBS) betaReduce(alias) else NoType // (2) // ### use TypeApplication's betaReduce
+                case _ =>
+                  if (!pre.refinementRefersToThis) alias
+                  else if (name == tpnme.hkApplyOBS) betaReduce(alias)
+                  else NoType
               }
             case _ => loop(pre.parent)
           }
@@ -3019,7 +3031,10 @@ object Types {
       case _ => this
     }
 
-    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = derivedTypeBounds(lo, hi, bk)
+    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = this match {
+      case tp: TypeAlias => assert(bk == NoBinding); this
+      case _ => derivedTypeBounds(lo, hi, bk)
+    }
 
     //def checkBinding: this.type = { assert(isBinding); this }
 
@@ -3070,7 +3085,7 @@ object Types {
     }
 
     override def toString = {
-      def bkString = if (isBinding) s"|bk=${BindingKind.toVariance(bindingKind)}" else ""
+      def bkString = if (isBinding) s"|v=${BindingKind.toVariance(bindingKind)}" else ""
       if (lo eq hi) s"TypeAlias($lo, $variance)"
       else s"TypeBounds($lo, $hi$bkString)"
     }
@@ -3129,8 +3144,7 @@ object Types {
   class BindingKind(val n: Byte) extends AnyVal {
     def join(that: BindingKind) =
       if (this == that) this
-      else if (this == NoBinding) that
-      else if (that == NoBinding) this
+      else if (this == NoBinding || that == NoBinding) NoBinding
       else NonvariantBinding
   }
 
@@ -3202,7 +3216,9 @@ object Types {
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
-      if (optBounds eq this.optBounds) this else WildcardType(optBounds.asInstanceOf[TypeBounds])
+      if (optBounds eq this.optBounds) this
+      else if (!optBounds.exists) WildcardType
+      else WildcardType(optBounds.asInstanceOf[TypeBounds])
     override def computeHash = doHash(optBounds)
   }
 
