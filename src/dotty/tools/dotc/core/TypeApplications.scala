@@ -291,10 +291,9 @@ object TypeApplications {
     TypeLambda.applyOBS(variances, bounds, body)
   }
 
-  private class InstMap(fullType: Type, shortLived: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class InstMap(fullType: Type)(implicit ctx: Context) extends TypeMap {
     var localRecs: Set[RecType] = Set.empty
     var keptRefs: Set[Name] = Set.empty
-    var isSafe: Boolean = true
     var tyconIsHK: Boolean = true
     def apply(tp: Type): Type = tp match {
       case tp @ TypeRef(RecThis(rt), sel) if sel.isHkArgName && localRecs.contains(rt) =>
@@ -302,8 +301,13 @@ object TypeApplications {
           case TypeAlias(alias) => apply(alias)
           case _ => keptRefs += sel; tp
         }
-      case tp: TypeVar if !tp.inst.exists && !shortLived =>
-        isSafe = false
+      case tp: TypeVar if !tp.inst.exists =>
+        val bounds = tp.instanceOpt.orElse(ctx.typeComparer.bounds(tp.origin))
+        bounds.foreachPart {
+          case TypeRef(RecThis(rt), sel) if sel.isHkArgName && localRecs.contains(rt) =>
+            keptRefs += sel
+          case _ =>
+        }
         tp
       case _ =>
         mapOver(tp)
@@ -561,12 +565,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     assert(!isHK, self)
     self match {
       case self: TypeAlias =>
-        self.derivedTypeAlias(expand(self.alias.BetaReduce()))
+        self.derivedTypeAlias(expand(self.alias.BetaReduce))
       case self @ TypeBounds(lo, hi) =>
         if (Config.newHK)
-          self.derivedTypeBounds(lo, expand(hi.BetaReduce()))
+          self.derivedTypeBounds(lo, expand(hi.BetaReduce))
         else
-          self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi.BetaReduce())))
+          self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi.BetaReduce)))
       case _ => expand(self)
     }
   }
@@ -594,57 +598,68 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  A binding is top-level if it can be reached by
    *
-   *   - following aliases
+   *   - following aliases unless the type is a LazyRef
+   *     (need to keep cycle breakers around, see i974.scala)
    *   - dropping refinements and rec-types
    *   - going from a wildcard type to its upper bound
-   *
-   *  @param  shortLived   If `false` suppresses all rewritings where a type variable with
-   *                       an unknown or uncommitted instance is rewritten. Reason: If the
-   *                       type variable is finally instantiated to something else, the
-   *                       reduction might not be valid anymore. However, when reducing
-   *                       during `<:<` tests `shortLived` is true and the reduction
-   *                       is never suppressed, because then we are only interested
-   *                       in subtyping relative to the current context.
    */
-  def BetaReduce(shortLived: Boolean = false)(implicit ctx: Context): Type = self.dealias match {
+  def BetaReduce(implicit ctx: Context): Type = self.strictDealias match {
     case self1 @ RefinedType(_, rname, _) if Config.newHK && rname.isHkArgName && self1.typeParams.isEmpty =>
-      val inst = new InstMap(self, shortLived)
-      def instTop(tp: Type): Type =
-        if (!inst.isSafe) tp
-        else tp.dealias match {
-          case tp: RecType =>
-            inst.localRecs += tp
-            tp.rebind(instTop(tp.parent))
-          case tp @ RefinedType(parent, rname, rinfo) =>
-            rinfo match {
-              case TypeAlias(TypeRef(RecThis(rt), sel)) if sel.isHkArgName && inst.localRecs.contains(rt) =>
-                val bounds @ TypeBounds(_, _) = self.member(sel).info
-                instTop(tp.derivedRefinedType(parent, rname, bounds.withBindingKind(NoBinding)))
-              case _ =>
-                val parent1 = instTop(parent)
-                if (rname.isHkArgName &&
-                    !inst.tyconIsHK &&
-                    !inst.keptRefs.contains(rname)) parent1
-                else tp.derivedRefinedType(parent1, rname, inst(rinfo))
-            }
-          case tp @ WildcardType(bounds @ TypeBounds(lo, hi)) =>
-            tp.derivedWildcardType(bounds.derivedTypeBounds(inst(lo), instTop(hi)))
-          case tp =>
-            inst.tyconIsHK = tp.isHK
-            val res = inst(tp)
-            tp match {
-              case tp: WildcardType =>
-                println(s"inst $tp --> $res")
-              case _ =>
-            }
-            res
+      val inst = new InstMap(self)
+
+      def instTop(tp: Type): Type = tp.strictDealias match {
+        case tp: RecType =>
+          inst.localRecs += tp
+          tp.rebind(instTop(tp.parent))
+        case tp @ RefinedType(parent, rname, rinfo) =>
+          rinfo match {
+            case TypeAlias(TypeRef(RecThis(rt), sel)) if sel.isHkArgName && inst.localRecs.contains(rt) =>
+              val bounds @ TypeBounds(_, _) = self.member(sel).info
+              instTop(tp.derivedRefinedType(parent, rname, bounds.withBindingKind(NoBinding)))
+            case _ =>
+              val parent1 = instTop(parent)
+              if (rname.isHkArgName &&
+                !inst.tyconIsHK &&
+                !inst.keptRefs.contains(rname)) parent1
+              else tp.derivedRefinedType(parent1, rname, inst(rinfo))
+          }
+        case tp @ WildcardType(bounds @ TypeBounds(lo, hi)) =>
+          tp.derivedWildcardType(bounds.derivedTypeBounds(inst(lo), instTop(hi)))
+        case tp: LazyRef =>
+          instTop(tp.ref)
+        case tp =>
+          inst.tyconIsHK = tp.isHK
+          val res = inst(tp)
+          tp match {
+            case tp: WildcardType =>
+              println(s"inst $tp --> $res")
+            case _ =>
+          }
+          res
+      }
+
+      def isLazy(tp: Type): Boolean = tp.strictDealias match {
+        case tp: RefinedOrRecType => isLazy(tp.parent)
+        case tp @ WildcardType(bounds @ TypeBounds(lo, hi)) => isLazy(hi)
+        case tp: LazyRef => true
+        case _ => false
+      }
+
+      val reduced =
+        if (isLazy(self1)) {
+          // A strange dance is needed here to make 974.scala compile.
+          val res = LazyRef(() => instTop(self))
+          res.ref         // without this line, pickling 974.scala fails with an assertion error
+                          // saying that we address a RecThis outside its Rec (in the case of RecThis of pickleNewType)
+          res             // without this line, typing 974.scala gives a stackoverflow in asSeenFrom.
         }
-      val reduced = instTop(self)
-      if (inst.isSafe) reduced else self
+        else instTop(self)
+      if (reduced ne self) hk.println(i"reduce $self  -->  $reduced")
+      reduced
     case _ => self
   }
 
-    /** A type ref is eta expandable if it refers to a non-lambda class.
+  /** A type ref is eta expandable if it refers to a non-lambda class.
    *  In that case we can look for parameterized base types of the type
    *  to eta expand them.
    */

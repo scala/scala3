@@ -661,7 +661,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     }
     Config.newHK && app.isHKApply && !other.isHKApply && {
-      val reduced = app.BetaReduce(shortLived = true)
+      val reduced = app.BetaReduce
       if (reduced ne app)
         if (inOrder) isSubType(reduced, other) else isSubType(other, reduced)
       else tryInfer(app.typeConstructor.dealias)
@@ -1503,7 +1503,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def compareHkApply(app: RefinedType, other: Type, inOrder: Boolean) =
     if (app.isHKApply)
-      traceIndented(i"compareHkApply $app, $other, $inOrder, ${app.BetaReduce(shortLived = true)}") {
+      traceIndented(i"compareHkApply $app, $other, $inOrder, ${app.BetaReduce}") {
         super.compareHkApply(app, other, inOrder)
       }
     else super.compareHkApply(app, other, inOrder)

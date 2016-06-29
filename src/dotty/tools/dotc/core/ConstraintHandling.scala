@@ -285,6 +285,8 @@ trait ConstraintHandling {
           if (!addParamBound(bound)) NoType
           else if (fromBelow) defn.NothingType
           else defn.AnyType
+        case bound: RefinedType =>
+          bound.BetaReduce
         case _ =>
           bound
       }

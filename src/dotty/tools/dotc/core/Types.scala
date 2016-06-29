@@ -822,7 +822,16 @@ object Types {
     /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      */
-    final def dealias(implicit ctx: Context): Type = this match {
+    final def dealias(implicit ctx: Context): Type = strictDealias match {
+      case tp: LazyRef => tp.ref.dealias
+      case tp => tp
+    }
+
+    /** Follow aliases and instantiated TypeVars until type
+     *  is no longer alias type, or instantiated type variable.
+     *  Do not follow LazyRefs
+     */
+    final def strictDealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
@@ -832,17 +841,9 @@ object Types {
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
         if (tp1.exists) tp1.dealias else tp
-      case tp: LazyRef =>
-        tp.ref.dealias
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
       case tp => tp
-    }
-
-    /** If this is a TypeAlias type, its alias otherwise this type itself */
-    final def followTypeAlias(implicit ctx: Context): Type = this match {
-      case TypeAlias(alias) => alias
-      case _ => this
     }
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
@@ -856,6 +857,12 @@ object Types {
      */
     final def deconst(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ConstantType => tp.value.tpe
+      case _ => this
+    }
+
+    /** If this is a TypeAlias type, its alias otherwise this type itself */
+    final def followTypeAlias(implicit ctx: Context): Type = this match {
+      case TypeAlias(alias) => alias
       case _ => this
     }
 
@@ -1579,14 +1586,20 @@ object Types {
       // we might now get cycles over members that are in a refinement but that lack
       // a symbol. Without the following precaution i974.scala stackoverflows when compiled
       // with new hk scheme.
-      val saved = lastDenotation
-      if (name.isTypeName && lastDenotation != null && (lastDenotation.symbol ne NoSymbol))
+      val savedDenot = lastDenotation
+      val savedSymbol = lastSymbol
+      if (prefix.isInstanceOf[RecThis] && name.isTypeName) {
         lastDenotation = ctx.anyTypeDenot
+        lastSymbol = NoSymbol
+      }
       try
         if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
         else prefix.member(name)
       finally
-        if (lastDenotation eq ctx.anyTypeDenot) lastDenotation = saved
+        if (lastDenotation eq ctx.anyTypeDenot) {
+          lastDenotation = savedDenot
+          lastSymbol = savedSymbol
+        }
     }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
@@ -2753,7 +2766,7 @@ object Types {
       myRepr
     }
 
-    override def toString = s"Skolem($info)"
+    override def toString = s"Skolem($hashCode)"
   }
 
   final class CachedSkolemType(info: Type) extends SkolemType(info)
