@@ -917,11 +917,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if ((rsym.is(Method) || rsym.isType) && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
+      RefinedType(parent, rsym.name, rinfo)
       // todo later: check that refinement is within bounds
     }
-    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1) withType
-      (tpt1.tpe /: refinements1)(addRefinement)
+    val refined = (tpt1.tpe /: refinements1)(addRefinement)
+    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1).withType(
+      RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
     typr.println(i"typed refinement: ${res.tpe}")
     res
   }

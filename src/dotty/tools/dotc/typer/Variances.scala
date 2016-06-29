@@ -77,6 +77,8 @@ object Variances {
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
     case tp @ RefinedType(parent, _, rinfo) =>
       varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
+    case tp: RecType =>
+      varianceInType(tp.parent)(tparam)
     case tp @ MethodType(_, paramTypes) =>
       flip(varianceInTypes(paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>

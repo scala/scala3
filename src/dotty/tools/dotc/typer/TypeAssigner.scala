@@ -430,8 +430,8 @@ trait TypeAssigner {
     val argBindingFns = tparams.map(tparam =>
       tparam.info.bounds
         .withBindingKind(BindingKind.fromVariance(tparam.variance))
-        .internalizeFrom(tparams))
-    val bodyFn = body.tpe.internalizeFrom(tparams)
+        .recursify(tparams))
+    val bodyFn = body.tpe.recursify(tparams)
     tree.withType(TypeApplicationsNewHK.TypeLambda(argBindingFns, bodyFn))
   }
 

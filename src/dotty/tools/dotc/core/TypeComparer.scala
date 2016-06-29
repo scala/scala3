@@ -378,6 +378,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2)
       }
       compareRefined
+    case tp2: RecType =>
+      val tp1stable = ensureStableSingleton(tp1)
+      isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.substRecThis(tp2, tp1stable))
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
@@ -465,7 +468,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           def isNullable(tp: Type): Boolean = tp.dealias match {
             case tp: TypeRef => tp.symbol.isNullableClass
-            case tp: RefinedType => isNullable(tp.parent)
+            case tp: RefinedOrRecType => isNullable(tp.parent)
             case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
@@ -494,6 +497,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2) ||
       compareHkLambda(tp1, tp2, inOrder = true) ||
       compareAliasedRefined(tp1, tp2, inOrder = true)
+    case tp1: RecType =>
+      isNewSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
       // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
       // and analogously for T11 & (T121 | T122) & T12 <: T2
@@ -642,6 +647,25 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
   }
 
+  /** Replace any top-level recursive type `{ z => T }` in `tp` with 
+   *  `[z := anchor]T`.
+   */
+  private def fixRecs(anchor: SingletonType, tp: Type): Type = {
+    def fix(tp: Type): Type = tp.stripTypeVar match {
+      case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
+      case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
+      case tp: PolyParam => fixOrElse(bounds(tp).hi, tp)
+      case tp: TypeProxy => fixOrElse(tp.underlying, tp)
+      case tp: AndOrType => tp.derivedAndOrType(fix(tp.tp1), fix(tp.tp2))
+      case tp => tp
+    }
+    def fixOrElse(tp: Type, fallback: Type) = {
+      val tp1 = fix(tp)
+      if (tp1 ne tp) tp1 else fallback
+    }
+    fix(tp)
+  }
+
   /** The symbol referred to in the refinement of `rt` */
   private def refinedSymbol(rt: RefinedType) = rt.parent.member(rt.refinedName).symbol
 
@@ -772,7 +796,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
-   *  combiners are RefinedTypes, AndTypes or AnnotatedTypes.
+   *  combiners are RefinedTypes, RecTypes, AndTypes or AnnotatedTypes.
    *  One exception: Refinements referring to basetype args are never considered
    *  to be already covered. This is necessary because such refined types might
    *  still need to be compared with a compareAliasRefined.
@@ -781,6 +805,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
     case tp: ProtoType => false
     case tp: RefinedType => isCovered(tp.parent) && !refinedSymbol(tp).is(BaseTypeArg)
+    case tp: RecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
     case AndType(tp1, tp2) => isCovered(tp1) && isCovered(tp2)
     case _ => false
@@ -1118,6 +1143,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
           NoType
       }
+    case tp1: RecType =>
+      tp1.rebind(distributeAnd(tp1.parent, tp2))
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 & tp2

@@ -54,7 +54,8 @@ object Types {
    *        |              |                +----RefinedThis
    *        |              |                +--- SkolemType
    *        |              +- PolyParam
-   *        |              +- RefinedType
+   *        |              +- RefinedOrRecType -+-- RefinedType
+   *        |              |                   -+-- RecType
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
@@ -97,7 +98,7 @@ object Types {
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
       case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
       case _: SingletonType | NoPrefix => true
-      case tp: RefinedType => tp.parent.isStable
+      case tp: RefinedOrRecType => tp.parent.isStable
       case _ => false
     }
 
@@ -113,7 +114,7 @@ object Types {
           case TypeAlias(tp) => tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
-      case this1: RefinedType =>
+      case this1: RefinedOrRecType =>
         this1.parent.isRef(sym)
       case _ =>
         false
@@ -447,6 +448,8 @@ object Types {
           })
         case tp: PolyParam =>
           goParam(tp)
+        case tp: RecType =>
+          goRec(tp)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -462,6 +465,8 @@ object Types {
         case _ =>
           NoDenotation
       }
+      def goRec(tp: RecType) =
+        go(tp.parent).mapInfo(_.substRecThis(tp, pre))
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo =
@@ -864,6 +869,7 @@ object Types {
         def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
         if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
+      case tp: RecType if refinementOK => tp.parent 
       case _ => NoType
     }
 
@@ -958,6 +964,13 @@ object Types {
               }
             case _ => loop(pre.parent)
           }
+        case pre: RecType =>
+          val candidate = loop(pre.parent)
+          if (candidate.exists && !pre.isReferredToBy(candidate)) {
+            //println(s"lookupRefined ${this.toString} . $name, pre: $pre ---> $candidate / ${candidate.toString}")
+            candidate
+          }
+          else NoType
         case RefinedThis(binder) =>
           binder.lookupRefined(name)
         case SkolemType(tp) =>
@@ -1151,6 +1164,10 @@ object Types {
     /** Substitute all occurrences of `SkolemType(binder)` by `tp` */
     final def substRefinedThis(binder: Type, tp: Type)(implicit ctx: Context): Type =
       ctx.substRefinedThis(this, binder, tp, null)
+
+    /** Substitute all occurrences of `RecThis(binder)` by `tp` */
+    final def substRecThis(binder: RecType, tp: Type)(implicit ctx: Context): Type =
+      ctx.substRecThis(this, binder, tp, null)
 
     /** Substitute a bound type by some other type */
     final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
@@ -2022,7 +2039,11 @@ object Types {
     override def hashCode = ref.hashCode + 37
   }
 
-  // --- Refined Type ---------------------------------------------------------
+  // --- Refined Type and RecType ------------------------------------------------
+
+  abstract class RefinedOrRecType extends CachedProxyType with ValueType {
+    def parent: Type
+  }
 
   /** A refined type parent { refinement }
    *  @param refinedName  The name of the refinement declaration
@@ -2030,7 +2051,7 @@ object Types {
    *                 given the refined type itself.
    */
   abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
-    extends CachedProxyType with BindingType with ValueType {
+    extends RefinedOrRecType with BindingType {
 
     final def parent = myParent
     final def refinedInfo = myRefinedInfo
@@ -2082,7 +2103,7 @@ object Types {
       doHash(refinedName, refinedInfo, parent)
     }
 
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | $hashCode)"
+    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
   }
 
   class CachedRefinedType(refinedName: Name) extends RefinedType(NoType, refinedName, NoType)
@@ -2119,6 +2140,73 @@ object Types {
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
       assert(!ctx.erasedTypes)
       ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info).checkInst
+    }
+  }
+
+  class RecType(parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
+
+    val parent = parentExp(this)
+
+    override def underlying(implicit ctx: Context): Type = parent
+
+    def derivedRecType(parent: Type)(implicit ctx: Context): RecType =
+      if (parent eq this.parent) this
+      else RecType(rt => parent.substRecThis(this, RecThis(rt)))
+
+    def rebind(parent: Type)(implicit ctx: Context): Type =
+      if (parent eq this.parent) this
+      else RecType.closeOver(rt => parent.substRecThis(this, RecThis(rt)))
+
+    override def equals(other: Any) = other match {
+      case other: RecType => other.parent == this.parent
+      case _ => false
+    }
+
+    def isReferredToBy(tp: Type)(implicit ctx: Context): Boolean = {
+      val refacc = new TypeAccumulator[Boolean] {
+        override def apply(x: Boolean, tp: Type) = x || {
+          tp match {
+            case tp: TypeRef => apply(x, tp.prefix)
+            case tp: RecThis => RecType.this eq tp.binder
+            case _ => foldOver(x, tp)
+          }
+        }
+      }
+      refacc.apply(false, tp)
+    }
+
+    override def computeHash = doHash(parent)
+
+    override def toString = s"RecType($parent | $hashCode)"
+  }
+
+  object RecType {
+    def checkInst(tp: Type)(implicit ctx: Context): tp.type = {
+      var binders: List[RecType] = Nil
+      tp.foreachPart {
+        case rt: RecType => binders = rt :: binders
+        case rt: RecThis => assert(binders contains rt.binder, tp)
+        case _ =>
+      }
+      tp
+    }
+    def apply(parentExp: RecType => Type)(implicit ctx: Context): RecType = checkInst {
+      var rt = new RecType(parentExp)
+      rt.parent match {
+        case rt2: RecType =>
+          rt = rt2.derivedRecType(rt2.parent.substRecThis(rt, RecThis(rt2)))
+        case _ =>
+      }
+      unique(rt)
+    }
+    def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = checkInst {
+      val rt = this(parentExp)
+      //val self = RecThis(rt)
+      def isSelfRef(t: Type) = t match {
+        case RecThis(binder) => binder eq rt
+        case _ => false
+      }
+      if (rt.existsPart(isSelfRef)) rt else rt.parent
     }
   }
 
@@ -2587,6 +2675,22 @@ object Types {
     override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
+  /** a self-reference to an enclosing recursive type. */
+  case class RecThis(binder: RecType) extends BoundType with SingletonType {
+    type BT = RecType
+    override def underlying(implicit ctx: Context) = binder
+    def copyBoundType(bt: BT) = RecThis(bt)
+
+    // need to customize hashCode and equals to prevent infinite recursion
+    // between RecTypes and RecRefs.
+    override def computeHash = addDelta(binder.identityHash, 41)
+    override def equals(that: Any) = that match {
+      case that: RecThis => this.binder eq that.binder
+      case _ => false
+    }
+    override def toString = s"RecThis(${binder.hashCode})"
+  }
+
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `binder`. */
@@ -2691,7 +2795,7 @@ object Types {
       }
       def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
         case tp: OrType => true
-        case tp: RefinedType => isOrType(tp.parent)
+        case tp: RefinedOrRecType => isOrType(tp.parent)
         case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
         case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
         case _ => false
@@ -3160,6 +3264,8 @@ object Types {
       tp.derivedSelect(pre)
     protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type): Type =
       tp.derivedRefinedType(parent, tp.refinedName, info)
+    protected def derivedRecType(tp: RecType, parent: Type): Type =
+      tp.rebind(parent)
     protected def derivedTypeAlias(tp: TypeAlias, alias: Type): Type =
       tp.derivedTypeAlias(alias)
     protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
@@ -3233,6 +3339,9 @@ object Types {
             derivedPolyType(tp, bounds1, this(tp.resultType))
           }
           mapOverPoly
+
+        case tp: RecType =>
+          derivedRecType(tp, this(tp.parent))
 
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
@@ -3335,6 +3444,9 @@ object Types {
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
       if (parent.exists && info.exists) tp.derivedRefinedType(parent, tp.refinedName, info)
       else approx(hi = parent)
+    override protected def derivedRecType(tp: RecType, parent: Type) =
+      if (parent.exists) tp.rebind(parent)
+      else approx()
     override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
       if (alias.exists) tp.derivedTypeAlias(alias)
       else approx(NoType, TypeBounds.empty)
@@ -3432,6 +3544,9 @@ object Types {
         val y = foldOver(x, tp.paramBounds)
         variance = -variance
         this(y, tp.resultType)
+
+      case tp: RecType =>
+        this(x, tp.parent)
 
       case SuperType(thistp, supertp) =>
         this(this(x, thistp), supertp)

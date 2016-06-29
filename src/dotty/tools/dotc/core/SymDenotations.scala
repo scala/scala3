@@ -1121,10 +1121,11 @@ object SymDenotations {
 
     def debugString = toString + "#" + symbol.id // !!! DEBUG
 
-        def hasSkolems(tp: Type): Boolean = tp match {
+    def hasSkolems(tp: Type): Boolean = tp match {
       case tp: SkolemType => true
       case tp: NamedType => hasSkolems(tp.prefix)
       case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
+      case tp: RecType => hasSkolems(tp.parent)
       case tp: PolyType => tp.paramBounds.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: MethodType => tp.paramTypes.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: ExprType => hasSkolems(tp.resType)

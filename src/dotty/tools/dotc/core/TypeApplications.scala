@@ -22,10 +22,16 @@ object TypeApplicationsNewHK {
   import TypeApplications._
 
   object TypeLambda {
-    def apply(argBindingFns: List[RefinedType => TypeBounds],
-              bodyFn: RefinedType => Type)(implicit ctx: Context): Type = {
+    def apply(argBindingFns: List[RecType => TypeBounds],
+              bodyFn: RecType => Type)(implicit ctx: Context): Type = {
       val argNames = argBindingFns.indices.toList.map(tpnme.hkArg)
-      RefinedType.recursive(bodyFn, argNames, argBindingFns)
+      var idx = 0
+      RecType.closeOver(rt =>
+        (bodyFn(rt) /: argBindingFns) { (parent, argBindingFn) =>
+          val res = RefinedType(parent, tpnme.hkArg(idx), argBindingFn(rt))
+          idx += 1
+          res
+        })
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[(List[TypeBounds], Type)] = {
@@ -33,6 +39,8 @@ object TypeApplicationsNewHK {
         case t @ RefinedType(p, rname, rinfo: TypeBounds)
         if rname.isHkArgName && rinfo.isBinding =>
           decompose(p, rinfo.bounds :: acc)
+        case t: RecType =>
+          decompose(t.parent, acc)
         case _ =>
           (acc, t)
       }
@@ -78,13 +86,13 @@ object TypeApplications {
    *    [v1 X1: B1, ..., vn Xn: Bn] -> T
    *    ==>
    *    ([X_i := this.$hk_i] T) { type v_i $hk_i: (new)B_i }
-   *    
+   *
    *    [X] -> List[X]
-   *    
+   *
    *    List { type List$A = this.$hk_0 } { type $hk_0 }
-   *    
+   *
    *    [X] -> X
-   *    
+   *
    *    mu(this) this.$hk_0 & { type $hk_0 }
    */
   object TypeLambda {
@@ -211,6 +219,10 @@ object TypeApplications {
   /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
   def argRefs(rt: RefinedType, n: Int)(implicit ctx: Context) =
     List.range(0, n).map(i => RefinedThis(rt).select(tpnme.hkArg(i)))
+
+  /** The references `<rt>.this.$hk0, ..., <rt>.this.$hk<n-1>`. */
+  def argRefs(rt: RecType, n: Int)(implicit ctx: Context) =
+    List.range(0, n).map(i => RecThis(rt).select(tpnme.hkArg(i)))
 
   /** Merge `tp1` and `tp2` under a common lambda, combining them with `op`.
    *  @param tparams1   The type parameters of `tp1`
@@ -400,7 +412,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  but without forcing anything.
    */
   def classNotLambda(implicit ctx: Context): Boolean = self.stripTypeVar match {
-    case self: RefinedType =>
+    case self: RefinedOrRecType =>
       self.parent.classNotLambda
     case self: TypeRef =>
       self.denot.exists && {
@@ -425,6 +437,14 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def internalizeFrom[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RefinedType => T =
     (rt: RefinedType) =>
+      new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
+        .apply(self).asInstanceOf[T]
+
+  /** Replace references to type parameters with references to hk arguments `this.$hk_i`
+   * Care is needed not to cause cyclic reference errors, hence `SafeSubstMap`.
+   */
+  def recursify[T <: Type](tparams: List[Symbol])(implicit ctx: Context): RecType => T =
+    (rt: RecType) =>
       new ctx.SafeSubstMap(tparams, argRefs(rt, tparams.length))
         .apply(self).asInstanceOf[T]
 
@@ -546,6 +566,8 @@ class TypeApplications(val self: Type) extends AnyVal {
           arg.prefix.select(boundLambda)
         case arg: RefinedType =>
           arg.derivedRefinedType(adaptArg(arg.parent), arg.refinedName, arg.refinedInfo)
+        case arg: RecType =>
+          arg.derivedRecType(adaptArg(arg.parent))
         case arg @ TypeAlias(alias) =>
           arg.derivedTypeAlias(adaptArg(alias))
         case arg @ TypeBounds(lo, hi) =>
@@ -814,6 +836,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case tp: RefinedType =>
         recur(tp.refinedInfo) || recur(tp.parent)
+      case tp: RecType =>
+        recur(tp.parent)
       case tp: TypeBounds =>
         recur(tp.lo) || recur(tp.hi)
       case tp: AnnotatedType =>
