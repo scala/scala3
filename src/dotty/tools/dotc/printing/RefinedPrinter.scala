@@ -292,7 +292,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def toTextPackageId(pid: Tree): Text =
-      if (homogenizedView) toTextLocal(pid.tpe)
+      if (homogenizedView && pid.hasType) toTextLocal(pid.tpe)
       else toTextLocal(pid)
 
     var txt: Text = tree match {
