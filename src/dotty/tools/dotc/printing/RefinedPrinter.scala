@@ -123,12 +123,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           def contains(tp1: Type, tp2: Type): Boolean =
             tp1.eq(tp2) || {
               tp1.stripTypeVar match {
-                case tp1: RefinedType => contains(tp1.parent, tp2)
+                case tp1: RefinedOrRecType => contains(tp1.parent, tp2)
                 case _ => false
               }
             }
           def apply(t: Type): Type = t match {
-            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
+            case TypeRef(RecThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
               // Make up a name that prints as "Xi". Need to be careful we do not
               // accidentally unique-hash to something else. That's why we can't
               // use prefix = NoPrefix or a WithFixedSym instance.
@@ -207,7 +207,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     import untpd.{modsDeco => _, _}
 
-    /** Print modifiers form symbols if tree has type, overriding the untpd behavior. */
+    /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
     implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDeco =
       tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef]).asInstanceOf[untpd.ModsDeco]
 
@@ -263,6 +263,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val flagsText = (mods.flags & flagMask).toString
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
+
+    def varianceText(mods: untpd.Modifiers) =
+      if (mods is Covariant) "+"
+      else if (mods is Contravariant) "-"
+      else ""
 
     def argText(arg: Tree): Text = arg match {
       case arg: TypeBoundsTree => "_" ~ toTextGlobal(arg)
@@ -398,6 +403,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
         toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
+      case TypeLambdaTree(tparams, body) =>
+        tparamsText(tparams) ~ " -> " ~ toText(body)
       case ByNameTypeTree(tpt) =>
         "=> " ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi) =>
@@ -431,7 +438,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ TypeDef(name, rhs) =>
         def typeDefText(rhsText: Text) =
           dclTextOr {
-            modText(tree.mods, "type") ~~ nameIdText(tree) ~
+            modText(tree.mods, "type") ~~ (varianceText(tree.mods) ~ nameIdText(tree)) ~
             withEnclosingDef(tree) {
               val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
               tparamsText(tree.tparams) ~ rhsText1
