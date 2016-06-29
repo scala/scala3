@@ -389,7 +389,7 @@ class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList
+    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(tparams, skiptvs = false)
@@ -584,7 +584,7 @@ class ClassfileParser(
    *  a vararg argument. We solve this by creating two constructors, one with
    *  an array, the other with a repeated parameter.
    */
-  def addAnnotationConstructor(classInfo: Type, tparams: List[Symbol] = Nil)(implicit ctx: Context): Unit = {
+  def addAnnotationConstructor(classInfo: Type, tparams: List[TypeSymbol] = Nil)(implicit ctx: Context): Unit = {
     def addDefaultGetter(attr: Symbol, n: Int) =
       ctx.newSymbol(
         owner = moduleRoot.symbol,

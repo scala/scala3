@@ -1213,15 +1213,25 @@ object SymDenotations {
 
     private[this] var myNamedTypeParams: Set[TypeSymbol] = _
 
+    /** The type parameters in this class, in the order they appear in the current
+     *  scope `decls`. This is might be temporarily the incorrect order when
+     *  reading Scala2 pickled info. The problem is fixed by `updateTypeParams`
+     *  which is called once an unpickled symbol has been completed.
+     */
+    private def typeParamsFromDecls(implicit ctx: Context) =
+      unforcedDecls.filter(sym =>
+        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      def computeTypeParams = {
-        if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
-        else if (this ne initial) initial.asSymDenotation.typeParams
-        else unforcedDecls.filter(sym =>
-          (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
-      }
-      if (myTypeParams == null) myTypeParams = computeTypeParams
+      if (myTypeParams == null)
+        myTypeParams =
+          if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
+          else if (this ne initial) initial.asSymDenotation.typeParams
+          else infoOrCompleter match {
+            case info: TypeParamsCompleter => info.completerTypeParams(symbol)
+            case _ => typeParamsFromDecls
+          }
       myTypeParams
     }
 
@@ -1537,16 +1547,16 @@ object SymDenotations {
       if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
-    /** Make sure the type parameters of this class are `tparams`, reorder definitions
-     *  in scope if necessary.
+    /** Make sure the type parameters of this class appear in the order given
+     *  by `tparams` in the scope of the class. Reorder definitions in scope if necessary.
      *  @pre  All type parameters in `tparams` are entered in class scope `info.decls`.
      */
     def updateTypeParams(tparams: List[Symbol])(implicit ctx: Context): Unit =
-      if (!typeParams.corresponds(tparams)(_.name == _.name)) {
+      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(typeParams)(_.name == _.name)) {
         val decls = info.decls
         val decls1 = newScope
         for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
-        for (sym <- decls) if (!typeParams.contains(sym)) decls1.enter(sym)
+        for (sym <- decls) if (!tparams.contains(sym)) decls1.enter(sym)
         info = classInfo.derivedClassInfo(decls = decls1)
         myTypeParams = null
       }
@@ -1868,9 +1878,9 @@ object SymDenotations {
   /** A subclass of LazyTypes where type parameters can be completed independently of
    *  the info.
    */
-  abstract class TypeParamsCompleter extends LazyType {
+  trait TypeParamsCompleter extends LazyType {
     /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol): List[TypeSymbol]
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol]
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol
