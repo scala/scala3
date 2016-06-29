@@ -14,6 +14,7 @@ import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
+import config.Config
 import config.Printers._
 import Annotations._
 import Inferencing._
@@ -591,7 +592,7 @@ class Namer { typer: Typer =>
        */
       def parentType(parent: untpd.Tree)(implicit ctx: Context): Type =
         if (parent.isType) {
-          typedAheadType(parent).tpe
+          typedAheadType(parent, AnyTypeConstructorProto).tpe
         } else {
           val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
@@ -973,7 +974,8 @@ class Namer { typer: Typer =>
     ensureUpToDate(sym.typeRef, dummyInfo)
     ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
 
-    etaExpandArgs.apply(sym.info)
+    if (Config.newHK) sym.info
+    else etaExpandArgsOBS.apply(sym.info)
   }
 
   /** Eta expand all class types C appearing as arguments to a higher-kinded
@@ -982,7 +984,7 @@ class Namer { typer: Typer =>
    *  of arguments in F-bounds, because the recursive type was initialized with
    *  TypeBounds.empty.
    */
-  def etaExpandArgs(implicit ctx: Context) = new TypeMap {
+  def etaExpandArgsOBS(implicit ctx: Context) = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: RefinedType =>
         val args = tp.argInfos.mapconserve(this)

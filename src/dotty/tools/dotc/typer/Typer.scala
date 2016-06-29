@@ -928,7 +928,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
-    val tpt1 = typed(tree.tpt)(ctx retractMode Mode.Pattern)
+    val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
       ctx.error(d"${tpt1.tpe} does not take type parameters", tree.pos)
@@ -1672,6 +1672,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+    def adaptType(tp: Type): Tree = {
+      val tree1 =
+        if (pt != AnyTypeConstructorProto && tp.typeParamSymbols.nonEmpty) {
+          println(i"lam abs $tp with tparams ${tp.typeParamSymbols}%, %")
+          tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
+        }
+        else tree
+      if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
+      else err.typeMismatch(tree1, pt)
+    }
+
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
       case _ => tree.tpe.widen match {
@@ -1705,9 +1716,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 (_, _) => tree // error will be reported in typedTypeApply
               }
             case _ =>
-              if (ctx.mode is Mode.Type)
-                if ((ctx.mode is Mode.Pattern) || tree.tpe <:< pt) tree
-                else err.typeMismatch(tree, pt)
+              if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
           }
       }

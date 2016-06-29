@@ -311,6 +311,9 @@ object ProtoTypes {
    */
   @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
 
+  /** A prototype for type constructors that are followed by a type application */
+  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
+
   /** Add all parameters in given polytype `pt` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the polytype and add the copy's type parameters instead.

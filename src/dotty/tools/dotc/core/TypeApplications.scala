@@ -378,15 +378,18 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
+  /** If `self` is a higher-kinded type, its type parameters $hk_i, otherwise Nil */
   final def hkTypeParams(implicit ctx: Context): List[MemberBinding] =
     if (Config.newHK)
       if (isHK) typeParams else Nil
     else LambdaTraitOBS.typeParams
 
-  final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = {
-    val tparams = typeParams
-    assert(tparams.isEmpty || tparams.head.isInstanceOf[Symbol], self)
-    tparams.asInstanceOf[List[TypeSymbol]]
+  /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
+  final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = typeParams match {
+    case (_: Symbol) :: _ =>
+      assert(typeParams.forall(_.isInstanceOf[Symbol]))
+      typeParams.asInstanceOf[List[TypeSymbol]]
+    case _ => Nil
   }
 
   /** The named type parameters declared or inherited by this type.

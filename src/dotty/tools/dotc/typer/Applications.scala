@@ -17,6 +17,7 @@ import Types._
 import Decorators._
 import ErrorReporting._
 import Trees._
+import config.Config
 import Names._
 import StdNames._
 import ProtoTypes._
@@ -644,7 +645,7 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
-    tree.withType(tree.tpe.etaExpandIfHK(bound))
+    if (Config.newHK) tree else tree.withType(tree.tpe.etaExpandIfHK(bound))
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
    *  It is performed during typer as creation of generic arrays needs a classTag.
