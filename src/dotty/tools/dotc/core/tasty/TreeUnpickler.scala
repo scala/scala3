@@ -325,8 +325,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           readPackageRef().termRef
         case TYPEREF =>
           val name =  readName().toTypeName
-          if (name.isLambdaTraitName) // Make sure curresponding lambda trait exists
-            defn.LambdaTrait(name.lambdaTraitVariances)
+          if (name.isLambdaTraitNameOBS) // Make sure corresponding lambda trait exists
+            defn.LambdaTraitOBS(name.lambdaTraitVariancesOBS)
           TypeRef(readType(), name)
         case TERMREF =>
           readNameSplitSig() match {

@@ -432,7 +432,7 @@ trait TypeAssigner {
         .withBindingKind(BindingKind.fromVariance(tparam.variance))
         .recursify(tparams))
     val bodyFn = body.tpe.recursify(tparams)
-    tree.withType(TypeApplicationsNewHK.TypeLambda(argBindingFns, bodyFn))
+    tree.withType(TypeApplications.TypeLambda(argBindingFns, bodyFn))
   }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =

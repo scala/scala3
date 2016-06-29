@@ -465,8 +465,10 @@ object Types {
         case _ =>
           NoDenotation
       }
-      def goRec(tp: RecType) =
+      def goRec(tp: RecType) = {
+        //println(s"find member $pre . $name in $tp")
         go(tp.parent).mapInfo(_.substRecThis(tp, pre))
+      }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo =
@@ -960,7 +962,7 @@ object Types {
               else if (!pre.refinementRefersToThis) alias
               else alias match {
                 case TypeRef(RefinedThis(`pre`), aliasName) => lookupRefined(aliasName) // (1)
-                case _ => if (name == tpnme.hkApply) betaReduce(alias) else NoType // (2) // ### use TypeApplication's betaReduce
+                case _ => if (name == tpnme.hkApplyOBS) betaReduce(alias) else NoType // (2) // ### use TypeApplication's betaReduce
               }
             case _ => loop(pre.parent)
           }
@@ -1624,7 +1626,7 @@ object Types {
       ctx.underlyingRecursions -= 1
     }
 
-    /** A selection of the same kind, but with potentially a differet prefix.
+    /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
      *
      *     T#A --> B                if A is bound to an alias `= B` in T
@@ -1641,7 +1643,7 @@ object Types {
       else if (isType) {
         val res = prefix.lookupRefined(name)
         if (res.exists) res
-        else if (name == tpnme.hkApply && prefix.classNotLambda) {
+        else if (name == tpnme.hkApplyOBS && prefix.classNotLambda) {
           // After substitution we might end up with a type like
           // `C { type hk$0 = T0; ...; type hk$n = Tn } # $Apply`
           // where C is a class. In that case we eta expand `C`.
@@ -1751,7 +1753,11 @@ object Types {
 
     type ThisType = TypeRef
 
-    override def underlying(implicit ctx: Context): Type = info
+    override def underlying(implicit ctx: Context): Type = {
+      val res = info
+      assert(res != this, this)
+      res
+    }
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
@@ -1922,7 +1928,7 @@ object Types {
 
   object TypeRef {
     def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) =
-      if (name == tpnme.hkApply && prefix.classNotLambda)
+      if (name == tpnme.hkApplyOBS && prefix.classNotLambda)
         assert(false, s"bad type : $prefix.$name does not allow $$Apply projection")
 
     /** Create type ref with given prefix and name */
@@ -2073,7 +2079,7 @@ object Types {
       throw new AssertionError(s"bad instantiation: $this")
 
     def checkInst(implicit ctx: Context): this.type = {
-      if (refinedName == tpnme.hkApply)
+      if (refinedName == tpnme.hkApplyOBS)
         parent.stripTypeVar match {
           case RefinedType(_, name, _) if name.isHkArgName => // ok
           case _ => badInst
@@ -3015,6 +3021,8 @@ object Types {
 
     def withBindingKind(bk: BindingKind)(implicit ctx: Context) = derivedTypeBounds(lo, hi, bk)
 
+    //def checkBinding: this.type = { assert(isBinding); this }
+
     def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
       case tp: ClassInfo =>
@@ -3052,16 +3060,20 @@ object Types {
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
 
-    override def computeHash = doHash(variance, lo, hi)
+    override def computeHash = doHash(variance * 41 + bindingKind.n, lo, hi)
     override def equals(that: Any): Boolean = that match {
       case that: TypeBounds =>
-        (this.lo eq that.lo) && (this.hi eq that.hi) && this.variance == that.variance
+        (this.lo eq that.lo) && (this.hi eq that.hi) &&
+        (this.variance == that.variance) && (this.bindingKind == that.bindingKind)
       case _ =>
         false
     }
 
-    override def toString =
-      if (lo eq hi) s"TypeAlias($lo, $variance)" else s"TypeBounds($lo, $hi)"
+    override def toString = {
+      def bkString = if (isBinding) s"|bk=${BindingKind.toVariance(bindingKind)}" else ""
+      if (lo eq hi) s"TypeAlias($lo, $variance)"
+      else s"TypeBounds($lo, $hi$bkString)"
+    }
   }
 
   class RealTypeBounds(lo: Type, hi: Type, bk: BindingKind) extends TypeBounds(lo, hi)(bk)

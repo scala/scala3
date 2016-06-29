@@ -116,7 +116,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isFunctionClass(cls)) return toTextFunction(args)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
-      case tp @ TypeLambda(variances, argBoundss, body) =>
+      case tp @ TypeLambda(argBoundss, body) =>
+        val variances = tp.classSymbol.typeParams.map(_.variance)
         val prefix = ((('X' - 'A') + lambdaNestingLevel) % 26 + 'A').toChar
         val paramNames = variances.indices.toList.map(prefix.toString + _)
         val instantiate = new TypeMap {

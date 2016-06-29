@@ -116,12 +116,12 @@ object NameOps {
     def hkArgIndex: Int =
       name.drop(tpnme.hkArgPrefixLength).toString.toInt
 
-    def isLambdaTraitName(implicit ctx: Context): Boolean =
-      name.isTypeName && name.startsWith(tpnme.hkLambdaPrefix)
+    def isLambdaTraitNameOBS(implicit ctx: Context): Boolean =
+      name.isTypeName && name.startsWith(tpnme.hkLambdaPrefixOBS)
 
-    def lambdaTraitVariances(implicit ctx: Context): List[Int] = {
-      val vs = name.drop(tpnme.hkLambdaPrefix.length)
-      vs.toList.map(c => tpnme.varianceSuffixes.indexOf(c) - 1)
+    def lambdaTraitVariancesOBS(implicit ctx: Context): List[Int] = {
+      val vs = name.drop(tpnme.hkLambdaPrefixOBS.length)
+      vs.toList.map(c => tpnme.varianceSuffixesOBS.indexOf(c) - 1)
     }
 
     /** If the name ends with $nn where nn are

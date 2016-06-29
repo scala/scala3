@@ -50,7 +50,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp @ TypeRef(_, tpnme.hkApply) =>
+        case tp @ TypeRef(_, tpnme.hkApplyOBS) =>
           val tp1 = tp.reduceProjection
           if (tp1 eq tp) tp else homogenize(tp1)
         case tp: LazyRef =>
