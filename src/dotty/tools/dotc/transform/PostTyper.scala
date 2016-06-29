@@ -115,6 +115,17 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       }
   }
 
+  /** If the type of `tree` is a TermRefWithSignature with an underdefined
+   *  signature, narrow the type by re-computing the signature (which should
+   *  be fully-defined by now).
+   */
+  private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree.tpe match {
+    case tpe: TermRefWithSignature if tpe.signature.isUnderDefined =>
+      println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
+      tree.withType(TermRef.withSig(tpe.prefix, tpe.name, tpe.widen.signature)).asInstanceOf[T]
+    case _ => tree
+  }
+
   class PostTyperTransformer extends Transformer {
 
     private var inJavaAnnot: Boolean = false
@@ -192,10 +203,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: Ident =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
-            case _ => paramFwd.adaptRef(tree)
+            case _ => paramFwd.adaptRef(fixSignature(tree))
           }
         case tree: Select =>
-          transformSelect(paramFwd.adaptRef(tree), Nil)
+          transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])

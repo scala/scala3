@@ -476,6 +476,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         sigName(tp.widen)
       case ExprType(rt) =>
         sigName(defn.FunctionOf(Nil, rt))
+      case tp: TypeVar =>
+        val inst = tp.instanceOpt
+        if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case ErrorType | WildcardType =>

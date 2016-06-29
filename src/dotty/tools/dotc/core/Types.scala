@@ -2354,7 +2354,7 @@ object Types {
     final override def signature(implicit ctx: Context): Signature = {
       if (ctx.runId != mySignatureRunId) {
         mySignature = computeSignature
-        mySignatureRunId = ctx.runId
+        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
       }
       mySignature
     }
