@@ -2356,8 +2356,7 @@ object Types {
   object OrType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       assertUnerased()
-      if (Config.checkKinds)
-        assert((tp1.knownHK - tp2.knownHK).abs <= 1, i"$tp1 | $tp2")
+      if (Config.checkKinds) assert((tp1.knownHK - tp2.knownHK).abs <= 1, i"$tp1 | $tp2")
       unique(new CachedOrType(tp1, tp2))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
@@ -3582,7 +3581,6 @@ object Types {
             try this(arg)
             finally variance = saved
           }
-          assert(tp.args.length == tp.typeParams.length, tp)
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 

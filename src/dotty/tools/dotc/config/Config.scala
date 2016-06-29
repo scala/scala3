@@ -10,7 +10,7 @@ object Config {
 
   final val checkCacheMembersNamed = false
 
-  final val newHK = false
+  final val newHK = true
 
   /** When updating a constraint bound, check that the constrained parameter
    *  does not appear at the top-level of either of its bounds.
@@ -80,9 +80,11 @@ object Config {
   final val checkProjections = false
 
   /** If this flag is set it is checked that &/| only apply to types
-   *  that are either both hk types or both * types.
+   *  that are either both hk types or both * types. Should be used
+   *  only for debugging as there a generic class without arguments
+   *  can be produced in an And by Implicits.liftToClasses.
    */
-  final val checkKinds = true
+  final val checkKinds = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
