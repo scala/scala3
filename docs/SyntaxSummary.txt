@@ -96,6 +96,7 @@ grammar.
   ClassQualifier    ::=  `[' id `]'
 
   Type              ::=  FunArgTypes `=>' Type                                  Function(ts, t)
+                      |  HkTypeParamClause `->' Type						    TypeLambda(ps, t)
                       |  InfixType
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
@@ -125,7 +126,6 @@ grammar.
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
   Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
-                      |  Expr1
   FunParams         ::=  Bindings
                       |  [`implicit'] id
                       |  `_'

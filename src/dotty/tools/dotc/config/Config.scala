@@ -8,6 +8,8 @@ object Config {
   final val cacheMemberNames = true
   final val cacheImplicitScopes = true
 
+  final val newHK = false
+
   final val checkCacheMembersNamed = false
 
   /** When updating a constraint bound, check that the constrained parameter
