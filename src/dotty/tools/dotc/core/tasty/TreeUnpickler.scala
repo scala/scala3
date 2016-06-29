@@ -266,10 +266,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
-              val lo = readType()
-              val hi = readType()
-              val bk = ifBefore(end)(new BindingKind(readNat().toByte), NoBinding)
-              TypeBounds(lo, hi, bk)
+              TypeBounds(readType(), readType())
             case TYPEALIAS =>
               val alias = readType()
               val variance =

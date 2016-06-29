@@ -3119,25 +3119,20 @@ object Types {
       unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
   }
 
-  /** Type bounds >: lo <: hi
-   *  @param bindingKind: If != NoBinding, it indicates that this is
-   *                      an introduction of a higher-kinded type parameter.
-   *                      In that case it also defines the variance of the parameter.
-   */
-  abstract case class TypeBounds(lo: Type, hi: Type)(val bindingKind: BindingKind) extends CachedProxyType with TypeType {
+  /** Type bounds >: lo <: hi */
+  abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
     assert(lo.isInstanceOf[TermType])
     assert(hi.isInstanceOf[TermType])
 
     def variance: Int = 0
-    def isBinding = bindingKind != NoBinding
 
     override def underlying(implicit ctx: Context): Type = hi
 
     /** The non-alias type bounds type with given bounds */
-    def derivedTypeBounds(lo: Type, hi: Type, bk: BindingKind = this.bindingKind)(implicit ctx: Context) =
-      if ((lo eq this.lo) && (hi eq this.hi) && (bk == this.bindingKind) && (variance == 0)) this
-      else TypeBounds(lo, hi, bk)
+    def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
+      if ((lo eq this.lo) && (hi eq this.hi) && (variance == 0)) this
+      else TypeBounds(lo, hi)
 
     /** If this is an alias, a derived alias with the new variance,
      *  Otherwise the type itself.
@@ -3146,13 +3141,6 @@ object Types {
       case tp: TypeAlias => tp.derivedTypeAlias(tp.alias, variance)
       case _ => this
     }
-
-    def withBindingKind(bk: BindingKind)(implicit ctx: Context) = this match {
-      case tp: TypeAlias => assert(bk == NoBinding); this
-      case _ => derivedTypeBounds(lo, hi, bk)
-    }
-
-    //def checkBinding: this.type = { assert(isBinding); this }
 
     def contains(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
@@ -3166,12 +3154,12 @@ object Types {
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
       else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
-      else TypeBounds(this.lo | that.lo, this.hi & that.hi, this.bindingKind join that.bindingKind)
+      else TypeBounds(this.lo | that.lo, this.hi & that.hi)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) this
       else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) that
-      else TypeBounds(this.lo & that.lo, this.hi | that.hi, this.bindingKind join that.bindingKind)
+      else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
@@ -3191,25 +3179,22 @@ object Types {
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
 
-    override def computeHash = doHash(variance * 41 + bindingKind.n, lo, hi)
+    override def computeHash = doHash(variance, lo, hi)
     override def equals(that: Any): Boolean = that match {
       case that: TypeBounds =>
         (this.lo eq that.lo) && (this.hi eq that.hi) &&
-        (this.variance == that.variance) && (this.bindingKind == that.bindingKind)
+        (this.variance == that.variance)
       case _ =>
         false
     }
 
-    override def toString = {
-      def bkString = if (isBinding) s"|v=${BindingKind.toVariance(bindingKind)}" else ""
-      if (lo eq hi) s"TypeAlias($lo, $variance)"
-      else s"TypeBounds($lo, $hi$bkString)"
-    }
+    override def toString =
+      if (lo eq hi) s"TypeAlias($lo, $variance)" else s"TypeBounds($lo, $hi)"
   }
 
-  class RealTypeBounds(lo: Type, hi: Type, bk: BindingKind) extends TypeBounds(lo, hi)(bk)
+  class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
-  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias)(NoBinding) {
+  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
     /** pre: this is a type alias */
     def derivedTypeAlias(alias: Type, variance: Int = this.variance)(implicit ctx: Context) =
       if ((alias eq this.alias) && (variance == this.variance)) this
@@ -3240,8 +3225,8 @@ object Types {
   }
 
   object TypeBounds {
-    def apply(lo: Type, hi: Type, bk: BindingKind = NoBinding)(implicit ctx: Context): TypeBounds =
-      unique(new RealTypeBounds(lo, hi, bk))
+    def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
+      unique(new RealTypeBounds(lo, hi))
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
     def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
@@ -3251,31 +3236,6 @@ object Types {
     def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
       ctx.uniqueTypeAliases.enterIfNew(alias, variance)
     def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
-  }
-
-  /** A value class defining the interpretation of a TypeBounds
-   *  as either a regular type bounds or a binding (i.e. introduction) of a
-   *  higher-kinded type parameter.
-   *  TODO: drop
-   */
-  class BindingKind(val n: Byte) extends AnyVal {
-    def join(that: BindingKind) =
-      if (this == that) this
-      else if (this == NoBinding || that == NoBinding) NoBinding
-      else NonvariantBinding
-  }
-
-  val NoBinding = new BindingKind(0)             // Regular type bounds
-  val ContravariantBinding = new BindingKind(1)  // Bounds for contravariant hk type param
-  val NonvariantBinding = new BindingKind(2)     // Bounds for nonvariant hk type param
-  val CovariantBinding = new BindingKind(3)      // Bounds for covariant hk type param
-
-  object BindingKind {
-    def fromVariance(v: Int): BindingKind = new BindingKind((v + NonvariantBinding.n).toByte)
-    def toVariance(bk: BindingKind): Int = {
-      assert(bk.n != 0)
-      bk.n - NonvariantBinding.n
-    }
   }
 
   // ----- Annotated and Import types -----------------------------------------------
