@@ -869,7 +869,7 @@ object Types {
         def isParamName = tp.classSymbol.typeParams.exists(_.name == tp.refinedName)
         if (refinementOK || isParamName) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: RecType if refinementOK => tp.parent 
+      case tp: RecType if refinementOK => tp.parent
       case _ => NoType
     }
 
@@ -2051,7 +2051,7 @@ object Types {
    *                 given the refined type itself.
    */
   abstract case class RefinedType(private var myParent: Type, refinedName: Name, private var myRefinedInfo: Type)
-    extends RefinedOrRecType with BindingType {
+    extends RefinedOrRecType with BindingType with MemberBinding {
 
     final def parent = myParent
     final def refinedInfo = myRefinedInfo
@@ -2089,6 +2089,16 @@ object Types {
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
+
+    // MemberBinding methods
+    def isTypeParam(implicit ctx: Context) = refinedInfo match {
+      case tp: TypeBounds => tp.isBinding
+      case _ => false
+    }
+    def memberName(implicit ctx: Context) = refinedName
+    def memberBounds(implicit ctx: Context) = refinedInfo.bounds
+    def memberBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = memberBounds
+    def memberVariance(implicit ctx: Context) = BindingKind.toVariance(refinedInfo.bounds.bindingKind)
 
     override def equals(that: Any) = that match {
       case that: RefinedType =>
@@ -3120,7 +3130,10 @@ object Types {
 
   object BindingKind {
     def fromVariance(v: Int): BindingKind = new BindingKind((v + NonvariantBinding.n).toByte)
-    def toVariance(bk: BindingKind): Int = bk.n
+    def toVariance(bk: BindingKind): Int = {
+      assert(bk.n != 0)
+      bk.n - NonvariantBinding.n
+    }
   }
 
   // ----- Annotated and Import types -----------------------------------------------

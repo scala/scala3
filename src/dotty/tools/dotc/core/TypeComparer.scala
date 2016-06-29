@@ -534,7 +534,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeSymbol], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: List[MemberBinding], p: Type => Boolean): Boolean = {
     val classBounds = tp2.member(tpnme.hkApply).info.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -647,7 +647,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
   }
 
-  /** Replace any top-level recursive type `{ z => T }` in `tp` with 
+  /** Replace any top-level recursive type `{ z => T }` in `tp` with
    *  `[z := anchor]T`.
    */
   private def fixRecs(anchor: SingletonType, tp: Type): Type = {
@@ -726,24 +726,31 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val rebindNeeded = tp2.refinementRefersToThis
     val base = if (rebindNeeded) ensureStableSingleton(tp1) else tp1
     val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(tp2, base) else tp2.refinedInfo
+    val mbr = base.member(name)
+
     def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
-    def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+
+    def memberMatches: Boolean = mbr match { // inlined hasAltWith for performance
       case mbr: SingleDenotation => qualifies(mbr)
       case _ => mbr hasAltWith qualifies
     }
-    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
-      memberMatches(base member name) ||
-        tp1.isInstanceOf[SingletonType] &&
-        { // special case for situations like:
-          //    class C { type T }
-          //    val foo: C
-          //    foo.type <: C { type T = foo.T }
-          rinfo2 match {
-            case rinfo2: TypeAlias =>
-              !defn.isBottomType(base.widen) && (base select name) =:= rinfo2.alias
-            case _ => false
-          }
-        }
+
+    // special case for situations like:
+    //    class C { type T }
+    //    val foo: C
+    //    foo.type <: C { type T = foo.T }
+    def selfReferentialMatch = tp1.isInstanceOf[SingletonType] && {
+      rinfo2 match {
+        case rinfo2: TypeAlias =>
+          !defn.isBottomType(base.widen) && (base select name) =:= rinfo2.alias
+        case _ => false
+      }
+    }
+
+    def varianceMatches = true // TODO: fill in
+
+    /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${mbr.info.show} $rinfo2", subtyping) /*<|<*/ {
+      (memberMatches || selfReferentialMatch) && varianceMatches
     }
   }
 
@@ -1117,8 +1124,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  in where we allow which interpretation.
    */
   private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type) = {
-    val tparams1 = tp1.typeParams
-    val tparams2 = tp2.typeParams
+    val tparams1 = tp1.typeParamSymbols // TODO revise for new hk scheme
+    val tparams2 = tp2.typeParamSymbols
     def onlyNamed(tparams: List[TypeSymbol]) = tparams.forall(!_.is(ExpandedName))
     if (tparams1.isEmpty || tparams2.isEmpty ||
         onlyNamed(tparams1) && onlyNamed(tparams2)) op(tp1, tp2)

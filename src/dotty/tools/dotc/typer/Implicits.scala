@@ -325,7 +325,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               }
               def addParentScope(parent: TypeRef): Unit = {
                 iscopeRefs(parent) foreach addRef
-                for (param <- parent.typeParams)
+                for (param <- parent.typeParamSymbols)
                   comps ++= iscopeRefs(tp.member(param.name).info)
               }
               val companion = cls.companionModule

@@ -272,7 +272,7 @@ class ClassfileParser(
               if (sig(index) == '<') {
                 accept('<')
                 var tp1: Type = tp
-                var formals = tp.typeParams
+                var formals = tp.typeParamSymbols
                 while (sig(index) != '>') {
                   sig(index) match {
                     case variance @ ('+' | '-' | '*') =>

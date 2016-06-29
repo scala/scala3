@@ -75,10 +75,10 @@ object TypeApplications {
   /** Does the variance of `sym1` conform to the variance of `sym2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
    */
-  def varianceConforms(sym1: TypeSymbol, sym2: TypeSymbol)(implicit ctx: Context) =
-    sym1.variance == sym2.variance || sym2.variance == 0
+  def varianceConforms(sym1: MemberBinding, sym2: MemberBinding)(implicit ctx: Context) =
+    sym1.memberVariance == sym2.memberVariance || sym2.memberVariance == 0
 
-  def variancesConform(syms1: List[TypeSymbol], syms2: List[TypeSymbol])(implicit ctx: Context) =
+  def variancesConform(syms1: List[MemberBinding], syms2: List[MemberBinding])(implicit ctx: Context) =
     syms1.corresponds(syms2)(varianceConforms)
 
   /** Extractor for
@@ -143,7 +143,7 @@ object TypeApplications {
   object EtaExpansion {
     def apply(tycon: TypeRef)(implicit ctx: Context) = {
       assert(tycon.isEtaExpandable)
-      tycon.EtaExpand(tycon.typeParams)
+      tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = {
@@ -280,7 +280,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  with the bounds on its hk args. See `LambdaAbstract`, where these
    *  types get introduced, and see `isBoundedLambda` below for the test.
    */
-  final def typeParams(implicit ctx: Context): List[TypeSymbol] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: Context): List[MemberBinding] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
@@ -309,7 +309,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           val sym = self.parent.classSymbol
           if (sym.isLambdaTrait) return sym.typeParams
         }
-        self.parent.typeParams.filterNot(_.name == self.refinedName)
+        self.parent.typeParams.filterNot(_.memberName == self.refinedName)
       case self: SingletonType =>
         Nil
       case self: TypeProxy =>
@@ -317,6 +317,12 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ =>
         Nil
     }
+  }
+
+  final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = {
+    val tparams = typeParams
+    assert(tparams.isEmpty || tparams.head.isInstanceOf[Symbol])
+    tparams.asInstanceOf[List[TypeSymbol]]
   }
 
   /** The named type parameters declared or inherited by this type.
@@ -498,7 +504,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  v1 is compatible with v2, if v1 = v2 or v2 is non-variant.
    */
   def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
-    val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParams
+    val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparamsToUse)
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
@@ -508,7 +514,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: RefinedType =>
       self.derivedRefinedType(self.parent.EtaExpandCore, self.refinedName, self.refinedInfo)
     case _ =>
-      self.EtaExpand(self.typeParams)
+      self.EtaExpand(self.typeParamSymbols)
   }
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
@@ -621,12 +627,12 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param args     = `U1, ..., Un`
    *  @param tparams  are assumed to be the type parameters of `T`.
    */
-  final def appliedTo(args: List[Type], typParams: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def matchParams(t: Type, tparams: List[TypeSymbol], args: List[Type])(implicit ctx: Context): Type = args match {
+  final def appliedTo(args: List[Type], typParams: List[MemberBinding])(implicit ctx: Context): Type = {
+    def matchParams(t: Type, tparams: List[MemberBinding], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
-          matchParams(RefinedType(t, tparam.name, arg.toBounds(tparam)), tparams1, args1)
+          matchParams(RefinedType(t, tparam.memberName, arg.toBounds(tparam)), tparams1, args1)
         } catch {
           case ex: MatchError =>
             println(s"applied type mismatch: $self $args, typeParams = $typParams") // !!! DEBUG
@@ -667,11 +673,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(tparam: MemberBinding)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
       self
     case _ =>
-      val v = tparam.variance
+      val v = tparam.memberVariance
       /* Not neeeded.
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)

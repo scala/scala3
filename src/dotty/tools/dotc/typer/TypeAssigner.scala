@@ -409,11 +409,11 @@ trait TypeAssigner {
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
-        val tparam = tparams.find(_.name == name) match {
+        val tparam = tparams.find(_.memberName == name) match {
           case Some(tparam) => tparam
           case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }
-        if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
+        if (tparam.isTypeParam) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
         else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
       case _ =>
         errorType(s"named and positional type arguments may not be mixed", arg.pos)
