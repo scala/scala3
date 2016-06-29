@@ -1409,12 +1409,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               mergeNames(names1, names2, nme.syntheticParamName),
               formals1, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>
-          tp2 match {
-            case tp2 @ MethodType(names2, formals2) =>
-              println(
-                TypeComparer.explained(implicit ctx => isSameType(formals1.head, formals2.head)))
-            case _ =>
-          }
           mergeConflict(tp1, tp2)
       }
     case tp1: PolyType =>

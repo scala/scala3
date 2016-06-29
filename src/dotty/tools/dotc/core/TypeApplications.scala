@@ -223,6 +223,44 @@ object TypeApplications {
         mapOver(tp)
     }
   }
+
+  /** A type map that tries to reduce a (part of) the result type of the type lambda `tycon`
+   *  with the given `args`(some of which are wildcard arguments represented by type bounds).
+   *  Non-wildcard arguments are substituted everywhere as usual. A wildcard argument
+   *  `>: L <: H` is substituted for a type lambda parameter `X` only if `X` appears
+   *  in a toplevel refinement of the form
+   *
+   *        { type A = X }
+   *
+   *  and there are no other occurrences of `X` in the reduced type. In that case
+   *  the refinement above is replaced by
+   *
+   *        { type A >: L <: U }
+   *
+   *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
+   *  in the reduced type have been replaced with arguments.
+   */
+  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
+    private var available = Set((0 until args.length): _*)
+    var allReplaced = true
+    def hasWildcardArg(p: PolyParam) =
+      p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
+    def apply(t: Type) = t match {
+      case t @ TypeAlias(p: PolyParam) if hasWildcardArg(p) && available.contains(p.paramNum) =>
+        available -= p.paramNum
+        args(p.paramNum)
+      case p: PolyParam if p.binder == tycon =>
+        if (hasWildcardArg(p)) { allReplaced = false; p }
+        else args(p.paramNum)
+      case _: TypeBounds | _: HKApply =>
+        val saved = available
+        available = Set()
+        try mapOver(t)
+        finally available = saved
+      case _ =>
+        mapOver(t)
+    }
+  }
 }
 
 import TypeApplications._
@@ -733,12 +771,16 @@ class TypeApplications(val self: Type) extends AnyVal {
     self.stripTypeVar match {
       case self: TypeLambda =>
         if (!args.exists(_.isInstanceOf[TypeBounds])) self.instantiate(args)
-        else self match {
-          case EtaExpansion(selfTycon) => selfTycon.appliedTo(args)
-          case _ => HKApply(self, args)
+        else {
+          val reducer = new Reducer(self, args)
+          val reduced = reducer(self.resType)
+          if (reducer.allReplaced) reduced
+          else HKApply(self, args)
         }
       case self: AndOrType =>
         self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
+      case self: TypeAlias =>
+        self.derivedTypeAlias(self.alias.appliedTo(args))
       case self: TypeBounds =>
         self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
       case self: LazyRef =>
