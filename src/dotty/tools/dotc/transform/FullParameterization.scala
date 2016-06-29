@@ -95,7 +95,7 @@ trait FullParameterization {
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
-      case info @ PolyType(mtnames) => (mtnames.length, info.resultType)
+      case info: PolyType => (info.paramNames.length, info.resultType)
       case info: ExprType => (0, info.resultType)
       case _ => (0, info)
     }
@@ -111,18 +111,18 @@ trait FullParameterization {
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
-    def mapClassParams(tp: Type, pt: PolyType): Type = {
+    def mapClassParams(tp: Type, pt: GenericType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
       tp.substDealias(ctparams, classParamsRange map (PolyParam(pt, _)))
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
-    def mappedClassBounds(pt: PolyType): List[TypeBounds] =
+    def mappedClassBounds(pt: GenericType): List[TypeBounds] =
       ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 
     info match {
-      case info @ PolyType(mtnames) =>
-        PolyType(mtnames ++ ctnames)(
+      case info: PolyType =>
+        PolyType(info.paramNames ++ ctnames)(
           pt =>
             (info.paramBounds.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),

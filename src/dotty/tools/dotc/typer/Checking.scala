@@ -51,7 +51,7 @@ object Checking {
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkBounds in FirstTransform
    */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
+  def checkBounds(args: List[tpd.Tree], poly: GenericType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Traverse type tree, performing the following checks:

@@ -286,7 +286,7 @@ object ProtoTypes {
 
     override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
       def isInstantiatable(tp: Type) = tp.widen match {
-        case PolyType(paramNames) => paramNames.length == targs.length
+        case tp: GenericType => tp.paramNames.length == targs.length
         case _ => false
       }
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))

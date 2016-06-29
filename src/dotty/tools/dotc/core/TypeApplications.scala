@@ -687,7 +687,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     if (args.isEmpty || ctx.erasedTypes) self
     else self.stripTypeVar match { // TODO investigate why we can't do safeDealias here
-      case self: PolyType if !args.exists(_.isInstanceOf[TypeBounds]) =>
+      case self: GenericType if !args.exists(_.isInstanceOf[TypeBounds]) =>
         self.instantiate(args)
       case EtaExpansion(self1) =>
         self1.appliedTo(args)
