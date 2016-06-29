@@ -286,7 +286,7 @@ object ProtoTypes {
 
     override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
       def isInstantiatable(tp: Type) = tp.widen match {
-        case PolyType(paramNames) => paramNames.length == targs.length
+        case tp: GenericType => tp.paramNames.length == targs.length
         case _ => false
       }
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
@@ -310,6 +310,9 @@ object ProtoTypes {
    *    [] _
    */
   @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
+
+  /** A prototype for type constructors that are followed by a type application */
+  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
 
   /** Add all parameters in given polytype `pt` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
@@ -402,6 +405,11 @@ object ProtoTypes {
       WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
     case tp: TypeVar =>
       wildApprox(tp.underlying)
+    case tp @ HKApply(tycon, args) =>
+      wildApprox(tycon) match {
+        case _: WildcardType => WildcardType // this ensures we get a * type
+        case tycon1 => tp.derivedAppliedType(tycon1, args.mapConserve(wildApprox(_)))
+      }
     case tp: AndType =>
       val tp1a = wildApprox(tp.tp1)
       val tp2a = wildApprox(tp.tp2)

@@ -29,6 +29,19 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   /** Does this signature coincide with that signature on their parameter parts? */
   final def sameParams(that: Signature): Boolean = this.paramsSig == that.paramsSig
 
+  /** Does this signature coincide with that signature on their parameter parts?
+   *  This is the case if all parameter names are _consistent_, i.e. they are either
+   *  equal or on of them is tpnme.Uninstantiated.
+   */
+  final def consistentParams(that: Signature): Boolean = {
+    def consistent(name1: TypeName, name2: TypeName) =
+      name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
+    def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
+      if (names1.isEmpty) names2.isEmpty
+      else names2.nonEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
+    loop(this.paramsSig, that.paramsSig)
+  }
+
   /** The degree to which this signature matches `that`.
    *  If both parameter and result type names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
@@ -52,6 +65,13 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
     Signature((params.map(sigName(_, isJava))) ++ paramsSig, resSig)
 
+  /** A signature is under-defined if its paramsSig part contains at least one
+   *  `tpnme.Uninstantited`. Under-defined signatures arise when taking a signature
+   *  of a type that still contains uninstantiated type variables. They are eliminated
+   *  by `fixSignature` in `PostTyper`.
+   */
+  def isUnderDefined(implicit ctx: Context) =
+    paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
 }
 
 object Signature {

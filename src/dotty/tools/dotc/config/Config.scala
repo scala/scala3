@@ -77,6 +77,13 @@ object Config {
    */
   final val checkProjections = false
 
+  /** If this flag is set it is checked that &/| only apply to types
+   *  that are either both hk types or both * types. Should be used
+   *  only for debugging as there a generic class without arguments
+   *  can be produced in an And by Implicits.liftToClasses.
+   */
+  final val checkKinds = false
+
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
 

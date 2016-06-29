@@ -356,6 +356,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         case rt =>
           tp.derivedMethodType(tp.paramNames, formals, rt)
       }
+    case tp: TypeLambda =>
+      this(tp.resultType)
     case tp: PolyType =>
       this(tp.resultType) match {
         case rt: MethodType => rt
@@ -430,7 +432,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case RefinedType(parent, _) if !(parent isRef defn.ArrayClass) =>
+    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) =>
       eraseResult(parent)
     case _ =>
       this(tp)
@@ -474,6 +476,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         sigName(tp.widen)
       case ExprType(rt) =>
         sigName(defn.FunctionOf(Nil, rt))
+      case tp: TypeVar =>
+        val inst = tp.instanceOpt
+        if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case ErrorType | WildcardType =>

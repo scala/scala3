@@ -17,6 +17,7 @@ import Types._
 import Decorators._
 import ErrorReporting._
 import Trees._
+import config.Config
 import Names._
 import StdNames._
 import ProtoTypes._
@@ -633,7 +634,6 @@ trait Applications extends Compatibility { self: Typer =>
     typedFn.tpe.widen match {
       case pt: PolyType =>
         if (typedArgs.length <= pt.paramBounds.length && !isNamed)
-          typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
           if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
             val arg = typedArgs.head
             checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
@@ -642,9 +642,6 @@ trait Applications extends Compatibility { self: Typer =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
-
-  def adaptTypeArg(tree: tpd.Tree, bound: Type)(implicit ctx: Context): tpd.Tree =
-    tree.withType(tree.tpe.etaExpandIfHK(bound))
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
    *  It is performed during typer as creation of generic arrays needs a classTag.
@@ -741,7 +738,7 @@ trait Applications extends Compatibility { self: Typer =>
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case RefinedType(parent, _) => isSubTypeOfParent(subtp, parent)
+        case tp: RefinedType => isSubTypeOfParent(subtp, tp.parent)
         case _ => false
       }
 

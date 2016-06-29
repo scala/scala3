@@ -223,7 +223,9 @@ object Parsers {
       } // DEBUG
 
     private def expectedMsg(token: Int): String =
-      showToken(token) + " expected but " + showToken(in.token) + " found."
+      expectedMessage(showToken(token))
+    private def expectedMessage(what: String): String =
+      s"$what expected but ${showToken(in.token)} found"
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -648,6 +650,7 @@ object Parsers {
 /* ------------- TYPES ------------------------------------------------------ */
 
     /** Type        ::= FunArgTypes `=>' Type
+     *                |  HkTypeParamClause `->' Type
      *                | InfixType
      *  FunArgTypes ::=  InfixType
      *                | `(' [ FunArgType {`,' FunArgType } ] `)'
@@ -676,6 +679,12 @@ object Parsers {
               infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
             }
           }
+        }
+        else if (in.token == LBRACKET) {
+          val tparams = typeParamClause(ParamOwner.TypeParam)
+          if (isIdent && in.name.toString == "->")
+            atPos(in.skipToken())(TypeLambdaTree(tparams, typ()))
+          else { syntaxErrorOrIncomplete(expectedMessage("`->'")); typ() }
         }
         else infixType()
 
@@ -2129,17 +2138,10 @@ object Parsers {
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
-        if (in.token == IMPORT) {
+        if (in.token == IMPORT)
           stats ++= importClause()
-        }
-        else if (isExprIntro) {
-          val t = expr(Location.InBlock)
-          stats += t
-          t match {
-            case _: Function => return stats.toList
-            case _ =>
-          }
-        }
+        else if (isExprIntro)
+          stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT) {
             val start = in.skipToken()

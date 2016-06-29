@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers._
+import TypeApplications.EtaExpansion
 import collection.mutable
 
 /** Methods for adding constraints and solving them.
@@ -193,9 +194,9 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
-    case bounds: TypeBounds => bounds
-    case _ => param.binder.paramBounds(param.paramNum)
+  final def bounds(param: PolyParam): TypeBounds = {
+    val e = constraint.entry(param)
+    if (e.exists) e.bounds else param.binder.paramBounds(param.paramNum)
   }
 
   /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
@@ -293,7 +294,13 @@ trait ConstraintHandling {
         case bound: PolyParam if constraint contains bound =>
           addParamBound(bound)
         case _ =>
-          val pbound = prune(bound)
+          var pbound = prune(bound)
+          if (pbound.isHK && !param.isHK) {
+            param match {
+              case EtaExpansion(tycon) if tycon.symbol.isClass => pbound = tycon
+              case _ =>
+            }
+          }
           pbound.exists && (
             if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }
