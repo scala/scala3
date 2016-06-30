@@ -46,6 +46,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       myCaseSymbols = myValueSymbols ++ {
         defn.Any_toString ::
         defn.Product_canEqual ::
+        defn.Product_fields ::
         defn.Product_productArity ::
         defn.Product_productPrefix ::
         defn.Product_toMap ::
@@ -86,7 +87,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
-      def synthMap(vrefss: List[List[Tree]]): Tree = {
+      def synthFields(vrefss: List[List[Tree]]): Tree = {
         val paramNames = SeqLiteral(
           clazz
           .primaryConstructor.info
@@ -95,12 +96,16 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
           TypeTree(defn.StringType)
         )
 
-        val repeatedConstrParams =
-          Typed(paramNames, TypeTree(paramNames.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
-        val listOfConstrParams = ref(defn.List_apply).appliedToType(defn.StringType).appliedTo(repeatedConstrParams)
+        val repeatedConstrParams = Typed(
+          paramNames,
+          TypeTree(paramNames.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass))
+        )
 
-        ref(defn.predef_method("_" + sym.name.toString)).appliedToArgs(This(clazz) :: listOfConstrParams :: Nil)
+        ref(defn.List_apply).appliedToType(defn.StringType).appliedTo(repeatedConstrParams)
       }
+
+      def synthMap(vrefss: List[List[Tree]]): Tree =
+        ref(defn.predef_method("_" + sym.name.toString)).appliedToArgs(This(clazz) :: synthFields(vrefss) :: Nil)
 
       def ownName(vrefss: List[List[Tree]]): Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.decode.toString))
@@ -114,6 +119,7 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
         case nme.toMap => synthMap
+        case nme.fields => synthFields
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))

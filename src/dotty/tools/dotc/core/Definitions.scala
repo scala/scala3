@@ -425,6 +425,8 @@ class Definitions {
   def ProductClass(implicit ctx: Context) = ProductType.symbol.asClass
     lazy val Product_canEqualR = ProductClass.requiredMethodRef(nme.canEqual_)
     def Product_canEqual(implicit ctx: Context) = Product_canEqualR.symbol
+    lazy val Product_fieldsR = ProductClass.requiredMethodRef(nme.fields)
+    def Product_fields(implicit ctx: Context) = Product_fieldsR.symbol
     lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)

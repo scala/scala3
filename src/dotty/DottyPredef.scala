@@ -44,7 +44,7 @@ object DottyPredef {
   implicit def eqDoubleNum: Eq[Double, Number] = Eq
   implicit def eqNumDouble: Eq[Number, Double] = Eq
 
-  def _toMap(x: Product, constructorParams: List[String]): Map[String, Any] = {
+  def _toMap(x: DottyProduct, constructorParams: List[String]): Map[String, Any] = {
     val values = x.productIterator.toList
     constructorParams.zip(values).toMap
   }
@@ -52,4 +52,6 @@ object DottyPredef {
 
 trait DottyProduct extends scala.Product {
   def toMap: Map[String, Any]
+
+  def fields: List[String]
 }
