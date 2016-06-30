@@ -13,6 +13,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
+import config.Printers._
 import Symbols._, TypeUtils._
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -121,7 +122,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    */
   private def fixSignature[T <: Tree](tree: T)(implicit ctx: Context): T = tree.tpe match {
     case tpe: TermRefWithSignature if tpe.signature.isUnderDefined =>
-      println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
+      typr.println(i"fixing $tree with type ${tree.tpe.widen.toString} with sig ${tpe.signature} to ${tpe.widen.signature}")
       tree.withType(TermRef.withSig(tpe.prefix, tpe.name, tpe.widen.signature)).asInstanceOf[T]
     case _ => tree
   }

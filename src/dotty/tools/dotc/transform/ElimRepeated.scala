@@ -74,7 +74,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
     case _ =>
-      val elemType = tree.tpe.firstBaseArgInfo(defn.SeqClass)
+      val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
       if (defn.PhantomClasses contains elemClass) elemClass = defn.ObjectClass
       ref(defn.DottyArraysModule)

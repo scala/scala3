@@ -34,7 +34,8 @@ object Checking {
   import tpd._
 
   /** A general checkBounds method that can be used for TypeApply nodes as
-   *  well as for AppliedTypeTree nodes.
+   *  well as for AppliedTypeTree nodes. Also checks that type arguments to
+   *  *-type parameters are fully applied.
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
     (args, boundss).zipped.foreach { (arg, bound) =>
@@ -223,9 +224,6 @@ object Checking {
     val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.addMode(Mode.CheckCyclic))
     try checker.checkInfo(info)
     catch {
-          case ex: AssertionError =>
-            println(s"assertion error for $info")
-            throw ex
       case ex: CyclicReference =>
         if (reportErrors) {
           ctx.error(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)
@@ -364,7 +362,7 @@ object Checking {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors
-            val tp2 = apply(tp.info.bounds.hi)
+            val tp2 = apply(tp.superType)
             if (errors eq prevErrors) tp1 = tp2
             else errors = savedErrors
           }

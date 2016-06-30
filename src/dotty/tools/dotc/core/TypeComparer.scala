@@ -1353,7 +1353,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case _ => tp.show
     }
     if (true) throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
-    else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}")
+    else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}") // flip condition for debugging
   }
 
   /** Merge two lists of names. If names in corresponding positions match, keep them,

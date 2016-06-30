@@ -1744,7 +1744,7 @@ object Types {
     type ThisType = TypeRef
 
     override def underlying(implicit ctx: Context): Type = info
-    
+
     override def superType(implicit ctx: Context): Type = info match {
       case TypeBounds(_, hi) => hi
       case _ => info
@@ -2203,8 +2203,6 @@ object Types {
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
-      if (Config.checkKinds)
-        assert((tp1.knownHK - tp2.knownHK).abs <= 1, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
@@ -2239,7 +2237,6 @@ object Types {
   object OrType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       assertUnerased()
-      if (Config.checkKinds) assert((tp1.knownHK - tp2.knownHK).abs <= 1, i"$tp1 | $tp2")
       unique(new CachedOrType(tp1, tp2))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =

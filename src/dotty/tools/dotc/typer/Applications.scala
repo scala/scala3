@@ -67,7 +67,7 @@ object Applications {
     if (extractorMemberType(unapplyResult, nme.isDefined, pos) isRef defn.BooleanClass) {
       if (getTp.exists)
         if (unapplyFn.symbol.name == nme.unapplySeq) {
-          val seqArg = boundsToHi(getTp.firstBaseArgInfo(defn.SeqClass))
+          val seqArg = boundsToHi(getTp.elemType)
           if (seqArg.exists) return args map Function.const(seqArg)
         }
         else return getUnapplySelectors(getTp, args, pos)
@@ -629,7 +629,7 @@ trait Applications extends Compatibility { self: Typer =>
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val isNamed = hasNamedArg(tree.args)
-    var typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
+    val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>

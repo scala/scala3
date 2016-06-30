@@ -499,7 +499,6 @@ object TastyFormat {
          SELFDEF | REFINEDtype => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype => -1
-    case TYPEBOUNDS => -2
     case _ => 0
   }
 

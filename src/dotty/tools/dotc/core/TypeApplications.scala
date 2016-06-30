@@ -209,7 +209,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** If `self` is a higher-kinded type, its type parameters $hk_i, otherwise Nil */
+  /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
   final def hkTypeParams(implicit ctx: Context): List[TypeParamInfo] =
     if (isHK) typeParams else Nil
 
@@ -295,57 +295,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => false
   }
 
-  /** Computes the kind of `self` without forcing anything.
-   *  @return   1   if type is known to be higher-kinded
-   *           -1   if type is known to be a * type
-   *            0   if kind of `self` is unknown (because symbols have not yet completed)
-   */
-  def knownHK(implicit ctx: Context): Int = self match {
-    case self: TypeRef =>
-      val tsym = self.symbol
-      if (tsym.isClass) -1
-      else tsym.infoOrCompleter match {
-        case completer: TypeParamsCompleter =>
-          if (completer.completerTypeParams(tsym).nonEmpty) 1 else -1
-        case _ =>
-          if (!tsym.isCompleting || tsym.isAliasType) tsym.info.knownHK
-          else 0
-      }
-    case self: RefinedType => -1
-    case self: TypeLambda => 1
-    case self: HKApply => -1
-    case self: SingletonType => -1
-    case self: TypeVar => self.origin.knownHK
-    case self: WildcardType => self.optBounds.knownHK
-    case self: TypeProxy => self.underlying.knownHK
-    case NoType | _: LazyType => 0
-    case _ => -1
-  }
-
-  /** True if it can be determined without forcing that the class symbol
-   *  of this application exists. Equivalent to
-   *
-   *    self.classSymbol.exists
-   *
-   *  but without forcing anything.
-   */
-  def safeIsClassRef(implicit ctx: Context): Boolean = self.stripTypeVar match {
-    case self: RefinedOrRecType =>
-      self.parent.safeIsClassRef
-    case self: TypeRef =>
-      self.denot.exists && {
-        val sym = self.symbol
-        sym.isClass ||
-        sym.isCompleted && self.info.isAlias
-      }
-    case _ =>
-      false
-  }
-
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(implicit ctx: Context): Type = self match {
     case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
-      self.info.bounds.hi.stripTypeVar.safeDealias
+      self.superType.stripTypeVar.safeDealias
     case _ =>
       self
   }
@@ -387,14 +340,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparamsToUse)
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
-  }
-
-  /** Eta expand the prefix in front of any refinements. */
-  def EtaExpandCore(implicit ctx: Context): Type = self.stripTypeVar match {
-    case self: RefinedType =>
-      self.derivedRefinedType(self.parent.EtaExpandCore, self.refinedName, self.refinedInfo)
-    case _ =>
-      self.EtaExpand(self.typeParamSymbols)
   }
 
   /** If self is not higher-kinded, eta expand it. */
@@ -566,7 +511,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
     if (self derivesFrom base)
-      self match {
+      self.dealias match {
+        case self: TypeRef if !self.symbol.isClass => self.superType.baseArgInfos(base)
         case self: HKApply => self.superType.baseArgInfos(base)
         case _ => base.typeParams.map(param => self.member(param.name).info.argInfo)
       }
@@ -590,17 +536,6 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseArgTypesHi(base: Symbol)(implicit ctx: Context): List[Type] =
     baseArgInfos(base) mapConserve boundsToHi
-
-  /** The first type argument of the base type instance wrt `base` of this type */
-  final def firstBaseArgInfo(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
-    case param :: _ if self derivesFrom base =>
-      self match {
-        case self: HKApply => self.superType.firstBaseArgInfo(base)
-        case _ => self.member(param.name).info.argInfo
-      }
-    case _ =>
-      NoType
-  }
 
   /** The base type including all type arguments and applicable refinements
    *  of this type. Refinements are applicable if they refine a member of
@@ -711,6 +646,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   def elemType(implicit ctx: Context): Type = self match {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
-    case _ => firstBaseArgInfo(defn.SeqClass)
+    case _ => baseArgInfos(defn.SeqClass).headOption.getOrElse(NoType)
   }
 }

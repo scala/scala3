@@ -158,7 +158,7 @@ class TreePickler(pickler: TastyPickler) {
     case ConstantType(value) =>
       pickleConstant(value)
     case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
-      pickleType(tpe.info.bounds.hi)
+      pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol
       def pickleRef() =
@@ -240,10 +240,7 @@ class TreePickler(pickler: TastyPickler) {
       }
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
-      withLength {
-        pickleType(tpe.lo, richTypes)
-        pickleType(tpe.hi, richTypes)
-      }
+      withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATED)
       withLength { pickleType(tpe.tpe, richTypes); pickleTree(tpe.annot.tree) }
