@@ -89,7 +89,7 @@ class LabelDefs extends MiniPhaseTransform {
       collectLabelDefs.clear
       val newRhs = collectLabelDefs.transform(tree.rhs)
       val labelCalls = collectLabelDefs.labelCalls
-      var entryPoints = collectLabelDefs.parentLabelCalls
+      var entryPoints = collectLabelDefs.parentLabelCalls.foldLeft(mutable.Map.empty[Symbol, Tree]){(st, tree) => if (!st.contains(tree.symbol)) st.put(tree.symbol, tree); st}.values.toSet
       var labelDefs = collectLabelDefs.labelDefs
       var callCounts = collectLabelDefs.callCounts
 
@@ -121,6 +121,7 @@ class LabelDefs extends MiniPhaseTransform {
           val visitedNow = new mutable.HashMap[Symbol, Tree]()
           val treesToAppend = new ArrayBuffer[Tree]() // order matters. parents should go first
           treesToAppend += labelDefs(entrySym)
+          labelDefs -= entrySym
           queue.clear()
 
           var visited = 0
@@ -141,6 +142,7 @@ class LabelDefs extends MiniPhaseTransform {
                     if (callCount > 1) {
                       if (!treesToAppend.contains(defTree)) {
                         treesToAppend += defTree
+                        labelDefs -= callSym
                         queue += call
 
                       }
@@ -167,7 +169,7 @@ class LabelDefs extends MiniPhaseTransform {
   object collectLabelDefs extends TreeMap() {
 
     // label calls from this DefDef
-    var parentLabelCalls: mutable.Set[Tree] = new mutable.HashSet[Tree]()
+    var parentLabelCalls: List[Tree] = List[Tree]()
     var callCounts: mutable.Map[Symbol, Int] = new mutable.HashMap[Symbol, Int]().withDefaultValue(0)
 
     def shouldMoveLabel = true
@@ -175,11 +177,11 @@ class LabelDefs extends MiniPhaseTransform {
     // labelSymbol -> Defining tree
     val labelDefs = new mutable.HashMap[Symbol, Tree]()
     // owner -> all calls by this owner
-    val labelCalls = new mutable.HashMap[Symbol, mutable.Set[Tree]]()
+    val labelCalls = new mutable.HashMap[Symbol, List[Tree]]()
     var owner: Symbol = null
 
     def clear = {
-      parentLabelCalls.clear()
+      parentLabelCalls = Nil
       labelDefs.clear()
       labelCalls.clear()
     }
@@ -196,7 +198,7 @@ class LabelDefs extends MiniPhaseTransform {
         assert(t.symbol is Flags.Label)
 
         val st = parentLabelCalls
-        parentLabelCalls = new mutable.HashSet[Tree]()
+        parentLabelCalls = Nil
         val symt = owner
         owner = t.symbol
 
@@ -212,7 +214,7 @@ class LabelDefs extends MiniPhaseTransform {
         } else r
       case t: Apply if t.symbol is Flags.Label =>
         val sym = t.symbol
-        parentLabelCalls = parentLabelCalls + t
+        parentLabelCalls = t :: parentLabelCalls
         if (owner != sym) callCounts(sym) = callCounts(sym) + 1
         super.transform(tree)
       case _ =>

@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package transform
 
+import scala.language.postfixOps
+
 import TreeTransforms._
 import core.Denotations._
 import core.SymDenotations._
@@ -39,7 +41,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
-  override def runsAfter = Set(classOf[ElimRepeated])
+  override def runsAfter = Set(classOf[TryCatchPatterns])
 
   override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
@@ -51,19 +53,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     val translated = new Translator()(ctx).translator.translateMatch(tree)
 
     translated.ensureConforms(tree.tpe)
-  }
-
-
-  override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    val selector =
-      ctx.newSymbol(ctx.owner, ctx.freshName("ex").toTermName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = tree.pos)
-    val sel = Ident(selector.termRef).withPos(tree.pos)
-    val rethrow = tpd.CaseDef(EmptyTree, EmptyTree, Throw(ref(selector)))
-    val newCases = tpd.CaseDef(
-      Bind(selector, Underscore(selector.info).withPos(tree.pos)),
-      EmptyTree,
-      transformMatch(tpd.Match(sel, tree.cases ::: rethrow :: Nil)))
-    cpy.Try(tree)(tree.expr, newCases :: Nil, tree.finalizer)
   }
 
   class Translator(implicit ctx: Context) {
@@ -114,8 +103,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def flatMap(prev: Tree, b: Symbol, next: Tree): Tree
       def flatMapCond(cond: Tree, res: Tree, nextBinder: Symbol, next: Tree): Tree
       def flatMapGuard(cond: Tree, next: Tree): Tree
-      def ifThenElseZero(c: Tree, thenp: Tree): Tree =
-        If(c, thenp, zero)
+      def ifThenElseZero(c: Tree, thenp: Tree): Tree = c match {
+        case Literal(Constant(true))  => thenp
+        case Literal(Constant(false)) => zero
+        case _                        => If(c, thenp, zero)
+      }
       protected def zero: Tree
     }
 
@@ -304,7 +296,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def analyzeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type, suppression: Suppression): Unit = {}
 
     def emitSwitch(scrut: Tree, scrutSym: Symbol, cases: List[List[TreeMaker]], pt: Type, matchFailGenOverride: Option[Symbol => Tree], unchecked: Boolean): Option[Tree] = {
-      // TODO Deal with guards?
 
       def isSwitchableType(tpe: Type): Boolean =
         (tpe isRef defn.IntClass) ||
@@ -1231,7 +1222,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case WildcardPattern()                                        => noStep()
         case ConstantPattern(const)                                   => equalityTestStep(binder, binder, const)
         case Alternative(alts)                                        => alternativesStep(alts)
-        case _                                                        => ctx.error(unsupportedPatternMsg, pos) ; noStep()
+        case e                                                        =>
+          println(tree)
+          println(e)
+          ctx.error(unsupportedPatternMsg, pos) ; noStep()
       }
       def translate(): List[TreeMaker] = nextStep() merge (_.translate())
 
@@ -1263,27 +1257,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       case _ =>
         t
     }
-
-    /** Is this pattern node a catch-all or type-test pattern? */
-    def isCatchCase(cdef: CaseDef) = cdef match {
-      case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _) =>
-        isSimpleThrowable(tpt.tpe)
-      case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree, _) =>
-        isSimpleThrowable(tpt.tpe)
-      case _ =>
-        isDefaultCase(cdef)
-    }
-
-    private def isSimpleThrowable(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp @ TypeRef(pre, _) =>
-        val sym = tp.symbol
-        (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
-          (sym.derivesFrom(defn.ThrowableClass)) &&  /* bq */ !(sym is Flags.Trait)
-      case _ =>
-        false
-    }
-
-
 
     /** Implement a pattern match by turning its cases (including the implicit failure case)
       * into the corresponding (monadic) extractors, and combining them with the `orElse` combinator.
@@ -1334,46 +1307,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // if (Statistics.canEnable) Statistics.stopTimer(patmatNanos, start)
       Block(List(ValDef(selectorSym, sel)), combined)
     }
-
-    // return list of typed CaseDefs that are supported by the backend (typed/bind/wildcard)
-    // we don't have a global scrutinee -- the caught exception must be bound in each of the casedefs
-    // there's no need to check the scrutinee for null -- "throw null" becomes "throw new NullPointerException"
-    // try to simplify to a type-based switch, or fall back to a catch-all case that runs a normal pattern match
-    // unlike translateMatch, we type our result before returning it
-    /*def translateTry(caseDefs: List[CaseDef], pt: Type, pos: Position): List[CaseDef] =
-    // if they're already simple enough to be handled by the back-end, we're done
-      if (caseDefs forall isCatchCase) caseDefs
-      else {
-        val swatches = { // switch-catches
-        val bindersAndCases = caseDefs map { caseDef =>
-            // generate a fresh symbol for each case, hoping we'll end up emitting a type-switch (we don't have a global scrut there)
-            // if we fail to emit a fine-grained switch, have to do translateCase again with a single scrutSym (TODO: uniformize substitution on treemakers so we can avoid this)
-            val caseScrutSym = freshSym(pos, pureType(defn.ThrowableType))
-            (caseScrutSym, propagateSubstitution(translateCase(caseScrutSym, pt)(caseDef), EmptySubstitution))
-          }
-
-          for(cases <- emitTypeSwitch(bindersAndCases, pt).toList
-              if cases forall isCatchCase; // must check again, since it's not guaranteed -- TODO: can we eliminate this? e.g., a type test could test for a trait or a non-trivial prefix, which are not handled by the back-end
-              cse <- cases) yield /*fixerUpper(matchOwner, pos)*/(cse).asInstanceOf[CaseDef]
-        }
-
-        val catches = if (swatches.nonEmpty) swatches else {
-          val scrutSym = freshSym(pos, pureType(defn.ThrowableType))
-          val casesNoSubstOnly = caseDefs map { caseDef => (propagateSubstitution(translateCase(scrutSym, pt)(caseDef), EmptySubstitution))}
-
-          val exSym = freshSym(pos, pureType(defn.ThrowableType), "ex")
-
-          List(
-              CaseDef(
-                Bind(exSym, Ident(??? /*nme.WILDCARD*/)), // TODO: does this need fixing upping?
-                EmptyTree,
-                combineCasesNoSubstOnly(ref(exSym), scrutSym, casesNoSubstOnly, pt, matchOwner, Some((scrut: Symbol) => Throw(ref(exSym))))
-              )
-            )
-        }
-
-        /*typer.typedCases(*/catches/*, defn.ThrowableType, WildcardType)*/
-      }*/
 
     /**  The translation of `pat if guard => body` has two aspects:
       *     1) the substitution due to the variables bound by patterns
