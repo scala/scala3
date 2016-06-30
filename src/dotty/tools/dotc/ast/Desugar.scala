@@ -370,10 +370,11 @@ object desugar {
       if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
 
-    // Case classes and case objects get a ProductN parent
+    // Case classes and case objects get a ProductN parent, as well as a DottyProduct parent
+    val dottyProduct = Select(rootDot(nme.dotty_), "DottyProduct".toTypeName)
     var parents1 = parents
     if (mods.is(Case) && arity <= Definitions.MaxTupleArity)
-      parents1 = parents1 :+ productConstr(arity)
+      parents1 = parents1 :+ productConstr(arity) :+ dottyProduct
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt { defs }

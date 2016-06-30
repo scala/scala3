@@ -4,6 +4,7 @@ import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.ClassTag
 import scala.Predef.???
 import scala.collection.Seq
+import scala.collection.immutable.Map
 
 /** unimplemented implicit for TypeTag */
 object DottyPredef {
@@ -42,4 +43,15 @@ object DottyPredef {
   implicit def eqNumFloat : Eq[Number, Float]  = Eq
   implicit def eqDoubleNum: Eq[Double, Number] = Eq
   implicit def eqNumDouble: Eq[Number, Double] = Eq
+
+  def _toMap(x: DottyProduct, constructorParams: List[String]): Map[String, Any] = {
+    val values = x.productIterator.toList
+    constructorParams.zip(values).toMap
+  }
+}
+
+trait DottyProduct extends scala.Product {
+  def toMap: Map[String, Any]
+
+  def fields: List[String]
 }

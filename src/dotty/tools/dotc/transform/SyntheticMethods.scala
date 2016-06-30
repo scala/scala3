@@ -43,8 +43,15 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix)
+      myCaseSymbols = myValueSymbols ++ {
+        defn.Any_toString ::
+        defn.Product_canEqual ::
+        defn.Product_fields ::
+        defn.Product_productArity ::
+        defn.Product_productPrefix ::
+        defn.Product_toMap ::
+        Nil
+      }
     }
 
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
@@ -80,6 +87,26 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
+      def synthFields(vrefss: List[List[Tree]]): Tree = {
+        val paramNames = SeqLiteral(
+          clazz
+          .primaryConstructor.info
+          .asInstanceOf[MethodType]
+          .paramNames.map(x => Literal(Constant(x.show))),
+          TypeTree(defn.StringType)
+        )
+
+        val repeatedConstrParams = Typed(
+          paramNames,
+          TypeTree(paramNames.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass))
+        )
+
+        ref(defn.List_apply).appliedToType(defn.StringType).appliedTo(repeatedConstrParams)
+      }
+
+      def synthMap(vrefss: List[List[Tree]]): Tree =
+        ref(defn.predef_method("_" + sym.name.toString)).appliedToArgs(This(clazz) :: synthFields(vrefss) :: Nil)
+
       def ownName(vrefss: List[List[Tree]]): Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.decode.toString))
 
@@ -91,6 +118,8 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
         case nme.productArity => vrefss => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
+        case nme.toMap => synthMap
+        case nme.fields => synthFields
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))
@@ -107,7 +136,8 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
      *          that match {
      *            case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
      *            case _ => false
-     *         }
+     *          }
+     *        }
      *
      *  If C is a value class the initial `eq` test is omitted.
      */

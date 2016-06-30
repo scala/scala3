@@ -246,6 +246,7 @@ class Definitions {
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
 
     def Predef_eqAny(implicit ctx: Context) = DottyPredefModule.requiredMethod(nme.eqAny)
+    def predef_method(name: PreName) = DottyPredefModule.requiredMethodRef(name)
 
   lazy val DottyArraysModuleRef = ctx.requiredModuleRef("dotty.runtime.Arrays")
   def DottyArraysModule(implicit ctx: Context) = DottyArraysModuleRef.symbol
@@ -264,11 +265,15 @@ class Definitions {
 
   lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
-
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
     lazy val Seq_headR = SeqClass.requiredMethodRef(nme.head)
     def Seq_head(implicit ctx: Context) = Seq_headR.symbol
+
+  lazy val ListModuleRef = ctx.requiredModuleRef("scala.collection.immutable.List")
+  def ListModule(implicit ctx: Context) = ListModuleRef.symbol
+    lazy val List_applyR = ListModule.requiredMethodRef(nme.apply)
+    def List_apply(implicit ctx: Context) = List_applyR.symbol
 
   lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass(implicit ctx: Context) = ArrayType.symbol.asClass
@@ -416,14 +421,18 @@ class Definitions {
   def DynamicClass(implicit ctx: Context) = DynamicType.symbol.asClass
   lazy val OptionType: TypeRef                  = ctx.requiredClassRef("scala.Option")
   def OptionClass(implicit ctx: Context) = OptionType.symbol.asClass
-  lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
+  lazy val ProductType: TypeRef                 = ctx.requiredClassRef("dotty.DottyProduct")
   def ProductClass(implicit ctx: Context) = ProductType.symbol.asClass
     lazy val Product_canEqualR = ProductClass.requiredMethodRef(nme.canEqual_)
     def Product_canEqual(implicit ctx: Context) = Product_canEqualR.symbol
+    lazy val Product_fieldsR = ProductClass.requiredMethodRef(nme.fields)
+    def Product_fields(implicit ctx: Context) = Product_fieldsR.symbol
     lazy val Product_productArityR = ProductClass.requiredMethodRef(nme.productArity)
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
+    lazy val Product_toMapR = ProductClass.requiredMethodRef(nme.toMap)
+    def Product_toMap(implicit ctx: Context) = Product_toMapR.symbol
   lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
