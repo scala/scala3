@@ -1594,26 +1594,10 @@ object Types {
       }
     }
 
-    protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation = {
-      // we might now get cycles over members that are in a refinement but that lack
-      // a symbol. Without the following precaution i974.scala stackoverflows when compiled
-      // with new hk scheme.
-      // TODO: Do we still need the complications here?
-      val savedDenot = lastDenotation
-      val savedSymbol = lastSymbol
-      if (prefix.isInstanceOf[RecThis] && name.isTypeName) {
-        lastDenotation = ctx.anyTypeDenot
-        lastSymbol = NoSymbol
-      }
-      try
-        if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
-        else prefix.member(name)
-      finally
-        if (lastDenotation eq ctx.anyTypeDenot) {
-          lastDenotation = savedDenot
-          lastSymbol = savedSymbol
-        }
-    }
+    protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation =
+      if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
+      else prefix.member(name)
+
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
