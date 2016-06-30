@@ -473,7 +473,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     for {
       (poly, entries) <- boundsMap.toList
       n <- 0 until paramCount(entries)
-      if true || isBounds(entries(n))
+      if isBounds(entries(n))
     } yield PolyParam(poly, n)
 
   def forallParams(p: PolyParam => Boolean): Boolean = {

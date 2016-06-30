@@ -77,10 +77,10 @@ object Config {
    */
   final val checkProjections = false
 
-  /** If this flag is set it is checked that &/| only apply to types
+  /** If this flag is set, it is checked that &/| only apply to types
    *  that are either both hk types or both * types. Should be used
-   *  only for debugging as there a generic class without arguments
-   *  can be produced in an And by Implicits.liftToClasses.
+   *  only for debugging as the assertion may be violated by Implicits.liftToClasses,
+   *  which can produce an And over a generic class without arguments.
    */
   final val checkKinds = false
 
