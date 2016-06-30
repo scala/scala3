@@ -1661,12 +1661,10 @@ object SymDenotations {
                 if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
-                baseTypeRefOf(tp.underlying)
+                baseTypeRefOf(tp.superType)
             }
-          case tp: HKApply =>
-            baseTypeRefOf(tp.upperBound) // TODO drop?
           case tp: TypeProxy =>
-            baseTypeRefOf(tp.underlying)
+            baseTypeRefOf(tp.superType)
           case AndType(tp1, tp2) =>
             baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
           case OrType(tp1, tp2) =>

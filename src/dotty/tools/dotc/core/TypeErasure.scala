@@ -356,8 +356,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         case rt =>
           tp.derivedMethodType(tp.paramNames, formals, rt)
       }
-    case tp: TypeLambda =>
-      this(tp.resultType)
     case tp: PolyType =>
       this(tp.resultType) match {
         case rt: MethodType => rt

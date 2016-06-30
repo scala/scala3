@@ -677,7 +677,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         canConstrain(param1) && canInstantiate ||
           isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2)
       case tycon1: TypeProxy =>
-        isSubType(tycon1.underlying.bounds.hi.applyIfParameterized(args1), tp2)
+        isSubType(tycon1.superType.applyIfParameterized(args1), tp2)
       case _ =>
         false
     }
@@ -1218,20 +1218,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramBoundsAsSeenFrom(tp2))))
     else if (tparams2.isEmpty)
       original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
-    else {
-      val numArgs = tparams1.length
-      def argRefs(tl: GenericType) = List.range(0, numArgs).map(PolyParam(tl, _))
+    else
       TypeLambda(
-        paramNames = tpnme.syntheticLambdaParamNames(numArgs),
+        paramNames = tpnme.syntheticLambdaParamNames(tparams1.length),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           (tparam1.paramVariance + tparam2.paramVariance) / 2))(
         paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           tl.lifted(tparams1, tparam1.paramBoundsAsSeenFrom(tp1)).bounds &
           tl.lifted(tparams2, tparam2.paramBoundsAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          original(tl.lifted(tparams1, tp1).appliedTo(argRefs(tl)),
-             tl.lifted(tparams2, tp2).appliedTo(argRefs(tl))))
-    }
+          original(tl.lifted(tparams1, tp1).appliedTo(tl.paramRefs),
+             tl.lifted(tparams2, tp2).appliedTo(tl.paramRefs)))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts

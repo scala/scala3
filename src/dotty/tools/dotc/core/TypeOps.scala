@@ -194,10 +194,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp: RefinedType => isClassRef(tp.parent)
         case _ => false
       }
-      def next(tp: TypeProxy) = tp.underlying match {
-        case TypeBounds(_, hi) => hi
-        case nx => nx
-      }
+
       /** If `tp1` and `tp2` are typebounds, try to make one fit into the other
        *  or to make them equal, by instantiating uninstantiated type variables.
        */
@@ -238,13 +235,13 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp1: RecType =>
           tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
-          approximateUnion(next(tp1) | tp2)
+          approximateUnion(tp1.superType | tp2)
         case _ =>
           tp2 match {
             case tp2: RecType =>
               tp2.rebind(approximateOr(tp1, tp2.parent))
             case tp2: TypeProxy if !isClassRef(tp2) =>
-              approximateUnion(tp1 | next(tp2))
+              approximateUnion(tp1 | tp2.superType)
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)

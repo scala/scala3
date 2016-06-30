@@ -275,7 +275,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         if (params.exists(_.name == self.refinedName)) parent1
         else self.derivedRefinedType(parent1, self.refinedName, self.refinedInfo)
       case self: TypeProxy =>
-        self.underlying.widenToNamedTypeParams(params)
+        self.superType.widenToNamedTypeParams(params)
       case self: AndOrType =>
         self.derivedAndOrType(
           self.tp1.widenToNamedTypeParams(params), self.tp2.widenToNamedTypeParams(params))
@@ -317,7 +317,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: SingletonType => -1
     case self: TypeVar => self.origin.knownHK
     case self: WildcardType => self.optBounds.knownHK
-    case self: PolyParam => self.underlying.knownHK
     case self: TypeProxy => self.underlying.knownHK
     case NoType | _: LazyType => 0
     case _ => -1
@@ -568,7 +567,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def baseArgInfos(base: Symbol)(implicit ctx: Context): List[Type] =
     if (self derivesFrom base)
       self match {
-        case self: HKApply => self.upperBound.baseArgInfos(base)
+        case self: HKApply => self.superType.baseArgInfos(base)
         case _ => base.typeParams.map(param => self.member(param.name).info.argInfo)
       }
     else
@@ -596,7 +595,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def firstBaseArgInfo(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
     case param :: _ if self derivesFrom base =>
       self match {
-        case self: HKApply => self.upperBound.firstBaseArgInfo(base)
+        case self: HKApply => self.superType.firstBaseArgInfo(base)
         case _ => self.member(param.name).info.argInfo
       }
     case _ =>
@@ -621,7 +620,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TermRef =>
         tp.underlying.baseTypeWithArgs(base)
       case tp: HKApply =>
-        tp.upperBound.baseTypeWithArgs(base)
+        tp.superType.baseTypeWithArgs(base)
       case AndType(tp1, tp2) =>
         tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
       case OrType(tp1, tp2) =>

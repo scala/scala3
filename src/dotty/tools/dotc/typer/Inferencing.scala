@@ -178,7 +178,7 @@ object Inferencing {
     case tp: TypeRef if !tp.symbol.isClass =>
       widenForMatchSelector(tp.info.bounds.hi)
     case tp: HKApply =>
-      widenForMatchSelector(tp.upperBound)
+      widenForMatchSelector(tp.superType)
     case tp: AnnotatedType =>
       tp.derivedAnnotatedType(widenForMatchSelector(tp.tpe), tp.annot)
     case tp => tp
