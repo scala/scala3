@@ -566,7 +566,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt)
-    val elsep1 = typed(tree.elsep orElse untpd.unitLiteral withPos tree.pos, pt)
+    val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt)
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
