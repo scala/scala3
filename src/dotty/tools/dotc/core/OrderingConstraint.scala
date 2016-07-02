@@ -419,7 +419,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           def replaceIn(tp: Type, isUpper: Boolean): Type = tp match {
             case `param` => normalize(replacement, isUpper)
             case tp: AndOrType if isUpper == tp.isAnd => recombine(tp, replaceIn, isUpper)
-            case _ => tp
+            case _ => tp.substParam(param, replacement)
           }
 
           bounds.derivedTypeBounds(replaceIn(lo, isUpper = false), replaceIn(hi, isUpper = true))
