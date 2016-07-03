@@ -299,7 +299,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "new " ~ {
           tpt match {
             case tpt: Template => toTextTemplate(tpt, ofNew = true)
-            case _ => toTextLocal(tpt.typeOpt.underlyingClassRef(refinementOK = false))
+            case _ =>
+              if (tpt.hasType)
+                toTextLocal(tpt.typeOpt.underlyingClassRef(refinementOK = false))
+              else
+                toTextLocal(tpt)
           }
         }
       case Pair(l, r) =>
