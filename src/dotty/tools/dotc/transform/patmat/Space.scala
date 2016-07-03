@@ -8,7 +8,6 @@ import core.Flags._
 import ast.Trees._
 import ast.tpd
 import core.Decorators._
-import core.TypeApplications._
 import core.Symbols._
 import core.StdNames._
 import core.NameOps._
@@ -43,13 +42,37 @@ import core.Constants._
 
 /** space definition */
 sealed trait Space
+
+/** Empty space */
 case object Empty extends Space
+
+/** Space representing the set of all values of a type
+ *
+ * @param tp: the type this space represents
+ * @param decomposed: does the space result from decomposition? Used for pretty print
+ *
+ * Note:  When transform patterns like `_: List[T]` into space, the type parameter is
+ *        erased. E.g., `_: List[Int]` will be erased to `Typ(List, _)`.
+ *
+ *        However, the scrutinee of pattern matching is not erased in order to make
+ *        pattern matching for GADT more precise.
+ */
 case class Typ(tp: Type, decomposed: Boolean) extends Space
+
+/** Space representing a constructor pattern */
 case class Kon(tp: Type, params: List[Space]) extends Space
-sealed trait Point extends Space
-case class Var(sym: Symbol, tp: Type) extends Point
-case class Const(value: Constant, tp: Type) extends Point
+
+/** Union of spaces */
 case class Or(spaces: List[Space]) extends Space
+
+/** Point in space */
+sealed trait Point extends Space
+
+/** Point representing variables(stable identifier) in patterns */
+case class Var(sym: Symbol, tp: Type) extends Point
+
+/** Point representing literal constants in patterns */
+case class Const(value: Constant, tp: Type) extends Point
 
 /** abstract space logic */
 trait SpaceLogic {
@@ -59,7 +82,13 @@ trait SpaceLogic {
   /** Is `tp1` the same type as `tp2`? */
   def isEqualType(tp1: Type, tp2: Type): Boolean
 
-  /** Is `tp` a case class? */
+  /** Is `tp` a case class?
+   *
+   *  Assumption:
+   *    (1) One case class cannot be inherited directly or indirectly by another
+   *        case class.
+   *    (2) Inheritance of a case class cannot be well handled by the algorithm.
+   */
   def isCaseClass(tp: Type): Boolean
 
   /** Is the type `tp` decomposable? i.e. all values of the type can be covered
@@ -69,17 +98,17 @@ trait SpaceLogic {
    */
   def canDecompose(tp: Type): Boolean
 
-  /** Return parameters types of the case class `tp` */
+  /** Return term parameter types of the case class `tp` */
   def signature(tp: Type): List[Type]
 
   /** Get components of decomposable types */
-  def partitions(tp: Type): List[Space]
+  def decompose(tp: Type): List[Space]
 
   /** Simplify space using the laws, there's no nested union after simplify */
   def simplify(space: Space): Space = space match {
     case Kon(tp, spaces) =>
       val sp = Kon(tp, spaces.map(simplify _))
-      if (sp.params.exists(_ == Empty)) Empty
+      if (sp.params.contains(Empty)) Empty
       else sp
     case Or(spaces) =>
       val set = spaces.map(simplify _).flatMap {
@@ -91,7 +120,7 @@ trait SpaceLogic {
       else if (set.size == 1) set.toList(0)
       else Or(set)
     case Typ(tp, _) =>
-      if (canDecompose(tp) && partitions(tp).isEmpty) Empty
+      if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
     case _ => space
   }
@@ -111,127 +140,157 @@ trait SpaceLogic {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
-  def subspace(a: Space, b: Space): Boolean = (a, b) match {
-    case (Empty, _) => true
-    case (_, Empty) => false
-    case (Or(ss), _) => ss.forall(subspace(_, b))
-    case (Typ(tp1, _), Typ(tp2, _)) =>
-      isSubType(tp1, tp2)
-    case (Typ(tp1, _), Or(ss)) =>
-      ss.exists(subspace(a, _)) ||
-      (canDecompose(tp1) && subspace(Or(partitions(tp1)), b))
-    case (Typ(tp1, _), Kon(tp2, ss)) =>
-      isSubType(tp1, tp2) && subspace(Kon(tp2, signature(tp2).map(Typ(_, false))), b)
-    case (Kon(tp1, ss), Typ(tp2, _)) =>
-      isSubType(tp1, tp2) ||
-      simplify(a) == Empty ||
-      (isSubType(tp2, tp1) &&
-        canDecompose(tp1) &&
-        subspace(Or(partitions(tp1)), b))
-    case (Kon(_, _), Or(_)) =>
-      simplify(minus(a, b)) == Empty
-    case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
-      isEqualType(tp1, tp2) && ss1.zip(ss2).forall((subspace _).tupled)
-    case (Const(v1, _), Const(v2, _)) => v1 == v2
-    case (Const(_, tp1), Typ(tp2, _)) => isSubType(tp1, tp2)
-    case (Const(_, _), Or(ss)) => ss.exists(subspace(a, _))
-    case (Const(_, _), _) => false
-    case (_, Const(_, _)) => false
-    case (Var(x, _), Var(y, _)) => x == y
-    case (Var(_, tp1), Typ(tp2, _)) => isSubType(tp1, tp2)
-    case (Var(_, _), Or(ss)) => ss.exists(subspace(a, _))
-    case (Var(_, _), _) => false
-    case (_, Var(_, _)) => false
+  def isSubspace(a: Space, b: Space): Boolean = {
+    def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
+    def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
+
+    (a, b) match {
+      case (Empty, _) => true
+      case (_, Empty) => false
+      case (Or(ss), _) => ss.forall(isSubspace(_, b))
+      case (Typ(tp1, _), Typ(tp2, _)) =>
+        isSubType(tp1, tp2) || tryDecompose1(tp1) || tryDecompose2(tp2)
+      case (Typ(tp1, _), Or(ss)) =>
+        ss.exists(isSubspace(a, _)) || tryDecompose1(tp1)
+      case (Typ(tp1, _), Kon(tp2, ss)) =>
+        isSubType(tp1, tp2) && isSubspace(Kon(tp2, signature(tp2).map(Typ(_, false))), b) ||
+        tryDecompose1(tp1)
+      case (Kon(tp1, ss), Typ(tp2, _)) =>
+        isSubType(tp1, tp2) ||
+          simplify(a) == Empty ||
+          (isSubType(tp2, tp1) && tryDecompose1(tp1)) ||
+          tryDecompose2(tp2)
+      case (Kon(_, _), Or(_)) =>
+        simplify(minus(a, b)) == Empty
+      case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
+        isEqualType(tp1, tp2) && ss1.zip(ss2).forall((isSubspace _).tupled)
+      case (Const(v1, _), Const(v2, _)) => v1 == v2
+      case (Const(_, tp1), Typ(tp2, _)) => isSubType(tp1, tp2) || tryDecompose2(tp2)
+      case (Const(_, _), Or(ss)) => ss.exists(isSubspace(a, _))
+      case (Const(_, _), _) => false
+      case (_, Const(_, _)) => false
+      case (Var(x, _), Var(y, _)) => x == y
+      case (Var(_, tp1), Typ(tp2, _)) => isSubType(tp1, tp2) || tryDecompose2(tp2)
+      case (Var(_, _), Or(ss)) => ss.exists(isSubspace(a, _))
+      case (Var(_, _), _) => false
+      case (_, Var(_, _)) => false
+    }
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space): Space = (a, b) match {
-    case (Empty, _) | (_, Empty) => Empty
-    case (_, Or(ss)) => Or(ss.map(intersect(a, _)))
-    case (Or(ss), _) => Or(ss.map(intersect(_, b)))
-    case (Typ(tp1, _), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) a
-      else if (isSubType(tp2, tp1)) b
-      else Empty
-    case (Typ(tp1, _), Kon(tp2, ss)) =>
-      if (isSubType(tp2, tp1)) b
-      else if (isSubType(tp1, tp2)) a
-      else Empty
-    case (Kon(tp1, ss), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2) || isSubType(tp2, tp1)) a
-      else Empty
-    case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
-      if (!isEqualType(tp1, tp2)) Empty
-      else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
-      else
-        Kon(tp1, ss1.zip(ss2).map((intersect _).tupled))
-    case (Const(v1, _), Const(v2, _)) =>
-      if (v1 == v2) a else Empty
-    case (Const(_, tp1), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) a else Empty
-    case (Const(_, _), _) => Empty
-    case (Typ(tp1, _), Const(_, tp2)) =>
-      if (isSubType(tp2, tp1)) b else Empty
-    case (_, Const(_, _)) => Empty
-    case (Var(x, _), Var(y, _)) =>
-      if (x == y) a else Empty
-    case (Var(_, tp1), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) a else Empty
-    case (Var(_, _), _) => Empty
-    case (Typ(tp1, _), Var(_, tp2)) =>
-      if (isSubType(tp2, tp1)) b else Empty
-    case (_, Var(_, _)) => Empty
+  def intersect(a: Space, b: Space): Space = {
+    def tryDecompose1(tp: Type) = intersect(Or(decompose(tp)), b)
+    def tryDecompose2(tp: Type) = intersect(a, Or(decompose(tp)))
+
+    (a, b) match {
+      case (Empty, _) | (_, Empty) => Empty
+      case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filterConserve(_ ne Empty))
+      case (Or(ss), _) => Or(ss.map(intersect(_, b)).filterConserve(_ ne Empty))
+      case (Typ(tp1, _), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) a
+        else if (isSubType(tp2, tp1)) b
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else Empty
+      case (Typ(tp1, _), Kon(tp2, ss)) =>
+        if (isSubType(tp2, tp1)) b
+        else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else Empty
+      case (Kon(tp1, ss), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) a
+        else if (isSubType(tp2, tp1)) a  // problematic corner case: inheriting a case class
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else Empty
+      case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
+        if (!isEqualType(tp1, tp2)) Empty
+        else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
+        else Kon(tp1, ss1.zip(ss2).map((intersect _).tupled))
+      case (Const(v1, _), Const(v2, _)) =>
+        if (v1 == v2) a else Empty
+      case (Const(_, tp1), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) a
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else Empty
+      case (Const(_, _), _) => Empty
+      case (Typ(tp1, _), Const(_, tp2)) =>
+        if (isSubType(tp2, tp1)) b
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else Empty
+      case (_, Const(_, _)) => Empty
+      case (Var(x, _), Var(y, _)) =>
+        if (x == y) a else Empty
+      case (Var(_, tp1), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) a
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else Empty
+      case (Var(_, _), _) => Empty
+      case (Typ(tp1, _), Var(_, tp2)) =>
+        if (isSubType(tp2, tp1)) b
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else Empty
+      case (_, Var(_, _)) => Empty
+    }
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space): Space = (a, b) match {
-    case (Empty, _) => Empty
-    case (_, Empty) => a
-    case (Typ(tp1, _), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) Empty
-      else if (isSubType(tp2, tp1) && canDecompose(tp1))
-        minus(Or(partitions(tp1)), b)
-      else a
-    case (Typ(tp1, _), Kon(tp2, ss)) =>
-      if (isSubType(tp1, tp2)) minus(Kon(tp2, signature(tp2).map(Typ(_, false))), b)
-      else if (isSubType(tp2, tp1) && canDecompose(tp1))
-        minus(Or(partitions(tp1)), b)
-      else a
-    case (_, Or(ss)) =>
-      ss.foldLeft(a)(minus)
-    case (Or(ss), _) =>
-      Or(ss.map(minus(_, b)))
-    case (Kon(tp1, ss), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) Empty
-      else if (simplify(a) == Empty) Empty
-      else if (isSubType(tp2, tp1) && canDecompose(tp1))
-        minus(Or(partitions(tp1)), b)
-      else a
-    case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
-      if (!isEqualType(tp1, tp2)) a
-      else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) a
-      else if (ss1.zip(ss2).forall((subspace _).tupled)) Empty
-      else
-        Or(
-          ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
-            case (ri, i) => Kon(tp1, ss1.updated(i, ri))
-          })
-    case (Const(v1, _), Const(v2, _)) =>
-      if (v1 == v2) Empty else a
-    case (Const(_, tp1), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) Empty else a
-    case (Const(_, _), _) => a
-    case (Typ(tp1, _), Const(_, tp2)) =>  // Boolean & Java enum
-      if (isSubType(tp2, tp1) && canDecompose(tp1))
-        minus(Or(partitions(tp1)), b)
-      else a
-    case (_, Const(_, _)) => a
-    case (Var(x, _), Var(y, _)) =>
-      if (x == y) Empty else a
-    case (Var(_, tp1), Typ(tp2, _)) =>
-      if (isSubType(tp1, tp2)) Empty else a
-    case (Var(_, _), _) => a
-    case (_, Var(_, _)) => a
+  def minus(a: Space, b: Space): Space = {
+    def tryDecompose1(tp: Type) = minus(Or(decompose(tp)), b)
+    def tryDecompose2(tp: Type) = minus(a, Or(decompose(tp)))
+
+    (a, b) match {
+      case (Empty, _) => Empty
+      case (_, Empty) => a
+      case (Typ(tp1, _), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) Empty
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else a
+      case (Typ(tp1, _), Kon(tp2, ss)) =>
+        // corner case: inheriting a case class
+        // rationale: every instance of `tp1` is covered by `tp2(_)`
+        if (isSubType(tp1, tp2)) minus(Kon(tp2, signature(tp2).map(Typ(_, false))), b)
+        else if (canDecompose(tp1)) tryDecompose1(tp1)
+        else a
+      case (_, Or(ss)) =>
+        ss.foldLeft(a)(minus)
+      case (Or(ss), _) =>
+        Or(ss.map(minus(_, b)))
+      case (Kon(tp1, ss), Typ(tp2, _)) =>
+        // uncovered corner case: tp2 :< tp1
+        if (isSubType(tp1, tp2)) Empty
+        else if (simplify(a) == Empty) Empty
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else a
+      case (Kon(tp1, ss1), Kon(tp2, ss2)) =>
+        if (!isEqualType(tp1, tp2)) a
+        else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) a
+        else if (ss1.zip(ss2).forall((isSubspace _).tupled)) Empty
+        else
+          // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
+          Or(ss1.zip(ss2).map((minus _).tupled).zip(0 to ss2.length - 1).map {
+              case (ri, i) => Kon(tp1, ss1.updated(i, ri))
+            })
+      case (Const(v1, _), Const(v2, _)) =>
+        if (v1 == v2) Empty else a
+      case (Const(_, tp1), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) Empty
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else a
+      case (Const(_, _), _) => a
+      case (Typ(tp1, _), Const(_, tp2)) =>  // Boolean & Java enum
+        if (canDecompose(tp1)) tryDecompose1(tp1)
+        else a
+      case (_, Const(_, _)) => a
+      case (Var(x, _), Var(y, _)) =>
+        if (x == y) Empty else a
+      case (Var(_, tp1), Typ(tp2, _)) =>
+        if (isSubType(tp1, tp2)) Empty
+        else if (canDecompose(tp2)) tryDecompose2(tp2)
+        else a
+      case (Var(_, _), _) => a
+      case (_, Var(_, _)) => a
+    }
   }
 }
 
@@ -271,15 +330,22 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Empty
   }
 
-  /* Erase a type binding according to erasure rule */
+  /* Erase a type binding according to erasure semantics in pattern matching */
   def erase(tp: Type): Type = {
     def doErase(tp: Type): Type = tp match {
       case tp: RefinedType => erase(tp.parent)
       case _ => tp
     }
 
-    val origin = doErase(tp)
-    if (origin =:= defn.ArrayType) tp else origin
+    tp match {
+      case OrType(tp1, tp2) =>
+        OrType(erase(tp1), erase(tp2))
+      case AndType(tp1, tp2) =>
+        AndType(erase(tp1), erase(tp2))
+      case _ =>
+        val origin = doErase(tp)
+        if (origin =:= defn.ArrayType) tp else origin
+    }
   }
 
   /** Is `tp1` a subtype of `tp2`?  */
@@ -295,32 +361,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def signature(tp: Type): List[Type] = {
     val ktor = tp.classSymbol.primaryConstructor.info
 
-    val meth =
-      if (ktor.isInstanceOf[MethodType]) ktor
-      else
-      tp match {
-        case AppliedType(_, params) =>
-          val refined = params.map {
-            // TypeBounds would generate an exception
-            case tp: TypeBounds => tp.underlying
-            case tp => tp
-          }
-          ktor.appliedTo(refined)
-        case _ =>
-          ktor
-      }
+    val meth = ktor match {
+      case ktor: PolyType =>
+        ktor.instantiate(tp.classSymbol.typeParams.map(_.typeRef)).asSeenFrom(tp, tp.classSymbol)
+      case _ => ktor
+    }
 
     // refine path-dependent type in params. refer to t9672
-    meth.firstParamTypes.map(_.stripTypeVar).map { ptp =>
-      (tp, ptp) match {
-        case (TypeRef(ref1: TypeProxy, _), TypeRef(ref2: TypeProxy, name)) =>
-          if (ref1.underlying <:< ref2.underlying) TypeRef(ref1, name) else ptp
-        case _ => ptp
-      }
-    }
+    meth.firstParamTypes.map(_.asSeenFrom(tp, tp.classSymbol))
   }
 
-  def partitions(tp: Type): List[Space] = {
+  /** Decompose a type into subspaces -- assume the type can be decomposed */
+  def decompose(tp: Type): List[Space] = {
     val children = tp.classSymbol.annotations.filter(_.symbol == ctx.definitions.ChildAnnot).map { annot =>
       // refer to definition of Annotation.makeChild
       annot.tree match {
@@ -342,7 +394,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (sym.is(ModuleClass))
             sym.asClass.classInfo.selfType
           else if (sym.info.typeParams.length > 0 || tp.isInstanceOf[TypeRef])
-            refine(tp, sym.asClass.classInfo.symbolicTypeRef)
+            refine(tp, sym.typeRef)
           else
             sym.typeRef
         } filter { tpe =>
@@ -477,7 +529,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     val Match(sel, cases) = tree
-    isCheckable(sel.tpe.widen.elimAnonymousClass)
+    isCheckable(sel.tpe.widen.deAnonymize)
   }
 
 
@@ -487,7 +539,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    *  A <: X :> Y                M { type T = A }        ~~>  M { type T <: X :> Y }
    *
-   *  A <: X :> Y  B <: U :> V   M { type T <: A :> B }  ~~>  M { type T <: X :> B }
+   *  A <: X :> Y  B <: U :> V   M { type T <: A :> B }  ~~>  M { type T <: X :> V }
    *
    *  A = X  B = Y               M { type T <: A :> B }  ~~>  M { type T <: X :> Y }
    */
@@ -535,7 +587,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.elimAnonymousClass.dealias
+    val selTyp = sel.tpe.widen.deAnonymize.dealias
 
 
     val patternSpace = cases.map(x => project(x.pat)).reduce((a, b) => Or(List(a, b)))
@@ -553,7 +605,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
     // ignore selector type for now
-    // val selTyp = sel.tpe.widen.elimAnonymousClass.dealias
+    // val selTyp = sel.tpe.widen.deAnonymize.dealias
 
     // starts from the second, the first can't be redundant
     (1 until cases.length).foreach { i =>
@@ -566,7 +618,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
       val curr = project(cases(i).pat)
 
-      if (subspace(curr, prevs)) {
+      if (isSubspace(curr, prevs)) {
         ctx.warning("unreachable code", cases(i).body.pos)
       }
     }

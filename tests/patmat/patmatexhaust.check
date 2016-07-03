@@ -23,7 +23,7 @@ It would fail on the following input: _: C1
     def ma10(x: C) = x match { // not exhaustive: C1 is not sealed.
                        ^
 ./tests/patmat/patmatexhaust.scala:114: warning: match may not be exhaustive.
-It would fail on the following input: _: C1
+It would fail on the following input: D2(), D1
     def ma10(x: C) = x match {  // not exhaustive: C1 has subclasses.
                        ^
 ./tests/patmat/patmatexhaust.scala:126: warning: match may not be exhaustive.

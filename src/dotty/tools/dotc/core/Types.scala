@@ -811,7 +811,7 @@ object Types {
     }
 
     /** Eliminate anonymous classes */
-    final def elimAnonymousClass(implicit ctx: Context): Type = this match {
+    final def deAnonymize(implicit ctx: Context): Type = this match {
       case tp:TypeRef if tp.symbol.isAnonymousClass =>
         tp.symbol.asClass.typeRef.asSeenFrom(tp.prefix, tp.symbol.owner)
       case tp => tp

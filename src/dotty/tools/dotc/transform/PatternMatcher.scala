@@ -1254,13 +1254,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       case _                                                => false
     }
 
-    def elimAnonymousClass(t: Type) = t match {
-      case t:TypeRef if t.symbol.isAnonymousClass =>
-        t.symbol.asClass.typeRef.asSeenFrom(t.prefix, t.symbol.owner)
-      case _ =>
-        t
-    }
-
     /** Implement a pattern match by turning its cases (including the implicit failure case)
       * into the corresponding (monadic) extractors, and combining them with the `orElse` combinator.
       *
@@ -1274,7 +1267,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def translateMatch(match_ : Match): Tree = {
       val Match(sel, cases) = match_
 
-      val selectorTp = sel.tpe.widen.elimAnonymousClass/*withoutAnnotations*/
+      val selectorTp = sel.tpe.widen.deAnonymize/*withoutAnnotations*/
 
       val selectorSym = freshSym(sel.pos, selectorTp, "selector")
 
