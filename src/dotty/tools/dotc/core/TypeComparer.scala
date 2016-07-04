@@ -1241,7 +1241,23 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(tp1.parent & tp2.parent, tp1.refinedName, tp1.refinedInfo & tp2.refinedInfo)
+          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }`, if `S1 =:= S2`
+          // (possibly by instantiating type parameters), rewrite to `T1 & T2 { X = S1 }`.
+          // Otherwise rewrite to `T1 & T2 { X B }` where `B` is the conjunction of
+          // the bounds of `X` in `T1` and `T2`.
+          // The first rule above is contentious because it cuts the constraint set.
+          // But without it we would replace the two aliases by
+          // `T { X >: S1 | S2 <: S1 & S2 }`, which looks weird and is probably
+          // not what's intended.
+          val rinfo1 = tp1.refinedInfo
+          val rinfo2 = tp2.refinedInfo
+          val parent = tp1.parent & tp2.parent
+          val rinfo =
+            if (rinfo1.isAlias && rinfo2.isAlias && isSameType(rinfo1, rinfo2))
+              rinfo1
+            else
+              rinfo1 & rinfo2
+          tp1.derivedRefinedType(parent, tp1.refinedName, rinfo)
         case _ =>
           NoType
       }
@@ -1505,7 +1521,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
-    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint") {
+    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }
 
