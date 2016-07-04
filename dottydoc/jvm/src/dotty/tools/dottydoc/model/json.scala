@@ -1,93 +1,76 @@
 package dotty.tools.dottydoc
 package model
 
-import spray.json._
+import model.comment._
 
-/** This object provides a protocol for serializing the package AST to JSON,
- *  this is supposed to be one-way for performance reasons
+/** This object provides a protocol for serializing the package AST to JSON
+ *
+ *  TODO: It might be a good ideat to represent the JSON better than just
+ *  serializing a big string-blob in the future.
  */
-object json extends DefaultJsonProtocol {
-  import model._
-  import model.comment._
-  import model.internal._
+object json {
+  implicit class JsonString(val str: String) extends AnyVal {
+    def json: String = {
+      val cleanedString = str
+        .replaceAll("\\\\","\\\\\\\\")
+        .replaceAll("\\\"", "\\\\\"")
+        .replaceAll("\n", "\\\\n")
 
-  implicit val commentFormat = jsonFormat2(Comment.apply)
-  implicit val textFormat: JsonFormat[Text] = lazyFormat(jsonFormat(Text, "text"))
-  implicit object InlineJsonFormat extends RootJsonFormat[Inline] {
-    def write(i: Inline) = i match {
-      case i: Text => i.toJson
-      case _ => JsString("could not serialize")
+      s""""$cleanedString""""
     }
-    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }
 
-  implicit val matLinkFormat = lazyFormat(jsonFormat(MaterializedLink, "title", "target"))
-  implicit val noLinkFormat  = lazyFormat(jsonFormat(NoLink, "title", "target"))
-  implicit val unsLinkFormat = lazyFormat(jsonFormat(UnsetLink, "title", "query"))
+  implicit class JsonComment(val cmt: Comment) extends AnyVal {
+    def json: String = s"""{"body":${cmt.body.json},"short":${cmt.short.json}}"""
+  }
 
-  implicit object MaterializableLinkFormat extends RootJsonFormat[MaterializableLink] {
-    def write(obj: MaterializableLink) = obj match {
-      case obj: MaterializedLink => addKind(obj.toJson, "MaterializedLink")
-      case obj: UnsetLink => addKind(obj.toJson, "UnsetLink")
-      case obj: NoLink => addKind(obj.toJson, "NoLink")
+  implicit class LinkJson(val link: MaterializableLink) extends AnyVal {
+    def json: String = {
+      val (secondTitle, secondValue, kind) = link match {
+        case ul: UnsetLink => ("query".json, ul.query.json, "UnsetLink".json)
+        case ml: MaterializedLink => ("target", ml.target.json, "MaterializedLink".json)
+        case nl: NoLink => ("target".json, nl.target.json, "NoLink".json)
+      }
+      s"""{"title":${link.title.json},$secondTitle:${secondValue},"kind":$kind}"""
     }
-    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
   }
 
-  implicit object ReferenceFormat extends RootJsonFormat[Reference] {
-    def write(obj: Reference) = obj match {
-      case obj: AndTypeReference  => addKind(obj.toJson, "AndTypeReference")
-      case obj: OrTypeReference   => addKind(obj.toJson, "OrTypeReference")
-      case obj: TypeReference     => addKind(obj.toJson, "TypeReference")
-      case obj: NamedReference    => addKind(obj.toJson, "NamedReference")
-      case obj: ConstantReference => addKind(obj.toJson, "ConstantReference")
-    }
-    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
+  private def refToJson(ref: Reference): String = ref match {
+    case ref: TypeReference =>
+      s"""{"title":${ref.title.json},"tpeLink":${ref.tpeLink.json},"paramLinks":${ref.paramLinks.map(_.json).mkString("[",",","]")},"kind":"TypeReference"}"""
+    case ref: AndTypeReference =>
+      s"""{"left":${refToJson(ref.left)},"right":${refToJson(ref.right)},"kind":"AndTypeReference"}"""
+    case ref: OrTypeReference =>
+      s"""{"left":${refToJson(ref.left)},"right":${refToJson(ref.right)},"kind":"OrTypeReference"}"""
+    case ref: NamedReference =>
+      s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"kind":"NamedReference"}"""
+    case ref: ConstantReference =>
+      s"""{"title":${ref.title.json},"kind": "ConstantReference"}"""
   }
+  implicit class ReferenceJson(val ref: Reference) extends AnyVal { def json: String = refToJson(ref) }
 
-  implicit val tpeRefFormat   = lazyFormat(jsonFormat(TypeReference, "title", "tpeLink", "paramLinks"))
-  implicit val orRefFormat    = lazyFormat(jsonFormat(OrTypeReference, "left", "right"))
-  implicit val andRefFormat   = lazyFormat(jsonFormat(AndTypeReference, "left", "right"))
-  implicit val namedRefFormat = lazyFormat(jsonFormat(NamedReference, "title", "ref"))
-  implicit val constRefFormat = lazyFormat(jsonFormat(ConstantReference, "title"))
-
-  implicit object EntityJsonFormat extends RootJsonFormat[Entity] {
-
-    def write(e: Entity) = e match {
-      case e: PackageImpl   => addKind(e.toJson, "package")
-      case e: ClassImpl     => addKind(e.toJson, "class")
-      case e: CaseClassImpl => addKind(e.toJson, "case class")
-      case e: TraitImpl     => addKind(e.toJson, "trait")
-      case e: ObjectImpl    => addKind(e.toJson, "object")
-      case e: DefImpl       => addKind(e.toJson, "def")
-      case e: ValImpl       => addKind(e.toJson, "val")
-    }
-    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
+  private def entToJson(ent: Entity): String = ent match {
+    case ent: Package =>
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"package"}"""
+    case ent: Class =>
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"class"}"""
+    case ent: CaseClass =>
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"case class"}"""
+    case ent: Trait =>
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"trait"}"""
+    case ent: Object =>
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"object"}"""
+    case ent: Def =>
+      s"""{"name":${ent.name.json},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"returnValue":${ent.returnValue.json},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"paramLists":${ent.paramLists.map{ xs =>xs.map(_.json).mkString("[",",","]")}.mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"def"}"""
+    case ent: Val =>
+      s"""{"name":${ent.name.json},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"returnValue":${ent.returnValue.json},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"val"}"""
   }
+  implicit class EntityJson(val ent: Entity) extends AnyVal { def json: String = entToJson(ent) }
+  implicit class PackageJson(val pack: Package) extends AnyVal { def json: String = (pack: Entity).json }
 
-  implicit object PackageFormat extends RootJsonFormat[Package] {
-    def write(obj: Package) = obj match { case obj: PackageImpl => addKind(obj.toJson, "package") }
-    def read(json: JsValue) = ??? // The json serialization is supposed to be one way
+  implicit class PackMapJson(val packs: Map[String, Package]) extends AnyVal {
+    def json: String = packs
+      .map { case (k, v) => s"${k.json}: ${v.json}" }
+      .mkString("{",",","}")
   }
-
-  private def addKind(json: JsValue, kind: String): JsValue = json match {
-    case json: JsObject => JsObject(json.fields + ("kind" -> JsString(kind)))
-    case other => other
-  }
-
-  implicit val valFormat: JsonFormat[ValImpl] =
-    lazyFormat(jsonFormat(ValImpl, "name", "modifiers", "path", "returnValue", "comment"))
-  implicit val defFormat: JsonFormat[DefImpl] =
-    lazyFormat(jsonFormat(DefImpl, "name", "modifiers", "path", "returnValue", "typeParams", "paramLists", "comment"))
-  implicit val objFormat: JsonFormat[ObjectImpl] =
-    lazyFormat(jsonFormat(ObjectImpl, "name", "members", "modifiers", "path", "superTypes", "comment"))
-  implicit val traitormat: JsonFormat[TraitImpl] =
-    lazyFormat(jsonFormat(TraitImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
-  implicit val cclassFormat: JsonFormat[CaseClassImpl] =
-    lazyFormat(jsonFormat(CaseClassImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
-  implicit val classFormat: JsonFormat[ClassImpl] =
-    lazyFormat(jsonFormat(ClassImpl, "name", "members", "modifiers", "path", "typeParams", "superTypes", "comment"))
-  implicit val packageFormat: JsonFormat[PackageImpl] =
-    lazyFormat(jsonFormat(PackageImpl, "name", "members", "path", "comment"))
 }
-

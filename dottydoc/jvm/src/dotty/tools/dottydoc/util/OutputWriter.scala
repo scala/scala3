@@ -4,7 +4,6 @@ package util
 import java.io.{File => JFile, BufferedInputStream, FileInputStream, FileOutputStream, BufferedOutputStream}
 import html.EntityPage
 import model.Package
-import spray.json._
 import model.json._
 
 class OutputWriter {
@@ -31,8 +30,7 @@ class OutputWriter {
     }
 
     // Write full index to outPath
-    val pickled = packs.toJson
-    val js = "UnparsedIndex = {}; UnparsedIndex.packages = " + pickled + ";"
+    val js = "UnparsedIndex = {}; UnparsedIndex.packages = " + packs.json + ";"
     println("Writing index.js...")
     writeFile(js, outPath + "/", "index.js")
 

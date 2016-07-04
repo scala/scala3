@@ -6,7 +6,6 @@ import model._
 
 case class EntityPage(entity: Entity, packages: Map[String, Package]) {
   import CustomTags._
-  import spray.json._
   import model.json._
   import util.internal.setters._
 
@@ -78,7 +77,7 @@ case class EntityPage(entity: Entity, packages: Map[String, Package]) {
       )
     ),
     script(
-      raw(s"""|UnparsedIndex.currentEntity = ${entity.flat.toJson};
+      raw(s"""|UnparsedIndex.currentEntity = ${entity.flat.json};
               |dotty.tools.dottydoc.js.DottyDocJS()
               |     .main(document.getElementById("entity-container"));
            """.stripMargin)
