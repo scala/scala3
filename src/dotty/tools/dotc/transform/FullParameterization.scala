@@ -177,7 +177,9 @@ trait FullParameterization {
               tpd.cpy.Return(tree)(expr, Ident(rewired.termRef))
             else
               EmptyTree
-          case Ident(_) => rewireCall(thisRef)
+          case Ident(_) =>
+            if (isWildcardArg(tree)) tree
+            else rewireCall(thisRef)
           case Select(qual, _) => rewireCall(qual)
           case tree @ TypeApply(fn, targs1) =>
             assert(targs.isEmpty)

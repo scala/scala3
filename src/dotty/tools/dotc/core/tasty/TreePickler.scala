@@ -331,7 +331,7 @@ class TreePickler(pickler: TastyPickler) {
     tree match {
       case Ident(name) =>
         tree.tpe match {
-          case tp: TermRef => pickleType(tp)
+          case tp: TermRef if !ast.tpd.isWildcardArg(tree) => pickleType(tp)
           case _ =>
             writeByte(IDENT)
             pickleName(name)

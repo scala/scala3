@@ -158,13 +158,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
       assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
       val extensionMeth = extensionMethod(origMeth)
       ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
-      val store: ListBuffer[Tree] = extensionDefs.get(staticClass) match {
-        case Some(x) => x
-        case None =>
-          val newC = new ListBuffer[Tree]()
-          extensionDefs(staticClass) = newC
-          newC
-      }
+      val store: ListBuffer[Tree] = extensionDefs.getOrElseUpdate(staticClass, new ListBuffer[Tree])
       store += atGroupEnd(fullyParameterizedDef(extensionMeth, tree)(_))
       cpy.DefDef(tree)(rhs = atGroupEnd(forwarder(extensionMeth, tree)(_)))
     } else tree
