@@ -32,6 +32,8 @@ trait ConstraintHandling {
 
   private var addConstraintInvocations = 0
 
+  private var needsCleanup = false
+
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
@@ -124,6 +126,7 @@ trait ConstraintHandling {
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
+    needsCleanup = true
     constraint = constraint.unify(p1, p2)
     val bounds = constraint.nonParamBounds(p1)
     val lo = bounds.lo
@@ -291,7 +294,7 @@ trait ConstraintHandling {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(pt: PolyType, tvars: List[TypeVar]): Unit =
+  def addToConstraint(pt: GenericType, tvars: List[TypeVar]): Unit =
     assert {
       checkPropagated(i"initialized $pt") {
         constraint = constraint.add(pt, tvars)
@@ -431,7 +434,10 @@ trait ConstraintHandling {
     val saved = constraint
     constraint =
       if (addConstraint(param, tp, fromBelow = true) &&
-          addConstraint(param, tp, fromBelow = false)) constraint.replace(param, tp)
+          addConstraint(param, tp, fromBelow = false)) {
+        needsCleanup = true
+        constraint.replace(param, tp, canRemove = false)
+      }
       else saved
     constraint ne saved
   }
@@ -455,4 +461,12 @@ trait ConstraintHandling {
     }
     result
   }
+
+  /** A new constraint with all polytypes that only have instantiated parameters removed */
+  protected def cleanup(): Unit =
+    if (needsCleanup) {
+      constraint =
+        (constraint /: constraint.domainPolys.filter(constraint.isRemovable(_)))(_.remove(_))
+      needsCleanup = false
+    }
 }
