@@ -1,7 +1,8 @@
 package dotty.tools.dottydoc
+package js
 package html
 
-import scalatags.Text.all._
+import scalatags.JsDom.all._
 import scalatags.generic
 import scalatags.generic.Util
 import org.scalajs.dom
