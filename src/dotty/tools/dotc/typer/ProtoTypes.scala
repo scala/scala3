@@ -353,12 +353,12 @@ object ProtoTypes {
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
    *  @return  The added polytype, and the list of created type variables.
    */
-  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
+  def constrained(pt: GenericType, owningTree: untpd.Tree)(implicit ctx: Context): (GenericType, List[TypeVar]) = {
     val state = ctx.typerState
-    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
+    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty && pt.isInstanceOf[PolyType]),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
-    def newTypeVars(pt: PolyType): List[TypeVar] =
+    def newTypeVars(pt: GenericType): List[TypeVar] =
       for (n <- (0 until pt.paramNames.length).toList)
         yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
 
@@ -371,7 +371,7 @@ object ProtoTypes {
   }
 
   /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
-  def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
+  def constrained(pt: GenericType)(implicit ctx: Context): GenericType = constrained(pt, EmptyTree)._1
 
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
