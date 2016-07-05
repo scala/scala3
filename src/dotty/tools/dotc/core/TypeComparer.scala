@@ -360,6 +360,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ =>
       val cls2 = tp2.symbol
       if (cls2.isClass) {
+        if (ctx.isAfterTyper) {
+          val base2 = tp2.baseTypeRef(cls2)
+          base2
+        }
+
         val base = tp1.baseTypeRef(cls2)
         if (base.exists && (base ne tp1)) return isSubType(base, tp2)
         if (cls2 == defn.SingletonClass && tp1.isStable) return true
