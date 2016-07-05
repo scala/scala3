@@ -88,7 +88,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         assert(isSatisfiable, constraint.show)
   }
 
-  protected def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
+  protected def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -374,14 +374,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       compareRefined
     case tp2: RecType =>
-      tp1.safeDealias match {
+      def compareRec = tp1.safeDealias match {
         case tp1: RecType =>
           val rthis1 = RecThis(tp1)
           isSubType(tp1.parent, tp2.parent.substRecThis(tp2, rthis1))
         case _ =>
           val tp1stable = ensureStableSingleton(tp1)
           isSubType(fixRecs(tp1stable, tp1stable.widenExpr), tp2.parent.substRecThis(tp2, tp1stable))
-       }
+      }
+      compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
     case tp2 @ TypeLambda(tparams2, body2) =>

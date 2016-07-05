@@ -1641,6 +1641,7 @@ object SymDenotations {
        */
       def isCachable(tp: Type): Boolean = tp match {
         case _: TypeErasure.ErasedValueType => false
+        case tp: TypeRef if tp.symbol.isClass => true
         case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case tp: TypeProxy => inCache(tp.underlying)
         case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
