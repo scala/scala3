@@ -77,7 +77,7 @@ We invite you to help us build the future of Scala.<br>
 This is the best moment to participate, as everyone can make an impact.<br>
 
 ####SI-2712?
-If scalac will put it into 2.12, we’ll mimic their behaviour. But we have bigger plans for
+Since scalac merged a fix into 2.12, we’ll mimic their behaviour. But we have bigger plans for
 HK-types.
 
 
