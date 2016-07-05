@@ -15,7 +15,7 @@ import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
 import dotty.tools.backend.sjs.GenSJSIR
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -92,6 +92,7 @@ class Compiler {
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
       List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
            new CollectEntryPoints,  // Find classes with main methods
+           new CollectSuperCalls,   // Find classes that are called with super
            new MoveStatics,         // Move static methods to companion classes
            new LabelDefs),          // Converts calls to labels to jumps
       List(new GenSJSIR),           // Generate .js code

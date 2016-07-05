@@ -34,8 +34,11 @@ import NameOps._
 import StdNames.nme
 import NameOps._
 import dotty.tools.dotc.core
+import dotty.tools.dotc.core.Names.TypeName
 
-class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context) extends BackendInterface{
+import scala.annotation.tailrec
+
+class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
@@ -738,9 +741,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile)(implicit ctx: Context
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
-     *
+     * Redundant interfaces are removed unless there is a super call to them.
      */
-    def superInterfaces: List[Symbol] = decorateSymbol(sym).directlyInheritedTraits
+    def superInterfaces: List[Symbol] = {
+      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
+      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
+      val superCalls = superCallsMap.getOrElse(sym, Set.empty)
+      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t))
+    }
 
     /**
      * True for module classes of package level objects. The backend will generate a mirror class for
