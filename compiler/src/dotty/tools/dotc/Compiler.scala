@@ -17,6 +17,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
+import dotty.tools.dotc.transform.linker.{BuildCallGraph, CollectSummaries, DeadCodeElimination}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -46,6 +47,8 @@ class Compiler {
       List(new PostTyper),          // Additional checks and cleanups after type checking
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
+      List(new CollectSummaries),
+      List(new BuildCallGraph),
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
       List(new CheckStatic,         // Check restrictions that apply to @static members
@@ -85,14 +88,16 @@ class Compiler {
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
                                        // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-           new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
-           new GetClass),           // Rewrites getClass calls on primitive types.
+           new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
+           new GetClass,           // Rewrites getClass calls on primitive types.
+           new DeadCodeElimination),
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
-      List(new MoveStatics,         // Move static methods to companion classes
+      List( new DeadCodeElimination,
+           new MoveStatics,         // Move static methods to companion classes
            new ExpandPrivate,       // Widen private definitions accessed from nested classes
            new SelectStatic,        // get rid of selects that would be compiled into GetStatic
            new CollectEntryPoints,  // Find classes with main methods
