@@ -27,7 +27,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val g = ChoiceSetting("-g", "level", "Set level of generated debugging info.", List("none", "source", "line", "vars", "notailcalls"), "vars")
   val help = BooleanSetting("-help", "Print a synopsis of standard options")
   val nowarn = BooleanSetting("-nowarn", "Generate no warnings.")
-  val print = BooleanSetting("-print", "Print program with Scala-specific features removed.")
   val color = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/)
   val target = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
     List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"),
