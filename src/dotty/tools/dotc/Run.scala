@@ -62,8 +62,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         units = phase.runOn(units)
         def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
           for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
-        if (ctx.settings.Xprint.value.containsPhase(phase) ||
-           (ctx.settings.print.value && phase == ctx.allPhases.last))
+        if (ctx.settings.Xprint.value.containsPhase(phase))
           foreachUnit(printTree)
         ctx.informTime(s"$phase ", start)
       }
