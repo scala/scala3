@@ -1824,6 +1824,7 @@ object SymDenotations {
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
+    override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 
