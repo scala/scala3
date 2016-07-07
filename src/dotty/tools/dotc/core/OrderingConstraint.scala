@@ -11,6 +11,7 @@ import config.Config
 import config.Printers._
 import collection.immutable.BitSet
 import reflect.ClassTag
+import annotation.tailrec
 
 object OrderingConstraint {
 
@@ -151,7 +152,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def contains(param: PolyParam): Boolean = {
     val entries = boundsMap(param.binder)
-    entries != null && entries(param.paramNum).isInstanceOf[TypeBounds]
+    entries != null && isBounds(entries(param.paramNum))
   }
 
   def contains(tvar: TypeVar): Boolean = {
@@ -428,7 +429,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       }
 
       var current =
-        if (isRemovable(poly, idx)) remove(poly) else updateEntry(param, replacement)
+        if (isRemovable(poly)) remove(poly) else updateEntry(param, replacement)
       current.foreachParam {(p, i) =>
         current = boundsLens.map(this, current, p, i, replaceParam(_, p, i))
         current = lowerLens.map(this, current, p, i, removeParam)
@@ -449,20 +450,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     newConstraint(boundsMap.remove(pt), removeFromOrdering(lowerMap), removeFromOrdering(upperMap))
   }
 
-  def isRemovable(pt: GenericType, removedParam: Int = -1): Boolean = {
+  def isRemovable(pt: GenericType): Boolean = {
     val entries = boundsMap(pt)
-    var noneLeft = true
-    var i = paramCount(entries)
-    while (noneLeft && i > 0) {
-      i -= 1
-      if (i != removedParam && isBounds(entries(i))) noneLeft = false
-      else typeVar(entries, i) match {
-        case tv: TypeVar =>
-          if (!tv.inst.exists) noneLeft = false // need to keep line around to compute instType
-        case _ =>
+    @tailrec def allRemovable(last: Int): Boolean =
+      if (last < 0) true
+      else typeVar(entries, last) match {
+        case tv: TypeVar => tv.inst.exists && allRemovable(last - 1)
+        case _ => false
       }
-    }
-    noneLeft
+    allRemovable(paramCount(entries) - 1)
   }
 
 // ---------- Exploration --------------------------------------------------------
@@ -473,7 +469,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     for {
       (poly, entries) <- boundsMap.toList
       n <- 0 until paramCount(entries)
-      if isBounds(entries(n))
+      if entries(n).exists
     } yield PolyParam(poly, n)
 
   def forallParams(p: PolyParam => Boolean): Boolean = {

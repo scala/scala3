@@ -164,6 +164,7 @@ trait ConstraintHandling {
         }
       }
     }
+    assert(constraint.contains(param))
     val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
     val inst = avoidParam(bound)
     typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
@@ -282,10 +283,16 @@ trait ConstraintHandling {
           else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)
-        case bound: PolyParam if constraint contains bound =>
-          if (!addParamBound(bound)) NoType
-          else if (fromBelow) defn.NothingType
-          else defn.AnyType
+        case bound: PolyParam =>
+          constraint.entry(bound) match {
+            case NoType => bound
+            case _: TypeBounds =>
+              if (!addParamBound(bound)) NoType
+              else if (fromBelow) defn.NothingType
+              else defn.AnyType
+            case inst =>
+              prune(inst)
+          }
         case _ =>
           bound
       }

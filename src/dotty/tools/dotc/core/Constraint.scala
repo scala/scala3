@@ -117,12 +117,11 @@ abstract class Constraint extends Showable {
    */
   def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This
 
-  /** Is entry associated with `pt` removable?
-   *  @param removedParam The index of a parameter which is still present in the
-   *                      entry array, but is going to be removed at the same step,
-   *                      or -1 if no such parameter exists.
+  /** Is entry associated with `pt` removable? This is the case if
+   *  all type parameters of the entry are associated with type variables
+   *  which have its `inst` fields set.
    */
-  def isRemovable(pt: GenericType, removedParam: Int = -1): Boolean
+  def isRemovable(pt: GenericType): Boolean
 
   /** A new constraint with all entries coming from `pt` removed. */
   def remove(pt: GenericType)(implicit ctx: Context): This
