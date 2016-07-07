@@ -2878,53 +2878,11 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
-      def upperBound = ctx.typerState.constraint.fullUpperBound(origin)
-      def isSingleton(tp: Type): Boolean = tp match {
-        case tp: SingletonType => true
-        case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
-        case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
-        case _ => false
-      }
-      def isFullyDefined(tp: Type): Boolean = tp match {
-        case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
-        case tp: TypeProxy => isFullyDefined(tp.underlying)
-        case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
-        case _ => true
-      }
-      def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
-        case tp: OrType => true
-        case tp: RefinedOrRecType => isOrType(tp.parent)
-        case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
-        case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
-        case _ => false
-      }
-
-      // First, solve the constraint.
-      var inst = ctx.typeComparer.approximation(origin, fromBelow)
-
-      // Then, approximate by (1.) - (3.) and simplify as follows.
-      // 1. If instance is from below and is a singleton type, yet
-      // upper bound is not a singleton type, widen the instance.
-      if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
-        inst = inst.widen
-
-      inst = inst.simplified
-
-      // 2. If instance is from below and is a fully-defined union type, yet upper bound
-      // is not a union type, approximate the union type from above by an intersection
-      // of all common base types.
-      if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
-        inst = inst.approximateUnion
-
-      // 3. If instance is from below, and upper bound has open named parameters
-      //    make sure the instance has all named parameters of the bound.
-      if (fromBelow) inst = inst.widenToNamedTypeParams(this.namedTypeParams)
-
+      val inst = ctx.typeComparer.instanceType(origin, fromBelow)
       if (ctx.typerState.isGlobalCommittable)
         assert(!inst.isInstanceOf[PolyParam], i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
           // If this fails, you might want to turn on Config.debugCheckConstraintsClosed
           // to help find the root of the problem.
-
       instantiateWith(inst)
     }
 
