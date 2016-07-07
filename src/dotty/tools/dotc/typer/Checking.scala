@@ -55,6 +55,24 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: GenericType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
+  /** If type is a higher-kinded application with wildcard arguments,
+   *  check that it or one of its supertypes can be reduced to a normal application.
+   *  Unreducible applications correspond to general existentials, and we
+   *  cannot handle those.
+   */
+  def checkWildcardHKApply(tp: Type, pos: Position)(implicit ctx: Context): Unit = tp match {
+    case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
+      tycon match {
+        case tycon: TypeLambda =>
+          ctx.errorOrMigrationWarning(
+            d"unreducible application of higher-kinded type $tycon to wildcard arguments",
+            pos)
+        case _ =>
+          checkWildcardHKApply(tp.superType, pos)
+      }
+    case _ =>
+  }
+
   /** Traverse type tree, performing the following checks:
    *  1. All arguments of applied type trees must conform to their bounds.
    *  2. Prefixes of type selections and singleton types must be realizable.
@@ -74,6 +92,10 @@ object Checking {
           val bounds = tparams.map(tparam =>
             tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
           checkBounds(args, bounds, _.substDealias(tparams, _))
+
+          def checkValidIfHKApply(implicit ctx: Context): Unit =
+            checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
+          checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
         case Select(qual, name) if name.isTypeName =>
           checkRealizable(qual.tpe, qual.pos)
         case SelectFromTypeTree(qual, name) if name.isTypeName =>

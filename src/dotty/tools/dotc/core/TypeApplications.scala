@@ -129,8 +129,10 @@ object TypeApplications {
   /** A type map that tries to reduce a (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
    *  Non-wildcard arguments are substituted everywhere as usual. A wildcard argument
-   *  `>: L <: H` is substituted for a type lambda parameter `X` only if `X` appears
-   *  in a toplevel refinement of the form
+   *  `>: L <: H` is substituted for a type lambda parameter `X` only under certain conditions.
+   *
+   *  1. If Mode.AllowLambdaWildcardApply is set:
+   *  The wildcard argument is substituted only if `X` appears in a toplevel refinement of the form
    *
    *        { type A = X }
    *
@@ -141,19 +143,48 @@ object TypeApplications {
    *
    *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
    *  in the reduced type have been replaced with arguments.
+   *
+   *  2. If Mode.AllowLambdaWildcardApply is not set:
+   *  All refinements of the form
+   *
+   *        { type A = X }
+   *
+   *  are replaced by:
+   *
+   *        { type A >: L <: U }
+   *
+   *  Any other occurrence of `X` in `tycon` is replaced by `U`, if the
+   *  occurrence of `X` in `tycon` is covariant, or nonvariant, or by `L`,
+   *  if the occurrence is contravariant.
+   *
+   *  The idea is that the `AllowLambdaWildcardApply` mode is used to check whether
+   *  a type can be soundly reduced, and to give an error or warning if that
+   *  is not the case. By contrast, the default mode, with `AllowLambdaWildcardApply`
+   *  not set, reduces all applications even if this yields a different type, so
+   *  its postcondition is that no type parameters of `tycon` appear in the
+   *  result type. Using this mode, we can guarantee that `appliedTo` will never
+   *  produce a higher-kinded application with a type lambda as type constructor.
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private var available = Set((0 until args.length): _*)
     var allReplaced = true
     def hasWildcardArg(p: PolyParam) =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
+    def canReduceWildcard(p: PolyParam) =
+      !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def apply(t: Type) = t match {
-      case t @ TypeAlias(p: PolyParam) if hasWildcardArg(p) && available.contains(p.paramNum) =>
+      case t @ TypeAlias(p: PolyParam) if hasWildcardArg(p) && canReduceWildcard(p) =>
         available -= p.paramNum
         args(p.paramNum)
       case p: PolyParam if p.binder == tycon =>
-        if (hasWildcardArg(p)) { allReplaced = false; p }
-        else args(p.paramNum)
+        args(p.paramNum) match {
+          case TypeBounds(lo, hi) =>
+            if (ctx.mode.is(Mode.AllowLambdaWildcardApply)) { allReplaced = false; p }
+            else if (variance < 0) lo
+            else hi
+          case arg =>
+            arg
+        }
       case _: TypeBounds | _: HKApply =>
         val saved = available
         available = Set()

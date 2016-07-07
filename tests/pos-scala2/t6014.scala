@@ -3,7 +3,7 @@ object Test {
   type Alias[T] = Seq[CC[T]]
 
   def f(xs: Seq[CC[_]]) = xs map { case CC(x) => CC(x) }    // ok
-  def g(xs: Alias[_])   = xs map { case CC(x) => CC(x) }    // fails
+  def g(xs: Alias[_])   = xs map { case CC(x) => CC(x) }    // migration warning: unreducible application
   // ./a.scala:11: error: missing parameter type for expanded function
   // The argument types of an anonymous function must be fully known. (SLS 8.5)
   // Expected type was: ?

@@ -29,7 +29,6 @@ class tests extends CompilerTest {
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   }
 
-
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val twice = List("#runs", "2")
