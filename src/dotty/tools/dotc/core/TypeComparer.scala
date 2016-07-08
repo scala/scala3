@@ -364,9 +364,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               // This twist is needed to make collection/generic/ParFactory.scala compile
               fourthTry(tp1, tp2) || compareRefinedSlow
             case _ =>
-              compareRefinedSlow ||
-              fourthTry(tp1, tp2) ||
-              compareAliasedRefined(tp2, tp1, inOrder = false) // @@@ still needed?
+              compareRefinedSlow || fourthTry(tp1, tp2)
           }
         else // fast path, in particular for refinements resulting from parameterization.
           isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
@@ -525,8 +523,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
       isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
-      isNewSubType(tp1.parent, tp2) ||
-      compareAliasedRefined(tp1, tp2, inOrder = true)
+      isNewSubType(tp1.parent, tp2)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
     case HKApply(tycon1, args1) =>
@@ -715,32 +712,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     recur(tp1.baseClasses)
   }
 
-  /** Say we are comparing a refined type `P{type M = U}` or `P{type M >: L <: U}`.
-   *  If P#M refers to a BaseTypeArg aliased to some other typeref P#N,
-   *  do the same comparison with `P{type N = U}` or `P{type N >: L <: U}`, respectively.
-   *  This allows to handle situations involving named type params like this one:
-   *
-   *      trait Lambda[type Elem]
-   *      trait Lst[T] extends Lambda[T]
-   *
-   *  compareAliasedRefined is necessary so we establish that
-   *
-   *      Lst[Int] = Lst[Elem = Int]
-   */
-  private def compareAliasedRefined(rt: RefinedType, other: Type, inOrder: Boolean) = {
-    val mbr = refinedSymbol(rt)
-    mbr.is(BaseTypeArg) && {
-      mbr.info match {
-        case TypeAlias(TypeRef(_, aliasName)) =>
-          val rt1 = rt.derivedRefinedType(rt.parent, aliasName, rt.refinedInfo)
-          subtyping.println(i"rewiring $rt to $rt1 in comparison with $other")
-          if (inOrder) isSubType(rt1, other) else isSubType(other, rt1)
-        case _ =>
-          false
-      }
-    }
-  }
-
   /** Replace any top-level recursive type `{ z => T }` in `tp` with
    *  `[z := anchor]T`.
    */
@@ -759,9 +730,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
     fix(tp)
   }
-
-  /** The symbol referred to in the refinement of `rt` */
-  private def refinedSymbol(rt: RefinedType) = rt.parent.member(rt.refinedName).symbol
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
@@ -899,8 +867,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def isCovered(tp: Type): Boolean = tp.dealias.stripTypeVar match {
     case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
     case tp: ProtoType => false
-    case tp: RefinedType => isCovered(tp.parent) && !refinedSymbol(tp).is(BaseTypeArg)
-    case tp: RecType => isCovered(tp.parent)
+    case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
     case AndType(tp1, tp2) => isCovered(tp1) && isCovered(tp2)
     case _ => false
