@@ -813,14 +813,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.isRef(tparam)}")
-    !bound.isRef(tparam) && {
-      val oldBounds = ctx.gadt.bounds(tparam)
-      val newBounds =
-        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
-        else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
-      isSubType(newBounds.lo, newBounds.hi) &&
-      { ctx.gadt.setBounds(tparam, newBounds); true }
+    typr.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.isRef(tparam)}")
+    if (bound.isRef(tparam)) false
+    else bound match {
+      case bound: TypeRef
+      if bound.symbol.is(BindDefinedType) && ctx.gadt.bounds.contains(bound.symbol) &&
+         !tr.symbol.is(BindDefinedType) =>
+        // Avoid having pattern-bound types in gadt bounds,
+        // as these might be eliminated once the pattern is typechecked.
+        // Pattern-bound type symbols should be narrowed first, only if that fails
+        // should symbols in the environment be constrained.
+        narrowGADTBounds(bound, tr, !isUpper)
+      case _ =>
+        val oldBounds = ctx.gadt.bounds(tparam)
+        val newBounds =
+          if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
+          else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
+        isSubType(newBounds.lo, newBounds.hi) &&
+        { ctx.gadt.setBounds(tparam, newBounds); true }
     }
   }
 

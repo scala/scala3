@@ -448,11 +448,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
               case _ =>
             }
-          case tref: TypeRef if tref.symbol.isClass && !ctx.isAfterTyper =>
-            val setBefore = ctx.mode is Mode.GADTflexible
-            tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
-            if (!setBefore) ctx.retractMode(Mode.GADTflexible)
           case _ =>
+            if (!ctx.isAfterTyper) {
+              val setBefore = ctx.mode is Mode.GADTflexible
+              tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
+              if (!setBefore) ctx.retractMode(Mode.GADTflexible)
+            }
         }
         ascription(tpt1, isWildcard = true)
       }
@@ -762,17 +763,37 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
 
-    def caseRest(pat: Tree)(implicit ctx: Context) = {
-      pat foreachSubTree {
-        case b: Bind =>
-          if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-          else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
-        case _ =>
+    /** - replace all references to symbols associated with wildcards by their GADT bounds
+     *  - enter all symbols introduced by a Bind in current scope
+     */
+    val indexPattern = new TreeMap {
+      val elimWildcardSym = new TypeMap {
+        def apply(t: Type) = t match {
+          case ref @ TypeRef(_, tpnme.WILDCARD) if ctx.gadt.bounds.contains(ref.symbol) =>
+            ctx.gadt.bounds(ref.symbol)
+          case TypeAlias(ref @ TypeRef(_, tpnme.WILDCARD)) if ctx.gadt.bounds.contains(ref.symbol) =>
+            ctx.gadt.bounds(ref.symbol)
+          case _ =>
+            mapOver(t)
+        }
       }
+      override def transform(tree: Tree)(implicit ctx: Context) =
+        super.transform(tree.withType(elimWildcardSym(tree.tpe))) match {
+          case b: Bind =>
+            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
+            else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
+            b.symbol.info = elimWildcardSym(b.symbol.info)
+            b
+          case t => t
+        }
+    }
+
+    def caseRest(pat: Tree)(implicit ctx: Context) = {
+      val pat1 = indexPattern.transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       val body1 = ensureNoLocalRefs(typedExpr(tree.body, pt), pt, ctx.scope.toList)
         .ensureConforms(pt)(originalCtx) // insert a cast if body does not conform to expected type if we disregard gadt bounds
-      assignType(cpy.CaseDef(tree)(pat, guard1, body1), body1)
+      assignType(cpy.CaseDef(tree)(pat1, guard1, body1), body1)
     }
 
     val gadtCtx =
@@ -963,11 +984,30 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.ByNameTypeTree(tree)(result1), result1)
   }
 
+  /** Define a new symbol associated with a Bind or pattern wildcard and
+   *  make it gadt narrowable.
+   */
+  private def newPatternBoundSym(name: Name, info: Type, pos: Position)(implicit ctx: Context) = {
+    val flags = if (name.isTypeName) BindDefinedType else EmptyFlags
+    val sym = ctx.newSymbol(ctx.owner, name, flags | Case, info, coord = pos)
+    if (name.isTypeName) ctx.gadt.setBounds(sym, info.bounds)
+    sym
+  }
+
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
     val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
+    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
+    if (ctx.mode.is(Mode.Pattern)) {
+      // Associate a pattern-bound type symbol with the wildcard.
+      // The bounds of the type symbol can be constrained when comparing a pattern type
+      // with an expected type in typedTyped. The type symbol is eliminated once
+      // the enclosing pattern has been typechecked; see `indexPattern` in `typedCase`.
+      val wildcardSym = newPatternBoundSym(tpnme.WILDCARD, tree1.tpe, tree.pos)
+      tree1.withType(wildcardSym.typeRef)
+    }
+    else tree1
   }
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
@@ -983,8 +1023,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, arg).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
-        val flags = if (tree.isType) BindDefinedType else EmptyFlags
-        val sym = ctx.newSymbol(ctx.owner, tree.name, flags | Case, body1.tpe, coord = tree.pos)
+        val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
         assignType(cpy.Bind(tree)(tree.name, body1), sym)
     }
   }
