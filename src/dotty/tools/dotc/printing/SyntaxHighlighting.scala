@@ -77,10 +77,15 @@ object SyntaxHighlighting {
         (n: @switch) match {
           case '/'  =>
             if (remaining.nonEmpty) {
-              takeChar() match {
-                case '/' => eolComment()
-                case '*' => blockComment()
-                case x => newBuf += '/'; remaining = x #:: remaining
+              remaining.head match {
+                case '/' =>
+                  takeChar()
+                  eolComment()
+                case '*' =>
+                  takeChar()
+                  blockComment()
+                case x =>
+                  newBuf += '/'
               }
             } else newBuf += '/'
           case '='  =>
