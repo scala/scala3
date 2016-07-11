@@ -398,7 +398,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // This wpuld mean that there is no convenient means anymore to express a kind
           // as a supertype. The fix is to delay the checking of bounds so that only
           // bounds of * types are checked.
-          variancesConform(tparams1, tparams2) && isSubType(body1, body2.subst(tp2, tp1))
+          val saved = comparingLambdas
+          comparingLambdas = true
+          try
+            variancesConform(tparams1, tparams2) &&
+            isSubType(body1, body2.subst(tp2, tp1))
+          finally comparingLambdas = saved
         case _ =>
           if (!tp1.isHK) {
             tp2 match {
@@ -592,32 +597,54 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         false
     }
 
-    /** `param2` can be instantiated to the type constructor of the LHS
-     *  or to the type constructor of one of the LHS base class instances
+    /** `param2` can be instantiated to a type application prefix of the LHS
+     *  or to a type application prefix of one of the LHS base class instances
      *  and the resulting type application is a supertype of `tp1`,
      *  or fallback to fourthTry.
      */
     def canInstantiate(param2: PolyParam): Boolean = {
 
-      /** `param2` can be instantiated to `tycon1a`.
-       *  and the resulting type application is a supertype of `tp1`.
+      /** Let
+       *
+       *    `tparams_1, ..., tparams_k-1`    be the type parameters of the rhs
+       *    `tparams1_1, ..., tparams1_n-1`  be the type parameters of the constructor of the lhs
+       *    `args1_1, ..., args1_n-1`        be the type arguments of the lhs
+       *    `d  =  n - k`
+       *
+       *  Returns `true` iff `d >= 0` and `param2` can be instantiated to
+       *
+       *      [tparams1_d, ... tparams1_n-1] -> tycon1a[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
+       *
+       *  such that the resulting type application is a supertype of `tp1`.
        */
-      def tyconOK(tycon1a: Type) =
-        variancesConform(tycon1a.typeParams, tparams) && {
-          (ctx.mode.is(Mode.TypevarsMissContext) ||
-           tryInstantiate(param2, tycon1a.ensureHK)) &&
-          isSubType(tp1, tycon1a.appliedTo(args2))
+      def tyconOK(tycon1a: Type, args1: List[Type]) = {
+        var tycon1b = tycon1a
+        val tparams1a = tycon1a.typeParams
+        val lengthDiff = tparams1a.length - tparams.length
+        lengthDiff >= 0 && {
+          val tparams1 = tparams1a.drop(lengthDiff)
+          variancesConform(tparams1, tparams) && {
+            if (lengthDiff > 0)
+              tycon1b = tycon1a
+                .appliedTo(args1.take(lengthDiff) ++ tparams1.map(_.paramRef))
+                .LambdaAbstract(tparams1)
+            (ctx.mode.is(Mode.TypevarsMissContext) ||
+              tryInstantiate(param2, tycon1b.ensureHK)) &&
+              isSubType(tp1, tycon1b.appliedTo(args2))
+          }
         }
+      }
 
       tp1.widen match {
-        case tp1w @ HKApply(tycon1, _) =>
-          tyconOK(tycon1)
+        case tp1w @ HKApply(tycon1, args1) =>
+          tyconOK(tycon1, args1)
         case tp1w =>
           tp1w.typeSymbol.isClass && {
             val classBounds = tycon2.classSymbols
             def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
               case bc :: bcs1 =>
-                classBounds.exists(bc.derivesFrom) && tyconOK(tp1w.baseTypeRef(bc)) ||
+                classBounds.exists(bc.derivesFrom) &&
+                tyconOK(tp1w.baseTypeRef(bc), tp1w.baseArgInfos(bc)) ||
                 liftToBase(bcs1)
               case _ =>
                 false

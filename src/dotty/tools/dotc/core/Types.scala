@@ -2614,12 +2614,14 @@ object Types {
     def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = paramBounds
     def paramVariance(implicit ctx: Context): Int = tl.variances(n)
     def toArg: Type = PolyParam(tl, n)
+    def paramRef(implicit ctx: Context): Type = PolyParam(tl, n)
   }
 
   object TypeLambda {
     def apply(paramNames: List[TypeName], variances: List[Int])(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)(implicit ctx: Context): TypeLambda = {
       unique(new TypeLambda(paramNames, variances)(paramBoundsExp, resultTypeExp))
     }
+
     def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
       if (tparams.isEmpty) resultType
       else apply(tparams map (_.name.asTypeName), tparams.map(_.variance))(

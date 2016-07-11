@@ -341,11 +341,11 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  TODO: Handle parameterized lower bounds
    */
-  def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
+  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
       TypeLambda(
-        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.variance))(
-          tl => tparams.map(tparam => tl.lifted(tparams, tparam.info).bounds),
+        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.paramVariance))(
+          tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
     assert(!isHK, self)
     self match {

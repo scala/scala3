@@ -35,6 +35,11 @@ trait ConstraintHandling {
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
+  /** We are currently comparing lambdas. Used as a flag for
+   *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
+   */
+  protected var comparingLambdas = false
+
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
@@ -289,6 +294,34 @@ trait ConstraintHandling {
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
 
+      /** When comparing lambdas we might get constraints such as
+       *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
+       *  and `X0` is a lambda parameter. The constraint for `A` is not allowed
+       *  to refer to such a lambda parameter because the lambda parameter is
+       *  not visible where `A` is defined. Consequently, we need to
+       *  approximate the bound so that the lambda parameter does not appear in it.
+       *  Test case in neg/i94-nada.scala. This test crashes with an illegal instance
+       *  error when the rest of the SI-2712 fix is applied but `pruneLambdaParams` is
+       *  missing.
+       */
+      def pruneLambdaParams(tp: Type) =
+        if (comparingLambdas) {
+          val approx = new ApproximatingTypeMap {
+            def apply(t: Type): Type = t match {
+              case t @ PolyParam(tl: TypeLambda, n) =>
+                val effectiveVariance = if (fromBelow) -variance else variance
+                val bounds = tl.paramBounds(n)
+                if (effectiveVariance > 0) bounds.hi
+                else if (effectiveVariance < 0 ) bounds.lo
+                else NoType
+              case _ =>
+                mapOver(t)
+            }
+          }
+          approx(tp)
+        }
+        else tp
+
       def addParamBound(bound: PolyParam) =
         if (fromBelow) addLess(bound, param) else addLess(param, bound)
 
@@ -336,7 +369,7 @@ trait ConstraintHandling {
           prune(bound.underlying)
         case bound: PolyParam =>
           constraint.entry(bound) match {
-            case NoType => bound
+            case NoType => pruneLambdaParams(bound)
             case _: TypeBounds =>
               if (!addParamBound(bound)) NoType
               else if (fromBelow) defn.NothingType
@@ -345,7 +378,7 @@ trait ConstraintHandling {
               prune(inst)
           }
         case _ =>
-          bound
+          pruneLambdaParams(bound)
       }
 
       try bound match {

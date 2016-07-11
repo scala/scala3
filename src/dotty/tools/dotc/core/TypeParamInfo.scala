@@ -26,4 +26,7 @@ trait TypeParamInfo {
 
   /** The variance of the type parameter */
   def paramVariance(implicit ctx: Context): Int
+
+  /** A type that refers to the parameter */
+  def paramRef(implicit ctx: Context): Type
 }
