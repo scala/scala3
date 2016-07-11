@@ -404,13 +404,14 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case tp: ThisType =>
         apiThis(tp.cls)
       case RecThis(binder) =>
-        apiThis(binder.typeSymbol) // !!! this is almost certainly wrong !!!
+        apiThis(binder.typeSymbol) // !!! this is almost certainly wrong: binder does not always have a typeSymbol !!!
       case tp: ParamType =>
         new api.ParameterRef(tp.paramName.toString)
       case tp: LazyRef =>
         apiType(tp.ref)
       case tp: TypeVar =>
         apiType(tp.underlying)
+      // !!! missing cases: TypeLambda, HKApply
       case _ => {
         ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType

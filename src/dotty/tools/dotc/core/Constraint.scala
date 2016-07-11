@@ -119,7 +119,7 @@ abstract class Constraint extends Showable {
 
   /** Is entry associated with `pt` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
-   *  which have its `inst` fields set.
+   *  which have their `inst` fields set.
    */
   def isRemovable(pt: GenericType): Boolean
 

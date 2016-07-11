@@ -531,7 +531,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       isNewSubType(tp1.parent, tp2)
     case tp1: RecType =>
       isNewSubType(tp1.parent, tp2)
-    case HKApply(tycon1, args1) =>
+    case tp1 @ HKApply(tycon1, args1) =>
       compareHkApply1(tp1, tycon1, args1, tp2)
     case EtaExpansion(tycon1) =>
       isSubType(tycon1, tp2)
@@ -567,10 +567,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Subtype test for the hk application `tp2 = tycon2[args2]`.
    */
-  def compareHkApply2(tp1: Type, tp2: Type, tycon2: Type, args2: List[Type]): Boolean = {
+  def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     val tparams = tycon2.typeParams
     assert(tparams.nonEmpty)
 
+    /** True if `tp1` and `tp2` have compatible type constructors and their
+     *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
+     */
     def isMatchingApply(tp1: Type): Boolean = tp1 match {
       case HKApply(tycon1, args1) =>
         tycon1.dealias match {
@@ -602,7 +605,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
      *  and the resulting type application is a supertype of `tp1`,
      *  or fallback to fourthTry.
      */
-    def canInstantiate(param2: PolyParam): Boolean = {
+    def canInstantiate(tycon2: PolyParam): Boolean = {
 
       /** Let
        *
@@ -611,7 +614,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
        *    `args1_1, ..., args1_n-1`        be the type arguments of the lhs
        *    `d  =  n - k`
        *
-       *  Returns `true` iff `d >= 0` and `param2` can be instantiated to
+       *  Returns `true` iff `d >= 0` and `tycon2` can be instantiated to
        *
        *      [tparams1_d, ... tparams1_n-1] -> tycon1a[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
        *
@@ -629,7 +632,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 .appliedTo(args1.take(lengthDiff) ++ tparams1.map(_.paramRef))
                 .LambdaAbstract(tparams1)
             (ctx.mode.is(Mode.TypevarsMissContext) ||
-              tryInstantiate(param2, tycon1b.ensureHK)) &&
+              tryInstantiate(tycon2, tycon1b.ensureHK)) &&
               isSubType(tp1, tycon1b.appliedTo(args2))
           }
         }
@@ -690,7 +693,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Subtype test for the hk application `tp1 = tycon1[args1]`.
    */
-  def compareHkApply1(tp1: Type, tycon1: Type, args1: List[Type], tp2: Type): Boolean =
+  def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean =
     tycon1 match {
       case param1: PolyParam =>
         def canInstantiate = tp2 match {
@@ -716,7 +719,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       val v = tparams.head.paramVariance
       (v > 0 || isSubType(args2.head, args1.head)) &&
       (v < 0 || isSubType(args1.head, args2.head))
-    }
+    } && isSubArgs(args1.tail, args2.tail, tparams)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
@@ -1522,7 +1525,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
-  override def compareHkApply2(tp1: Type, tp2: Type, tycon2: Type, args2: List[Type]): Boolean = {
+  override def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     def addendum = ""
     traceIndented(i"compareHkApply $tp1, $tp2$addendum") {
       super.compareHkApply2(tp1, tp2, tycon2, args2)

@@ -494,6 +494,7 @@ object Symbols {
     def paramName(implicit ctx: Context): Name = name
     def paramBounds(implicit ctx: Context) = denot.info.bounds
     def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
+    def paramBoundsOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
     def paramVariance(implicit ctx: Context) = denot.variance
     def paramRef(implicit ctx: Context) = denot.typeRef
 

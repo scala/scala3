@@ -1209,7 +1209,7 @@ object SymDenotations {
     private[this] var myNamedTypeParams: Set[TypeSymbol] = _
 
     /** The type parameters in this class, in the order they appear in the current
-     *  scope `decls`. This is might be temporarily the incorrect order when
+     *  scope `decls`. This might be temporarily the incorrect order when
      *  reading Scala2 pickled info. The problem is fixed by `updateTypeParams`
      *  which is called once an unpickled symbol has been completed.
      */
@@ -1543,18 +1543,19 @@ object SymDenotations {
     }
 
     /** Make sure the type parameters of this class appear in the order given
-     *  by `tparams` in the scope of the class. Reorder definitions in scope if necessary.
-     *  @pre  All type parameters in `tparams` are entered in class scope `info.decls`.
+     *  by `typeParams` in the scope of the class. Reorder definitions in scope if necessary.
      */
-    def updateTypeParams(tparams: List[Symbol])(implicit ctx: Context): Unit =
-      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(typeParams)(_.name == _.name)) {
+    def ensureTypeParamsInCorrectOrder()(implicit ctx: Context): Unit = {
+      val tparams = typeParams
+      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
         val decls = info.decls
         val decls1 = newScope
-        for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
+        for (tparam <- typeParams) decls1.enter(decls.lookup(tparam.name))
         for (sym <- decls) if (!tparams.contains(sym)) decls1.enter(sym)
         info = classInfo.derivedClassInfo(decls = decls1)
         myTypeParams = null
       }
+    }
 
     /** All members of this class that have the given name.
      *  The elements of the returned pre-denotation all

@@ -134,7 +134,7 @@ object Scala2Unpickler {
 
     denot.info = ClassInfo( // final info, except possibly for typeparams ordering
       denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
-    denot.updateTypeParams(tparams)
+    denot.ensureTypeParamsInCorrectOrder()
   }
 }
 
@@ -733,7 +733,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
-        else if (args.nonEmpty) tycon.safeAppliedTo(etaExpandIfHK(sym.typeParams, args))
+        else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>

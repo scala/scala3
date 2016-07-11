@@ -50,7 +50,7 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   /** The degree to which this signature matches `that`.
    *  If parameter names are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
-   *  If only the parameter names are constistent, the result is `ParamMatch` before erasure and
+   *  If only the parameter names are consistent, the result is `ParamMatch` before erasure and
    *  `NoMatch` otherwise.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
@@ -71,7 +71,7 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
     Signature((params.map(sigName(_, isJava))) ++ paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
-   *  `tpnme.Uninstantited`. Under-defined signatures arise when taking a signature
+   *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
    *  of a type that still contains uninstantiated type variables. They are eliminated
    *  by `fixSignature` in `PostTyper`.
    */

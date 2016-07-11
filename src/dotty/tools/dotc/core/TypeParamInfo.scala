@@ -9,7 +9,9 @@ import Types.{Type, TypeBounds}
  */
 trait TypeParamInfo {
 
-  /** Is this the info of a type parameter? Might be wrong for symbols */
+  /** Is this the info of a type parameter? Will return `false` for symbols
+   *  that are not type parameters.
+   */
   def isTypeParam(implicit ctx: Context): Boolean
 
   /** The name of the type parameter */
@@ -19,10 +21,16 @@ trait TypeParamInfo {
   def paramBounds(implicit ctx: Context): TypeBounds
 
   /** The info of the type parameter as seen from a prefix type.
-   *  This can be different from `memberInfo` if the binding
-   *  is a type symbol of a class.
+   *  For type parameter symbols, this is the `memberInfo` as seen from `prefix`.
+   *  For type lambda parameters, it's the same as `paramBounds` as 
+   *  `asSeenFrom` has already been applied to the whole type lambda.
    */
   def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds
+  
+  /** The parameter bounds, or the completer if the type parameter
+   *  is an as-yet uncompleted symbol.
+   */
+  def paramBoundsOrCompleter(implicit ctx: Context): Type 
 
   /** The variance of the type parameter */
   def paramVariance(implicit ctx: Context): Int

@@ -385,13 +385,7 @@ trait ConstraintHandling {
         case bound: PolyParam if constraint contains bound =>
           addParamBound(bound)
         case _ =>
-          var pbound = prune(bound)
-          if (pbound.isHK && !param.isHK) {
-            param match {
-              case EtaExpansion(tycon) if tycon.symbol.isClass => pbound = tycon
-              case _ =>
-            }
-          }
+          val pbound = prune(bound)
           pbound.exists && (
             if (fromBelow) addLowerBound(param, pbound) else addUpperBound(param, pbound))
       }

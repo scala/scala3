@@ -452,7 +452,7 @@ object Types {
           // We have to be careful because we might open the same (wrt eq) recursive type
           // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
           // call below. To avoid this problem we do a defensive copy of the recursive
-          // type first. But if we do this always we risk being inefficient and we run into
+          // type first. But if we do this always we risk being inefficient and we ran into
           // stackoverflows when compiling pos/hk.scala under the refinement encoding
           // of hk-types. So we only do a copy if the type
           // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
@@ -470,7 +470,7 @@ object Types {
           //
           // fails (in fact it thinks the underlying type of the LHS is `Tree[Untyped]`.)
           //
-          // Without the without the `openedTwice` trick, Typer.scala fails to Ycheck
+          // Without the `openedTwice` trick, Typer.scala fails to Ycheck
           // at phase resolveSuper.
           val rt =
             if (tp.opened) { // defensive copy
@@ -2510,7 +2510,7 @@ object Types {
       else duplicate(paramNames, paramBounds, resType)
 
     /** PolyParam references to all type parameters of this type */
-    def paramRefs: List[PolyParam] = paramNames.indices.toList.map(PolyParam(this, _))
+    lazy val paramRefs: List[PolyParam] = paramNames.indices.toList.map(PolyParam(this, _))
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
@@ -2518,7 +2518,7 @@ object Types {
     def lifted(tparams: List[TypeParamInfo], tp: Type)(implicit ctx: Context): Type =
       tparams match {
         case LambdaParam(poly, _) :: _ => tp.subst(poly, this)
-        case tparams: List[Symbol] => tp.subst(tparams, paramRefs)
+        case tparams: List[Symbol @unchecked] => tp.subst(tparams, paramRefs)
       }
 
     override def equals(other: Any) = other match {
@@ -2612,6 +2612,7 @@ object Types {
     def paramName(implicit ctx: Context): TypeName = tl.paramNames(n)
     def paramBounds(implicit ctx: Context): TypeBounds = tl.paramBounds(n)
     def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = paramBounds
+    def paramBoundsOrCompleter(implicit ctx: Context): Type = paramBounds
     def paramVariance(implicit ctx: Context): Int = tl.variances(n)
     def toArg: Type = PolyParam(tl, n)
     def paramRef(implicit ctx: Context): Type = PolyParam(tl, n)
@@ -2643,7 +2644,7 @@ object Types {
 
     override def superType(implicit ctx: Context): Type = tycon match {
       case tp: TypeLambda => defn.AnyType
-      case tp: TypeProxy => tp.superType.appliedTo(args)
+      case tp: TypeProxy => tp.superType.applyIfParameterized(args)
       case _ => defn.AnyType
     }
 /*

@@ -41,7 +41,7 @@ object TypeApplications {
   /** Does variance `v1` conform to variance `v2`?
    *  This is the case if the variances are the same or `sym` is nonvariant.
    */
-  def varianceConforms(v1: Int, v2: Int)(implicit ctx: Context): Boolean =
+  def varianceConforms(v1: Int, v2: Int): Boolean =
     v1 == v2 || v2 == 0
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
@@ -49,7 +49,7 @@ object TypeApplications {
   def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
     varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
 
-  /** Doe the variances of type parameters `tparams1` conform to the variances
+  /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case of `tparams1` and `tparams2` have the same length.
    */
@@ -116,17 +116,11 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def etaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
+  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
-    else {
-      def bounds(tparam: TypeParamInfo) = tparam match {
-        case tparam: Symbol => tparam.infoOrCompleter
-        case tparam: LambdaParam => tparam.paramBounds
-      }
-      args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(bounds(tparam)))
-    }
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramBoundsOrCompleter))
 
-  /** A type map that tries to reduce a (part of) the result type of the type lambda `tycon`
+  /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
    *  Non-wildcard arguments are substituted everywhere as usual. A wildcard argument
    *  `>: L <: H` is substituted for a type lambda parameter `X` only under certain conditions.
@@ -166,7 +160,7 @@ object TypeApplications {
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
-    private var available = Set((0 until args.length): _*)
+    private var available = (0 until args.length).toSet
     var allReplaced = true
     def hasWildcardArg(p: PolyParam) =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
@@ -320,7 +314,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeLambda => true
     case self: HKApply => false
     case self: SingletonType => false
-    case self: TypeVar => self.origin.isHK // discrepancy with typeParams, why?
+    case self: TypeVar =>
+      // Using `origin` instead of `underlying`, as is done for typeParams,
+      // avoids having to set ephemeral in some cases.
+      self.origin.isHK
     case self: WildcardType => self.optBounds.isHK
     case self: TypeProxy => self.underlying.isHK
     case _ => false
@@ -378,7 +375,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (isHK) self else EtaExpansion(self)
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
-  def etaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
+  def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
