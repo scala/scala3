@@ -113,7 +113,7 @@ object factories {
 
     case mt: MethodType =>
       mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
-        NamedReference(name.decode.toString, returnType(tpe))
+        NamedReference(name.decode.toString, returnType(tpe), tpe.isInstanceOf[ExprType])
       } :: paramLists(mt.resultType)
 
     case annot: AnnotatedType => paramLists(annot.tpe)

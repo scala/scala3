@@ -86,7 +86,7 @@ trait MemberLayout {
               xs.flatMap { tr =>
                 Seq(
                   span(cls := "param-name", tr.title).render,
-                  span(cls := "type-separator no-left-margin", ":").render,
+                  span(cls := "type-separator no-left-margin", if (tr.isByName) ": =>" else ":").render,
                   span(referenceToLinks(tr.ref)).render,
                   span(cls := "type-separator no-left-margin", ",").render
                 )

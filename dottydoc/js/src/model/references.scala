@@ -35,6 +35,7 @@ trait AndTypeReference extends Reference {
 trait NamedReference extends Reference {
   val title: String
   val ref: Reference
+  val isByName: Boolean
 }
 
 @ScalaJSDefined

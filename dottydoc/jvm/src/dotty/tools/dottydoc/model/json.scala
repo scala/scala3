@@ -20,6 +20,10 @@ object json {
     }
   }
 
+  implicit class JsonBoolean(val boo: Boolean) extends AnyVal {
+    def json: String = if (boo) "true" else "false"
+  }
+
   implicit class JsonComment(val cmt: Comment) extends AnyVal {
     def json: String = s"""{"body":${cmt.body.json},"short":${cmt.short.json}}"""
   }
@@ -43,7 +47,7 @@ object json {
     case ref: OrTypeReference =>
       s"""{"left":${refToJson(ref.left)},"right":${refToJson(ref.right)},"kind":"OrTypeReference"}"""
     case ref: NamedReference =>
-      s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"kind":"NamedReference"}"""
+      s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"isByName":${ref.isByName.json},"kind":"NamedReference"}"""
     case ref: ConstantReference =>
       s"""{"title":${ref.title.json},"kind": "ConstantReference"}"""
   }
