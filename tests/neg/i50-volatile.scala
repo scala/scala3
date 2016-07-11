@@ -3,10 +3,10 @@ class Test {
     class Inner
   }
   type A <: Base {
-    type X = String                                     // error
+    type X = String                                     // old-error
   }
   type B <: {
-    type X = Int                                        // error
+    type X = Int                                        // old-error
   }
   lazy val o: A & B = ???
 

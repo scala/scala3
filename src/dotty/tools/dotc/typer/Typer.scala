@@ -913,7 +913,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
-      if ((rsym.is(Method) || rsym.isType) && rsym.allOverriddenSymbols.isEmpty)
+      if (rsym.is(Method) && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       RefinedType(parent, rsym.name, rinfo)
