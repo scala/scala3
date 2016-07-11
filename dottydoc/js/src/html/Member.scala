@@ -106,8 +106,9 @@ trait MemberLayout {
         a(href := url, t).render
       case "NoLink" => span(link.title).render
 
-      //FIXME: there should be no UnsetLinks - either MaterializedLink or NoLink
-      case "UnsetLink" => span(link.title).render
+      case "UnsetLink" =>
+        println(s"UnsetLink found: $link")
+        span(link.title).render
     }
 
     ref.kind match {
