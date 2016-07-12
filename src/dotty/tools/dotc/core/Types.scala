@@ -2661,6 +2661,19 @@ object Types {
       }
       cachedSuper
     }
+
+    def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
+      case tycon: TypeRef =>
+        tycon.info match {
+          case TypeBounds(lo, hi) =>
+            if (lo eq hi) superType // optimization, can profit from caching in this case
+            else lo.applyIfParameterized(args)
+          case _ => NoType
+        }
+      case _ =>
+        NoType
+    }
+
 /*
    def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
     case tp: TypeRef =>

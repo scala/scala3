@@ -668,25 +668,25 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
      *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
      *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
      */
-    def compareLower(tycon2bounds: TypeBounds): Boolean = {
-      val app2 = tycon2bounds.lo.applyIfParameterized(args2)
-      if (tycon2bounds.lo eq tycon2bounds.hi) isSubType(tp1, app2)
-      else either(fourthTry(tp1, tp2), isSubType(tp1, app2))
+    def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean = {
+      def app2 = tycon2bounds.lo.applyIfParameterized(args2)
+      if (tycon2bounds.lo eq tycon2bounds.hi)
+        isSubType(tp1, if (tyconIsTypeRef) tp2.superType else app2)
+      else
+        either(fourthTry(tp1, tp2), isSubType(tp1, app2))
     }
 
     tycon2 match {
       case param2: PolyParam =>
         isMatchingApply(tp1) || {
           if (canConstrain(param2)) canInstantiate(param2)
-          else compareLower(bounds(param2))
+          else compareLower(bounds(param2), tyconIsTypeRef = false)
         }
       case tycon2: TypeRef =>
         isMatchingApply(tp1) ||
-        compareLower(tycon2.info.bounds)
-      case tycon2: TypeVar =>
-        isSubType(tp1, tycon2.underlying.appliedTo(args2))
-      case tycon2: AnnotatedType =>
-        compareHkApply2(tp1, tp2, tycon2.underlying, args2)
+        compareLower(tycon2.info.bounds, tyconIsTypeRef = true)
+      case _: TypeVar | _: AnnotatedType =>
+        isSubType(tp1, tp2.superType)
       case _ =>
         false
     }
@@ -706,7 +706,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         canConstrain(param1) && canInstantiate ||
           isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2)
       case tycon1: TypeProxy =>
-        isSubType(tycon1.superType.applyIfParameterized(args1), tp2)
+        isSubType(tp1.superType, tp2)
       case _ =>
         false
     }
