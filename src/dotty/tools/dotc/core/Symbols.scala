@@ -491,7 +491,7 @@ object Symbols {
 
     // TypeParamInfo methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
-    def paramName(implicit ctx: Context): Name = name
+    def paramName(implicit ctx: Context) = name.asTypeName
     def paramBounds(implicit ctx: Context) = denot.info.bounds
     def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
     def paramBoundsOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter

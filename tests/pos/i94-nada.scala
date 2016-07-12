@@ -35,7 +35,7 @@ trait Test2 {
   case class Left[A,B](x: A) extends Either[A,B] with Monad[A]
   case class Right[A,B](x: B) extends Either[A,B] with Monad[B]
   def flatMap[X,Y,M[X]](m: M[X], f: X => M[Y]): M[Y]
-  println(flatMap(Right(1), {x: Int => Right(x)}))
+  println(flatMap(Left(1), {x: Int => Left(x)}))
 }
 trait Test3 {
   def flatMap[X,Y,M[X]](m: M[X], f: X => M[Y]): M[Y]

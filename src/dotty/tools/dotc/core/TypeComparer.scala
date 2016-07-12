@@ -628,9 +628,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = tycon1a
-                .appliedTo(args1.take(lengthDiff) ++ tparams1.map(_.paramRef))
-                .LambdaAbstract(tparams1)
+              tycon1b = TypeLambda(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
+                tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
+                tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
+                        tparams1.indices.toList.map(PolyParam(tl, _))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
               tryInstantiate(tycon2, tycon1b.ensureHK)) &&
               isSubType(tp1, tycon1b.appliedTo(args2))

@@ -338,10 +338,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  TODO: Handle parameterized lower bounds
    */
-  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
+  def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
       TypeLambda(
-        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.paramVariance))(
+        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.variance))(
           tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
     assert(!isHK, self)
@@ -439,20 +439,13 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  /** Encode
+  /** The type representing
    *
    *     T[U1, ..., Un]
    *
    *  where
    *  @param  self   = `T`
    *  @param  args   = `U1,...,Un`
-   *  performing the following simplifications
-   *
-   *  1. If `T` is an eta expansion `[X1,..,Xn] -> C[X1,...,Xn]` of class `C` compute
-   *     `C[U1, ..., Un]` instead.
-   *  2. If `T` is some other type lambda `[X1,...,Xn] -> S` none of the arguments
-   *     `U1,...,Un` is a wildcard, compute `[X1:=U1, ..., Xn:=Un]S` instead.
-   *  3. If `T` is a polytype, instantiate it to `U1,...,Un`.
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     val typParams = self.typeParams
@@ -469,30 +462,52 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
       case nil => t
     }
+    val stripped = self.stripTypeVar
+    val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
-    else self.stripTypeVar.safeDealias match {
-      case self: TypeLambda =>
-        if (!args.exists(_.isInstanceOf[TypeBounds])) self.instantiate(args)
-        else {
-          val reducer = new Reducer(self, args)
-          val reduced = reducer(self.resType)
-          if (reducer.allReplaced) reduced
-          else HKApply(self, args)
-        }
-      case self: PolyType =>
-        self.instantiate(args)
-      case self: AndOrType =>
-        self.derivedAndOrType(self.tp1.appliedTo(args), self.tp2.appliedTo(args))
-      case self: TypeAlias =>
-        self.derivedTypeAlias(self.alias.appliedTo(args))
-      case self: TypeBounds =>
-        self.derivedTypeBounds(self.lo, self.hi.appliedTo(args))
-      case self: LazyRef =>
-        LazyRef(() => self.ref.appliedTo(args))
-      case self: WildcardType =>
-        self
-      case self: TypeRef if self.symbol == defn.NothingClass =>
-        self
+    else dealiased match {
+      case dealiased: TypeLambda =>
+        def tryReduce =
+          if (!args.exists(_.isInstanceOf[TypeBounds])) {
+            val reduced = dealiased.instantiate(args)
+            if (dealiased eq stripped) reduced
+            else reduced match {
+              case AppliedType(tycon, args) if variancesConform(typParams, tycon.typeParams) =>
+                // Reducing is safe for type inference, as kind of type constructor does not change
+                //println(i"reduced: $reduced instead of ${HKApply(self, args)}")
+                reduced
+              case _ =>
+                // Reducing changes kind, keep hk application instead
+                //println(i"fallback: ${HKApply(self, args)} instead of $reduced")
+                HKApply(self, args)
+            }
+          }
+          else dealiased.resType match {
+            case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+              dealiased
+                .derivedTypeLambda(resType = tycon.safeDealias.appliedTo(args1))
+                .appliedTo(args)
+            case _ =>
+              val reducer = new Reducer(dealiased, args)
+              val reduced = reducer(dealiased.resType)
+              if (reducer.allReplaced) reduced
+              else HKApply(dealiased, args)
+          }
+        tryReduce
+      case dealiased: PolyType =>
+        dealiased.instantiate(args)
+      case dealiased: AndOrType =>
+        dealiased.derivedAndOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
+      case dealiased: TypeAlias =>
+        dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
+      case dealiased: TypeBounds =>
+        dealiased.derivedTypeBounds(dealiased.lo, dealiased.hi.appliedTo(args))
+      case dealiased: LazyRef =>
+        LazyRef(() => dealiased.ref.appliedTo(args))
+      case dealiased: WildcardType =>
+        dealiased
+      case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
+        dealiased
       case _ if typParams.isEmpty || typParams.head.isInstanceOf[LambdaParam] =>
         HKApply(self, args)
       case dealiased =>

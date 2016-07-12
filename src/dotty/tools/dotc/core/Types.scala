@@ -117,6 +117,7 @@ object Types {
           case _ =>  this1.symbol eq sym
         }
       case this1: RefinedOrRecType => this1.parent.isRef(sym)
+      case this1: HKApply => this1.superType.isRef(sym)
       case _ => false
     }
 
@@ -857,6 +858,10 @@ object Types {
         tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
       case tp: LazyRef =>
         tp.ref.dealias
+      case app @ HKApply(tycon, args) =>
+        val tycon1 = tycon.dealias
+        if (tycon1 ne tycon) app.superType.dealias
+        else this
       case _ => this
     }
 
@@ -2586,7 +2591,7 @@ object Types {
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
 
-    def derivedTypeLambda(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
+    def derivedTypeLambda(paramNames: List[TypeName] = paramNames, paramBounds: List[TypeBounds] = paramBounds, resType: Type)(implicit ctx: Context): Type =
       resType match {
         case resType @ TypeAlias(alias) =>
           resType.derivedTypeAlias(duplicate(paramNames, paramBounds, alias))
@@ -2640,12 +2645,21 @@ object Types {
   abstract case class HKApply(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
 
+    private var validSuper: Period = Nowhere
+    private var cachedSuper: Type = _
+
     override def underlying(implicit ctx: Context): Type = tycon
 
-    override def superType(implicit ctx: Context): Type = tycon match {
-      case tp: TypeLambda => defn.AnyType
-      case tp: TypeProxy => tp.superType.applyIfParameterized(args)
-      case _ => defn.AnyType
+    override def superType(implicit ctx: Context): Type = {
+      if (ctx.period != validSuper) {
+        cachedSuper = tycon match {
+          case tp: TypeLambda => defn.AnyType
+          case tp: TypeProxy => tp.superType.applyIfParameterized(args)
+          case _ => defn.AnyType
+        }
+        validSuper = ctx.period
+      }
+      cachedSuper
     }
 /*
    def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
@@ -2760,7 +2774,11 @@ object Types {
       else bounds(paramNum)
     }
     // no customized hashCode/equals needed because cycle is broken in PolyType
-    override def toString = s"PolyParam($paramName)"
+    override def toString =
+      try s"PolyParam($paramName)"
+      catch {
+        case ex: IndexOutOfBoundsException => s"PolyParam(<bad index: $paramNum>)"
+      }
 
     override def computeHash = doHash(paramNum, binder.identityHash)
 
