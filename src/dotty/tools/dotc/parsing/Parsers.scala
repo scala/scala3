@@ -1551,7 +1551,7 @@ object Parsers {
      *  TypTypeParam      ::=  {Annotation} Id [HkTypePamClause] TypeBounds
      *
      *  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
-     *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id | _') TypeBounds
+     *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id[HkTypePamClause] | _') TypeBounds
      */
     def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
       def typeParam(): TypeDef = {
@@ -1584,9 +1584,7 @@ object Parsers {
               in.nextToken()
               ctx.freshName(nme.USCORE_PARAM_PREFIX).toTypeName
             }
-          val hkparams =
-            if (ownerKind == ParamOwner.TypeParam) Nil
-            else typeParamClauseOpt(ParamOwner.TypeParam)
+          val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
           val bounds =
             if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()

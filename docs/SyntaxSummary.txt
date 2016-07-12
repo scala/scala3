@@ -225,7 +225,8 @@ grammar.
   TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
   HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
-  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id | `_') TypeBounds
+  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id[HkTypeParamClause] | `_')
+                         TypeBounds
 
   ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
   ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
@@ -280,7 +281,7 @@ grammar.
   DefDcl            ::=  DefSig [`:' Type]                                      DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
   DefSig            ::=  id [DefTypeParamClause] DefParamClauses
   TypeDcl           ::=  id [TypTypeParamClause] ['=' Type]                     TypeDefTree(_, name, tparams, tpt)
-                      |  id [HkParamClause] TypeBounds                          TypeDefTree(_, name, tparams, bounds)
+                      |  id [HkTypeParamClause] TypeBounds                      TypeDefTree(_, name, tparams, bounds)
 
   Def               ::=  `val' PatDef
                       |  `var' VarDef
