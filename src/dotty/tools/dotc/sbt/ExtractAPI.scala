@@ -272,6 +272,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiDef(sym: TermSymbol): api.Def = {
     def paramLists(t: Type, start: Int = 0): List[api.ParameterList] = t match {
+      case pt: PolyType =>
+        assert(start == 0)
+        paramLists(pt.resultType)
       case mt @ MethodType(pnames, ptypes) =>
         // TODO: We shouldn't have to work so hard to find the default parameters
         // of a method, Dotty should expose a convenience method for that, see #1143

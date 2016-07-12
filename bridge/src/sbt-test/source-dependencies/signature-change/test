@@ -1,0 +1,20 @@
+# Case 1: parameter type changed
+$ copy-file changes/A0.scala A.scala
+> compile
+$ copy-file changes/A1.scala A.scala
+# Compilation of B.scala should fail because the signature of f changed
+-> compile
+
+# Case 2: return type changed
+$ copy-file changes/A0.scala A.scala
+> compile
+$ copy-file changes/A2.scala A.scala
+# Compilation of B.scala should fail because the signature of f changed
+-> compile
+
+# Case 3: type parameter bounds changed
+$ copy-file changes/A0.scala A.scala
+> compile
+$ copy-file changes/A3.scala A.scala
+# Compilation of B.scala should fail because the signature of f changed
+-> compile
