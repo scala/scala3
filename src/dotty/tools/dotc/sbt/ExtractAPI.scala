@@ -387,6 +387,13 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
             Array()
         }
         new api.Structure(strict2lzy(Array(parent)), strict2lzy(decl), strict2lzy(Array()))
+      case tp: RecType =>
+        apiType(tp.parent)
+      case RecThis(recType) =>
+        // `tp` must be present inside `recType`, so calling `apiType` on
+        // `recType` would lead to an infinite recursion, we avoid this by
+        //  computing the representation of `recType` lazily.
+        apiLazy(recType)
       case tp: AndOrType =>
         val parents = List(apiType(tp.tp1), apiType(tp.tp2))
 
@@ -408,8 +415,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tpe)
       case tp: ThisType =>
         apiThis(tp.cls)
-      case RecThis(binder) =>
-        apiThis(binder.typeSymbol) // !!! this is almost certainly wrong: binder does not always have a typeSymbol !!!
       case tp: ParamType =>
         // TODO: Distinguishing parameters based on their names alone is not enough,
         // the binder is also needed (at least for type lambdas).
@@ -432,6 +437,13 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     case _ =>
       ctx.debuglog("sbt-api: Not a simple type: " + tp.show)
       Constants.emptyType
+  }
+
+  def apiLazy(tp: => Type): api.Type = {
+    // TODO: The sbt api needs a convenient way to make a lazy type.
+    // For now, we repurpose Structure for this.
+    val apiTp = lzy(Array(apiType(tp)))
+    new api.Structure(apiTp, strict2lzy(Array()), strict2lzy(Array()))
   }
 
   def apiThis(sym: Symbol): api.Singleton = {
