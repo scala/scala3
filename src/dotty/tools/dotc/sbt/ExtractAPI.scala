@@ -174,9 +174,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
 
-    val tparams = sym.typeParams.map(tparam => apiTypeParameter(
-      tparam.name.toString, tparam.variance,
-      tparam.info.bounds.lo, tparam.info.bounds.lo))
+    val tparams = sym.typeParams.map(apiTypeParameter)
 
     val structure = apiClassStructure(sym)
 
@@ -364,6 +362,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiTycon = simpleType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
+      case TypeLambda(tparams, res) =>
+        val apiTparams = tparams.map(apiTypeParameter)
+        val apiRes = apiType(res)
+        new api.Polymorphic(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
         val name = rt.refinedName.toString
         val parent = apiType(rt.parent)
@@ -409,12 +411,13 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case RecThis(binder) =>
         apiThis(binder.typeSymbol) // !!! this is almost certainly wrong: binder does not always have a typeSymbol !!!
       case tp: ParamType =>
+        // TODO: Distinguishing parameters based on their names alone is not enough,
+        // the binder is also needed (at least for type lambdas).
         new api.ParameterRef(tp.paramName.toString)
       case tp: LazyRef =>
         apiType(tp.ref)
       case tp: TypeVar =>
         apiType(tp.underlying)
-      // !!! missing cases: TypeLambda, HKApply
       case _ => {
         ctx.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
         Constants.emptyType
@@ -436,6 +439,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       .map(s => new api.Id(s.name.toString))
     new api.Singleton(new api.Path(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
+
+  def apiTypeParameter(tparam: TypeParamInfo): api.TypeParameter =
+    apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
+      tparam.paramBounds.lo, tparam.paramBounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
     new api.TypeParameter(name, Array(), Array(), apiVariance(variance),
