@@ -469,18 +469,21 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeLambda =>
         def tryReduce =
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
-            val reduced = dealiased.instantiate(args)
-            if (dealiased eq stripped) reduced
-            else reduced match {
-              case AppliedType(tycon, args) if variancesConform(typParams, tycon.typeParams) =>
-                // Reducing is safe for type inference, as kind of type constructor does not change
-                //println(i"reduced: $reduced instead of ${HKApply(self, args)}")
-                reduced
+            val followAlias = stripped match {
+              case stripped: TypeRef =>
+                stripped.symbol.is(BaseTypeArg)
               case _ =>
-                // Reducing changes kind, keep hk application instead
-                //println(i"fallback: ${HKApply(self, args)} instead of $reduced")
-                HKApply(self, args)
+                Config.simplifyApplications && {
+                  dealiased.resType match {
+                    case AppliedType(tyconBody, _) =>
+                      variancesConform(typParams, tyconBody.typeParams)
+                        // Reducing is safe for type inference, as kind of type constructor does not change
+                    case _ => false
+                  }
+                }
             }
+            if ((dealiased eq stripped) || followAlias) dealiased.instantiate(args)
+            else HKApply(self, args)
           }
           else dealiased.resType match {
             case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
@@ -663,11 +666,6 @@ class TypeApplications(val self: Type) extends AnyVal {
         case nil =>
           self
       }
-  }
-
-  final def typeConstructor(implicit ctx: Context): Type = self.stripTypeVar match {
-    case AppliedType(tycon, _) => tycon
-    case self => self
   }
 
   /** If this is the image of a type argument; recover the type argument,

@@ -3422,8 +3422,9 @@ object Types {
         case tp: HKApply =>
           def mapArg(arg: Type, tparam: TypeParamInfo): Type = {
             val saved = variance
-            if (tparam.paramVariance < 0) variance = -variance
-            else if (tparam.paramVariance == 0) variance = 0
+            val pvariance = tparam.paramVariance
+            if (pvariance < 0) variance = -variance
+            else if (pvariance == 0) variance = 0
             try this(arg)
             finally variance = saved
           }
@@ -3629,7 +3630,23 @@ object Types {
         this(x, prefix)
 
       case tp @ HKApply(tycon, args) =>
-        foldOver(this(x, tycon), args)
+        def foldArgs(x: T, tparams: List[TypeParamInfo], args: List[Type]): T =
+          if (args.isEmpty) {
+            assert(tparams.isEmpty)
+            x
+          }
+          else {
+            val tparam = tparams.head
+            val saved = variance
+            val pvariance = tparam.paramVariance
+            if (pvariance < 0) variance = -variance
+            else if (pvariance == 0) variance = 0
+            val acc =
+              try this(x, args.head)
+              finally variance = saved
+            foldArgs(acc, tparams.tail, args.tail)
+          }
+        foldArgs(this(x, tycon), tp.typeParams, args)
 
       case tp: AndOrType =>
         this(this(x, tp.tp1), tp.tp2)

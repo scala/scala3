@@ -204,6 +204,8 @@ object Checking {
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
+      case tp @ HKApply(tycon, args) =>
+        tp.derivedAppliedType(this(tycon), args.map(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ TypeRef(pre, name) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
