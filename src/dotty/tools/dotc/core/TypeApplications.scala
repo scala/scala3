@@ -349,7 +349,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeAlias =>
         self.derivedTypeAlias(expand(self.alias))
       case self @ TypeBounds(lo, hi) =>
-        self.derivedTypeBounds(lo, expand(hi))
+        self.derivedTypeBounds(
+          if (lo.isRef(defn.NothingClass)) lo else expand(lo),
+          expand(hi))
       case _ => expand(self)
     }
   }
@@ -431,7 +433,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         case arg @ TypeAlias(alias) =>
           arg.derivedTypeAlias(adaptArg(alias))
         case arg @ TypeBounds(lo, hi) =>
-          arg.derivedTypeBounds(lo, adaptArg(hi))
+          arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
         case _ =>
           arg
       }
@@ -504,7 +506,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeAlias =>
         dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
       case dealiased: TypeBounds =>
-        dealiased.derivedTypeBounds(dealiased.lo, dealiased.hi.appliedTo(args))
+        dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
         LazyRef(() => dealiased.ref.appliedTo(args))
       case dealiased: WildcardType =>

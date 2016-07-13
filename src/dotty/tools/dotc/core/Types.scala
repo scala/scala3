@@ -2596,7 +2596,9 @@ object Types {
         case resType @ TypeAlias(alias) =>
           resType.derivedTypeAlias(duplicate(paramNames, paramBounds, alias))
         case resType @ TypeBounds(lo, hi) =>
-          resType.derivedTypeBounds(lo, duplicate(paramNames, paramBounds, hi))
+          resType.derivedTypeBounds(
+            if (lo.isRef(defn.NothingClass)) lo else duplicate(paramNames, paramBounds, lo),
+            duplicate(paramNames, paramBounds, hi))
         case _ =>
           derivedGenericType(paramNames, paramBounds, resType)
       }
