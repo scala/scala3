@@ -3422,9 +3422,7 @@ object Types {
         case tp: HKApply =>
           def mapArg(arg: Type, tparam: TypeParamInfo): Type = {
             val saved = variance
-            val pvariance = tparam.paramVariance
-            if (pvariance < 0) variance = -variance
-            else if (pvariance == 0) variance = 0
+            variance *= tparam.paramVariance
             try this(arg)
             finally variance = saved
           }
@@ -3638,9 +3636,7 @@ object Types {
           else {
             val tparam = tparams.head
             val saved = variance
-            val pvariance = tparam.paramVariance
-            if (pvariance < 0) variance = -variance
-            else if (pvariance == 0) variance = 0
+            variance *= tparam.paramVariance
             val acc =
               try this(x, args.head)
               finally variance = saved
