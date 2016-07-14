@@ -124,8 +124,8 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
             !(selector.typeSymbol is Trait) &&
             !(selector.typeSymbol is Module)
 
-          val selClassNonFinal = scClass && !(selector.typeSymbol is Final)
-          val selFinalClass    = scClass && (selector.typeSymbol is Final)
+          val selClassNonFinal = selClass && !(selector.typeSymbol is Final)
+          val selFinalClass    = selClass && (selector.typeSymbol is Final)
 
           // Cases ---------------------------------
           val valueClassesOrAny =
