@@ -854,8 +854,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         var allAlts = denot.alternatives
           .map(_.termRef).filter(tr => typeParamCount(tr) == targs.length)
         if (targs.isEmpty) allAlts = allAlts.filterNot(_.widen.isInstanceOf[PolyType])
-        val alternatives =
-          ctx.typer.resolveOverloaded(allAlts, proto, Nil)
+        val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
           i"$method on ${receiver.tpe.widenDealias} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
