@@ -72,10 +72,9 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
-  /** If this flag is set, $apply projections are checked that they apply to a
-   *  higher-kinded type.
+  /** If this flag is set, higher-kinded applications are checked for validity
    */
-  final val checkProjections = false
+  final val checkHKApplications = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2

@@ -338,13 +338,12 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  TODO: Handle parameterized lower bounds
    */
-  def LambdaAbstract(tparams: List[Symbol])(implicit ctx: Context): Type = {
+  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
       TypeLambda(
-        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.variance))(
+        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.paramVariance))(
           tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
-    assert(!isHK, self)
     self match {
       case self: TypeAlias =>
         self.derivedTypeAlias(expand(self.alias))
@@ -489,6 +488,8 @@ class TypeApplications(val self: Type) extends AnyVal {
           }
           else dealiased.resType match {
             case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+              // In this case we should always dealias since we cannot handle
+              // higher-kinded applications to wildcard arguments.
               dealiased
                 .derivedTypeLambda(resType = tycon.safeDealias.appliedTo(args1))
                 .appliedTo(args)

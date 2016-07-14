@@ -517,7 +517,7 @@ object Types {
       def goApply(tp: HKApply) = tp.tycon match {
         case tl: TypeLambda =>
           go(tl.resType).mapInfo(info =>
-            tl.derivedTypeLambda(tl.paramNames, tl.paramBounds, info).appliedTo(tp.args))
+            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramBounds, info).appliedTo(tp.args))
         case _ =>
           go(tp.superType)
       }
@@ -876,12 +876,6 @@ object Types {
      */
     final def deconst(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ConstantType => tp.value.tpe
-      case _ => this
-    }
-
-    /** If this is a TypeAlias type, its alias, otherwise this type itself */
-    final def followTypeAlias(implicit ctx: Context): Type = this match {
-      case TypeAlias(alias) => alias
       case _ => this
     }
 
@@ -1923,13 +1917,9 @@ object Types {
   }
 
   object TypeRef {
-    def checkProjection(prefix: Type, name: TypeName)(implicit ctx: Context) = ()
-
     /** Create type ref with given prefix and name */
-    def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef = {
-      if (Config.checkProjections) checkProjection(prefix, name)
+    def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
-    }
 
     /** Create type ref to given symbol */
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
@@ -1938,10 +1928,8 @@ object Types {
     /** Create a non-member type ref  (which cannot be reloaded using `member`),
      *  with given prefix, name, and symbol.
      */
-    def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef = {
-      if (Config.checkProjections) checkProjection(prefix, name)
+    def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       unique(new TypeRefWithFixedSym(prefix, name, sym))
-    }
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -2057,9 +2045,7 @@ object Types {
     private def badInst =
       throw new AssertionError(s"bad instantiation: $this")
 
-    def checkInst(implicit ctx: Context): this.type = {
-      this
-    }
+    def checkInst(implicit ctx: Context): this.type = this // debug hook
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
@@ -2139,7 +2125,7 @@ object Types {
     override def computeHash = doHash(parent)
     override def toString = s"RecType($parent | $hashCode)"
 
-    private def checkInst(implicit ctx: Context): this.type = this
+    private def checkInst(implicit ctx: Context): this.type = this // debug hook
   }
 
   object RecType {
@@ -2550,8 +2536,8 @@ object Types {
       case _ => false
     }
 
-    def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context) =
-      derivedGenericType(paramNames, paramBounds, resType)
+    def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): PolyType =
+      derivedGenericType(paramNames, paramBounds, resType).asInstanceOf[PolyType]
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): PolyType =
       PolyType(paramNames)(
@@ -2591,7 +2577,7 @@ object Types {
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
 
-    def derivedTypeLambda(paramNames: List[TypeName] = paramNames, paramBounds: List[TypeBounds] = paramBounds, resType: Type)(implicit ctx: Context): Type =
+    def derivedLambdaAbstraction(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
         case resType @ TypeAlias(alias) =>
           resType.derivedTypeAlias(duplicate(paramNames, paramBounds, alias))
@@ -2600,8 +2586,11 @@ object Types {
             if (lo.isRef(defn.NothingClass)) lo else duplicate(paramNames, paramBounds, lo),
             duplicate(paramNames, paramBounds, hi))
         case _ =>
-          derivedGenericType(paramNames, paramBounds, resType)
+          derivedTypeLambda(paramNames, paramBounds, resType)
       }
+
+    def derivedTypeLambda(paramNames: List[TypeName] = paramNames, paramBounds: List[TypeBounds] = paramBounds, resType: Type)(implicit ctx: Context): TypeLambda =
+      derivedGenericType(paramNames, paramBounds, resType).asInstanceOf[TypeLambda]
 
     def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): TypeLambda =
       TypeLambda(paramNames, variances)(
@@ -2664,6 +2653,7 @@ object Types {
       cachedSuper
     }
 
+    /* (Not needed yet) */
     def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         tycon.info match {
@@ -2676,13 +2666,6 @@ object Types {
         NoType
     }
 
-/*
-   def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
-    case tp: TypeRef =>
-      val lb = tp.info.bounds.lo.typeParams.length == args.lengt
-    case _ => defn.NothingType
-  }
-*/
     def typeParams(implicit ctx: Context): List[TypeParamInfo] = {
       val tparams = tycon.typeParams
       if (tparams.isEmpty) TypeLambda.any(args.length).typeParams else tparams
@@ -2705,7 +2688,7 @@ object Types {
         case _ =>
           assert(false, s"illegal type constructor in $this")
       }
-      check(tycon)
+      if (Config.checkHKApplications) check(tycon)
       this
     }
   }

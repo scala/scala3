@@ -83,15 +83,16 @@ object Checking {
         case AppliedTypeTree(tycon, args) =>
           // If `args` is a list of named arguments, return corresponding type parameters,
           // otherwise return type parameters unchanged
-          def matchNamed(tparams: List[TypeSymbol], args: List[Tree]): List[Symbol] =
-            if (hasNamedArg(args))
-              for (NamedArg(name, _) <- args) yield tycon.tpe.member(name).symbol
-            else
-              tparams
-          val tparams = matchNamed(tycon.tpe.typeSymbol.typeParams, args)
-          val bounds = tparams.map(tparam =>
-            tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
-          checkBounds(args, bounds, _.substDealias(tparams, _))
+          val tparams = tycon.tpe.typeParams
+          def argNamed(tparam: TypeParamInfo) = args.find {
+            case NamedArg(name, _) => name == tparam.paramName
+            case _ => false
+          }.getOrElse(TypeTree(tparam.paramRef))
+          val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
+          val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
+          def instantiate(bound: Type, args: List[Type]) =
+            bound.LambdaAbstract(tparams).appliedTo(args)
+          checkBounds(orderedArgs, bounds, instantiate)
 
           def checkValidIfHKApply(implicit ctx: Context): Unit =
             checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
