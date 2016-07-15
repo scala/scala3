@@ -305,6 +305,14 @@ object Denotations {
                 !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
             }
 
+            /** Similar to SymDenotation#accessBoundary, but without the special cases. */
+            def accessBoundary(sym: Symbol) =
+              if (sym.is(Private)) sym.owner
+              else sym.privateWithin.orElse(
+                if (sym.is(Protected)) sym.owner.enclosingPackageClass
+                else defn.RootClass
+              )
+
             /** Establish a partial order "preference" order between symbols.
              *  Give preference to `sym1` over `sym2` if one of the following
              *  conditions holds, in decreasing order of weight:
@@ -324,8 +332,7 @@ object Denotations {
                 sym1.isAsConcrete(sym2) &&
                 (!sym2.isAsConcrete(sym1) ||
                  precedes(sym1.owner, sym2.owner) ||
-                 sym2.accessBoundary(sym2.enclosingPackageClass)
-                   .isProperlyContainedIn(sym1.accessBoundary(sym1.enclosingPackageClass)) ||
+                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
                  sym1.is(Method) && !sym2.is(Method))
 
             /** Sym preference provided types also override */
@@ -338,7 +345,11 @@ object Denotations {
               if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
               else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
               else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-              else if (isDoubleDef(sym1, sym2)) doubleDefError(denot1, denot2, pre)
+              else if (isDoubleDef(sym1, sym2)) {
+                if (preferSym(sym1, sym2)) denot1
+                else if (preferSym(sym2, sym1)) denot2
+                else doubleDefError(denot1, denot2, pre)
+              }
               else {
                 val sym =
                   if (!sym1.exists) sym2
