@@ -4,6 +4,7 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{ValDef, PackageDef}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.Names.TypeName
 
 import scala.collection.mutable
 import scala.tools.asm.{CustomAttr, ClassVisitor, MethodVisitor, FieldVisitor}
@@ -41,11 +42,18 @@ class GenBCode extends Phase {
   private val entryPoints = new mutable.HashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
+  private val superCallsMap = new mutable.HashMap[Symbol, Set[ClassSymbol]]()
+  def registerSuperCall(sym: Symbol, calls: ClassSymbol) = {
+    val old = superCallsMap.getOrElse(sym, Set.empty)
+    superCallsMap.put(sym, old + calls)
+  }
+
   def outputDir(implicit ctx: Context): AbstractFile =
     new PlainDirectory(new Directory(new JFile(ctx.settings.d.value)))
 
   def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(entryPoints.toList, new DottyBackendInterface(outputDir)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    new GenBCodePipeline(entryPoints.toList,
+        new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
     entryPoints.clear()
   }
 }

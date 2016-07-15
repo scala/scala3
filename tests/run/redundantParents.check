@@ -1,0 +1,8 @@
+C1 super class: class java.lang.Object
+C1 interfaces: List(interface T2)
+C2 super class: class C1
+C2 interfaces: List(interface T4, interface T5)
+C3 super class: class C1
+C3 interfaces: List(interface T5)
+C4 super class: class C2
+C4 interfaces: List()
