@@ -339,17 +339,18 @@ object Denotations {
             def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
               preferSym(sym1, sym2) && info1.overrides(info2)
 
+            def handleDoubleDef =
+              if (preferSym(sym1, sym2)) denot1
+              else if (preferSym(sym2, sym1)) denot2
+              else doubleDefError(denot1, denot2, pre)
+
             if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)
               if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
               else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
               else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-              else if (isDoubleDef(sym1, sym2)) {
-                if (preferSym(sym1, sym2)) denot1
-                else if (preferSym(sym2, sym1)) denot2
-                else doubleDefError(denot1, denot2, pre)
-              }
+              else if (isDoubleDef(sym1, sym2)) handleDoubleDef
               else {
                 val sym =
                   if (!sym1.exists) sym2
