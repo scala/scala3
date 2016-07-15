@@ -47,4 +47,13 @@ object overloaded {
   val t5: Int = r5
   val r6 = combine((x: String, y) => x ++ y.toString)
   val t6: String = r6
+
+  // test result disambiguation
+  trait A
+  trait B
+  class C extends A with B
+  def fr(x: A): A = x
+  def fr(x: B): B = x
+  val a: A = fr(new C)
+  val b: B = fr(new C)
 }
