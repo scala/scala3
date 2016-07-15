@@ -389,7 +389,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp)) defn.ObjectType
+    else if (isUnboundedGeneric(elemtp) && !isJava) defn.ObjectType
     else JavaArrayType(arrayErasure(elemtp))
   }
 
