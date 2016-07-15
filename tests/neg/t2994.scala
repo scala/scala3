@@ -21,7 +21,7 @@ object Naturals {
   // crashes scala-2.8.0 beta1
   trait MUL[n <: NAT, m <: NAT] extends NAT {
     trait curry[n[_[_], _], s[_]] { type f[z <: NAT] = n[s, z] }
-    type a[s[_ <: NAT] <: NAT, z <: NAT] = n#a[curry[m#a, s]#f, z] // error: not a legal path // error: not a legal path
+    type a[s[_ <: NAT] <: NAT, z <: NAT] = n#a[curry[m#a, s]#f, z] // error: not a legal path // error: not a legal path // error: arg does not conform to bound // error: arg does not conform to bound
   }
 
 }

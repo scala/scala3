@@ -386,22 +386,28 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2 @ TypeLambda(tparams2, body2) =>
       def compareHkLambda: Boolean = tp1.stripTypeVar match {
         case tp1 @ TypeLambda(tparams1, body1) =>
-          // Don't compare bounds of lambdas, or t2994 will fail
-          // The issue is that, logically, bounds should compare contravariantly,
-          // so the bounds checking should look like this:
-          //
-          //   tparams1.corresponds(tparams2)((tparam1, tparam2) =>
-          //     isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
-          //
-          // But that would invalidate a pattern such as
-          // `[X0 <: Number] -> Number   <:<    [X0] -> Any`
-          // This wpuld mean that there is no convenient means anymore to express a kind
-          // as a supertype. The fix is to delay the checking of bounds so that only
-          // bounds of * types are checked.
+          /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
+           * The issue is that, logically, bounds should compare contravariantly,
+           * but that would invalidate a pattern exploited in t2994:
+           *
+           *    [X0 <: Number] -> Number   <:<    [X0] -> Any
+           *
+           * Under the new scheme, `[X0] -> Any` is NOT a kind that subsumes
+           * all other bounds. You'd have to write `[X0 >: Any <: Nothing] -> Any` instead.
+           * This might look weird, but is the only logically correct way to do it.
+           *
+           * Note: it would be nice if this could trigger a migration warning, but I
+           * am not sure how, since the code is buried so deep in subtyping logic.
+           */
+          def boundsOK =
+            ctx.scala2Mode ||
+            tparams1.corresponds(tparams2)((tparam1, tparam2) =>
+              isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
           val saved = comparingLambdas
           comparingLambdas = true
           try
             variancesConform(tparams1, tparams2) &&
+            boundsOK &&
             isSubType(body1, body2.subst(tp2, tp1))
           finally comparingLambdas = saved
         case _ =>
