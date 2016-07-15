@@ -1,7 +1,7 @@
 object i39neg {
 
   trait B {
-    type D <: { type T }           // error
+    type D <: { type T }
     def d: D
   }
 

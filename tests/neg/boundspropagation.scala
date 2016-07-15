@@ -40,5 +40,5 @@ object test4 {
 }
 
 class Test5 {
-"": ({ type U = this.type })#U                        // error // error
+"": ({ type U = this.type })#U                        // error
 }

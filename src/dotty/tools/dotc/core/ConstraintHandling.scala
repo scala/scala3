@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers._
+import TypeApplications.EtaExpansion
 import collection.mutable
 
 /** Methods for adding constraints and solving them.
@@ -33,6 +34,11 @@ trait ConstraintHandling {
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
+
+  /** We are currently comparing lambdas. Used as a flag for
+   *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
+   */
+  protected var comparingLambdas = false
 
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
@@ -163,9 +169,61 @@ trait ConstraintHandling {
         }
       }
     }
+    assert(constraint.contains(param))
     val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
     val inst = avoidParam(bound)
     typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+    inst
+  }
+
+  /** The instance type of `param` in the current constraint (which contains `param`).
+   *  If `fromBelow` is true, the instance type is the lub of the parameter's
+   *  lower bounds; otherwise it is the glb of its upper bounds. However,
+   *  a lower bound instantiation can be a singleton type only if the upper bound
+   *  is also a singleton type.
+   */
+  def instanceType(param: PolyParam, fromBelow: Boolean): Type = {
+    def upperBound = constraint.fullUpperBound(param)
+    def isSingleton(tp: Type): Boolean = tp match {
+      case tp: SingletonType => true
+      case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
+      case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
+      case _ => false
+    }
+    def isFullyDefined(tp: Type): Boolean = tp match {
+      case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
+      case tp: TypeProxy => isFullyDefined(tp.underlying)
+      case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+      case _ => true
+    }
+    def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+      case tp: OrType => true
+      case tp: RefinedOrRecType => isOrType(tp.parent)
+      case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
+      case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
+      case _ => false
+    }
+
+    // First, solve the constraint.
+    var inst = approximation(param, fromBelow)
+
+    // Then, approximate by (1.) - (3.) and simplify as follows.
+    // 1. If instance is from below and is a singleton type, yet
+    // upper bound is not a singleton type, widen the instance.
+    if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+      inst = inst.widen
+
+    inst = inst.simplified
+
+    // 2. If instance is from below and is a fully-defined union type, yet upper bound
+    // is not a union type, approximate the union type from above by an intersection
+    // of all common base types.
+    if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
+      inst = inst.approximateUnion
+
+    // 3. If instance is from below, and upper bound has open named parameters
+    //    make sure the instance has all named parameters of the bound.
+    if (fromBelow) inst = inst.widenToNamedTypeParams(param.namedTypeParams)
     inst
   }
 
@@ -193,9 +251,9 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
-    case bounds: TypeBounds => bounds
-    case _ => param.binder.paramBounds(param.paramNum)
+  final def bounds(param: PolyParam): TypeBounds = {
+    val e = constraint.entry(param)
+    if (e.exists) e.bounds else param.binder.paramBounds(param.paramNum)
   }
 
   /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
@@ -235,6 +293,36 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+
+      /** When comparing lambdas we might get constraints such as
+       *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
+       *  and `X0` is a lambda parameter. The constraint for `A` is not allowed
+       *  to refer to such a lambda parameter because the lambda parameter is
+       *  not visible where `A` is defined. Consequently, we need to
+       *  approximate the bound so that the lambda parameter does not appear in it.
+       *  If `tp` is an upper bound, we need to approximate with something smaller,
+       *  otherwise something larger.
+       *  Test case in pos/i94-nada.scala. This test crashes with an illegal instance
+       *  error in Test2 when the rest of the SI-2712 fix is applied but `pruneLambdaParams` is
+       *  missing.
+       */
+      def pruneLambdaParams(tp: Type) =
+        if (comparingLambdas && param.binder.isInstanceOf[PolyType]) {
+          val approx = new ApproximatingTypeMap {
+            def apply(t: Type): Type = t match {
+              case t @ PolyParam(tl: TypeLambda, n) =>
+                val effectiveVariance = if (fromBelow) -variance else variance
+                val bounds = tl.paramBounds(n)
+                if (effectiveVariance > 0) bounds.lo
+                else if (effectiveVariance < 0) bounds.hi
+                else NoType
+              case _ =>
+                mapOver(t)
+            }
+          }
+          approx(tp)
+        }
+        else tp
 
       def addParamBound(bound: PolyParam) =
         if (fromBelow) addLess(bound, param) else addLess(param, bound)
@@ -281,12 +369,18 @@ trait ConstraintHandling {
           else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)
-        case bound: PolyParam if constraint contains bound =>
-          if (!addParamBound(bound)) NoType
-          else if (fromBelow) defn.NothingType
-          else defn.AnyType
+        case bound: PolyParam =>
+          constraint.entry(bound) match {
+            case NoType => pruneLambdaParams(bound)
+            case _: TypeBounds =>
+              if (!addParamBound(bound)) NoType
+              else if (fromBelow) defn.NothingType
+              else defn.AnyType
+            case inst =>
+              prune(inst)
+          }
         case _ =>
-          bound
+          pruneLambdaParams(bound)
       }
 
       try bound match {

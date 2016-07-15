@@ -174,9 +174,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
 
-    val tparams = sym.typeParams.map(tparam => apiTypeParameter(
-      tparam.name.toString, tparam.variance,
-      tparam.info.bounds.lo, tparam.info.bounds.lo))
+    val tparams = sym.typeParams.map(apiTypeParameter)
 
     val structure = apiClassStructure(sym)
 
@@ -272,6 +270,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiDef(sym: TermSymbol): api.Def = {
     def paramLists(t: Type, start: Int = 0): List[api.ParameterList] = t match {
+      case pt: PolyType =>
+        assert(start == 0)
+        paramLists(pt.resultType)
       case mt @ MethodType(pnames, ptypes) =>
         // TODO: We shouldn't have to work so hard to find the default parameters
         // of a method, Dotty should expose a convenience method for that, see #1143
@@ -361,6 +362,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiTycon = simpleType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
+      case TypeLambda(tparams, res) =>
+        val apiTparams = tparams.map(apiTypeParameter)
+        val apiRes = apiType(res)
+        new api.Polymorphic(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
         val name = rt.refinedName.toString
         val parent = apiType(rt.parent)
@@ -382,6 +387,13 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
             Array()
         }
         new api.Structure(strict2lzy(Array(parent)), strict2lzy(decl), strict2lzy(Array()))
+      case tp: RecType =>
+        apiType(tp.parent)
+      case RecThis(recType) =>
+        // `tp` must be present inside `recType`, so calling `apiType` on
+        // `recType` would lead to an infinite recursion, we avoid this by
+        //  computing the representation of `recType` lazily.
+        apiLazy(recType)
       case tp: AndOrType =>
         val parents = List(apiType(tp.tp1), apiType(tp.tp2))
 
@@ -403,9 +415,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         apiType(tpe)
       case tp: ThisType =>
         apiThis(tp.cls)
-      case RefinedThis(binder) =>
-        apiThis(binder.typeSymbol)
       case tp: ParamType =>
+        // TODO: Distinguishing parameters based on their names alone is not enough,
+        // the binder is also needed (at least for type lambdas).
         new api.ParameterRef(tp.paramName.toString)
       case tp: LazyRef =>
         apiType(tp.ref)
@@ -427,11 +439,22 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       Constants.emptyType
   }
 
+  def apiLazy(tp: => Type): api.Type = {
+    // TODO: The sbt api needs a convenient way to make a lazy type.
+    // For now, we repurpose Structure for this.
+    val apiTp = lzy(Array(apiType(tp)))
+    new api.Structure(apiTp, strict2lzy(Array()), strict2lzy(Array()))
+  }
+
   def apiThis(sym: Symbol): api.Singleton = {
     val pathComponents = sym.ownersIterator.takeWhile(!_.isEffectiveRoot)
       .map(s => new api.Id(s.name.toString))
     new api.Singleton(new api.Path(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
+
+  def apiTypeParameter(tparam: TypeParamInfo): api.TypeParameter =
+    apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
+      tparam.paramBounds.lo, tparam.paramBounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
     new api.TypeParameter(name, Array(), Array(), apiVariance(variance),

@@ -6,12 +6,15 @@ import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, De
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
+import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+
+  private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions = 100
 
@@ -48,15 +51,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
-        case tp @ TypeRef(_, tpnme.hkApply) =>
-          val tp1 = tp.reduceProjection
-          if (tp1 eq tp) tp else homogenize(tp1)
+        case tp: SkolemType =>
+          homogenize(tp.info)
         case tp: LazyRef =>
           homogenize(tp.ref)
         case _ =>
           tp
       }
     else tp
+
+  private def selfRecName(n: Int) = s"z$n"
 
   /** Render elements alternating with `sep` string */
   protected def toText(elems: Traversable[Showable], sep: String) =
@@ -105,12 +109,36 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def toTextRefinement(rt: RefinedType) =
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
+  protected def argText(arg: Type): Text = arg match {
+    case arg: TypeBounds => "_" ~ toTextGlobal(arg)
+    case _ => toTextGlobal(arg)
+  }
+
+  /** The text for a TypeLambda
+   *
+   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
+   *
+   *  where
+   *  @param  paramNames  = p_1, ..., p_n
+   *  @param  variances   = v_1, ..., v_n
+   *  @param  argBoundss  = B_1, ..., B_n
+   *  @param  body        = T
+   */
+  protected def typeLambdaText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
+    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
+      varianceString(variance) ~ name ~ toText(bounds)
+    changePrec(GlobalPrec) {
+      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
+      "] -> " ~ toTextGlobal(body)
+    }
+  }
+
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case RefinedType(parent, _) => refinementChain(parent.stripTypeVar)
+      case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })
 
@@ -130,6 +158,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val parent :: (refined: List[RefinedType @unchecked]) =
           refinementChain(tp).reverse
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
+      case tp: RecType =>
+        try {
+          openRecs = tp :: openRecs
+          "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
+        }
+        finally openRecs = openRecs.tail
       case AndType(tp1, tp2) =>
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>
@@ -151,6 +185,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
+      case tp: TypeLambda =>
+        typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
       case tp: PolyType =>
         def paramText(name: TypeName, bounds: TypeBounds) =
           toText(polyParamName(name)) ~ polyHash(tp) ~ toText(bounds)
@@ -163,6 +199,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
+      case HKApply(tycon, args) =>
+        toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
@@ -175,7 +213,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else toText(tp.origin)
         }
       case tp: LazyRef =>
-        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")"
+        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")" // TODO: only print this during debug mode?
       case _ =>
         tp.fallbackToText(this)
     }
@@ -189,8 +227,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
   /** If -uniqid is set, the hashcode of the polytype, after a # */
-  protected def polyHash(pt: PolyType): Text =
-    "#" + pt.hashCode provided ctx.settings.uniqid.value
+  protected def polyHash(pt: GenericType): Text =
+    if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =
@@ -232,11 +270,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case tp: RefinedThis =>
-        s"${nameString(tp.binder.typeSymbol)}{...}.this"
+      case tp: RecThis =>
+        val idx = openRecs.reverse.indexOf(tp.binder)
+        if (idx >= 0) selfRecName(idx + 1)
+        else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info)
-        else "<unknown instance of type " ~ toTextGlobal(tp.info) ~ ">"
+        if (homogenizedView) toText(tp.info) else tp.repr
     }
   }
 

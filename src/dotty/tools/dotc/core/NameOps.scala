@@ -101,29 +101,6 @@ object NameOps {
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
     }
 
-    /** Is this the name of a higher-kinded type parameter of a Lambda? */
-    def isHkArgName =
-      name.length > 0 &&
-      name.head == tpnme.hkArgPrefixHead &&
-      name.startsWith(tpnme.hkArgPrefix) && {
-        val digits = name.drop(tpnme.hkArgPrefixLength)
-        digits.length <= 4 && digits.forall(_.isDigit)
-      }
-
-    /** The index of the higher-kinded type parameter with this name.
-     *  Pre: isLambdaArgName.
-     */
-    def hkArgIndex: Int =
-      name.drop(tpnme.hkArgPrefixLength).toString.toInt
-
-    def isLambdaTraitName(implicit ctx: Context): Boolean =
-      name.isTypeName && name.startsWith(tpnme.hkLambdaPrefix)
-
-    def lambdaTraitVariances(implicit ctx: Context): List[Int] = {
-      val vs = name.drop(tpnme.hkLambdaPrefix.length)
-      vs.toList.map(c => tpnme.varianceSuffixes.indexOf(c) - 1)
-    }
-
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.
       * Otherwise return the argument.

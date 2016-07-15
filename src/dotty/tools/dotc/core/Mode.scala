@@ -84,5 +84,10 @@ object Mode {
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution = newMode(14, "OldOverloadingResolution")
 
+  /** Allow hk applications of type lambdas to wildcard arguments;
+   *  used for checking that such applications do not normally arise
+   */
+  val AllowLambdaWildcardApply = newMode(15, "AllowHKApplyToWildcards")
+
   val PatternOrType = Pattern | Type
 }

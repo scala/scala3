@@ -96,6 +96,7 @@ grammar.
   ClassQualifier    ::=  `[' id `]'
 
   Type              ::=  FunArgTypes `=>' Type                                  Function(ts, t)
+                      |  HkTypeParamClause `->' Type						    TypeLambda(ps, t)
                       |  InfixType
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
@@ -125,7 +126,6 @@ grammar.
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
   Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
-                      |  Expr1
   FunParams         ::=  Bindings
                       |  [`implicit'] id
                       |  `_'
@@ -225,7 +225,8 @@ grammar.
   TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
   HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
-  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id | `_') TypeBounds
+  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id[HkTypeParamClause] | `_')
+                         TypeBounds
 
   ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
   ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
@@ -280,7 +281,7 @@ grammar.
   DefDcl            ::=  DefSig [`:' Type]                                      DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
   DefSig            ::=  id [DefTypeParamClause] DefParamClauses
   TypeDcl           ::=  id [TypTypeParamClause] ['=' Type]                     TypeDefTree(_, name, tparams, tpt)
-                      |  id [HkParamClause] TypeBounds                          TypeDefTree(_, name, tparams, bounds)
+                      |  id [HkTypeParamClause] TypeBounds                      TypeDefTree(_, name, tparams, bounds)
 
   Def               ::=  `val' PatDef
                       |  `var' VarDef

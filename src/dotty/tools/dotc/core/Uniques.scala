@@ -107,8 +107,8 @@ object Uniques {
 
     def enterIfNew(parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
       val h = doHash(refinedName, refinedInfo, parent)
-      def newType = new PreHashedRefinedType(parent, refinedName, refinedInfo, h)
-      if (monitored) recordCaching(h, classOf[PreHashedRefinedType])
+      def newType = new CachedRefinedType(parent, refinedName, refinedInfo, h)
+      if (monitored) recordCaching(h, classOf[CachedRefinedType])
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, parent, refinedName, refinedInfo)

@@ -478,10 +478,6 @@ object SymDenotations {
     final def isRefinementClass(implicit ctx: Context): Boolean =
       name.decode == tpnme.REFINE_CLASS
 
-    /** is this symbol a trait representing a type lambda? */
-    final def isLambdaTrait(implicit ctx: Context): Boolean =
-      isClass && name.startsWith(tpnme.hkLambdaPrefix) && owner == defn.ScalaPackageClass
-
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
       val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE
@@ -1121,13 +1117,15 @@ object SymDenotations {
 
     def debugString = toString + "#" + symbol.id // !!! DEBUG
 
-        def hasSkolems(tp: Type): Boolean = tp match {
+    def hasSkolems(tp: Type): Boolean = tp match {
       case tp: SkolemType => true
       case tp: NamedType => hasSkolems(tp.prefix)
       case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
-      case tp: PolyType => tp.paramBounds.exists(hasSkolems) || hasSkolems(tp.resType)
+      case tp: RecType => hasSkolems(tp.parent)
+      case tp: GenericType => tp.paramBounds.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: MethodType => tp.paramTypes.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: ExprType => hasSkolems(tp.resType)
+      case tp: HKApply => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: TypeBounds => hasSkolems(tp.lo) || hasSkolems(tp.hi)
       case tp: AnnotatedType => hasSkolems(tp.tpe)
@@ -1210,15 +1208,25 @@ object SymDenotations {
 
     private[this] var myNamedTypeParams: Set[TypeSymbol] = _
 
+    /** The type parameters in this class, in the order they appear in the current
+     *  scope `decls`. This might be temporarily the incorrect order when
+     *  reading Scala2 pickled info. The problem is fixed by `updateTypeParams`
+     *  which is called once an unpickled symbol has been completed.
+     */
+    private def typeParamsFromDecls(implicit ctx: Context) =
+      unforcedDecls.filter(sym =>
+        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      def computeTypeParams = {
-        if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
-        else if (this ne initial) initial.asSymDenotation.typeParams
-        else unforcedDecls.filter(sym =>
-          (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
-      }
-      if (myTypeParams == null) myTypeParams = computeTypeParams
+      if (myTypeParams == null)
+        myTypeParams =
+          if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
+          else if (this ne initial) initial.asSymDenotation.typeParams
+          else infoOrCompleter match {
+            case info: TypeParamsCompleter => info.completerTypeParams(symbol)
+            case _ => typeParamsFromDecls
+          }
       myTypeParams
     }
 
@@ -1534,19 +1542,20 @@ object SymDenotations {
       if (myMemberCache != null) myMemberCache invalidate sym.name
     }
 
-    /** Make sure the type parameters of this class are `tparams`, reorder definitions
-     *  in scope if necessary.
-     *  @pre  All type parameters in `tparams` are entered in class scope `info.decls`.
+    /** Make sure the type parameters of this class appear in the order given
+     *  by `typeParams` in the scope of the class. Reorder definitions in scope if necessary.
      */
-    def updateTypeParams(tparams: List[Symbol])(implicit ctx: Context): Unit =
-      if (!typeParams.corresponds(tparams)(_.name == _.name)) {
+    def ensureTypeParamsInCorrectOrder()(implicit ctx: Context): Unit = {
+      val tparams = typeParams
+      if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
         val decls = info.decls
         val decls1 = newScope
-        for (tparam <- tparams) decls1.enter(decls.lookup(tparam.name))
-        for (sym <- decls) if (!typeParams.contains(sym)) decls1.enter(sym)
+        for (tparam <- typeParams) decls1.enter(decls.lookup(tparam.name))
+        for (sym <- decls) if (!tparams.contains(sym)) decls1.enter(sym)
         info = classInfo.derivedClassInfo(decls = decls1)
         myTypeParams = null
       }
+    }
 
     /** All members of this class that have the given name.
      *  The elements of the returned pre-denotation all
@@ -1633,6 +1642,7 @@ object SymDenotations {
        */
       def isCachable(tp: Type): Boolean = tp match {
         case _: TypeErasure.ErasedValueType => false
+        case tp: TypeRef if tp.symbol.isClass => true
         case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case tp: TypeProxy => inCache(tp.underlying)
         case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
@@ -1653,10 +1663,10 @@ object SymDenotations {
                 if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
-                baseTypeRefOf(tp.underlying)
+                baseTypeRefOf(tp.superType)
             }
           case tp: TypeProxy =>
-            baseTypeRefOf(tp.underlying)
+            baseTypeRefOf(tp.superType)
           case AndType(tp1, tp2) =>
             baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
           case OrType(tp1, tp2) =>
@@ -1816,6 +1826,7 @@ object SymDenotations {
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
+    override def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation = this
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 
@@ -1863,9 +1874,9 @@ object SymDenotations {
   /** A subclass of LazyTypes where type parameters can be completed independently of
    *  the info.
    */
-  abstract class TypeParamsCompleter extends LazyType {
+  trait TypeParamsCompleter extends LazyType {
     /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol): List[TypeSymbol]
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol]
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol

@@ -76,6 +76,10 @@ class TreePickler(pickler: TastyPickler) {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
     case None =>
+      // See pos/t1957.scala for an example where this can happen.
+      // I believe it's a bug in typer: the type of an implicit argument refers
+      // to a closure parameter outside the closure itself. TODO: track this down, so that we
+      // can eliminate this case.
       ctx.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.pos)
       pickleForwardSymRef(sym)
   }
@@ -154,7 +158,7 @@ class TreePickler(pickler: TastyPickler) {
     case ConstantType(value) =>
       pickleConstant(value)
     case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
-      pickleType(tpe.info.bounds.hi)
+      pickleType(tpe.superType)
     case tpe: WithFixedSym =>
       val sym = tpe.symbol
       def pickleRef() =
@@ -207,8 +211,8 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
-    case tpe: RefinedThis =>
-      writeByte(REFINEDthis)
+    case tpe: RecThis =>
+      writeByte(RECthis)
       val binderAddr = pickledTypes.get(tpe.binder)
       assert(binderAddr != null, tpe.binder)
       writeRef(binderAddr.asInstanceOf[Addr])
@@ -221,6 +225,9 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tpe.parent)
         pickleType(tpe.refinedInfo, richTypes = true)
       }
+    case tpe: RecType =>
+      writeByte(RECtype)
+      pickleType(tpe.parent)
     case tpe: TypeAlias =>
       writeByte(TYPEALIAS)
       withLength {
@@ -243,6 +250,11 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
+    case tpe: TypeLambda =>
+      writeByte(LAMBDAtype)
+      val paramNames = tpe.typeParams.map(tparam =>
+        varianceToPrefix(tparam.paramVariance) +: tparam.paramName)
+      pickleMethodic(tpe.resultType, paramNames, tpe.paramBounds)
     case tpe: MethodType if richTypes =>
       writeByte(METHODtype)
       pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramTypes)

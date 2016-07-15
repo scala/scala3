@@ -167,12 +167,6 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
 
       val accName = sym.name.protectedAccessorName
 
-      def isThisType(tpe: Type): Boolean = tpe match {
-        case tpe: ThisType => !tpe.cls.is(PackageClass)
-        case tpe: TypeProxy => isThisType(tpe.underlying)
-        case _ => false
-      }
-
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
       val receiverType =

@@ -17,7 +17,6 @@ import SymDenotations._
 import Annotations._
 import Names._
 import NameOps._
-import Applications._
 import Flags._
 import Decorators._
 import ErrorReporting._
@@ -914,20 +913,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
-      if ((rsym.is(Method) || rsym.isType) && rsym.allOverriddenSymbols.isEmpty)
+      if (rsym.is(Method) && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
+      RefinedType(parent, rsym.name, rinfo)
       // todo later: check that refinement is within bounds
     }
-    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1) withType
-      (tpt1.tpe /: refinements1)(addRefinement)
+    val refined = (tpt1.tpe /: refinements1)(addRefinement)
+    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1).withType(
+      RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
     typr.println(i"typed refinement: ${res.tpe}")
     res
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
-    val tpt1 = typed(tree.tpt)(ctx retractMode Mode.Pattern)
+    val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
       ctx.error(d"${tpt1.tpe} does not take type parameters", tree.pos)
@@ -942,20 +942,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
             args = args.take(tparams.length)
           }
-          def typedArg(arg: untpd.Tree, tparam: Symbol) = {
+          def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
             val (desugaredArg, argPt) =
               if (ctx.mode is Mode.Pattern)
-                (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.info)
+                (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
               else
                 (arg, WildcardType)
-            val arg1 = typed(desugaredArg, argPt)
-            adaptTypeArg(arg1, tparam.info)
+            typed(desugaredArg, argPt)
           }
           args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
         }
       // check that arguments conform to bounds is done in phase PostTyper
       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
     }
+  }
+
+  def typedTypeLambdaTree(tree: untpd.TypeLambdaTree)(implicit ctx: Context): Tree = track("typedTypeLambdaTree") {
+    val TypeLambdaTree(tparams, body) = tree
+    index(tparams)
+    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
+    val body1 = typedType(tree.body)
+    assignType(cpy.TypeLambdaTree(tree)(tparams1, body1), tparams1, body1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
@@ -1033,7 +1040,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
-    val tpt1 = checkSimpleKinded(typedType(tpt))
+    var tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx
     if (sym.isConstructor && !sym.isPrimaryConstructor && tparams1.nonEmpty) {
@@ -1045,13 +1052,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
+    if (sym.isAnonymousFunction) {
+      // If we define an anonymous function, make sure the return type does not
+      // refer to parameters. This is necessary because closure types are
+      // function types so no dependencies on parameters are allowed.
+      tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
+    }
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
     val TypeDef(name, rhs) = tdef
-    checkLowerNotHK(sym, tdef.tparams.map(symbolOfTree), tdef.pos)
     completeAnnotations(tdef, sym)
     assignType(cpy.TypeDef(tdef)(name, typedType(rhs), Nil), sym)
   }
@@ -1272,6 +1284,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
+          case tree: untpd.TypeLambdaTree => typedTypeLambdaTree(tree)(localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)
@@ -1662,6 +1675,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+    def adaptType(tp: Type): Tree = {
+      val tree1 =
+        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        else tree.withType(tree.tpe.EtaExpand(tp.typeParamSymbols))
+      if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
+      else err.typeMismatch(tree1, pt)
+    }
+
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
       case _ => tree.tpe.widen match {
@@ -1695,9 +1716,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 (_, _) => tree // error will be reported in typedTypeApply
               }
             case _ =>
-              if (ctx.mode is Mode.Type)
-                if ((ctx.mode is Mode.Pattern) || tree.tpe <:< pt) tree
-                else err.typeMismatch(tree, pt)
+              if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
           }
       }

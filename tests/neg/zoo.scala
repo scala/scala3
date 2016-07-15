@@ -1,23 +1,23 @@
 object Test {
 type Meat = {
-  type IsMeat = Any            // error
+  type IsMeat = Any
 }
 type Grass = {
-  type IsGrass = Any           // error
+  type IsGrass = Any
 }
 type Animal = {
-  type Food                    // error
+  type Food
   def eats(food: Food): Unit   // error
   def gets: Food               // error
 }
 type Cow = {
-  type IsMeat = Any            // error
-  type Food <: Grass           // error
+  type IsMeat = Any
+  type Food <: Grass
   def eats(food: Grass): Unit  // error
   def gets: Grass              // error
 }
 type Lion = {
-  type Food = Meat             // error
+  type Food = Meat
   def eats(food: Meat): Unit   // error
   def gets: Meat               // error
 }

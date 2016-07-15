@@ -103,7 +103,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TERMREFpkg            fullyQualified_NameRef
                   TERMREF               possiblySigned_NameRef qual_Type
                   THIS                  clsRef_Type
-                  REFINEDthis           refinedType_ASTRef
+                  RECthis               recType_ASTRef
                   SHARED                path_ASTRef
 
   Constant      = UNITconst
@@ -126,6 +126,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFsymbol         sym_ASTRef qual_Type
                   TYPEREFpkg            fullyQualified_NameRef
                   TYPEREF               possiblySigned_NameRef qual_Type
+                  RECtype               parent_Type
                   SUPERtype      Length this_Type underlying_Type
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
@@ -137,6 +138,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
+                  LAMBDAtype     Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
                   POLYtype       Length result_Type NamesTypes      // needed for refinements
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
@@ -258,7 +260,7 @@ object TastyFormat {
   final val TYPEREFdirect = 66
   final val TERMREFpkg = 67
   final val TYPEREFpkg = 68
-  final val REFINEDthis = 69
+  final val RECthis = 69
   final val BYTEconst = 70
   final val SHORTconst = 71
   final val CHARconst = 72
@@ -277,6 +279,7 @@ object TastyFormat {
   final val IMPLICITarg = 101
   final val PRIVATEqualified = 102
   final val PROTECTEDqualified = 103
+  final val RECtype = 104
 
   final val IDENT = 112
   final val SELECT = 113
@@ -324,7 +327,8 @@ object TastyFormat {
   final val ORtype = 172
   final val METHODtype = 174
   final val POLYtype = 175
-  final val PARAMtype = 176
+  final val LAMBDAtype = 176
+  final val PARAMtype = 177
   final val ANNOTATION = 178
 
   final val firstSimpleTreeTag = UNITconst
@@ -417,7 +421,7 @@ object TastyFormat {
     case TYPEREFdirect => "TYPEREFdirect"
     case TERMREFpkg => "TERMREFpkg"
     case TYPEREFpkg => "TYPEREFpkg"
-    case REFINEDthis => "REFINEDthis"
+    case RECthis => "RECthis"
     case BYTEconst => "BYTEconst"
     case SHORTconst => "SHORTconst"
     case CHARconst => "CHARconst"
@@ -426,6 +430,7 @@ object TastyFormat {
     case FLOATconst => "FLOATconst"
     case DOUBLEconst => "DOUBLEconst"
     case STRINGconst => "STRINGconst"
+    case RECtype => "RECtype"
 
     case IDENT => "IDENT"
     case SELECT => "SELECT"
@@ -496,4 +501,8 @@ object TastyFormat {
     case POLYtype | METHODtype => -1
     case _ => 0
   }
+
+  /** Map between variances and name prefixes */
+  val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
+  val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
 }

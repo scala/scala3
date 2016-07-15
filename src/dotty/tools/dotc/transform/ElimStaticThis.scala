@@ -27,8 +27,8 @@ class ElimStaticThis extends MiniPhaseTransform {
   override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (ctx.owner.enclosingMethod.is(JavaStatic)) {
       tree.tpe match {
-        case TermRef(thiz: ThisType, _) if thiz.underlying.typeSymbol.is(ModuleClass) =>
-          ref(thiz.underlying.typeSymbol.sourceModule).select(tree.symbol)
+        case TermRef(thiz: ThisType, _) if thiz.cls.is(ModuleClass) =>
+          ref(thiz.cls.sourceModule).select(tree.symbol)
         case TermRef(thiz: ThisType, _) =>
           assert(tree.symbol.is(Flags.JavaStatic))
           tree

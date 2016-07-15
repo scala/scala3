@@ -96,14 +96,17 @@ trait TypeAssigner {
           }
         case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
           val base = apply(tycon)
-          val args = tp.baseArgInfos(base.typeSymbol)
-          if (base.typeParams.length == args.length) base.appliedTo(args) else base
-        case tp @ RefinedType(parent, name) if variance > 0 =>
+          var args = tp.baseArgInfos(base.typeSymbol)
+          if (base.typeParams.length != args.length)
+            args = base.typeParams.map(_.paramBounds)
+          base.appliedTo(args)
+        case tp @ RefinedType(parent, name, rinfo) if variance > 0 =>
           val parent1 = apply(tp.parent)
-          val refinedInfo1 = apply(tp.refinedInfo)
+          val refinedInfo1 = apply(rinfo)
           if (toAvoid(refinedInfo1)) {
             typr.println(s"dropping refinement from $tp")
-            parent1
+            if (name.isTypeName) tp.derivedRefinedType(parent1, name, TypeBounds.empty)
+            else parent1
           } else {
             tp.derivedRefinedType(parent1, name, refinedInfo1)
           }
@@ -144,7 +147,7 @@ trait TypeAssigner {
    *  which are accessible.
    *
    *  Also performs the following normalizations on the type `tpe`.
-   *  (1) parameter accessors are alwys dereferenced.
+   *  (1) parameter accessors are always dereferenced.
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
    */
@@ -409,11 +412,11 @@ trait TypeAssigner {
     def refineNamed(tycon: Type, arg: Tree) = arg match {
       case ast.Trees.NamedArg(name, argtpt) =>
         // Dotty deviation: importing ast.Trees._ and matching on NamedArg gives a cyclic ref error
-        val tparam = tparams.find(_.name == name) match {
+        val tparam = tparams.find(_.paramName == name) match {
           case Some(tparam) => tparam
           case none => ntparams.find(_.name == name).getOrElse(NoSymbol)
         }
-        if (tparam.exists) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
+        if (tparam.isTypeParam) RefinedType(tycon, name, argtpt.tpe.toBounds(tparam))
         else errorType(i"$tycon does not have a parameter or abstract type member named $name", arg.pos)
       case _ =>
         errorType(s"named and positional type arguments may not be mixed", arg.pos)
@@ -424,6 +427,9 @@ trait TypeAssigner {
       else errorType(d"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
     tree.withType(ownType)
   }
+
+  def assignType(tree: untpd.TypeLambdaTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
+    tree.withType(TypeLambda.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

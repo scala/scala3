@@ -12,6 +12,7 @@ import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dumm
 import Trees._
 import TypeApplications._
 import Decorators._
+import config.Config
 import scala.annotation.switch
 import language.implicitConversions
 
@@ -94,10 +95,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   override def toText(tp: Type): Text = controlled {
-    def argText(arg: Type): Text = arg match {
-      case arg: TypeBounds => "_" ~ toTextGlobal(arg)
-      case _ => toTextGlobal(arg)
-    }
     def toTextTuple(args: List[Type]): Text =
       "(" ~ toTextGlobal(args, ", ") ~ ")"
     def toTextFunction(args: List[Type]): Text =
@@ -116,35 +113,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (defn.isFunctionClass(cls)) return toTextFunction(args)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
-      case tp @ TypeLambda(variances, argBoundss, body) =>
-        val prefix = ((('X' - 'A') + lambdaNestingLevel) % 26 + 'A').toChar
-        val paramNames = variances.indices.toList.map(prefix.toString + _)
-        val instantiate = new TypeMap {
-          def contains(tp1: Type, tp2: Type): Boolean =
-            tp1.eq(tp2) || {
-              tp1.stripTypeVar match {
-                case RefinedType(parent, _) => contains(parent, tp2)
-                case _ => false
-              }
-            }
-          def apply(t: Type): Type = t match {
-            case TypeRef(RefinedThis(rt), name) if name.isHkArgName && contains(tp, rt) =>
-              // Make up a name that prints as "Xi". Need to be careful we do not
-              // accidentally unique-hash to something else. That's why we can't
-              // use prefix = NoPrefix or a WithFixedSym instance.
-              TypeRef.withSymAndName(
-                defn.EmptyPackageClass.thisType, defn.AnyClass,
-                paramNames(name.hkArgIndex).toTypeName)
-            case _ =>
-              mapOver(t)
-          }
-        }
-        val instArgs = argBoundss.map(instantiate).asInstanceOf[List[TypeBounds]]
-        val instBody = instantiate(body).dropAlias
-        lambdaNestingLevel += 1
-        try
-          return typeLambdaText(paramNames, variances, instArgs, instBody)
-        finally lambdaNestingLevel -=1
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
@@ -184,30 +152,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     "{" ~ toText(trees, "\n") ~ "}"
 
-  /** The text for a TypeLambda
-   *
-   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
-   *
-   *  where
-   *  @param  paramNames  = p_1, ..., p_n
-   *  @param  variances   = v_1, ..., v_n
-   *  @param  argBoundss  = B_1, ..., B_n
-   *  @param  body        = T
-   */
-  def typeLambdaText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
-    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
-      varianceString(variance) ~ name ~ toText(bounds)
-    changePrec(GlobalPrec) {
-      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
-      "] -> " ~ toTextGlobal(body)
-    }
-  }
-
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
     import untpd.{modsDeco => _, _}
 
-    /** Print modifiers form symbols if tree has type, overriding the untpd behavior. */
+    /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
     implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDeco =
       tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef]).asInstanceOf[untpd.ModsDeco]
 
@@ -264,6 +213,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
 
+    def varianceText(mods: untpd.Modifiers) =
+      if (mods is Covariant) "+"
+      else if (mods is Contravariant) "-"
+      else ""
+
     def argText(arg: Tree): Text = arg match {
       case arg: TypeBoundsTree => "_" ~ toTextGlobal(arg)
       case arg: TypeTree =>
@@ -308,7 +262,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def toTextPackageId(pid: Tree): Text =
-      if (homogenizedView) toTextLocal(pid.tpe)
+      if (homogenizedView && pid.hasType) toTextLocal(pid.tpe)
       else toTextLocal(pid)
 
     var txt: Text = tree match {
@@ -345,7 +299,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "new " ~ {
           tpt match {
             case tpt: Template => toTextTemplate(tpt, ofNew = true)
-            case _ => toTextLocal(tpt.typeOpt.underlyingClassRef(refinementOK = false))
+            case _ =>
+              if (tpt.hasType)
+                toTextLocal(tpt.typeOpt.underlyingClassRef(refinementOK = false))
+              else
+                toTextLocal(tpt)
           }
         }
       case Pair(l, r) =>
@@ -398,6 +356,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
         toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
+      case TypeLambdaTree(tparams, body) =>
+        changePrec(GlobalPrec) {
+          tparamsText(tparams) ~ " -> " ~ toText(body)
+        }
       case ByNameTypeTree(tpt) =>
         "=> " ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi) =>
@@ -431,7 +393,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ TypeDef(name, rhs) =>
         def typeDefText(rhsText: Text) =
           dclTextOr {
-            modText(tree.mods, "type") ~~ nameIdText(tree) ~
+            modText(tree.mods, "type") ~~ (varianceText(tree.mods) ~ nameIdText(tree)) ~
             withEnclosingDef(tree) {
               val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
               tparamsText(tree.tparams) ~ rhsText1

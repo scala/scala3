@@ -72,10 +72,9 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
-  /** If this flag is set, $apply projections are checked that they apply to a
-   *  higher-kinded type.
+  /** If this flag is set, higher-kinded applications are checked for validity
    */
-  final val checkProjections = false
+  final val checkHKApplications = false
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
@@ -97,6 +96,13 @@ object Config {
    *  7% for the build when this option is enabled.
    */
   final val splitProjections = false
+
+  /** If this flag is on, always rewrite an application `S[Ts]` where `S` is an alias for
+   *  `[Xs] -> U` to `[Xs := Ts]U`. If this flag is off, the rewriting is only done if `S` is a
+   *  reference to an instantiated parameter. Turning this flag on was observed to
+   *  give a ~6% speedup on the JUnit test suite.
+   */
+  final val simplifyApplications = true
 
   /** Initial size of superId table */
   final val InitialSuperIdsSize = 4096

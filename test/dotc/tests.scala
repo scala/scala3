@@ -29,7 +29,6 @@ class tests extends CompilerTest {
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   }
 
-
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val twice = List("#runs", "2")
@@ -149,6 +148,7 @@ class tests extends CompilerTest {
   @Test def compileMixed = compileLine(
       """tests/pos/B.scala
         |./scala-scala/src/library/scala/collection/immutable/Seq.scala
+        |./scala-scala/src/library/scala/collection/parallel/ParSeq.scala
         |./scala-scala/src/library/scala/package.scala
         |./scala-scala/src/library/scala/collection/GenSeqLike.scala
         |./scala-scala/src/library/scala/collection/SeqLike.scala

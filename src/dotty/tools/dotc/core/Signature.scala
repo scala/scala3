@@ -22,22 +22,40 @@ import TypeErasure.sigName
  *        "scala.String".toTypeName)
  *
  *  The signatures of non-method types are always `NotAMethod`.
+ *
+ *  There are three kinds of "missing" parts of signatures:
+ *
+ *   - tpnme.EMPTY          Result type marker for NotAMethod and OverloadedSignature
+ *   - tpnme.WILDCARD       Arises from a Wildcard or error type
+ *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
 case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   import Signature._
 
-  /** Does this signature coincide with that signature on their parameter parts? */
-  final def sameParams(that: Signature): Boolean = this.paramsSig == that.paramsSig
+  /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
+  private def consistent(name1: TypeName, name2: TypeName) =
+    name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
+
+  /** Does this signature coincide with that signature on their parameter parts?
+   *  This is the case if all parameter names are _consistent_, i.e. they are either
+   *  equal or on of them is tpnme.Uninstantiated.
+   */
+  final def consistentParams(that: Signature): Boolean = {
+    def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
+      if (names1.isEmpty) names2.isEmpty
+      else names2.nonEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
+    loop(this.paramsSig, that.paramsSig)
+  }
 
   /** The degree to which this signature matches `that`.
-   *  If both parameter and result type names match (i.e. they are the same
+   *  If parameter names are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
-   *  If only the parameter names match, the result is `ParamMatch` before erasure and
+   *  If only the parameter names are consistent, the result is `ParamMatch` before erasure and
    *  `NoMatch` otherwise.
-   *  If the parameters do not match, the result is always `NoMatch`.
+   *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
   final def matchDegree(that: Signature)(implicit ctx: Context): MatchDegree =
-    if (sameParams(that))
+    if (consistentParams(that))
       if (resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig)) FullMatch
       else if (!ctx.erasedTypes) ParamMatch
       else NoMatch
@@ -52,6 +70,13 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
     Signature((params.map(sigName(_, isJava))) ++ paramsSig, resSig)
 
+  /** A signature is under-defined if its paramsSig part contains at least one
+   *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
+   *  of a type that still contains uninstantiated type variables. They are eliminated
+   *  by `fixSignature` in `PostTyper`.
+   */
+  def isUnderDefined(implicit ctx: Context) =
+    paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
 }
 
 object Signature {

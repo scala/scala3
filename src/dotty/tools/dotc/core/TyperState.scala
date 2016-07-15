@@ -127,7 +127,7 @@ extends TyperState(r) {
   }
 
   override def gc()(implicit ctx: Context): Unit = {
-    val toCollect = new mutable.ListBuffer[PolyType]
+    val toCollect = new mutable.ListBuffer[GenericType]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
         val inst = instType(tvar)

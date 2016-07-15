@@ -75,13 +75,26 @@ object Variances {
     case tp @ TypeBounds(lo, hi) =>
       if (lo eq hi) compose(varianceInType(hi)(tparam), tp.variance)
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)
-    case tp @ RefinedType(parent, _) =>
-      varianceInType(parent)(tparam) & varianceInType(tp.refinedInfo)(tparam)
+    case tp @ RefinedType(parent, _, rinfo) =>
+      varianceInType(parent)(tparam) & varianceInType(rinfo)(tparam)
+    case tp: RecType =>
+      varianceInType(tp.parent)(tparam)
     case tp @ MethodType(_, paramTypes) =>
       flip(varianceInTypes(paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
-    case tp @ PolyType(_) =>
+    case tp @ HKApply(tycon, args) =>
+      def varianceInArgs(v: Variance, args: List[Type], tparams: List[TypeParamInfo]): Variance =
+        args match {
+          case arg :: args1 =>
+            varianceInArgs(
+              v & compose(varianceInType(arg)(tparam), tparams.head.paramVariance),
+              args1, tparams.tail)
+          case nil =>
+            v
+        }
+      varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
+    case tp: GenericType =>
       flip(varianceInTypes(tp.paramBounds)(tparam)) & varianceInType(tp.resultType)(tparam)
     case AnnotatedType(tp, annot) =>
       varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)

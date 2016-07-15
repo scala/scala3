@@ -436,7 +436,8 @@ object Flags {
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
-    SourceModifierFlags | Module | Param | Synthetic | Package | Local | commonFlags(Mutable)
+    SourceModifierFlags | Module | Param | Synthetic | Package | Local |
+    commonFlags(Mutable)
       // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
 
   assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)

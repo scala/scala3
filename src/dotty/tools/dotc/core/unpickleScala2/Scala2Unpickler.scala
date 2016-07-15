@@ -31,7 +31,7 @@ object Scala2Unpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType {
+  case class TempPolyType(tparams: List[TypeSymbol], tpe: Type) extends UncachedGroundType {
     override def fallbackToText(printer: Printer): Text =
       "[" ~ printer.dclsText(tparams, ", ") ~ "]" ~ printer.toText(tpe)
   }
@@ -82,8 +82,8 @@ object Scala2Unpickler {
         paramNames,
         paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
-    case tp @ PolyType(paramNames) =>
-      tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
+    case tp: PolyType =>
+      tp.derivedPolyType(tp.paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =
@@ -134,7 +134,7 @@ object Scala2Unpickler {
 
     denot.info = ClassInfo( // final info, except possibly for typeparams ordering
       denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
-    denot.updateTypeParams(tparams)
+    denot.ensureTypeParamsInCorrectOrder()
   }
 }
 
@@ -188,8 +188,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     case _ => errorBadSignature(s"a runtime exception occurred: $ex", Some(ex))
   }
 
-  private var postReadOp: Context => Unit = null
-
   def run()(implicit ctx: Context) =
     try {
       var i = 0
@@ -197,10 +195,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (entries(i) == null && isSymbolEntry(i)) {
           val savedIndex = readIndex
           readIndex = index(i)
-          entries(i) = readSymbol()
-          if (postReadOp != null) {
-            postReadOp(ctx)
-            postReadOp = null
+          val sym = readSymbol()
+          entries(i) = sym
+          sym.infoOrCompleter match {
+            case info: ClassUnpickler => info.init()
+            case _ =>
           }
           readIndex = savedIndex
         }
@@ -486,20 +485,20 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
-        val infoRef = readNat()
-        postReadOp = implicit ctx => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
+        var infoRef = readNat()
+        if (isSymbolRef(infoRef)) infoRef = readNat()
         if (isClassRoot)
           completeRoot(
-            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol))
+            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol, infoRef))
         else if (isModuleClassRoot)
           completeRoot(
-            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule))
+            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef))
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
           ctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
           def completer(cls: Symbol) = {
-            val unpickler = new LocalUnpickler() withDecls symScope(cls)
+            val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (implicit ctx =>
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
@@ -582,8 +581,27 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   object localMemberUnpickler extends LocalUnpickler
 
-  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
-    (new LocalUnpickler with SymbolLoaders.SecondCompleter {
+  class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
+    private def readTypeParams()(implicit ctx: Context): List[TypeSymbol] = {
+      val tag = readByte()
+      val end = readNat() + readIndex
+      if (tag == POLYtpe) {
+        val unusedRestpeRef = readNat()
+        until(end, readSymbolRef).asInstanceOf[List[TypeSymbol]]
+      } else Nil
+    }
+    private def loadTypeParams(implicit ctx: Context) =
+      atReadPos(index(infoRef), readTypeParams)
+
+    /** Force reading type params early, we need them in setClassInfo of subclasses. */
+    def init()(implicit ctx: Context) = loadTypeParams
+
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+      loadTypeParams
+  }
+
+  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int) =
+    (new ClassUnpickler(infoRef) with SymbolLoaders.SecondCompleter {
       override def startCoord(denot: SymDenotation): Coord = start
     }) withDecls symScope(cls) withSourceModule (_ => module)
 
@@ -620,9 +638,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
-      case tp @ RefinedType(parent, name) =>
+      case tp @ RefinedType(parent, name, rinfo) =>
         val parent1 = elim(tp.parent)
-        tp.refinedInfo match {
+        rinfo match {
           case TypeAlias(info: TypeRef) if isBound(info) =>
             RefinedType(parent1, name, info.symbol.info)
           case info: TypeRef if isBound(info) =>
@@ -632,8 +650,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
-      case tp @ TypeRef(pre, tpnme.hkApply) =>
-        tp.derivedSelect(elim(pre))
+      case tp @ HKApply(tycon, args) =>
+        val tycon1 = tycon.safeDealias
+        def mapArg(arg: Type) = arg match {
+          case arg: TypeRef if isBound(arg) => arg.symbol.info
+          case _ => arg
+        }
+        if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
+        else tp.derivedAppliedType(tycon, args.map(mapArg))
       case _ =>
         tp
     }
@@ -709,7 +733,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
-        else if (args.nonEmpty) tycon.safeAppliedTo(etaExpandIfHK(sym.typeParams, args))
+        else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
@@ -722,13 +746,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def addRefinement(tp: Type, sym: Symbol) = {
-            def subst(info: Type, rt: RefinedType) =
-              if (clazz.isClass) info.substThis(clazz.asClass, RefinedThis(rt))
-              else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
-            RefinedType(tp, sym.name, subst(sym.info, _))
-          }
-          (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
+          def subst(info: Type, rt: RecType) =
+            if (clazz.isClass) info.substThis(clazz.asClass, RecThis(rt))
+            else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+          def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
+          val refined = (parent /: decls.toList)(addRefinement)
+          RecType.closeOver(rt => subst(refined, rt))
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
@@ -744,7 +767,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, readSymbolRef)
-        if (typeParams.nonEmpty) TempPolyType(typeParams, restpe.widenExpr)
+        if (typeParams.nonEmpty) TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
         else ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
