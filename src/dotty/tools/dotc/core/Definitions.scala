@@ -627,15 +627,24 @@ class Definitions {
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
   def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)
 
-  val RootImportFns = List[() => TermRef](
-      () => JavaLangPackageVal.termRef,
-      () => ScalaPackageVal.termRef,
+  val StaticRootImportFns = List[() => TermRef](
+    () => JavaLangPackageVal.termRef,
+    () => ScalaPackageVal.termRef
+  )
+
+  val PredefImportFns = List[() => TermRef](
       () => ScalaPredefModuleRef,
-      () => DottyPredefModuleRef)
+      () => DottyPredefModuleRef
+  )
+
+  lazy val RootImportFns =
+    if (ctx.settings.YnoImports.value) List.empty[() => TermRef]
+    else if (ctx.settings.YnoPredef.value) StaticRootImportFns
+    else StaticRootImportFns ++ PredefImportFns
 
   lazy val RootImportTypes = RootImportFns.map(_())
 
-  /** `Modules whose members are in the default namespace and their module classes */
+  /** Modules whose members are in the default namespace and their module classes */
   lazy val UnqualifiedOwnerTypes: Set[NamedType] =
     RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
 
