@@ -87,11 +87,12 @@ object Applications {
 
 import Applications._
 
-trait Applications extends Compatibility { self: Typer =>
+trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   import Applications._
   import tpd.{ cpy => _, _ }
   import untpd.cpy
+  import Dynamic.isDynamicMethod
 
   /** @tparam Arg       the type of arguments, could be tpd.Tree, untpd.Tree, or Type
    *  @param methRef    the reference to the method of the application
@@ -554,6 +555,13 @@ trait Applications extends Compatibility { self: Typer =>
 
       fun1.tpe match {
         case ErrorType => tree.withType(ErrorType)
+        case TryDynamicCallType =>
+          tree match {
+            case tree @ Apply(Select(qual, name), args) if !isDynamicMethod(name) =>
+              typedDynamicApply(qual, name, args, pt)(tree)
+            case _ =>
+              handleUnexpectedFunType(tree, fun1)
+          }
         case _ => methPart(fun1).tpe match {
           case funRef: TermRef =>
             tryEither { implicit ctx =>

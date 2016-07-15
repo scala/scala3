@@ -57,11 +57,12 @@ object Typer {
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Checking {
+class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
   import untpd.cpy
+  import Dynamic.isDynamicMethod
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -315,7 +316,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def asSelect(implicit ctx: Context): Tree = {
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-      typedSelect(tree, pt, qual1)
+      val select = typedSelect(tree, pt, qual1)
+      pt match {
+        case _: FunProto | AssignProto => select
+        case _ =>
+          if (select.tpe eq TryDynamicCallType) typedDynamicSelect(tree, pt)
+          else select
+      }
    }
 
     def asJavaSelectFromTypeTree(implicit ctx: Context): Tree = {
@@ -479,7 +486,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map untpd.TypedSplice) :+ tree.rhs)
         typed(appliedUpdate, pt)
       case lhs =>
-        val lhsCore = typedUnadapted(lhs)
+        val lhsCore = typedUnadapted(lhs, AssignProto)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
         def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
           sym.is(Mutable, butNot = Accessor) ||
@@ -506,6 +513,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                     typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                   case _ =>
                     reassignmentToVal
+                }
+              case TryDynamicCallType =>
+                tree match {
+                  case Assign(Select(qual, name), rhs) if !isDynamicMethod(name) =>
+                    typedDynamicAssign(qual, name, rhs, pt)
+                  case _ => reassignmentToVal
                 }
               case tpe =>
                 reassignmentToVal
@@ -1091,7 +1104,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
     if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.pos)
-    assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
+    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
+    if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
+      val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
+      ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
+          cls, isRequired, cdef.pos)
+    }
+    cdef1
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:
@@ -1686,7 +1705,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
       case _ => tree.tpe.widen match {
-        case ErrorType =>
+        case _: ErrorType =>
           tree
         case ref: TermRef =>
           pt match {

@@ -383,6 +383,7 @@ object StdNames {
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
     val drop: N                 = "drop"
+    val dynamics: N             = "dynamics"
     val dummyApply: N           = "<dummy-apply>"
     val elem: N                 = "elem"
     val emptyValDef: N          = "emptyValDef"

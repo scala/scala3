@@ -424,8 +424,10 @@ class Definitions {
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
-  lazy val LanguageModuleRef          = ctx.requiredModule("dotty.language")
+  lazy val LanguageModuleRef = ctx.requiredModule("dotty.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
+  lazy val Scala2LanguageModuleRef = ctx.requiredModule("scala.language")
+  def Scala2LanguageModuleClass(implicit ctx: Context) = Scala2LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
 
   lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")

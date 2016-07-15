@@ -12,6 +12,7 @@ import config.Printers
 import java.lang.System.currentTimeMillis
 import core.Mode
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
+import dotty.tools.dotc.core.Symbols.Symbol
 
 object Reporter {
   class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
@@ -67,6 +68,29 @@ trait Reporting { this: Context =>
 
   def featureWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new FeatureWarning(msg, pos))
+
+  def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
+      featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
+    val req = if (required) "needs to" else "should"
+    val prefix = if (isScala2Feature) "scala." else "dotty."
+    val fqname = prefix + "language." + feature
+
+    val explain = {
+      if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
+      else {
+        reporter.reportNewFeatureUseSite(featureUseSite)
+        s"""|
+            |This can be achieved by adding the import clause 'import $fqname'
+            |or by setting the compiler option -language:$feature.
+            |See the Scala docs for value $fqname for a discussion
+            |why the feature $req be explicitly enabled.""".stripMargin
+      }
+    }
+
+    val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
+    if (required) error(msg, pos)
+    else reporter.report(new FeatureWarning(msg, pos))
+  }
 
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Warning(msg, pos))
@@ -172,7 +196,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Report a diagnostic */
   def doReport(d: Diagnostic)(implicit ctx: Context): Unit
 
- /** Whether very long lines can be truncated.  This exists so important
+  /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
    *  invisible due to the max message length.
    */
@@ -205,6 +229,10 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  case where this is a StoreReporter, by an outer reporter?
    */
   def errorsReported = hasErrors
+
+  private[this] var reportedFeaturesUseSites = Set[Symbol]()
+  def isReportedFeatureUseSite(featureTrait: Symbol): Boolean = reportedFeaturesUseSites.contains(featureTrait)
+  def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
 
   val unreportedWarnings = new mutable.HashMap[String, Int] {
     override def default(key: String) = 0
