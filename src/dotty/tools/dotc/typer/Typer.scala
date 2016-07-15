@@ -449,11 +449,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               case _ =>
             }
           case _ =>
-            if (!ctx.isAfterTyper) {
-              val setBefore = ctx.mode is Mode.GADTflexible
-              tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
-              if (!setBefore) ctx.retractMode(Mode.GADTflexible)
-            }
+            if (!ctx.isAfterTyper) tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
         }
         ascription(tpt1, isWildcard = true)
       }
