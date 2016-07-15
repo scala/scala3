@@ -1,0 +1,5 @@
+./tests/patmat/patmatexhaust-huge.scala:404: warning: match may not be exhaustive.
+It would fail on the following input: C397, C392
+  def f(c: C): Int = c match {
+                       ^
+one warning found

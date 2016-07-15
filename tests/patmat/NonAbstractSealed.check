@@ -1,0 +1,5 @@
+./tests/patmat/NonAbstractSealed.scala:6: warning: match may not be exhaustive.
+It would fail on the following input: _: A
+  (null: A) match {
+            ^
+one warning found

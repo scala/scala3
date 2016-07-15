@@ -841,6 +841,13 @@ object Types {
       case _ => this
     }
 
+    /** Eliminate anonymous classes */
+    final def deAnonymize(implicit ctx: Context): Type = this match {
+      case tp:TypeRef if tp.symbol.isAnonymousClass =>
+        tp.symbol.asClass.typeRef.asSeenFrom(tp.prefix, tp.symbol.owner)
+      case tp => tp
+    }
+
     /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      */

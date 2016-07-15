@@ -1,0 +1,21 @@
+./tests/patmat/patmat-adt.scala:7: warning: match may not be exhaustive.
+It would fail on the following input: Bad(Good(_)), Good(Bad(_))
+  def foo1a(x: Odd) = x match { // warning: Good(_: Bad), Bad(_: Good)
+                        ^
+./tests/patmat/patmat-adt.scala:19: warning: match may not be exhaustive.
+It would fail on the following input: Some(_)
+  def foo2(x: Option[Int]) = x match { // warning: Some(_: Int)
+                               ^
+./tests/patmat/patmat-adt.scala:24: warning: match may not be exhaustive.
+It would fail on the following input: (None, Some(_)), (_, Some(_))
+  def foo3a[T](x: Option[T]) = (x, x) match { // warning: (Some(_), Some(_)), (None, Some(_))
+                                      ^
+./tests/patmat/patmat-adt.scala:29: warning: match may not be exhaustive.
+It would fail on the following input: (None, None), (Some(_), Some(_))
+  def foo3b[T](x: Option[T]) = (x, x) match { // warning: (Some(_), Some(_)), (None, None)
+                                      ^
+./tests/patmat/patmat-adt.scala:50: warning: match may not be exhaustive.
+It would fail on the following input: LetL(BooleanLit), LetL(IntLit)
+  def foo5(tree: Tree) : Any = tree match {
+                                    ^
+5 warnings found

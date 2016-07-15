@@ -1,0 +1,13 @@
+./tests/patmat/t4526.scala:2: warning: match may not be exhaustive.
+It would fail on the following input: _: Int
+  def foo(a: Int) = a match {
+                      ^
+./tests/patmat/t4526.scala:7: warning: match may not be exhaustive.
+It would fail on the following input: (_, _)
+  def bar(a: (Int, Int)) = a match {
+                             ^
+./tests/patmat/t4526.scala:12: warning: match may not be exhaustive.
+It would fail on the following input: (false, false), (true, true)
+  def baz(a: (Boolean, Boolean)) = a match {
+                                     ^
+three warnings found

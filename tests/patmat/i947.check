@@ -1,0 +1,4 @@
+./tests/patmat/i947.scala:10: warning: unreachable code
+      case ys: List[d18383] => false
+                           ^
+one warning found
