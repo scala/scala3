@@ -173,8 +173,8 @@ object Constants {
           ctx.typerState.constraint.entry(param) match {
             case TypeBounds(lo, hi) =>
               if (hi.classSymbol.isPrimitiveValueClass) hi //constrain further with high bound
-              else lo
-            case NoType => param.binder.paramBounds(param.paramNum).lo
+              else classBound(lo)
+            case NoType => classBound(param.binder.paramBounds(param.paramNum).lo)
             case inst => classBound(inst)
           }
         case pt => pt
