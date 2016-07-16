@@ -862,6 +862,7 @@ object Types {
         val tycon1 = tycon.dealias
         if (tycon1 ne tycon) app.superType.dealias
         else this
+      case TypeAlias(tp) => tp.dealias
       case _ => this
     }
 
