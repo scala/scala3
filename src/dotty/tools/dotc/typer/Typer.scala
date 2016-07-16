@@ -597,6 +597,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
+
+      pt match {
+        case pt: TypeVar if untpd.isFunctionWithImplicitParamType(tree) =>
+          isFullyDefined(pt, ForceDegree.noBottom)
+        case _ =>
+      }
+
       val (protoFormals, protoResult) = decomposeProtoFunction(pt, params.length)
 
       def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
