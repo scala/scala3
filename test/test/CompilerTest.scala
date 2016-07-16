@@ -236,17 +236,14 @@ abstract class CompilerTest {
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
     val storeReporter = new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
       private val consoleReporter = new ConsoleReporter()
-      private var innerStoreReporter = new StoreReporter(consoleReporter)
+      private val innerStoreReporter = new StoreReporter(consoleReporter)
       def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
-        if (innerStoreReporter == null) {
-          consoleReporter.report(d)
-        } else {
-          innerStoreReporter.report(d)
-          if (d.level == ERROR) {
-            innerStoreReporter.flush()
-            innerStoreReporter = null
-          }
+        if (d.level == ERROR) {
+          innerStoreReporter.flush()
+          consoleReporter.doReport(d)
         }
+        else if (errorCount > 0) consoleReporter.doReport(d)
+        else innerStoreReporter.doReport(d)
       }
     }
     val reporter = processor.process(allArgs, storeReporter)
@@ -260,6 +257,7 @@ abstract class CompilerTest {
     assert(nerrors == xerrors,
       s"""Wrong # of errors. Expected: $xerrors, found: $nerrors
          |Files with expected errors: $expectedErrorFiles
+         |errors:
        """.stripMargin)
     // NEG TEST
     if (xerrors > 0) {
