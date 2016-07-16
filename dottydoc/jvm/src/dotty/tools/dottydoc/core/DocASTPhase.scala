@@ -56,7 +56,7 @@ class DocASTPhase extends Phase {
     }
 
     def addedFromSymbol(sym: Symbol): List[Entity] = {
-      val defs = sym.info.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
+      val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
         track(meth.symbol, ctx) {
           DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), paramLists(meth.info))
         }

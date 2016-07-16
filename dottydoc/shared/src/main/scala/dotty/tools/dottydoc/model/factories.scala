@@ -55,8 +55,8 @@ object factories {
     }
 
     def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
-      case ref @ RefinedType(parent, rn) => {
-        val paramName = (ref.refinedInfo match {
+      case ref @ RefinedType(parent, rn, info) => {
+        val paramName = (info match {
           case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
             ta.alias.asInstanceOf[NamedType].name.show
           case _ => rn.show
@@ -64,6 +64,15 @@ object factories {
         val param = UnsetLink(paramName, paramName)
         expandTpe(parent, param :: params)
       }
+      case HKApply(tycon, args) =>
+        def paramName: Type => String = { tpe =>
+          (tpe match {
+            case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
+              ta.alias.asInstanceOf[NamedType].name.show
+            case _ => tpe.show
+          }).split("\\$").last
+        }
+        expandTpe(tycon, args.map(paramName).map(x => UnsetLink(x,x)))
       case TypeRef(_, n) =>
         val name = n.decode.toString.split("\\$").last
         typeRef(name, params = params)
@@ -118,7 +127,7 @@ object factories {
 
     case annot: AnnotatedType => paramLists(annot.tpe)
     case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
-          _: ExprType  | _: OrType      | _: AndType) => Nil // return types should not be in the paramlist
+          _: ExprType  | _: OrType      | _: AndType | _: HKApply) => Nil // return types should not be in the paramlist
   }
 
   def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {
