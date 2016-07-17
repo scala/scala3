@@ -83,6 +83,7 @@
 ./scala-scala/src/library/scala/collection/immutable/Seq.scala
 ./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+./scala-scala/src/library/scala/collection/mutable/BufferLike.scala
 
 ./scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
 
