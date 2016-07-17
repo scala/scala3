@@ -599,7 +599,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val params = args.asInstanceOf[List[untpd.ValDef]]
 
       pt match {
-        case pt: TypeVar if untpd.isFunctionWithImplicitParamType(tree) =>
+        case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
+          // try to instantiate `pt` if this is possible. If it does not
+          // work the error will be reported later in `inferredParam`,
+          // when we try to infer the parameter type.
           isFullyDefined(pt, ForceDegree.noBottom)
         case _ =>
       }

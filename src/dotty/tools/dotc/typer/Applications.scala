@@ -554,12 +554,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (proto.isTupled) proto = proto.tupled
 
       // If some of the application's arguments are function literals without explicitly declared
-      // parameter types, and the expected type is a value type, relate the
-      // normalized result type of the application with the expected type through `<:<`.
-      // This can add more constraints which help sharpen the inferred parameter
-      // types for the argument function literal(s).
-      // This tweak is needed to make i1348 compile.
-      if (tree.args.exists(untpd.isFunctionWithImplicitParamType(_)))
+      // parameter types, relate the normalized result type of the application with the
+      // expected type through `constrainResult`. This can add more constraints which
+      // help sharpen the inferred parameter types for the argument function literal(s).
+      // This tweak is needed to make i1378 compile.
+      if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
         if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 

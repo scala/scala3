@@ -280,7 +280,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
   import TreeInfo._
 
-  def isFunctionWithImplicitParamType(tree: Tree) = tree match {
+  def isFunctionWithUnknownParamType(tree: Tree) = tree match {
     case untpd.Function(args, _) =>
       args.exists {
         case ValDef(_, tpt, _) => tpt.isEmpty
