@@ -103,7 +103,7 @@ fi
 function check_jar {
     # Usage:
     #   check_jar "name" "path/to/package.jar" "sources/dir" 'lambda to exec on failure'
-    local new_files="$(find "$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
+    local new_files="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
     if [ ! -z "$new_files" ]; then
         printf "New files detected in $1, rebuilding..."
         eval "$4"
