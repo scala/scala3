@@ -2993,10 +2993,6 @@ object Types {
     /** The class type with all type parameters */
     def fullyAppliedRef(implicit ctx: Context): Type = fullyAppliedRef(cls.typeRef, cls.typeParams)
 
-    def rebase(tp: Type)(implicit ctx: Context): Type =
-      if ((prefix eq cls.owner.thisType) || !cls.owner.isClass || ctx.erasedTypes) tp
-      else tp.substThis(cls.owner.asClass, prefix)
-
     private var typeRefCache: TypeRef = null
 
     def typeRef(implicit ctx: Context): TypeRef = {
@@ -3016,7 +3012,7 @@ object Types {
     /** The parent type refs as seen from the given prefix */
     override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
-        parentsCache = cls.classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
+        parentsCache = cls.classParents.mapConserve(_.asSeenFrom(prefix, cls.owner).asInstanceOf[TypeRef])
       parentsCache
     }
 
