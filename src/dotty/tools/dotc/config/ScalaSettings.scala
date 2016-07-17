@@ -85,6 +85,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val writeICode = PhasesSetting("-Xprint-icode", "Log internal icode to *.icode files after", "icode")
   val Xprintpos = BooleanSetting("-Xprint-pos", "Print tree positions, as offsets.")
   val printtypes = BooleanSetting("-Xprint-types", "Print tree types (debugging option).")
+  val XprintDiffDel = BooleanSetting("-Xprint-diff-del", "Print deleted parts of the tree since last print.")
   val prompt = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
   val script = StringSetting("-Xscript", "object", "Treat the source file as a script and wrap it in a main method.", "")
   val mainClass = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")

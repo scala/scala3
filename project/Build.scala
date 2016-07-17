@@ -100,6 +100,7 @@ object DottyBuild extends Build {
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "jline" % "jline" % "2.12",
+                                  "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
