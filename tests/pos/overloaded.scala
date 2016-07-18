@@ -47,40 +47,4 @@ object overloaded {
   val t5: Int = r5
   val r6 = combine((x: String, y) => x ++ y.toString)
   val t6: String = r6
-
-  // test result disambiguation
-  trait A
-  trait B
-  class C extends A with B
-  def fr(x: A): A = x
-  def fr(x: B): B = x
-  val a: A = fr(new C)
-  val b: B = fr(new C)
-}
-
-// from #1381
-
-object Foo {
-  class Bar[T]
-  implicit def const[T](x: T): Bar[T] = ???
-
-  def bar[T](e: T): Any = ???
-  def bar[T](e: Bar[T]): Any = ???
-
-  val b: Bar[Int] = ???
-  bar(b)
-}
-
-object Test2 {
-    trait A; trait B
-    class C1 {
-       def f(x: A): Unit = println("A")
-    }
-    class C2 extends C1 {
-       def f(x: B): Unit = println("B")
-    }
-    object Test extends C2 with App {
-      implicit def a2b(x: A): B = new B {}
-      f(new A {})
-    }
 }
