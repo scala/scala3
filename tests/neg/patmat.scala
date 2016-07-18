@@ -12,7 +12,7 @@ object Test {
     ca match {
       case x: B =>
       case X() =>
-      case D() => // error: neither a subtype not a supertype
+      case D() => // ok, but scalac disagrees
     }
     val cc = new C
     cc match {
