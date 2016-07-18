@@ -295,28 +295,57 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
 
-            if (isDoubleDef(sym1, sym2)) doubleDefError(denot1, denot2, pre)
-
             val sym2Accessible = sym2.isAccessibleFrom(pre)
+
             /** Does `sym1` come before `sym2` in the linearization of `pre`? */
             def precedes(sym1: Symbol, sym2: Symbol) = {
               def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
                 case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
                 case Nil => true
               }
-              sym1.derivesFrom(sym2) ||
-                !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses)
+              (sym1 ne sym2) &&
+              (sym1.derivesFrom(sym2) ||
+                !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
             }
 
-            /** Preference according to partial pre-order (isConcrete, precedes) */
+            /** Similar to SymDenotation#accessBoundary, but without the special cases. */
+            def accessBoundary(sym: Symbol) =
+              if (sym.is(Private)) sym.owner
+              else sym.privateWithin.orElse(
+                if (sym.is(Protected)) sym.owner.enclosingPackageClass
+                else defn.RootClass
+              )
+
+            /** Establish a partial order "preference" order between symbols.
+             *  Give preference to `sym1` over `sym2` if one of the following
+             *  conditions holds, in decreasing order of weight:
+             *   1. sym1 is concrete and sym2 is abstract
+             *   2. The owner of sym1 comes before the owner of sym2 in the linearization
+             *      of the type of the prefix `pre`.
+             *   3. The access boundary of sym2 is properly contained in the access
+             *      boundary of sym1. For protected access, we count the enclosing
+             *      package as access boundary.
+             *   4. sym1 a method but sym2 is not.
+             *  The aim of these criteria is to give some disambiguation on access which
+             *   - does not depend on textual order or other arbitrary choices
+             *   - minimizes raising of doubleDef errors
+             */
             def preferSym(sym1: Symbol, sym2: Symbol) =
               sym1.eq(sym2) ||
                 sym1.isAsConcrete(sym2) &&
-                (!sym2.isAsConcrete(sym1) || precedes(sym1.owner, sym2.owner))
+                (!sym2.isAsConcrete(sym1) ||
+                 precedes(sym1.owner, sym2.owner) ||
+                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+                 sym1.is(Method) && !sym2.is(Method))
 
             /** Sym preference provided types also override */
             def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
               preferSym(sym1, sym2) && info1.overrides(info2)
+
+            def handleDoubleDef =
+              if (preferSym(sym1, sym2)) denot1
+              else if (preferSym(sym2, sym1)) denot2
+              else doubleDefError(denot1, denot2, pre)
 
             if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
             else {
@@ -324,6 +353,7 @@ object Denotations {
               if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
               else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
               else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
+              else if (isDoubleDef(sym1, sym2)) handleDoubleDef
               else {
                 val sym =
                   if (!sym1.exists) sym2
