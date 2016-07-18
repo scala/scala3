@@ -98,9 +98,8 @@ object Config {
   final val splitProjections = false
 
   /** If this flag is on, always rewrite an application `S[Ts]` where `S` is an alias for
-   *  `[Xs] -> U` to `[Xs := Ts]U`. If this flag is off, the rewriting is only done if `S` is a
-   *  reference to an instantiated parameter. Turning this flag on was observed to
-   *  give a ~6% speedup on the JUnit test suite.
+   *  `[Xs] -> U` to `[Xs := Ts]U`.
+   *  Turning this flag on was observed to give a ~6% speedup on the JUnit test suite.
    */
   final val simplifyApplications = true
 

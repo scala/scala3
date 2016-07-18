@@ -470,18 +470,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeLambda =>
         def tryReduce =
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
-            val followAlias = stripped match {
-              case stripped: TypeRef =>
-                stripped.symbol.is(BaseTypeArg)
-              case _ =>
-                Config.simplifyApplications && {
-                  dealiased.resType match {
-                    case AppliedType(tyconBody, _) =>
-                      variancesConform(typParams, tyconBody.typeParams)
-                        // Reducing is safe for type inference, as kind of type constructor does not change
-                    case _ => false
-                  }
-                }
+            val followAlias = Config.simplifyApplications && {
+              dealiased.resType match {
+                case AppliedType(tyconBody, _) =>
+                  variancesConform(typParams, tyconBody.typeParams)
+                    // Reducing is safe for type inference, as kind of type constructor does not change
+                case _ => false
+              }
             }
             if ((dealiased eq stripped) || followAlias) dealiased.instantiate(args)
             else HKApply(self, args)
