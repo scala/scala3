@@ -740,13 +740,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
 
-    /** Can `subtp` be made to be a subtype of `tp`, possibly by dropping some
-     *  refinements in `tp`?
+    /** Is `subtp` a subtype of `tp` or of some generalization of `tp`?
+     *  The generalizations of a type T are the smallest set G such that
+     *
+     *   - T is in G
+     *   - If a typeref R in G represents a trait, R's superclass is in G.
+     *   - If a type proxy P is not a reference to a class, P's supertype is in G
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case tp: RefinedType => isSubTypeOfParent(subtp, tp.parent)
+        case tp: TypeRef if tp.symbol.isClass =>
+          tp.symbol.is(Trait) && isSubTypeOfParent(subtp, tp.firstParent)
+        case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
         case _ => false
       }
 
@@ -754,13 +760,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case mt: MethodType if mt.paramTypes.length == 1 =>
         val unapplyArgType = mt.paramTypes.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
-        def wpt = widenForMatchSelector(selType) // needed?
         val ownType =
           if (selType <:< unapplyArgType) {
-            //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             selType
-          } else if (isSubTypeOfParent(unapplyArgType, wpt)(ctx.addMode(Mode.GADTflexible))) {
+          } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
@@ -786,9 +790,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             unapplyArgType
           } else {
             unapp.println("Neither sub nor super")
-            unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< wpt))
+            unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< selType))
             errorType(
-              d"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
+              d"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
               tree.pos)
           }
 
