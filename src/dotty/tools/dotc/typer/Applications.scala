@@ -1047,31 +1047,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  to form the method type.
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
-
-    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
-
-    /** The shape of given tree as a type; cannot handle named arguments. */
-    def typeShape(tree: untpd.Tree): Type = tree match {
-      case untpd.Function(args, body) =>
-        defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
-      case _ =>
-        defn.NothingType
-    }
-
-    /** The shape of given tree as a type; is more expensive than
-     *  typeShape but can can handle named arguments.
-     */
-    def treeShape(tree: untpd.Tree): Tree = tree match {
-      case NamedArg(name, arg) =>
-        val argShape = treeShape(arg)
-        cpy.NamedArg(tree)(name, argShape).withType(argShape.tpe)
-      case _ =>
-        dummyTreeOfType(typeShape(tree))
-    }
-
-    def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
-      alts filter (isApplicable(_, argTypes, resultType))
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -1100,23 +1076,63 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  probability of pruning the search. result type comparisons are neither cheap nor
      *  do they prune much, on average.
      */
-    def adaptByResult(alts: List[TermRef], chosen: TermRef) = {
-        def nestedCtx = ctx.fresh.setExploreTyperState
-        pt match {
-          case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
-            alts.filter(alt =>
-              (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
-              case Nil => chosen
-              case alt2 :: Nil => alt2
-              case alts2 =>
-                resolveOverloaded(alts2, pt) match {
-                  case alt2 :: Nil => alt2
-                  case _ => chosen
-                }
-            }
-          case _ => chosen
-        }
+    def adaptByResult(chosen: TermRef) = {
+      def nestedCtx = ctx.fresh.setExploreTyperState
+      pt match {
+        case pt: FunProto if !resultConforms(chosen, pt.resultType)(nestedCtx) =>
+          alts.filter(alt =>
+            (alt ne chosen) && resultConforms(alt, pt.resultType)(nestedCtx)) match {
+            case Nil => chosen
+            case alt2 :: Nil => alt2
+            case alts2 =>
+              resolveOverloaded(alts2, pt) match {
+                case alt2 :: Nil => alt2
+                case _ => chosen
+              }
+          }
+        case _ => chosen
       }
+    }
+
+    var found = resolveOverloaded(alts, pt, Nil)(ctx.retractMode(Mode.ImplicitsEnabled))
+    if (found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled))
+      found = resolveOverloaded(alts, pt, Nil)
+    found match {
+      case alt :: Nil => adaptByResult(alt) :: Nil
+      case _ => found
+    }
+  }
+
+  /** This private version of `resolveOverloaded` does the bulk of the work of
+   *  overloading resolution, but does not do result adaptation. It might be
+   *  called twice from the public `resolveOverloaded` method, once with
+   *  implicits enabled, and once without.
+   */
+  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+
+    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
+
+    /** The shape of given tree as a type; cannot handle named arguments. */
+    def typeShape(tree: untpd.Tree): Type = tree match {
+      case untpd.Function(args, body) =>
+        defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
+      case _ =>
+        defn.NothingType
+    }
+
+    /** The shape of given tree as a type; is more expensive than
+     *  typeShape but can can handle named arguments.
+     */
+    def treeShape(tree: untpd.Tree): Tree = tree match {
+      case NamedArg(name, arg) =>
+        val argShape = treeShape(arg)
+        cpy.NamedArg(tree)(name, argShape).withType(argShape.tpe)
+      case _ =>
+        dummyTreeOfType(typeShape(tree))
+    }
+
+    def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
+      alts filter (isApplicable(_, argTypes, resultType))
 
     val candidates = pt match {
       case pt @ FunProto(args, resultType, _) =>
@@ -1176,9 +1192,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
         }
 
-      case pt @ PolyProto(targs, pt1) =>
+      case pt @ PolyProto(targs1, pt1) =>
+        assert(targs.isEmpty)
         val alts1 = alts filter pt.isMatchedBy
-        resolveOverloaded(alts1, pt1, targs)
+        resolveOverloaded(alts1, pt1, targs1)
 
       case defn.FunctionOf(args, resultType) =>
         narrowByTypes(alts, args, resultType)
@@ -1186,23 +1203,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt =>
         alts filter (normalizedCompatible(_, pt))
     }
-    narrowMostSpecific(candidates) match {
-      case Nil => Nil
-      case alt :: Nil =>
-        adaptByResult(alts, alt) :: Nil
-        // why `alts` and not `candidates`? pos/array-overload.scala gives a test case.
-        // Here, only the Int-apply is a candidate, but it is not compatible with the result
-        // type. Picking the Byte-apply as the only result-compatible solution then forces
-        // the arguments (which are constants) to be adapted to Byte. If we had picked
-        // `candidates` instead, no solution would have been found.
-      case alts =>
-        val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-        if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
-        else {
-          val deepPt = pt.deepenProto
-          if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-          else alts
-        }
+    val found = narrowMostSpecific(candidates)
+    if (found.length <= 1) found
+    else {
+      val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+      if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
+      else {
+        val deepPt = pt.deepenProto
+        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+        else alts
+      }
     }
   }
 
@@ -1305,11 +1315,3 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
 
-/*
-  def typedApply(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree = track("typedApply") {
-    new ApplyToTyped(app, fun, methRef, args, resultType).result
-  }
-
-  def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
-    typedApply(untpd.Apply(untpd.TypedSplice(fun), args), fun, methRef, args, resultType)
-*/
