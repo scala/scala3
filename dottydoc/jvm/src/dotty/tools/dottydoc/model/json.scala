@@ -46,10 +46,14 @@ object json {
       s"""{"left":${refToJson(ref.left)},"right":${refToJson(ref.right)},"kind":"AndTypeReference"}"""
     case ref: OrTypeReference =>
       s"""{"left":${refToJson(ref.left)},"right":${refToJson(ref.right)},"kind":"OrTypeReference"}"""
+    case ref: BoundsReference =>
+      s"""{"low":${refToJson(ref.low)},"high":${refToJson(ref.high)},"kind":"BoundsReference"}"""
     case ref: NamedReference =>
       s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"isByName":${ref.isByName.json},"kind":"NamedReference"}"""
     case ref: ConstantReference =>
       s"""{"title":${ref.title.json},"kind": "ConstantReference"}"""
+    case ref: FunctionReference =>
+      s"""{"args":${ref.args.map(refToJson).mkString("[",",","]")},"returnValue":${refToJson(ref.returnValue)},"kind": "FunctionReference"}"""
   }
   implicit class ReferenceJson(val ref: Reference) extends AnyVal { def json: String = refToJson(ref) }
 

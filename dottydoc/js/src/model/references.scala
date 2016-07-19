@@ -32,6 +32,12 @@ trait AndTypeReference extends Reference {
 }
 
 @ScalaJSDefined
+trait BoundsReference extends Reference {
+  val low: Reference
+  val high: Reference
+}
+
+@ScalaJSDefined
 trait NamedReference extends Reference {
   val title: String
   val ref: Reference
@@ -41,6 +47,12 @@ trait NamedReference extends Reference {
 @ScalaJSDefined
 trait ConstantReference extends Reference {
   val title: String
+}
+
+@ScalaJSDefined
+trait FunctionReference extends Reference {
+  val args: sjs.Array[Reference]
+  val returnValue: Reference
 }
 
 /** Materializable links */

@@ -55,25 +55,23 @@ object factories {
       TypeReference(name, UnsetLink(name, realQuery), params)
     }
 
-    def expandTpe(t: Type, params: List[MaterializableLink] = Nil): Reference = t match {
-      case ref @ RefinedType(parent, rn, info) => {
-        val paramName = (info match {
-          case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
-            ta.alias.asInstanceOf[NamedType].name.show
-          case _ => rn.show
-        }).split("\\$").last
-        val param = UnsetLink(paramName, paramName)
-        expandTpe(parent, param :: params)
-      }
-      case HKApply(tycon, args) =>
-        def paramName: Type => String = { tpe =>
-          (tpe match {
-            case ta: TypeAlias if ta.alias.isInstanceOf[NamedType] =>
-              ta.alias.asInstanceOf[NamedType].name.show
-            case _ => tpe.show
-          }).split("\\$").last
-        }
-        expandTpe(tycon, args.map(paramName).map(x => UnsetLink(x,x)))
+    def expandTpe(t: Type, params: List[Reference] = Nil): Reference = t match {
+      case tl: TypeLambda =>
+        //FIXME: should be handled correctly
+        // example, in `Option`:
+        //
+        // {{{
+        //   def companion: GenericCompanion[collection.Iterable]
+        // }}}
+        //
+        // Becomes: def companion: [+X0] -> collection.Iterable[X0]
+        typeRef(tl.show + " (not handled)")
+      case AppliedType(tycon, args) =>
+        FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
+      case ref @ RefinedType(parent, rn, info) =>
+        expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
+      case ref @ HKApply(tycon, args) =>
+        expandTpe(tycon, args.map(expandTpe(_, params)))
       case TypeRef(_, n) =>
         val name = n.decode.toString.split("\\$").last
         typeRef(name, params = params)
@@ -83,6 +81,8 @@ object factories {
         OrTypeReference(expandTpe(left), expandTpe(right))
       case AndType(left, right) =>
         AndTypeReference(expandTpe(left), expandTpe(right))
+      case tb @ TypeBounds(lo, hi) =>
+        BoundsReference(expandTpe(lo), expandTpe(hi))
       case AnnotatedType(tpe, _) =>
         expandTpe(tpe)
       case ExprType(tpe) =>

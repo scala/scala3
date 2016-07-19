@@ -119,7 +119,7 @@ trait MemberLayout {
           "[",
           tref
             .paramLinks
-            .map(linkToAnchor)
+            .map(referenceToLinks)
             .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render))
             .toList.dropRight(1),
           "]"
@@ -141,6 +141,30 @@ trait MemberLayout {
           span(cls := "type-separator", "&"),
           referenceToLinks(right)
         ).render
+
+      case "BoundsReference" =>
+        val (low, high) = (ref.asInstanceOf[BoundsReference].low, ref.asInstanceOf[BoundsReference].high)
+        span(
+          referenceToLinks(low),
+          span(cls := "type-separator", "<:"),
+          referenceToLinks(high)
+        ).render
+
+      case "FunctionReference" => {
+        val func = ref.asInstanceOf[FunctionReference]
+        span(
+          cls := "no-left-margin",
+          if (func.args.length > 1) "(" else "",
+          if (func.args.isEmpty)
+            span("()")
+          else func
+              .args
+              .map(referenceToLinks)
+              .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render)).init.toList,
+          if (func.args.length > 1) ") => " else " => ",
+          referenceToLinks(func.returnValue)
+        ).render
+      }
     }
   }
 
@@ -183,7 +207,7 @@ trait MemberLayout {
             returnValue,
             "[",
             trv.paramLinks
-              .map(decodeTpeLink)
+              .map(link)
               .flatMap { sp =>
                 Seq(sp, span(cls := "type-separator no-left-margin", ",").render)
               }
@@ -207,6 +231,28 @@ trait MemberLayout {
             link(left),
             span(cls := "type-separator", "&"),
             link(right)
+          ).render
+
+        case "BoundsReference" =>
+          val (low, high) = (rv.asInstanceOf[BoundsReference].low, rv.asInstanceOf[BoundsReference].high)
+          span(
+            link(low),
+            span(cls := "type-separator", "<:"),
+            link(high)
+          ).render
+        case "FunctionReference" =>
+          val func = rv.asInstanceOf[FunctionReference]
+          span(
+            cls := "no-left-margin",
+            if (func.args.length > 1) "(" else "",
+            if (func.args.isEmpty)
+              span("()")
+            else func
+              .args
+              .map(link)
+              .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render)).init.toList,
+            if (func.args.length > 1) ") => " else " => ",
+            link(func.returnValue)
           ).render
       }
     }
