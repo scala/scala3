@@ -582,7 +582,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   private def decomposeProtoFunction(pt: Type, defaultArity: Int)(implicit ctx: Context): (List[Type], Type) = pt match {
     case _ if defn.isFunctionType(pt) =>
-      (pt.dealias.argInfos.init, pt.dealias.argInfos.last)
+      // if expected parameter type(s) are wildcards, approximate from below.
+      // if expected result type is a wildcard, approximate from above.
+      // this can type the greatest set of admissible closures.
+      (pt.dealias.argTypesLo.init, pt.dealias.argTypesHi.last)
     case SAMType(meth) =>
       val mt @ MethodType(_, paramTypes) = meth.info
       (paramTypes, mt.resultType)

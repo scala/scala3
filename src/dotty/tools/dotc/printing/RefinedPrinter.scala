@@ -96,15 +96,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
-      "(" ~ toTextGlobal(args, ", ") ~ ")"
+      "(" ~ Text(args.map(argText), ", ") ~ ")"
     def toTextFunction(args: List[Type]): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
-            atPrec(InfixPrec) { toText(args.head) }
+            atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        argStr ~ " => " ~ toText(args.last)
+        argStr ~ " => " ~ argText(args.last)
       }
     homogenize(tp) match {
       case AppliedType(tycon, args) =>
