@@ -12,6 +12,7 @@ import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
+import scala.annotation.tailrec
 
 /** Provides methods to compare types.
  */
@@ -550,8 +551,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
           }
-          (tp1.symbol eq NothingClass) && tp2.isValueTypeOrLambda ||
-          (tp1.symbol eq NullClass) && isNullable(tp2)
+          def isPhantom(tp: Type): Boolean = tp.widenDealias match {
+            case tp: TypeRef => defn.isPhantomAnyClass(tp.symbol)
+            case tp: RefinedOrRecType => isPhantom(tp.parent)
+            case tp: AndOrType => isPhantom(tp.tp1)
+            case _ => false
+          }
+          if (tp1.symbol eq NothingClass) tp2.isValueTypeOrLambda && !isPhantom(tp2)
+          else if (tp1.symbol eq NullClass) isNullable(tp2) && !isPhantom(tp2)
+          else if (defn.isPhantomNothingClass(tp1.symbol)) tp2.isValueTypeOrLambda && (tp1.phantomTopClass == tp2.phantomTopClass)
+          else false
       }
     case tp1: SingletonType =>
       /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/

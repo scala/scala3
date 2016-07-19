@@ -149,17 +149,18 @@ class Definitions {
   }
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
+                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags,
+                    bounds: TypeName => TypeBounds = _ => TypeBounds.empty) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
-    val tparamBounds = tparamNames map (_ => TypeBounds.empty)
+    val tparamBounds = tparamNames map bounds
     val ptype = PolyType(tparamNames, tparamNames.map(alwaysZero))(_ => tparamBounds, resultTypeFn)
     enterMethod(cls, name, ptype, flags)
   }
 
-  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
+  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet, bounds: TypeName => TypeBounds = _ => TypeBounds.empty) =
     enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
+  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet, bounds: TypeName => TypeBounds = _ => TypeBounds.empty) =
     enterPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {
@@ -938,16 +939,17 @@ class Definitions {
     val newDecls = new MutableScope(oldDecls) {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val res = super.lookupEntry(name)
-        if (res == null && name.isTypeName && name.isSyntheticFunction)
+        if (res ne null) res
+        else if (name.isTypeName && name.isSyntheticFunction)
           newScopeEntry(newFunctionNTrait(name.asTypeName))
-        else res
+        else null
       }
     }
     ScalaPackageClass.info = oldInfo.derivedClassInfo(decls = newDecls)
   }
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticScalaClasses = List(
+  private lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
@@ -956,14 +958,15 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
-    EqualsPatternClass)
+    EqualsPatternClass,
+    PhantomClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(
     EmptyPackageVal,
     OpsPackageClass)
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+  private lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
@@ -985,4 +988,44 @@ class Definitions {
       _isInitialized = true
     }
   }
+
+  // ----- Phantoms ---------------------------------------------------------
+
+  lazy val PhantomClass: ClassSymbol = {
+    val cls = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Phantom, Abstract, List(AnyType)))
+
+    val any = enterCompleteClassSymbol(cls, tpnme.Any, Protected | Final | NoInitsTrait, Nil)
+    val nothing = enterCompleteClassSymbol(cls, tpnme.Nothing, Protected | Final | NoInitsTrait, List(any.typeRef))
+
+    val tparamNames = tpnme.syntheticTypeParamNames(1)
+    val ptype = PolyType(tparamNames, List(0))(_ => TypeBounds(nothing.typeRef, any.typeRef) :: Nil, PolyParam(_, 0))
+    newSymbol(cls, nme.assume_, Protected | Final | Method, ptype).entered
+
+    cls
+  }
+
+  def isPhantomAnyClass(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.exists && (sym.owner eq PhantomClass) && sym.name == tpnme.Any
+
+  def isPhantomNothingClass(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.exists && (sym.owner eq PhantomClass) && sym.name == tpnme.Nothing
+
+  def isPhantomAssume(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.exists && (sym.owner eq PhantomClass) && sym.name == nme.assume_
+
+  def topOf(tp: Type)(implicit ctx: Context): Type = tp.phantomTopClass match {
+    case top: ClassInfo => top.prefix.select(tpnme.Any)
+    case _ => defn.AnyType
+  }
+
+  def bottomOf(tp: Type)(implicit ctx: Context): Type = tp.phantomTopClass match {
+    case top: ClassInfo => top.prefix.select(tpnme.Nothing)
+    case _ => defn.NothingType
+  }
+
+  lazy val ErasedPhantomClass = ctx.requiredClass("dotty.runtime.ErasedPhantom")
+  def ErasedPhantomType = ErasedPhantomClass.typeRef
+
+  lazy val ErasedPhantomLatticeClass = ctx.requiredClass("dotty.runtime.ErasedPhantomLattice")
+  def ErasedPhantomLatticeType = ErasedPhantomLatticeClass.typeRef
 }
