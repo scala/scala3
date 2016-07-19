@@ -16,6 +16,8 @@ import util.{SimpleMap, Property}
 import collection.mutable
 import ast.tpd._
 
+import scala.annotation.tailrec
+
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
@@ -204,7 +206,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
-    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
+    @tailrec def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = cs match {
       case c :: rest =>
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
@@ -260,7 +262,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                   else tp.baseTypeWithArgs(cls)
                 base.mapReduceOr(identity)(mergeRefined)
               }
-              doms.map(baseTp).reduceLeft(AndType.apply)
+              if (doms.isEmpty) new ErrorType("no parents in common") // This can happen in the union of Any with PhantomAny
+              else doms.map(baseTp).reduceLeft(AndType.apply)
           }
       }
     }
