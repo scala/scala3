@@ -400,12 +400,15 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val formals = tp.paramInfos.mapConserve(paramErasure)
+      val (names, formals0) =
+        if (tp.paramInfos.forall(!_.isPhantom)) (tp.paramNames, tp.paramInfos)
+        else tp.paramNames.iterator.zip(tp.paramInfos.iterator).filterNot(_._2.isPhantom).toList.unzip
+      val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
-          tp.derivedLambdaType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
+          tp.derivedLambdaType(names ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
         case rt =>
-          tp.derivedLambdaType(tp.paramNames, formals, rt)
+          tp.derivedLambdaType(names, formals, rt)
       }
     case tp: PolyType =>
       this(tp.resultType)

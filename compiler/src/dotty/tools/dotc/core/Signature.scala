@@ -84,7 +84,7 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
    *  to the parameter part of this signature.
    */
   def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
-    Signature((params.map(sigName(_, isJava))) ++ paramsSig, resSig)
+    Signature(params.collect { case p if !p.isPhantom => sigName(p, isJava) } ++ paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
