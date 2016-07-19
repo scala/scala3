@@ -13,6 +13,7 @@ import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform._
+import dotty.tools.dotc.transform.phantom._
 import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
@@ -309,6 +310,7 @@ object Phases {
 
     private var myPeriod: Period = Periods.InvalidPeriod
     private var myBase: ContextBase = null
+    private var myErasedPhantomTerms = false
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false
@@ -326,6 +328,7 @@ object Phases {
     def start = myPeriod.firstPhaseId
     def end = myPeriod.lastPhaseId
 
+    final def erasedPhantomTerms = myErasedPhantomTerms // Phase is after phantom terms
     final def erasedTypes = myErasedTypes   // Phase is after erasure
     final def flatClasses = myFlatClasses   // Phase is after flatten
     final def refChecked = myRefChecked     // Phase is after RefChecks
@@ -337,6 +340,7 @@ object Phases {
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
+      myErasedPhantomTerms = prev.getClass == classOf[PhantomTermErasure] || prev.erasedPhantomTerms
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
       myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked

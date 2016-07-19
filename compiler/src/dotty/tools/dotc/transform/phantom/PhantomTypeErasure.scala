@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.DenotTransformers._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
@@ -13,6 +14,9 @@ class PhantomTypeErasure extends MiniPhaseTransform with InfoTransformer {
   import tpd._
 
   override def phaseName: String = "phantomTypeErasure"
+
+  /** List of names of phases that should precede this phase */
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PhantomTermErasure])
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
