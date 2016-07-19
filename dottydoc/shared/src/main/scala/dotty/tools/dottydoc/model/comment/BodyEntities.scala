@@ -100,7 +100,7 @@ final case class MaterializedLink(title: String, target: String) extends Materia
 final case class NoLink(title: String, target: String) extends MaterializableLink
 
 sealed trait Reference
-final case class TypeReference(title: String, tpeLink: MaterializableLink, paramLinks: List[MaterializableLink]) extends Reference
+final case class TypeReference(title: String, tpeLink: MaterializableLink, paramLinks: List[Reference]) extends Reference
 final case class OrTypeReference(left: Reference, right: Reference) extends Reference
 final case class AndTypeReference(left: Reference, right: Reference) extends Reference
 final case class NamedReference(title: String, ref: Reference, isByName: Boolean = false) extends Reference

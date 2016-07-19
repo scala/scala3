@@ -51,13 +51,7 @@ trait TypeLinker extends MemberLookup {
         }
 
         val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
-
-        val tpTargets = tps.map {
-          case UnsetLink(t, query) =>
-            handleEntityLink(t, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
-          case x => x
-        }
-
+        val tpTargets = tps.map(linkReference(ent, _, packs))
         rv.copy(tpeLink = target, paramLinks = tpTargets)
       case rv @ OrTypeReference(left, right) =>
         rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))

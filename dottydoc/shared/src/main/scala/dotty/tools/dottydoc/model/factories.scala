@@ -4,6 +4,7 @@ package model
 import comment._
 import dotty.tools.dotc
 import dotc.core.Types._
+import dotc.core.TypeApplications._
 import dotc.core.Flags
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
@@ -49,7 +50,7 @@ object factories {
   }
 
   def returnType(t: Type)(implicit ctx: Context): Reference = {
-    def typeRef(name: String, query: String = "", params: List[MaterializableLink] = Nil) = {
+    def typeRef(name: String, query: String = "", params: List[Reference] = Nil) = {
       val realQuery = if (query != "") query else name
       TypeReference(name, UnsetLink(name, realQuery), params)
     }
@@ -76,6 +77,8 @@ object factories {
       case TypeRef(_, n) =>
         val name = n.decode.toString.split("\\$").last
         typeRef(name, params = params)
+      case ta: TypeAlias =>
+        expandTpe(ta.alias.widenDealias)
       case OrType(left, right) =>
         OrTypeReference(expandTpe(left), expandTpe(right))
       case AndType(left, right) =>
@@ -90,8 +93,6 @@ object factories {
         expandTpe(tt.underlying)
       case ci: ClassInfo =>
         typeRef(ci.cls.show)
-      case ta: TypeAlias =>
-        expandTpe(ta.alias.widenDealias)
       case mt: MethodType =>
         expandTpe(mt.resultType)
       case pt: PolyType =>

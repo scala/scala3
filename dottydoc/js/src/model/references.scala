@@ -16,7 +16,7 @@ sealed trait Reference extends sjs.Object {
 trait TypeReference extends Reference {
   val title: String
   val tpeLink: MaterializableLink
-  val paramLinks: sjs.Array[MaterializableLink]
+  val paramLinks: sjs.Array[Reference]
 }
 
 @ScalaJSDefined
