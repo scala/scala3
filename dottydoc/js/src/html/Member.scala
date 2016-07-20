@@ -117,7 +117,15 @@ trait MemberLayout {
     ref.kind match {
       case "TypeReference" =>
         val tref = ref.asInstanceOf[TypeReference]
-        if (tref.paramLinks.nonEmpty) span(
+        val infixTypes = "<:<" :: "=:=" :: Nil
+        if (tref.paramLinks.length == 2 && infixTypes.contains(tref.title)) span(
+          referenceToLinks(tref.paramLinks(0)),
+          span(cls := "type-separator no-left-margin"),
+          linkToAnchor(tref.tpeLink),
+          span(cls := "type-separator no-left-margin"),
+          referenceToLinks(tref.paramLinks(1))
+        ).render
+        else if (tref.paramLinks.nonEmpty) span(
           linkToAnchor(tref.tpeLink),
           "[",
           tref
