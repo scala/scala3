@@ -54,6 +54,8 @@ object json {
       s"""{"title":${ref.title.json},"kind": "ConstantReference"}"""
     case ref: FunctionReference =>
       s"""{"args":${ref.args.map(refToJson).mkString("[",",","]")},"returnValue":${refToJson(ref.returnValue)},"kind": "FunctionReference"}"""
+    case ref: TupleReference =>
+      s"""{"args":${ref.args.map(refToJson).mkString("[",",","]")},"kind": "TupleReference"}"""
   }
   implicit class ReferenceJson(val ref: Reference) extends AnyVal { def json: String = refToJson(ref) }
 
