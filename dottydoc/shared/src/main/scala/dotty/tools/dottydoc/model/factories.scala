@@ -50,6 +50,8 @@ object factories {
   }
 
   def returnType(t: Type)(implicit ctx: Context): Reference = {
+    val defn = ctx.definitions
+
     def typeRef(name: String, query: String = "", params: List[Reference] = Nil) = {
       val realQuery = if (query != "") query else name
       TypeReference(name, UnsetLink(name, realQuery), params)
@@ -123,7 +125,12 @@ object factories {
 
     case mt: MethodType =>
       mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
-        NamedReference(name.decode.toString, returnType(tpe), tpe.isInstanceOf[ExprType])
+        NamedReference(
+          name.decode.toString,
+          returnType(tpe),
+          isByName = tpe.isInstanceOf[ExprType],
+          isRepeated = tpe.isRepeatedParam
+        )
       } :: paramLists(mt.resultType)
 
     case annot: AnnotatedType => paramLists(annot.tpe)

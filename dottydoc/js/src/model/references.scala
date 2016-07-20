@@ -42,6 +42,7 @@ trait NamedReference extends Reference {
   val title: String
   val ref: Reference
   val isByName: Boolean
+  val isRepeated: Boolean
 }
 
 @ScalaJSDefined
@@ -53,6 +54,11 @@ trait ConstantReference extends Reference {
 trait FunctionReference extends Reference {
   val args: sjs.Array[Reference]
   val returnValue: Reference
+}
+
+@ScalaJSDefined
+trait TupleReference extends Reference {
+  val args: sjs.Array[Reference]
 }
 
 /** Materializable links */

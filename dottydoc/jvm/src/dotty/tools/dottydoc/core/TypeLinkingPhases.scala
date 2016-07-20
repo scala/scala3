@@ -57,7 +57,7 @@ trait TypeLinker extends MemberLookup {
         rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
       case rv @ AndTypeReference(left, right) =>
         rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
-      case rv @ NamedReference(_, ref, _) => rv.copy(ref = linkReference(ent, ref, packs))
+      case rv @ NamedReference(_, ref, _, _) => rv.copy(ref = linkReference(ent, ref, packs))
       case _ => rv
     }
 }

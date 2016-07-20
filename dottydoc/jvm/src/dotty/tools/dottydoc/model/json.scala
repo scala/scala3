@@ -49,7 +49,7 @@ object json {
     case ref: BoundsReference =>
       s"""{"low":${refToJson(ref.low)},"high":${refToJson(ref.high)},"kind":"BoundsReference"}"""
     case ref: NamedReference =>
-      s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"isByName":${ref.isByName.json},"kind":"NamedReference"}"""
+      s"""{"title":${ref.title.json},"ref":${refToJson(ref.ref)},"isByName":${ref.isByName.json},"isRepeated":${ref.isRepeated.json},"kind":"NamedReference"}"""
     case ref: ConstantReference =>
       s"""{"title":${ref.title.json},"kind": "ConstantReference"}"""
     case ref: FunctionReference =>
