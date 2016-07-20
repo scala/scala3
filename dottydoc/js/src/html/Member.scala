@@ -167,6 +167,19 @@ trait MemberLayout {
           referenceToLinks(func.returnValue)
         ).render
       }
+
+      case "TupleReference" => {
+        val func = ref.asInstanceOf[TupleReference]
+        span(
+          cls := "no-left-margin",
+          "(",
+          func
+            .args
+            .map(referenceToLinks)
+            .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render)).init.toList,
+          ")"
+        ).render
+      }
     }
   }
 
@@ -256,6 +269,19 @@ trait MemberLayout {
             if (func.args.length > 1) ") => " else " => ",
             link(func.returnValue)
           ).render
+
+        case "TupleReference" => {
+          val func = rv.asInstanceOf[TupleReference]
+          span(
+            cls := "no-left-margin",
+            "(",
+            func
+              .args
+              .map(link)
+              .flatMap(link => Seq(link, span(cls := "type-separator no-left-margin", ",").render)).init.toList,
+            ")"
+          ).render
+        }
       }
     }
 
