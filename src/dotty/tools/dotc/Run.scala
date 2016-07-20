@@ -92,8 +92,10 @@ class Run(comp: Compiler)(implicit ctx: Context) {
 
     last match {
       case SomePrintedTree(phase, lastTreeSting) if lastTreeSting != treeString =>
-        val diff = DiffUtil.mkColoredCodeDiff(treeString, lastTreeSting, ctx.settings.XprintDiffDel.value)
-        ctx.echo(diff)
+        val msg =
+          if (!ctx.settings.XprintDiff.value && !ctx.settings.XprintDiffDel.value) treeString
+          else DiffUtil.mkColoredCodeDiff(treeString, lastTreeSting, ctx.settings.XprintDiffDel.value)
+        ctx.echo(msg)
         SomePrintedTree(squashedPhase.toString, treeString)
 
       case SomePrintedTree(phase, lastTreeSting) =>
