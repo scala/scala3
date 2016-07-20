@@ -87,7 +87,9 @@ trait MemberLayout {
                 Seq(
                   span(cls := "param-name", tr.title).render,
                   span(cls := "type-separator no-left-margin", if (tr.isByName) ": =>" else ":").render,
+                  span(if (tr.ref.kind == "FunctionReference" && tr.isRepeated) "(" else "").render,
                   span(referenceToLinks(tr.ref)).render,
+                  span(if (tr.ref.kind == "FunctionReference" && tr.isRepeated) ")*" else if (tr.isRepeated) "*" else "").render,
                   span(cls := "type-separator no-left-margin", ",").render
                 )
               }.toList.dropRight(1),
