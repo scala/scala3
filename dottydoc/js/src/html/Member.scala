@@ -83,7 +83,8 @@ trait MemberLayout {
             span(
               cls := "param-list",
               "(",
-              xs.flatMap { tr =>
+              span(cls := "is-implicit no-left-margin", if (xs.isImplicit) "implicit " else ""),
+              xs.list.flatMap { tr =>
                 Seq(
                   span(cls := "param-name", tr.title).render,
                   span(cls := "type-separator no-left-margin", if (tr.isByName) ": =>" else ":").render,

@@ -24,7 +24,7 @@ object setters {
     case _          => ()
   }
 
-  def setParamLists(ent: Entity, refs: List[List[NamedReference]]) = ent match {
+  def setParamLists(ent: Entity, refs: List[ParamList]) = ent match {
     case x: DefImpl => x.paramLists = refs
     case _          => ()
   }

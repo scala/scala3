@@ -29,9 +29,9 @@ class LinkReturnTypes extends DocMiniPhase with TypeLinker {
 class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val newParamLists = for {
-      list <- df.paramLists
+      ParamListImpl(list, isImplicit) <- df.paramLists
       newList = list.map(linkReference(df, _, ctx.base.packages[Package].toMap))
-    } yield newList.asInstanceOf[List[NamedReference]]
+    } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]], isImplicit)
 
     df.copy(paramLists = newParamLists)
   }

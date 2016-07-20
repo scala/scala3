@@ -51,6 +51,11 @@ trait ReturnValue {
   def returnValue: Reference
 }
 
+trait ParamList {
+  def list: List[NamedReference]
+  def isImplicit: Boolean
+}
+
 trait Package extends Entity with Members {
   val kind = "package"
 
@@ -74,7 +79,7 @@ trait Object extends Entity with Modifiers with SuperTypes with Members {
 }
 
 trait Def extends Entity with Modifiers with TypeParams with ReturnValue {
-  def paramLists: List[List[NamedReference]]
+  def paramLists: List[ParamList]
   val kind = "def"
 }
 

@@ -16,6 +16,7 @@ import dotc.ast.Trees._
 
 object factories {
   import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dottydoc.model.internal.ParamListImpl
   import DottyFlags._
 
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
@@ -131,19 +132,19 @@ object factories {
       case _ => Nil
     }
 
-  def paramLists(tpe: Type)(implicit ctx: Context): List[List[NamedReference]] = tpe match {
+  def paramLists(tpe: Type)(implicit ctx: Context): List[ParamList] = tpe match {
     case pt: PolyType =>
       paramLists(pt.resultType)
 
     case mt: MethodType =>
-      mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
+      ParamListImpl(mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
         NamedReference(
           name.decode.toString,
           returnType(tpe),
           isByName = tpe.isInstanceOf[ExprType],
           isRepeated = tpe.isRepeatedParam
         )
-      } :: paramLists(mt.resultType)
+      }, mt.isImplicit) :: paramLists(mt.resultType)
 
     case annot: AnnotatedType => paramLists(annot.tpe)
     case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |

@@ -128,7 +128,8 @@ div.member-definition > span+span {
     margin-left: 10px;
 }
 
-div.member-definition > span.member-name {
+div.member-definition > span.member-name,
+div.member-definition > span.member-param-list span.is-implicit {
     color: #458;
     font-weight: 600;
 }

@@ -39,6 +39,11 @@ object json {
     }
   }
 
+  implicit class ParamListJson(val plist: ParamList) extends AnyVal {
+    def json: String =
+      s"""{"list":${plist.list.map(_.json).mkString("[",",","]")},"isImplicit":${plist.isImplicit.json}}"""
+  }
+
   private def refToJson(ref: Reference): String = ref match {
     case ref: TypeReference =>
       s"""{"title":${ref.title.json},"tpeLink":${ref.tpeLink.json},"paramLinks":${ref.paramLinks.map(_.json).mkString("[",",","]")},"kind":"TypeReference"}"""
@@ -71,7 +76,7 @@ object json {
     case ent: Object =>
       s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"object"}"""
     case ent: Def =>
-      s"""{"name":${ent.name.json},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"returnValue":${ent.returnValue.json},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"paramLists":${ent.paramLists.map{ xs =>xs.map(_.json).mkString("[",",","]")}.mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"def"}"""
+      s"""{"name":${ent.name.json},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"returnValue":${ent.returnValue.json},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"paramLists":${ent.paramLists.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"def"}"""
     case ent: Val =>
       s"""{"name":${ent.name.json},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"returnValue":${ent.returnValue.json},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"val"}"""
   }

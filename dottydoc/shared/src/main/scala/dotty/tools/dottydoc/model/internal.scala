@@ -64,7 +64,7 @@ object internal {
     path: List[String],
     var returnValue: Reference,
     var typeParams: List[String] = Nil,
-    var paramLists: List[List[NamedReference]] = Nil,
+    var paramLists: List[ParamList] = Nil,
     var comment: Option[Comment] = None
   ) extends Def with Impl
 
@@ -75,4 +75,9 @@ object internal {
     var returnValue: Reference,
     var comment: Option[Comment] = None
   ) extends Val with Impl
+
+  final case class ParamListImpl(
+    list: List[NamedReference],
+    isImplicit: Boolean
+  ) extends ParamList
 }

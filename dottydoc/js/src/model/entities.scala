@@ -73,9 +73,15 @@ trait Object extends Class
 trait Trait extends Class
 
 @ScalaJSDefined
+trait ParamList extends sjs.Object {
+  val list: sjs.Array[NamedReference]
+  val isImplicit: Boolean
+}
+
+@ScalaJSDefined
 trait Def extends Entity with Modifiers with ReturnValue {
   val typeParams: sjs.Array[String]
-  val paramLists: sjs.Array[sjs.Array[NamedReference]]
+  val paramLists: sjs.Array[ParamList]
 }
 
 @ScalaJSDefined
