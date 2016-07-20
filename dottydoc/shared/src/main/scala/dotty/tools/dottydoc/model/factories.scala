@@ -76,8 +76,11 @@ object factories {
           FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
         else if (defn.isTupleClass(cls))
           TupleReference(args.map(expandTpe(_, Nil)))
-        else
-          typeRef(tycon.show, params = args.map(expandTpe(_, Nil)))
+        else {
+          val query = tycon.show
+          val name  = query.split("\\.").last
+          typeRef(name, query, params = args.map(expandTpe(_, Nil)))
+        }
 
       case ref @ RefinedType(parent, rn, info) =>
         expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
