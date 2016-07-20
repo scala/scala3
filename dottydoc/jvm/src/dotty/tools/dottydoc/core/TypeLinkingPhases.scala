@@ -38,9 +38,11 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
 }
 
 trait TypeLinker extends MemberLookup {
-  def linkReference(ent: Entity, rv: Reference, packs: Map[String, Package]): Reference =
-    rv match {
-      case rv @ TypeReference(_, UnsetLink(t, query), tps) =>
+  def linkReference(ent: Entity, ref: Reference, packs: Map[String, Package]): Reference = {
+    def linkRef(ref: Reference) = linkReference(ent, ref, packs)
+
+    ref match {
+      case ref @ TypeReference(_, UnsetLink(t, query), tps) =>
         val inlineToHtml = InlineToHtml(ent)
         val title = t
 
@@ -52,12 +54,21 @@ trait TypeLinker extends MemberLookup {
 
         val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
         val tpTargets = tps.map(linkReference(ent, _, packs))
-        rv.copy(tpeLink = target, paramLinks = tpTargets)
-      case rv @ OrTypeReference(left, right) =>
-        rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
-      case rv @ AndTypeReference(left, right) =>
-        rv.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
-      case rv @ NamedReference(_, ref, _, _) => rv.copy(ref = linkReference(ent, ref, packs))
-      case _ => rv
+        ref.copy(tpeLink = target, paramLinks = tpTargets)
+      case ref @ OrTypeReference(left, right) =>
+        ref.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
+      case ref @ AndTypeReference(left, right) =>
+        ref.copy(left = linkReference(ent, left, packs), right = linkReference(ent, right, packs))
+      case ref @ NamedReference(_, rf, _, _) =>
+        ref.copy(ref = linkRef(rf))
+      case ref @ FunctionReference(args, rv) =>
+        ref.copy(args = args.map(linkReference(ent, _, packs)), returnValue = linkReference(ent, rv, packs))
+      case ref @ TupleReference(args) =>
+        ref.copy(args = args.map(linkRef))
+      case ref @ BoundsReference(low, high) =>
+        ref.copy(low = linkRef(low), high = linkRef(high))
+      case _ =>
+        ref
     }
+  }
 }
