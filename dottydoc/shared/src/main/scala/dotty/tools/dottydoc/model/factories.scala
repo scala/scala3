@@ -69,7 +69,16 @@ object factories {
         // Becomes: def companion: [+X0] -> collection.Iterable[X0]
         typeRef(tl.show + " (not handled)")
       case AppliedType(tycon, args) =>
-        FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
+        val cls = tycon.typeSymbol
+        if (tycon.isRepeatedParam)
+          expandTpe(args.head)
+        else if (defn.isFunctionClass(cls))
+          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
+        else if (defn.isTupleClass(cls))
+          TupleReference(args.map(expandTpe(_, Nil)))
+        else
+          typeRef(tycon.show, params = args.map(expandTpe(_, Nil)))
+
       case ref @ RefinedType(parent, rn, info) =>
         expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
       case ref @ HKApply(tycon, args) =>
