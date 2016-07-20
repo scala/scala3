@@ -30,7 +30,8 @@ class DottyDocCompiler extends Compiler {
     List(new DocImplicitsPhase),
     List(new DocASTPhase),
     List(DocMiniTransformations(new LinkReturnTypes,
-                                new LinkParamListTypes)),
+                                new LinkParamListTypes,
+                                new SortMembers)),
     List(new PrintPhase)
   )
 
