@@ -361,13 +361,23 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
      *  to the current scope, provided (1) variances of both aliases are the same, and
      *  (2) X is not yet defined in current scope. This "short-circuiting" prevents
      *  long chains of aliases which would have to be traversed in type comparers.
+     *
+     *  Note: Test i1401.scala shows that `forwardRefs` is also necessary
+     *  for typechecking in the case where self types refer to type parameters
+     *  that are upper-bounded by subclass instances.
      */
     def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to match {
       case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
-        for (pref <- prefs)
-          for (argSym <- pref.decls)
-            if (argSym is BaseTypeArg)
-              forwardRef(argSym, from, to, cls, decls)
+        for (pref <- prefs) {
+          def forward(): Unit =
+            for (argSym <- pref.decls)
+              if (argSym is BaseTypeArg)
+                forwardRef(argSym, from, to, cls, decls)
+          pref.info match {
+            case info: TempClassInfo => info.suspensions = (() => forward()) :: info.suspensions // !!! dotty deviation `forward` alone does not eta expand
+            case _ => forward()
+          }
+        }
       case _ =>
     }
 
@@ -419,9 +429,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
       enterArgBinding(formals(name), refinedInfo, cls, decls)
     }
-    // Forward definitions in super classes that have one of the refined paramters
+    // Forward definitions in super classes that have one of the refined parameters
     // as aliases directly to the refined info.
-    // Note that this cannot be fused bwith the previous loop because we now
+    // Note that this cannot be fused with the previous loop because we now
     // assume that all arguments have been entered in `decls`.
     refinements foreachBinding { (name, refinedInfo) =>
       forwardRefs(formals(name), refinedInfo, parentRefs)
