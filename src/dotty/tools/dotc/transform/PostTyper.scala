@@ -39,6 +39,8 @@ import Symbols._, TypeUtils._
  *
  *  (9) Adds SourceFile annotations to all top-level classes and objects
  *
+ *  (10) Adds Child annotations to all sealed classes
+ *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -243,6 +245,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
                   ctx.compilationUnit.source.exists &&
                   sym != defn.SourceFileAnnot)
                 sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+
+              if (!sym.isAnonymousClass) // ignore anonymous class
+                for (parent <- sym.asClass.classInfo.classParents) {
+                  val pclazz = parent.classSymbol
+                  if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
+                }
+
               tree
             }
             else {

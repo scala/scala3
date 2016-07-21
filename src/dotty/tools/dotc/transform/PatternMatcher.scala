@@ -24,6 +24,7 @@ import Applications._
 import TypeApplications._
 import SymUtils._, core.NameOps._
 import core.Mode
+import patmat._
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -51,6 +52,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val translated = new Translator()(ctx).translator.translateMatch(tree)
+
+    // check exhaustivity and unreachability
+    val engine = new SpaceEngine
+    if (engine.checkable(tree)) {
+      engine.checkExhaustivity(tree)
+      engine.checkRedundancy(tree)
+    }
 
     translated.ensureConforms(tree.tpe)
   }
@@ -1244,13 +1252,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       case _                                                => false
     }
 
-    def elimAnonymousClass(t: Type) = t match {
-      case t:TypeRef if t.symbol.isAnonymousClass =>
-        t.symbol.asClass.typeRef.asSeenFrom(t.prefix, t.symbol.owner)
-      case _ =>
-        t
-    }
-
     /** Implement a pattern match by turning its cases (including the implicit failure case)
       * into the corresponding (monadic) extractors, and combining them with the `orElse` combinator.
       *
@@ -1264,7 +1265,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def translateMatch(match_ : Match): Tree = {
       val Match(sel, cases) = match_
 
-      val selectorTp = elimAnonymousClass(sel.tpe.widen/*withoutAnnotations*/)
+      val selectorTp = sel.tpe.widen.deAnonymize/*withoutAnnotations*/
 
       val selectorSym = freshSym(sel.pos, selectorTp, "selector")
 
@@ -1272,6 +1273,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))
         case _                                                    => (cases, None)
       }
+
 
       // checkMatchVariablePatterns(nonSyntheticCases) // only used for warnings
 
