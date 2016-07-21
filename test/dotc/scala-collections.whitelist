@@ -83,6 +83,7 @@
 ./scala-scala/src/library/scala/collection/immutable/Seq.scala
 ./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
+#./scala-scala/src/library/scala/collection/mutable/BufferLike.scala // works under junit, fails under partest, but can't see more info on the cause
 
 ./scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
 

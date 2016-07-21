@@ -278,7 +278,18 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
-  // todo: fill with methods from TreeInfo that only apply to untpd.Tree's
+  import TreeInfo._
+
+  def isFunctionWithUnknownParamType(tree: Tree) = tree match {
+    case untpd.Function(args, _) =>
+      args.exists {
+        case ValDef(_, tpt, _) => tpt.isEmpty
+        case _ => false
+      }
+    case _ => false
+  }
+
+  // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>

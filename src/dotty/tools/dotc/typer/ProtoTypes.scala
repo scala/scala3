@@ -175,7 +175,7 @@ object ProtoTypes {
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
 
-    def derivedFunProto(args: List[untpd.Tree], resultType: Type, typer: Typer) =
+    def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer) =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType, typer)
 
