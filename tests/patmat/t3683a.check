@@ -1,0 +1,5 @@
+./tests/patmat/t3683a.scala:14: warning: match may not be exhaustive.
+It would fail on the following input: XX()
+    w match {
+      ^
+one warning found

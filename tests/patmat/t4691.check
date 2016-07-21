@@ -1,0 +1,5 @@
+./tests/patmat/t4691.scala:15: warning: match may not be exhaustive.
+It would fail on the following input: NodeType2(_)
+  def test (x: Node) = x match {
+                         ^
+one warning found

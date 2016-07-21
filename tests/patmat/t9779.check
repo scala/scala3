@@ -1,0 +1,5 @@
+./tests/patmat/t9779.scala:10: warning: match may not be exhaustive.
+It would fail on the following input: _: a.Elem
+  private def toLuaValue(eX: a.Elem[_]): String = eX match {
+                                                     ^
+one warning found

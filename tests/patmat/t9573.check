@@ -1,0 +1,5 @@
+./tests/patmat/t9573.scala:9: warning: match may not be exhaustive.
+It would fail on the following input: Horse(_)
+    x match {
+      ^
+one warning found

@@ -1,0 +1,19 @@
+object E extends Enumeration {
+  val V = Value
+}
+
+sealed case class C(e: E.Value)
+
+class Test {
+  def foo(c: C) = {
+    c match {
+      case C(E.V) => {}
+    }
+  }
+
+  def foo2(e: E.Value) = {
+    e match {
+      case E.V => {}
+    }
+  }
+}

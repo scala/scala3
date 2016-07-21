@@ -1,0 +1,4 @@
+./tests/patmat/t9677.scala:20: warning: unreachable code
+      case path: A => println("Not root")
+                   ^
+one warning found
