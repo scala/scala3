@@ -374,7 +374,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               if (argSym is BaseTypeArg)
                 forwardRef(argSym, from, to, cls, decls)
           pref.info match {
-            case info: TempClassInfo => info.suspensions = (() => forward()) :: info.suspensions // !!! dotty deviation `forward` alone does not eta expand
+            case info: TempClassInfo => info.addSuspension(forward)
             case _ => forward()
           }
         }

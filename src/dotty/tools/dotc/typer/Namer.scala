@@ -688,8 +688,8 @@ class Namer { typer: Typer =>
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
-      val tempClassInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
-      denot.info = tempClassInfo
+      val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
+      denot.info = tempInfo
 
       // Ensure constructor is completed so that any parameter accessors
       // which have type trees deriving from its parameters can be
@@ -705,8 +705,7 @@ class Namer { typer: Typer =>
       typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
 
       index(rest)(inClassContext(selfInfo))
-      denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      tempClassInfo.suspensions.foreach(_())
+      tempInfo.finalize(denot, parentRefs)
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
