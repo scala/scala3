@@ -182,8 +182,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         }
     }
 
-    def wasDeferred(sym: Symbol) =
-      ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
+    def was(sym: Symbol, flags: FlagSet) =
+      ctx.atPhase(thisTransform) { implicit ctx => sym is flags }
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       var argNum = 0
@@ -202,7 +202,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
           EmptyTree
       }
 
-      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList) yield {
+      for (getter <- mixin.info.decls.toList if getter.isGetter && !was(getter, Deferred)) yield {
         val isScala2x = mixin.is(Scala2x)
         def default = Underscore(getter.info.resultType)
         def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
@@ -220,23 +220,23 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
         if (isCurrent(getter) || getter.is(ExpandedName)) {
           val rhs =
-            if (ctx.atPhase(thisTransform)(implicit ctx => getter.is(ParamAccessor))) nextArgument()
+            if (was(getter, ParamAccessor)) nextArgument()
             else if (isScala2x)
               if (getter.is(Lazy, butNot = Module)) lazyGetterCall
               else if (getter.is(Module))
                 New(getter.info.resultType, List(This(cls)))
               else Underscore(getter.info.resultType)
-            else transformFollowing(superRef(initializer(getter)).appliedToNone)
+            else initial
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(implementation(getter.asTerm), rhs))
         }
-        else if (isScala2x) EmptyTree
+        else if (isScala2x || was(getter, ParamAccessor)) EmptyTree
         else initial
       }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
-      for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
+      for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !was(setr, Deferred)).toList)
         yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos)))
 
     cpy.Template(impl)(
