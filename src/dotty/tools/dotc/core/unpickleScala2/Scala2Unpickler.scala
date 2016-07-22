@@ -106,7 +106,8 @@ object Scala2Unpickler {
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
         denot.owner.thisType select denot.sourceModule
       else selfInfo
-    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, decls, ost) // first rough info to avoid CyclicReferences
+    val tempInfo = new TempClassInfo(denot.owner.thisType, denot.classSymbol, decls, ost)
+    denot.info = tempInfo // first rough info to avoid CyclicReferences
     var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
     if (parentRefs.isEmpty) parentRefs = defn.ObjectType :: Nil
     for (tparam <- tparams) {
@@ -132,8 +133,7 @@ object Scala2Unpickler {
       registerCompanionPair(scalacCompanion, denot.classSymbol)
     }
 
-    denot.info = ClassInfo( // final info, except possibly for typeparams ordering
-      denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
+    tempInfo.finalize(denot, parentRefs) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
   }
 }

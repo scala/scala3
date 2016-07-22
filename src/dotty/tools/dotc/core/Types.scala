@@ -3043,8 +3043,27 @@ object Types {
     override def toString = s"ClassInfo($prefix, $cls)"
   }
 
-  final class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass)
+  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass)
     extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
+
+  /** A class for temporary class infos where `parents` are not yet known. */
+  final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: DotClass)
+  extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
+
+    /** A list of actions that were because they rely on the class info of `cls` to
+     *  be no longer temporary. These actions will be performed once `cls` gets a real
+     *  ClassInfo.
+     */
+    private var suspensions: List[() => Unit] = Nil
+
+    def addSuspension(suspension: () => Unit): Unit = suspensions ::= suspension
+
+    /** Install classinfo with known parents in `denot` and resume all suspensions */
+    def finalize(denot: SymDenotation, parents: List[TypeRef])(implicit ctx: Context) = {
+      denot.info = derivedClassInfo(classParents = parents)
+      suspensions.foreach(_())
+    }
+  }
 
   object ClassInfo {
     def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
