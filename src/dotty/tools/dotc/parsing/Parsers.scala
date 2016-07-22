@@ -737,6 +737,7 @@ object Parsers {
      *                     |  StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
+     *                     |  `_' TypeBounds
      *                     |  Refinement
      *                     |  Literal
      */
@@ -746,6 +747,10 @@ object Parsers {
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
+      else if (in.token == USCORE) {
+        val start = in.skipToken()
+        typeBounds().withPos(Position(start, in.offset, start))
+      }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -770,25 +775,16 @@ object Parsers {
       atPos(t.pos.start, id.pos.start) { SelectFromTypeTree(t, id.name) }
     }
 
-    /** ArgType      ::=  Type |  `_' TypeBounds
-     */
-    val argType = () =>
-      if (in.token == USCORE) {
-        val start = in.skipToken()
-        typeBounds().withPos(Position(start, in.offset, start))
-      }
-      else typ()
-
-    /** NamedTypeArg      ::=  id `=' ArgType
+    /** NamedTypeArg      ::=  id `=' Type
      */
     val namedTypeArg = () => {
       val name = ident()
       accept(EQUALS)
-      NamedArg(name.toTypeName, argType())
+      NamedArg(name.toTypeName, typ())
     }
 
-    /**   ArgTypes          ::=  ArgType {`,' ArgType}
-     *                           NamedTypeArg {`,' NamedTypeArg}
+    /**   ArgTypes          ::=  Type {`,' Type}
+     *                        |  NamedTypeArg {`,' NamedTypeArg}
      */
     def argTypes(namedOK: Boolean = false) = {
       def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
@@ -801,22 +797,22 @@ object Parsers {
         first :: rest
       }
       if (namedOK && in.token == IDENTIFIER)
-        argType() match {
+        typ() match {
           case Ident(name) if in.token == EQUALS =>
             in.nextToken()
-            otherArgs(NamedArg(name, argType()), namedTypeArg)
+            otherArgs(NamedArg(name, typ()), namedTypeArg)
           case firstArg =>
             if (in.token == EQUALS) println(s"??? $firstArg")
-            otherArgs(firstArg, argType)
+            otherArgs(firstArg, typ)
         }
-      else commaSeparated(argType)
+      else commaSeparated(typ)
     }
 
-    /** FunArgType ::=  ArgType | `=>' ArgType
+    /** FunArgType ::=  Type | `=>' Type
      */
     val funArgType = () =>
-      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(argType()) }
-      else argType()
+      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(typ()) }
+      else typ()
 
     /** ParamType ::= [`=>'] ParamValueType
      */
@@ -834,7 +830,7 @@ object Parsers {
       } else t
     }
 
-    /** TypeArgs      ::= `[' ArgType {`,' ArgType} `]'
+    /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
     def typeArgs(namedOK: Boolean = false): List[Tree] = inBrackets(argTypes(namedOK))

@@ -109,17 +109,17 @@ grammar.
                       |  StableId
                       |  Path `.' `type'                                        SingletonTypeTree(p)
                       |  `(' ArgTypes ')'                                       Tuple(ts)
+                      |  `_' TypeBounds
                       |  Refinement                                             RefinedTypeTree(EmptyTree, refinement)
                       |  SimpleLiteral                                          SingletonTypeTree(l)
-  ArgType           ::=  Type
-                      |  `_' TypeBounds
-  ArgTypes          ::=  ArgType {`,' ArgType}
-  FunArgType        ::=  ArgType
-                      |  `=>' ArgType                                           PrefixOp(=>, t)
+  ArgTypes          ::=  Type {`,' Type}
+                      |  NamedTypeArg {`,' NamedTypeArg }
+  FunArgType        ::=  Type
+                      |  `=>' Type                                              PrefixOp(=>, t)
   ParamType         ::=  [`=>'] ParamValueType
   ParamValueType    ::=  Type [`*']                                             PostfixOp(t, "*")
   TypeArgs          ::=  `[' ArgTypes `]'                                       ts
-  NamedTypeArg      ::=  id `=' ArgType                                         NamedArg(id, t)
+  NamedTypeArg      ::=  id `=' Type                                            NamedArg(id, t)
   NamedTypeArgs     ::=  `[' NamedTypeArg {`,' NamedTypeArg} `]'                nts
   Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
   TypeBounds        ::=  [`>:' Type] [`<: Type] | INT                           TypeBoundsTree(lo, hi)
