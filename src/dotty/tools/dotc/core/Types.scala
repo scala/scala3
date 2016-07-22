@@ -2653,7 +2653,6 @@ object Types {
       cachedSuper
     }
 
-    /* (Not needed yet) */
     def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         tycon.info match {

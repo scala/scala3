@@ -665,6 +665,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     }
 
+    /** Fall back to comparing either with `fourthTry` or against the lower
+     *  approximation of the rhs.
+     *  @param   tyconLo   The type constructor's lower approximation.
+     */
+    def fallback(tyconLo: Type) =
+      either(fourthTry(tp1, tp2), isSubType(tp1, tyconLo.applyIfParameterized(args2)))
+
     /** Let `tycon2bounds` be the bounds of the RHS type constructor `tycon2`.
      *  Let `app2 = tp2` where the type constructor of `tp2` is replaced by
      *  `tycon2bounds.lo`.
@@ -674,13 +681,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
      *    tp1 <:< tp2    using fourthTry (this might instantiate params in tp1)
      *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
      */
-    def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean = {
-      def app2 = tycon2bounds.lo.applyIfParameterized(args2)
+    def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
       if (tycon2bounds.lo eq tycon2bounds.hi)
-        isSubType(tp1, if (tyconIsTypeRef) tp2.superType else app2)
+        isSubType(tp1,
+            if (tyconIsTypeRef) tp2.superType
+            else tycon2bounds.lo.applyIfParameterized(args2))
       else
-        either(fourthTry(tp1, tp2), isSubType(tp1, app2))
-    }
+        fallback(tycon2bounds.lo)
 
     tycon2 match {
       case param2: PolyParam =>
@@ -693,6 +700,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         compareLower(tycon2.info.bounds, tyconIsTypeRef = true)
       case _: TypeVar | _: AnnotatedType =>
         isSubType(tp1, tp2.superType)
+      case tycon2: HKApply =>
+        fallback(tycon2.lowerBound)
       case _ =>
         false
     }
