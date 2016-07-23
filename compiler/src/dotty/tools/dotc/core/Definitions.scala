@@ -815,7 +815,7 @@ class Definitions {
   lazy val UnqualifiedOwnerTypes: Set[NamedType] =
     RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
 
-  lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+  lazy val NotRuntimeClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
@@ -827,7 +827,7 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
+  lazy val NoInitClasses = NotRuntimeClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
