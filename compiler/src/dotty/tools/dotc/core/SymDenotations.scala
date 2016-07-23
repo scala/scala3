@@ -483,8 +483,8 @@ object SymDenotations {
     def isNumericValueClass(implicit ctx: Context) =
       maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
 
-    /** Is symbol a phantom class for which no runtime representation exists? */
-    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
+    /** Is symbol a class for which no runtime representation exists? */
+    def isNotRuntimeClass(implicit ctx: Context) = defn.NotRuntimeClasses contains symbol
 
     /** Is this symbol a class representing a refinement? These classes
      *  are used only temporarily in Typer and Unpickler as an intermediate
