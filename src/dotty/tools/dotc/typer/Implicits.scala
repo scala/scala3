@@ -10,6 +10,7 @@ import printing.Showable
 import Contexts._
 import Types._
 import Flags._
+import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
 import Denotations._
 import NameOps._
@@ -479,15 +480,12 @@ trait Implicits { self: Typer =>
       formal.argTypes match {
         case arg :: Nil =>
           val tp = fullyDefinedType(arg, "ClassTag argument", pos)
-          tp.underlyingClassRef(refinementOK = false) match {
-            case tref: TypeRef =>
-              return ref(defn.ClassTagModule)
-                .select(nme.apply)
-                .appliedToType(tp)
-                .appliedTo(clsOf(tref))
-                .withPos(pos)
-            case _ =>
-          }
+          if (hasStableErasure(tp))
+            return ref(defn.ClassTagModule)
+              .select(nme.apply)
+              .appliedToType(tp)
+              .appliedTo(clsOf(erasure(tp)))
+              .withPos(pos)
         case _ =>
       }
     EmptyTree
