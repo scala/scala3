@@ -12,7 +12,13 @@ import collection.mutable
 import scala.reflect.api.{ Universe => ApiUniverse }
 
 object Definitions {
-  val MaxFunctionArity, MaxTupleArity = 22
+  val MaxTupleArity, MaxAbstractFunctionArity = 22
+  val MaxFunctionArity = 24
+    // Awaiting a definite solution that drops the limit altogether, 44 gives a safety
+    // margin over the previous 22, so that treecopiers in miniphases are allowed to
+    // temporarily create larger closures. This is needed in lambda lift where large closures
+    // are first formed by treecopiers before they are split apart into parameters and
+    // environment in the lambdalift transform itself.
 }
 
 /** A class defining symbols and types of standard definitions
@@ -587,7 +593,7 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
-  lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxFunctionArity, 0)
+  lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxAbstractFunctionArity, 0)
   val AbstractFunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(implicit ctx: Context) = AbstractFunctionClassPerRun()(ctx)(n)
   lazy val FunctionType = mkArityArray("scala.Function", MaxFunctionArity, 0)
