@@ -223,12 +223,12 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.parent.typeParams.filterNot(_.paramName == self.refinedName)
       case self: RecType =>
         self.parent.typeParams
-      case _: HKApply | _: SingletonType =>
+      case _: SingletonType =>
         Nil
       case self: WildcardType =>
         self.optBounds.typeParams
       case self: TypeProxy =>
-        self.underlying.typeParams
+        self.superType.typeParams
       case _ =>
         Nil
     }
@@ -312,14 +312,13 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => false
     case self: TypeLambda => true
-    case self: HKApply => false
     case self: SingletonType => false
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
       // avoids having to set ephemeral in some cases.
       self.origin.isHK
     case self: WildcardType => self.optBounds.isHK
-    case self: TypeProxy => self.underlying.isHK
+    case self: TypeProxy => self.superType.isHK
     case _ => false
   }
 

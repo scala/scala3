@@ -936,13 +936,8 @@ class Namer { typer: Typer =>
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    //val toParameterize = tparamSyms.nonEmpty && !isDerived
-    //val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     def abstracted(tp: Type): Type =
-      if (tparamSyms.nonEmpty && !tp.isHK) tp.LambdaAbstract(tparamSyms)
-      //else if (toParameterize) tp.parameterizeWith(tparamSyms)
-      else tp
+      if (tparamSyms.nonEmpty) tp.LambdaAbstract(tparamSyms) else tp
 
     val dummyInfo = abstracted(TypeBounds.empty)
     sym.info = dummyInfo
@@ -956,7 +951,10 @@ class Namer { typer: Typer =>
       //
       // The scheme critically relies on an implementation detail of isRef, which
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
-    val rhsType = abstracted(typedAheadType(tdef.rhs).tpe)
+
+    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
+    val rhsBodyType = typedAheadType(tdef.rhs).tpe
+    val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
     val unsafeInfo = rhsType match {
       case bounds: TypeBounds => bounds
       case alias => TypeAlias(alias, if (sym is Local) sym.variance else 0)
