@@ -277,6 +277,22 @@ object TypeErasure {
           else tp1
       }
   }
+
+  /** Does the (possibly generic) type `tp` have the same erasure in all its
+   *  possible instantiations?
+   */
+  def hasStableErasure(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    case tp: TypeRef =>
+      tp.info match {
+        case TypeAlias(alias) => hasStableErasure(alias)
+        case _: ClassInfo => true
+        case _ => false
+      }
+    case tp: PolyParam => false
+    case tp: TypeProxy => hasStableErasure(tp.superType)
+    case tp: AndOrType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
+    case _ => false
+  }
 }
 import TypeErasure._
 
@@ -493,4 +509,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       println(s"no sig for $tp")
       throw ex
   }
+
+
 }
