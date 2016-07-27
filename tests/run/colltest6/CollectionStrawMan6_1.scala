@@ -60,7 +60,7 @@ class LowPriority {
  *
  *      For iterables:
  *
- *         iterator, fromIterable, fromLikeIterable, knownLength, className
+ *         iterator, fromIterable, fromIterableWithSameElemType, knownLength, className
  *
  *      For sequences:
  *
@@ -223,7 +223,7 @@ object CollectionStrawMan6 extends LowPriority {
     /** Create a collection of type `C[A]` from the elements of `coll`, which has
      *  the same element type as this collection.
      */
-    protected[this] def fromLikeIterable(coll: Iterable[A]): C[A] = fromIterable(coll)
+    protected[this] def fromIterableWithSameElemType(coll: Iterable[A]): C[A] = fromIterable(coll)
   }
 
   /** Base trait for Seq operations */
@@ -309,10 +309,10 @@ object CollectionStrawMan6 extends LowPriority {
    */
   trait IterableMonoTransforms[+A, +Repr] extends Any {
     protected def coll: Iterable[A]
-    protected[this] def fromLikeIterable(coll: Iterable[A]): Repr
+    protected[this] def fromIterableWithSameElemType(coll: Iterable[A]): Repr
 
     /** All elements satisfying predicate `p` */
-    def filter(p: A => Boolean): Repr = fromLikeIterable(View.Filter(coll, p))
+    def filter(p: A => Boolean): Repr = fromIterableWithSameElemType(View.Filter(coll, p))
 
     /** A pair of, first, all elements that satisfy prediacte `p` and, second,
      *  all elements that do not. Interesting because it splits a collection in two.
@@ -323,16 +323,16 @@ object CollectionStrawMan6 extends LowPriority {
      */
     def partition(p: A => Boolean): (Repr, Repr) = {
       val pn = View.Partition(coll, p)
-      (fromLikeIterable(pn.left), fromLikeIterable(pn.right))
+      (fromIterableWithSameElemType(pn.left), fromIterableWithSameElemType(pn.right))
     }
 
     /** A collection containing the first `n` elements of this collection. */
-    def take(n: Int): Repr = fromLikeIterable(View.Take(coll, n))
+    def take(n: Int): Repr = fromIterableWithSameElemType(View.Take(coll, n))
 
     /** The rest of the collection without its `n` first elements. For
      *  linear, immutable collections this should avoid making a copy.
      */
-    def drop(n: Int): Repr = fromLikeIterable(View.Drop(coll, n))
+    def drop(n: Int): Repr = fromIterableWithSameElemType(View.Drop(coll, n))
 
     /** The rest of the collection without its first element. */
     def tail: Repr = drop(1)
@@ -361,12 +361,12 @@ object CollectionStrawMan6 extends LowPriority {
   /** Type-preserving transforms over sequences. */
   trait SeqMonoTransforms[+A, +Repr] extends Any with IterableMonoTransforms[A, Repr] {
     def reverse: Repr = coll.view match {
-      case v: IndexedView[A] => fromLikeIterable(v.reverse)
+      case v: IndexedView[A] => fromIterableWithSameElemType(v.reverse)
       case _ =>
         var xs: List[A] = Nil
         var it = coll.iterator
         while (it.hasNext) xs = new Cons(it.next(), xs)
-        fromLikeIterable(xs)
+        fromIterableWithSameElemType(xs)
     }
   }
 
@@ -591,7 +591,7 @@ object CollectionStrawMan6 extends LowPriority {
           case None => "Empty"
           case Some((hd, tl)) => s"$hd #:: $tl"
         }
-      else "?"
+      else "LazyList(?)"
   }
 
   object LazyList extends IterableFactory[LazyList] {
@@ -623,7 +623,7 @@ object CollectionStrawMan6 extends LowPriority {
     protected def coll = new StringView(s)
     def iterator = coll.iterator
 
-    protected def fromLikeIterable(coll: Iterable[Char]): String = {
+    protected def fromIterableWithSameElemType(coll: Iterable[Char]): String = {
       val sb = new StringBuilder
       for (ch <- coll) sb += ch
       sb.result
@@ -698,7 +698,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
-    protected def fromLikeIterable(coll: Iterable[A]): Array[A] = coll.toArray[A](elemTag)
+    protected def fromIterableWithSameElemType(coll: Iterable[A]): Array[A] = coll.toArray[A](elemTag)
 
     def fromIterable[B: ClassTag](coll: Iterable[B]): Array[B] = coll.toArray[B]
 
