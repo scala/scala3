@@ -8,8 +8,9 @@ object DiffUtil {
   private final val ANSI_DEFAULT = "\u001B[0m"
   private final val ANSI_RED = "\u001B[31m"
   private final val ANSI_GREEN = "\u001B[32m"
-  private final val ANSI_YELLOW = "\u001B[33m"
-  private final val ANSI_MAGENTA = "\u001B[35m"
+
+  private final val DELETION_COLOR = ANSI_RED
+  private final val ADDITION_COLOR = ANSI_GREEN
 
   def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
     import scala.collection.JavaConversions._
@@ -42,19 +43,19 @@ object DiffUtil {
 
       delta.getType.toString match { // Issue #1355 forces us to use the toString
         case "INSERT" =>
-          lines(pos) = ANSI_GREEN + lines(pos)
+          lines(pos) = ADDITION_COLOR + lines(pos)
           lines(endPos) = lines(endPos) + ANSI_DEFAULT
 
         case "CHANGE" =>
           val old = if (!printDiffDel) "" else
-            ANSI_MAGENTA + delta.getOriginal.getLines.mkString + ANSI_DEFAULT
-          lines(pos) = old + ANSI_YELLOW + lines(pos)
+            DELETION_COLOR + delta.getOriginal.getLines.mkString + ANSI_DEFAULT
+          lines(pos) = old + ADDITION_COLOR + lines(pos)
           lines(endPos) = lines(endPos) + ANSI_DEFAULT
 
         case "DELETE" if printDiffDel =>
           val deleted = delta.getOriginal.getLines.mkString
           if (!deleted.forall(Character.isWhitespace)) {
-            lines(pos) = ANSI_RED + deleted + ANSI_DEFAULT + lines(pos)
+            lines(pos) = DELETION_COLOR + deleted + ANSI_DEFAULT + lines(pos)
           }
 
         case _ =>
