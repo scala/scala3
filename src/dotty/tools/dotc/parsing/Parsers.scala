@@ -2046,7 +2046,10 @@ object Parsers {
         else if (in.token == AT || isTemplateIntro || isModifier)
           stats += tmplDef(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
-          syntaxErrorOrIncomplete("expected class or object definition")
+          if (in.token == CASE)
+            syntaxErrorOrIncomplete("only `case class` or `case object` allowed")
+          else
+            syntaxErrorOrIncomplete("expected class or object definition")
           if (mustStartStat) // do parse all definitions even if they are probably local (i.e. a "}" has been forgotten)
             defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         }
