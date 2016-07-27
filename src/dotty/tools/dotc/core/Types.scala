@@ -2645,6 +2645,9 @@ object Types {
       if (ctx.period != validSuper) {
         cachedSuper = tycon match {
           case tp: TypeLambda => defn.AnyType
+          case tp: TypeVar =>
+            // supertype not stable, since underlying might change
+            return tp.underlying.applyIfParameterized(args)
           case tp: TypeProxy => tp.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
