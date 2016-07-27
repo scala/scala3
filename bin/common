@@ -11,7 +11,6 @@ function getLastStringOnLineWith {
 SCALA_VERSION=$(getLastStringOnLineWith "scalaVersion in")
 SCALA_BINARY_VERSION=2.11
 SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
-JLINE_VERSION=$(getLastStringOnLineWith "jline")
 SBT_VERSION=$(grep "sbt.version=" "$DOTTY_ROOT/project/build.properties" | sed 's/sbt.version=//')
 bootcp=true
 bootstrapped=false
@@ -127,10 +126,6 @@ fi
 
 if [ "$SCALA_COMPILER_JAR" == "" ]; then
     SCALA_COMPILER_JAR=$(find_jar "$HOME/.ivy2/cache/me.d-d/scala-compiler/jars" "scala-compiler-$SCALA_COMPILER_VERSION.jar")
-fi
-
-if [ "$JLINE_JAR" == "" ]; then
-    JLINE_JAR=$(find_jar "$HOME/.ivy2/cache/jline/jline/jars" "jline-$JLINE_VERSION.jar")
 fi
 
 if [ "$SBT_INTERFACE_JAR" == "" ]; then
