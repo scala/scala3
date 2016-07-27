@@ -1,16 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import TreeTransforms._
-import core.Denotations._
-import core.SymDenotations._
 import core.Contexts._
 import core.Symbols._
 import core.Types._
 import core.Constants._
 import core.StdNames._
 import core.TypeErasure.isUnboundedGeneric
-import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing._
 import core.TypeErasure._
@@ -92,14 +88,33 @@ trait TypeTestsCasts {
             unbox(qual.ensureConforms(defn.ObjectType), argType)
           else if (isDerivedValueClass(argCls)) {
             qual // adaptToType in Erasure will do the necessary type adaptation
-          } else
+          }
+          else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
-        def erasedArg = erasure(tree.args.head.tpe)
+
+        /** Transform isInstanceOf OrType
+         *
+         *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
+         *
+         *  The transform happens before erasure of `argType`, thus cannot be merged
+         *  with `transformIsInstanceOf`, which depends on erased type of `argType`.
+         */
+        def transformOrTypeTest(qual: Tree, argType: Type): Tree = argType match {
+          case OrType(tp1, tp2) =>
+            evalOnce(qual) { fun =>
+              transformOrTypeTest(fun, tp1)
+                .select(nme.OR)
+                .appliedTo(transformOrTypeTest(fun, tp2))
+            }
+          case _ =>
+            transformIsInstanceOf(qual, erasure(argType))
+        }
+
         if (sym eq defn.Any_isInstanceOf)
-          transformIsInstanceOf(qual, erasedArg)
+          transformOrTypeTest(qual, tree.args.head.tpe)
         else if (sym eq defn.Any_asInstanceOf)
-          transformAsInstanceOf(erasedArg)
+          transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
 
       case _ =>
