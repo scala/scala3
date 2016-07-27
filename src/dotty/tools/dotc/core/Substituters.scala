@@ -102,14 +102,13 @@ trait Substituters { this: Context =>
         }
         if (sym.isStatic && !existsStatic(from)) tp
         else {
-          val prefix1 = substDealias(tp.prefix, from, to, theMap)
-          if (prefix1 ne tp.prefix) tp.derivedSelect(prefix1)
-          else if (sym.isAliasType) {
-            val hi = sym.info.bounds.hi
-            val hi1 = substDealias(hi, from, to, theMap)
-            if (hi1 eq hi) tp else hi1
+          tp.info match {
+            case TypeAlias(alias) =>
+              val alias1 = substDealias(alias, from, to, theMap)
+              if (alias1 ne alias) return alias1
+            case _ =>
           }
-          else tp
+          tp.derivedSelect(substDealias(tp.prefix, from, to, theMap))
         }
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
