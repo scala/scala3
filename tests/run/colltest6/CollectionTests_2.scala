@@ -2,7 +2,7 @@ import Predef.{augmentString => _, wrapString => _, intArrayOps => _, booleanArr
 import scala.reflect.ClassTag
 
 object Test {
-  import strawman.collections._
+  import colltest6.strawman.collections._
   import CollectionStrawMan6._
 
   def seqOps(xs: Seq[Int]) = {
