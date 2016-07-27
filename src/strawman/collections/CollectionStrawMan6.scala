@@ -138,7 +138,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   /** Base trait for linearly accessed sequences */
-  trait LinearSeq[+A] extends Seq[A] { self =>
+  trait LinearSeq[+A] extends Seq[A] with SeqLike[A, LinearSeq] { self =>
 
     def iterator = new Iterator[A] {
       private[this] var current: Seq[A] = self
@@ -154,15 +154,8 @@ object CollectionStrawMan6 extends LowPriority {
     def length: Int = if (isEmpty) 0 else 1 + tail.length
 
     /** Optimized version of `drop` that avoids copying */
-    final override def drop(n: Int) = {
-      var current: Seq[A] = this
-      var i = n
-      while (i > 0) {
-        current = current.tail
-        i -= 1
-      }
-      current
-    }
+    @tailrec final override def drop(n: Int) =
+      if (n <= 0) this else tail.drop(n - 1)
   }
 
   /** Base trait for strict collections that can be built using a builder.
@@ -598,7 +591,7 @@ object CollectionStrawMan6 extends LowPriority {
           case None => "Empty"
           case Some((hd, tl)) => s"$hd #:: $tl"
         }
-      else "?"
+      else "LazyList(?)"
   }
 
   object LazyList extends IterableFactory[LazyList] {
