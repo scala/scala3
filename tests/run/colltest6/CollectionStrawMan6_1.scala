@@ -562,14 +562,14 @@ object CollectionStrawMan6 extends LowPriority {
     override def className = "ArrayBufferView"
   }
 
-  class LazyList[+A](expr: () => LazyList.Evaluated[A])
+  class LazyList[+A](expr: => LazyList.Evaluated[A])
   extends LinearSeq[A] with SeqLike[A, LazyList] { self =>
     private[this] var evaluated = false
     private[this] var result: LazyList.Evaluated[A] = _
 
     def force: LazyList.Evaluated[A] = {
       if (!evaluated) {
-        result = expr()
+        result = expr
         evaluated = true
       }
       result
@@ -579,7 +579,7 @@ object CollectionStrawMan6 extends LowPriority {
     override def head = force.get._1
     override def tail = force.get._2
 
-    def #:: [B >: A](elem: => B): LazyList[B] = new LazyList(() => Some((elem, self)))
+    def #:: [B >: A](elem: => B): LazyList[B] = new LazyList(Some((elem, self)))
 
     def fromIterable[B](c: Iterable[B]): LazyList[B] = LazyList.fromIterable(c)
 
@@ -600,10 +600,10 @@ object CollectionStrawMan6 extends LowPriority {
 
     def fromIterable[B](coll: Iterable[B]): LazyList[B] = coll match {
       case coll: LazyList[B] => coll
-      case _ => new LazyList(() => if (coll.isEmpty) None else Some((coll.head, fromIterable(coll.tail))))
+      case _ => new LazyList(if (coll.isEmpty) None else Some((coll.head, fromIterable(coll.tail))))
     }
 
-    object Empty extends LazyList[Nothing](() => None)
+    object Empty extends LazyList[Nothing](None)
 
     object #:: {
       def unapply[A](s: LazyList[A]): Evaluated[A] = s.force
