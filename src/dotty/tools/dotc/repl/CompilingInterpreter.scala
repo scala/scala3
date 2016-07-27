@@ -88,11 +88,11 @@ class CompilingInterpreter(
   private var printResults: Boolean = true
   private var delayOutput: Boolean = false
 
-  var previousOutput: List[String] = Nil
+  val previousOutput = ListBuffer.empty[String]
 
   override def lastOutput() = {
-    val prev = previousOutput
-    previousOutput = Nil
+    val prev = previousOutput.toList
+    previousOutput.clear()
     prev
   }
 
@@ -129,7 +129,7 @@ class CompilingInterpreter(
           // we drop the final `$' from module classes.
         out.flush()
       } else {
-        previousOutput = (/*clean*/(msg) + "\n") :: previousOutput
+        previousOutput += (/*clean*/(msg) + "\n")
       }
     }
   }
@@ -220,7 +220,7 @@ class CompilingInterpreter(
         else {
           val (resultStrings, succeeded) = req.loadAndRun()
           if (delayOutput)
-            previousOutput = resultStrings.map(clean) ::: previousOutput
+            previousOutput ++= resultStrings.map(clean)
           else if (printResults || !succeeded)
             resultStrings.map(x => out.print(clean(x)))
           if (succeeded) {
