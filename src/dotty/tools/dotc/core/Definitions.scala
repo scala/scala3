@@ -13,8 +13,8 @@ import scala.reflect.api.{ Universe => ApiUniverse }
 
 object Definitions {
   val MaxTupleArity, MaxAbstractFunctionArity = 22
-  val MaxFunctionArity = 24
-    // Awaiting a definite solution that drops the limit altogether, 24 gives a safety
+  val MaxFunctionArity = 30
+    // Awaiting a definite solution that drops the limit altogether, 30 gives a safety
     // margin over the previous 22, so that treecopiers in miniphases are allowed to
     // temporarily create larger closures. This is needed in lambda lift where large closures
     // are first formed by treecopiers before they are split apart into parameters and
