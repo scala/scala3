@@ -171,16 +171,12 @@ object desugar {
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
-        def resultTpt = vparam.tpt match {
-          case ByNameTypeTree(result) => result
-          case tpt => tpt
-        }
         def defaultGetter: DefDef =
           DefDef(
             name = meth.name.defaultGetterName(n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss, n),
-            tpt = resultTpt,
+            tpt = TypeTree(),
             rhs = vparam.rhs
           ).withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
