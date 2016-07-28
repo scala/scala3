@@ -23,7 +23,7 @@ object Test {
     val ys8: Seq[Int] = xs8
     val xs9 = xs.map(_ >= 0)
     val ys9: Seq[Boolean] = xs9
-    val xs10 = xs.flatMap(x => Cons(x, Cons(-x, Nil)))
+    val xs10 = xs.flatMap(x => x :: -x :: Nil)
     val ys10: Seq[Int] = xs10
     val xs11 = xs ++ xs
     val ys11: Seq[Int] = xs11
@@ -31,7 +31,7 @@ object Test {
     val ys12: Seq[Int] = xs12
     val xs13 = Nil ++ xs
     val ys13: Seq[Int] = xs13
-    val xs14 = xs ++ Cons("a", Nil)
+    val xs14 = xs ++ ("a" :: Nil)
     val ys14: Seq[Any] = xs14
     val xs15 = xs.zip(xs9)
     val ys15: Seq[(Int, Boolean)] = xs15
@@ -74,7 +74,7 @@ object Test {
     val ys8: View[Int] = xs8
     val xs9 = xs.map(_ >= 0)
     val ys9: View[Boolean] = xs9
-    val xs10 = xs.flatMap(x => Cons(x, Cons(-x, Nil)))
+    val xs10 = xs.flatMap(x => x :: -x :: Nil)
     val ys10: View[Int] = xs10
     val xs11 = xs ++ xs
     val ys11: View[Int] = xs11
@@ -82,7 +82,7 @@ object Test {
     val ys12: View[Int] = xs12
     val xs13 = Nil ++ xs
     val ys13: List[Int] = xs13
-    val xs14 = xs ++ Cons("a", Nil)
+    val xs14 = xs ++ ("a" :: Nil)
     val ys14: View[Any] = xs14
     val xs15 = xs.zip(xs9)
     val ys15: View[(Int, Boolean)] = xs15
@@ -128,13 +128,13 @@ object Test {
     val ys10: String = xs10
     val xs11 = xs ++ xs
     val ys11: String = xs11
-    val xs11a = xs ++ List('x', 'y') // Cons('x', Cons('y', Nil))
+    val xs11a = xs ++ List('x', 'y')
     val ys11a: String = xs11a
     val xs12 = xs ++ Nil
     val ys12: String = xs12
     val xs13 = Nil ++ xs.iterator
     val ys13: List[Char] = xs13
-    val xs14 = xs ++ Cons("xyz", Nil)
+    val xs14 = xs ++ List("xyz")
     val ys14: Seq[Any] = xs14
     val xs15 = xs.zip(xs9)
     val ys15: Seq[(Char, Int)] = xs15
@@ -178,7 +178,7 @@ object Test {
     val ys8: Array[Int] = xs8
     val xs9 = ArrayOps(xs).map(_ >= 0)
     val ys9: Array[Boolean] = xs9
-    val xs10 = xs.flatMap(x => Cons(x, Cons(-x, Nil)))
+    val xs10 = xs.flatMap(x => List(x, -x))
     val ys10: Array[Int] = xs10
     val xs11 = xs ++ xs
     val ys11: Array[Int] = xs11
@@ -186,7 +186,7 @@ object Test {
     val ys12: Array[Int] = xs12
     val xs13 = Nil ++ xs
     val ys13: List[Int] = xs13
-    val xs14 = xs ++ Cons("a": Any, Nil)
+    val xs14 = xs ++ (("a": Any) :: Nil)
     val ys14: Array[Any] = xs14
     val xs15 = xs.zip(xs9)
     val ys15: Array[(Int, Boolean)] = xs15
@@ -229,7 +229,7 @@ object Test {
     val ys8: Seq[Int] = xs8
     val xs9 = xs.map(_ >= 0)
     val ys9: Seq[Boolean] = xs9
-    val xs10 = xs.flatMap(x => Cons(x, Cons(-x, Nil)))
+    val xs10 = xs.flatMap(x => x :: -x :: Nil)
     val ys10: Seq[Int] = xs10
     val xs11 = xs ++ xs
     val ys11: Seq[Int] = xs11
@@ -237,7 +237,7 @@ object Test {
     val ys12: Seq[Int] = xs12
     val xs13 = Nil ++ xs
     val ys13: Seq[Int] = xs13
-    val xs14 = xs ++ Cons("a", Nil)
+    val xs14 = xs ++ ("a" :: Nil)
     val ys14: Seq[Any] = xs14
     val xs15 = xs.zip(xs9)
     val ys15: Seq[(Int, Boolean)] = xs15
@@ -285,7 +285,7 @@ object Test {
   }
 
   def main(args: Array[String]) = {
-    val ints = Cons(1, Cons(2, Cons(3, Nil)))
+    val ints = List(1, 2, 3)
     val intsBuf = ints.to(ArrayBuffer)
     val intsListBuf = ints.to(ListBuffer)
     val intsView = ints.view

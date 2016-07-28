@@ -114,22 +114,9 @@ object CollectionStrawMan6 extends LowPriority {
 
   /** Base trait for generic collections */
   trait Iterable[+A] extends IterableOnce[A] with IterableLike[A, Iterable] {
-
     /** The collection itself */
-    protected def coll: Iterable[A] = this
-
-    /** The length of this collection, if it can be cheaply computed, -1 otherwise. */
-    def knownLength: Int = -1
-
-    /** The class name of this collection. To be used for converting to string.
-     *  Collections generally print like this:
-     *
-     *       <className>(elem_1, ..., elem_n)
-     */
-    def className = getClass.getName
-
-    override def toString = s"$className(${mkString(", ")})"
-  }
+    protected def coll: this.type = this
+ }
 
   /** Base trait for sequence collections */
   trait Seq[+A] extends Iterable[A] with SeqLike[A, Seq] {
@@ -140,18 +127,21 @@ object CollectionStrawMan6 extends LowPriority {
   /** Base trait for linearly accessed sequences */
   trait LinearSeq[+A] extends Seq[A] with SeqLike[A, LinearSeq] { self =>
 
+    /** To be overridden in implementations: */
+    def isEmpty: Boolean
+    def head: A
+    def tail: LinearSeq[A]
+
     def iterator = new Iterator[A] {
       private[this] var current: Seq[A] = self
       def hasNext = !current.isEmpty
       def next = { val r = current.head; current = current.tail; r }
     }
 
-    def apply(i: Int): A = {
-      require(!isEmpty)
-      if (i == 0) head else tail.apply(i - 1)
-    }
+    def length: Int = iterator.length
 
-    def length: Int = if (isEmpty) 0 else 1 + tail.length
+    @tailrec final def apply(n: Int): A =
+      if (n == 0) head else tail.apply(n - 1)
 
     /** Optimized version of `drop` that avoids copying */
     @tailrec final override def drop(n: Int) =
@@ -221,7 +211,7 @@ object CollectionStrawMan6 extends LowPriority {
        with IterablePolyTransforms[A, C] {
 
     /** Create a collection of type `C[A]` from the elements of `coll`, which has
-     *  the same element type as this collection.
+     *  the same element type as this collection. Overridden in StringOps and ArrayOps.
      */
     protected[this] def fromIterableWithSameElemType(coll: Iterable[A]): C[A] = fromIterable(coll)
   }
@@ -256,12 +246,52 @@ object CollectionStrawMan6 extends LowPriority {
     /** The first element of the collection. */
     def head: A = iterator.next()
 
-    /** The number of elements in this collection. */
-    def size: Int =
-      if (coll.knownLength >= 0) coll.knownLength else foldLeft(0)((len, x) => len + 1)
+    /** The number of elements in this collection, if it can be cheaply computed,
+     *  -1 otherwise. Cheaply usually means: Not requiring a collection traversal.
+     */
+    def knownSize: Int = -1
+
+    /** The number of elements in this collection. Does not terminate for
+     *  infinite collections.
+     */
+    def size: Int = if (knownSize >= 0) knownSize else iterator.length
 
     /** A view representing the elements of this collection. */
     def view: View[A] = View.fromIterator(iterator)
+
+     /** Given a collection factory `fi` for collections of type constructor `C`,
+     *  convert this collection to one of type `C[A]`. Example uses:
+     *
+     *      xs.to(List)
+     *      xs.to(ArrayBuffer)
+     */
+    def to[C[X] <: Iterable[X]](fi: FromIterable[C]): C[A @uncheckedVariance] =
+      // variance seems sound because `to` could just as well have been added
+      // as a decorator. We should investigate this further to be sure.
+      fi.fromIterable(coll)
+
+    /** Convert collection to array. */
+    def toArray[B >: A: ClassTag]: Array[B] =
+      if (knownSize >= 0) copyToArray(new Array[B](knownSize), 0)
+      else ArrayBuffer.fromIterable(coll).toArray[B]
+
+    /** Copy all elements of this collection to array `xs`, starting at `start`. */
+    def copyToArray[B >: A](xs: Array[B], start: Int = 0): xs.type = {
+      var i = start
+      val it = iterator
+      while (it.hasNext) {
+        xs(i) = it.next()
+        i += 1
+      }
+      xs
+    }
+
+    /** The class name of this collection. To be used for converting to string.
+     *  Collections generally print like this:
+     *
+     *       <className>(elem_1, ..., elem_n)
+     */
+    def className = getClass.getName
 
     /** A string showing all elements of this collection, separated by string `sep`. */
     def mkString(sep: String): String = {
@@ -275,32 +305,7 @@ object CollectionStrawMan6 extends LowPriority {
       b.result
     }
 
-    /** Given a collection factory `fi` for collections of type constructor `C`,
-     *  convert this collection to one of type `C[A]`. Example uses:
-     *
-     *      xs.to(List)
-     *      xs.to(ArrayBuffer)
-     */
-    def to[C[X] <: Iterable[X]](fi: FromIterable[C]): C[A @uncheckedVariance] =
-      // variance seems sound because `to` could just as well have been added
-      // as a decorator. We should investigate this further to be sure.
-      fi.fromIterable(coll)
-
-    /** Convert collection to array. */
-    def toArray[B >: A: ClassTag]: Array[B] =
-      if (coll.knownLength >= 0) copyToArray(new Array[B](coll.knownLength), 0)
-      else ArrayBuffer.fromIterable(coll).toArray[B]
-
-    /** Copy all elements of this collection to array `xs`, starting at `start`. */
-    def copyToArray[B >: A](xs: Array[B], start: Int = 0): xs.type = {
-      var i = start
-      val it = iterator
-      while (it.hasNext) {
-        xs(i) = it.next()
-        i += 1
-      }
-      xs
-    }
+    override def toString = s"$className(${mkString(", ")})"
   }
 
   /** Type-preserving transforms over iterables.
@@ -365,7 +370,7 @@ object CollectionStrawMan6 extends LowPriority {
       case _ =>
         var xs: List[A] = Nil
         var it = coll.iterator
-        while (it.hasNext) xs = new Cons(it.next(), xs)
+        while (it.hasNext) xs = it.next() :: xs
         fromIterableWithSameElemType(xs)
     }
   }
@@ -373,20 +378,22 @@ object CollectionStrawMan6 extends LowPriority {
   /* --------- Concrete collection types ------------------------------- */
 
   /** Concrete collection type: List */
-  sealed trait List[+A] extends LinearSeq[A] with SeqLike[A, List] with Buildable[A, List[A]] { self =>
-
-    def isEmpty: Boolean
-    def head: A
-    def tail: List[A]
+  sealed trait List[+A]
+  extends LinearSeq[A]
+     with SeqLike[A, List]
+     with Buildable[A, List[A]] {
 
     def fromIterable[B](c: Iterable[B]): List[B] = List.fromIterable(c)
 
     protected[this] def newBuilder = new ListBuffer[A].mapResult(_.toList)
 
+    /** Prepend element */
+    def :: [B >: A](elem: B): List[B] =  new ::(elem, this)
+
     /** Prepend operation that avoids copying this list */
     def ++:[B >: A](prefix: List[B]): List[B] =
       if (prefix.isEmpty) this
-      else Cons(prefix.head, prefix.tail ++: this)
+      else prefix.head :: prefix.tail ++: this
 
     /** When concatenating with another list `xs`, avoid copying `xs` */
     override def ++[B >: A](xs: IterableOnce[B]): List[B] = xs match {
@@ -397,7 +404,7 @@ object CollectionStrawMan6 extends LowPriority {
     override def className = "List"
   }
 
-  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
+  case class :: [+A](x: A, private[collections] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
   extends List[A] {
     override def isEmpty = false
     override def head = x
@@ -426,6 +433,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     private var first, last: List[A] = Nil
     private var aliased = false
+    private var len = 0
 
     def iterator = first.iterator
 
@@ -433,7 +441,8 @@ object CollectionStrawMan6 extends LowPriority {
 
     def apply(i: Int) = first.apply(i)
 
-    def length = first.length
+    def length = len
+    override def knownSize = len
 
     protected[this] def newBuilder = new ListBuffer[A]
 
@@ -452,12 +461,13 @@ object CollectionStrawMan6 extends LowPriority {
 
     def +=(elem: A) = {
       if (aliased) copyElems()
-      val last1 = Cons(elem, Nil)
+      val last1 = elem :: Nil
       last match {
-        case last: Cons[A] => last.next = last1
+        case last: ::[A] => last.next = last1
         case _ => first = last1
       }
       last = last1
+      len += 1
       this
     }
 
@@ -486,7 +496,7 @@ object CollectionStrawMan6 extends LowPriority {
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
 
     def length = end - start
-    override def knownLength = length
+    override def knownSize = length
 
     override def view = new ArrayBufferView(elems, start, end)
 
@@ -543,18 +553,13 @@ object CollectionStrawMan6 extends LowPriority {
 
     /** Avoid reallocation of buffer if length is known. */
     def fromIterable[B](coll: Iterable[B]): ArrayBuffer[B] =
-      if (coll.knownLength >= 0) {
-        val elems = new Array[AnyRef](coll.knownLength)
+      if (coll.knownSize >= 0) {
+        val elems = new Array[AnyRef](coll.knownSize)
         val it = coll.iterator
         for (i <- 0 until elems.length) elems(i) = it.next().asInstanceOf[AnyRef]
         new ArrayBuffer[B](elems, elems.length)
       }
-      else {
-        val buf = new ArrayBuffer[B]
-        val it = coll.iterator
-        while (it.hasNext) buf += it.next()
-        buf
-      }
+      else new ArrayBuffer[B] ++= coll
   }
 
   class ArrayBufferView[A](val elems: Array[AnyRef], val start: Int, val end: Int) extends IndexedView[A] {
@@ -563,7 +568,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   class LazyList[+A](expr: => LazyList.Evaluated[A])
-  extends LinearSeq[A] with SeqLike[A, LazyList] { self =>
+  extends LinearSeq[A] with SeqLike[A, LazyList] {
     private[this] var evaluated = false
     private[this] var result: LazyList.Evaluated[A] = _
 
@@ -579,7 +584,7 @@ object CollectionStrawMan6 extends LowPriority {
     override def head = force.get._1
     override def tail = force.get._2
 
-    def #:: [B >: A](elem: => B): LazyList[B] = new LazyList(Some((elem, self)))
+    def #:: [B >: A](elem: => B): LazyList[B] = new LazyList(Some((elem, this)))
 
     def fromIterable[B](c: Iterable[B]): LazyList[B] = LazyList.fromIterable(c)
 
@@ -598,16 +603,19 @@ object CollectionStrawMan6 extends LowPriority {
 
     type Evaluated[+A] = Option[(A, LazyList[A])]
 
-    def fromIterable[B](coll: Iterable[B]): LazyList[B] = coll match {
-      case coll: LazyList[B] => coll
-      case _ => new LazyList(if (coll.isEmpty) None else Some((coll.head, fromIterable(coll.tail))))
-    }
-
     object Empty extends LazyList[Nothing](None)
 
     object #:: {
       def unapply[A](s: LazyList[A]): Evaluated[A] = s.force
     }
+
+    def fromIterable[B](coll: Iterable[B]): LazyList[B] = coll match {
+      case coll: LazyList[B] => coll
+      case _ => fromIterator(coll.iterator)
+    }
+
+    def fromIterator[B](it: Iterator[B]): LazyList[B] =
+      new LazyList(if (it.hasNext) Some(it.next(), fromIterator(it)) else None)
   }
 
   // ------------------ Decorators to add collection ops to existing types -----------------------
@@ -632,6 +640,10 @@ object CollectionStrawMan6 extends LowPriority {
     def fromIterable[B](coll: Iterable[B]): List[B] = List.fromIterable(coll)
 
     protected[this] def newBuilder = new StringBuilder
+
+    override def knownSize = s.length
+
+    override def className = "String"
 
     /** Overloaded version of `map` that gives back a string, where the inherited
      *  version gives back a sequence.
@@ -704,6 +716,10 @@ object CollectionStrawMan6 extends LowPriority {
 
     protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(elemTag))
 
+    override def knownSize = xs.length
+
+    override def className = "Array"
+
     def map[B: ClassTag](f: A => B): Array[B] = fromIterable(View.Map(coll, f))
     def flatMap[B: ClassTag](f: A => IterableOnce[B]): Array[B] = fromIterable(View.FlatMap(coll, f))
     def ++[B >: A : ClassTag](xs: IterableOnce[B]): Array[B] = fromIterable(View.Concat(coll, xs))
@@ -740,13 +756,13 @@ object CollectionStrawMan6 extends LowPriority {
     /** The empty view */
     case object Empty extends View[Nothing] {
       def iterator = Iterator.empty
-      override def knownLength = 0
+      override def knownSize = 0
     }
 
     /** A view with given elements */
     case class Elems[A](xs: A*) extends View[A] {
       def iterator = Iterator(xs: _*)
-      override def knownLength = xs.length
+      override def knownSize = xs.length // should be: xs.knownSize, but A*'s are not sequences in this strawman.
     }
 
     /** A view that filters an underlying collection. */
@@ -776,21 +792,21 @@ object CollectionStrawMan6 extends LowPriority {
     /** A view that drops leading elements of the underlying collection. */
     case class Drop[A](underlying: Iterable[A], n: Int) extends View[A] {
       def iterator = underlying.iterator.drop(n)
-      override def knownLength =
-        if (underlying.knownLength >= 0) underlying.knownLength - n max 0 else -1
+      override def knownSize =
+        if (underlying.knownSize >= 0) underlying.knownSize - n max 0 else -1
     }
 
     /** A view that takes leading elements of the underlying collection. */
     case class Take[A](underlying: Iterable[A], n: Int) extends View[A] {
       def iterator = underlying.iterator.take(n)
-      override def knownLength =
-        if (underlying.knownLength >= 0) underlying.knownLength min n else -1
+      override def knownSize =
+        if (underlying.knownSize >= 0) underlying.knownSize min n else -1
     }
 
     /** A view that maps elements of the underlying collection. */
     case class Map[A, B](underlying: Iterable[A], f: A => B) extends View[B] {
       def iterator = underlying.iterator.map(f)
-      override def knownLength = underlying.knownLength
+      override def knownSize = underlying.knownSize
     }
 
     /** A view that flatmaps elements of the underlying collection. */
@@ -803,9 +819,9 @@ object CollectionStrawMan6 extends LowPriority {
      */
     case class Concat[A](underlying: Iterable[A], other: IterableOnce[A]) extends View[A] {
       def iterator = underlying.iterator ++ other
-      override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
-          underlying.knownLength + other.knownLength
+      override def knownSize = other match {
+        case other: Iterable[_] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
+          underlying.knownSize + other.knownSize
         case _ =>
           -1
       }
@@ -816,9 +832,9 @@ object CollectionStrawMan6 extends LowPriority {
      */
     case class Zip[A, B](underlying: Iterable[A], other: IterableOnce[B]) extends View[(A, B)] {
       def iterator = underlying.iterator.zip(other)
-      override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
-          underlying.knownLength min other.knownLength
+      override def knownSize = other match {
+        case other: Iterable[_] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
+          underlying.knownSize min other.knownSize
         case _ =>
           -1
       }
@@ -847,8 +863,8 @@ object CollectionStrawMan6 extends LowPriority {
       def apply(i: Int) = self.apply(end - 1 - i)
     }
 
-    override def knownLength = end - start max 0
-    def length = knownLength
+    def length = end - start max 0
+    override def knownSize = length
   }
 
 /* ---------- Iterators ---------------------------------------------------*/
@@ -872,6 +888,11 @@ object CollectionStrawMan6 extends LowPriority {
       }
       -1
     }
+    def length = {
+      var len = 0
+      while (hasNext) { len += 1; next() }
+      len
+    }
     def filter(p: A => Boolean): Iterator[A] = new Iterator[A] {
       private var hd: A = _
       private var hdDefined: Boolean = false
@@ -892,7 +913,6 @@ object CollectionStrawMan6 extends LowPriority {
         }
         else Iterator.empty.next()
     }
-
     def map[B](f: A => B): Iterator[B] = new Iterator[B] {
       def hasNext = self.hasNext
       def next() = f(self.next())
