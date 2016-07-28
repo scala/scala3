@@ -134,6 +134,62 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   // override to provide DottyCompiler
   override def newCompiler = new dotty.partest.DPDirectCompiler(this)
 
+  // Adapted from nest.Runner#javac because:
+  // - Our classpath handling is different and we need to pass extraClassPath
+  //   to java to get the scala-library which is required for some java tests
+  // - The compiler output should be redirected to cLogFile, like the output of
+  //   dotty itself
+  override def javac(files: List[File]): TestState = {
+    import fileManager._
+    import suiteRunner._
+    import FileManager.joinPaths
+    // compile using command-line javac compiler
+    val args = Seq(
+      javacCmdPath,
+      "-d",
+      outDir.getAbsolutePath,
+      "-classpath",
+      joinPaths(outDir :: extraClasspath ++ testClassPath)
+    ) ++ files.map(_.getAbsolutePath)
+
+    pushTranscript(args mkString " ")
+
+    val captured = StreamCapture(runCommand(args, cLogFile))
+    if (captured.result) genPass() else {
+      cLogFile appendAll captured.stderr
+      cLogFile appendAll captured.stdout
+      genFail("java compilation failed")
+    }
+  }
+
+  // FIXME: This is copy-pasted from nest.Runner where it is private
+  // Remove this once https://github.com/scala/scala-partest/pull/61 is merged
+  /** Runs command redirecting standard out and
+   *  error out to output file.
+   */
+  def runCommand(args: Seq[String], outFile: File): Boolean = {
+    import scala.sys.process.{ Process, ProcessLogger }
+    //(Process(args) #> outFile !) == 0 or (Process(args) ! pl) == 0
+    val pl = ProcessLogger(outFile)
+    val nonzero = 17     // rounding down from 17.3
+    def run: Int = {
+      val p = Process(args) run pl
+      try p.exitValue
+      catch {
+        case e: InterruptedException =>
+          NestUI verbose s"Interrupted waiting for command to finish (${args mkString " "})"
+          p.destroy
+          nonzero
+        case t: Throwable =>
+          NestUI verbose s"Exception waiting for command to finish: $t (${args mkString " "})"
+          p.destroy
+          throw t
+      }
+      finally pl.close()
+    }
+    (pl buffer run) == 0
+  }
+
   // override to provide default dotty flags from file in directory
   override def flagsForCompilation(sources: List[File]): List[String] = {
     val specificFlags = super.flagsForCompilation(sources)
@@ -243,32 +299,6 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
         genFail("output differs")
       case None        => genPass()  // redundant default case
     } getOrElse true
-  }
-
-  // override because Dotty currently doesn't handle separate compilation well,
-  // so we ignore groups (tests suffixed with _1 and _2)
-  override def groupedFiles(sources: List[File]): List[List[File]] = {
-    val grouped = sources groupBy (_.group)
-    val flatGroup = List(grouped.keys.toList.sorted.map({ k => grouped(k) sortBy (_.getName) }).flatten)
-    try { // try/catch because of bug in partest that throws exception
-      if (flatGroup != super.groupedFiles(sources))
-        throw new java.lang.UnsupportedOperationException()
-    } catch {
-      case e: java.lang.UnsupportedOperationException =>
-        val genlogFWriter = new FileWriter(DPConfig.genLog.jfile, true)
-        val genlogWriter = new PrintWriter(genlogFWriter, true)
-        genlogWriter.println("Warning: Overriding compilation groups for tests: " + sources)
-        genlogWriter.close
-        genlogFWriter.close
-    }
-    flatGroup
-  }
-
-  // override to avoid separate compilation of scala and java sources
-  override def mixedCompileGroup(allFiles: List[File]): List[CompileRound] = List(OnlyDotty(allFiles))
-  case class OnlyDotty(fs: List[File]) extends CompileRound {
-    def description = s"dotc $fsString"
-    lazy val result = { pushTranscript(description) ; attemptCompile(fs) }
   }
 
   // override to add dotty and scala jars to classpath

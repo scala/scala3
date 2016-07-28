@@ -47,7 +47,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
+    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) && !sym.is(JavaDefined) =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)

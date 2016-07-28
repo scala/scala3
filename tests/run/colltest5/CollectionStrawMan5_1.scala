@@ -1,3 +1,4 @@
+package colltest5
 package strawman.collections
 
 import Predef.{augmentString => _, wrapString => _, _}

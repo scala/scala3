@@ -9,7 +9,7 @@ class Test {
 
   @SuppressWarnings(Array("hi", "foo")) def foo2() = ??? //can be deferred as there is a non-generic method
 
-  @SuppressWarnings("hi") def foo3() = ??? // can be written in java and is serialized this way in bytecode. doesn't typecheck
+  @SuppressWarnings(Array("hi")) def foo3() = ??? // can be written in java and is serialized this way in bytecode. doesn't typecheck
 
   @Transient(false) def bar = ???
 
