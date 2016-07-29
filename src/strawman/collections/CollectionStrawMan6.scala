@@ -124,28 +124,36 @@ object CollectionStrawMan6 extends LowPriority {
     def length: Int
   }
 
-  /** Base trait for linearly accessed sequences */
-  trait LinearSeq[+A] extends Seq[A] with SeqLike[A, LinearSeq] { self =>
+  /** Base trait for linearly accessed sequences that have efficient `head` and
+   *  `tail` operations.
+   *  Known subclasses: List, LazyList
+   */
+  trait LinearSeq[+A] extends Seq[A] with LinearSeqLike[A, LinearSeq] { self =>
 
     /** To be overridden in implementations: */
     def isEmpty: Boolean
     def head: A
     def tail: LinearSeq[A]
 
+    /** `iterator` is overridden in terms of `head` and `tail` */
     def iterator = new Iterator[A] {
       private[this] var current: Seq[A] = self
       def hasNext = !current.isEmpty
       def next = { val r = current.head; current = current.tail; r }
     }
 
+    /** `length is defined in terms of `iterator` */
     def length: Int = iterator.length
 
-    @tailrec final def apply(n: Int): A =
-      if (n == 0) head else tail.apply(n - 1)
-
-    /** Optimized version of `drop` that avoids copying */
-    @tailrec final override def drop(n: Int) =
-      if (n <= 0) this else tail.drop(n - 1)
+    /** `apply` is defined in terms of `drop`, which is in turn defined in
+     *  terms of `tail`.
+     */
+    override def apply(n: Int): A = {
+      if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+      val skipped = drop(n)
+      if (skipped.isEmpty) throw new IndexOutOfBoundsException(n.toString)
+      skipped.head
+    }
   }
 
   /** Base trait for strict collections that can be built using a builder.
@@ -220,6 +228,28 @@ object CollectionStrawMan6 extends LowPriority {
   trait SeqLike[+A, +C[X] <: Seq[X]]
   extends IterableLike[A, C]
      with SeqMonoTransforms[A, C[A @uncheckedVariance]] // sound bcs of VarianceNote
+
+  /** Base trait for linear Seq operations */
+  trait LinearSeqLike[+A, +C[X] <: LinearSeq[X]] extends SeqLike[A, C] {
+
+    /** Optimized version of `drop` that avoids copying
+     *  Note: `drop` is defined here, rather than in a trait like `LinearSeqMonoTransforms`,
+     *  because the `...MonoTransforms` traits make no assumption about the type of `Repr`
+     *  whereas we need to assume here that `Repr` is the same as the underlying
+     *  collection type.
+     */
+    override def drop(n: Int): C[A @uncheckedVariance] = { // sound bcs of VarianceNote
+      def loop(n: Int, s: Iterable[A]): C[A] =
+        if (n <= 0) s.asInstanceOf[C[A]]
+           // implicit contract to guarantee success of asInstanceOf:
+           //   (1) coll is of type C[A]
+           //   (2) The tail of a LinearSeq is of the same type as the type of the sequence itself
+           // it's surprisingly tricky/ugly to turn this into actual types, so we
+           // leave this contract implicit.
+        else loop(n - 1, s.tail)
+      loop(n, coll)
+    }
+  }
 
   /** Operations over iterables. No operation defined here is generic in the
    *  type of the underlying collection.
