@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
@@ -14,17 +14,18 @@ import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, Transforme
  *  the redundant mixin class could be required as a parent by the JVM.
  */
 class CollectSuperCalls extends MiniPhaseTransform {
+  import tpd._
 
   def phaseName: String = "collectSuperCalls"
 
-  override def transformSuper(tree: Super)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    tree match {
-      case Trees.Super(qual: This, mix) if mix.nonEmpty =>
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    tree.qualifier match {
+      case Super(qual: This, mix) if mix.nonEmpty =>
         val classSymbol = qual.symbol.asClass.classSymbol
-        registerSuperCall(classSymbol, tree.tpe.baseClasses.head)
+        registerSuperCall(classSymbol, tree.symbol.owner.asClass)
       case _ =>
     }
-    super.transformSuper(tree)
+    tree
   }
 
   private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(implicit ctx: Context) = {
