@@ -116,13 +116,16 @@ object CollectionStrawMan6 extends LowPriority {
   trait Iterable[+A] extends IterableOnce[A] with IterableLike[A, Iterable] {
     /** The collection itself */
     protected def coll: this.type = this
- }
+  }
+
+  /** A trait representing indexable collections with finite length */
+  trait ArrayLike[+A] extends Any {
+    def length: Int
+    def apply(i: Int): A
+  }
 
   /** Base trait for sequence collections */
-  trait Seq[+A] extends Iterable[A] with SeqLike[A, Seq] {
-    def apply(i: Int): A
-    def length: Int
-  }
+  trait Seq[+A] extends Iterable[A] with SeqLike[A, Seq] with ArrayLike[A]
 
   /** Base trait for linearly accessed sequences that have efficient `head` and
    *  `tail` operations.
@@ -155,6 +158,8 @@ object CollectionStrawMan6 extends LowPriority {
       skipped.head
     }
   }
+
+  type IndexedSeq[+A] = Seq[A] { def view: IndexedView[A] }
 
   /** Base trait for strict collections that can be built using a builder.
    *  @param  A    the element type of the collection
@@ -593,6 +598,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   class ArrayBufferView[A](val elems: Array[AnyRef], val start: Int, val end: Int) extends IndexedView[A] {
+    def length = end - start
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
     override def className = "ArrayBufferView"
   }
@@ -656,7 +662,8 @@ object CollectionStrawMan6 extends LowPriority {
   extends AnyVal with IterableOps[Char]
      with SeqMonoTransforms[Char, String]
      with IterablePolyTransforms[Char, List]
-     with Buildable[Char, String] {
+     with Buildable[Char, String]
+     with ArrayLike[Char] {
 
     protected def coll = new StringView(s)
     def iterator = coll.iterator
@@ -670,6 +677,9 @@ object CollectionStrawMan6 extends LowPriority {
     def fromIterable[B](coll: Iterable[B]): List[B] = List.fromIterable(coll)
 
     protected[this] def newBuilder = new StringBuilder
+
+    def length = s.length
+    def apply(i: Int) = s.charAt(i)
 
     override def knownSize = s.length
 
@@ -720,8 +730,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   case class StringView(s: String) extends IndexedView[Char] {
-    val start = 0
-    val end = s.length
+    def length = s.length
     def apply(n: Int) = s.charAt(n)
     override def className = "StringView"
   }
@@ -731,10 +740,14 @@ object CollectionStrawMan6 extends LowPriority {
   implicit class ArrayOps[A](val xs: Array[A])
   extends AnyVal with IterableOps[A]
      with SeqMonoTransforms[A, Array[A]]
-     with Buildable[A, Array[A]] {
+     with Buildable[A, Array[A]]
+     with ArrayLike[A] {
 
     protected def coll = new ArrayView(xs)
     def iterator = coll.iterator
+
+    def length = xs.length
+    def apply(i: Int) = xs.apply(i)
 
     override def view = new ArrayView(xs)
 
@@ -757,8 +770,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   case class ArrayView[A](xs: Array[A]) extends IndexedView[A] {
-    val start = 0
-    val end = xs.length
+    def length = xs.length
     def apply(n: Int) = xs(n)
     override def className = "ArrayView"
   }
@@ -822,15 +834,17 @@ object CollectionStrawMan6 extends LowPriority {
     /** A view that drops leading elements of the underlying collection. */
     case class Drop[A](underlying: Iterable[A], n: Int) extends View[A] {
       def iterator = underlying.iterator.drop(n)
+      protected val normN = n max 0
       override def knownSize =
-        if (underlying.knownSize >= 0) underlying.knownSize - n max 0 else -1
+        if (underlying.knownSize >= 0) (underlying.knownSize - normN) max 0 else -1
     }
 
     /** A view that takes leading elements of the underlying collection. */
     case class Take[A](underlying: Iterable[A], n: Int) extends View[A] {
       def iterator = underlying.iterator.take(n)
+      protected val normN = n max 0
       override def knownSize =
-        if (underlying.knownSize >= 0) underlying.knownSize min n else -1
+        if (underlying.knownSize >= 0) underlying.knownSize min normN else -1
     }
 
     /** A view that maps elements of the underlying collection. */
@@ -872,14 +886,11 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   /** View defined in terms of indexing a range */
-  trait IndexedView[+A] extends View[A] { self =>
-    def start: Int
-    def end: Int
-    def apply(i: Int): A
+  trait IndexedView[+A] extends View[A] with ArrayLike[A] {
 
     def iterator: Iterator[A] = new Iterator[A] {
-      private var current = start
-      def hasNext = current < end
+      private var current = 0
+      def hasNext = current < length
       def next: A = {
         val r = apply(current)
         current += 1
@@ -887,14 +898,39 @@ object CollectionStrawMan6 extends LowPriority {
       }
     }
 
-    def reverse = new IndexedView[A] {
-      def start = self.start
-      def end = self.end
-      def apply(i: Int) = self.apply(end - 1 - i)
+    override def take(n: Int): IndexedView[A] = new IndexedView.Take(this, n)
+    override def drop(n: Int): IndexedView[A] = new IndexedView.Drop(this, n)
+    override def map[B](f: A => B): IndexedView[B] = new IndexedView.Map(this, f)
+    def reverse: IndexedView[A] = new IndexedView.Reverse(this)
+  }
+
+  object IndexedView {
+
+    class Take[A](underlying: IndexedView[A], n: Int)
+    extends View.Take(underlying, n) with IndexedView[A] {
+      override def iterator = super.iterator
+      def length = underlying.length min normN
+      def apply(i: Int) = underlying.apply(i)
     }
 
-    def length = end - start max 0
-    override def knownSize = length
+    class Drop[A](underlying: IndexedView[A], n: Int)
+    extends View.Take(underlying, n) with IndexedView[A] {
+      override def iterator = super.iterator
+      def length = (underlying.length - normN) max 0
+      def apply(i: Int) = underlying.apply(i + normN)
+    }
+
+    class Map[A, B](underlying: IndexedView[A], f: A => B)
+    extends View.Map(underlying, f) with IndexedView[B] {
+      override def iterator = super.iterator
+      def length = underlying.length
+      def apply(n: Int) = f(underlying.apply(n))
+    }
+
+    case class Reverse[A](underlying: IndexedView[A]) extends IndexedView[A] {
+      def length = underlying.length
+      def apply(i: Int) = underlying.apply(length - 1 - i)
+    }
   }
 
 /* ---------- Iterators ---------------------------------------------------*/
@@ -1002,8 +1038,7 @@ object CollectionStrawMan6 extends LowPriority {
       def next = throw new NoSuchElementException("next on empty iterator")
     }
     def apply[A](xs: A*): Iterator[A] = new IndexedView[A] {
-      val start = 0
-      val end = xs.length
+      val length = xs.length
       def apply(n: Int) = xs(n)
     }.iterator
   }
