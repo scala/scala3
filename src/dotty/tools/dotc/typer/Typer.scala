@@ -1076,7 +1076,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
-    val tpt1 = checkSimpleKinded(typedType(tpt))
+    val tpt1 = widenIfFinalMutable(checkSimpleKinded(typedType(tpt)), sym)
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => typedExpr(rhs, tpt1.tpe)
@@ -1084,6 +1084,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     patchIfLazy(vdef1)
     vdef1
+  }
+
+  /** Widen type if a valDef is both mutable and final, see #1285 */
+  private def widenIfFinalMutable(vdef: Tree, sym: Symbol)(implicit ctx: Context) = {
+    if (sym.is(allOf(Mutable, Final))) {
+      val widened = vdef.tpe.widen
+      vdef.withType(widened)
+      sym.info_=(widened)
+    }
+    vdef
   }
 
   /** Add a @volitile to lazy vals when rewriting from Scala2 */
