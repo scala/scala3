@@ -448,7 +448,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
-    InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
+    Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
     LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
