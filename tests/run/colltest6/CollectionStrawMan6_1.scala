@@ -1,4 +1,3 @@
-package colltest6
 package strawman.collections
 
 import Predef.{augmentString => _, wrapString => _, _}
@@ -887,11 +886,11 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   /** View defined in terms of indexing a range */
-  trait IndexedView[+A] extends View[A] with ArrayLike[A] {
+  trait IndexedView[+A] extends View[A] with ArrayLike[A] { self =>
 
     def iterator: Iterator[A] = new Iterator[A] {
       private var current = 0
-      def hasNext = current < length
+      def hasNext = current < self.length
       def next: A = {
         val r = apply(current)
         current += 1
@@ -909,7 +908,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     class Take[A](underlying: IndexedView[A], n: Int)
     extends View.Take(underlying, n) with IndexedView[A] {
-      override def iterator = super.iterator
+      override def iterator = super.iterator // needed to avoid "conflicting overrides" error
       def length = underlying.length min normN
       def apply(i: Int) = underlying.apply(i)
     }
