@@ -763,9 +763,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
         def outerTest(testedBinder: Symbol, expectedTp: Type): Tree = {
           val expectedOuter = expectedTp.normalizedPrefix match {
-            //case ThisType(clazz) => This(clazz)
             //case NoType          => Literal(Constant(true)) // fallback for SI-6183 todo?
-            case pre             => ref(pre.termSymbol)
+            case pre: SingletonType => singleton(pre)
           }
 
           // ExplicitOuter replaces `Select(q, outerSym) OBJ_EQ expectedPrefix` by `Select(q, outerAccessor(outerSym.owner)) OBJ_EQ expectedPrefix`
