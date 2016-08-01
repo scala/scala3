@@ -17,6 +17,7 @@ import Decorators._
 import Uniques._
 import config.Printers._
 import annotation.tailrec
+import reporting._
 import collection.mutable
 
 object Inferencing {
@@ -222,13 +223,38 @@ object Inferencing {
 
       val vs = variances(tp, qualifies)
       var changed = false
-      vs foreachBinding { (tvar, v) =>
-        if (v != 0) {
-          typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-          tvar.instantiate(fromBelow = v == 1)
-          changed = true
-        }
+      val hasUnreportedErrors = ctx.typerState.reporter match {
+        case r: StoreReporter if r.hasErrors => true
+        case _ => false
       }
+      // Avoid interpolating variables if typerstate has unreported errors.
+      // Reason: The errors might reflect unsatisfiable constraints. In that
+      // case interpolating without taking account the constraints risks producing
+      // nonsensical types that then in turn produce incomprehensible errors.
+      // An example is in neg/i1240.scala. Without the condition in the next code line
+      // we get for
+      //
+      //      val y: List[List[String]] = List(List(1))
+      //
+      //     i1430.scala:5: error: type mismatch:
+      //     found   : Int(1)
+      //     required: Nothing
+      //     val y: List[List[String]] = List(List(1))
+      //                                           ^
+      // With the condition, we get the much more sensical:
+      //
+      //     i1430.scala:5: error: type mismatch:
+      //     found   : Int(1)
+      //     required: String
+      //     val y: List[List[String]] = List(List(1))
+      if (!hasUnreportedErrors)
+        vs foreachBinding { (tvar, v) =>
+          if (v != 0) {
+            typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+            tvar.instantiate(fromBelow = v == 1)
+            changed = true
+          }
+        }
       if (changed) // instantiations might have uncovered new typevars to interpolate
         interpolateUndetVars(tree, ownedBy)
       else
