@@ -363,7 +363,7 @@ class CompilingInterpreter(
     private def objectSourceCode: String =
       stringFrom { code =>
         // header for the wrapper object
-        code.println("object " + objectName + " {")
+        code.println(s"object $objectName{")
         code.print(importsPreamble)
         code.println(toCompute)
         handlers.foreach(_.extraCodeToEvaluate(this,code))
@@ -380,9 +380,9 @@ class CompilingInterpreter(
         from objectSourceCode */
     private def resultObjectSourceCode: String =
       stringFrom(code => {
-        code.println("object " + resultObjectName)
+        code.println(s"object $resultObjectName")
         code.println("{ val result: String = {")
-        code.println(objectName + accessPath + ";")  // evaluate the object, to make sure its constructor is run
+        code.println(s"$objectName$accessPath;")  // evaluate the object, to make sure its constructor is run
         code.print("(\"\"")  // print an initial empty string, so later code can
                             // uniformly be: + morestuff
         handlers.foreach(_.resultExtractionCode(this, code))
@@ -705,12 +705,12 @@ class CompilingInterpreter(
       override val valAndVarNames = List(helperName)
 
       override def extraCodeToEvaluate(req: Request, code: PrintWriter): Unit = {
-        code.println("val " + helperName + " = " + statement.lhs + ";")
+        code.println(i"val $helperName = ${statement.lhs};")
       }
 
       /** Print out lhs instead of the generated varName */
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
-        code.print(" + \"" + lhs + ": " +
+        code.print(" + \"" + lhs.show + ": " +
           string2code(req.typeOf(helperName.encode)) +
           " = \" + " +
           string2code(req.fullPath(helperName))
