@@ -113,9 +113,23 @@ object ErrorReporting {
           case tp: TypeRef => s"with info ${tp.info} / ${tp.prefix.toString} / ${tp.prefix.dealias.toString}"
           case _ => ""
         }
+      // replace constrained polyparams and their typevars by their bounds where possible
+      val reported = new TypeMap {
+        def apply(tp: Type): Type = tp match {
+          case tp: PolyParam =>
+            val e = ctx.typerState.constraint.entry(tp)
+            if (e.exists)
+              if (variance > 0) e.bounds.hi
+              else if (variance < 0) e.bounds.lo
+              else tp
+            else tp
+          case tp: TypeVar => apply(tp.stripTypeVar)
+          case _ => mapOver(tp)
+        }
+      }
       d"""type mismatch:
            | found   : $found
-           | required: $expected""".stripMargin + whyNoMatchStr(found, expected)
+           | required: ${reported(expected)}""".stripMargin + whyNoMatchStr(found, expected)
     }
 
     /** Format `raw` implicitNotFound argument, replacing all
