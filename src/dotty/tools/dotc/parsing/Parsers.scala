@@ -19,7 +19,7 @@ import StdNames._
 import util.Positions._
 import Constants._
 import ScriptParsers._
-import annotation.switch
+import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
 
@@ -648,12 +648,19 @@ object Parsers {
     }
 
 /* ------------- TYPES ------------------------------------------------------ */
+    /** Same as [[typ]], but emits a syntax error if it returns a wildcard.
+     */
+    def toplevelTyp(): Tree = {
+      val t = typ()
+      for (wildcardPos <- findWildcardType(t)) syntaxError("unbound wildcard type", wildcardPos)
+      t
+    }
 
-    /** Type        ::= FunArgTypes `=>' Type
+    /** Type        ::=  FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
-     *                | InfixType
+     *                |  InfixType
      *  FunArgTypes ::=  InfixType
-     *                | `(' [ FunArgType {`,' FunArgType } ] `)'
+     *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
      */
     def typ(): Tree = {
       val start = in.offset
@@ -737,6 +744,7 @@ object Parsers {
      *                     |  StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
+     *                     |  `_' TypeBounds
      *                     |  Refinement
      *                     |  Literal
      */
@@ -746,6 +754,10 @@ object Parsers {
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
+      else if (in.token == USCORE) {
+        val start = in.skipToken()
+        typeBounds().withPos(Position(start, in.offset, start))
+      }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -770,25 +782,16 @@ object Parsers {
       atPos(t.pos.start, id.pos.start) { SelectFromTypeTree(t, id.name) }
     }
 
-    /** ArgType      ::=  Type |  `_' TypeBounds
-     */
-    val argType = () =>
-      if (in.token == USCORE) {
-        val start = in.skipToken()
-        typeBounds().withPos(Position(start, in.offset, start))
-      }
-      else typ()
-
-    /** NamedTypeArg      ::=  id `=' ArgType
+    /** NamedTypeArg      ::=  id `=' Type
      */
     val namedTypeArg = () => {
       val name = ident()
       accept(EQUALS)
-      NamedArg(name.toTypeName, argType())
+      NamedArg(name.toTypeName, typ())
     }
 
-    /**   ArgTypes          ::=  ArgType {`,' ArgType}
-     *                           NamedTypeArg {`,' NamedTypeArg}
+    /**   ArgTypes          ::=  Type {`,' Type}
+     *                        |  NamedTypeArg {`,' NamedTypeArg}
      */
     def argTypes(namedOK: Boolean = false) = {
       def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
@@ -801,22 +804,22 @@ object Parsers {
         first :: rest
       }
       if (namedOK && in.token == IDENTIFIER)
-        argType() match {
+        typ() match {
           case Ident(name) if in.token == EQUALS =>
             in.nextToken()
-            otherArgs(NamedArg(name, argType()), namedTypeArg)
+            otherArgs(NamedArg(name, typ()), namedTypeArg)
           case firstArg =>
             if (in.token == EQUALS) println(s"??? $firstArg")
-            otherArgs(firstArg, argType)
+            otherArgs(firstArg, typ)
         }
-      else commaSeparated(argType)
+      else commaSeparated(typ)
     }
 
-    /** FunArgType ::=  ArgType | `=>' ArgType
+    /** FunArgType ::=  Type | `=>' Type
      */
     val funArgType = () =>
-      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(argType()) }
-      else argType()
+      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(typ()) }
+      else typ()
 
     /** ParamType ::= [`=>'] ParamValueType
      */
@@ -827,14 +830,14 @@ object Parsers {
     /** ParamValueType ::= Type [`*']
      */
     def paramValueType(): Tree = {
-      val t = typ()
+      val t = toplevelTyp()
       if (isIdent(nme.raw.STAR)) {
         in.nextToken()
         atPos(t.pos.start) { PostfixOp(t, nme.raw.STAR) }
       } else t
     }
 
-    /** TypeArgs      ::= `[' ArgType {`,' ArgType} `]'
+    /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
     def typeArgs(namedOK: Boolean = false): List[Tree] = inBrackets(argTypes(namedOK))
@@ -849,7 +852,7 @@ object Parsers {
       atPos(in.offset) { TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE)) }
 
     private def bound(tok: Int): Tree =
-      if (in.token == tok) { in.nextToken(); typ() }
+      if (in.token == tok) { in.nextToken(); toplevelTyp() }
       else EmptyTree
 
     /** TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}
@@ -863,25 +866,36 @@ object Parsers {
     def contextBounds(pname: TypeName): List[Tree] = in.token match {
       case COLON =>
         atPos(in.skipToken) {
-          AppliedTypeTree(typ(), Ident(pname))
+          AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
         deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
         atPos(in.skipToken) {
-          Function(Ident(pname) :: Nil, typ())
+          Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
       case _ =>
         Nil
     }
 
     def typedOpt(): Tree =
-      if (in.token == COLON) { in.nextToken(); typ() }
+      if (in.token == COLON) { in.nextToken(); toplevelTyp() }
       else TypeTree()
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
       else if (location == Location.InPattern) refinedType()
       else infixType()
+
+    /** Checks whether `t` is a wildcard type.
+     *  If it is, returns the [[Position]] where the wildcard occurs.
+     */
+    @tailrec
+    private final def findWildcardType(t: Tree): Option[Position] = t match {
+      case TypeBoundsTree(_, _) => Some(t.pos)
+      case Parens(t1) => findWildcardType(t1)
+      case Annotated(_, t1) => findWildcardType(t1)
+      case _ => None
+    }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
