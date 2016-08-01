@@ -296,7 +296,7 @@ object Parsers {
       case Typed(Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt, mods) withPos tree.pos
       case _ =>
-        syntaxError(s"not a legal $expected (${tree.getClass})", tree.pos)
+        syntaxError(s"not a legal $expected", tree.pos)
         makeParameter(nme.ERROR, tree, mods)
     }
 
