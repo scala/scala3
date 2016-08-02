@@ -20,9 +20,10 @@ import scala.collection.mutable
 trait CommentExpander {
   import CommentUtils._
 
-  def expand(sym: Symbol)(implicit ctx: Context): String = {
-    defineVariables(sym)
-    expandedDocComment(sym, sym)
+  def expand(sym: Symbol, site: Symbol)(implicit ctx: Context): String = {
+    val parent = if (site != NoSymbol) site else sym
+    defineVariables(parent)
+    expandedDocComment(sym, parent)
   }
 
   /** The cooked doc comment of symbol `sym` after variable expansion, or "" if missing.
@@ -35,9 +36,9 @@ trait CommentExpander {
    */
   def expandedDocComment(sym: Symbol, site: Symbol, docStr: String = "")(implicit ctx: Context): String = {
     // when parsing a top level class or module, use the (module-)class itself to look up variable definitions
-    val site1 = if ((sym.is(Flags.Module) || sym.isClass) && site.is(Flags.Package)) sym
-                else site
-    expandVariables(cookedDocComment(sym, docStr), sym, site1)
+    val parent = if ((sym.is(Flags.Module) || sym.isClass) && site.is(Flags.Package)) sym
+                 else site
+    expandVariables(cookedDocComment(sym, docStr), sym, parent)
   }
 
   private def template(raw: String): String = {
@@ -74,7 +75,6 @@ trait CommentExpander {
    *  If a symbol does not have a doc comment but some overridden version of it does,
    *  the doc comment of the overridden version is copied instead.
    */
-
   def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: Context): String = cookedDocComments.getOrElseUpdate(sym, {
     var ownComment =
       if (docStr.length == 0) ctx.docbase.docstring(sym).map(c => template(c.chrs)).getOrElse("")

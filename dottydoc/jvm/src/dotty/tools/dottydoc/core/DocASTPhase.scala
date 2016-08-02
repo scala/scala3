@@ -8,7 +8,7 @@ import dotc.CompilationUnit
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
 import dotc.core.Phases.Phase
-import dotc.core.Symbols.Symbol
+import dotc.core.Symbols.{ Symbol, NoSymbol }
 
 class DocASTPhase extends Phase {
   import model._
@@ -26,18 +26,18 @@ class DocASTPhase extends Phase {
   private[this] val commentParser = new WikiParser
 
   /** Saves the commentParser function for later evaluation, for when the AST has been filled */
-  def track(symbol: Symbol, ctx: Context)(op: => Entity) = {
+  def track(symbol: Symbol, ctx: Context, parent: Symbol = NoSymbol)(op: => Entity) = {
     val entity = op
 
     if (entity != NonEntity)
-      commentParser += (entity, symbol, ctx)
+      commentParser += (entity, symbol, parent, ctx)
 
     entity
   }
 
   /** Build documentation hierarchy from existing tree */
   def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
-    val implicitlyAddedMembers = ctx.docbase.defs(tree.symbol)
+    val implicitConversions = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
       xs.map(collect(_, ps)).filter(_ != NonEntity)
@@ -45,25 +45,24 @@ class DocASTPhase extends Phase {
     def collectEntityMembers(xs: List[Tree], ps: List[String])(implicit ctx: Context) =
       collectList(xs, ps).asInstanceOf[List[Entity with Members]]
 
-    /** TODO: should be a set, not a uniqued list */
     def collectMembers(tree: Tree, ps: List[String] = prev)(implicit ctx: Context): List[Entity] = {
       val defs = (tree match {
         case t: Template => collectList(t.body, ps)
         case _ => Nil
-      }) ++ implicitlyAddedMembers.flatMap(addedFromSymbol)
+      })
 
-      defs
+      defs ++ implicitConversions.flatMap(membersFromSymbol)
     }
 
-    def addedFromSymbol(sym: Symbol): List[Entity] = {
+    def membersFromSymbol(sym: Symbol): List[Entity] = {
       val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
-        track(meth.symbol, ctx) {
+        track(meth.symbol, ctx, tree.symbol) {
           DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), paramLists(meth.info))
         }
       }.toList
 
       val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
-        track(value.symbol, ctx) {
+        track(value.symbol, ctx, tree.symbol) {
           ValImpl(value.symbol.name.decode.toString, Nil, path(value.symbol), returnType(value.info))
         }
       }

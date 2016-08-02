@@ -22,9 +22,9 @@ object parsers {
      * The idea here is to use this fact to create `Future[Seq[(String, Option[Comment]]]`
      * which can then be awaited near the end of the run - before the pickling.
      */
-    def parseHtml(sym: Symbol, entity: Entity, packages: Map[String, Package])(implicit ctx: Context): (String, Option[Comment]) = {
+    def parseHtml(sym: Symbol, parent: Symbol, entity: Entity, packages: Map[String, Package])(implicit ctx: Context): (String, Option[Comment]) = {
       val cmt = ctx.docbase.docstring(sym).map { d =>
-        val expanded = expand(sym)
+        val expanded = expand(sym, parent)
         val body = parse(entity, packages, clean(expanded), expanded, d.pos)
         val summary = body.summary.map(_.toHtml(entity)).getOrElse("")
          body.toHtml(entity) match {
@@ -37,17 +37,34 @@ object parsers {
     }
 
 
-    def add(entity: Entity, symbol: Symbol, ctx: Context): Unit = {
+    def add(entity: Entity, symbol: Symbol, parent: Symbol, ctx: Context): Unit = {
       val commentParser = { (entity: Entity, packs: Map[String, Package]) =>
-        parseHtml(symbol, entity, packs)(ctx)._2
+        parseHtml(symbol, parent, entity, packs)(ctx)._2
       }
+
+      /** TODO: this if statement searches for doc comments in parent
+       *  definitions if one is not defined for the current symbol.
+       *
+       *  It might be a good idea to factor this out of the WikiParser - since
+       *  it mutates the state of docbase sort of silently.
+       */
+      implicit val implCtx = ctx
+      if (!ctx.docbase.docstring(symbol).isDefined) {
+        val parentCmt =
+          symbol.extendedOverriddenSymbols
+          .find(ctx.docbase.docstring(_).isDefined)
+          .flatMap(p => ctx.docbase.docstring(p))
+
+        ctx.docbase.addDocstring(symbol, parentCmt)
+      }
+
 
       val path = entity.path.mkString(".")
       if (!commentCache.contains(path) || ctx.docbase.docstring(symbol).isDefined)
         commentCache = commentCache + (path -> commentParser)
     }
 
-    def +=(entity: Entity, symbol: Symbol, ctx: Context) = add(entity, symbol, ctx)
+    def +=(entity: Entity, symbol: Symbol, parent: Symbol, ctx: Context) = add(entity, symbol, parent, ctx)
 
     def size: Int = commentCache.size
 
