@@ -16,7 +16,7 @@ class PrintPhase extends Phase {
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val compUnits = super.runOn(units)
-    val packages = ctx.base.packages[Package].toMap
+    val packages = ctx.docbase.packages[Package].toMap
 
     val outputDir = {
       val out = ctx.settings.DocOutput.value

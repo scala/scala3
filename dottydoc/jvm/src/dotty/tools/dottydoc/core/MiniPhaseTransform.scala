@@ -43,9 +43,9 @@ object transform {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       for {
         rootName    <- rootPackages
-        pack        =  ctx.base.packages[Package](rootName)
+        pack        =  ctx.docbase.packages[Package](rootName)
         transformed =  performPackageTransform(pack)
-      } yield ctx.base.packages(rootName) = transformed
+      } yield ctx.docbase.packages(rootName) = transformed
       super.runOn(units)
     }
 
@@ -53,7 +53,7 @@ object transform {
       var currentDepth = Int.MaxValue
       var packs = List.empty[String]
 
-      for (key <- ctx.base.packages.keys) {
+      for (key <- ctx.docbase.packages.keys) {
         val keyDepth = key.split("\\.").length
         packs =
           if (keyDepth < currentDepth) {

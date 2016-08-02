@@ -23,7 +23,7 @@ object parsers {
      * which can then be awaited near the end of the run - before the pickling.
      */
     def parseHtml(sym: Symbol, entity: Entity, packages: Map[String, Package])(implicit ctx: Context): (String, Option[Comment]) = {
-      val cmt = ctx.base.docstring(sym).map { d =>
+      val cmt = ctx.docbase.docstring(sym).map { d =>
         val expanded = expand(sym)
         val body = parse(entity, packages, clean(expanded), expanded, d.pos)
         val summary = body.summary.map(_.toHtml(entity)).getOrElse("")
@@ -43,7 +43,7 @@ object parsers {
       }
 
       val path = entity.path.mkString(".")
-      if (!commentCache.contains(path) || ctx.base.docstring(symbol).isDefined)
+      if (!commentCache.contains(path) || ctx.docbase.docstring(symbol).isDefined)
         commentCache = commentCache + (path -> commentParser)
     }
 

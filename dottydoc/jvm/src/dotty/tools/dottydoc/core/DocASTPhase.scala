@@ -37,7 +37,7 @@ class DocASTPhase extends Phase {
 
   /** Build documentation hierarchy from existing tree */
   def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
-    val implicitlyAddedMembers = ctx.base.defs(tree.symbol)
+    val implicitlyAddedMembers = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
       xs.map(collect(_, ps)).filter(_ != NonEntity)
@@ -169,7 +169,7 @@ class DocASTPhase extends Phase {
     commentParser.clear()
 
     // (5) Update Doc AST in ctx.base
-    for (kv <- packages) ctx.base.packages += kv
+    for (kv <- packages) ctx.docbase.packages += kv
 
     // Return super's result
     compUnits

@@ -426,7 +426,7 @@ class Namer { typer: Typer =>
   }
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
-    case t: MemberDef => ctx.base.addDocstring(sym, t.rawComment)
+    case t: MemberDef => ctx.docbase.addDocstring(sym, t.rawComment)
     case _ => ()
   }
 

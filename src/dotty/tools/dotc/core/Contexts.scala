@@ -532,6 +532,9 @@ object Contexts {
     /** The symbol loaders */
     val loaders = new SymbolLoaders
 
+    /** Documentation base */
+    val docbase = new DocBase
+
     /** The platform, initialized by `initPlatform()`. */
     private var _platform: Platform = _
 
@@ -568,8 +571,10 @@ object Contexts {
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
+  }
 
-    val _docstrings: mutable.Map[Symbol, Comment] =
+  class DocBase {
+    private[this] val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
 
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
@@ -577,6 +582,11 @@ object Contexts {
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
       doc.map(d => _docstrings += (sym -> d))
 
+    /*
+     * Dottydoc places instances of `Package` in this map - but we do not want
+     * to depend on `dottydoc` for the compiler, as such this is defined as a
+     * map of `String -> AnyRef`
+     */
     private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
     def packages[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
 

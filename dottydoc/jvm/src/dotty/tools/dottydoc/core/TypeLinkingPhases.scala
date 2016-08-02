@@ -16,12 +16,12 @@ import util.internal.setters._
 
 class LinkReturnTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
-    val returnValue = linkReference(df, df.returnValue, ctx.base.packages[Package].toMap)
+    val returnValue = linkReference(df, df.returnValue, ctx.docbase.packages[Package].toMap)
     df.copy(returnValue = returnValue)
   }
 
   override def transformVal(implicit ctx: Context) = { case vl: ValImpl =>
-    val returnValue = linkReference(vl, vl.returnValue, ctx.base.packages[Package].toMap)
+    val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages[Package].toMap)
     vl.copy(returnValue = returnValue)
   }
 }
@@ -30,7 +30,7 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val newParamLists = for {
       ParamListImpl(list, isImplicit) <- df.paramLists
-      newList = list.map(linkReference(df, _, ctx.base.packages[Package].toMap))
+      newList = list.map(linkReference(df, _, ctx.docbase.packages[Package].toMap))
     } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]], isImplicit)
 
     df.copy(paramLists = newParamLists)
