@@ -34,13 +34,26 @@ function find_jar {
     echo "$artifact"
 }
 
+# Log used to communicate errors from a command substitution, for example:
+#   $(sbt package || (echo msg >> $ERROR_LOG; kill -SIGTERM $$))
+ERROR_LOG=error.log
+trap onTerminate SIGTERM
+
+onTerminate() {
+  if [ -f $ERROR_LOG ]; then
+    cat $ERROR_LOG
+    rm -f $ERROR_LOG
+  fi
+  exit 1 # $? is lost from subprocess in command substitution.
+}
+
 function build_jar {
     # Usage:
     #   build_jar package path/to/jar/dir ['/some/sed/command']
     #
     #   Last arg is optional
     cd $DOTTY_ROOT >& /dev/null
-    local build_output=$(sbt "$1")
+    local build_output=$(sbt "$1" || (echo "failed to run: sbt $1" >> $ERROR_LOG; kill -SIGTERM $$))
     local jar=$(echo $build_output | sed -n 's/.*Packaging //g; s/ \.\.\..*//g; /^\/.*/p')
 
     local sedjar="$3"
