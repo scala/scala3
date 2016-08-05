@@ -1,0 +1,6 @@
+$ scalac tests/pending/import-rewrite/*.scala
+$ ./bin/dotc tests/pending/import-rewrite/*.scala
+tests/pending/import-rewrite/rewrite.scala:5: error: value apply is not a member of java.io.File.type
+  Seq("").map(File.apply)
+                   ^
+one error found

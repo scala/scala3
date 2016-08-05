@@ -1,0 +1,6 @@
+$ scalac tests/pending/hkt/*.scala
+$ ./bin/dotc tests/pending/hkt/*.scala
+tests/pending/hkt/hkt.scala:14: error: method empty in object Child does not take type parameters
+  Child.empty[Int]
+             ^
+one error found
