@@ -37,6 +37,18 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   }
 }
 
+class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
+  override def transformDef(implicit ctx: Context) = { case df: DefImpl if df.implicitlyAddedFrom.isDefined =>
+    val implicitlyAddedFrom = linkReference(df, df.implicitlyAddedFrom.get, ctx.docbase.packages[Package].toMap)
+    df.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
+  }
+
+  override def transformVal(implicit ctx: Context) = { case vl: ValImpl if vl.implicitlyAddedFrom.isDefined =>
+    val implicitlyAddedFrom = linkReference(vl, vl.implicitlyAddedFrom.get, ctx.docbase.packages[Package].toMap)
+    vl.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
+  }
+}
+
 trait TypeLinker extends MemberLookup {
   def linkReference(ent: Entity, ref: Reference, packs: Map[String, Package]): Reference = {
     def linkRef(ref: Reference) = linkReference(ent, ref, packs)

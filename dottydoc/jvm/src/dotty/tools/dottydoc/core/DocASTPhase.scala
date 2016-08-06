@@ -55,15 +55,30 @@ class DocASTPhase extends Phase {
     }
 
     def membersFromSymbol(sym: Symbol): List[Entity] = {
-      val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private).map { meth =>
-        track(meth.symbol, ctx, tree.symbol) {
-          DefImpl(meth.symbol.name.decode.toString, Nil, path(meth.symbol), returnType(meth.info), typeParams(meth.symbol), paramLists(meth.info))
-        }
-      }.toList
+      val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
+        .filterNot(_.symbol.owner.name.show == "Any")
+        .map { meth =>
+          track(meth.symbol, ctx, tree.symbol) {
+            DefImpl(
+              meth.symbol.name.show,
+              Nil,
+              path(meth.symbol),
+              returnType(meth.info),
+              typeParams(meth.symbol),
+              paramLists(meth.info),
+              implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
+            )
+          }
+        }.toList
 
       val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
         track(value.symbol, ctx, tree.symbol) {
-          ValImpl(value.symbol.name.decode.toString, Nil, path(value.symbol), returnType(value.info))
+          ValImpl(
+            value.symbol.name.show,
+            Nil, path(value.symbol),
+            returnType(value.info),
+            implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
+          )
         }
       }
 

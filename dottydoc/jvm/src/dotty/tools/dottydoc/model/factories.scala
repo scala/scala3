@@ -29,26 +29,11 @@ object factories {
 
   def path(sym: Symbol)(implicit ctx: Context): List[String] = sym match {
     case sym if sym.name.decode.toString == "<root>" => Nil
-    case sym if sym is Flags.Module => path(sym.owner) :+ sym.name.decode.toString.dropRight(1)
-    case sym => path(sym.owner) :+ sym.name.decode.toString
+    case sym => path(sym.owner) :+ sym.name.show
   }
 
 
   private val product = """Product[1-9][0-9]*""".r
-  private def cleanTitle(title: String): String = title match {
-    // matches Entity.this.Something
-    case x if x matches "[^\\[]+\\.this\\..+" => x.split("\\.").last
-    // Matches Entity[P, ...]
-    case x if x matches "[^\\[]+\\[[^\\]]+\\]" =>
-      val Array(tpe, params) = x.dropRight(1).split("\\[")
-      s"""$tpe[${params.split(",").map(x => cleanTitle(x.trim)).mkString(", ")}]"""
-    case _ => title
-  }
-
-  private def cleanQuery(query: String): String = query match {
-    case x if x matches "[^\\[]+\\[[^\\]]+\\]" => x.takeWhile(_ != '[')
-    case _ => query
-  }
 
   def returnType(t: Type)(implicit ctx: Context): Reference = {
     val defn = ctx.definitions
@@ -107,7 +92,7 @@ object factories {
       case tt: ThisType =>
         expandTpe(tt.underlying)
       case ci: ClassInfo =>
-        typeRef(ci.cls.show)
+        typeRef(ci.cls.name.show)
       case mt: MethodType =>
         expandTpe(mt.resultType)
       case pt: PolyType =>

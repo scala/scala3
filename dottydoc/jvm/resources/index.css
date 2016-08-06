@@ -134,6 +134,10 @@ div.member-definition > span.member-param-list span.is-implicit {
     font-weight: 600;
 }
 
+div.member-definition > span.member-name.implicitly-added {
+    color: #16A085;
+}
+
 div.member {
     min-height: 70px;
 }

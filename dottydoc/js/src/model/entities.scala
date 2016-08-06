@@ -82,13 +82,23 @@ trait ParamList extends sjs.Object {
 trait Def extends Entity with Modifiers with ReturnValue {
   val typeParams: sjs.Array[String]
   val paramLists: sjs.Array[ParamList]
+  val implicitlyAddedFrom: sjs.UndefOr[Reference]
 }
 
 @ScalaJSDefined
-trait Val extends Entity with Modifiers
+trait Val extends Entity with Modifiers {
+  val implicitlyAddedFrom: sjs.UndefOr[Reference]
+}
 
 @ScalaJSDefined
-trait Var extends Entity with Modifiers
+trait Var extends Entity with Modifiers {
+  val implicitlyAddedFrom: sjs.UndefOr[Reference]
+}
+
+@ScalaJSDefined
+trait ImplicitlyAddedEntity extends Entity {
+  val implicitlyAddedFrom: sjs.UndefOr[Reference]
+}
 
 object ops {
   val EntitiesWithModifiers =
@@ -140,5 +150,13 @@ object ops {
     def isPrivate: Boolean =
       hasModifiers &&
       ent.asInstanceOf[Modifiers].modifiers.contains("private")
+
+    def addedImplicitly: Boolean = (ent.kind == "def" || ent.kind == "val") && {
+      ent.asInstanceOf[ImplicitlyAddedEntity].implicitlyAddedFrom.isDefined
+    }
+
+    def foldImplicitlyAdded[B](f: Reference => B): sjs.UndefOr[B] =
+      if (ent.kind == "def" || ent.kind == "val") ent.asInstanceOf[ImplicitlyAddedEntity].implicitlyAddedFrom.map(f)
+      else sjs.undefined
   }
 }

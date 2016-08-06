@@ -79,12 +79,14 @@ trait Object extends Entity with Modifiers with SuperTypes with Members {
 }
 
 trait Def extends Entity with Modifiers with TypeParams with ReturnValue {
-  def paramLists: List[ParamList]
   val kind = "def"
+  def paramLists: List[ParamList]
+  def implicitlyAddedFrom: Option[Reference]
 }
 
 trait Val extends Entity with Modifiers with ReturnValue {
   val kind = "val"
+  def implicitlyAddedFrom: Option[Reference]
 }
 
 trait Var extends Entity with Modifiers with ReturnValue {

@@ -9,6 +9,7 @@ import org.scalajs.dom.html.{Anchor, Div, Span}
 
 trait MemberLayout {
   import js.model._
+  import js.model.ops._
 
   def member(m: Entity, parent: Entity) = {
     def toggleBetween(short: Div, and: Div): Unit =
@@ -31,9 +32,9 @@ trait MemberLayout {
         val fullComment = div(
           cls := "mdl-cell mdl-cell--12-col full-comment",
           style := "display: none;",
+          fromImplicitSpan(m),
           raw(m.comment.fold("")(_.body))
         ).render
-
 
         val hasLongerFullComment = m.comment.fold(false) { c =>
           c.short.length + 5 < c.body.length
@@ -53,7 +54,7 @@ trait MemberLayout {
               entity.modifiers.mkString(" ") + " " + m.kind
             ),
             span(
-              cls := "member-name",
+              cls := { if (m.addedImplicitly) "member-name implicitly-added" else "member-name" },
               m.name
             ),
             spanWith("member-type-params no-left-margin", typeParams(m)),
@@ -67,6 +68,13 @@ trait MemberLayout {
       case _ => Seq(h1("ERROR: " + m.name))
     }
   }
+
+  def fromImplicitSpan(m: Entity) = m.foldImplicitlyAdded { ref =>
+    span(
+      "Implicitly added from: ",
+      referenceToLinks(ref)
+    )
+  }.getOrElse(span())
 
   def spanWith(clazz: String, contents: String) = contents match {
     case "" => None

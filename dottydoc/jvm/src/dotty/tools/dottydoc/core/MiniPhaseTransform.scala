@@ -134,7 +134,8 @@ object transform {
             df.returnValue,
             df.typeParams,
             df.paramLists,
-            df.comment
+            df.comment,
+            df.implicitlyAddedFrom
           )
         }
         case vl: Val => transformEntity(vl, _.valTransformation) { vl =>
@@ -143,7 +144,8 @@ object transform {
             vl.modifiers,
             vl.path,
             vl.returnValue,
-            vl.comment
+            vl.comment,
+            vl.implicitlyAddedFrom
           )
         }
       }

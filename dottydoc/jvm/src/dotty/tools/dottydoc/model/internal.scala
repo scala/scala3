@@ -65,7 +65,8 @@ object internal {
     var returnValue: Reference,
     var typeParams: List[String] = Nil,
     var paramLists: List[ParamList] = Nil,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    implicitlyAddedFrom: Option[Reference] = None
   ) extends Def with Impl
 
   final case class ValImpl(
@@ -73,7 +74,8 @@ object internal {
     modifiers: List[String],
     path: List[String],
     var returnValue: Reference,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    implicitlyAddedFrom: Option[Reference] = None
   ) extends Val with Impl
 
   final case class ParamListImpl(
