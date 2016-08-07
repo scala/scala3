@@ -646,7 +646,7 @@ class Namer { typer: Typer =>
         val pname = paramAccessor.name
 
         def illegal(how: String): Unit = {
-          ctx.error(d"Illegal override of public type parameter $pname in $parent$how", paramAccessor.pos)
+          ctx.error(em"Illegal override of public type parameter $pname in $parent$how", paramAccessor.pos)
           ok = false
         }
 
@@ -659,7 +659,7 @@ class Namer { typer: Typer =>
                     case TypeRef(pre, name1) if name1 == pname && (pre =:= cls.thisType) =>
                       // OK, parameter is passed on directly
                     case _ =>
-                      illegal(d".\nParameter is both redeclared and instantiated with $alias.")
+                      illegal(em".\nParameter is both redeclared and instantiated with $alias.")
                   }
                 case _ => // OK, argument is not fully defined
               }
@@ -832,7 +832,7 @@ class Namer { typer: Typer =>
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       def isInline = sym.is(Final, butNot = Method | Mutable)
-      
+
       // Widen rhs type and approximate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2).
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
@@ -856,7 +856,7 @@ class Namer { typer: Typer =>
       else {
         if (sym is Implicit) {
           val resStr = if (mdef.isInstanceOf[DefDef]) "result " else ""
-          ctx.error(d"${resStr}type of implicit definition needs to be given explicitly", mdef.pos)
+          ctx.error(s"${resStr}type of implicit definition needs to be given explicitly", mdef.pos)
           sym.resetFlag(Implicit)
         }
         lhsType orElse WildcardType

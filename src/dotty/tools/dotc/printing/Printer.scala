@@ -68,6 +68,9 @@ abstract class Printer {
   /** Textual representation of symbol and its location */
   def locatedText(sym: Symbol): Text
 
+  /** A description of sym's location */
+  def extendedLocationText(sym: Symbol): Text
+
   /** Textual representation of denotation */
   def toText(denot: Denotation): Text
 

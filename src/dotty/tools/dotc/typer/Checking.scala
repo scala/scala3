@@ -25,7 +25,7 @@ import util.common._
 import transform.SymUtils._
 import Decorators._
 import Uniques._
-import ErrorReporting.{err, errorType, DiagnosticString}
+import ErrorReporting.{err, errorType}
 import config.Printers._
 import collection.mutable
 import SymDenotations.NoCompleter
@@ -40,11 +40,11 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
     (args, boundss).zipped.foreach { (arg, bound) =>
       if (!bound.isHK && arg.tpe.isHK)
-        ctx.error(d"missing type parameter(s) for $arg", arg.pos)
+        ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
     }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
-          d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
+          ex"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
   }
 
@@ -65,7 +65,7 @@ object Checking {
       tycon match {
         case tycon: TypeLambda =>
           ctx.errorOrMigrationWarning(
-            d"unreducible application of higher-kinded type $tycon to wildcard arguments",
+            ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
             pos)
         case _ =>
           checkWildcardHKApply(tp.superType, pos)
@@ -117,14 +117,14 @@ object Checking {
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.is(AbstractOrTrait))
-          ctx.error(d"$cls is abstract; cannot be instantiated", pos)
+          ctx.error(em"$cls is abstract; cannot be instantiated", pos)
         if (!cls.is(Module)) {
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.
           val stp = SkolemType(tp)
           val selfType = tref.givenSelfType.asSeenFrom(stp, cls)
           if (selfType.exists && !(stp <:< selfType))
-            ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
+            ctx.error(ex"$tp does not conform to its self type $selfType; cannot be instantiated")
         }
       case _ =>
     }
@@ -133,7 +133,7 @@ object Checking {
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable) {
-      def msg = d"$tp is not a legal path\n since it${rstatus.msg}"
+      def msg = em"$tp is not a legal path\n since it${rstatus.msg}"
       if (ctx.scala2Mode) ctx.migrationWarning(msg, pos) else ctx.error(msg, pos)
     }
   }
@@ -378,7 +378,7 @@ object Checking {
           var tp1 =
             if (tp.symbol.is(Private) &&
                 !accessBoundary(sym).isContainedIn(tp.symbol.owner)) {
-              errors = (d"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}",
+              errors = (em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}",
                         pos) :: errors
               tp
             }
@@ -422,20 +422,20 @@ trait Checking {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
-      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(d"$sym is not a value", tree.pos)
+      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(em"$sym is not a value", tree.pos)
     }
     tree
   }
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
+    if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = boundsRealizability(tp)
     if (rstatus ne Realizable)
-      ctx.error(i"$tp cannot be instantiated since it${rstatus.msg}", pos)
+      ctx.error(ex"$tp cannot be instantiated since it${rstatus.msg}", pos)
   }
 
  /**  Check that `tp` is a class type.
@@ -447,11 +447,11 @@ trait Checking {
   def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(ex"$tref is not a trait", pos)
         if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         tp
       case _ =>
-        ctx.error(d"$tp is not a class type", pos)
+        ctx.error(ex"$tp is not a class type", pos)
         defn.ObjectType
   }
 
@@ -475,7 +475,7 @@ trait Checking {
     case tp: RecType =>
       tp.rebind(tp.parent)
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-      ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
+      ctx.error(ex"no type exists between low bound $lo and high bound $hi$where", pos)
       TypeAlias(hi)
     case _ =>
       tp
@@ -493,17 +493,17 @@ trait Checking {
         typr.println(i"conflict? $decl $other")
         if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            def ofType = if (decl.isType) "" else d": ${other.info}"
+            def ofType = if (decl.isType) "" else em": ${other.info}"
             def explanation =
               if (!decl.isRealMethod) ""
               else "\n (the definitions have matching type signatures)"
-            ctx.error(d"$decl is already defined as $other$ofType$explanation", decl.pos)
+            ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
-          ctx.error(d"two or more overloaded variants of $decl have default arguments")
+          ctx.error(em"two or more overloaded variants of $decl have default arguments")
           decl resetFlag HasDefaultParams
         }
       }
@@ -524,7 +524,7 @@ trait Checking {
         ctx.error(i"$caller may not call constructor of $called", call.pos)
       else if (called.is(Trait) && !caller.mixins.contains(called))
         ctx.error(i"""$called is already implemented by super${caller.superClass},
-                   |its constructor cannot be called again""".stripMargin, call.pos)
+                   |its constructor cannot be called again""", call.pos)
     }
 
   /** Check that `tpt` does not define a higher-kinded type */
@@ -532,7 +532,7 @@ trait Checking {
     if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
-      errorTree(tpt, d"missing type parameter for ${tpt.tpe}")
+      errorTree(tpt, ex"missing type parameter for ${tpt.tpe}")
     }
     else tpt
 }

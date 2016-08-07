@@ -1169,9 +1169,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       private def translatedAlts(alts: List[Tree])           = alts map (alt => rebindTo(alt).translate())
       private def noStep()                                   = step()()
 
-      private def unsupportedPatternMsg = sm"""
-        |unsupported pattern: ${tree.show} / $this (this is a scalac bug.)
-        |""".trim
+      private def unsupportedPatternMsg =
+        i"unsupported pattern: ${tree.show} / $this (this is a scalac bug.)"
 
       // example check: List[Int] <:< ::[Int]
       private def extractorStep(): TranslationStep = {

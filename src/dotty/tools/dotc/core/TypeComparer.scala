@@ -6,7 +6,6 @@ import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations.
 import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
-import printing.Disambiguation.disambiguated
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
 import config.Printers._
@@ -1469,7 +1468,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-    println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
+    println(ex"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
       case tp: PolyParam => ctx.echo(s"polyparam ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")

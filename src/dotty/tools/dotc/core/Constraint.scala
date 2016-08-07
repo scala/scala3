@@ -32,7 +32,7 @@ abstract class Constraint extends Showable {
   def contains(tvar: TypeVar): Boolean
 
   /** The constraint entry for given type parameter `param`, or NoType if `param` is not part of
-   *  the constraint domain.
+   *  the constraint domain. Note: Low level, implementation dependent.
    */
   def entry(param: PolyParam): Type
 

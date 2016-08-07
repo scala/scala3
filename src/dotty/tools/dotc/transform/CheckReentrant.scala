@@ -74,7 +74,7 @@ class CheckReentrant extends MiniPhaseTransform { thisTransformer =>
             if (sym.is(Mutable)) {
               ctx.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
-                   |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""".stripMargin)
+                   |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
             } else if (!sym.is(Method) || sym.is(Accessor | ParamAccessor)) {
               scanning(sym) {

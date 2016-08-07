@@ -215,19 +215,19 @@ object ExtensionMethods {
       val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
       val matching = candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.signature)
       assert(matching.nonEmpty,
-        sm"""|no extension method found for:
-             |
-             |  $imeth:${imeth.info.show} with signature ${imeth.signature}
-             |
-             | Candidates:
-             |
-             | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
-             |
-             | Candidates (signatures normalized):
-             |
-             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + FullParameterization.memberSignature(c.info)).mkString("\n")}
-             |
-             | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
+       i"""no extension method found for:
+          |
+          |  $imeth:${imeth.info.show} with signature ${imeth.signature}
+          |
+          | Candidates:
+          |
+          | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
+          |
+          | Candidates (signatures normalized):
+          |
+          | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + FullParameterization.memberSignature(c.info)).mkString("\n")}
+          |
+          | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
       matching.head.asTerm
     }
 }

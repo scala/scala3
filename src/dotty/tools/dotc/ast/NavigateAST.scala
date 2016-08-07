@@ -22,7 +22,7 @@ object NavigateAST {
           Error(i"""no untyped tree for $tree, pos = ${tree.pos}, envelope = ${tree.envelope}
                    |best matching path =\n$loosePath%\n====\n%
                    |path positions = ${loosePath.map(_.pos)}
-                   |path envelopes = ${loosePath.map(_.envelope)}""".stripMargin)
+                   |path envelopes = ${loosePath.map(_.envelope)}""")
     }
 
   /** The reverse path of untyped trees starting with a tree that closest matches

@@ -1493,11 +1493,11 @@ object Types {
         (sym.owner.derivesFrom(lastSymbol.owner) ||
          selfTypeOf(sym).derivesFrom(lastSymbol.owner) ||
          selfTypeOf(lastSymbol).derivesFrom(sym.owner))),
-        s"""data race? overwriting symbol of type ${this.show},
-           |long form = $this of class ${this.getClass},
+        i"""data race? overwriting symbol of type $this,
+           |long form = $toString of class $getClass,
            |last sym id = ${lastSymbol.id}, new sym id = ${sym.id},
            |last owner = ${lastSymbol.owner}, new owner = ${sym.owner},
-           |period = ${ctx.phase} at run ${ctx.runId}""".stripMargin)
+           |period = ${ctx.phase} at run ${ctx.runId}""")
     }
 
     protected def sig: Signature = Signature.NotAMethod
@@ -3799,7 +3799,7 @@ object Types {
 
   class MissingType(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
     i"""cannot resolve reference to type $pre.$name
-       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""".stripMargin) {
+       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""") {
     if (ctx.debug) printStackTrace()
   }
 

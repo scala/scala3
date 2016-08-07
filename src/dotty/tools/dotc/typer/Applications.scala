@@ -777,9 +777,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
-                  d"""There is no best instantiation of pattern type $unapplyArgType
-                     |that makes it a subtype of selector type $selType.
-                     |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated.""".stripMargin
+                  ex"""There is no best instantiation of pattern type $unapplyArgType
+                      |that makes it a subtype of selector type $selType.
+                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated."""
                 if (fromScala2x) {
                   // We can't issue an error here, because in Scala 2, ::[B] is invariant
                   // whereas List[+T] is covariant. According to the strict rule, a pattern
@@ -801,7 +801,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             unapp.println("Neither sub nor super")
             unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< selType))
             errorType(
-              d"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
+              ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
               tree.pos)
           }
 
@@ -822,7 +822,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(d"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
+          ctx.error(em"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }

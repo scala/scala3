@@ -532,8 +532,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
-  override protected def polyParamName(name: TypeName): TypeName =
-    name.unexpandedName
+  override protected def polyParamNameString(name: TypeName): String =
+    name.unexpandedName.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 

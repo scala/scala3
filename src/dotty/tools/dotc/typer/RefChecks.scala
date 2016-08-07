@@ -81,14 +81,14 @@ object RefChecks {
       def checkSelfConforms(other: TypeRef, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
-          ctx.error(d"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
+          ctx.error(ex"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
       }
       for (parent <- cinfo.classParents) {
         val pclazz = parent.classSymbol
         if (pclazz.is(Final))
-          ctx.error(d"cannot extend final $pclazz", cls.pos)
+          ctx.error(em"cannot extend final $pclazz", cls.pos)
         if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-          ctx.error(d"cannot extend sealed $pclazz in different compilation unit", cls.pos)
+          ctx.error(em"cannot extend sealed $pclazz in different compilation unit", cls.pos)
         checkSelfConforms(parent, "illegal inheritance", "parent")
       }
       for (reqd <- cinfo.givenSelfType.classSymbols)
