@@ -24,12 +24,20 @@ class TestREPL(script: String) extends REPL {
       ctx.fresh.setSetting(ctx.settings.color, "never")
 
     override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
-      val lines = script.lines
+      val lines = script.lines.buffered
       def readLine(prompt: String): String = {
         val line = lines.next
-        if (line.startsWith(prompt) || line.startsWith(continuationPrompt)) {
+        val buf = new StringBuilder
+        if (line.startsWith(prompt)) {
           output.println(line)
-          line.drop(prompt.length)
+          buf append line.drop(prompt.length)
+          while (lines.hasNext && lines.head.startsWith(continuationPrompt)) {
+            val continued = lines.next
+            output.println(continued)
+            buf append "\n"
+            buf append continued.drop(continuationPrompt.length)
+          }
+          buf.toString
         }
         else readLine(prompt)
       }
