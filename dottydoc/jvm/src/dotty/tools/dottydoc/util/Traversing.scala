@@ -13,6 +13,8 @@ object traversing {
 
   def relativePath(from: Entity, to: Entity) = {
     val offset = from match {
+      case v: Val if v.implicitlyAddedFrom.isDefined => 3
+      case d: Def if d.implicitlyAddedFrom.isDefined => 3
       case _: Val | _: Def => 2
       case _ => 1
     }

@@ -77,8 +77,7 @@ trait MemberLookup {
       case (x :: _, e: Entity with Members) if x == entity.name =>
         downwardLookup(e, querys)
       case (x :: xs, _) =>
-        if (xs.nonEmpty)
-          globalLookup
+        if (xs.nonEmpty) globalLookup
         else lookup(entity, packages, "scala." + query, pos)
     }
   }

@@ -76,12 +76,17 @@ object transform {
 
       def traverse(ent: Entity): Entity = ent match {
         case p: Package => transformEntity(p, _.packageTransformation) { p =>
-          PackageImpl(
+          val newPackage = PackageImpl(
             p.name,
             p.members.map(traverse),
             p.path,
             p.comment
           )
+
+          // Update reference in context to newPackage
+          ctx.docbase.packages[Package] += (newPackage.path.mkString(".") -> newPackage)
+
+          newPackage
         }
         case c: Class => transformEntity(c, _.classTransformation) { newClass =>
           ClassImpl(

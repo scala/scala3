@@ -118,7 +118,8 @@ trait MemberLayout {
       case "NoLink" => span(link.title).render
 
       case "UnsetLink" =>
-        println(s"UnsetLink found: $link")
+        println("UnsetLink found:")
+        scala.scalajs.js.Dynamic.global.console.log(link)
         span(link.title).render
     }
 

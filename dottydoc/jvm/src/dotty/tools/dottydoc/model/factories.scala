@@ -92,7 +92,8 @@ object factories {
       case tt: ThisType =>
         expandTpe(tt.underlying)
       case ci: ClassInfo =>
-        typeRef(ci.cls.name.show)
+        val query = path(ci.typeSymbol).mkString(".")
+        typeRef(ci.cls.name.show, query = query)
       case mt: MethodType =>
         expandTpe(mt.resultType)
       case pt: PolyType =>
