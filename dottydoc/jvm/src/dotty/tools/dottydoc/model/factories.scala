@@ -112,10 +112,22 @@ object factories {
   }
 
   def typeParams(sym: Symbol)(implicit ctx: Context): List[String] =
-    sym.denot.info match {
-      case pt: PolyType =>
+    sym.info match {
+      case pt: PolyType => // TODO: not sure if this case is needed anymore
         pt.paramNames.map(_.show.split("\\$").last)
-      case _ => Nil
+      case ClassInfo(_, _, _, decls, _) =>
+        decls.iterator
+          .filter(_.flags is Flags.TypeParam)
+          .map { tp =>
+            val prefix =
+              if (tp.flags is Flags.Covariant) "+"
+              else if (tp.flags is Flags.Contravariant) "-"
+              else ""
+            prefix + tp.name.show.split("\\$").last
+          }
+          .toList
+      case _ =>
+        Nil
     }
 
   def paramLists(tpe: Type)(implicit ctx: Context): List[ParamList] = tpe match {

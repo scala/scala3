@@ -39,10 +39,10 @@ class DocASTPhase extends Phase {
   def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
-    def collectList(xs: List[Tree], ps: List[String])(implicit ctx: Context): List[Entity] =
+    def collectList(xs: List[Tree], ps: List[String]): List[Entity] =
       xs.map(collect(_, ps)).filter(_ != NonEntity)
 
-    def collectEntityMembers(xs: List[Tree], ps: List[String])(implicit ctx: Context) =
+    def collectEntityMembers(xs: List[Tree], ps: List[String]) =
       collectList(xs, ps).asInstanceOf[List[Entity with Members]]
 
     def collectMembers(tree: Tree, ps: List[String] = prev)(implicit ctx: Context): List[Entity] = {

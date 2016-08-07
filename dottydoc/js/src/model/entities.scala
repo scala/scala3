@@ -61,13 +61,13 @@ trait SuperTypes extends sjs.Object {
 trait Package extends Entity with Members
 
 @ScalaJSDefined
-trait Class extends Entity with Members with Modifiers
+trait Class extends Entity with Members with Modifiers with TypeParams
 
 @ScalaJSDefined
 trait CaseClass extends Class
 
 @ScalaJSDefined
-trait Object extends Class
+trait Object extends Entity with Members with Modifiers
 
 @ScalaJSDefined
 trait Trait extends Class
