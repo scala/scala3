@@ -222,7 +222,7 @@ class CompilingInterpreter(
           if (delayOutput)
             previousOutput ++= resultStrings.map(clean)
           else if (printResults || !succeeded)
-            resultStrings.map(x => out.print(clean(x)))
+            resultStrings.foreach(x => out.print(clean(x)))
           if (succeeded) {
             prevRequests += req
             Interpreter.Success
@@ -328,6 +328,7 @@ class CompilingInterpreter(
     private def chooseHandler(stat: Tree): StatementHandler = stat match {
       case stat: DefDef => new DefHandler(stat)
       case stat: ValDef => new ValHandler(stat)
+      case stat: PatDef => new PatHandler(stat)
       case stat @ Assign(Ident(_), _) => new AssignHandler(stat)
       case stat: ModuleDef => new ModuleHandler(stat)
       case stat: TypeDef if stat.isClassDef => new ClassHandler(stat)
@@ -662,29 +663,65 @@ class CompilingInterpreter(
 
     private class GenericHandler(statement: Tree) extends StatementHandler(statement)
 
-    private class ValHandler(statement: ValDef) extends StatementHandler(statement) {
-      override val boundNames = List(statement.name)
+    private abstract class ValOrPatHandler(statement: Tree)
+        extends StatementHandler(statement) {
+      override val boundNames: List[Name] = _boundNames
       override def valAndVarNames = boundNames
 
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
-        val vname = statement.name
-        if (!statement.mods.is(Flags.AccessFlags) &&
-          !(isGeneratedVarName(vname.toString) &&
-            req.typeOf(vname.encode) == "Unit")) {
-          val prettyName = vname.decode
-          code.print(" + \"" + prettyName + ": " +
-            string2code(req.typeOf(vname)) +
-            " = \" + " +
-            " (if(" +
-            req.fullPath(vname) +
-            ".asInstanceOf[AnyRef] != null) " +
-            " ((if(" +
-            req.fullPath(vname) +
-            ".toString().contains('\\n')) " +
-            " \"\\n\" else \"\") + " +
-            req.fullPath(vname) + ".toString() + \"\\n\") else \"null\\n\") ")
-        }
+        if (!shouldShowResult(req)) return
+        val resultExtractors = boundNames.map(name => resultExtractor(req, name))
+        code.print(resultExtractors.mkString(""))
       }
+
+      private def resultExtractor(req: Request, varName: Name): String = {
+        val prettyName = varName.decode
+        val varType = string2code(req.typeOf(varName))
+        val fullPath = req.fullPath(varName)
+
+        s""" + "$prettyName: $varType = " + {
+           |  if ($fullPath.asInstanceOf[AnyRef] != null) {
+           |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") +
+           |      $fullPath.toString() + "\\n"
+           |  } else {
+           |    "null\\n"
+           |  }
+           |}""".stripMargin
+      }
+
+      protected def _boundNames: List[Name]
+      protected def shouldShowResult(req: Request): Boolean
+    }
+
+    private class ValHandler(statement: ValDef) extends ValOrPatHandler(statement) {
+      override def _boundNames = List(statement.name)
+
+      override def shouldShowResult(req: Request): Boolean =
+        !statement.mods.is(Flags.AccessFlags) &&
+          !(isGeneratedVarName(statement.name.toString) &&
+            req.typeOf(statement.name.encode) == "Unit")
+    }
+
+
+    private class PatHandler(statement: PatDef) extends ValOrPatHandler(statement) {
+      override def _boundNames = statement.pats.flatMap(findVariableNames)
+
+      override def shouldShowResult(req: Request): Boolean =
+        !statement.mods.is(Flags.AccessFlags)
+
+      private def findVariableNames(tree: Tree): List[Name] = tree match {
+        case Ident(name) if name.toString != "_" => List(name)
+        case _ => VariableNameFinder(Nil, tree).reverse
+      }
+
+      private object VariableNameFinder extends UntypedDeepFolder[List[Name]](
+        (acc: List[Name], t: Tree) => t match {
+          case _: BackquotedIdent => acc
+          case Ident(name) if name.isVariableName && name.toString != "_" => name :: acc
+          case Bind(name, _) if name.isVariableName => name :: acc
+          case _ => acc
+        }
+      )
     }
 
     private class DefHandler(defDef: DefDef) extends StatementHandler(defDef) {
@@ -836,7 +873,7 @@ class CompilingInterpreter(
     val stringWriter = new StringWriter()
     val stream = new NewLinePrintWriter(stringWriter)
     writer(stream)
-    stream.close
+    stream.close()
     stringWriter.toString
   }
 

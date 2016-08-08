@@ -456,6 +456,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
   }
 
+  /** Fold `f` over all tree nodes, in depth-first, prefix order */
+  class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
+    def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
+  }
+
   override def rename(tree: NameTree, newName: Name)(implicit ctx: Context): tree.ThisTree[Untyped] = tree match {
     case t: PolyTypeDef =>
       cpy.PolyTypeDef(t)(newName.asTypeName, t.tparams, t.rhs).asInstanceOf[tree.ThisTree[Untyped]]
