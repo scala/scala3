@@ -132,7 +132,7 @@ object Contexts {
     def compilationUnit: CompilationUnit = _compilationUnit
 
     /** The current tree */
-    private[this] var _tree: Tree[_ >: Untyped] = _
+    private[this] var _tree: Tree[_ >: Untyped]= _
     protected def tree_=(tree: Tree[_ >: Untyped]) = _tree = tree
     def tree: Tree[_ >: Untyped] = _tree
 

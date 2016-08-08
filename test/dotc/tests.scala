@@ -1,10 +1,9 @@
 package dotc
 
 import test._
-import dotty.partest._
-import org.junit.Test
-import org.junit.experimental.categories._
+import org.junit.{Before, Test}
 
+import scala.reflect.io.Directory
 import scala.io.Source
 
 // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
@@ -12,22 +11,22 @@ class tests extends CompilerTest {
 
   def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
 
+  val defaultOutputDir = "./out/"
+
   val noCheckOptions = List(
 //        "-verbose",
 //         "-Ylog:frontend",
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
+        "-d", defaultOutputDir,
         "-pagewidth", "160")
 
-  val defaultOutputDir = "./out/"
-
-  implicit val defaultOptions = noCheckOptions ++ List(
-      "-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-color:never",
-      "-d", defaultOutputDir) ++ {
-    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-  }
+  implicit val defaultOptions = noCheckOptions ++
+    List("-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-color:never") ++ {
+      if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+      else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+    }
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
@@ -59,6 +58,12 @@ class tests extends CompilerTest {
   val parsingDir = dotcDir + "parsing/"
   val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
+
+  @Before def cleanup(): Unit = {
+    // remove class files from stdlib and tests compilation
+    Directory(defaultOutputDir + "scala").deleteRecursively()
+    Directory(defaultOutputDir + "java").deleteRecursively()
+  }
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
 // This directory doesn't exist anymore
@@ -301,4 +306,23 @@ class tests extends CompilerTest {
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
+
+  @Test def tasty_bootstrap = {
+    val opt = List("-priorityclasspath", defaultOutputDir, "-Ylog-classpath")
+    // first compile dotty
+    compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes)
+
+    compileDir(dottyDir, "tools", opt)
+    compileDir(toolsDir, "dotc", opt)
+    compileDir(dotcDir, "ast", opt)
+    compileDir(dotcDir, "config", opt)
+    compileDir(dotcDir, "parsing", opt)
+    compileDir(dotcDir, "printing", opt)
+    compileDir(dotcDir, "repl", opt)
+    compileDir(dotcDir, "reporting", opt)
+    compileDir(dotcDir, "rewrite", opt)
+    compileDir(dotcDir, "transform", opt)
+    compileDir(dotcDir, "typer", opt)
+    compileDir(dotcDir, "util", opt)
+  }
 }

@@ -15,6 +15,10 @@ class ScalaSettings extends Settings.SettingGroup {
   val javabootclasspath = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath)
   val javaextdirs = PathSetting("-javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs)
   val sourcepath = PathSetting("-sourcepath", "Specify location(s) of source files.", "") // Defaults.scalaSourcePath
+  val argfiles = BooleanSetting("@<file>", "A text file containing compiler arguments (options and source files)")
+  val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
+  val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
+  val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings.
    */
@@ -46,9 +50,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val nobootcp = BooleanSetting("-nobootcp", "Do not use the boot classpath for the scala jars.")
   val strict = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.")
 
-  val argfiles = BooleanSetting("@<file>", "A text file containing compiler arguments (options and source files)")
-  val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val nospecialization = BooleanSetting("-no-specialization", "Ignore @specialize annotations.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
