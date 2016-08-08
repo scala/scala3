@@ -28,8 +28,26 @@ trait Entity extends sjs.Object {
 
 @ScalaJSDefined
 trait Comment extends sjs.Object {
-  val body: String
-  val short: String
+  val body:                    String
+  val short:                   String
+  val authors:                 sjs.Array[String]
+  val see:                     sjs.Array[String]
+  val result:                  sjs.UndefOr[String]
+  val throws:                  Map[String, String]
+  val valueParams:             Map[String, String]
+  val typeParams:              Map[String, String]
+  val version:                 sjs.UndefOr[String]
+  val since:                   sjs.UndefOr[String]
+  val todo:                    List[String]
+  val deprecated:              sjs.UndefOr[String]
+  val note:                    List[String]
+  val example:                 List[String]
+  val constructor:             sjs.UndefOr[String]
+  val group:                   sjs.UndefOr[String]
+  val groupDesc:               Map[String, String]
+  val groupNames:              Map[String, String]
+  val groupPrio:               Map[String, String]
+  val hideImplicitConversions: List[String]
 }
 
 @ScalaJSDefined

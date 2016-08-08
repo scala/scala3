@@ -25,13 +25,8 @@ object parsers {
     def parseHtml(sym: Symbol, parent: Symbol, entity: Entity, packages: Map[String, Package])(implicit ctx: Context): (String, Option[Comment]) = {
       val cmt = ctx.docbase.docstring(sym).map { d =>
         val expanded = expand(sym, parent)
-        val body = parse(entity, packages, clean(expanded), expanded, d.pos)
-        val summary = body.summary.map(_.toHtml(entity)).getOrElse("")
-         body.toHtml(entity) match {
-          case "" => None
-          case x  => Some(Comment(x, summary))
-        }
-      }.flatten
+        parse(entity, packages, clean(expanded), expanded, d.pos).toComment(_.toHtml(entity))
+      }
 
       (entity.path.mkString("."), cmt)
     }

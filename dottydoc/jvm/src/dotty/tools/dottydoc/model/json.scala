@@ -25,7 +25,8 @@ object json {
   }
 
   implicit class JsonComment(val cmt: Comment) extends AnyVal {
-    def json: String = s"""{"body":${cmt.body.json},"short":${cmt.short.json}}"""
+    def json: String =
+      s"""{"body":${cmt.body.json},"short":${cmt.short.json},"authors":${cmt.authors.map(_.json).mkString("[",",","]")},"see":${cmt.see.map(_.json).mkString("[",",","]")},${cmt.result.map(res => s""""result":${res.json},""").getOrElse("")}"throws":${cmt.throws.map { case (k, v) => s"${k.json}:${v.json}" }.mkString("{",",","}")},"valueParams":${cmt.valueParams.map { case (k, v) => s"${k.json}:${v.json}"}.mkString("{",",","}")},"typeParams":${cmt.typeParams.map { case (k, v) => s"${k.json}:${v.json}"}.mkString("{",",","}")},${cmt.version.map(x => s""""version":${x.json},""").getOrElse("")}${cmt.since.map(x => s""""since":${x.json},""").getOrElse("")}"todo":${cmt.todo.map(_.json).mkString("[",",","]")},${cmt.deprecated.map(x => s""""deprecated":${x.json},""").getOrElse("")}"note":${cmt.note.map(_.json).mkString("[",",","]")},"example":${cmt.example.map(_.json).mkString("[",",","]")},${cmt.constructor.map(x => s""""constructor":${x.json},""").getOrElse("")}${cmt.group.map(x => s""""group":${x.json},""").getOrElse("")}"groupDesc":${cmt.groupDesc.map { case (k, v) => s"${k.json}:${v.json}"}.mkString("{",",","}")},"groupNames":${cmt.groupNames.map { case (k, v) => s"${k.json}:${v.json}"}.mkString("{",",","}")},"groupPrio":${cmt.groupPrio.map { case (k, v) => s"${k.json}:${v.json}"}.mkString("{",",","}")},"hideImplicitConversions":${cmt.hideImplicitConversions.map(_.json).mkString("[",",","]")}}"""
   }
 
   implicit class LinkJson(val link: MaterializableLink) extends AnyVal {

@@ -58,28 +58,34 @@ case class EntityLayout(entity: Entity) extends MemberLayout {
       main(
         id := "entity-container",
         cls := "mdl-layout__content",
-        div(
-          cls := "page-content",
-          div(cls := "entity-title", entityTitle),
-          div(raw(entity.comment.fold("")(_.body))),
-          entity match {
-            case x if x.hasMembers =>
-              val e = x.asInstanceOf[Entity with Members]
-              if (e.members.nonEmpty)
-                Seq(
-                  h5("Members"),
-                  div(
-                    cls := "mld-grid",
-                    e.members
-                      .collect {
-                        case x if x.hasModifiers && !x.isPrivate => x
-                      }
-                      .flatMap(member(_, entity)).toList
+          div(
+            cls := "page-content",
+            div(cls := "entity-title", entityTitle),
+            div(raw(entity.comment.fold("")(_.body))),
+            entity.comment.filter(_.authors.nonEmpty).map { comment =>
+              dl(
+                dt(cls := "entity-authors", "Authors"),
+                comment.authors.map(x => dd(cls := "entity-author", raw(x))).toList
+              )
+            }.toOption,
+            entity match {
+              case x if x.hasMembers =>
+                val e = x.asInstanceOf[Entity with Members]
+                if (e.members.nonEmpty)
+                  Seq(
+                    h5("Members"),
+                    div(
+                      cls := "mdl-grid",
+                      e.members
+                        .collect {
+                          case x if x.hasModifiers && !x.isPrivate => x
+                        }
+                        .flatMap(member(_, entity)).toList
+                    )
                   )
-                )
-            case _ => ()
-          }
-        )
+              case _ => ()
+            }
+          )
       ),
       main(
         id := "search-results",

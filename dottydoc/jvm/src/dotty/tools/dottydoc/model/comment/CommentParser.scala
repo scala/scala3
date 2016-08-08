@@ -13,6 +13,59 @@ trait CommentParser extends util.MemberLookup {
   import Regexes._
   import model.internal._
 
+  case class FullComment (
+    body:                    Body,
+    authors:                 List[Body],
+    see:                     List[Body],
+    result:                  Option[Body],
+    throws:                  Map[String, Body],
+    valueParams:             Map[String, Body],
+    typeParams:              Map[String, Body],
+    version:                 Option[Body],
+    since:                   Option[Body],
+    todo:                    List[Body],
+    deprecated:              Option[Body],
+    note:                    List[Body],
+    example:                 List[Body],
+    constructor:             Option[Body],
+    group:                   Option[Body],
+    groupDesc:               Map[String, Body],
+    groupNames:              Map[String, Body],
+    groupPrio:               Map[String, Body],
+    hideImplicitConversions: List[Body],
+    shortDescription:        List[Body]
+  ) {
+
+    /**
+     * Transform this CommentParser.FullComment to a Comment using the supplied
+     * Body transformer
+     */
+    def toComment(transform: Body => String) = Comment(
+      transform(body),
+      short =
+        if (shortDescription.nonEmpty) shortDescription.map(transform).mkString
+        else body.summary.map(transform).getOrElse(""),
+      authors.map(transform),
+      see.map(transform),
+      result.map(transform),
+      throws.map { case (k, v) => (k, transform(v)) },
+      valueParams.map { case (k, v) => (k, transform(v)) },
+      typeParams.map { case (k, v) => (k, transform(v)) },
+      version.map(transform),
+      since.map(transform),
+      todo.map(transform),
+      deprecated.map(transform),
+      note.map(transform),
+      example.map(transform),
+      constructor.map(transform),
+      group.map(transform),
+      groupDesc.map { case (k, v) => (k, transform(v)) },
+      groupNames.map { case (k, v) => (k, transform(v)) },
+      groupPrio.map { case (k, v) => (k, transform(v)) },
+      hideImplicitConversions.map(transform)
+    )
+  }
+
   /** Parses a raw comment string into a `Comment` object.
    * @param packages     all packages parsed by Scaladoc tool, used for lookup
    * @param cleanComment a cleaned comment to be parsed
@@ -26,7 +79,7 @@ trait CommentParser extends util.MemberLookup {
     src: String,
     pos: Position,
     site: Symbol = NoSymbol
-  )(implicit ctx: Context): Body = {
+  )(implicit ctx: Context): FullComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
      *  instance, recursively on lines. To do so, it splits the whole comment
@@ -48,7 +101,7 @@ trait CommentParser extends util.MemberLookup {
       lastTagKey: Option[TagKey],
       remaining: List[String],
       inCodeBlock: Boolean
-    ): Body = remaining match {
+    ): FullComment = remaining match {
 
       case CodeBlockStartRegex(before, marker, after) :: ls if (!inCodeBlock) =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
@@ -155,8 +208,8 @@ trait CommentParser extends util.MemberLookup {
             case _ => None
           }
 
-        def allTags(key: SimpleTagKey): List[Body] =
-          (bodyTags remove key).getOrElse(Nil).filterNot(_.blocks.isEmpty)
+        def allTags[B](key: SimpleTagKey): List[Body] =
+          (bodyTags remove key).getOrElse(Nil).filterNot(_.blocks.isEmpty).reverse
 
         def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): Map[String, Body] = {
           val keys: Seq[SymbolTagKey] =
@@ -193,37 +246,33 @@ trait CommentParser extends util.MemberLookup {
           }
         }
 
-        // TODO: this method should return a parsed comment with the members below
-        //val com = createComment (
-        //  body0           = Some(parseWikiAtSymbol(docBody.toString, pos, site)),
-        //  authors0        = allTags(SimpleTagKey("author")),
-        //  see0            = allTags(SimpleTagKey("see")),
-        //  result0         = oneTag(SimpleTagKey("return")),
-        //  throws0         = linkedExceptions,
-        //  valueParams0    = allSymsOneTag(SimpleTagKey("param")),
-        //  typeParams0     = allSymsOneTag(SimpleTagKey("tparam")),
-        //  version0        = oneTag(SimpleTagKey("version")),
-        //  since0          = oneTag(SimpleTagKey("since")),
-        //  todo0           = allTags(SimpleTagKey("todo")),
-        //  deprecated0     = oneTag(SimpleTagKey("deprecated"), filterEmpty = false),
-        //  note0           = allTags(SimpleTagKey("note")),
-        //  example0        = allTags(SimpleTagKey("example")),
-        //  constructor0    = oneTag(SimpleTagKey("constructor")),
-        //  source0         = Some(clean(src).mkString("\n")),
-        //  inheritDiagram0 = inheritDiagramText,
-        //  contentDiagram0 = contentDiagramText,
-        //  group0          = oneTag(SimpleTagKey("group")),
-        //  groupDesc0      = allSymsOneTag(SimpleTagKey("groupdesc")),
-        //  groupNames0     = allSymsOneTag(SimpleTagKey("groupname")),
-        //  groupPrio0      = allSymsOneTag(SimpleTagKey("groupprio")),
-        //  hideImplicitConversions0 = allTags(SimpleTagKey("hideImplicitConversion")),
-        //  shortDescription0 = allTags(SimpleTagKey("shortDescription"))
-        //)
-        //
-        //for ((key, _) <- bodyTags)
-        //  dottydoc.println(s"$pos: Tag '@${key.name}' is not recognised")
+        val cmt = FullComment(
+          body                    = parseWikiAtSymbol(entity, packages, docBody.toString, pos, site),
+          authors                 = allTags(SimpleTagKey("author")),
+          see                     = allTags(SimpleTagKey("see")),
+          result                  = oneTag(SimpleTagKey("return")),
+          throws                  = linkedExceptions,
+          valueParams             = allSymsOneTag(SimpleTagKey("param")),
+          typeParams              = allSymsOneTag(SimpleTagKey("tparam")),
+          version                 = oneTag(SimpleTagKey("version")),
+          since                   = oneTag(SimpleTagKey("since")),
+          todo                    = allTags(SimpleTagKey("todo")),
+          deprecated              = oneTag(SimpleTagKey("deprecated"), filterEmpty = false),
+          note                    = allTags(SimpleTagKey("note")),
+          example                 = allTags(SimpleTagKey("example")),
+          constructor             = oneTag(SimpleTagKey("constructor")),
+          group                   = oneTag(SimpleTagKey("group")),
+          groupDesc               = allSymsOneTag(SimpleTagKey("groupdesc")),
+          groupNames              = allSymsOneTag(SimpleTagKey("groupname")),
+          groupPrio               = allSymsOneTag(SimpleTagKey("groupprio")),
+          hideImplicitConversions = allTags(SimpleTagKey("hideImplicitConversion")),
+          shortDescription        = allTags(SimpleTagKey("shortDescription"))
+        )
 
-        parseWikiAtSymbol(entity, packages, docBody.toString, pos, site)
+        for ((key, _) <- bodyTags)
+          dottydoc.println(s"$pos: Tag '@${key.name}' is not recognised")
+
+        cmt
       }
     }
 
