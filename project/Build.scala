@@ -264,29 +264,17 @@ object DottyInjectedPlugin extends AutoPlugin {
     ).
     settings(publishing)
 
-    lazy val dottydoc = crossProject.in(file("dottydoc"))
-      .jsSettings(
-        libraryDependencies ++= Seq(
-          "org.scala-js" %%% "scalajs-dom" % "0.9.0",
-          "com.lihaoyi" %%% "scalatags" % "0.5.5"
-        )
-      )
-
-    lazy val dottydocJS = dottydoc.js.dependsOn(dotty).settings(
-      scalaSource in Compile := baseDirectory.value / "src"
-    )
-
-    lazy val dottydocJVM = dottydoc.jvm.dependsOn(dotty).settings(
-      resources in Compile         += (fastOptJS in (dottydocJS, Compile)).value.data,
+    lazy val dottydoc = project.in(file("dottydoc")).dependsOn(dotty).settings(
+      //resources in Compile         += (fastOptJS in (dottydocJS, Compile)).value.data,
       resourceDirectory in Compile := baseDirectory.value / "resources",
       scalaSource in Compile       := baseDirectory.value / "src",
+      javaSource in Compile        := baseDirectory.value / "src",
       scalaSource in Test          := baseDirectory.value / "test",
       javaSource in Test           := baseDirectory.value / "test",
 
       libraryDependencies ++= Seq(
-        "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.0",
-        "com.lihaoyi" %% "scalatags" % "0.5.5",
-        "com.novocode" % "junit-interface" % "0.11" % "test"
+        "com.novocode" % "junit-interface" % "0.11" % "test",
+        "com.github.spullara.mustache.java" % "compiler" % "0.9.3"
       ),
 
       // enable improved incremental compilation algorithm
@@ -323,7 +311,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
         ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
       }
-    )
+    ).settings(publishing)
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
