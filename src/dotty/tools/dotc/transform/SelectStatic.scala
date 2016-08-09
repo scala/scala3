@@ -46,10 +46,16 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
       Block(stats, Select(qual, nm))
     case Apply(Block(stats, qual), nm) =>
       Block(stats, Apply(qual, nm))
+    case TypeApply(Block(stats, qual), nm) =>
+      Block(stats, TypeApply(qual, nm))
     case _ => t
   }
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    normalize(tree)
+  }
+
+  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     normalize(tree)
   }
 }
