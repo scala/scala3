@@ -23,11 +23,11 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
-    if (!sym.is(isPackage) && !sym.owner.is(isPackage) &&
+    if (!sym.is(isPackage) && !sym.maybeOwner.is(isPackage) &&
       (
-         ((sym is Flags.Module) && sym.owner.isStaticOwner) ||
+         ((sym is Flags.Module) && sym.maybeOwner.isStaticOwner) ||
          (sym is Flags.JavaStatic) ||
-         (sym.owner is Flags.ImplClass) ||
+         (sym.maybeOwner is Flags.ImplClass) ||
          sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
         )
     )
