@@ -21,20 +21,20 @@ object WhitelistedStandardLib extends dottydoc.java.Dottydoc {
   }
 
   private val resources = List(
-    "../js-dottydoc/resources/MaterialIcons-Regular.eot",
-    "../js-dottydoc/resources/MaterialIcons-Regular.ijmap",
-    "../js-dottydoc/resources/MaterialIcons-Regular.svg",
-    "../js-dottydoc/resources/MaterialIcons-Regular.ttf",
-    "../js-dottydoc/resources/MaterialIcons-Regular.woff",
-    "../js-dottydoc/resources/MaterialIcons-Regular.woff2",
-    "../js-dottydoc/resources/codepoints",
-    "../js-dottydoc/resources/github.css",
-    "../js-dottydoc/resources/highlight.pack.js",
-    "../js-dottydoc/resources/index.css",
-    "../js-dottydoc/resources/material-icons.css",
-    "../js-dottydoc/resources/material.min.css",
-    "../js-dottydoc/resources/material.min.js"/*,
-    "resources/dottydoc-fastopt.js"*/
+    "../../dottydoc-client/resources/MaterialIcons-Regular.eot",
+    "../../dottydoc-client/resources/MaterialIcons-Regular.ijmap",
+    "../../dottydoc-client/resources/MaterialIcons-Regular.svg",
+    "../../dottydoc-client/resources/MaterialIcons-Regular.ttf",
+    "../../dottydoc-client/resources/MaterialIcons-Regular.woff",
+    "../../dottydoc-client/resources/MaterialIcons-Regular.woff2",
+    "../../dottydoc-client/resources/codepoints",
+    "../../dottydoc-client/resources/github.css",
+    "../../dottydoc-client/resources/highlight.pack.js",
+    "../../dottydoc-client/resources/index.css",
+    "../../dottydoc-client/resources/material-icons.css",
+    "../../dottydoc-client/resources/material.min.css",
+    "../../dottydoc-client/resources/material.min.js",
+    "../../dottydoc-client/target/scala-2.11/dottydoc-client-fastopt.js"
   )
 
   override def main(args: Array[String]) = {
@@ -42,6 +42,6 @@ object WhitelistedStandardLib extends dottydoc.java.Dottydoc {
       "-language:Scala2" +: "-Ydoc-output" +: "../build/dottydoc" +: files.toArray
 
     val index = createIndex(compilerArgs)
-    buildDocs("../build/dottydoc", "../js-dottydoc/template.html", resources.asJava, index)
+    buildDocs("../build/dottydoc", "../../dottydoc-client/resources/template.html", resources.asJava, index)
   }
 }

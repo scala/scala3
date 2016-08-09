@@ -200,7 +200,7 @@ object DottyBuild extends Build {
       addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
       addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
       addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("dottydoc", ";dottydocJVM/run")
+      addCommandAlias("dottydoc", ";dottydoc/run")
     ).
     settings(publishing)
 

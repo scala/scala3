@@ -62,8 +62,9 @@ class OutputWriter {
   }
 
   def expandTemplate(templatePath: String, entity: Entity, outPath: String): String = try {
+    import model.json._
     import model.java._
-    import scala.collection.JavaConverters._
+
     val writer = new _root_.java.io.StringWriter()
     val mf     = new DefaultMustacheFactory()
 
@@ -71,7 +72,8 @@ class OutputWriter {
 
     val entityWithExtras = entity.asJava(Map(
       "assets" -> s"${toRoot}docassets",
-      "index"  -> s"${toRoot}docassets/index.js"
+      "index"  -> s"${toRoot}docassets/index.js",
+      "currentEntity" -> entity.json
     ))
 
     mf.compile(new JFileReader(templatePath), "template")
