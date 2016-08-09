@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
@@ -23,17 +24,32 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
-    if (!sym.is(isPackage) && !sym.maybeOwner.is(isPackage) &&
-      (
-         ((sym is Flags.Module) && sym.maybeOwner.isStaticOwner) ||
-         (sym is Flags.JavaStatic) ||
-         (sym.maybeOwner is Flags.ImplClass) ||
-         sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
-        )
-    )
-      if (!tree.qualifier.symbol.is(JavaModule))
-        Block(List(tree.qualifier), ref(sym))
+    val r1 =
+      if (!sym.is(isPackage) && !sym.maybeOwner.is(isPackage) &&
+        (
+          ((sym is Flags.Module) && sym.maybeOwner.isStaticOwner) ||
+            (sym is Flags.JavaStatic) ||
+            (sym.maybeOwner is Flags.ImplClass) ||
+            sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
+          )
+      )
+        if (!tree.qualifier.symbol.is(JavaModule))
+          Block(List(tree.qualifier), ref(sym))
+        else tree
       else tree
-    else tree
+
+    normalize(r1)
+  }
+
+  private def normalize(t: Tree)(implicit ctx: Context) = t match {
+    case Select(Block(stats, qual), nm) =>
+      Block(stats, Select(qual, nm))
+    case Apply(Block(stats, qual), nm) =>
+      Block(stats, Apply(qual, nm))
+    case _ => t
+  }
+
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    normalize(tree)
   }
 }
