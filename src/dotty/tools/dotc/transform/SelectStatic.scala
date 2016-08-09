@@ -32,7 +32,7 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
             sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
           )
       )
-        if (!tree.qualifier.symbol.is(JavaModule))
+        if (!tree.qualifier.symbol.is(JavaModule) && !tree.qualifier.isType)
           Block(List(tree.qualifier), ref(sym))
         else tree
       else tree
