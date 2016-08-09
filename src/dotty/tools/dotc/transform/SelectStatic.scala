@@ -13,7 +13,6 @@ import dotty.tools.dotc.transform.TreeTransforms._
 /** Removes selects that would be compiled into GetStatic
  * otherwise backend needs to be aware that some qualifiers need to be dropped.
  * Similar transformation seems to be performed by flatten in nsc
- *
  * @author Dmytro Petrashko
  */
 class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
@@ -43,7 +42,7 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   private def normalize(t: Tree)(implicit ctx: Context) = t match {
     case Select(Block(stats, qual), nm) =>
-      Block(stats, Select(qual, nm))
+      Block(stats, cpy.Select(t)(qual, nm))
     case Apply(Block(stats, qual), nm) =>
       Block(stats, Apply(qual, nm))
     case TypeApply(Block(stats, qual), nm) =>
