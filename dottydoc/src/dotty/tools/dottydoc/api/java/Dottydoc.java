@@ -1,4 +1,4 @@
-package dotty.tools.dottydoc.java;
+package dotty.tools.dottydoc.api.java;
 
 import dotty.tools.dottydoc.DottyDocDriver;
 import dotty.tools.dottydoc.model.Package;

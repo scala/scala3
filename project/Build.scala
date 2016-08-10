@@ -206,6 +206,7 @@ object DottyBuild extends Build {
 
   lazy val `dotty-bridge` = project.in(file("bridge")).
     dependsOn(dotty).
+    dependsOn(dottydoc).
     settings(
       overrideScalaVersionSetting,
 

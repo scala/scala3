@@ -3,7 +3,7 @@ package dottydoc
 
 import scala.io.Source
 
-object WhitelistedStandardLib extends dottydoc.java.Dottydoc {
+object WhitelistedStandardLib extends dottydoc.api.java.Dottydoc {
   import scala.collection.JavaConverters._
 
   val files: List[String] = {
