@@ -24,4 +24,8 @@ public class Dottydoc extends DottyDocDriver {
     ) {
         new OutputWriter().writeJava(index, templatePath, outputDir, resources);
     }
+
+    public void writeJson(Map<String, Package> index, String outputDir) {
+        new OutputWriter().writeJsonJava(index, outputDir);
+    }
 }

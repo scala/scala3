@@ -73,7 +73,9 @@ object DottyBuild extends Build {
       javaSource in Test := baseDirectory.value / "test",
       resourceDirectory in Compile := baseDirectory.value / "resources",
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "dottydoc" / "src",
       unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
+      unmanagedSourceDirectories in Test += baseDirectory.value / "dottydoc" / "test",
 
       // set system in/out for repl
       connectInput in run := true,
@@ -100,6 +102,7 @@ object DottyBuild extends Build {
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
+                                  "com.github.spullara.mustache.java" % "compiler" % "0.9.3",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
@@ -206,7 +209,6 @@ object DottyBuild extends Build {
 
   lazy val `dotty-bridge` = project.in(file("bridge")).
     dependsOn(dotty).
-    dependsOn(dottydoc).
     settings(
       overrideScalaVersionSetting,
 
@@ -264,55 +266,6 @@ object DottyInjectedPlugin extends AutoPlugin {
       */
     ).
     settings(publishing)
-
-    lazy val dottydoc = project.in(file("dottydoc")).dependsOn(dotty).settings(
-      //resources in Compile         += (fastOptJS in (dottydocJS, Compile)).value.data,
-      resourceDirectory in Compile := baseDirectory.value / "resources",
-      scalaSource in Compile       := baseDirectory.value / "src",
-      javaSource in Compile        := baseDirectory.value / "src",
-      scalaSource in Test          := baseDirectory.value / "test",
-      javaSource in Test           := baseDirectory.value / "test",
-
-      libraryDependencies ++= Seq(
-        "com.novocode" % "junit-interface" % "0.11" % "test",
-        "com.github.spullara.mustache.java" % "compiler" % "0.9.3"
-      ),
-
-      // enable improved incremental compilation algorithm
-      incOptions := incOptions.value.withNameHashing(true),
-
-      mainClass in (Compile, run) := Some("dotty.tools.dottydoc.Main"),
-      fork in run := true,
-      fork in Test := true,
-      parallelExecution in Test := false,
-
-      // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
-        // put the Scala {library, reflect} in the classpath
-        val path = for {
-          file <- attList.map(_.data)
-          path = file.getAbsolutePath
-        } yield "-Xbootclasspath/p:" + path
-        // dotty itself needs to be in the bootclasspath
-        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
-        // System.err.println("BOOTPATH: " + fullpath)
-
-        val travis_build = // propagate if this is a travis build
-          if (sys.props.isDefinedAt(JENKINS_BUILD))
-            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
-          else
-            List()
-
-        val tuning =
-          if (sys.props.isDefinedAt("Oshort"))
-            // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
-            List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
-          else
-            List()
-
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
-      }
-    ).settings(publishing)
 
   /** A sandbox to play with the Scala.js back-end of dotty.
    *

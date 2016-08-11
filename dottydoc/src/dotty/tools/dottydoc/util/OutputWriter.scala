@@ -17,12 +17,11 @@ import _root_.java.util.{ Map => JMap, List => JList }
 import model.{ Entity, Package }
 import model.json._
 import com.github.mustachejava.DefaultMustacheFactory
-
+import scala.collection.JavaConverters._
 
 class OutputWriter {
 
   def writeJava(packs: JMap[String, Package], templatePath: String, outPath: String, resources: JList[String]): Unit = {
-    import scala.collection.JavaConverters._
     write(packs.asScala, templatePath, outPath, resources.asScala)
   }
 
@@ -60,6 +59,12 @@ class OutputWriter {
 
     println("Done writing static material, building js-app")
   }
+
+  def writeJsonJava(index: JMap[String, Package], outputDir: String): Unit =
+    writeJson(index.asScala, outputDir)
+
+  def writeJson(index: collection.Map[String, Package], outputDir: String): Unit =
+    writeFile(index.json, outputDir + "/", "index.json")
 
   def expandTemplate(templatePath: String, entity: Entity, outPath: String): String = try {
     import model.json._

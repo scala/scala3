@@ -12,9 +12,20 @@ class ScaladocInterface {
 }
 
 class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) extends Dottydoc {
-  def run(): Unit = {
-    println(args.mkString("Args = List (\n  ",",\n  ",")"))
-    //val index = createIndex(args)
-    //buildDocs(outputDir, templatePath, resources, index)
+  def run(): Unit = getOutputFolder(args).map { outputFolder =>
+    val index     = createIndex(args)
+    val template  = getTemplate(args)
+    val resources = getResources(args)
+
+    template.fold(writeJson(index, outputFolder)) { tpl =>
+      buildDocs(outputFolder, tpl, resources, index)
+    }
   }
+
+  private def getOutputFolder(args: Array[String]): Option[String] =
+    args sliding(2) find { case Array(x, _) => x == "-d" } map (_.tail.head)
+
+  private def getTemplate(args: Array[String]): Option[String] = None
+
+  private def getResources(args: Array[String]): List[String] = Nil
 }
