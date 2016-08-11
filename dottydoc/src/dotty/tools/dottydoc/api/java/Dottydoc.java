@@ -1,13 +1,13 @@
 package dotty.tools.dottydoc.api.java;
 
-import dotty.tools.dottydoc.DottyDocDriver;
+import dotty.tools.dottydoc.DocDriver;
 import dotty.tools.dottydoc.model.Package;
 import dotty.tools.dottydoc.util.OutputWriter;
 import java.util.Map;
 import java.util.List;
 
 /** FIXME: document me! */
-public class Dottydoc extends DottyDocDriver {
+public class Dottydoc extends DocDriver {
     public Map<String, Package> createIndex(String[] args) {
         return compiledDocsJava(args);
     }

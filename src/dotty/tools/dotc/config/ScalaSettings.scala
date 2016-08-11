@@ -197,8 +197,16 @@ class ScalaSettings extends Settings.SettingGroup {
   val YpresentationReplay = StringSetting("-Ypresentation-replay", "file", "Replay presentation compiler events from file", "")
   val YpresentationDelay = IntSetting("-Ypresentation-delay", "Wait number of ms after typing before starting typechecking", 0, 0 to 999)
 
-  /** Dottydoc specific settings */
-  val YDocNoWrite = BooleanSetting("-Ydoc-nowrite", "Doesn't write HTML files if set", false)
+  /** Doc specific settings */
+  val template = OptionSetting[String](
+    "-template",
+    "A mustache template for rendering each top-level entity in the API"
+  )
+
+  val resources = OptionSetting[String](
+    "-resources",
+    "A directory containing static resources needed for the API documentation"
+  )
 
   val DocTitle = StringSetting (
     "-Ydoc-title",
@@ -234,8 +242,6 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing sources which should be parsed, no more (e.g. AnyRef.scala)",
     ""
   )
-
-  val DocRecursive = BooleanSetting("-Ydoc-recursive", "Get all files from supplied directory")
 
   //def DocUncompilableFiles(implicit ctx: Context) = DocUncompilable.value match {
   //  case ""     => Nil

@@ -17,12 +17,11 @@ trait DottyTest {
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YkeepComments, true)
-    ctx.setSetting(ctx.settings.YDocNoWrite, true)
     base.initialize()(ctx)
     ctx
   }
 
-  private def compilerWithChecker(assertion: DocASTPhase => Unit) = new DottyDocCompiler {
+  private def compilerWithChecker(assertion: DocASTPhase => Unit) = new DocCompiler {
     private[this] val docPhase = new DocASTPhase
 
     override def phases =

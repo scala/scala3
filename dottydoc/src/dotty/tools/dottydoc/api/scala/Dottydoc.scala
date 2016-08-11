@@ -1,13 +1,13 @@
 package dotty.tools.dottydoc.api.scala
 
-import dotty.tools.dottydoc.DottyDocDriver
+import dotty.tools.dottydoc.DocDriver
 import dotty.tools.dottydoc.model.Package
 import dotty.tools.dottydoc.util.OutputWriter
 
 import scala.collection.Map
 
 /** FIXME: document this class plz */
-trait Dottydoc extends DottyDocDriver {
+trait Dottydoc extends DocDriver {
   def createIndex(args: Array[String]): Map[String, Package] =
     compiledDocs(args)
 

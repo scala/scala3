@@ -26,7 +26,7 @@ import _root_.java.util.{ Map => JMap }
  *    2. Create an AST that is serializable
  *    3. Serialize to JS object
  */
-class DottyDocCompiler extends Compiler {
+class DocCompiler extends Compiler {
   override def phases: List[List[Phase]] = List(
     List(new DocFrontEnd),
     List(new DocImplicitsPhase),
@@ -36,11 +36,6 @@ class DottyDocCompiler extends Compiler {
                                 new LinkImplicitlyAddedTypes,
                                 new SortMembers))
   )
-
-  override def newRun(implicit ctx: Context): Run = {
-    reset()
-    new DocRun(this)(rootContext)
-  }
 }
 
 class DocFrontEnd extends FrontEnd {
@@ -48,26 +43,7 @@ class DocFrontEnd extends FrontEnd {
     unit.isJava
 }
 
-class DocRun(comp: Compiler)(implicit ctx: Context) extends Run(comp)(ctx) {
-  def fromDirectory(f: String): List[String] = {
-    val file = new PlainFile(f)
-
-    if (!file.isDirectory && f.endsWith(".scala")) List(f)
-    else if (!file.isDirectory) Nil
-    else file.iterator.flatMap {
-      case x if x.isDirectory => fromDirectory(x.canonicalPath)
-      case x => List(x.canonicalPath)
-    }.toList
-  }
-
-  /** If DocRecursive is set, then try to find all scala files! */
-  override def compile(fileNames: List[String]): Unit = super.compile(
-    if (ctx.settings.DocRecursive.value) fileNames flatMap fromDirectory
-    else fileNames
-  )
-}
-
-abstract class DottyDocDriver extends Driver {
+abstract class DocDriver extends Driver {
   import scala.collection.JavaConverters._
 
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
@@ -81,7 +57,7 @@ abstract class DottyDocDriver extends Driver {
     (fileNames, ctx)
   }
 
-  override def newCompiler(implicit ctx: Context): Compiler = new DottyDocCompiler
+  override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler
 
 
   def compiledDocs(args: Array[String]): collection.Map[String, Package] = {
