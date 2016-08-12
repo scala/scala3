@@ -1,6 +1,5 @@
 object unboundWildcard {
 
-  // TODO: move this to tests/neg once it doesn't crash the compiler anymore
   val wildcardVal: _ = 0  // error: unbound wildcard type
 
   val annotated: _ @unchecked = 0  // error: unbound wildcard type

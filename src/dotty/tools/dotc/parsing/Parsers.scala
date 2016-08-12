@@ -648,12 +648,17 @@ object Parsers {
     }
 
 /* ------------- TYPES ------------------------------------------------------ */
-    /** Same as [[typ]], but emits a syntax error if it returns a wildcard.
+    /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
+     *  returns a tree for type `Any` instead.
      */
     def toplevelTyp(): Tree = {
       val t = typ()
-      for (wildcardPos <- findWildcardType(t)) syntaxError("unbound wildcard type", wildcardPos)
-      t
+      findWildcardType(t) match {
+        case Some(wildcardPos) =>
+          syntaxError("unbound wildcard type", wildcardPos)
+          scalaAny
+        case None => t
+      }
     }
 
     /** Type        ::=  FunArgTypes `=>' Type
