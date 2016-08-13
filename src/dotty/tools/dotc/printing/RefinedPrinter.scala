@@ -554,7 +554,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ =>
       }
     }
-    super.toText(sym)
+    if (sym.is(ModuleClass))
+      kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
+    else
+      super.toText(sym)
   }
 
   override def kindString(sym: Symbol) = {
