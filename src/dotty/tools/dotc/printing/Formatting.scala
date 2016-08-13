@@ -58,11 +58,11 @@ object Formatting {
     }
   }
 
-  /** The d string interpolator works like the i string interpolator, but marks nonsensical errors
+  /** The `em` string interpolator works like the `i` string interpolator, but marks nonsensical errors
    *  using `<nonsensical>...</nonsensical>` tags.
    *  Note: Instead of these tags, it would be nicer to return a data structure containing the message string
    *  and a boolean indicating whether the message is sensical, but then we cannot use string operations
-   *  like concatenation, stripMargin etc on the values returned by d"...", and in the current error
+   *  like concatenation, stripMargin etc on the values returned by em"...", and in the current error
    *  message composition methods, this is crucial.
    */
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
@@ -85,8 +85,15 @@ object Formatting {
 
     override def default(key: String) = Nil
 
-    def record(str: String, entry: Recorded): String = {
-      var alts = apply(str).dropWhile(entry ne _)
+    def record(str: String, entry: Recorded)(implicit ctx: Context): String = {
+      def followAlias(e1: Recorded): Recorded = e1 match {
+        case e1: Symbol if e1.isAliasType =>
+          val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
+          if (underlying.name == e1.name) underlying else e1
+        case _ => e1
+      }
+      lazy val dealiased = followAlias(entry)
+      var alts = apply(str).dropWhile(alt => dealiased ne followAlias(alt))
       if (alts.isEmpty) {
         alts = entry :: apply(str)
         update(str, alts)
@@ -135,13 +142,6 @@ object Formatting {
         case param: PolyParam =>
           s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
         case sym: Symbol =>
-          val ownerStr =
-            if (!sym.exists) ""
-            else {
-              var owner = sym.effectiveOwner
-              if (owner.isLocalDummy) i" locally defined in ${owner.owner}"
-              else i" in $owner"
-            }
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
       }
     }
