@@ -53,6 +53,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     nameString(if (sym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
   }
 
+  override def fullNameString(sym: Symbol): String =
+    if (isOmittablePrefix(sym.maybeOwner)) nameString(sym)
+    else super.fullNameString(sym)
+
   override protected def fullNameOwner(sym: Symbol) = {
     val owner = super.fullNameOwner(sym)
     if (owner is ModuleClass) owner.sourceModule else owner
