@@ -54,7 +54,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def fullNameString(sym: Symbol): String =
-    if (isOmittablePrefix(sym.maybeOwner)) nameString(sym)
+    if (isEmptyPrefix(sym.maybeOwner)) nameString(sym)
     else super.fullNameString(sym)
 
   override protected def fullNameOwner(sym: Symbol) = {
