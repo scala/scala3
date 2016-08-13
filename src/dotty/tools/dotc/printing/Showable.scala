@@ -21,11 +21,7 @@ trait Showable extends Any {
   def fallbackToText(printer: Printer): Text = toString
 
   /** The string representation of this showable element. */
-  def show(implicit ctx: Context): String =
-    try toText(ctx.printer).show
-    catch {
-      case NonFatal(ex) => s"[cannot display due to $ex, raw string = $toString]"
-    }
+  def show(implicit ctx: Context): String = toText(ctx.printer).show
 
   /** The summarized string representation of this showable element.
    *  Recursion depth is limited to some smallish value. Default is

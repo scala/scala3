@@ -28,7 +28,7 @@ object Formatting {
       case arg: Showable =>
         try arg.show(ctx.addMode(Mode.FutureDefsOK))
         catch {
-          case NonFatal(ex) => s"(missing due to $ex)"
+          case NonFatal(ex) => s"[cannot display due to $ex, raw string = $toString]"
         }
       case _ => arg.toString
     }
