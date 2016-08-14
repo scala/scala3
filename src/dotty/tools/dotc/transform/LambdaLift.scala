@@ -364,13 +364,15 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           if (lOwner is Package)  {
             val encClass = local.enclosingClass
             val topClass = local.topLevelClass
-              // member of a static object
-            if (encClass.isStatic && encClass.isProperlyContainedIn(topClass)) {
-               // though the second condition seems weird, it's not true for symbols which are defined in some
-               // weird combinations of super calls.
-              (encClass, EmptyFlags)
-            } else if (encClass.is(ModuleClass, butNot = Package) && encClass.isStatic) // needed to not cause deadlocks in classloader. see t5375.scala
-              (encClass, EmptyFlags)
+            val preferEncClass =
+              encClass.isStatic &&
+                // non-static classes can capture owners, so should be avoided
+              (encClass.isProperlyContainedIn(topClass) ||
+                // can be false for symbols which are defined in some weird combination of supercalls.
+               encClass.is(ModuleClass, butNot = Package)
+                // needed to not cause deadlocks in classloader. see t5375.scala
+              )
+            if (preferEncClass) (encClass, EmptyFlags)
             else (topClass, JavaStatic)
           }
           else (lOwner, EmptyFlags)

@@ -77,8 +77,9 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
           if qual.tpe.derivesFrom(defn.FunctionClass(0)) && isPureExpr(qual) =>
             qual
           case _ =>
+            val inSuper = if (ctx.mode.is(Mode.InSuperCall)) InSuperCall else EmptyFlags
             val meth = ctx.newSymbol(
-                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
+                ctx.owner, nme.ANON_FUN, Synthetic | Method | inSuper, MethodType(Nil, Nil, argType))
             Closure(meth, _ => arg.changeOwner(ctx.owner, meth))
         }
         ref(defn.dummyApply).appliedToType(argType).appliedTo(argFun)

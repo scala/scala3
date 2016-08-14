@@ -698,13 +698,14 @@ class Namer { typer: Typer =>
       // the parent types are elaborated.
       index(constr)
       symbolOfTree(constr).ensureCompleted()
+      
+      index(rest)(inClassContext(selfInfo))
 
       val tparamAccessors = decls.filter(_ is TypeParamAccessor).toList
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_, tparamAccessors)))
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
       typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
 
-      index(rest)(inClassContext(selfInfo))
       tempInfo.finalize(denot, parentRefs)
 
       Checking.checkWellFormed(cls)

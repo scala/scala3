@@ -203,12 +203,12 @@ trait TypeAssigner {
       TryDynamicCallType
     } else {
       if (!site.isErroneous) {
+        def notAMember = d"${if (name.isTypeName) "type" else "value"} $name is not a member of $site"
         ctx.error(
           if (name == nme.CONSTRUCTOR) d"$site does not have a constructor"
-          else if (site.derivesFrom(defn.DynamicClass)) {
-            d"$name is not a member of $site\n" +
-            "possible cause: maybe a wrong Dynamic method signature?"
-          } else d"$name is not a member of $site", pos)
+          else if (site.derivesFrom(defn.DynamicClass)) s"$notAMember\npossible cause: maybe a wrong Dynamic method signature?"
+          else notAMember,
+          pos)
       }
       ErrorType
     }

@@ -1,0 +1,134 @@
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+List(2)
+List(1, 3)
+List(3)
+List(true, true, true)
+List(1, -1, 2, -2, 3, -3)
+List(1, 2, 3, 1, 2, 3)
+List(1, 2, 3)
+List(1, 2, 3)
+List(1, 2, 3, a)
+List((1,true), (2,true), (3,true))
+List(3, 2, 1)
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+ArrayBuffer(2)
+ArrayBuffer(1, 3)
+ArrayBuffer(3)
+ArrayBuffer(true, true, true)
+ArrayBuffer(1, -1, 2, -2, 3, -3)
+ArrayBuffer(1, 2, 3, 1, 2, 3)
+ArrayBuffer(1, 2, 3)
+List(1, 2, 3)
+ArrayBuffer(1, 2, 3, a)
+ArrayBuffer((1,true), (2,true), (3,true))
+ArrayBuffer(3, 2, 1)
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+ListBuffer(2)
+ListBuffer(1, 3)
+ListBuffer(3)
+ListBuffer(true, true, true)
+ListBuffer(1, -1, 2, -2, 3, -3)
+ListBuffer(1, 2, 3, 1, 2, 3)
+ListBuffer(1, 2, 3)
+List(1, 2, 3)
+ListBuffer(1, 2, 3, a)
+ListBuffer((1,true), (2,true), (3,true))
+ListBuffer(3, 2, 1)
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+List(2)
+List(1, 3)
+List(3)
+List(true, true, true)
+List(1, -1, 2, -2, 3, -3)
+List(1, 2, 3, 1, 2, 3)
+List(1, 2, 3)
+List(1, 2, 3)
+List(1, 2, 3, a)
+List((1,true), (2,true), (3,true))
+-------
+abc
+abc
+1
+a
+List(a, b, c)
+b
+ac
+c
+List(98, 99, 100)
+ABC
+a,ab,bc,c
+abcabc
+abcxy
+abc
+List(a, b, c)
+List(a, b, c, xyz)
+List((a,98), (b,99), (c,100))
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+ArrayView(2)
+ArrayView(1, 3)
+ArrayView(3)
+ArrayView(true, true, true)
+ArrayView(1, -1, 2, -2, 3, -3)
+ArrayView(1, 2, 3, 1, 2, 3)
+ArrayView(1, 2, 3)
+List(1, 2, 3)
+ArrayView(1, 2, 3, a)
+ArrayView((1,true), (2,true), (3,true))
+ArrayView(3, 2, 1)
+-------
+123
+123
+1
+1
+List(1, 2, 3)
+LazyList(?)
+List(2)
+LazyList(?)
+List(1, 3)
+3 #:: Empty
+List(3)
+LazyList(?)
+List(true, true, true)
+LazyList(?)
+List(1, -1, 2, -2, 3, -3)
+LazyList(?)
+List(1, 2, 3, 1, 2, 3)
+LazyList(?)
+List(1, 2, 3)
+List(1, 2, 3)
+List(1, 2, 3)
+LazyList(?)
+List(1, 2, 3, a)
+LazyList(?)
+List((1,true), (2,true), (3,true))
+LazyList(?)
+List(3, 2, 1)
+LazyList(?)
+matched: 1, 2, LazyList(?)
+1 #:: 2 #:: LazyList(?)
+List(1, 2, 3)

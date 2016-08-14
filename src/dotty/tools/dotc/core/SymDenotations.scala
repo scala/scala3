@@ -844,6 +844,10 @@ object SymDenotations {
       enclClass(symbol, false)
     }
 
+    /** A class that in source code would be lexically enclosing */
+    final def lexicallyEnclosingClass(implicit ctx: Context): Symbol =
+      if (!exists || isClass) symbol else owner.lexicallyEnclosingClass
+
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
       is(PrivateOrFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
