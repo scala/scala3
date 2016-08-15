@@ -3,7 +3,7 @@ package dottydoc
 
 import scala.io.Source
 
-object WhitelistedStandardLib extends dottydoc.api.java.Dottydoc {
+object WhitelistedStandardLib extends dottydoc.api.scala.Dottydoc {
   import scala.collection.JavaConverters._
 
   val files: List[String] = {
@@ -16,7 +16,6 @@ object WhitelistedStandardLib extends dottydoc.api.java.Dottydoc {
       .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
       .filter(_.nonEmpty)
       .filterNot(_.endsWith("package.scala"))
-      .map("." + _)
       .toList
   }
 
@@ -42,6 +41,6 @@ object WhitelistedStandardLib extends dottydoc.api.java.Dottydoc {
       "-language:Scala2" +: "-Ydoc-output" +: "../build/dottydoc" +: files.toArray
 
     val index = createIndex(compilerArgs)
-    buildDocs("../build/dottydoc", "../../dottydoc-client/resources/template.html", resources.asJava, index)
+    buildDocs("../build/dottydoc", "../../dottydoc-client/resources/template.html", resources, index)
   }
 }

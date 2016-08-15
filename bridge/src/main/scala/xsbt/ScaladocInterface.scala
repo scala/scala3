@@ -5,6 +5,7 @@ package xsbt
 
 import xsbti.Logger
 import dotty.tools.dottydoc.api.scala.Dottydoc
+import java.net.URL
 
 class ScaladocInterface {
   def run(args: Array[String], log: Logger, delegate: xsbti.Reporter) =
@@ -14,8 +15,8 @@ class ScaladocInterface {
 class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) extends Dottydoc {
   def run(): Unit = getOutputFolder(args).map { outputFolder =>
     val index     = createIndex(args)
-    val template  = getTemplate(args)
     val resources = getResources(args)
+    val template  = getTemplate(resources)
 
     template.fold(writeJson(index, outputFolder)) { tpl =>
       buildDocs(outputFolder, tpl, resources, index)
@@ -44,15 +45,28 @@ class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter)
   private def getOutputFolder(args: Array[String]): Option[String] =
     args sliding(2) find { case Array(x, _) => x == "-d" } map (_.tail.head.trim)
 
-  private def getTemplate(args: Array[String]): Option[String] =
-    getStringSetting("-template:")
+  private def getTemplate(resources: List[URL]): Option[URL] =
+    resources.find(_.getFile.endsWith("template.html"))
 
-  private def getResources(args: Array[String]): List[String] =
-    getStringSetting("-resources:").map { path =>
-      val dir = new java.io.File(path)
-      if (dir.exists && dir.isDirectory)
-        dir.listFiles.filter(_.isFile).map(_.getAbsolutePath).toList
-      else Nil
-    }.getOrElse(Nil)
+  private def getResources(args: Array[String]): List[URL] = {
+    val cp = args sliding (2) find { case Array(x, _) => x == "-classpath" } map (_.tail.head.trim) getOrElse ""
 
+    cp.split(":").find(_.endsWith("dottydoc-client.jar")).map { resourceJar =>
+      import java.util.jar.JarFile
+      val jarEntries = (new JarFile(resourceJar)).entries
+      var entries: List[URL] = Nil
+
+      while (jarEntries.hasMoreElements) {
+        val entry = jarEntries.nextElement()
+
+        if (!entry.isDirectory()) {
+          val path = s"jar:file:$resourceJar!/${entry.getName}"
+          val url  = new URL(path)
+          entries = url :: entries
+        }
+      }
+
+      entries
+    } getOrElse (Nil)
+  }
 }

@@ -5,6 +5,7 @@ import dotty.tools.dottydoc.model.Package;
 import dotty.tools.dottydoc.util.OutputWriter;
 import java.util.Map;
 import java.util.List;
+import java.net.URL;
 
 /** FIXME: document me! */
 public class Dottydoc extends DocDriver {
@@ -18,11 +19,11 @@ public class Dottydoc extends DocDriver {
 
     public void buildDocs(
         String outputDir,
-        String templatePath,
-        List<String> resources,
+        URL template,
+        List<URL> resources,
         Map<String, Package> index
     ) {
-        new OutputWriter().writeJava(index, templatePath, outputDir, resources);
+        new OutputWriter().writeJava(index, outputDir, template, resources);
     }
 
     public void writeJson(Map<String, Package> index, String outputDir) {

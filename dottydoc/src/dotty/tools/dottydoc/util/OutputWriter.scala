@@ -8,11 +8,13 @@ import _root_.java.io.{
   PrintWriter => JPrintWriter,
   FileReader => JFileReader,
   BufferedInputStream,
-  FileInputStream,
+  InputStream,
+  InputStreamReader,
   FileOutputStream,
   BufferedOutputStream,
   FileNotFoundException
 }
+import _root_.java.net.URL
 import _root_.java.util.{ Map => JMap, List => JList }
 import model.{ Entity, Package }
 import model.json._
@@ -21,16 +23,16 @@ import scala.collection.JavaConverters._
 
 class OutputWriter {
 
-  def writeJava(packs: JMap[String, Package], templatePath: String, outPath: String, resources: JList[String]): Unit = {
-    write(packs.asScala, templatePath, outPath, resources.asScala)
+  def writeJava(packs: JMap[String, Package], outPath: String, template: URL, resources: JList[URL]): Unit = {
+    write(packs.asScala, outPath, template, resources.asScala)
   }
 
-  def write(packs: collection.Map[String, Package], templatePath: String, outPath: String, resources: Iterable[String]): Unit = {
+  def write(packs: collection.Map[String, Package], outPath: String, template: URL, resources: Traversable[URL]): Unit = {
     // Write all packages to `outPath`
     for (pack <- packs.values) {
       println(s"""Writing '${pack.path.mkString(".")}'""")
       writeFile(
-        expandTemplate(templatePath, pack, outPath),
+        expandTemplate(template, pack, outPath),
         outPath + pack.path.mkString("/", "/", "/"),
         "index.html")
 
@@ -41,7 +43,7 @@ class OutputWriter {
       } {
         println(s"""Writing '${child.path.mkString(".")}'""")
         writeFile(
-          expandTemplate(templatePath, child, outPath),
+          expandTemplate(template, child, outPath),
           outPath + child.path.dropRight(1).mkString("/", "/", "/"),
           child.path.last + ".html")
       }
@@ -55,7 +57,10 @@ class OutputWriter {
     // Write resources to outPath
     println("Copying CSS/JS resources to destination...")
     assert(resources.nonEmpty)
-    resources.map(s => copy(new JFile(s), outPath))
+
+    // TODO: splitting the URL by '/' and taking the last means that we don't
+    // allow folders among the resources
+    resources.foreach(url => copy(url.openStream, outPath, url.getFile.split("/").last))
 
     println("Done writing static material, building js-app")
   }
@@ -66,14 +71,15 @@ class OutputWriter {
   def writeJson(index: collection.Map[String, Package], outputDir: String): Unit =
     writeFile(index.json, outputDir + "/", "index.json")
 
-  def expandTemplate(templatePath: String, entity: Entity, outPath: String): String = try {
+  def expandTemplate(template: URL, entity: Entity, outPath: String): String = try {
     import model.json._
     import model.java._
 
+    val inputStream = template.openStream
     val writer = new _root_.java.io.StringWriter()
     val mf     = new DefaultMustacheFactory()
 
-    def toRoot = "../" * (entity.path.length - 1)
+    def toRoot = "../" * (entity.path.length - { if (entity.isInstanceOf[Package]) 0 else 1 })
 
     val entityWithExtras = entity.asJava(Map(
       "assets" -> s"${toRoot}docassets",
@@ -81,14 +87,15 @@ class OutputWriter {
       "currentEntity" -> entity.json
     ))
 
-    mf.compile(new JFileReader(templatePath), "template")
+    mf.compile(new InputStreamReader(inputStream), "template")
       .execute(writer, entityWithExtras)
 
+    inputStream.close()
     writer.flush()
     writer.toString
   } catch {
     case fnf: FileNotFoundException =>
-      dottydoc.println(s"""Couldn't find the template: "$templatePath"...exiting""")
+      dottydoc.println(s"""Couldn't find the template: "${template.getFile}"...exiting""")
       System.exit(1); ""
   }
 
@@ -107,11 +114,12 @@ class OutputWriter {
     printToFile(new JFile(path + file))(printer => bytes.foreach(printer.print))
   }
 
-  def copy(src: JFile, path: String): Unit = {
-    val reader = new BufferedInputStream(new FileInputStream(src))
+  def copy(src: InputStream, path: String, name: String): Unit = {
+    val reader = new BufferedInputStream(src)
     try {
-      val bytes  = Stream.continually(reader.read).takeWhile(-1 != _).map(_.toByte)
-      writeFile(bytes.toArray, path + "/docassets/", src.getName)
+      val bytes = Stream.continually(reader.read).takeWhile(-1 != _).map(_.toByte)
+      writeFile(bytes.toArray, path + "/docassets/", name)
+      src.close()
     } finally reader.close()
   }
 }
