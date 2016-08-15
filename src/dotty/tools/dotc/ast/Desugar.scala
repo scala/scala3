@@ -1007,8 +1007,8 @@ object desugar {
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name)) buf += ((named, t))
     def collect(tree: Tree): Unit = tree match {
-      case Bind(nme.WILDCARD, _) =>
-        collect(tree)
+      case Bind(nme.WILDCARD, tree1) =>
+        collect(tree1)
       case tree @ Bind(_, Typed(tree1, tpt)) if !mayBeTypePat(tpt) =>
         add(tree, tpt)
         collect(tree1)
