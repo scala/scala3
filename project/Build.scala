@@ -93,6 +93,8 @@ object DottyBuild extends Build {
       //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
+      resolvers += Resolver.sonatypeRepo("snapshots"),
+
       // get libraries onboard
       partestDeps := Seq(scalaCompiler,
                          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
