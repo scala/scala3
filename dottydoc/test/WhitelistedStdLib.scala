@@ -5,8 +5,21 @@ import org.junit.Test
 import org.junit.Assert._
 
 class TestWhitelistedCollections extends DottyTest {
+  val files: List[String] = {
+    val whitelist = "./test/dotc/scala-collections.whitelist"
+
+    scala.io.Source.fromFile(whitelist, "UTF8")
+      .getLines()
+      .map(_.trim) // allow identation
+      .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+      .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+      .filter(_.nonEmpty)
+      .filterNot(_.endsWith("package.scala"))
+      .toList
+  }
+
   @Test def arrayHasDocumentation =
-    checkFiles(WhitelistedStandardLib.files) { doc =>
+    checkFiles(files) { doc =>
       val array = doc
         .packages("scala")
         .children.find(_.path.mkString(".") == "scala.Array")
@@ -16,7 +29,7 @@ class TestWhitelistedCollections extends DottyTest {
     }
 
   @Test def traitImmutableHasDocumentation =
-    checkFiles(WhitelistedStandardLib.files) { doc =>
+    checkFiles(files) { doc =>
       val imm = doc
         .packages("scala")
         .children.find(_.path.mkString(".") == "scala.Immutable")
