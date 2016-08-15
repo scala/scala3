@@ -70,6 +70,9 @@ abstract class DocDriver extends Driver {
   def compiledDocsJava(args: Array[String]): JMap[String, Package] =
     compiledDocs(args).asJava
 
-  def indexToJson(index: JMap[String, Package]): String =
-    index.asScala.json
+  def indexToJson(index: collection.Map[String, Package]): String =
+    index.json
+
+  def indexToJsonJava(index: JMap[String, Package]): String =
+    indexToJson(index.asScala)
 }

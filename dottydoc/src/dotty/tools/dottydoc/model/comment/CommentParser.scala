@@ -347,7 +347,7 @@ trait CommentParser extends util.MemberLookup {
 
     /** listStyle ::= '-' spc | '1.' spc | 'I.' spc | 'i.' spc | 'A.' spc | 'a.' spc
       * Characters used to build lists and their constructors */
-    protected val listStyles = Map[String, (Seq[Block] => Block)]( // TODO Should this be defined at some list companion?
+    protected val listStyles = Map[String, (Seq[Block] => Block)](
       "- "  -> ( UnorderedList(_) ),
       "1. " -> ( OrderedList(_,"decimal") ),
       "I. " -> ( OrderedList(_,"upperRoman") ),
