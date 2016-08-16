@@ -1132,8 +1132,43 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
     val TypeDef(name, impl @ Template(constr, parents, self, _)) = cdef
     val superCtx = ctx.superCallContext
+
+    /** If `ref` is an implicitly parameterized trait, pass an implicit argument list.
+     *  Otherwise, if `ref` is a parameterized trait, error.
+     *  Note: Traits and classes currently always have at least an empty parameter list ()
+     *        before the implicit parameters (this is inserted if not given in source).
+     *        We skip this parameter list when deciding whether a trait is parameterless or not.
+     *  @param ref   The tree referring to the (parent) trait
+     *  @param psym  Its type symbol
+     *  @param cinfo The info of its constructor
+     */
+    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo match {
+      case cinfo: PolyType =>
+        maybeCall(ref, psym, cinfo.resultType)
+      case cinfo @ MethodType(Nil, _) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
+        val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
+        typedExpr(untpd.TypedSplice(icall))(superCtx)
+      case cinfo @ MethodType(Nil, _) if !cinfo.resultType.isInstanceOf[MethodType] =>
+        ref
+      case cinfo: MethodType =>
+        if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
+          typr.println(i"constr type: $cinfo")
+          ctx.error(em"parameterized $psym lacks argument list", ref.pos)
+        }
+        ref
+      case _ =>
+        ref
+    }
+
     def typedParent(tree: untpd.Tree): Tree =
-      if (tree.isType) typedType(tree)(superCtx)
+      if (tree.isType) {
+        val result = typedType(tree)(superCtx)
+        val psym = result.tpe.typeSymbol
+        if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
+          maybeCall(result, psym, psym.primaryConstructor.info)
+        else
+          result
+      }
       else {
         val result = typedExpr(tree)(superCtx)
         checkParentCall(result, cls)

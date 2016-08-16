@@ -189,16 +189,17 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       var argNum = 0
       def nextArgument() = initArgs.get(mixin) match {
         case Some(arguments) =>
-          try arguments(argNum) finally argNum += 1
+          val result = arguments(argNum)
+          argNum += 1
+          result
         case None =>
-          val (msg, pos) = impl.parents.find(_.tpe.typeSymbol == mixin) match {
-            case Some(parent) => ("lacks argument list", parent.pos)
-            case None =>
-              ("""is indirectly implemented,
-                 |needs to be implemented directly so that arguments can be passed""".stripMargin,
-               cls.pos)
-          }
-          ctx.error(i"parameterized $mixin $msg", pos)
+          assert(
+              impl.parents.forall(_.tpe.typeSymbol != mixin),
+              i"missing parameters for $mixin from $impl should have been caught in typer")
+          ctx.error(
+              em"""parameterized $mixin is indirectly implemented,
+                  |needs to be implemented directly so that arguments can be passed""",
+              cls.pos)
           EmptyTree
       }
 
