@@ -108,5 +108,5 @@ trait ParserIdioms extends Parsers with Idioms {
 }
 
 object Test extends ParserIdioms with App {
-  println(expr("12".toList))
+  assert(expr("12".toList).toString == "Success(List(),Plus(1,2))")
 }
