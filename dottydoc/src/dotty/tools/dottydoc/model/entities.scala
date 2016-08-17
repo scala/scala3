@@ -57,6 +57,10 @@ trait ParamList {
   def isImplicit: Boolean
 }
 
+trait ImplicitlyAddedEntity extends Entity {
+  def implicitlyAddedFrom: Option[Reference]
+}
+
 trait Package extends Entity with Members {
   val kind = "package"
 
@@ -79,15 +83,13 @@ trait Object extends Entity with Modifiers with SuperTypes with Members {
   override val kind = "object"
 }
 
-trait Def extends Entity with Modifiers with TypeParams with ReturnValue {
+trait Def extends Entity with Modifiers with TypeParams with ReturnValue with ImplicitlyAddedEntity {
   val kind = "def"
   def paramLists: List[ParamList]
-  def implicitlyAddedFrom: Option[Reference]
 }
 
-trait Val extends Entity with Modifiers with ReturnValue {
+trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity {
   val kind = "val"
-  def implicitlyAddedFrom: Option[Reference]
 }
 
 trait Var extends Entity with Modifiers with ReturnValue {
