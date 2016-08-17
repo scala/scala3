@@ -669,9 +669,9 @@ object SymDenotations {
         val cls = owner.enclosingSubClass
         if (!cls.exists)
           fail(
-            s""" Access to protected $this not permitted because
+            i""" Access to protected $this not permitted because
                | enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
-               | ${owner.showLocated} where target is defined""".stripMargin)
+               | ${owner.showLocated} where target is defined""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
@@ -679,9 +679,9 @@ object SymDenotations {
            || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
-            s""" Access to protected ${symbol.show} not permitted because
+            i""" Access to protected ${symbol.show} not permitted because
                | prefix type ${pre.widen.show} does not conform to
-               | ${cls.showLocated} where the access takes place""".stripMargin)
+               | ${cls.showLocated} where the access takes place""")
         else true
       }
 
@@ -1933,10 +1933,10 @@ object SymDenotations {
         else ("", "the signature")
       val name = ctx.fresh.setSetting(ctx.settings.debugNames, true).nameString(denot.name)
       ctx.error(
-        s"""|bad symbolic reference. A signature$location
-            |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
-            |It may be completely missing from the current classpath, or the version on
-            |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
+        i"""bad symbolic reference. A signature$location
+           |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
+           |It may be completely missing from the current classpath, or the version on
+           |the classpath might be incompatible with the version used when compiling $src.""")
       if (ctx.debug) throw new Error()
       initializeToDefaults(denot)
     }

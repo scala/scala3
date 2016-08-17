@@ -217,8 +217,8 @@ object Implicits {
     protected def pt: Type
     protected def argument: tpd.Tree
     protected def qualify(implicit ctx: Context) =
-      if (argument.isEmpty) d"match type $pt"
-      else d"convert from ${argument.tpe} to $pt"
+      if (argument.isEmpty) em"match type $pt"
+      else em"convert from ${argument.tpe} to $pt"
 
     /** An explanation of the cause of the failure as a string */
     def explanation(implicit ctx: Context): String
@@ -227,7 +227,7 @@ object Implicits {
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(alt1: TermRef, alt2: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
-      d"both ${err.refStr(alt1)} and ${err.refStr(alt2)} $qualify"
+      em"both ${err.refStr(alt1)} and ${err.refStr(alt2)} $qualify"
     override def postscript(implicit ctx: Context) =
       "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
       "\n " + explanation
@@ -235,17 +235,17 @@ object Implicits {
 
   class NonMatchingImplicit(ref: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
-      d"${err.refStr(ref)} does not $qualify"
+      em"${err.refStr(ref)} does not $qualify"
   }
 
   class ShadowedImplicit(ref: TermRef, shadowing: Type, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
-      d"${err.refStr(ref)} does $qualify but is shadowed by ${err.refStr(shadowing)}"
+      em"${err.refStr(ref)} does $qualify but is shadowed by ${err.refStr(shadowing)}"
   }
 
   class DivergingImplicit(ref: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
-      d"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
+      em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
   class FailedImplicit(failures: List[ExplainedSearchFailure], val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
@@ -253,7 +253,9 @@ object Implicits {
       if (failures.isEmpty) s"  No implicit candidates were found that $qualify"
       else "  " + (failures map (_.explanation) mkString "\n  ")
     override def postscript(implicit ctx: Context): String =
-      "\nImplicit search failure summary:\n" + explanation
+      i"""
+         |Implicit search failure summary:
+         |$explanation"""
   }
 }
 
@@ -456,7 +458,7 @@ trait Implicits { self: Typer =>
         if (!arg.isEmpty) arg
         else {
           var msgFn = (where: String) =>
-            d"no implicit argument of type $formal found for $where" + failure.postscript
+            em"no implicit argument of type $formal found for $where" + failure.postscript
           for {
             notFound <- formal.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
             Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
@@ -568,7 +570,7 @@ trait Implicits { self: Typer =>
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
-        d"found: $argument: ${argument.tpe}, expected: $pt")
+        em"found: $argument: ${argument.tpe}, expected: $pt")
 
     /** The expected type for the searched implicit */
     lazy val fullProto = implicitProto(pt, identity)

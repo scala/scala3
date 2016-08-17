@@ -510,6 +510,7 @@ object Symbols {
     def toText(printer: Printer): Text = printer.toText(this)
 
     def showLocated(implicit ctx: Context): String = ctx.locatedText(this).show
+    def showExtendedLocation(implicit ctx: Context): String = ctx.extendedLocationText(this).show
     def showDcl(implicit ctx: Context): String = ctx.dclText(this).show
     def showKind(implicit ctx: Context): String = ctx.kindString(this)
     def showName(implicit ctx: Context): String = ctx.nameString(this)

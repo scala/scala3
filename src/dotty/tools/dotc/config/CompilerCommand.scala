@@ -13,7 +13,7 @@ object CompilerCommand extends DotClass {
   /** The name of the command */
   def cmdName = "scalac"
 
-  private def explainAdvanced = "\n" + """
+  private def explainAdvanced = """
     |-- Notes on option parsing --
     |Boolean settings are always false unless set.
     |Where multiple values are accepted, they should be comma-separated.
@@ -26,7 +26,7 @@ object CompilerCommand extends DotClass {
     |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.
-  """.stripMargin.trim + "\n"
+  """
 
   def shortUsage = s"Usage: $cmdName <options> <source files>"
 

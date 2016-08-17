@@ -53,6 +53,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     nameString(if (sym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
   }
 
+  override def fullNameString(sym: Symbol): String =
+    if (isEmptyPrefix(sym.maybeOwner)) nameString(sym)
+    else super.fullNameString(sym)
+
   override protected def fullNameOwner(sym: Symbol) = {
     val owner = super.fullNameOwner(sym)
     if (owner is ModuleClass) owner.sourceModule else owner
@@ -532,8 +536,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
-  override protected def polyParamName(name: TypeName): TypeName =
-    name.unexpandedName
+  override protected def polyParamNameString(name: TypeName): String =
+    name.unexpandedName.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 
@@ -550,7 +554,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ =>
       }
     }
-    super.toText(sym)
+    if (sym.is(ModuleClass))
+      kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
+    else
+      super.toText(sym)
   }
 
   override def kindString(sym: Symbol) = {

@@ -188,22 +188,22 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeLambda =>
         typeLambdaText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
       case tp: PolyType =>
-        def paramText(name: TypeName, bounds: TypeBounds) =
-          toText(polyParamName(name)) ~ polyHash(tp) ~ toText(bounds)
+        def paramText(name: TypeName, bounds: TypeBounds): Text =
+          polyParamNameString(name) ~ polyHash(tp) ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~
             Text((tp.paramNames, tp.paramBounds).zipped map paramText, ", ") ~
           "]" ~ toText(tp.resultType)
         }
-      case PolyParam(pt, n) =>
-        toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
+      case tp: PolyParam =>
+        polyParamNameString(tp) ~ polyHash(tp.binder)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case HKApply(tycon, args) =>
         toTextLocal(tycon) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
+          toTextLocal(tp.instanceOpt) ~ "^" // debug for now, so that we can see where the TypeVars are.
         else {
           val constr = ctx.typerState.constraint
           val bounds =
@@ -219,7 +219,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }.close
 
-  protected def polyParamName(name: TypeName): TypeName = name
+  protected def polyParamNameString(name: TypeName): String = name.toString
+
+  protected def polyParamNameString(param: PolyParam): String = polyParamNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
    *  the decoded original name.
@@ -416,12 +418,32 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def locationText(sym: Symbol): Text =
     if (!sym.exists) ""
     else {
-    val owns = sym.effectiveOwner
-    if (owns.isClass && !isEmptyPrefix(owns)) " in " ~ toText(owns) else Text()
-  }
+      val ownr = sym.effectiveOwner
+      if (ownr.isClass && !isEmptyPrefix(ownr)) " in " ~ toText(ownr) else Text()
+    }
 
   def locatedText(sym: Symbol): Text =
     (toText(sym) ~ locationText(sym)).close
+
+  def extendedLocationText(sym: Symbol): Text =
+    if (!sym.exists) ""
+    else {
+      def recur(ownr: Symbol, innerLocation: String): Text = {
+        def nextOuter(innerKind: String): Text =
+          recur(ownr.effectiveOwner,
+            if (!innerLocation.isEmpty) innerLocation
+            else s" in an anonymous $innerKind")
+        def showLocation(ownr: Symbol, where: String): Text =
+          innerLocation ~ " " ~ where ~ " " ~ toText(ownr)
+        if (ownr.isAnonymousClass) nextOuter("class")
+        else if (ownr.isAnonymousFunction) nextOuter("function")
+        else if (isEmptyPrefix(ownr)) ""
+        else if (ownr.isLocalDummy) showLocation(ownr.owner, "locally defined in")
+        else if (ownr.isTerm && !ownr.is(Module | Method)) showLocation(ownr, "in the initalizer of")
+        else showLocation(ownr, "in")
+      }
+      recur(sym.owner, "")
+    }
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 

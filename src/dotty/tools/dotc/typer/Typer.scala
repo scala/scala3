@@ -134,8 +134,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *  or  defined in <symbol>
        */
       def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
-        if (prec == wildImport || prec == namedImport) d"imported$qualifier by ${whereFound.importInfo}"
-        else d"defined$qualifier in ${whereFound.owner}"
+        if (prec == wildImport || prec == namedImport) ex"imported$qualifier by ${whereFound.importInfo}"
+        else ex"defined$qualifier in ${whereFound.owner}"
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -152,9 +152,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else {
           if (!previous.isError && !found.isError) {
             error(
-              d"""reference to $name is ambiguous;
-                 |it is both ${bindingString(newPrec, ctx, "")}
-                 |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin,
+              ex"""reference to $name is ambiguous;
+                  |it is both ${bindingString(newPrec, ctx, "")}
+                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
               tree.pos)
           }
           previous
@@ -167,7 +167,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && found.exists && (found != other))
-            error(d"reference to $name is ambiguous; it is imported twice in ${ctx.tree}",
+            error(em"reference to $name is ambiguous; it is imported twice in ${ctx.tree}",
                   tree.pos)
           found
         }
@@ -275,7 +275,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
       else {
-        error(d"not found: $kind$name", tree.pos)
+        error(em"not found: $kind$name", tree.pos)
         ErrorType
       }
 
@@ -304,10 +304,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       tree match {
         case tree @ Select(qual, _) if !qual.tpe.isStable =>
           val alt = typedSelect(tree, pt, Typed(qual, TypeTree(SkolemType(qual.tpe.widen))))
-          typr.println(d"healed type: ${tree.tpe} --> $alt")
+          typr.println(i"healed type: ${tree.tpe} --> $alt")
           alt.asInstanceOf[T]
         case _ =>
-          ctx.error(d"unsafe instantiation of type ${tree.tpe}", tree.pos)
+          ctx.error(ex"unsafe instantiation of type ${tree.tpe}", tree.pos)
           tree
       }
     else tree
@@ -342,7 +342,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       convertToSelectFromType(tree.qualifier, tree.name) match {
         case Some(sftt) => typedSelectFromTypeTree(sftt, pt)
-        case _ => ctx.error(d"Could not convert $tree to a SelectFromTypeTree"); EmptyTree
+        case _ => ctx.error(em"Could not convert $tree to a SelectFromTypeTree"); EmptyTree
       }
     }
 
@@ -569,7 +569,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
     } else
       errorTree(tree,
-          d"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
+          em"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
@@ -723,7 +723,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             pt match {
               case SAMType(meth) if !defn.isFunctionType(pt) && mt <:< meth.info =>
                 if (!isFullyDefined(pt, ForceDegree.all))
-                  ctx.error(d"result type of closure is an underspecified SAM type $pt", tree.pos)
+                  ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
               case _ =>
                 if (!mt.isDependent) EmptyTree
@@ -802,7 +802,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         super.transform(tree.withType(elimWildcardSym(tree.tpe))) match {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
+            else ctx.error(em"duplicate pattern variable: ${b.name}", b.pos)
             b.symbol.info = elimWildcardSym(b.symbol.info)
             b
           case t => t
@@ -854,7 +854,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           val proto = returnProto(owner, cx.scope)
           (from, proto)
         }
-        else (EmptyTree, errorType(d"$owner has return statement; needs result type", tree.pos))
+        else (EmptyTree, errorType(em"$owner has return statement; needs result type", tree.pos))
       }
       else enclMethInfo(cx.outer)
     }
@@ -973,7 +973,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
     val tparams = tpt1.tpe.typeParams
     if (tparams.isEmpty) {
-      ctx.error(d"${tpt1.tpe} does not take type parameters", tree.pos)
+      ctx.error(ex"${tpt1.tpe} does not take type parameters", tree.pos)
       tpt1
     }
     else {
@@ -982,7 +982,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (hasNamedArg(args)) typedNamedArgs(args)
         else {
           if (args.length != tparams.length) {
-            ctx.error(d"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}", tree.pos)
+            wrongNumberOfArgs(tpt1.tpe, "type ", tparams.length, tree.pos)
             args = args.take(tparams.length)
           }
           def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
@@ -1207,7 +1207,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     case _ =>
       // add synthetic class type
       val first :: _ = ensureFirstIsClass(parents.tpes)
-      TypeTree(checkFeasible(first, pos, d"\n in inferred parent $first")).withPos(pos) :: parents
+      TypeTree(checkFeasible(first, pos, em"\n in inferred parent $first")).withPos(pos) :: parents
   }
 
   /** If this is a real class, make sure its first parent is a
@@ -1239,7 +1239,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val packageContext =
       if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
       else {
-        ctx.error(d"$pkg is already defined, cannot be a package", tree.pos)
+        ctx.error(em"$pkg is already defined, cannot be a package", tree.pos)
         ctx
       }
     val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
@@ -1522,8 +1522,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def missingArgs = errorTree(tree,
-      d"""missing arguments for $methodStr
-         |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
+      em"""missing arguments for $methodStr
+          |follow this method with `_' if you want to treat it as a partially applied function""")
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
@@ -1537,8 +1537,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case Nil =>
           def noMatches =
             errorTree(tree,
-              d"""none of the ${err.overloadedAltsStr(altDenots)}
-                 |match $expectedStr""".stripMargin)
+              em"""none of the ${err.overloadedAltsStr(altDenots)}
+                  |match $expectedStr""")
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
           pt match {
             case pt: FunProto =>
@@ -1553,8 +1553,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
           def all = if (remainingDenots.length == 2) "both" else "all"
           errorTree(tree,
-            d"""Ambiguous overload. The ${err.overloadedAltsStr(remainingDenots)}
-               |$all match $expectedStr""".stripMargin)
+            em"""Ambiguous overload. The ${err.overloadedAltsStr(remainingDenots)}
+                |$all match $expectedStr""")
       }
     }
 
@@ -1581,7 +1581,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case Apply(_, _) => " more"
           case _ => ""
         }
-        (_, _) => errorTree(tree, d"$methodStr does not take$more parameters")
+        (_, _) => errorTree(tree, em"$methodStr does not take$more parameters")
       }
     }
 
@@ -1630,7 +1630,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
             def implicitArgError(msg: String => String) =
-              errors += (() => msg(d"parameter $pname of $methodStr"))
+              errors += (() => msg(em"parameter $pname of $methodStr"))
             inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
           }
           if (errors.nonEmpty) {

@@ -9,8 +9,8 @@ import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Applications._, Implicits._, Flags._
 import util.Positions._
 import reporting.Diagnostic
-import printing.Showable
-import printing.Disambiguation.disambiguated
+import printing.{Showable, RefinedPrinter}
+import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement
 
 object ErrorReporting {
@@ -38,7 +38,7 @@ object ErrorReporting {
             val treeSym = ctx.symOfContextTree(tree)
             if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
               val result = if (cycleSym is Method) " result" else ""
-              d"overloaded or recursive $cycleSym needs$result type"
+              em"overloaded or recursive $cycleSym needs$result type"
             }
             else errorMsg(msg, cx.outer)
           case _ =>
@@ -47,6 +47,9 @@ object ErrorReporting {
       } else msg
     errorMsg(ex.show, ctx)
   }
+
+  def wrongNumberOfArgs(fntpe: Type, kind: String, expected: Int, pos: Position)(implicit ctx: Context) =
+    errorType(em"wrong number of ${kind}arguments for $fntpe, expected: $expected", pos)
 
   class Errors(implicit ctx: Context) {
 
@@ -59,15 +62,15 @@ object ErrorReporting {
 
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: PolyProto =>
-        d"type arguments [${tp.targs}%, %] and ${expectedTypeStr(tp.resultType)}"
+        em"type arguments [${tp.targs}%, %] and ${expectedTypeStr(tp.resultType)}"
       case tp: FunProto =>
         val result = tp.resultType match {
           case _: WildcardType | _: IgnoredProto => ""
-          case tp => d" and expected result type $tp"
+          case tp => em" and expected result type $tp"
         }
-        d"arguments (${tp.typedArgs.tpes}%, %)$result"
+        em"arguments (${tp.typedArgs.tpes}%, %)$result"
       case _ =>
-        d"expected type $tp"
+        em"expected type $tp"
     }
 
     def anonymousTypeMemberStr(tpe: Type) = {
@@ -76,12 +79,12 @@ object ErrorReporting {
           case _: PolyType | _: MethodType => "method"
           case _ => "value of type"
         }
-        d"$kind $tpe"
+        em"$kind $tpe"
     }
 
     def overloadedAltsStr(alts: List[SingleDenotation]) =
-      d"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
-      d" ${alts map (_.info)}%\n %"
+      em"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
+      em" ${alts map (_.info)}%\n %"
 
     def denotStr(denot: Denotation): String =
       if (denot.isOverloaded) overloadedAltsStr(denot.alternatives)
@@ -97,9 +100,8 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree =
       errorTree(tree, typeMismatchStr(normalize(tree.tpe, pt), pt) + implicitFailure.postscript)
-    }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type) =
@@ -108,14 +110,31 @@ object ErrorReporting {
       else
         ""
 
-    def typeMismatchStr(found: Type, expected: Type) = disambiguated { implicit ctx =>
-      def infoStr = found match { // DEBUG
-          case tp: TypeRef => s"with info ${tp.info} / ${tp.prefix.toString} / ${tp.prefix.dealias.toString}"
-          case _ => ""
+    def typeMismatchStr(found: Type, expected: Type) = {
+      // replace constrained polyparams and their typevars by their bounds where possible
+      object reported extends TypeMap {
+        def setVariance(v: Int) = variance = v
+        val constraint = ctx.typerState.constraint
+        def apply(tp: Type): Type = tp match {
+          case tp: PolyParam =>
+            constraint.entry(tp) match {
+              case bounds: TypeBounds =>
+                if (variance < 0) apply(constraint.fullUpperBound(tp))
+                else if (variance > 0) apply(constraint.fullLowerBound(tp))
+                else tp
+              case NoType => tp
+              case instType => apply(instType)
+            }
+          case tp: TypeVar => apply(tp.stripTypeVar)
+          case _ => mapOver(tp)
         }
-      d"""type mismatch:
-           | found   : $found
-           | required: $expected""".stripMargin + whyNoMatchStr(found, expected)
+      }
+      val found1 = reported(found)
+      reported.setVariance(-1)
+      val expected1 = reported(expected)
+      ex"""type mismatch:
+          | found   : $found1
+          | required: $expected1""" + whyNoMatchStr(found, expected)
     }
 
     /** Format `raw` implicitNotFound argument, replacing all
@@ -125,35 +144,11 @@ object ErrorReporting {
     def implicitNotFoundString(raw: String, paramNames: List[String], args: List[Type]): String = {
       def translate(name: String): Option[String] = {
         val idx = paramNames.indexOf(name)
-        if (idx >= 0) Some(quoteReplacement(args(idx).show)) else None
+        if (idx >= 0) Some(quoteReplacement(ex"${args(idx)}")) else None
       }
       """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
     }
   }
 
   def err(implicit ctx: Context): Errors = new Errors
-
-  /** The d string interpolator works like the i string interpolator, but marks nonsensical errors
-   *  using `<nonsensical>...</nonsensical>` tags.
-   *  Note: Instead of these tags, it would be nicer to return a data structure containing the message string
-   *  and a boolean indicating whether the message is sensical, but then we cannot use string operations
-   *  like concatenation, stripMargin etc on the values returned by d"...", and in the current error
-   *  message composition methods, this is crucial.
-   */
-  implicit class DiagnosticString(val sc: StringContext) extends AnyVal {
-    def d(args: Any*)(implicit ctx: Context): String = {
-      def isSensical(arg: Any): Boolean = arg match {
-        case l: Seq[_] => l.forall(isSensical(_))
-        case tpe: Type if tpe.isErroneous => false
-        case NoType => false
-        case sym: Symbol if sym.isCompleted =>
-          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info != NoType
-        case _ => true
-      }
-
-      val s = new StringInterpolators(sc).i(args : _*)
-      if (args.forall(isSensical(_))) s
-      else Diagnostic.nonSensicalStartTag + s + Diagnostic.nonSensicalEndTag
-    }
-  }
 }

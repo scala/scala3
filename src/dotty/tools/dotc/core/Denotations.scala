@@ -975,7 +975,7 @@ object Denotations {
          |  $sym2: ${sym2.info};
          |they are both defined in ${sym1.owner} but have matching signatures
          |  ${denot1.info} and
-         |  ${denot2.info}$fromWhere""".stripMargin,
+         |  ${denot2.info}$fromWhere""",
       denot2.info, denot2.info)
   }
 

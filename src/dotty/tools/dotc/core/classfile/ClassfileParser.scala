@@ -56,26 +56,21 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        sm"""class file $classfile is broken, reading aborted with ${e.getClass}
-            |${Option(e.getMessage).getOrElse("")}""")
+        i"""class file $classfile is broken, reading aborted with ${e.getClass}
+           |${Option(e.getMessage).getOrElse("")}""")
   }
 
   private def parseHeader(): Unit = {
     val magic = in.nextInt
     if (magic != JAVA_MAGIC)
-      throw new IOException("class file '" + in.file + "' "
-                            + "has wrong magic number 0x" + toHexString(magic)
-                            + ", should be 0x" + toHexString(JAVA_MAGIC))
+      throw new IOException(s"class file '${in.file}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
     val minorVersion = in.nextChar.toInt
     val majorVersion = in.nextChar.toInt
     if ((majorVersion < JAVA_MAJOR_VERSION) ||
         ((majorVersion == JAVA_MAJOR_VERSION) &&
          (minorVersion < JAVA_MINOR_VERSION)))
-      throw new IOException("class file '" + in.file + "' "
-                            + "has unknown version "
-                            + majorVersion + "." + minorVersion
-                            + ", should be at least "
-                            + JAVA_MAJOR_VERSION + "." + JAVA_MINOR_VERSION)
+      throw new IOException(
+        s"class file '${in.file}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
   }
 
   /** Return the class symbol of the given name. */
@@ -817,12 +812,12 @@ class ClassfileParser(
               getMember(owner, innerName.toTypeName)
             }
             assert(result ne NoSymbol,
-              sm"""failure to resolve inner class:
-                  |externalName = $externalName,
-                  |outerName = $outerName,
-                  |innerName = $innerName
-                  |owner.fullName = ${owner.showFullName}
-                  |while parsing ${classfile}""")
+              i"""failure to resolve inner class:
+                 |externalName = $externalName,
+                 |outerName = $outerName,
+                 |innerName = $innerName
+                 |owner.fullName = ${owner.showFullName}
+                 |while parsing ${classfile}""")
             result
 
           case None =>

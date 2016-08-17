@@ -177,8 +177,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
-      sm"""error reading Scala signature of $classRoot from $source:
-          |error occurred at position $readIndex: $msg""")
+      i"""error reading Scala signature of $classRoot from $source:
+         |error occurred at position $readIndex: $msg""")
     if (ctx.debug || true) original.getOrElse(ex).printStackTrace() // temporarily enable printing of original failure signature to debug failing builds
     throw ex
   }

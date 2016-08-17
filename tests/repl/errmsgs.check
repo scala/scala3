@@ -1,0 +1,74 @@
+scala> class Inv[T](x: T)
+defined class Inv
+scala> val x: List[String] = List(1)
+<console>:4: error: type mismatch:
+ found   : Int(1)
+ required: String
+val x: List[String] = List(1)
+                           ^
+scala> val y: List[List[String]] = List(List(1))
+<console>:4: error: type mismatch:
+ found   : Int(1)
+ required: String
+val y: List[List[String]] = List(List(1))
+                                      ^
+scala> val z: (List[String], List[Int]) = (List(1), List("a"))
+<console>:4: error: type mismatch:
+ found   : Int(1)
+ required: String
+val z: (List[String], List[Int]) = (List(1), List("a"))
+                                         ^
+<console>:4: error: type mismatch:
+ found   : String("a")
+ required: Int
+val z: (List[String], List[Int]) = (List(1), List("a"))
+                                                  ^
+scala> val a: Inv[String] = new Inv(new Inv(1))
+<console>:5: error: type mismatch:
+ found   : Inv[T]
+ required: String
+
+where  T  is a type variable with constraint >: Int(1)
+
+val a: Inv[String] = new Inv(new Inv(1))
+                                 ^
+scala> val b: Inv[String] = new Inv(1)
+<console>:5: error: type mismatch:
+ found   : Int(1)
+ required: String
+val b: Inv[String] = new Inv(1)
+                             ^
+scala> abstract class C {
+           type T
+           val x: T
+           val s: Unit = {
+             type T = String
+             var y: T = x
+             locally {
+               def f() = {
+                 type T = Int
+                 val z: T = y
+               }
+               f()
+             }
+           }
+         }
+<console>:9: error: type mismatch:
+ found   : C.this.T(C.this.x)
+ required: T'
+
+where  T   is a type in class C
+       T'  is a type in the initalizer of value s which is an alias of String
+
+      var y: T = x
+                 ^
+<console>:13: error: type mismatch:
+ found   : T(y)
+ required: T'
+
+where  T   is a type in the initalizer of value s which is an alias of String
+       T'  is a type in method f which is an alias of Int
+
+          val z: T = y
+                     ^
+scala> :quit

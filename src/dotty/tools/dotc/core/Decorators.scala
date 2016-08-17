@@ -8,6 +8,7 @@ import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.TreeTransforms._
 import scala.language.implicitConversions
+import printing.Formatting._
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -150,72 +151,23 @@ object Decorators {
   implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition =
     ctx.source.atPos(pos)
 
-  /** The i"..." string interpolator adds two features to the s interpolator:
-   *  1) On all Showables, `show` is called instead of `toString`
-   *  2) Lists can be formatted using the desired separator between two `%` signs,
-   *     eg `i"myList = (${myList}%, %)"`
-   */
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
 
-    def i(args: Any*)(implicit ctx: Context): String = {
+    /** General purpose string formatting */
+    def i(args: Any*)(implicit ctx: Context): String =
+      new StringFormatter(sc).assemble(args)
 
-      def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
-        case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
-          val (rawsep, rest) = suffix.tail.span(_ != '%')
-          val sep = StringContext.treatEscapes(rawsep)
-          if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
-          else (arg, suffix)
-        case _ =>
-          (treatSingleArg(arg), suffix)
-      }
-
-      def treatSingleArg(arg: Any) : Any =
-        try
-          arg match {
-            case arg: Showable => arg.show(ctx.addMode(Mode.FutureDefsOK))
-            case _ => arg
-          }
-        catch {
-          case ex: Exception => throw ex // s"(missing due to $ex)"
-        }
-
-      val prefix :: suffixes = sc.parts.toList
-      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
-    }
-
-    /** Lifted from scala.reflect.internal.util
-     *  A safe combination of [[scala.collection.immutable.StringLike#stripMargin]]
-     *  and [[scala.StringContext#raw]].
-     *
-     *  The margin of each line is defined by whitespace leading up to a '|' character.
-     *  This margin is stripped '''before''' the arguments are interpolated into to string.
-     *
-     *  String escape sequences are '''not''' processed; this interpolater is designed to
-     *  be used with triple quoted Strings.
-     *
-     *  {{{
-     *  scala> val foo = "f|o|o"
-     *  foo: String = f|o|o
-     *  scala> sm"""|${foo}
-     *             |"""
-     *  res0: String =
-     *  "f|o|o
-     *  "
-     *  }}}
+    /** Formatting for error messages: Like `i` but suppress follow-on
+     *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    final def sm(args: Any*): String = {
-      def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
-      def stripTrailingPart(s: String) = {
-        val (pre, post) = s.span(c => !isLineBreak(c))
-        pre + post.stripMargin
-      }
-      val stripped: List[String] = sc.parts.toList match {
-        case head :: tail => head.stripMargin :: (tail map stripTrailingPart)
-        case Nil => Nil
-      }
-      new StringContext(stripped: _*).raw(args: _*)
-    }
+    def em(args: Any*)(implicit ctx: Context): String =
+      new ErrorMessageFormatter(sc).assemble(args)
+
+    /** Formatting with added explanations: Like `em`, but add explanations to
+     *  give more info about type variables and to disambiguate where needed.
+     */
+    def ex(args: Any*)(implicit ctx: Context): String =
+      explained2(implicit ctx => em(args: _*))
   }
 }
 

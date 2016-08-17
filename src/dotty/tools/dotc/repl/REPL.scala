@@ -50,7 +50,7 @@ class REPL extends Driver {
 object REPL {
   class Config {
     val prompt             = "scala> "
-    val continuationPrompt = "     | "
+    val continuationPrompt = "       "
     val version            = ".next (pre-alpha)"
 
     def context(ctx: Context): Context = ctx

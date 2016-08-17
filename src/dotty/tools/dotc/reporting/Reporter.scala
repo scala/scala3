@@ -79,11 +79,11 @@ trait Reporting { this: Context =>
       if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
       else {
         reporter.reportNewFeatureUseSite(featureUseSite)
-        s"""|
-            |This can be achieved by adding the import clause 'import $fqname'
-            |or by setting the compiler option -language:$feature.
-            |See the Scala docs for value $fqname for a discussion
-            |why the feature $req be explicitly enabled.""".stripMargin
+        s"""
+           |This can be achieved by adding the import clause 'import $fqname'
+           |or by setting the compiler option -language:$feature.
+           |See the Scala docs for value $fqname for a discussion
+           |why the feature $req be explicitly enabled."""
       }
     }
 
