@@ -25,8 +25,8 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
-    var typeParams: List[String] = Nil,
-    var superTypes: List[MaterializableLink] = Nil,
+    typeParams: List[String] = Nil,
+    superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Class with Impl
 
@@ -35,8 +35,8 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
-    var typeParams: List[String] = Nil,
-    var superTypes: List[MaterializableLink] = Nil,
+    typeParams: List[String] = Nil,
+    superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends CaseClass with Impl
 
@@ -45,8 +45,8 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
-    var typeParams: List[String] = Nil,
-    var superTypes: List[MaterializableLink] = Nil,
+    typeParams: List[String] = Nil,
+    superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Trait with Impl
 
@@ -55,7 +55,7 @@ object internal {
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
-    var superTypes: List[MaterializableLink] = Nil,
+    superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Object with Impl
 
@@ -63,9 +63,9 @@ object internal {
     name: String,
     modifiers: List[String],
     path: List[String],
-    var returnValue: Reference,
-    var typeParams: List[String] = Nil,
-    var paramLists: List[ParamList] = Nil,
+    returnValue: Reference,
+    typeParams: List[String] = Nil,
+    paramLists: List[ParamList] = Nil,
     var comment: Option[Comment] = None,
     implicitlyAddedFrom: Option[Reference] = None
   ) extends Def with Impl
@@ -74,7 +74,7 @@ object internal {
     name: String,
     modifiers: List[String],
     path: List[String],
-    var returnValue: Reference,
+    returnValue: Reference,
     var comment: Option[Comment] = None,
     implicitlyAddedFrom: Option[Reference] = None
   ) extends Val with Impl

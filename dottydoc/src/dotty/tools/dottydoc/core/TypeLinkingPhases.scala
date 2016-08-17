@@ -38,6 +38,32 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   }
 }
 
+class LinkSuperTypes extends DocMiniPhase with TypeLinker {
+  def linkSuperTypes(ent: Entity with SuperTypes)(implicit ctx: Context): List[MaterializableLink] =
+    ent.superTypes.collect {
+      case UnsetLink(title, query) =>
+        val packages = ctx.docbase.packages[Package].toMap
+        val entityLink = makeEntityLink(ent, packages, Text(title), NoPosition, query).link
+        handleEntityLink(title, entityLink, ent)
+    }
+
+  override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
+    cls.copy(superTypes = linkSuperTypes(cls))
+  }
+
+  override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
+    cc.copy(superTypes = linkSuperTypes(cc))
+  }
+
+  override def transformTrait(implicit ctx: Context) = { case trt: TraitImpl =>
+    trt.copy(superTypes = linkSuperTypes(trt))
+  }
+
+  override def transformObject(implicit ctx: Context) = { case obj: ObjectImpl =>
+    obj.copy(superTypes = linkSuperTypes(obj))
+  }
+}
+
 class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = {
     case df: DefImpl if df.implicitlyAddedFrom.isDefined =>
@@ -53,6 +79,12 @@ class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
 }
 
 trait TypeLinker extends MemberLookup {
+  def handleEntityLink(title: String, lt: LinkTo, ent: Entity): MaterializableLink = lt match {
+    case Tooltip(str)           => NoLink(title, str)
+    case LinkToExternal(_, url) => MaterializedLink(title, url)
+    case LinkToEntity(target)   => MaterializedLink(title, util.traversing.relativePath(ent, target))
+  }
+
   def linkReference(ent: Entity, ref: Reference, packs: Map[String, Package]): Reference = {
     def linkRef(ref: Reference) = linkReference(ent, ref, packs)
 
@@ -61,13 +93,7 @@ trait TypeLinker extends MemberLookup {
         val inlineToHtml = InlineToHtml(ent)
         val title = t
 
-        def handleEntityLink(title: String, lt: LinkTo): MaterializableLink = lt match {
-          case Tooltip(str)           => NoLink(title, str)
-          case LinkToExternal(_, url) => MaterializedLink(title, url)
-          case LinkToEntity(target)   => MaterializedLink(title, util.traversing.relativePath(ent, target))
-        }
-
-        val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link)
+        val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link, ent)
         val tpTargets = tps.map(linkReference(ent, _, packs))
         ref.copy(tpeLink = target, paramLinks = tpTargets)
       case ref @ OrTypeReference(left, right) =>

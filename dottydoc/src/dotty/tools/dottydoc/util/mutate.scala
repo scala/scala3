@@ -18,18 +18,6 @@ object setters {
     case x: ValImpl       => x.comment = to
   }
 
-
-  def setReturnValue(ent: Entity, ref: Reference) = ent match {
-    case x: DefImpl => x.returnValue = ref
-    case x: ValImpl => x.returnValue = ref
-    case _          => ()
-  }
-
-  def setParamLists(ent: Entity, refs: List[ParamList]) = ent match {
-    case x: DefImpl => x.paramLists = refs
-    case _          => ()
-  }
-
   def setParent(ent: Entity, to: Entity): Unit = ent match {
     case e: ClassImpl =>
       e.parent = to

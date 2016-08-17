@@ -34,6 +34,7 @@ class DocCompiler extends Compiler {
     List(DocMiniTransformations(new LinkReturnTypes,
                                 new LinkParamListTypes,
                                 new LinkImplicitlyAddedTypes,
+                                new LinkSuperTypes,
                                 new SortMembers))
   )
 }
@@ -58,7 +59,6 @@ abstract class DocDriver extends Driver {
   }
 
   override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler
-
 
   def compiledDocs(args: Array[String]): collection.Map[String, Package] = {
     val (fileNames, ctx) = setup(args, initCtx.fresh)
