@@ -580,7 +580,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    */
   def compareHkApply2(tp1: Type, tp2: HKApply, tycon2: Type, args2: List[Type]): Boolean = {
     val tparams = tycon2.typeParams
-    assert(tparams.nonEmpty)
+    if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
     /** True if `tp1` and `tp2` have compatible type constructors and their
      *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).

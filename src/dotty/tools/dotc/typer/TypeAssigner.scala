@@ -94,12 +94,14 @@ trait TypeAssigner {
             case _ =>
               mapOver(tp)
           }
+        case tp @ HKApply(tycon, args) if toAvoid(tycon) =>
+          apply(tp.superType)
         case tp @ AppliedType(tycon, args) if toAvoid(tycon) =>
           val base = apply(tycon)
           var args = tp.baseArgInfos(base.typeSymbol)
           if (base.typeParams.length != args.length)
             args = base.typeParams.map(_.paramBounds)
-          base.appliedTo(args)
+          apply(base.appliedTo(args))
         case tp @ RefinedType(parent, name, rinfo) if variance > 0 =>
           val parent1 = apply(tp.parent)
           val refinedInfo1 = apply(rinfo)

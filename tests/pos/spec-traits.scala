@@ -25,12 +25,12 @@ class Bug3307 {
 class Bug3301 {
   def t[A]: T[A] = sys.error("stub")
 
-  () => {
+  {() => {
     type X = Int
 
     def foo[X] = t[X]
     ()
-  }
+  }}
 }
 // issue 3299
 object Failure {

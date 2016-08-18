@@ -142,7 +142,11 @@ object EtaExpansion {
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos))
     if (mt.paramTypes.nonEmpty && mt.paramTypes.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
-    val body = Apply(lifted, ids)
+    var body: Tree = Apply(lifted, ids)
+    mt.resultType match {
+      case rt: MethodType if !rt.isImplicit => body = PostfixOp(body, nme.WILDCARD)
+      case _ =>
+    }
     val fn = untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map untpd.TypedSplice, fn) else fn
   }
