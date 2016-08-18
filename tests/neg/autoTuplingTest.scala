@@ -1,5 +1,3 @@
-import dotty.language.noAutoTupling
-
 object autoTuplingNeg2 {
 
   val x = Some(1, 2) // error: too many arguments for method apply: (x: A)Some[A]
