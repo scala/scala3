@@ -6,19 +6,17 @@ import references._
 import dotty.tools.dotc
 import dotc.core.Types._
 import dotc.core.TypeApplications._
-import dotc.core.Flags
 import dotc.core.Contexts.Context
-import dotc.core.Symbols.Symbol
+import dotc.core.Symbols.{ Symbol, ClassSymbol }
 import dotty.tools.dotc.core.SymDenotations._
 import dotty.tools.dotc.core.Names.TypeName
-import dotc.core.{ Flags => DottyFlags }
 import dotc.ast.Trees._
 
 
 object factories {
   import dotty.tools.dotc.ast.tpd._
   import dotty.tools.dottydoc.model.internal.ParamListImpl
-  import DottyFlags._
+  import dotc.core.Flags._
 
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
@@ -118,11 +116,11 @@ object factories {
         pt.paramNames.map(_.show.split("\\$").last)
       case ClassInfo(_, _, _, decls, _) =>
         decls.iterator
-          .filter(_.flags is Flags.TypeParam)
+          .filter(_.flags is TypeParam)
           .map { tp =>
             val prefix =
-              if (tp.flags is Flags.Covariant) "+"
-              else if (tp.flags is Flags.Contravariant) "-"
+              if (tp.flags is Covariant) "+"
+              else if (tp.flags is Contravariant) "-"
               else ""
             prefix + tp.name.show.split("\\$").last
           }
@@ -130,6 +128,15 @@ object factories {
       case _ =>
         Nil
     }
+
+  def constructors(sym: Symbol)(implicit ctx: Context): List[List[ParamList]] = sym match {
+    case sym: ClassSymbol =>
+      paramLists(sym.primaryConstructor.info) :: Nil
+    case _ => Nil
+  }
+
+  def traitParameters(sym: Symbol)(implicit ctx: Context): List[ParamList] =
+    constructors(sym).head
 
   def paramLists(tpe: Type)(implicit ctx: Context): List[ParamList] = tpe match {
     case pt: PolyType =>

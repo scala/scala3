@@ -88,15 +88,16 @@ object transform {
 
           newPackage
         }
-        case c: Class => transformEntity(c, _.classTransformation) { newClass =>
+        case c: Class => transformEntity(c, _.classTransformation) { cls =>
           ClassImpl(
-            newClass.name,
-            newClass.members.map(traverse),
-            newClass.modifiers,
-            newClass.path,
-            newClass.typeParams,
-            newClass.superTypes,
-            newClass.comment
+            cls.name,
+            cls.members.map(traverse),
+            cls.modifiers,
+            cls.path,
+            cls.typeParams,
+            cls.constructors,
+            cls.superTypes,
+            cls.comment
           )
         }
         case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
@@ -106,6 +107,7 @@ object transform {
             cc.modifiers,
             cc.path,
             cc.typeParams,
+            cc.constructors,
             cc.superTypes,
             cc.comment
           )
@@ -117,6 +119,7 @@ object transform {
             trt.modifiers,
             trt.path,
             trt.typeParams,
+            trt.traitParams,
             trt.superTypes,
             trt.comment
           )

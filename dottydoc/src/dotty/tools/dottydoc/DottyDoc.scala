@@ -35,6 +35,7 @@ class DocCompiler extends Compiler {
                                 new LinkParamListTypes,
                                 new LinkImplicitlyAddedTypes,
                                 new LinkSuperTypes,
+                                new AlternateConstructors,
                                 new SortMembers))
   )
 }

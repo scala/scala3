@@ -19,9 +19,9 @@ class TestWhitelistedCollections extends DottyTest {
   }
 
   @Test def arrayHasDocumentation =
-    checkFiles(files) { doc =>
-      val array = doc
-        .packages("scala")
+    checkFiles(files) { packages =>
+      val array =
+        packages("scala")
         .children.find(_.path.mkString(".") == "scala.Array")
         .get
 
@@ -29,9 +29,9 @@ class TestWhitelistedCollections extends DottyTest {
     }
 
   @Test def traitImmutableHasDocumentation =
-    checkFiles(files) { doc =>
-      val imm = doc
-        .packages("scala")
+    checkFiles(files) { packages =>
+      val imm =
+        packages("scala")
         .children.find(_.path.mkString(".") == "scala.Immutable")
         .get
 

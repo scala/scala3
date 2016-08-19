@@ -97,7 +97,7 @@ class DocASTPhase extends Phase {
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), superTypes(t))
+        TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
@@ -110,7 +110,7 @@ class DocASTPhase extends Phase {
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), superTypes(c), None) match {
+        (name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }

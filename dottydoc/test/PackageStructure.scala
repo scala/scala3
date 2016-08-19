@@ -10,7 +10,7 @@ import model.internal._
 class PackageStructure extends DottyTest {
   @Test def multipleCompilationUnits = {
     val source1 = new SourceFile(
-      "<test>",
+      "TraitA.scala",
       """
       |package scala
       |
@@ -19,7 +19,7 @@ class PackageStructure extends DottyTest {
     )
 
     val source2 = new SourceFile(
-      "<test>",
+      "TraitB.scala",
       """
       |package scala
       |
@@ -27,8 +27,8 @@ class PackageStructure extends DottyTest {
       """.stripMargin
     )
 
-    checkSources(source1 :: source2 :: Nil) { doc =>
-      doc.packages("scala") match {
+    checkSources(source1 :: source2 :: Nil) { packages =>
+      packages("scala") match {
         case PackageImpl(_, List(tA, tB), _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
@@ -42,7 +42,7 @@ class PackageStructure extends DottyTest {
 
   @Test def multiplePackages = {
     val source1 = new SourceFile(
-      "<test>",
+      "TraitA.scala",
       """
       |package scala
       |package collection
@@ -51,7 +51,7 @@ class PackageStructure extends DottyTest {
       """.stripMargin)
 
     val source2 = new SourceFile(
-      "<test>",
+      "TraitB.scala",
       """
       |package scala
       |package collection
@@ -59,8 +59,8 @@ class PackageStructure extends DottyTest {
       |trait B
       """.stripMargin)
 
-    checkSources(source1 :: source2 :: Nil) { doc =>
-      doc.packages("scala") match {
+    checkSources(source1 :: source2 :: Nil) { packages =>
+      packages("scala") match {
         case PackageImpl(
           "scala",
           List(PackageImpl("scala.collection", List(tA, tB), _, _)),
@@ -72,10 +72,10 @@ class PackageStructure extends DottyTest {
           )
 
         case _ =>
-          fail(s"""Incorrect package structure for 'scala' package: ${doc.packages("scala")}""")
+          fail(s"""Incorrect package structure for 'scala' package: ${packages("scala")}""")
       }
 
-      doc.packages("scala.collection") match {
+      packages("scala.collection") match {
         case PackageImpl("scala.collection", List(tA, tB), _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",

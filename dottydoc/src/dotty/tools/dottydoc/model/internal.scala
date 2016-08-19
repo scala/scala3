@@ -26,6 +26,7 @@ object internal {
     modifiers: List[String],
     path: List[String],
     typeParams: List[String] = Nil,
+    constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Class with Impl
@@ -36,6 +37,7 @@ object internal {
     modifiers: List[String],
     path: List[String],
     typeParams: List[String] = Nil,
+    constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends CaseClass with Impl
@@ -46,6 +48,7 @@ object internal {
     modifiers: List[String],
     path: List[String],
     typeParams: List[String] = Nil,
+    traitParams: List[ParamList] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Trait with Impl

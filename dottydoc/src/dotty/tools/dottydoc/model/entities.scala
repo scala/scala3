@@ -57,6 +57,10 @@ trait ParamList {
   def isImplicit: Boolean
 }
 
+trait Constructors {
+  def constructors: List[List[ParamList]]
+}
+
 trait ImplicitlyAddedEntity extends Entity {
   def implicitlyAddedFrom: Option[Reference]
 }
@@ -67,15 +71,16 @@ trait Package extends Entity with Members {
   def children: List[Entity with Members]
 }
 
-trait Class extends Entity with Modifiers with TypeParams with SuperTypes with Members {
+trait Class extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members {
   val kind = "class"
 }
 
-trait CaseClass extends Entity with Modifiers with TypeParams with SuperTypes with Members {
+trait CaseClass extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members {
   override val kind = "case class"
 }
 
 trait Trait extends Entity with Modifiers with TypeParams with SuperTypes with Members {
+  def traitParams: List[ParamList]
   override val kind = "trait"
 }
 

@@ -34,7 +34,7 @@ object json {
     def json: String = {
       val (secondTitle, secondValue, kind) = link match {
         case ul: UnsetLink => ("query".json, ul.query.json, "UnsetLink".json)
-        case ml: MaterializedLink => ("target", ml.target.json, "MaterializedLink".json)
+        case ml: MaterializedLink => ("target".json, ml.target.json, "MaterializedLink".json)
         case nl: NoLink => ("target".json, nl.target.json, "NoLink".json)
       }
       s"""{"title":${link.title.json},$secondTitle:${secondValue},"kind":$kind}"""
@@ -70,11 +70,11 @@ object json {
     case ent: Package =>
       s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"package"}"""
     case ent: Class =>
-      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"class"}"""
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"constructors":${ent.constructors.map(xs => xs.map(_.json).mkString("[",",","]")).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"class"}"""
     case ent: CaseClass =>
-      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"case class"}"""
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"constructors":${ent.constructors.map(xs => xs.map(_.json).mkString("[",",","]")).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"case class"}"""
     case ent: Trait =>
-      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"trait"}"""
+      s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"typeParams":${ent.typeParams.map(_.json).mkString("[",",","]")},"traitParams":${ent.traitParams.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"trait"}"""
     case ent: Object =>
       s"""{"name":${ent.name.json},"members":${ent.members.map(_.json).mkString("[",",","]")},"modifiers":${ent.modifiers.map(_.json).mkString("[",",","]")},"path":${ent.path.map(_.json).mkString("[",",","]")},"superTypes":${ent.superTypes.map(_.json).mkString("[",",","]")},${ent.comment.map(_.json).fold("")(cmt => s""""comment":$cmt,""")}"kind":"object"}"""
     case ent: Def =>
