@@ -182,9 +182,25 @@ object ProtoTypes {
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType, typer)
 
-    def argsAreTyped: Boolean = myTypedArgs.size == args.length
+    /** Forget the types of any arguments that have been typed producing a constraint in a
+     *  typer state that is not yet committed into the one of the current context `ctx`.
+     *  This is necessary to avoid "orphan" PolyParams that are referred to from
+     *  type variables in the typed arguments, but that are not registered in the
+     *  current constraint. A test case is pos/t1756.scala.
+     *  @return True if all arguments have types (in particular, no types were forgotten).
+     */
+    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
+      evalState foreachBinding { (arg, tstate) =>
+        if (tstate.uncommittedAncestor.constraint ne ctx.typerState.constraint) {
+          typr.println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstate.constraint}, current = ${ctx.typerState.constraint}")
+          myTypedArg = myTypedArg.remove(arg)
+          evalState = evalState.remove(arg)
+        }
+      }
+      myTypedArg.size == args.length
+    }
 
-    private def typedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
         targ = typerFn(arg)
@@ -196,29 +212,12 @@ object ProtoTypes {
       targ
     }
 
-    /** Forget the types of any arguments that have been typed producing a constraint in a
-     *  typer state that is not yet committed into the one of the current context `ctx`.
-     *  This is necessary to avoid "orphan" PolyParams that are referred to from
-     *  type variables in the typed arguments, but that are not registered in the
-     *  current constraint. A test case is pos/t1756.scala.
-     *  @return True if all arguments have types (in particular, no types were forgotten).
-     */
-    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
-      evalState foreachBinding { (arg, tstate) =>
-        if (tstate.uncommittedAncestor.constraint ne ctx.typerState.constraint) {
-          println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstate.constraint}, current = ${ctx.typerState.constraint}")
-          myTypedArg = myTypedArg.remove(arg)
-          evalState = evalState.remove(arg)
-        }
-      }
-      myTypedArg.size == args.length
-    }
-
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
      */
     def typedArgs: List[Tree] = {
-      if (!argsAreTyped) myTypedArgs = args.mapconserve(typedArg(_, typer.typed(_)))
+      if (myTypedArgs.size != args.length)
+        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_)))
       myTypedArgs
     }
 
@@ -226,7 +225,7 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
-      val targ = typedArg(arg, typer.typedUnadapted(_, formal))
+      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal))
       typer.adapt(targ, formal, arg)
     }
 
@@ -262,7 +261,6 @@ object ProtoTypes {
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(args, resultType, typer)(ctx) {
     override def typedArgs = args
-    override def argsAreTyped = true
   }
 
   /** A prototype for implicitly inferred views:

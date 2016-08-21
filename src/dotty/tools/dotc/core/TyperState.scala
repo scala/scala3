@@ -65,13 +65,12 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** Optionally, if this is a mutable typerstate, it's creator state */
   def parent: Option[TyperState] = None
 
-  /** The closest ancestor of this typer state (including possible this typer state itself)
-   *  which is not yet committed.
+  /** The closest ancestor of this typer state (including possibly this typer state itself)
+   *  which is not yet committed, or which does not have a parent.
    */
-  def uncommittedAncestor: TyperState = parent match {
-    case Some(p) if p.isCommitted => p.uncommittedAncestor
-    case _ => this
-  }
+  def uncommittedAncestor: TyperState =
+    if (!isCommitted || !parent.isDefined) this
+    else parent.get.uncommittedAncestor
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
