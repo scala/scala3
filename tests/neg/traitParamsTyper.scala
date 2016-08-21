@@ -2,6 +2,8 @@ trait T(x: Int) {
   def f = x
 }
 
+class C0 extends T // error
+
 class C(x: Int) extends T() // error
 
 trait U extends C with T
