@@ -18,6 +18,11 @@ with expected type A with Poly[A]. And no solution is found.
 To solve this, I added a fallback scheme similar to implicit arguments:
 When an implicit view that adds a method matching given arguments and result
 type fails, try again without the result type.
+
+However, troubles are not yet over. We now get an oprhan poly param C when pickling
+and, if typr printer and -Ylog:front is on, an infinite type of the form
+
+  mu x. Ring[LazyRef(x) & A]
 */
 trait Ring[T <: Ring[T]] {
   def +(that: T): T

@@ -1445,26 +1445,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
     } { (failedTree, failedState) =>
-      val tree1 = tryInsertImplicitOnQualifier(tree, pt)
-      if (tree1 eq tree) fallBack(failedTree, failedState)
-      else adapt(tree1, pt)
-    }
+      tryInsertImplicitOnQualifier(tree, pt) match {
+        case Some(tree1) => adapt(tree1, pt)
+        case none => fallBack(failedTree, failedState)
+      }
+     }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
    *  return `tree` itself.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed)
         tryEither { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
-          if ((qual eq qual1) || ctx.reporter.hasErrors) tree
-          else typedSelect(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt)
-        } { (_, _) => tree
+          if ((qual eq qual1) || ctx.reporter.hasErrors) None
+          else Some(typedSelect(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
+        } { (_, _) => None
         }
-      case _ => tree
+      case _ => None
     }
   }
 

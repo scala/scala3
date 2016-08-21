@@ -1,4 +1,4 @@
-import dotty.language.noAutoTupling
+import language.noAutoTupling
 
 object autoTuplingNeg2 {
 
