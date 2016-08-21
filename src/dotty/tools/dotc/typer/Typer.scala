@@ -1445,11 +1445,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
     } { (failedTree, failedState) =>
-      tryInsertImplicitOnQualifier(tree, pt) match {
-        case Some(tree1) => adapt(tree1, pt)
-        case none => fallBack(failedTree, failedState)
-      }
-     }
+      tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack(failedTree, failedState))
+    }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
@@ -1462,7 +1459,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         tryEither { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
           if ((qual eq qual1) || ctx.reporter.hasErrors) None
-          else Some(typedSelect(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
+          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
         } { (_, _) => None
         }
       case _ => None

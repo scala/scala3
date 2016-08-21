@@ -541,18 +541,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
-    /** Try same application with an implicit inserted around the qualifier of the function
-     *  part. Return an optional value to indicate success.
-     */
-    def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
-      tryInsertImplicitOnQualifier(fun1, proto) flatMap { fun2 =>
-        tryEither { implicit ctx =>
-          Some(typedApply(
-            cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice),
-            pt)): Option[Tree]
-        } { (_, _) => None }
-     }
-
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
       val fun1 = typedExpr(tree.fun, originalProto)
@@ -574,6 +562,32 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
+      /** Type application where arguments come from prototype, and no implicits are inserted */
+      def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =
+        methPart(fun1).tpe match {
+          case funRef: TermRef =>
+            val app =
+              if (proto.allArgTypesAreCurrent())
+                new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+              else
+                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
+            convertNewGenericArray(ConstFold(app.result))
+          case _ =>
+            handleUnexpectedFunType(tree, fun1)
+        }
+
+      /** Try same application with an implicit inserted around the qualifier of the function
+       *  part. Return an optional value to indicate success.
+       */
+      def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
+        tryInsertImplicitOnQualifier(fun1, proto) flatMap { fun2 =>
+          tryEither {
+            implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
+          } {
+            (_, _) => None
+          }
+        }
+
       fun1.tpe match {
         case ErrorType => tree.withType(ErrorType)
         case TryDynamicCallType =>
@@ -583,23 +597,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             case _ =>
               handleUnexpectedFunType(tree, fun1)
           }
-        case _ => methPart(fun1).tpe match {
-          case funRef: TermRef =>
-            tryEither { implicit ctx =>
-              val app =
-                if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
-              val result = app.result
-              convertNewGenericArray(ConstFold(result))
-            } { (failedVal, failedState) =>
+        case _ =>
+          tryEither {
+            implicit ctx => simpleApply(fun1, proto)
+          } {
+            (failedVal, failedState) =>
               def fail = { failedState.commit(); failedVal }
               tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
                 if (proto eq originalProto) fail
                 else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
-             }
-          case _ =>
-            handleUnexpectedFunType(tree, fun1)
-        }
+          }
       }
     }
 
@@ -611,7 +618,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *     { val xs = es; e' = e' + args }
      */
-     def typedOpAssign: Tree = track("typedOpAssign") {
+    def typedOpAssign: Tree = track("typedOpAssign") {
       val Apply(Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]

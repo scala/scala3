@@ -172,6 +172,9 @@ object ProtoTypes {
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
 
+    /** A map recording the typer states in which arguments stored in myTypedArg were typed */
+    private var evalState: SimpleMap[untpd.Tree, TyperState] = SimpleMap.Empty
+
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
 
@@ -181,15 +184,41 @@ object ProtoTypes {
 
     def argsAreTyped: Boolean = myTypedArgs.size == args.length
 
+    private def typedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
+      var targ = myTypedArg(arg)
+      if (targ == null) {
+        targ = typerFn(arg)
+        if (!ctx.reporter.hasPending) {
+          myTypedArg = myTypedArg.updated(arg, targ)
+          evalState = evalState.updated(arg, ctx.typerState)
+        }
+      }
+      targ
+    }
+
+    /** Forget the types of any arguments that have been typed producing a constraint in a
+     *  typer state that is not yet committed into the one of the current context `ctx`.
+     *  This is necessary to avoid "orphan" PolyParams that are referred to from
+     *  type variables in the typed arguments, but that are not registered in the
+     *  current constraint. A test case is pos/t1756.scala.
+     *  @return True if all arguments have types (in particular, no types were forgotten).
+     */
+    def allArgTypesAreCurrent()(implicit ctx: Context): Boolean = {
+      evalState foreachBinding { (arg, tstate) =>
+        if (tstate.uncommittedAncestor.constraint ne ctx.typerState.constraint) {
+          println(i"need to invalidate $arg / ${myTypedArg(arg)}, ${tstate.constraint}, current = ${ctx.typerState.constraint}")
+          myTypedArg = myTypedArg.remove(arg)
+          evalState = evalState.remove(arg)
+        }
+      }
+      myTypedArg.size == args.length
+    }
+
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
      */
     def typedArgs: List[Tree] = {
-      if (!argsAreTyped)
-        myTypedArgs = args mapconserve { arg =>
-          val targ = myTypedArg(arg)
-          if (targ != null) targ else typer.typed(arg)
-        }
+      if (!argsAreTyped) myTypedArgs = args.mapconserve(typedArg(_, typer.typed(_)))
       myTypedArgs
     }
 
@@ -197,11 +226,7 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
-      var targ = myTypedArg(arg)
-      if (targ == null) {
-        targ = typer.typedUnadapted(arg, formal)
-        if (!ctx.reporter.hasPending) myTypedArg = myTypedArg.updated(arg, targ)
-      }
+      val targ = typedArg(arg, typer.typedUnadapted(_, formal))
       typer.adapt(targ, formal, arg)
     }
 
