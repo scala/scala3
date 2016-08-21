@@ -546,7 +546,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
-      // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application.
+      // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,
+      // until, possibly, we have to fall back to insert an implicit on thq qualifier.
       // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
       // otherwise we would get possible cross-talk between different `adapt` calls using the same
       // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
