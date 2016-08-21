@@ -18,7 +18,7 @@ object TestNoAutoTupling {
   a.foo()
   a.foo(1)
 
-  a.foo("")       // Without implicits, a type error regarding invalid argument types is generated at `""`. This is
+  a.foo("")   // Without implicits, a type error regarding invalid argument types is generated at `""`. This is
                   // the same position as an argument, so the 'second try' typing with an Implicit View is tried,
                   // and AToRichA(a).foo("") is found.
                   //
@@ -29,7 +29,6 @@ object TestNoAutoTupling {
 
   a.foo("a", "b") // Without implicits, a type error regarding invalid arity is generated at `foo(<error>"", "")`.
                   // Typers#tryTypedApply:3274 only checks if the error is as the same position as `foo`, `"a"`, or `"b"`.
-                  // None of these po
 }
 
 // t0851 is essentially the same:
@@ -54,7 +53,7 @@ object Main {
   }
 }
 
-object TestWithAutoTuling {
+object TestWithAutoTupling {
 
   implicit def AToRichA(a: A): RichA = new RichA
 
@@ -73,6 +72,5 @@ object TestWithAutoTuling {
 
   a.foo("a", "b") // Without implicits, a type error regarding invalid arity is generated at `foo(<error>"", "")`.
                   // Typers#tryTypedApply:3274 only checks if the error is as the same position as `foo`, `"a"`, or `"b"`.
-                  // None of these po
 }
 
