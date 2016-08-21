@@ -547,7 +547,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
       // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,
-      // until, possibly, we have to fall back to insert an implicit on thq qualifier.
+      // until, possibly, we have to fall back to insert an implicit on the qualifier.
       // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
       // otherwise we would get possible cross-talk between different `adapt` calls using the same
       // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
@@ -604,6 +604,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           } {
             (failedVal, failedState) =>
               def fail = { failedState.commit(); failedVal }
+              // Try once with original prototype and once (if different) with tupled one.
+              // The reason we need to try both is that the decision whether to use tupled
+              // or not was already taken but might have to be revised when an implicit
+              // is inserted on the qualifier.
               tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
                 if (proto eq originalProto) fail
                 else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
