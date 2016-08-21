@@ -111,6 +111,13 @@ class tests extends CompilerTest {
 
   @Test def pos_859 = compileFile(posSpecialDir, "i859", scala2mode)(allowDeepSubtypes)
 
+  @Test def pos_t5545 = {
+    // compile by hand in two batches, since junit lacks the infrastructure to
+    // compile files in multiple batches according to _1, _2, ... suffixes.
+    compileFile(posSpecialDir, "spec-t5545/S_1")
+    compileFile(posSpecialDir, "spec-t5545/S_2")
+  }
+
   @Test def new_all = compileFiles(newDir, twice)
   @Test def repl_all = replFiles(replDir)
 

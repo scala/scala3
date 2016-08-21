@@ -525,14 +525,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/
       def comparePaths = tp2 match {
         case tp2: TermRef =>
-          tp2.info match {
-            case tp2i: TermRef =>
-              isSubType(tp1, tp2i)
-            case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
-              // After getters, val x: T becomes def x: T
-              isSubType(tp1, tp2i)
-            case _ =>
-              false
+          tp2.info.widenExpr match {
+            case tp2i: SingletonType =>
+              isSubType(tp1, tp2i) // see z1720.scala for a case where this can arise even in typer.
+            case _ => false
           }
         case _ =>
           false

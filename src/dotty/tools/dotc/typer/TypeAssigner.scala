@@ -59,7 +59,10 @@ trait TypeAssigner {
           case _ => false
         }
       def apply(tp: Type): Type = tp match {
-        case tp: TermRef if toAvoid(tp) && variance > 0 =>
+        case tp: TermRef
+        if toAvoid(tp) && (variance > 0 || tp.info.widenExpr <:< tp) =>
+          // Can happen if `x: y.type`, then `x.type =:= y.type`, hence we can widen `x.type`
+          // to y.type in all contexts, not just covariant ones.
           apply(tp.info.widenExpr)
         case tp: TypeRef if toAvoid(tp) =>
           tp.info match {
