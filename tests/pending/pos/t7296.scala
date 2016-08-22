@@ -1,3 +1,4 @@
+// Fails Ycheck
 object Test {
   type A = Int
   // Emits the implementation restriction but then proceeds to crash

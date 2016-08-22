@@ -1,3 +1,4 @@
+// Fails Ycheck
 class A {
   object Ding
   class B {
