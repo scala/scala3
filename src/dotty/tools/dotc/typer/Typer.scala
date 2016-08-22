@@ -1715,6 +1715,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else
           missingArgs
       case _ =>
+        ctx.typeComparer.GADTused = false
         if (ctx.mode is Mode.Pattern) {
           tree match {
             case _: RefTree | _: Literal if !isVarPattern(tree) =>
@@ -1723,7 +1724,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           tree
         }
-        else if (tree.tpe <:< pt) tree
+        else if (tree.tpe <:< pt)
+          if (ctx.typeComparer.GADTused) tree.asInstance(pt)
+          else tree
         else if (wtp.isInstanceOf[MethodType]) missingArgs
         else {
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")

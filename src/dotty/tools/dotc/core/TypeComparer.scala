@@ -76,6 +76,19 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     myNothingType
   }
 
+  /** Indicates whether a previous subtype check used GADT bounds */
+  var GADTused = false
+
+  /** Record that GADT bounds of `sym` were used in a subtype check.
+   *  But exclude constructor type parameters, as these are aliased
+   *  to the corresponding class parameters, which does not constitute
+   *  a true usage of a GADT symbol.
+   */
+  private def GADTusage(sym: Symbol) = {
+    if (!sym.owner.isConstructor) GADTused = true
+    true
+  }
+
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
@@ -325,7 +338,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         val gbounds2 = ctx.gadt.bounds(tp2.symbol)
         (gbounds2 != null) &&
           (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
-            narrowGADTBounds(tp2, tp1, isUpper = false))
+            narrowGADTBounds(tp2, tp1, isUpper = false)) &&
+          GADTusage(tp2.symbol)
       }
       ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2) ||
         compareGADT ||
@@ -507,7 +521,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             val gbounds1 = ctx.gadt.bounds(tp1.symbol)
             (gbounds1 != null) &&
               (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-               narrowGADTBounds(tp1, tp2, isUpper = true))
+               narrowGADTBounds(tp1, tp2, isUpper = true)) &&
+              GADTusage(tp1.symbol)
           }
           isSubType(hi1, tp2) || compareGADT
         case _ =>
