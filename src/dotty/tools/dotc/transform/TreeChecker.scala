@@ -258,7 +258,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree = {
-      val tpdTree = super.typed(tree)
+      val tpdTree = super.typed(tree, pt)
       checkIdentNotJavaClass(tpdTree)
       tpdTree
     }
