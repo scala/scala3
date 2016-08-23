@@ -87,8 +87,8 @@ object Mas {
 
 object LisSeqArr {
   def run(): Unit = {
-    assert((1,2) == ((List(1,2,3): Any) match { case   List(x,y,_*) => (x,y)}))
-    assert((1,2) == ((List(1,2,3): Any) match { case    Seq(x,y,_*) => (x,y)}))
+    assert((1,2) == ((List(1,2,3): Any) match { case   List(x,y,_: _*) => (x,y)}))
+    assert((1,2) == ((List(1,2,3): Any) match { case    Seq(x,y,_: _*) => (x,y)}))
   }
 }
 
