@@ -1,4 +1,4 @@
-
+// Failure of autotupling in the presence of overloaded functions.
 object Test {
 
   def compare(first: Any, second: Any): Any = {
