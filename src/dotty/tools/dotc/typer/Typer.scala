@@ -1725,12 +1725,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree
         }
         else if (tree.tpe <:< pt)
-          if (ctx.typeComparer.GADTused && pt.isValueType && ctx.settings.Ycheck.value.nonEmpty)
+          if (ctx.typeComparer.GADTused && pt.isValueType)
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
             // if the expected type is a supertype of the GADT bound. It would be good to come
-            // up with a test case for this. For that reason, to be on the safe side
-            // we only insert the cast if there are Ychecks later on.
+            // up with a test case for this.
             tree.asInstance(pt)
           else
             tree
