@@ -15,6 +15,7 @@ import printing.Printer
 import util.{Stats, Attachment, DotClass}
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
+import parsing.Scanners.Comment
 
 object Trees {
 
@@ -30,7 +31,7 @@ object Trees {
   @sharable var ntrees = 0
 
   /** Attachment key for trees with documentation strings attached */
-  val DocComment = new Attachment.Key[String]
+  val DocComment = new Attachment.Key[Comment]
 
   /** Modifiers and annotations for definitions
    *  @param flags          The set flags
@@ -324,7 +325,7 @@ object Trees {
     private[ast] def rawMods: Modifiers[T] =
       if (myMods == null) genericEmptyModifiers else myMods
 
-    def rawComment: Option[String] = getAttachment(DocComment)
+    def rawComment: Option[Comment] = getAttachment(DocComment)
 
     def withMods(mods: Modifiers[Untyped]): ThisTree[Untyped] = {
       val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
@@ -334,7 +335,7 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(Modifiers(flags))
 
-    def setComment(comment: Option[String]): ThisTree[Untyped] = {
+    def setComment(comment: Option[Comment]): ThisTree[Untyped] = {
       comment.map(putAttachment(DocComment, _))
       asInstanceOf[ThisTree[Untyped]]
     }

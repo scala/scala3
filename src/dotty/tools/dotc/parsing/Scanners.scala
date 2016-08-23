@@ -193,7 +193,7 @@ object Scanners {
     }
 
     /** Returns the closest docstring preceding the position supplied */
-    def getDocString(pos: Int): Option[String] = {
+    def getDocComment(pos: Int): Option[Comment] = {
       def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
         case x :: xs if (c.pos.end < x.pos.end && x.pos.end <= pos) => closest(x, xs)
         case Nil => c
@@ -203,7 +203,7 @@ object Scanners {
         case (list @ (x :: xs)) :: _ => {
           val c = closest(x, xs)
           docsPerBlockStack = list.dropWhile(_ != c).tail :: docsPerBlockStack.tail
-          Some(c.chrs)
+          Some(c)
         }
         case _ => None
       }

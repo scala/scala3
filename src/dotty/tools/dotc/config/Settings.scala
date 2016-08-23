@@ -235,8 +235,8 @@ object Settings {
       setting
     }
 
-    def BooleanSetting(name: String, descr: String): Setting[Boolean] =
-      publish(Setting(name, descr, false))
+    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false): Setting[Boolean] =
+      publish(Setting(name, descr, initialValue))
 
     def StringSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
       publish(Setting(name, descr, default, helpArg))
