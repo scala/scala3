@@ -1100,7 +1100,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
-    if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     var tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx
@@ -1113,12 +1112,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
+    def vparamSyms = vparamss1.flatMap(_.map(_.symbol))
     if (sym.isAnonymousFunction) {
       // If we define an anonymous function, make sure the return type does not
       // refer to parameters. This is necessary because closure types are
       // function types so no dependencies on parameters are allowed.
-      tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
+      tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamSyms))
     }
+    else if (sym is Implicit) {
+      checkImplicitParamsNotSingletons(vparamss1)
+      checkNotDependent(tpt1, vparamSyms)
+    }
+
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }

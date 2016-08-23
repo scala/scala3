@@ -465,6 +465,14 @@ trait Checking {
     case _ =>
   }
 
+  /** Check that result type does not refer any of the parameters in `vparams`.
+   */
+  def checkNotDependent(resTpt: Tree, vparams: List[Symbol])(implicit ctx: Context): Unit =
+    for (vparam <- vparams)
+      if (vparam.termRef.occursIn(resTpt.tpe))
+        ctx.errorOrMigrationWarning(
+          em"implicit method's result type may not depend on parameter ${vparam.name}", resTpt.pos)
+
   /** Check that any top-level type arguments in this type are feasible, i.e. that
    *  their lower bound conforms to their upper bound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
@@ -544,6 +552,7 @@ trait NoChecking extends Checking {
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
+  override def checkNotDependent(resTpt: Tree, vparams: List[Symbol])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
