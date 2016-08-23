@@ -1,3 +1,6 @@
+// This one is unavoidable. Dotty does not allow several overloaded
+// parameterless methods, so it picks the one in the subclass.
+
 import scala.language.higherKinds
 // Minimal reproduction for:
 // scala.collection.mutable.ArrayStack.empty[Int]
