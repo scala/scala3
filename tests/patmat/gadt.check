@@ -1,0 +1,17 @@
+./tests/patmat/gadt.scala:13: warning: match may not be exhaustive.
+It would fail on the following input: IntLit(_)
+  def foo1b(x: Expr[Int]) = x match {
+                              ^
+./tests/patmat/gadt.scala:22: warning: match may not be exhaustive.
+It would fail on the following input: Or(_, _)
+  def foo2b(x: Expr[Boolean]) = x match {
+                                  ^
+./tests/patmat/gadt.scala:45: warning: match may not be exhaustive.
+It would fail on the following input: BooleanLit(_), IntLit(_)
+  def foo4b(x: Expr[_]) = x match {
+                            ^
+./tests/patmat/gadt.scala:55: warning: match may not be exhaustive.
+It would fail on the following input: Sum(_, _)
+  def foo5b[T <: Int](x: Expr[T]) = x match {
+                                      ^
+four warnings found

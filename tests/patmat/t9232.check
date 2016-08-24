@@ -1,0 +1,5 @@
+./tests/patmat/t9232.scala:13: warning: match may not be exhaustive.
+It would fail on the following input: Node2()
+  def transformTree(tree: Tree): Any = tree match {
+                                            ^
+one warning found

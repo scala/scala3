@@ -1,0 +1,17 @@
+./tests/patmat/t9657.scala:29: warning: match may not be exhaustive.
+It would fail on the following input: Bus(_)
+  def refuel2[P <: Petrol.type](vehicle: Vehicle {type A = P} ): Vehicle = vehicle match {
+                                                                                   ^
+./tests/patmat/t9657.scala:38: warning: match may not be exhaustive.
+It would fail on the following input: Bus(_)
+  def foo2(vehicle: Vehicle {type A <: Petrol.type} ): Vehicle = vehicle match {
+                                                                         ^
+./tests/patmat/t9657.scala:49: warning: match may not be exhaustive.
+It would fail on the following input: Bus(_)
+  def bar2(vehicle: Vehicle {type A <: P} ): Vehicle = vehicle match {
+                                                               ^
+./tests/patmat/t9657.scala:58: warning: match may not be exhaustive.
+It would fail on the following input: Bus(_)
+  def qux2[P <: Petrol.type](vehicle: Vehicle {type A <: P} ): Vehicle = vehicle match {
+                                                                                 ^
+four warnings found

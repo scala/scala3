@@ -1,0 +1,5 @@
+./tests/patmat/t9672.scala:22: warning: match may not be exhaustive.
+It would fail on the following input: SimpleExpr.IntExpr(_)
+  def func(expr: Expr) = expr match {
+                              ^
+one warning found

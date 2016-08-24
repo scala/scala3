@@ -1,0 +1,5 @@
+./tests/patmat/sealed-java-enums.scala:5: warning: match may not be exhaustive.
+It would fail on the following input: TERMINATED, TIMED_WAITING, BLOCKED
+  def f(state: State) = state match {
+                              ^
+one warning found

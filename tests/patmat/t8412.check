@@ -1,0 +1,5 @@
+./tests/patmat/t8412.scala:7: warning: match may not be exhaustive.
+It would fail on the following input: Lit(_)
+    tree match {
+         ^
+one warning found

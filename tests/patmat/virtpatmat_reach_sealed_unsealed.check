@@ -1,0 +1,11 @@
+./tests/patmat/virtpatmat_reach_sealed_unsealed.scala:16: warning: match may not be exhaustive.
+It would fail on the following input: false
+  (true: Boolean) match { case true => } // not exhaustive, but reachable
+                  ^
+./tests/patmat/virtpatmat_reach_sealed_unsealed.scala:18: warning: unreachable code
+  (true: Boolean) match { case true => case false =>  case _ => } // exhaustive, last case is unreachable
+                                                             ^
+./tests/patmat/virtpatmat_reach_sealed_unsealed.scala:19: warning: unreachable code
+  (true: Boolean) match { case true => case false =>  case _: Boolean => } // exhaustive, last case is unreachable
+                                                                      ^
+three warnings found

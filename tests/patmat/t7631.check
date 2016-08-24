@@ -1,0 +1,5 @@
+./tests/patmat/t7631.scala:8: warning: match may not be exhaustive.
+It would fail on the following input: TestB()
+  val x = input match {
+                ^
+one warning found

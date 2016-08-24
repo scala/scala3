@@ -1,0 +1,25 @@
+./tests/patmat/exhausting.scala:21: warning: match may not be exhaustive.
+It would fail on the following input: List(_), List(_, _, _)
+  def fail1[T](xs: List[T]) = xs match {
+                                 ^
+./tests/patmat/exhausting.scala:27: warning: match may not be exhaustive.
+It would fail on the following input: Nil
+  def fail2[T](xs: List[T]) = xs match {
+                                 ^
+./tests/patmat/exhausting.scala:32: warning: match may not be exhaustive.
+It would fail on the following input: List(_, _)
+  def fail3a(xs: List[Int]) = xs match {
+                                 ^
+./tests/patmat/exhausting.scala:39: warning: match may not be exhaustive.
+It would fail on the following input: Bar3
+  def fail3[T](x: Foo[T]) = x match {
+                              ^
+./tests/patmat/exhausting.scala:44: warning: match may not be exhaustive.
+It would fail on the following input: (Bar2, Bar2)
+  def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match {
+                                                    ^
+./tests/patmat/exhausting.scala:53: warning: match may not be exhaustive.
+It would fail on the following input: (Bar2, Bar2), (Bar2, Bar1), (Bar1, Bar3), (Bar1, Bar2)
+  def fail5[T](xx: (Foo[T], Foo[T])) = xx match {
+                                          ^
+6 warnings found

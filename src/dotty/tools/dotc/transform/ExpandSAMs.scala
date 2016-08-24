@@ -74,7 +74,8 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
             Bind(defaultSym, Underscore(selector.tpe.widen)),
             EmptyTree,
             Literal(Constant(false)))
-        cpy.Match(applyRhs)(paramRef, cases.map(translateCase) :+ defaultCase)
+        val annotated = Annotated(New(ref(defn.UncheckedAnnotType)), paramRef)
+        cpy.Match(applyRhs)(annotated, cases.map(translateCase) :+ defaultCase)
       case _ =>
         tru
     }

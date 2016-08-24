@@ -414,6 +414,16 @@ class Namer { typer: Typer =>
     case mdef: DefTree =>
       val sym = enterSymbol(createSymbol(mdef))
       setDocstring(sym, stat)
+
+      // add java enum constants
+      mdef match {
+        case vdef: ValDef if (isEnumConstant(vdef)) =>
+          val enumClass = sym.owner.linkedClass
+          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+          enumClass.addAnnotation(Annotation.makeChild(sym))
+        case _ =>
+      }
+
       ctx
     case stats: Thicket =>
       for (tree <- stats.toList) {
@@ -423,6 +433,24 @@ class Namer { typer: Typer =>
       ctx
     case _ =>
       ctx
+  }
+
+  /** Determines whether this field holds an enum constant.
+    * To qualify, the following conditions must be met:
+    *  - The field's class has the ENUM flag set
+    *  - The field's class extends java.lang.Enum
+    *  - The field has the ENUM flag set
+    *  - The field is static
+    *  - The field is stable
+    */
+  def isEnumConstant(vd: ValDef)(implicit ctx: Context) = {
+    // val ownerHasEnumFlag =
+    // Necessary to check because scalac puts Java's static members into the companion object
+    // while Scala's enum constants live directly in the class.
+    // We don't check for clazz.superClass == JavaEnumClass, because this causes a illegal
+    // cyclic reference error. See the commit message for details.
+    //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
+    vd.mods.is(allOf(Enum,  Stable, JavaStatic, JavaDefined)) // && ownerHasEnumFlag
   }
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {

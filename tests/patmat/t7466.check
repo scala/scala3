@@ -1,0 +1,5 @@
+./tests/patmat/t7466.scala:8: warning: match may not be exhaustive.
+It would fail on the following input: (_, _)
+    (b1, b2) match {
+             ^
+one warning found

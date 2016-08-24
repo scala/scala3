@@ -1,0 +1,8 @@
+./tests/patmat/t3111.scala:4: warning: match may not be exhaustive.
+It would fail on the following input: false
+  bool match {
+       ^
+./tests/patmat/t3111.scala:11: warning: unreachable code
+    case _ => "cats and dogs living together... mass hysteria!"
+          ^
+two warnings found
