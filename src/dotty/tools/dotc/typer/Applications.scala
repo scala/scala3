@@ -593,8 +593,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         case ErrorType => tree.withType(ErrorType)
         case TryDynamicCallType =>
           tree match {
-            case tree @ Apply(Select(qual, name), args) if !isDynamicMethod(name) =>
-              typedDynamicApply(qual, name, args, pt)(tree)
+            case Apply(Select(qual, name), args) if !isDynamicMethod(name) =>
+              typedDynamicApply(qual, name, None, args, pt)(tree)
+            case Apply(TypeApply(Select(qual, name), targs), args) if !isDynamicMethod(name) =>
+              typedDynamicApply(qual, name, Some(targs), args, pt)(tree)
             case _ =>
               handleUnexpectedFunType(tree, fun1)
           }
@@ -679,7 +681,18 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
       case _ =>
     }
-    assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    if (typedFn.tpe eq TryDynamicCallType) {
+      (pt, typedFn) match {
+        case (_: FunProto, _)=>
+          tree.withType(TryDynamicCallType)
+        case (_, Select(qual, name)) =>
+          typedDynamicSelect(qual, name, Some(typedArgs), pt)
+        case _ =>
+          tree.withType(TryDynamicCallType)
+      }
+    } else {
+      assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    }
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
