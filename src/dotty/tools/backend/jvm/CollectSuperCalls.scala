@@ -20,8 +20,11 @@ class CollectSuperCalls extends MiniPhaseTransform {
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree.qualifier match {
-      case Super(qual: This, mix) if mix.nonEmpty =>
-        val classSymbol = qual.symbol.asClass.classSymbol
+      case Super(qual, mix) if mix.nonEmpty =>
+        val classSymbol: ClassSymbol = qual match {
+          case qual: This => qual.symbol.asClass.classSymbol
+          case qual => qual.symbol.info.classSymbol.asClass
+        }
         registerSuperCall(classSymbol, tree.symbol.owner.asClass)
       case _ =>
     }
