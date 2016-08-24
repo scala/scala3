@@ -1,3 +1,5 @@
+// Dotty rewrites only withFilter calls occurring in for expressions to filter calls.
+// So this test does not compile.
 object Test {
   def BrokenMethod(): HasFilter[(Int, String)] = ???
 
@@ -15,12 +17,12 @@ object Test {
                        (implicit F0: NoImplicit): HasWithFilter = ???
   }
 
-  BrokenMethod().withFilter(_ => true) // okay
-  BrokenMethod().filter(_ => true)     // okay
+  BrokenMethod().withFilter(_ => true) // error
+  BrokenMethod().filter(_ => true)     // ok
 
   locally {
     import addWithFilter._
-    BrokenMethod().withFilter((_: (Int, String)) => true) // okay
+    BrokenMethod().withFilter((_: (Int, String)) => true) // error
   }
 
   locally {
@@ -33,6 +35,6 @@ object Test {
     // `(B => Boolean)`. Only later during pickling does the
     // defensive check for erroneous types in the tree pick up
     // the problem.
-    BrokenMethod().withFilter(x => true) // erroneous or inaccessible type.
+    BrokenMethod().withFilter(x => true) // error
   }
 }
