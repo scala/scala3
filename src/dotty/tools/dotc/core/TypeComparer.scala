@@ -861,11 +861,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     // special case for situations like:
     //    class C { type T }
     //    val foo: C
-    //    foo.type <: C { type T = foo.T }
+    //    foo.type <: C { type T {= , <: , >:} foo.T }
     def selfReferentialMatch = tp1.isInstanceOf[SingletonType] && {
       rinfo2 match {
-        case rinfo2: TypeAlias =>
-          !defn.isBottomType(tp1.widen) && (tp1 select name) =:= rinfo2.alias
+        case rinfo2: TypeBounds =>
+          val mbr1 = tp1.select(name)
+          !defn.isBottomType(tp1.widen) &&
+          (mbr1 =:= rinfo2.hi || (rinfo2.hi ne rinfo2.lo) && mbr1 =:= rinfo2.lo)
         case _ => false
       }
     }
