@@ -1959,7 +1959,7 @@ object Types {
       unique(new TypeRefWithFixedSym(prefix, name, sym))
       
      def withFixedSymAndInfo(prefix: Type, name: TypeName, sym: TypeSymbol, info: Type)(implicit ctx: Context): TypeRef = {
-      if (Config.checkProjections) checkProjection(prefix, name)
+      //if (Config.checkProjections) checkProjection(prefix, name)
       unique(new TypeRefWithFixedSymAndInfo(prefix, name, sym, info))
     }
 
@@ -2926,7 +2926,7 @@ object Types {
       assert(ctx.typerState.constraint contains this) // !!! DEBUG
       if ((ctx.typerState eq owningState) && !ctx.typeComparer.subtypeCheckInProgress)
         inst = tp
-      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp, canRemove = true)
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
 
@@ -3056,10 +3056,18 @@ object Types {
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
 
+    def rebase(tp: Type)(implicit ctx: Context): Type =
+          if ((prefix eq cls.owner.thisType) || (prefix eq NoPrefix)  || ctx.erasedTypes) tp
+          else tp.substThis(cls.owner.enclosingClass.asClass, prefix)
+        // enclosingClass is only needed in Linker.
+          // for typer originating from typer .owner should always
+        // be a class
+
     /** The parent type refs as seen from the given prefix */
     override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
-        parentsCache = cls.classParents.mapConserve(_.asSeenFrom(prefix, cls.owner).asInstanceOf[TypeRef])
+        parentsCache = cls.classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
+        //parentsCache = cls.classParents.mapConserve(_.asSeenFrom(prefix, cls.owner).asInstanceOf[TypeRef])
       parentsCache
     }
 

@@ -107,12 +107,9 @@ abstract class Constraint extends Showable {
    *  the type parameter `param` from the domain and replacing all top-level occurrences
    *  of the parameter elsewhere in the constraint by type `tp`, or a conservative
    *  approximation of it if that is needed to avoid cycles.
-   *  Occurrences nested inside a refinement or prefix simply substituted instead
-   *  of being approximated.
-   *  If `canRemove` is true, `param` is removed from the domain of the resulting constraint.
-   *  If `canRemove` is false, `param = tp` is remembered as an alias.
+   *  Occurrences nested inside a refinement or prefix are not affected.
    */
-  def replace(param: PolyParam, tp: Type, canRemove: Boolean)(implicit ctx: Context): This
+  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
 
   /** Narrow one of the bounds of type parameter `param`
    *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure

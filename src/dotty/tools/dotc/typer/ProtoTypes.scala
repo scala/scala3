@@ -94,14 +94,14 @@ object ProtoTypes {
    *       [ ].name: proto
    */
   abstract case class SelectionProto(val name: Name, val memberProto: Type, val compat: Compatibility)
-  extends CachedProxyType with ProtoType with ValueTypeOrProto {
+    extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(m.info, memberProto)
+            compat.normalizedCompatible(m.info, memberProto)
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
@@ -169,7 +169,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
-  extends UncachedGroundType with ApplyingProto {
+    extends UncachedGroundType with ApplyingProto {
     private var myTypedArgs: List[Tree] = Nil
 
     override def resultType(implicit ctx: Context) = resType
@@ -275,7 +275,7 @@ object ProtoTypes {
    *    []: argType => resultType
    */
   abstract case class ViewProto(argType: Type, resType: Type)
-  extends CachedGroundType with ApplyingProto {
+    extends CachedGroundType with ApplyingProto {
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -353,14 +353,14 @@ object ProtoTypes {
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
    *  @return  The added polytype, and the list of created type variables.
    */
-  def constrained(pt: GenericType, owningTree: untpd.Tree)(implicit ctx: Context): (GenericType, List[TypeVar]) = {
+  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
     val state = ctx.typerState
-    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty && pt.isInstanceOf[PolyType]),
+    assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
-    def newTypeVars(pt: GenericType): List[TypeVar] =
+    def newTypeVars(pt: PolyType): List[TypeVar] =
       for (n <- (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
+        yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
 
     val added =
       if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramBounds, pt.resultType)
@@ -371,7 +371,7 @@ object ProtoTypes {
   }
 
   /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
-  def constrained(pt: GenericType)(implicit ctx: Context): GenericType = constrained(pt, EmptyTree)._1
+  def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
 
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint

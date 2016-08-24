@@ -109,6 +109,9 @@ object SymDenotations {
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
     //assert(symbol.id != 4940, name)
+    if (ownerIfExists.toString.contains("RichBoolean") && name.toString =="hashCode")
+      println("dd")
+
 
     override def hasUniqueSym: Boolean = exists
 

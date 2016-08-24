@@ -68,7 +68,7 @@ object OrderingConstraint {
     }
 
     def update(prev: OrderingConstraint, current: OrderingConstraint,
-        param: PolyParam, entry: T)(implicit ctx: Context): OrderingConstraint =
+               param: PolyParam, entry: T)(implicit ctx: Context): OrderingConstraint =
       update(prev, current, param.binder, param.paramNum, entry)
 
     def map(prev: OrderingConstraint, current: OrderingConstraint,
@@ -76,7 +76,7 @@ object OrderingConstraint {
      update(prev, current, poly, idx, f(apply(current, poly, idx)))
 
     def map(prev: OrderingConstraint, current: OrderingConstraint,
-        param: PolyParam, f: T => T)(implicit ctx: Context): OrderingConstraint =
+            param: PolyParam, f: T => T)(implicit ctx: Context): OrderingConstraint =
       map(prev, current, param.binder, param.paramNum, f)
   }
 
@@ -131,7 +131,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   type This = OrderingConstraint
 
-// ----------- Basic indices --------------------------------------------------
+  // ----------- Basic indices --------------------------------------------------
 
   /** The number of type parameters in the given entry array */
   private def paramCount(entries: Array[Type]) = entries.length >> 1
@@ -147,7 +147,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     else entries(param.paramNum)
   }
 
-// ----------- Contains tests --------------------------------------------------
+  // ----------- Contains tests --------------------------------------------------
 
   def contains(pt: PolyType): Boolean = boundsMap(pt) != null
 
@@ -165,7 +165,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
 
-// ---------- Dependency handling ----------------------------------------------
+  // ---------- Dependency handling ----------------------------------------------
 
   def lower(param: PolyParam): List[PolyParam] = lowerLens(this, param.binder, param.paramNum)
   def upper(param: PolyParam): List[PolyParam] = upperLens(this, param.binder, param.paramNum)
@@ -186,7 +186,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def exclusiveUpper(param: PolyParam, butNot: PolyParam): List[PolyParam] =
     upper(param).filterNot(isLess(butNot, _))
 
-// ---------- Info related to PolyParams -------------------------------------------
+  // ---------- Info related to PolyParams -------------------------------------------
 
   def isLess(param1: PolyParam, param2: PolyParam): Boolean =
     upper(param1).contains(param2)
@@ -212,7 +212,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
   }
 
-// ---------- Adding PolyTypes --------------------------------------------------
+  // ---------- Adding PolyTypes --------------------------------------------------
 
   /** The list of parameters P such that, for a fresh type parameter Q:
    *
@@ -256,7 +256,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def stripParams(tp: Type, paramBuf: mutable.ListBuffer[PolyParam],
-      isUpper: Boolean)(implicit ctx: Context): Type = tp match {
+                          isUpper: Boolean)(implicit ctx: Context): Type = tp match {
     case param: PolyParam if contains(param) =>
       if (!paramBuf.contains(param)) paramBuf += param
       NoType
@@ -276,7 +276,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def normalizedType(tp: Type, paramBuf: mutable.ListBuffer[PolyParam],
-      isUpper: Boolean)(implicit ctx: Context): Type =
+                             isUpper: Boolean)(implicit ctx: Context): Type =
     stripParams(tp, paramBuf, isUpper)
       .orElse(if (isUpper) defn.AnyType else defn.NothingType)
 
@@ -313,7 +313,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     current
   }
 
-// ---------- Updates ------------------------------------------------------------
+  // ---------- Updates ------------------------------------------------------------
 
   /** Add the fact `param1 <: param2` to the constraint `current` and propagate
    *  `<:<` relationships between parameters ("edges") but not bounds.
@@ -362,7 +362,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     updateEntry(param, newBounds)
   }
 
-// ---------- Removals ------------------------------------------------------------
+  // ---------- Removals ------------------------------------------------------------
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -462,7 +462,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     allRemovable(paramCount(entries) - 1)
   }
 
-// ---------- Exploration --------------------------------------------------------
+  // ---------- Exploration --------------------------------------------------------
 
   def domainPolys: List[PolyType] = boundsMap.keys
 
@@ -570,7 +570,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     myUninstVars
   }
 
-// ---------- Cyclic checking -------------------------------------------
+  // ---------- Cyclic checking -------------------------------------------
 
   def checkNonCyclic()(implicit ctx: Context): Unit =
     domainParams.foreach(checkNonCyclic)
@@ -578,7 +578,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def checkNonCyclic(param: PolyParam)(implicit ctx: Context): Unit =
     assert(!isLess(param, param), i"cyclic constraint involving $param in $this")
 
-// ---------- toText -----------------------------------------------------
+  // ---------- toText -----------------------------------------------------
 
   override def toText(printer: Printer): Text = {
     def entryText(tp: Type) = tp match {
@@ -597,7 +597,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       " bounds = " ~ {
         val assocs =
           for (param <- domainParams)
-          yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
+            yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
         Text(assocs, "\n")
       }
     val orderingText =
@@ -608,9 +608,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
             ups = minUpper(param)
             if ups.nonEmpty
           }
-          yield
-            (" " * indent) ~ param.toText(printer) ~ " <: " ~
-              Text(ups.map(_.toText(printer)), ", ")
+            yield
+              (" " * indent) ~ param.toText(printer) ~ " <: " ~
+                Text(ups.map(_.toText(printer)), ", ")
         Text(deps, "\n")
       }
     Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
@@ -627,10 +627,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       " bounds = " + {
         val assocs =
           for (param <- domainParams)
-          yield
-            param.binder.paramNames(param.paramNum) + ": " + entryText(entry(param))
+            yield
+              param.binder.paramNames(param.paramNum) + ": " + entryText(entry(param))
         assocs.mkString("\n")
-    }
+      }
     constrainedText + "\n" + boundsText
   }
 }
