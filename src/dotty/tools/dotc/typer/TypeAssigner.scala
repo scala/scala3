@@ -203,8 +203,9 @@ trait TypeAssigner {
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
-    if (reallyExists(mbr)) site.select(name, mbr)
-    else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
+    lazy val canBeDynamicMethod = site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)
+    if (reallyExists(mbr) && (mbr.accessibleFrom(site).exists || !canBeDynamicMethod)) site.select(name, mbr)
+    else if (canBeDynamicMethod) {
       TryDynamicCallType
     } else {
       if (!site.isErroneous) {
