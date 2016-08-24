@@ -10,7 +10,7 @@ object Test {
 
   def f[A](t: Term[A], c: Cell[A]): Unit = {
     t match {
-      case NumTerm(n) => c.x = MyDouble(1.0)  // problem is: this assignment is not type correct, since gadt variable is forgotten
+      case NumTerm(n) => c.x = MyDouble(1.0)
     }
   }
 
