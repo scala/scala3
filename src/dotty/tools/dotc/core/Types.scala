@@ -2926,7 +2926,7 @@ object Types {
       assert(ctx.typerState.constraint contains this) // !!! DEBUG
       if ((ctx.typerState eq owningState) && !ctx.typeComparer.subtypeCheckInProgress)
         inst = tp
-      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp, canRemove = true)
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
 
