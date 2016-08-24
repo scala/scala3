@@ -3,7 +3,7 @@ package dotc
 package parsing
 
 import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
-import core.StdNames._
+import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
 import scala.reflect.internal.Chars._
@@ -21,10 +21,6 @@ object Scanners {
 
   /** An undefined offset */
   val NoOffset: Offset = -1
-
-  case class Comment(pos: Position, chrs: String) {
-    def isDocComment = chrs.startsWith("/**")
-  }
 
   type Token = Int
 
