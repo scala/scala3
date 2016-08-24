@@ -13,6 +13,7 @@ import Scopes._
 import NameOps._
 import Uniques._
 import SymDenotations._
+import Comments._
 import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
@@ -29,7 +30,6 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
-import parsing.Scanners.Comment
 import util.Property.Key
 import xsbti.AnalysisCallback
 

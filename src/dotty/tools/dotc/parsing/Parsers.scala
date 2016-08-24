@@ -19,10 +19,10 @@ import StdNames._
 import util.Positions._
 import Constants._
 import ScriptParsers._
+import Comments._
 import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
-import Scanners.Comment
 
 object Parsers {
 

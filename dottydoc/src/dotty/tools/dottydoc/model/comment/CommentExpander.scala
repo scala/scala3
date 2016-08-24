@@ -77,7 +77,7 @@ trait CommentExpander {
    */
   def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: Context): String = cookedDocComments.getOrElseUpdate(sym, {
     var ownComment =
-      if (docStr.length == 0) ctx.docbase.docstring(sym).map(c => template(c.chrs)).getOrElse("")
+      if (docStr.length == 0) ctx.docbase.docstring(sym).map(c => template(c.raw)).getOrElse("")
       else template(docStr)
     ownComment = replaceInheritDocToInheritdoc(ownComment)
 
@@ -287,7 +287,7 @@ trait CommentExpander {
   def defineVariables(sym: Symbol)(implicit ctx: Context) = {
     val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
-    val raw = ctx.docbase.docstring(sym).map(_.chrs).getOrElse("")
+    val raw = ctx.docbase.docstring(sym).map(_.raw).getOrElse("")
     defs(sym) ++= defines(raw).map {
       str => {
         val start = skipWhitespace(str, "@define".length)
