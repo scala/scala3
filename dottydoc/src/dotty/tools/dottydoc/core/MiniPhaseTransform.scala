@@ -77,6 +77,7 @@ object transform {
       def traverse(ent: Entity): Entity = ent match {
         case p: Package => transformEntity(p, _.packageTransformation) { p =>
           val newPackage = PackageImpl(
+            p.symbol,
             p.name,
             p.members.map(traverse),
             p.path,
@@ -90,6 +91,7 @@ object transform {
         }
         case c: Class => transformEntity(c, _.classTransformation) { cls =>
           ClassImpl(
+            cls.symbol,
             cls.name,
             cls.members.map(traverse),
             cls.modifiers,
@@ -102,6 +104,7 @@ object transform {
         }
         case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
           CaseClassImpl(
+            cc.symbol,
             cc.name,
             cc.members.map(traverse),
             cc.modifiers,
@@ -114,6 +117,7 @@ object transform {
         }
         case trt: Trait => transformEntity(trt, _.traitTransformation) { trt =>
           TraitImpl(
+            trt.symbol,
             trt.name,
             trt.members.map(traverse),
             trt.modifiers,
@@ -126,6 +130,7 @@ object transform {
         }
         case obj: Object => transformEntity(obj, _.objectTransformation) { obj =>
           ObjectImpl(
+            obj.symbol,
             obj.name,
             obj.members.map(traverse),
             obj.modifiers,
@@ -136,6 +141,7 @@ object transform {
         }
         case df: Def => transformEntity(df, _.defTransformation) { df =>
           DefImpl(
+            df.symbol,
             df.name,
             df.modifiers,
             df.path,
@@ -148,6 +154,7 @@ object transform {
         }
         case vl: Val => transformEntity(vl, _.valTransformation) { vl =>
           ValImpl(
+            vl.symbol,
             vl.name,
             vl.modifiers,
             vl.path,

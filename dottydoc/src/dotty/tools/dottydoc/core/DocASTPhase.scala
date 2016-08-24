@@ -60,6 +60,7 @@ class DocASTPhase extends Phase {
         .map { meth =>
           track(meth.symbol, ctx, tree.symbol) {
             DefImpl(
+              meth.symbol,
               meth.symbol.name.show,
               Nil,
               path(meth.symbol),
@@ -74,6 +75,7 @@ class DocASTPhase extends Phase {
       val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
         track(value.symbol, ctx, tree.symbol) {
           ValImpl(
+            value.symbol,
             value.symbol.name.show,
             Nil, path(value.symbol),
             returnType(value.info),
@@ -90,38 +92,38 @@ class DocASTPhase extends Phase {
       /** package */
       case pd @ PackageDef(pid, st) =>
         val newPath = prev :+ pid.name.toString
-        addEntity(PackageImpl(newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
+        addEntity(PackageImpl(pd.symbol, newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
+        TraitImpl(t.symbol, name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
         val name = n.decode.toString.dropRight(1)
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
+        ObjectImpl(o.symbol, name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
+        (c.symbol, name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }
 
       /** def */
       case d: DefDef =>
-        DefImpl(d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
+        DefImpl(d.symbol, d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
 
       /** val */
       case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-        ValImpl(v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe))
+        ValImpl(v.symbol, v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe))
 
       case x => {
         //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
