@@ -456,7 +456,14 @@ class Namer { typer: Typer =>
 
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
-    case t: MemberDef => ctx.docbase.addDocstring(sym, t.rawComment)
+    case t: MemberDef if t.rawComment.isDefined =>
+      val cmt = t.rawComment
+      ctx.docbase.addDocstring(sym, cmt)
+
+      cmt.get.usecases.foreach { usecase =>
+        usecase.symbol = enterSymbol(createSymbol(usecase.untpdCode))
+      }
+
     case _ => ()
   }
 

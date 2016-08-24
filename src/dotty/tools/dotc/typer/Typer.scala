@@ -1181,6 +1181,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // function types so no dependencies on parameters are allowed.
       tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
     }
+
+    /** Type usecases */
+    ctx.docbase.docstring(sym).map(_.usecases.map(_.typeTree()))
+
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
