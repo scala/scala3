@@ -630,20 +630,6 @@ object TreeInfo {
     }
   }
 
-  def isApplyDynamicName(name: Name) = (name == nme.updateDynamic) || (name == nme.selectDynamic) || (name == nme.applyDynamic) || (name == nme.applyDynamicNamed)
-
-  class DynamicApplicationExtractor(nameTest: Name => Boolean) {
-    def unapply(tree: Tree) = tree match {
-      case Apply(TypeApply(Select(qual, oper), _), List(Literal(Constant(name)))) if nameTest(oper) => Some((qual, name))
-      case Apply(Select(qual, oper), List(Literal(Constant(name)))) if nameTest(oper) => Some((qual, name))
-      case Apply(Ident(oper), List(Literal(Constant(name)))) if nameTest(oper) => Some((EmptyTree(), name))
-      case _ => None
-    }
-  }
-  object DynamicUpdate extends DynamicApplicationExtractor(_ == nme.updateDynamic)
-  object DynamicApplication extends DynamicApplicationExtractor(isApplyDynamicName)
-  object DynamicApplicationNamed extends DynamicApplicationExtractor(_ == nme.applyDynamicNamed)
-
   object MacroImplReference {
     private def refPart(tree: Tree): Tree = tree match {
       case TypeApply(fun, _) => refPart(fun)
