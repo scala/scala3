@@ -8,5 +8,5 @@ trait Extractor {
 }
 
 class Sub extends Extractor {
-  def extract(s: Space) = s.x
+  def extract(ss: Space) = ss.x
 }
