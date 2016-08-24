@@ -346,11 +346,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    if (ctx.compilationUnit.isJava && tree.name.isTypeName) {
+    def selectWithFallback(fallBack: => Tree) =
+      tryEither(tryCtx => asSelect(tryCtx))((_, _) => fallBack)
+
+    if (ctx.compilationUnit.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      tryEither(tryCtx => asSelect(tryCtx))((_, _) => asJavaSelectFromTypeTree(ctx))
-    } else asSelect(ctx)
+      selectWithFallback(asJavaSelectFromTypeTree(ctx))
+    else if (tree.name == nme.withFilter && tree.getAttachment(desugar.MaybeFilter).isDefined)
+      selectWithFallback(typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt))
+    else
+      asSelect(ctx)
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
