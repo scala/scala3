@@ -1191,6 +1191,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+
+    typedUsecases(body1.map(_.symbol), self1.symbol)
+
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)
@@ -1452,9 +1455,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         buf += typed(stat)(ctx.exprContext(stat, exprOwner))
         traverse(rest)
       case nil =>
-        val tpdStats = buf.toList
-        typedUsecases(tpdStats.map(_.symbol), exprOwner)
-        tpdStats
+        buf.toList
     }
     traverse(stats)
   }
