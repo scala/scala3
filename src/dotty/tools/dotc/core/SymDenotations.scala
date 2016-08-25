@@ -56,6 +56,7 @@ trait SymDenotations { this: Context =>
     stillValid(owner) && (
       !owner.isClass
       || owner.isRefinementClass
+      || owner.is(Scala2x)
       || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
       || denot.isSelfSym)
   } catch {
