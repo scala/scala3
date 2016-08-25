@@ -29,9 +29,9 @@ class UsecaseTest extends DottyTest {
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, List(trt: Trait), _, _) =>
-          val List(map: Def) = trt.members
+          val List(foo: Def) = trt.members
 
-          val returnValue = map.returnValue match {
+          val returnValue = foo.returnValue match {
             case ref: TypeReference => ref.title
             case _ =>
               assert(
@@ -42,11 +42,22 @@ class UsecaseTest extends DottyTest {
           }
 
           assert(
-            map.typeParams.isEmpty,
+            foo.typeParams.isEmpty,
             "Type parameters were not stripped by usecase"
           )
           assert(returnValue == "A", "Incorrect return type after usecase")
+
+          assert(foo.name == "foo", s"Incorrect name after transform: ${foo.name}")
       }
+    }
+  }
+
+  @Test def checkIterator = {
+    val sources =
+      "./scala-scala/src/library/scala/collection/Iterator.scala" :: Nil
+
+    checkFiles(sources) { packages =>
+      // success if typer throws no errors! :)
     }
   }
 }

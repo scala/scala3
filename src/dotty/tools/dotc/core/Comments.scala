@@ -8,7 +8,7 @@ import Symbols._
 import Contexts.Context
 import Flags.EmptyFlags
 import dotc.util.SourceFile
-import dotc.util.Positions.Position
+import dotc.util.Positions._
 import dotc.parsing.Parsers.Parser
 import dotty.tools.dottydoc.model.comment.CommentUtils._
 
@@ -38,14 +38,22 @@ object Comments {
     private def decomposeUseCase(start: Int, end: Int): UseCase = {
       val codeStart    = skipWhitespace(raw, start + "@usecase".length)
       val codeEnd      = skipToEol(raw, codeStart)
-      val code         = raw.substring(codeStart, codeEnd)
-      val codePos      = Position(codeStart, codeEnd)
+      val code         = raw.substring(codeStart, codeEnd) + " = ???"
+      val codePos      = subPos(codeStart, codeEnd)
       val commentStart = skipLineLead(raw, codeEnd + 1) min end
       val comment      = "/** " + raw.substring(commentStart, end) + "*/"
-      val commentPos   = Position(commentStart, end)
+      val commentPos   = subPos(commentStart, end)
 
-      UseCase(Comment(commentPos, comment), code + " = ???", codePos)
+      UseCase(Comment(commentPos, comment), code, codePos)
     }
+
+    private def subPos(start: Int, end: Int) =
+      if (pos == NoPosition) NoPosition
+      else {
+        val start1 = pos.start + start
+        val end1 = pos.end + end
+        pos withStart start1 withPoint start1 withEnd end1
+      }
   }
 
   case class UseCase(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) {
@@ -56,9 +64,11 @@ object Comments {
       val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start, EmptyFlags)
 
       tree match {
-        case tree: untpd.DefDef => tree
+        case tree: untpd.DefDef =>
+          val newName = (tree.name.show + "$" + codePos.start).toTermName
+          untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
         case _ =>
-          ctx.error("proper def was not found in `@usecase`", codePos)
+          ctx.error("proper definition was not found in `@usecase`", codePos)
           tree
       }
     }
@@ -67,11 +77,14 @@ object Comments {
     var tpdCode: tpd.DefDef = _
 
     def typeTree()(implicit ctx: Context): Unit = untpdCode match {
-      case df: untpd.DefDef => ctx.typer.typedDefDef(df, symbol) match {
-        case tree: tpd.DefDef => tpdCode = tree
-        case _ => ctx.error("proper def was not found in `@usecase`", codePos)
-      }
-      case _ => ctx.error("proper def was not found in `@usecase`", codePos)
+      case df: untpd.DefDef =>
+        ctx.typer.typedDefDef(df, symbol) match {
+          case tree: tpd.DefDef => tpdCode = tree
+          case _ =>
+            ctx.error("proper def could not be typed from `@usecase`", codePos)
+        }
+      case _ =>
+        ctx.error("proper def was not found in `@usecase`", codePos)
     }
   }
 }

@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.Symbols.Symbol
 class UsecasePhase extends DocMiniPhase {
   private def defdefToDef(d: tpd.DefDef, sym: Symbol)(implicit ctx: Context) = DefImpl(
     sym,
-    d.name.decode.toString,
+    d.name.show.split("\\$").head, // UseCase defs get $pos appended to their names
     flags(d), path(d.symbol),
     returnType(d.tpt.tpe),
     typeParams(d.symbol),
