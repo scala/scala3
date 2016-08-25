@@ -13,7 +13,7 @@ class C {
     {
       val a = 0
       object C {
-        new C().x
+        new C().x // error: cannot be accessed
       }
     }
   }
