@@ -527,11 +527,18 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (this is JavaStatic) || this.exists && owner.isStaticOwner || this.isRoot
+      ctx.addMode(Mode.FutureDefsOK).atPhaseBefore(ctx.lambdaLiftPhase) { implicit ctx =>
+        (current.asSymDenotation is JavaStatic) ||
+          this.exists && current.asSymDenotation.owner.isStaticOwner ||
+          this.isRoot
+      }
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
-      (this is PackageClass) || (this is ModuleClass) && isStatic
+      ctx.addMode(Mode.FutureDefsOK).atPhaseBefore(ctx.lambdaLiftPhase) { implicit ctx =>
+        (current.asSymDenotation is PackageClass) ||
+          (current.asSymDenotation is ModuleClass) && current.asSymDenotation.isStatic
+      }
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
