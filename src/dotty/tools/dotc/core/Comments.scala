@@ -60,6 +60,9 @@ object Comments {
     /** Entered by Namer */
     var symbol: Symbol = _
 
+    /** Set by typer */
+    var tpdCode: tpd.DefDef = _
+
     lazy val untpdCode: untpd.Tree = {
       val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start, EmptyFlags)
 
@@ -71,20 +74,6 @@ object Comments {
           ctx.error("proper definition was not found in `@usecase`", codePos)
           tree
       }
-    }
-
-    /** Set by typer calling `typeTree` */
-    var tpdCode: tpd.DefDef = _
-
-    def typeTree()(implicit ctx: Context): Unit = untpdCode match {
-      case df: untpd.DefDef =>
-        ctx.typer.typedDefDef(df, symbol) match {
-          case tree: tpd.DefDef => tpdCode = tree
-          case _ =>
-            ctx.error("proper def could not be typed from `@usecase`", codePos)
-        }
-      case _ =>
-        ctx.error("proper def was not found in `@usecase`", codePos)
     }
   }
 }

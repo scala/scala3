@@ -1182,9 +1182,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
     }
 
-    /** Type usecases */
-    ctx.docbase.docstring(sym).map(_.usecases.map(_.typeTree()))
-
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
@@ -1523,7 +1520,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         buf += typed(stat)(ctx.exprContext(stat, exprOwner))
         traverse(rest)
       case nil =>
-        buf.toList
+        val tpdStats = buf.toList
+        typedUsecases(tpdStats.map(_.symbol), exprOwner)
+        tpdStats
     }
     traverse(stats)
   }
@@ -1535,6 +1534,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
         Inliner.removeInlineAccessors(mdef.symbol)
+
+  def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit =
+    for {
+      sym <- syms
+      usecase <- ctx.docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
+      List(tpdTree) = typedStats(usecase.untpdCode :: Nil, owner)
+    } yield {
+      if (tpdTree.isInstanceOf[tpd.DefDef])
+        usecase.tpdCode = tpdTree.asInstanceOf[tpd.DefDef]
+      else
+        ctx.error("Couldn't compile `@usecase`", usecase.codePos)
+    }
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)
