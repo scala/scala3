@@ -35,7 +35,12 @@ trait Phases {
   def atNextPhase[T](op: Context => T): T = atPhase(phase.next)(op)
 
   def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
-    if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
+    if ((limit eq null) || !limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
+    // limit can be null if we're initializing definitions and phase-caches return null
+    // or if phase is simply absent and all phases are "before".
+
+  def atPhaseBefore[T](limit: Phase)(op: Context => T): T =
+    if ((limit eq null) || !limit.exists || phase < limit) op(this) else atPhase(limit.prev)(op)
 
   def atPhaseNotLaterThanTyper[T](op: Context => T): T =
     atPhaseNotLaterThan(base.typerPhase)(op)
@@ -340,6 +345,9 @@ object Phases {
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
     final def <=(that: Phase) =
+      exists && id <= that.id
+
+    final def <(that: Phase) =
       exists && id <= that.id
 
     final def prev: Phase =
