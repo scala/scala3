@@ -22,7 +22,6 @@ import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.core.Names.Name
-import dotty.runtime.LazyVals
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation

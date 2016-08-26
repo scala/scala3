@@ -26,6 +26,5 @@ object build extends tests {
     dotty // build output dir
     val p = Runtime.getRuntime.exec(Array("jar", "cf", "dotty.jar", "-C", "out", "."))
     p.waitFor()
-    p
   }
 }

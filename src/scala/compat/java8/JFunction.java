@@ -11,96 +11,183 @@ public final class JFunction {
     private JFunction() {}
     public static <R> scala.Function0<R> func(JFunction0<R> f) { return f; }
     public static scala.Function0<BoxedUnit> proc(JProcedure0 p) { return p; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<BoxedUnit> procSpecialized(JFunction0$mcV$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Byte> funcSpecialized(JFunction0$mcB$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Short> funcSpecialized(JFunction0$mcS$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Integer> funcSpecialized(JFunction0$mcI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Long> funcSpecialized(JFunction0$mcJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Character> funcSpecialized(JFunction0$mcC$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Float> funcSpecialized(JFunction0$mcF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Double> funcSpecialized(JFunction0$mcD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function0<Boolean> funcSpecialized(JFunction0$mcZ$sp f) { return f; }
     public static <T1, R> scala.Function1<T1, R> func(JFunction1<T1, R> f) { return f; }
     public static <T1> scala.Function1<T1, BoxedUnit> proc(JProcedure1<T1> p) { return p; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, BoxedUnit> procSpecialized(JFunction1$mcVI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, Boolean> funcSpecialized(JFunction1$mcZI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, Integer> funcSpecialized(JFunction1$mcII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, Float> funcSpecialized(JFunction1$mcFI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, Long> funcSpecialized(JFunction1$mcJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Integer, Double> funcSpecialized(JFunction1$mcDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, BoxedUnit> procSpecialized(JFunction1$mcVJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, Boolean> funcSpecialized(JFunction1$mcZJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, Integer> funcSpecialized(JFunction1$mcIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, Float> funcSpecialized(JFunction1$mcFJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, Long> funcSpecialized(JFunction1$mcJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Long, Double> funcSpecialized(JFunction1$mcDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, BoxedUnit> procSpecialized(JFunction1$mcVF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, Boolean> funcSpecialized(JFunction1$mcZF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, Integer> funcSpecialized(JFunction1$mcIF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, Float> funcSpecialized(JFunction1$mcFF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, Long> funcSpecialized(JFunction1$mcJF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Float, Double> funcSpecialized(JFunction1$mcDF$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, BoxedUnit> procSpecialized(JFunction1$mcVD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, Boolean> funcSpecialized(JFunction1$mcZD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, Integer> funcSpecialized(JFunction1$mcID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, Float> funcSpecialized(JFunction1$mcFD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, Long> funcSpecialized(JFunction1$mcJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function1<Double, Double> funcSpecialized(JFunction1$mcDD$sp f) { return f; }
     public static <T1, T2, R> scala.Function2<T1, T2, R> func(JFunction2<T1, T2, R> f) { return f; }
     public static <T1, T2> scala.Function2<T1, T2, BoxedUnit> proc(JProcedure2<T1, T2> p) { return p; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, BoxedUnit> procSpecialized(JFunction2$mcVII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, Boolean> funcSpecialized(JFunction2$mcZII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, Integer> funcSpecialized(JFunction2$mcIII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, Float> funcSpecialized(JFunction2$mcFII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, Long> funcSpecialized(JFunction2$mcJII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Integer, Double> funcSpecialized(JFunction2$mcDII$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, BoxedUnit> procSpecialized(JFunction2$mcVIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, Boolean> funcSpecialized(JFunction2$mcZIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, Integer> funcSpecialized(JFunction2$mcIIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, Float> funcSpecialized(JFunction2$mcFIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, Long> funcSpecialized(JFunction2$mcJIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Long, Double> funcSpecialized(JFunction2$mcDIJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, BoxedUnit> procSpecialized(JFunction2$mcVID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, Boolean> funcSpecialized(JFunction2$mcZID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, Integer> funcSpecialized(JFunction2$mcIID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, Float> funcSpecialized(JFunction2$mcFID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, Long> funcSpecialized(JFunction2$mcJID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Integer, Double, Double> funcSpecialized(JFunction2$mcDID$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, BoxedUnit> procSpecialized(JFunction2$mcVJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, Boolean> funcSpecialized(JFunction2$mcZJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, Integer> funcSpecialized(JFunction2$mcIJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, Float> funcSpecialized(JFunction2$mcFJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, Long> funcSpecialized(JFunction2$mcJJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Integer, Double> funcSpecialized(JFunction2$mcDJI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, BoxedUnit> procSpecialized(JFunction2$mcVJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, Boolean> funcSpecialized(JFunction2$mcZJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, Integer> funcSpecialized(JFunction2$mcIJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, Float> funcSpecialized(JFunction2$mcFJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, Long> funcSpecialized(JFunction2$mcJJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Long, Double> funcSpecialized(JFunction2$mcDJJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, BoxedUnit> procSpecialized(JFunction2$mcVJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, Boolean> funcSpecialized(JFunction2$mcZJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, Integer> funcSpecialized(JFunction2$mcIJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, Float> funcSpecialized(JFunction2$mcFJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, Long> funcSpecialized(JFunction2$mcJJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Long, Double, Double> funcSpecialized(JFunction2$mcDJD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, BoxedUnit> procSpecialized(JFunction2$mcVDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, Boolean> funcSpecialized(JFunction2$mcZDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, Integer> funcSpecialized(JFunction2$mcIDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, Float> funcSpecialized(JFunction2$mcFDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, Long> funcSpecialized(JFunction2$mcJDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Integer, Double> funcSpecialized(JFunction2$mcDDI$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, BoxedUnit> procSpecialized(JFunction2$mcVDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, Boolean> funcSpecialized(JFunction2$mcZDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, Integer> funcSpecialized(JFunction2$mcIDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, Float> funcSpecialized(JFunction2$mcFDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, Long> funcSpecialized(JFunction2$mcJDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Long, Double> funcSpecialized(JFunction2$mcDDJ$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, BoxedUnit> procSpecialized(JFunction2$mcVDD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, Boolean> funcSpecialized(JFunction2$mcZDD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, Integer> funcSpecialized(JFunction2$mcIDD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, Float> funcSpecialized(JFunction2$mcFDD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, Long> funcSpecialized(JFunction2$mcJDD$sp f) { return f; }
+    @SuppressWarnings("unchecked")
     public static scala.Function2<Double, Double, Double> funcSpecialized(JFunction2$mcDDD$sp f) { return f; }
     public static <T1, T2, T3, R> scala.Function3<T1, T2, T3, R> func(JFunction3<T1, T2, T3, R> f) { return f; }
     public static <T1, T2, T3> scala.Function3<T1, T2, T3, BoxedUnit> proc(JProcedure3<T1, T2, T3> p) { return p; }
