@@ -338,14 +338,16 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           assert(false, "We should never have gotten inside a pattern")
           tree
 
+        case t @ DefDef(_, _, _, _, _) =>
+          t // todo: could improve to handle DefDef's with a label flag calls to which are in tail position
+
         case ValDef(_, _, _) | EmptyTree | Super(_, _) | This(_) |
-             Literal(_) | TypeTree(_) | DefDef(_, _, _, _, _) | TypeDef(_, _) =>
+             Literal(_) | TypeTree(_) | TypeDef(_, _) =>
           tree
 
         case Return(expr, from) =>
           tpd.cpy.Return(tree)(noTailTransform(expr), from)
-        case t: DefDef =>
-          t // todo: could improve to handle DefDef's with a label flag calls to which are in tail position
+
         case _ =>
           super.transform(tree)
       }
