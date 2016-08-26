@@ -128,14 +128,14 @@ extends TyperState(r) {
    */
   override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
-    assert(targetState eq previous)
     assert(isCommittable)
-    targetState.constraint = constraint
+    if (targetState eq previous) targetState.constraint = constraint
+    else targetState.constraint &= constraint
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState eq this)
         tvar.owningState = targetState
     }
-    targetState.ephemeral = ephemeral
+    targetState.ephemeral |= ephemeral
     targetState.gc()
     reporter.flush()
     myIsCommitted = true
