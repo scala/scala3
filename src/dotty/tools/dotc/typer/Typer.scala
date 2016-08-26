@@ -72,6 +72,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+  /** Temporary data item for single call to typed ident:
+   *  This symbol would be found under Scala2 mode, but is not
+   *  in dotty (because dotty conforms to spec section 2
+   *  wrt to package member resolution but scalac doe not).
+   */
+  private var foundUnderScala2: Type = _
+
   def newLikeThis: Typer = new Typer
 
   /** Attribute an identifier consisting of a simple name or wildcard
@@ -228,10 +235,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               else curOwner.thisType.select(name, defDenot)
             if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenot))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
-            else if (defDenot.symbol is Package)
-              return checkNewOrShadowed(previous orElse found, packageClause)
-            else if (prevPrec < packageClause)
-              return findRef(found, packageClause, ctx)(outer)
+            else {
+              if (ctx.scala2Mode)
+                foundUnderScala2 = checkNewOrShadowed(found, definition)
+              if (defDenot.symbol is Package)
+                return checkNewOrShadowed(previous orElse found, packageClause)
+              else if (prevPrec < packageClause)
+                return findRef(found, packageClause, ctx)(outer)
+            }
           }
         }
         val curImport = ctx.importInfo
@@ -267,9 +278,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val saved = importedFromRoot
     importedFromRoot = Set.empty
 
-    val rawType =
+    foundUnderScala2 = NoType
+
+    var rawType =
       try findRef(NoType, BindingPrec.nothingBound, NoContext)
       finally importedFromRoot = saved
+
+    if (foundUnderScala2.exists && (foundUnderScala2 ne rawType)) {
+      ctx.migrationWarning(
+        ex"""Name resolution will change.
+            | currently selected                     : $foundUnderScala2
+            | in the future, without -language:Scala2: $rawType""", tree.pos)
+      rawType = foundUnderScala2
+    }
 
     val ownType =
       if (rawType.exists)
