@@ -143,6 +143,9 @@ abstract class Constraint extends Showable {
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar]
 
+  /** The weakest constraint that subsumes both this constraint and `other` */
+  def & (other: Constraint)(implicit ctx: Context): Constraint
+
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): Unit
 
