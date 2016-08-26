@@ -452,8 +452,7 @@ abstract class CompilerTest {
     processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
         dest.parent.jfile.mkdirs
-        dest.toFile.writeAll("/* !!!!! WARNING: DO NOT MODIFY. Original is at: $sf !!!!! */",
-          sf.slurp())
+        dest.toFile.writeAll(s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $sf !!!!! */", sf.slurp)
       } else {
         log(s"WARNING: ignoring $sf")
       }

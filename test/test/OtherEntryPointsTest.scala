@@ -17,7 +17,7 @@ import scala.collection.mutable.ListBuffer
  */
 class OtherEntryPointsTest {
   @Test def runCompiler = {
-    val sources = List("./tests/pos/HelloWorld.scala")
+    val sources = List("./tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
     val args = sources ++ List("-d", "./out/")
 
     val reporter = new CustomReporter
@@ -31,7 +31,7 @@ class OtherEntryPointsTest {
   }
 
   @Test def runCompilerWithContext = {
-    val sources = List("./tests/pos/HelloWorld.scala")
+    val sources = List("./tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
     val args = sources ++ List("-d", "./out/")
 
     val reporter = new CustomReporter
