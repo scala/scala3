@@ -11,7 +11,7 @@ class B(method: String) {
 object Test {
   def main(args: Array[String]): Unit = {
     val x = new A
-    println(x.bippy(42))
-    println(x.bippy("42"))
+    println(x.bippy(42)) // error
+    println(x.bippy("42")) // error
   }
 }

@@ -6,5 +6,5 @@ class DynTest extends Dynamic {
 
 class CompilerError {
   val test = new DynTest
-  test.crushTheCompiler(a = 1, b = 2)
+  test.crushTheCompiler(a = 1, b = 2) // error
 }
