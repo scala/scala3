@@ -12,7 +12,7 @@ object Test{
     // def apply[S: ZipWith](s : S) = ?[ZipWith[S]].zipWith(s) // TODO: bug return type should be inferred
     def apply[S](s : S)(implicit zw: ZipWith[S]): zw.T = zw.zipWith(s)
 
-    implicit def SuccZipWith[S,R](implicit zWith : ZipWith[R]): Test.ZipWith[S => R]{type T = Stream[S] => zWith.T} = new ZipWith[S => R] {
+    implicit def SuccZipWith[S,R](implicit zWith : ZipWith[R]): Test.ZipWith[S => R]{type T = Stream[S] => zWith.T} = new ZipWith[S => R] { // error: may not be dependent
       type T = Stream[S] => zWith.T // dependent types replace the associated types functionality
     }
   }
@@ -25,5 +25,5 @@ object Test{
   // bug: inferred return type = (Stream[A]) => java.lang.Object with Test.ZipWith[B]{type T = Stream[B]}#T
   // this seems incompatible with vvvvvvvvvvvvvvvvvvvvvv   -- #3731
   def map[A,B](f : A => B)   /* : Stream[A] => Stream[B]*/ = ZipWith(f)
-  val tst: Stream[Int] = map{x: String => x.length}(Stream("a"))
+  val tst: Stream[Int] = map{x: String => x.length}(Stream("a"))  // error // error
 }

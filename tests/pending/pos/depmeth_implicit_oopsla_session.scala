@@ -46,18 +46,5 @@ object Sessions {
   def runSession[S, D: Session[S]#HasDual](p: S, dp: D) =
     implicitly[Session[S]#HasDual[D]].run(p, dp)
 
-  // def runSession[S, D](p: S, dp: D)(implicit s: Session[S]#HasDual[D]) =
-  //   s.run(p, dp)
-  //
-  // def runSession[S, D](p: S, dp: D)(implicit s: Session[S]{type Dual=D}) =
-  //   s.run(p, dp)
-
-  // TODO: can we relax the ordering restrictions on dependencies so that we can use
-  // def runSession[S](p: S, dp: s.Dual)(implicit s: Session[S]) =
-  //   s.run(p, dp)
-  // to emphasise similarity of type parameters and implicit arguments:
-  // def runSession[S][val s: Session[S]](p: S, dp: s.Dual) =
-  //   s.run(p, dp)
-
   def myRun = runSession(addServer, addClient)
 }
