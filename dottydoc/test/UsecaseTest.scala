@@ -141,6 +141,49 @@ class UsecaseTest extends DottyTest {
     }
   }
 
+  @Test def expandColl = {
+    val source = new SourceFile(
+      "ExpandColl.scala",
+      """
+      |package scala
+      |
+      |/** The trait $Coll
+      | *
+      | *  @define Coll Iterable
+      | */
+      |trait Iterable[A] {
+      |  /** Definition with a "disturbing" signature
+      |   *
+      |   *  @usecase def map[B](f: A => B): $Coll[B]
+      |   */
+      |  def map[B, M[B]](f: A => B): M[B] = ???
+      |}
+      """.stripMargin
+    )
+
+    checkSources(source :: Nil) { packages =>
+      packages("scala") match {
+      case PackageImpl(_, _, List(trt: Trait), _, _) =>
+        val List(map: Def) = trt.members
+
+        val returnValue = map.returnValue match {
+          case ref: TypeReference => ref.title
+          case _ =>
+            assert(
+              false,
+              "Incorrect return value after usecase transformation"
+            )
+            ""
+        }
+
+        assert(
+          returnValue == "Iterable",
+          "Incorrect return type after usecase transformation"
+        )
+      }
+    }
+  }
+
   @Test def checkIterator =
     checkFiles("./scala-scala/src/library/scala/collection/Iterator.scala" :: Nil) { _ =>
       // success if typer throws no errors! :)

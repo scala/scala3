@@ -171,6 +171,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ybuildmanagerdebug = BooleanSetting("-Ybuild-manager-debug", "Generate debug information for the Refined Build Manager compiler.")
   val Ycompletion = BooleanSetting("-Ycompletion-debug", "Trace all tab completion activity.")
   val Ydocdebug = BooleanSetting("-Ydoc-debug", "Trace all scaladoc activity.")
+  val Ydocrun = BooleanSetting("-Ydoc-run", "Current run should be treated as a docrun, enables `@usecase` annotations in comments")
   val Yidedebug = BooleanSetting("-Yide-debug", "Generate, validate and output trees using the interactive compiler.")
   val Yinferdebug = BooleanSetting("-Yinfer-debug", "Trace type inference and implicit search.")
   val Yissuedebug = BooleanSetting("-Yissue-debug", "Print stack traces when a context issues an error.")
