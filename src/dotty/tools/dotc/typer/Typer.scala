@@ -11,6 +11,7 @@ import Scopes._
 import Denotations._
 import ProtoTypes._
 import Contexts._
+import Comments._
 import Symbols._
 import Types._
 import SymDenotations._
@@ -1246,7 +1247,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
 
-    typedUsecases(body1.map(_.symbol), self1.symbol)
+    if (ctx.settings.Ydocrun.value)
+      typedUsecases(body1.map(_.symbol), self1.symbol)
 
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
@@ -1536,16 +1538,37 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
         Inliner.removeInlineAccessors(mdef.symbol)
 
-  def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit =
-    for {
-      sym <- syms
-      usecase <- ctx.docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
-      List(tpdTree) = typedStats(usecase.untpdCode :: Nil, owner)
-    } yield {
-      if (tpdTree.isInstanceOf[tpd.DefDef])
-        usecase.tpdCode = tpdTree.asInstanceOf[tpd.DefDef]
-      else
-        ctx.error("Couldn't compile `@usecase`", usecase.codePos)
+  def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit = {
+    val relevantSyms = syms.filter(ctx.docbase.docstring(_).isDefined)
+    relevantSyms.foreach { sym =>
+      expandParentDocs(sym)
+      val usecases = ctx.docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
+
+      usecases.foreach { usecase =>
+        enterSymbol(createSymbol(usecase.untpdCode))
+
+        typedStats(usecase.untpdCode :: Nil, owner) match {
+          case List(df: tpd.DefDef) => usecase.tpdCode = df
+          case _ => ctx.error("`@usecase` was not a valid definition", usecase.codePos)
+        }
+      }
+    }
+  }
+
+  import dotty.tools.dottydoc.model.comment.CommentExpander
+  val expander = new CommentExpander {}
+  def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
+    ctx.docbase.docstring(sym).foreach { cmt =>
+      def expandDoc(owner: Symbol): Unit = {
+        expander.defineVariables(sym)
+        val newCmt = Comment(cmt.pos, expander.expandedDocComment(sym, owner, cmt.raw))
+        ctx.docbase.addDocstring(sym, Some(newCmt))
+      }
+
+      if (sym ne NoSymbol) {
+        expandParentDocs(sym.owner)
+        expandDoc(sym.owner)
+      }
     }
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =

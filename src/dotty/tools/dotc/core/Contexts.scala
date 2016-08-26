@@ -582,6 +582,8 @@ object Contexts {
     private[this] val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
 
+    def docstrings: Map[Symbol, Comment] = _docstrings.toMap
+
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =

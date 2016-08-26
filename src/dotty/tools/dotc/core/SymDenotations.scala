@@ -1541,13 +1541,15 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-
+      lazy val isUsecase = ctx.settings.Ydocrun.value && sym.name.show.takeRight(4) == "$doc"
       require(
           (sym.denot.flagsUNSAFE is Private) ||
           !(this is Frozen) ||
           (scope ne this.unforcedDecls) ||
           sym.hasAnnotation(defn.ScalaStaticAnnot) ||
-          sym.name.isInlineAccessor)
+          sym.name.isInlineAccessor ||
+          isUsecase)
+
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)

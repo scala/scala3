@@ -17,8 +17,8 @@ trait DottyTest {
     import base.settings._
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
-    ctx.setSetting(ctx.settings.YkeepComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
+    ctx.setSetting(ctx.settings.Ydocrun, true)
     base.initialize()(ctx)
     ctx
   }

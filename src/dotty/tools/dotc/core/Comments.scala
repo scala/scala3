@@ -15,6 +15,7 @@ import dotty.tools.dottydoc.model.comment.CommentUtils._
 object Comments {
 
   case class Comment(pos: Position, raw: String)(implicit ctx: Context) {
+
     val isDocComment = raw.startsWith("/**")
 
     private[this] lazy val sections = tagIndex(raw)
@@ -41,10 +42,10 @@ object Comments {
       val code         = raw.substring(codeStart, codeEnd) + " = ???"
       val codePos      = subPos(codeStart, codeEnd)
       val commentStart = skipLineLead(raw, codeEnd + 1) min end
-      val comment      = "/** " + raw.substring(commentStart, end) + "*/"
+      val commentStr   = "/** " + raw.substring(commentStart, end) + "*/"
       val commentPos   = subPos(commentStart, end)
 
-      UseCase(Comment(commentPos, comment), code, codePos)
+      UseCase(Comment(commentPos, commentStr), code, codePos)
     }
 
     private def subPos(start: Int, end: Int) =
@@ -57,9 +58,6 @@ object Comments {
   }
 
   case class UseCase(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) {
-    /** Entered by Namer */
-    var symbol: Symbol = _
-
     /** Set by typer */
     var tpdCode: tpd.DefDef = _
 
@@ -68,7 +66,7 @@ object Comments {
 
       tree match {
         case tree: untpd.DefDef =>
-          val newName = (tree.name.show + "$" + codePos.start).toTermName
+          val newName = (tree.name.show + "$" + codePos + "$doc").toTermName
           untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
         case _ =>
           ctx.error("proper definition was not found in `@usecase`", codePos)

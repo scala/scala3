@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._, Denotations._
+import Trees._, Constants._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
 import ProtoTypes._
@@ -456,14 +456,7 @@ class Namer { typer: Typer =>
 
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
-    case t: MemberDef if t.rawComment.isDefined =>
-      val cmt = t.rawComment
-      ctx.docbase.addDocstring(sym, cmt)
-
-      cmt.get.usecases.foreach { usecase =>
-        usecase.symbol = enterSymbol(createSymbol(usecase.untpdCode))
-      }
-
+    case t: MemberDef if t.rawComment.isDefined => ctx.docbase.addDocstring(sym, t.rawComment)
     case _ => ()
   }
 
