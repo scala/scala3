@@ -177,7 +177,7 @@ object Types {
     }
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError)
+    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -219,8 +219,8 @@ object Types {
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean)(implicit ctx: Context): Boolean =
-      new ExistsAccumulator(p).apply(false, this)
+    final def existsPart(p: Type => Boolean, forceLazy: Boolean = true)(implicit ctx: Context): Boolean =
+      new ExistsAccumulator(p, forceLazy).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
@@ -3695,9 +3695,10 @@ object Types {
     protected def traverseChildren(tp: Type) = foldOver((), tp)
   }
 
-  class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  class ExistsAccumulator(p: Type => Boolean, forceLazy: Boolean = true)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def stopAtStatic = false
-    def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
+    def apply(x: Boolean, tp: Type) =
+      x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
   }
 
   class ForeachAccumulator(p: Type => Unit)(implicit ctx: Context) extends TypeAccumulator[Unit] {
