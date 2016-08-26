@@ -346,11 +346,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    if (ctx.compilationUnit.isJava && tree.name.isTypeName) {
+    def selectWithFallback(fallBack: => Tree) =
+      tryEither(tryCtx => asSelect(tryCtx))((_, _) => fallBack)
+
+    if (ctx.compilationUnit.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      tryEither(tryCtx => asSelect(tryCtx))((_, _) => asJavaSelectFromTypeTree(ctx))
-    } else asSelect(ctx)
+      selectWithFallback(asJavaSelectFromTypeTree(ctx))
+    else if (tree.name == nme.withFilter && tree.getAttachment(desugar.MaybeFilter).isDefined)
+      selectWithFallback(typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt))
+    else
+      asSelect(ctx)
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
@@ -1066,8 +1072,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.tree)
+    val annotCtx = ctx.outersIterator.dropWhile(_.owner == sym).next
     // necessary in order to mark the typed ahead annotations as definitely typed:
-    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation)
+    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
@@ -1715,6 +1722,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else
           missingArgs
       case _ =>
+        ctx.typeComparer.GADTused = false
         if (ctx.mode is Mode.Pattern) {
           tree match {
             case _: RefTree | _: Literal if !isVarPattern(tree) =>
@@ -1723,7 +1731,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           tree
         }
-        else if (tree.tpe <:< pt) tree
+        else if (tree.tpe <:< pt)
+          if (ctx.typeComparer.GADTused && pt.isValueType)
+            // Insert an explicit cast, so that -Ycheck in later phases succeeds.
+            // I suspect, but am not 100% sure that this might affect inferred types,
+            // if the expected type is a supertype of the GADT bound. It would be good to come
+            // up with a test case for this.
+            tree.asInstance(pt)
+          else
+            tree
         else if (wtp.isInstanceOf[MethodType]) missingArgs
         else {
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")

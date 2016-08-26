@@ -726,7 +726,7 @@ class Namer { typer: Typer =>
       // the parent types are elaborated.
       index(constr)
       symbolOfTree(constr).ensureCompleted()
-      
+
       index(rest)(inClassContext(selfInfo))
 
       val tparamAccessors = decls.filter(_ is TypeParamAccessor).toList
@@ -807,20 +807,27 @@ class Namer { typer: Typer =>
           lazy val schema = paramFn(WildcardType)
           val site = sym.owner.thisType
           ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
-            val iRawInfo =
-              cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema).info
-            val iInstInfo = iRawInfo match {
-              case iRawInfo: PolyType =>
-                if (iRawInfo.paramNames.length == typeParams.length)
-                  iRawInfo.instantiate(typeParams map (_.typeRef))
+            def instantiatedResType(info: Type, tparams: List[Symbol], paramss: List[List[Symbol]]): Type = info match {
+              case info: PolyType =>
+                if (info.paramNames.length == typeParams.length)
+                  instantiatedResType(info.instantiate(tparams.map(_.typeRef)), Nil, paramss)
                 else NoType
+              case info: MethodType =>
+                paramss match {
+                  case params :: paramss1 if info.paramNames.length == params.length =>
+                    instantiatedResType(info.instantiate(params.map(_.termRef)), tparams, paramss1)
+                  case _ =>
+                    NoType
+                }
               case _ =>
-                if (typeParams.isEmpty) iRawInfo
+                if (tparams.isEmpty && paramss.isEmpty) info.widenExpr
                 else NoType
             }
-            val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
+            val iRawInfo =
+              cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema).info
+            val iResType = instantiatedResType(iRawInfo, typeParams, paramss).asSeenFrom(site, cls)
             if (iResType.exists)
-              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
+              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
             tp & iResType
           }
         }

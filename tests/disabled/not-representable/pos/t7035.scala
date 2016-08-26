@@ -1,3 +1,5 @@
+// no longer works because dotty uses name-nased pattern matching for case classes
+
 case class Y(final var x: Int, final private var y: String, final val z1: Boolean, final private val z2: Any) {
 
   import Test.{y => someY}

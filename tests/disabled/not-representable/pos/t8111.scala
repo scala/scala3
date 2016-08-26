@@ -1,3 +1,4 @@
+// structural types, cannot represent
 trait T {
 
   def crashy(ma: Any): Unit = {

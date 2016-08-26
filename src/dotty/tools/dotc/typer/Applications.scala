@@ -775,14 +775,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  The generalizations of a type T are the smallest set G such that
      *
      *   - T is in G
-     *   - If a typeref R in G represents a trait, R's superclass is in G.
+     *   - If a typeref R in G represents a class or trait, R's superclass is in G.
      *   - If a type proxy P is not a reference to a class, P's supertype is in G
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
-        case tp: TypeRef if tp.symbol.isClass =>
-          tp.symbol.is(Trait) && isSubTypeOfParent(subtp, tp.firstParent)
+        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
         case _ => false
       }

@@ -1,3 +1,4 @@
+// no longer works because dotty does not have a concept of weak conformance
 object AdaptWithWeaklyConformantType {
   implicit class D(d: Double) { def double = d*2 }
 

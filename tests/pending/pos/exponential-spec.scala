@@ -23,7 +23,7 @@ object Test {
       compose f[T]      // 8s
       compose f[T]      // 11s
       compose f[T]      // 17s
-      compose f[T]      // 29s
+/*      compose f[T]      // 29s
       compose f[T]      // 54s
       compose f[T]
       compose f[T]
@@ -42,6 +42,6 @@ object Test {
       compose f[T]
       compose f[T]
       compose f[T]
-      compose f[T]
+      compose f[T]*/
     )(exp)
 }
