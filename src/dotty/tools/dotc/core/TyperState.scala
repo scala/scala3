@@ -96,7 +96,8 @@ extends TyperState(r) {
 
   override def reporter = myReporter
 
-  private var myConstraint: Constraint = previous.constraint
+  private val previousConstraint = previous.constraint
+  private var myConstraint: Constraint = previousConstraint
 
   override def constraint = myConstraint
   override def constraint_=(c: Constraint)(implicit ctx: Context) = {
@@ -129,8 +130,9 @@ extends TyperState(r) {
   override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
     assert(isCommittable)
-    if (targetState eq previous) targetState.constraint = constraint
-    else targetState.constraint &= constraint
+    targetState.constraint =
+      if (targetState.constraint eq previousConstraint) constraint
+      else targetState.constraint & constraint
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState eq this)
         tvar.owningState = targetState
