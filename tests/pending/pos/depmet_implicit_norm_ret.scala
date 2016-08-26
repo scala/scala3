@@ -17,6 +17,8 @@ object Test{
     }
   }
 
+  import ZipWith._
+
   trait ZipWith[S] {
     type T
     def zipWith : S => T = sys.error("")
@@ -24,6 +26,9 @@ object Test{
 
   // bug: inferred return type = (Stream[A]) => java.lang.Object with Test.ZipWith[B]{type T = Stream[B]}#T
   // this seems incompatible with vvvvvvvvvvvvvvvvvvvvvv   -- #3731
-  def map[A,B](f : A => B)   /* : Stream[A] => Stream[B]*/ = ZipWith(f)
-  val tst: Stream[Int] = map{x: String => x.length}(Stream("a"))
+  def map1[A,B](f : A => B) = ZipWith(f)(SuccZipWith) // this typechecks but fails in -Ycheck:first
+  val tst1: Stream[Int] = map1[String, Int]{x: String => x.length}.apply(Stream("a"))
+
+  def map2[A,B](f : A => B) = ZipWith(f) // this finds ZeroZipWith where scalac finds SuccZipWith and fails typechecking in the next line.
+  val tst2: Stream[Int] = map2{x: String => x.length}.apply(Stream("a"))
 }
