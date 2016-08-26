@@ -469,7 +469,7 @@ trait Checking {
    */
   def checkNotDependent(resTpt: Tree, vparams: List[Symbol])(implicit ctx: Context): Unit =
     for (vparam <- vparams)
-      if (vparam.termRef.occursIn(resTpt.tpe))
+      if (!vparam.is(Implicit) && vparam.termRef.occursIn(resTpt.tpe))
         ctx.errorOrMigrationWarning(
           em"implicit method's result type may not depend on parameter ${vparam.name}", resTpt.pos)
 
