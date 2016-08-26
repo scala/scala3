@@ -1,8 +1,0 @@
-$ scalac tests/pending/naming-resolution/*.scala
-$ ./bin/dotc tests/pending/naming-resolution/*.scala
-tests/pending/naming-resolution/callsite.scala:6: error: type mismatch:
- found   : java.util.stream.Stream[java.nio.file.Path]
- required: java.nio.file.Files
-  def gimmeFiles: Files = Files.list(Paths.get("."))
-                                    ^
-one error found
