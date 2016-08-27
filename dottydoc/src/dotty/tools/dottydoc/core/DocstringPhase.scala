@@ -3,14 +3,10 @@ package dottydoc
 package core
 
 import dotc.core.Contexts.Context
-import dotc.ast.tpd
-
 import transform.DocMiniPhase
 import model._
 import model.internal._
-import model.factories._
 import model.comment._
-import dotty.tools.dotc.core.Symbols.Symbol
 import BodyParsers._
 
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {

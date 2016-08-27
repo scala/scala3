@@ -1538,7 +1538,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
         Inliner.removeInlineAccessors(mdef.symbol)
 
-  def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit = {
+  private def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit = {
     val relevantSyms = syms.filter(ctx.docbase.docstring(_).isDefined)
     relevantSyms.foreach { sym =>
       expandParentDocs(sym)
@@ -1555,13 +1555,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  import dotty.tools.dottydoc.model.comment.CommentExpander
-  val expander = new CommentExpander {}
-  def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
+  private def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
     ctx.docbase.docstring(sym).foreach { cmt =>
-      def expandDoc(owner: Symbol): Unit = {
-        expander.defineVariables(sym)
-        val newCmt = Comment(cmt.pos, expander.expandedDocComment(sym, owner, cmt.raw))
+      def expandDoc(owner: Symbol): Unit = if (!cmt.isExpanded) {
+        val tplExp = ctx.docbase.templateExpander
+        tplExp.defineVariables(sym)
+
+        val newCmt = cmt
+          .expand(tplExp.expandedDocComment(sym, owner, _))
+          .withUsecases
+
         ctx.docbase.addDocstring(sym, Some(newCmt))
       }
 

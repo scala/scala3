@@ -31,6 +31,8 @@ class UsecaseTest extends DottyTest {
         case PackageImpl(_, _, List(trt: Trait), _, _) =>
           val List(foo: Def) = trt.members
 
+          assert(foo.comment.isDefined, "Lost comment in transformations")
+
           val returnValue = foo.returnValue match {
             case ref: TypeReference => ref.title
             case _ =>
@@ -179,6 +181,41 @@ class UsecaseTest extends DottyTest {
         assert(
           returnValue == "Iterable",
           "Incorrect return type after usecase transformation"
+        )
+      }
+    }
+  }
+
+  @Test def checkStripping = {
+    val source = new SourceFile(
+      "CheckStripping.scala",
+      """
+      |package scala
+      |
+      |/** The trait $Coll
+      | *
+      | *  @define Coll Iterable
+      | */
+      |trait Iterable[A] {
+      |  /** Definition with a "disturbing" signature
+      |   *
+      |   *  @usecase def map[B](f: A => B): $Coll[B]
+      |   */
+      |  def map[B, M[B]](f: A => B): M[B] = ???
+      |}
+      """.stripMargin
+    )
+
+    checkSources(source :: Nil) { packages =>
+      packages("scala") match {
+      case PackageImpl(_, _, List(trt: Trait), _, _) =>
+        val List(map: Def) = trt.members
+        assert(map.comment.isDefined, "Lost comment in transformations")
+
+        val docstr = ctx.docbase.docstring(map.symbol).get.raw
+        assert(
+          !docstr.contains("@usecase"),
+          s"Comment should not contain usecase after stripping, but was:\n$docstr"
         )
       }
     }
