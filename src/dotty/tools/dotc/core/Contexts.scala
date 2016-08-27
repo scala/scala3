@@ -577,6 +577,8 @@ object Contexts {
     private[this] val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
 
+    val templateExpander = new CommentExpander
+
     def docstrings: Map[Symbol, Comment] = _docstrings.toMap
 
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
