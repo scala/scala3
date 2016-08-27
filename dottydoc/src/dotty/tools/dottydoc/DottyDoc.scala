@@ -32,6 +32,7 @@ class DocCompiler extends Compiler {
     List(new DocImplicitsPhase),
     List(new DocASTPhase),
     List(DocMiniTransformations(new UsecasePhase,
+                                new DocstringPhase,
                                 new LinkReturnTypes,
                                 new LinkParamListTypes,
                                 new LinkImplicitlyAddedTypes,
