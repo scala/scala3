@@ -14,7 +14,6 @@ class DocASTPhase extends Phase {
   import model._
   import model.factories._
   import model.internal._
-  import model.parsers.WikiParser
   import model.comment.Comment
   import dotty.tools.dotc.core.Flags
   import dotty.tools.dotc.ast.tpd._
@@ -23,20 +22,8 @@ class DocASTPhase extends Phase {
 
   def phaseName = "docphase"
 
-  private[this] val commentParser = new WikiParser
-
-  /** Saves the commentParser function for later evaluation, for when the AST has been filled */
-  def track(symbol: Symbol, ctx: Context, parent: Symbol = NoSymbol)(op: => Entity) = {
-    val entity = op
-
-    if (entity != NonEntity)
-      commentParser += (entity, symbol, parent, ctx)
-
-    entity
-  }
-
   /** Build documentation hierarchy from existing tree */
-  def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
+  def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree], ps: List[String]): List[Entity] =
@@ -58,30 +45,26 @@ class DocASTPhase extends Phase {
       val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
         .filterNot(_.symbol.owner.name.show == "Any")
         .map { meth =>
-          track(meth.symbol, ctx, tree.symbol) {
-            DefImpl(
-              meth.symbol,
-              meth.symbol.name.show,
-              Nil,
-              path(meth.symbol),
-              returnType(meth.info),
-              typeParams(meth.symbol),
-              paramLists(meth.info),
-              implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
-            )
-          }
+          DefImpl(
+            meth.symbol,
+            meth.symbol.name.show,
+            Nil,
+            path(meth.symbol),
+            returnType(meth.info),
+            typeParams(meth.symbol),
+            paramLists(meth.info),
+            implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
+          )
         }.toList
 
       val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
-        track(value.symbol, ctx, tree.symbol) {
-          ValImpl(
-            value.symbol,
-            value.symbol.name.show,
-            Nil, path(value.symbol),
-            returnType(value.info),
-            implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
-          )
-        }
+        ValImpl(
+          value.symbol,
+          value.symbol.name.show,
+          Nil, path(value.symbol),
+          returnType(value.info),
+          implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
+        )
       }
 
       defs ++ vals
@@ -177,14 +160,7 @@ class DocASTPhase extends Phase {
       child  <- parent.children
     } setParent(child, to = parent)
 
-    // (3) Create documentation template from docstrings, with internal links
-    println("Generating documentation, this might take a while...")
-    commentParser.parse(packages)
-
-    // (4) Clear caches
-    commentParser.clear()
-
-    // (5) Update Doc AST in ctx.base
+    // (3) Update Doc AST in ctx.base
     for (kv <- packages) ctx.docbase.packages += kv
 
     // Return super's result
