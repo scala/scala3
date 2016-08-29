@@ -30,8 +30,10 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Colored Repl                                                                                            | Implemented         |
 | Sbt incremental build                                                                                   | Implemented         |
 | Non-blocking lazy vals                                                                                  | Implemented         |
+| Multiverse equality                                                                                     | Implemented |
 | Option-less pattern matching(based on [name-based patmat](https://github.com/scala/scala/pull/2848))    | Implemented |
 | Function arity adaptation                                                                               | Implemented |
+| Exhaustivity checks in pattern matching                                                                 | Implemented |
 |                                                                                                         |                     |
 | Non-boxed arrays of value classes                                                                       | In progress         |
 | Working contravariant implicits                                                                         | In progress         |
@@ -44,8 +46,7 @@ See [github contributors page](https://github.com/lampepfl/dotty/graphs/contribu
 | Effects                                                                                                 | Under consideration |
 | Auto-completion in repl                                                                                 | Under consideration |
 | Spec Option-less pattern matching                                                                       | Under consideration |
-| Multiverse equality                                                                                     | Under consideration |
-| Exhaustivity checks in pattern matching                                                                 | Under consideration |
+
 There are also plethora of small details such as [per-callsite @tailrec annotations](https://github.com/lampepfl/dotty/issues/1221)
 
 ####What are the complications that I can have If I start using Dotty?
