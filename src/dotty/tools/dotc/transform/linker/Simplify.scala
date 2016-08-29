@@ -230,6 +230,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val better = t.cases.find(x => tpd.isWildcardArg(x.pat) || (x.pat.tpe.asInstanceOf[ConstantType].value eq selectorValue))
         if (better.nonEmpty) better.get.body
         else t
+      case t: Literal =>
+        t
       case t =>
         val s = ConstFold.apply(t)
         if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
