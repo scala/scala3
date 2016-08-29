@@ -403,37 +403,28 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
-    case pcl: PackageDef =>
-      val pkg = createPackageSymbol(pcl.pid)
-      index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
-      invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
-      setDocstring(pkg, stat)
-      ctx
-    case imp: Import =>
-      importContext(createSymbol(imp), imp.selectors)
-    case mdef: DefTree =>
-      val sym = enterSymbol(createSymbol(mdef))
-      setDocstring(sym, stat)
-
-      // add java enum constants
-      mdef match {
-        case vdef: ValDef if (isEnumConstant(vdef)) =>
-          val enumClass = sym.owner.linkedClass
-          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-          enumClass.addAnnotation(Annotation.makeChild(sym))
-        case _ =>
-      }
-
-      ctx
-    case stats: Thicket =>
-      for (tree <- stats.toList) {
-        val sym = enterSymbol(createSymbol(tree))
+  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = {
+    def recur(stat: Tree): Context = stat match {
+      case pcl: PackageDef =>
+        val pkg = createPackageSymbol(pcl.pid)
+        index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
+        invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
+        setDocstring(pkg, stat)
+        ctx
+      case imp: Import =>
+        importContext(createSymbol(imp), imp.selectors)
+      case mdef: DefTree =>
+        val sym = enterSymbol(createSymbol(mdef))
         setDocstring(sym, stat)
-      }
-      ctx
-    case _ =>
-      ctx
+        addEnumConstants(mdef, sym)
+        ctx
+      case stats: Thicket =>
+        stats.toList.foreach(recur)
+        ctx
+      case _ =>
+        ctx
+    }
+    recur(expanded(stat))
   }
 
   /** Determines whether this field holds an enum constant.
@@ -453,6 +444,16 @@ class Namer { typer: Typer =>
     //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
     vd.mods.is(allOf(Enum,  Stable, JavaStatic, JavaDefined)) // && ownerHasEnumFlag
   }
+
+  /** Add java enum constants */
+  def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
+    case vdef: ValDef if (isEnumConstant(vdef)) =>
+      val enumClass = sym.owner.linkedClass
+      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+      enumClass.addAnnotation(Annotation.makeChild(sym))
+    case _ =>
+  }
+
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef => ctx.docbase.addDocstring(sym, t.rawComment)
