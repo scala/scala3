@@ -497,7 +497,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         else a.expr
       case a: DefDef =>
         if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.NothingClass)) {
-          cpy.DefDef(a)(rhs = keepOnlySideEffects(a.rhs), tpt = tpd.TypeTree(defn.UnitType))
+          def insertUnit(t: Tree) = {
+            if (!t.tpe.derivesFrom(defn.UnitClass)) Block(t :: Nil, tpd.unitLiteral)
+            else t
+          }
+          cpy.DefDef(a)(rhs = insertUnit(keepOnlySideEffects(a.rhs)), tpt = tpd.TypeTree(defn.UnitType))
         } else a
       case t => t
     }
