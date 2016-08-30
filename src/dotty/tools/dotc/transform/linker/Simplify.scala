@@ -23,6 +23,13 @@ import scala.collection.mutable.ListBuffer
 
 
 class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
+  // todo: optimize patterns similar to
+  //       if fact27.ne(null) then
+  //         if fact27.exists.unary_! then
+  //           this.myUninstVars.+=(fact27)
+  //         else case701()
+  //       else case701()
+  // two ifs can be joined together
 
   import tpd._
 
@@ -209,8 +216,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         } else t
       }
     }
-    val transformer: Transformer = () => { x => preEval(x) match {
+    val transformer: Transformer = () => localCtx => { x => preEval(x) match {
       // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator
+      // TODO: include methods such as Int.int2double(see ./tests/pos/harmonize.scala)
       case If(t: Literal, thenp, elsep) =>
         if (t.const.booleanValue) thenp
         else elsep
@@ -218,7 +226,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         tpd.If(recv, elsep, thenp)
       case If(t@ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         tpd.If(recv, elsep, thenp)
-      // todo: similar trick for comparions.
+      // todo: similar trick for comparisons.
       // todo: handle comparison with min\max values
       case t@Apply(Select(lhs, _), List(rhs)) =>
         val sym = t.symbol
@@ -257,6 +265,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         if (better.nonEmpty) better.get.body
         else t
       case t: Literal =>
+        t
+      case t: CaseDef =>
+        t
+      case t if !isPureExpr(t) =>
         t
       case t =>
         val s = ConstFold.apply(t)
