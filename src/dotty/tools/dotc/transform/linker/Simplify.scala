@@ -201,7 +201,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   val constantFold: Optimization = { (ctx0: Context) => {
     implicit val ctx: Context = ctx0
     def preEval(t: Tree) = {
-      if (t.isInstanceOf[Literal]) t else {
+      if (t.isInstanceOf[Literal] || t.isInstanceOf[CaseDef] || !isPureExpr(t)) t else {
         val s = ConstFold.apply(t)
         if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) {
           val constant = s.tpe.asInstanceOf[ConstantType].value
