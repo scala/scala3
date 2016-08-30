@@ -293,7 +293,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           hasPerfectRHS(symbol) = true
         case Apply(fun, _) if fun.symbol.is(Flags.Label) && (fun.symbol ne symbol) =>
           checkGood.put(fun.symbol, symbol)
-        case t: Ident if !t.symbol.owner.isClass =>
+        case t: Ident if !t.symbol.owner.isClass && (t.symbol ne symbol) =>
           checkGood.put(t.symbol, symbol)
         case _ =>
       }
@@ -329,6 +329,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val fields = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
           val productAccessors = (1 to fields.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // todo: disambiguate
           val newLocals = fields.map(x =>
+            // todo: it would be nice to have an additional optimization that
+            // todo: is capable of turning those mutable ones into immutable in common cases
             ctx.newSymbol(refVal.owner, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
           )
             val fieldMapping = fields zip newLocals
@@ -358,16 +360,20 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           // if t is itself split, push writes
           case _ =>
             evalOnce(t){ev =>
-              val fieldsByAccessors = newMappings(target)
-              val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)
-              val assigns = accessors map (x => ref(fieldsByAccessors(x)).becomes(ev.select(x)))
-              Block(assigns, ev)
+              if (ev.tpe.derivesFrom(defn.NothingClass)) ev
+              else {
+                val fieldsByAccessors = newMappings(target)
+                val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)
+                val assigns = accessors map (x => ref(fieldsByAccessors(x)).becomes(ev.select(x)))
+                Block(assigns, ev)
+              }
             } // need to eval-once and update fields
 
         }
       }
 
       def followCases(t: Symbol): Symbol = if (t.symbol.is(Flags.Label)) {
+        // todo: this can create cycles, see ./tests/pos/rbtree.scala
         followCases(checkGood.getOrElse(t, NoSymbol))
       } else t
 
