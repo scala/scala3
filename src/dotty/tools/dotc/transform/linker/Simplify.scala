@@ -583,10 +583,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case Apply(fun, Nil) => fun
         case _ => a
       }
-      val old = dropApply(x)
+      val old = dropApply(tree)
       val nw = rewriteSelect(old)
       if (nw ne old) nw
-      else x
+      else tree
     }
     ("inlineLabelsCalledOnce", BeforeAndAfterErasure, visitor, transformer)
   }}
@@ -597,11 +597,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val defined = collection.mutable.HashSet[Symbol]()
     val copies = collection.mutable.HashMap[Symbol, Tree]() // either a duplicate or a read through series of immutable fields
     val visitor: Visitor = {
-      case valdef: ValDef if !valdef.symbol.is(Flags.Param) && !valdef.symbol.is(Flags.Mutable | Flags.Module) && (valdef.symbol.exists && !valdef.symbol.owner.isClass) =>
+      case valdef: ValDef if !valdef.symbol.is(Flags.Param) && !valdef.symbol.is(Flags.Mutable | Flags.Module | Flags.Lazy) && (valdef.symbol.exists && !valdef.symbol.owner.isClass) =>
         defined += valdef.symbol
 
         dropCasts(valdef.rhs) match {
           case t: Tree if readingOnlyVals(t) =>
+            if (valdef.symbol.name.toString.contains("21"))
+              println("dss")
             copies.put(valdef.symbol, valdef.rhs)
           case _ =>
         }
@@ -610,7 +612,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         val b4 = timesUsed.getOrElseUpdate(symIfExists, 0)
         timesUsed.put(symIfExists, b4 + 1)
 
-      case valdef: ValDef  if valdef.symbol.exists && !valdef.symbol.owner.isClass && !valdef.symbol.is(Flags.Param | Flags.Module) =>
+      case valdef: ValDef  if valdef.symbol.exists && !valdef.symbol.owner.isClass && !valdef.symbol.is(Flags.Param | Flags.Module | Flags.Lazy) =>
         //todo: handle params after constructors. Start changing public signatures by eliminating unused arguments.
         defined += valdef.symbol
 
