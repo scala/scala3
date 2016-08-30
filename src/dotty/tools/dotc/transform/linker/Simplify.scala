@@ -418,7 +418,12 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t @ If(cond, EmptyTree, EmptyTree) =>
         keepOnlySideEffects(cond)
       case t @ If(cond, thenp, elsep) =>
-        cpy.If(t)(thenp = keepOnlySideEffects(thenp), elsep = keepOnlySideEffects(elsep))
+        val nthenp = keepOnlySideEffects(thenp)
+        val nelsep = keepOnlySideEffects(elsep)
+        if (thenp.isEmpty && elsep.isEmpty) keepOnlySideEffects(cond)
+        else cpy.If(t)(
+          thenp = nthenp.orElse(if (thenp.isInstanceOf[Literal]) thenp else  tpd.unitLiteral),
+          elsep = nelsep.orElse(if (elsep.isInstanceOf[Literal]) elsep else  tpd.unitLiteral))
       case Select(rec, _) if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) ||
         (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
         (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))=>
@@ -485,8 +490,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }
 
   val bubbleUpNothing: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
-    val transformer: Transformer = () => {
+    implicit val ctx: Context = ctx0
+    val transformer: Transformer = () => localCtx => {
       case Apply(Select(qual, _), args)  if qual.tpe.derivesFrom(defn.NothingClass) => qual
       case Apply(Select(qual, _), args)  if args.exists(x => x.tpe.derivesFrom(defn.NothingClass)) =>
         val (keep, noth :: other) = args.span(x => !x.tpe.derivesFrom(defn.NothingClass))
@@ -686,7 +691,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           t
         case t: RefTree if !t.symbol.is(Flags.Method) && !t.symbol.is(Flags.Param) && !t.symbol.is(Flags.Mutable) =>
           if (replacements.contains(t.symbol))
-            deepReplacer.transform(replacements(t.symbol))
+            deepReplacer.transform(replacements(t.symbol)).ensureConforms(t.tpe.widen)
           else t
         case tree => tree
       }
