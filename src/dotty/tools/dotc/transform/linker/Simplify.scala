@@ -90,12 +90,25 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   val BeforeAndAfterErasure: ErasureCompatibility  = BeforeErasure | AfterErasure
 
   val NoVisitor: Visitor = (_) => ()
-  type Transformer = () => (Tree => Tree)
+  type Transformer = () => (Context => Tree => Tree)
   type Optimization = (Context) => (String, ErasureCompatibility, Visitor, Transformer)
 
-  private lazy val _optimizations = Seq(inlineCaseIntrinsics, inlineOptions, inlineLabelsCalledOnce, devalify, dropNoEffects, inlineLocalObjects/*, varify*/, constantFold)
+  private lazy val _optimizations: Seq[Optimization] = Seq(
+    inlineCaseIntrinsics
+    ,inlineOptions
+    ,inlineLabelsCalledOnce
+    ,devalify
+//    ,dropNoEffects
+//    ,inlineLocalObjects // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    /*, varify*/  // varify could stop other transformations from being applied. postponed.
+    //, bubbleUpNothing
+    ,constantFold
+  )
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    val ctx0 = ctx
     if (!tree.symbol.is(Flags.Label)) {
+      implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
+      // TODO: optimize class bodies before erasure?
       var rhs0 = tree.rhs
       var rhs1: Tree = null
       val erasureCompatibility = if (ctx.erasedTypes) AfterErasure else BeforeErasure
@@ -112,10 +125,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val nextTransformer = transformers.head()
             val name = names.head
             val rhst = new TreeMap() {
-              override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = nextTransformer(super.transform(tree))
+              override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+                val innerCtx = if (tree.isDef && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+                nextTransformer(ctx)(super.transform(tree)(innerCtx))
+              }
             }.transform(rhs0)
-            if (rhst ne rhs0)
-              println(s"${tree.symbol} after ${name} became ${rhst.show(ctx.addMode(Mode.FutureDefsOK))}")
+//            if (rhst ne rhs0)
+//              println(s"${tree.symbol} after ${name} became ${rhst.show}")
             rhs0 = rhst
           }
           names = names.tail
@@ -130,8 +146,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }
 
   val inlineCaseIntrinsics: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
-    val transformer: Transformer = () => {
+    implicit val ctx: Context = ctx0
+    val transformer: Transformer = () => localCtx => {
       case a: Apply if !a.tpe.isInstanceOf[MethodicType] && a.symbol.is(Flags.Synthetic) && a.symbol.owner.is(Flags.Module) &&
         (a.symbol.name == nme.apply) && a.symbol.owner.companionClass.is(Flags.CaseClass) =>
         def unrollArgs(t: Tree, l: List[List[Tree]]): List[List[Tree]] = t match {
@@ -173,7 +189,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
   
   val constantFold: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     def preEval(t: Tree) = {
       if (t.isInstanceOf[Literal]) t else {
         val s = ConstFold.apply(t)
@@ -243,7 +259,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val inlineLocalObjects: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val hasPerfectRHS = collection.mutable.HashMap[Symbol, Boolean]() // in the end only calls constructor. Reason for unconditional inlining
     val checkGood = collection.mutable.HashMap[Symbol, Symbol]() // if key has perfect RHS than value has perfect RHS
     val gettersCalled = collection.mutable.HashSet[Symbol]()
@@ -274,7 +290,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case _ =>
     }
 
-    val transformer: Transformer = () =>{
+    val transformer: Transformer = () => localCtx => {
       var hasChanged = true
       while(hasChanged) {
         hasChanged = false
@@ -460,9 +476,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val dropNoEffects: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
 
-    val transformer: Transformer = () => {
+    val transformer: Transformer = () => localCtx => {
       case Block(Nil, expr) => expr
       case a: Block  =>
         val newStats = a.stats.mapConserve(keepOnlySideEffects)
@@ -479,7 +495,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val inlineLabelsCalledOnce: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val timesUsed = collection.mutable.HashMap[Symbol, Int]()
     val defined = collection.mutable.HashMap[Symbol, DefDef]()
 
@@ -494,13 +510,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case _ =>
     }
 
-    val transformer: Transformer = () => {
+    val transformer: Transformer = () => localCtx => {
       case a: Apply if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramTypess == List(Nil)=>
         defined.get(a.symbol) match {
           case None => a
           case Some(defDef) =>
-            //println(s"Inlining ${defDef.name}")
-            defDef.rhs.changeOwner(defDef.symbol, ctx.owner)
+            println(s"Inlining ${defDef.name}")
+            defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
         }
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
         //println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
@@ -515,7 +531,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val inlineOptions: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val somes = collection.mutable.HashMap[Symbol, Tree]()
     val nones = collection.mutable.HashSet[Symbol]()
 
@@ -532,7 +548,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case _ =>
     }
 
-    val transformer: Transformer = () => x => {
+    val transformer: Transformer = () => localCtx => tree => {
       def rewriteSelect(x: Tree) = x match {
         case Select(rec, nm) if nm == nme.get && somes.contains(rec.symbol) =>
           somes(rec.symbol)
@@ -566,7 +582,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val devalify: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val timesUsed = collection.mutable.HashMap[Symbol, Int]()
     val defined = collection.mutable.HashSet[Symbol]()
     val copies = collection.mutable.HashMap[Symbol, Tree]() // either a duplicate or a read through series of immutable fields
@@ -594,7 +610,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case _ =>
     }
 
-    val transformer: Transformer = () => {
+    val transformer: Transformer = () => localCtx => {
 
       val valsToDrop = defined -- timesUsed.keySet
       val copiesToReplaceAsDuplicates = copies.filter { x =>
@@ -647,7 +663,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }}
 
   val varify: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val paramsTimesUsed = collection.mutable.HashMap[Symbol, Int]()
     val possibleRenames = collection.mutable.HashMap[Symbol, Set[Symbol]]()
     val visitor: Visitor = {
@@ -670,7 +686,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         current foreach { c => paramsTimesUsed += (param -> (c + 1)) }
       case _ =>
     }
-    val transformer = () => {
+    val transformer: Transformer = () => localCtx => {
       val paramCandidates = paramsTimesUsed.filter(kv => kv._2 == 1).keySet
       val renames = possibleRenames.iterator.map(kv => (kv._1, kv._2.intersect(paramCandidates))).
         filter(x => x._2.nonEmpty).map(x => (x._1, x._2.head)).toMap
