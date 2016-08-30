@@ -164,8 +164,18 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         (a.symbol.name == nme.unapply) && a.symbol.owner.companionClass.is(Flags.CaseClass) =>
         if (!a.symbol.owner.is(Flags.Scala2x))
           a.args.head
-        else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass))
-          tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), a.args.head :: Nil)
+        else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
+          val accessors = a.args.head.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Flags.Method))
+          val fields = accessors.map(x => a.args.head.select(x).ensureApplied)
+          val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
+
+          if (!fields.tail.isEmpty) {
+            val tplAlloc = tpd.New(tplType, fields)
+            tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
+          } else { // scalac does not have tupple1
+            tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), fields.head :: Nil)
+          }
+        }
         else a
       case a: Apply if (a.symbol.name == nme.unapplySeq) && a.symbol.owner.derivesFrom(SeqFactoryClass) && a.symbol.extendedOverriddenSymbols.isEmpty =>
         def reciever(t: Tree): Type = t match {
