@@ -415,8 +415,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t: Literal => EmptyTree
       case Typed(exp, tpe) =>
         keepOnlySideEffects(exp)
-      case t @ If(cond, EmptyTree, EmptyTree) =>
-        keepOnlySideEffects(cond)
       case t @ If(cond, thenp, elsep) =>
         val nthenp = keepOnlySideEffects(thenp)
         val nelsep = keepOnlySideEffects(elsep)
@@ -428,7 +426,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
         (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))=>
         keepOnlySideEffects(rec) // accessing a field of a product
-      case Select(qual, _) if !t.symbol.is(Flags.Mutable) && (!t.symbol.is(Flags.Method) || t.symbol.isGetter) =>
+      case Select(qual, _) if !t.symbol.is(Flags.Mutable | Flags.Lazy) && (!t.symbol.is(Flags.Method) || t.symbol.isGetter) =>
         keepOnlySideEffects(qual)
       case Block(List(t: DefDef), s: Closure) => EmptyTree
       case bl@Block(stats, expr) =>
@@ -439,7 +437,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ => keepOnlySideEffects(expr).orElse(unitLiteral)
         }
         cpy.Block(bl)(stats2, expr2)
-      case t: Ident if !t.symbol.is(Flags.Method) =>
+      case t: Ident if !t.symbol.is(Flags.Method | Flags.Lazy) =>
         desugarIdent(t) match {
           case Some(t) => t
           case None => EmptyTree
