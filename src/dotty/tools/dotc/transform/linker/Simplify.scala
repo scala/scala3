@@ -620,7 +620,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         defdef.rhs match {
           case Apply(t, args) if t.symbol.is(Flags.Label) &&
             TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol == TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol
-            && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol) =>
+            && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  && !(defdef.symbol eq t.symbol) =>
               defined(defdef.symbol) = t.symbol
           case _ =>
         }
