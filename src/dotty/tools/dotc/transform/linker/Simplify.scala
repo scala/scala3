@@ -23,14 +23,6 @@ import scala.collection.mutable.ListBuffer
 
 
 class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
-  // todo: optimize patterns similar to
-  //       if fact27.ne(null) then
-  //         if fact27.exists.unary_! then
-  //           this.myUninstVars.+=(fact27)
-  //         else case701()
-  //       else case701()
-  // two ifs can be joined together
-
   import tpd._
 
   override def phaseName: String = "simplify"
@@ -73,9 +65,14 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       else false
     case Select(rec, _) if t.symbol.is(Flags.Method) =>
       if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) readingOnlyVals(rec) // getter of a immutable field
-      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName)
-        readingOnlyVals(rec) // accessing a field of a product
-      else if (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))
+      else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) {
+        def isImmutableField = {
+          val fieldId = t.symbol.name.drop(1).toString.toInt - 1
+          !t.symbol.owner.caseAccessors(ctx)(fieldId).is(Flags.Mutable)
+        }
+        if (isImmutableField) readingOnlyVals(rec) // accessing a field of a product
+        else false
+      } else if (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable))
         readingOnlyVals(rec)
       else false
     case Select(qual, _) if !t.symbol.is(Flags.Mutable) =>
@@ -170,9 +167,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         rollInArgs(argss.tail, tpd.New(a.tpe.dealias, argss.head))
       case a: Apply if a.symbol.is(Flags.Synthetic) && a.symbol.owner.is(Flags.Module) &&
         (a.symbol.name == nme.unapply) && a.symbol.owner.companionClass.is(Flags.CaseClass) =>
-        if (!a.symbol.owner.is(Flags.Scala2x))
-          a.args.head
-        else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
+        if (!a.symbol.owner.is(Flags.Scala2x)) {
+          if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
+          else a.args.head
+        } else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
           val accessors = a.args.head.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Flags.Method))
           val fields = accessors.map(x => a.args.head.select(x).ensureApplied)
           val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
@@ -286,22 +284,22 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
             if (l.const.booleanValue) l
             else Block(lhs :: Nil, rhs)
-          case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
-          case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
-          case (Literal(Constant(1L)), _)   if sym == defn.Long_* => rhs
-          case (Literal(Constant(0L)), _)   if sym == defn.Long_+ => rhs
-          // todo: same for float, double, short
-          // todo: empty string concat
-          // todo: disctribute & reorder constants
-          // todo: merge subsequent casts
-          case (_, Literal(Constant(1)))    if sym == defn.Int_/  => lhs
-          case (_, Literal(Constant(1L)))   if sym == defn.Long_/ => lhs
-          case (_, Literal(Constant(0)))    if sym == defn.Int_/  =>
-            Block(List(lhs),
-              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
-          case (_, Literal(Constant(0L)))  if sym == defn.Long_/ =>
-            Block(List(lhs),
-              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
+//          case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
+//          case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
+//          case (Literal(Constant(1L)), _)   if sym == defn.Long_* => rhs
+//          case (Literal(Constant(0L)), _)   if sym == defn.Long_+ => rhs
+//          // todo: same for float, double, short
+//          // todo: empty string concat
+//          // todo: disctribute & reorder constants
+//          // todo: merge subsequent casts
+//          case (_, Literal(Constant(1)))    if sym == defn.Int_/  => lhs
+//          case (_, Literal(Constant(1L)))   if sym == defn.Long_/ => lhs
+//          case (_, Literal(Constant(0)))    if sym == defn.Int_/  =>
+//            Block(List(lhs),
+//              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
+//          case (_, Literal(Constant(0L)))  if sym == defn.Long_/ =>
+//            Block(List(lhs),
+//              ref(defn.throwMethod).appliedTo(tpd.New(defn.ArithmeticExceptionClass.typeRef, defn.ArithmeticExceptionClass_stringConstructor, Literal(Constant("/ by zero")) :: Nil)))
           case _ => t
         }
       case t: Match if (t.selector.tpe.isInstanceOf[ConstantType] && t.cases.forall(x => x.pat.tpe.isInstanceOf[ConstantType] || (tpd.isWildcardArg(x.pat) && x.guard.isEmpty))) =>
@@ -620,7 +618,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         defdef.rhs match {
           case Apply(t, args) if t.symbol.is(Flags.Label) &&
             TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol == TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol
-            && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  && !(defdef.symbol eq t.symbol) =>
+            && args.size == defdef.vparamss.map(_.size).sum && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol)  && !(defdef.symbol eq t.symbol) =>
               defined(defdef.symbol) = t.symbol
           case _ =>
         }
