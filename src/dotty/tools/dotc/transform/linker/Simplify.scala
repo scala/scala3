@@ -482,7 +482,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case _ => keepOnlySideEffects(expr).orElse(unitLiteral)
         }
         cpy.Block(bl)(stats2, expr2)
-      case t: Ident if !t.symbol.is(Flags.Method | Flags.Lazy) =>
+      case t: Ident if !t.symbol.is(Flags.Method | Flags.Lazy) && t.tpe.isInstanceOf[ExprType] =>
         desugarIdent(t) match {
           case Some(t) => t
           case None => EmptyTree
