@@ -222,7 +222,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t1: Apply =>
         t2 match {
           case t2: Apply =>
-            (t1.symbol == t2.symbol) && (t1.args zip t2.args).forall(x => isSimilar(x._1, x._2))
+            (t1.symbol == t2.symbol) && (t1.args zip t2.args).forall(x => isSimilar(x._1, x._2)) && isSimilar(t1.fun, t2.fun)
           case _ => false
         }
       case t1: Ident =>
@@ -595,7 +595,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         defined.get(a.symbol) match {
           case None => a
           case Some(defDef) =>
-            println(s"Inlining ${defDef.name}")
+            //println(s"Inlining ${defDef.name}")
             defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
         }
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
@@ -635,7 +635,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             ref(fwd).appliedToArgs(a.args)
         }
       case a: DefDef if defined.contains(a.symbol) =>
-        println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
+        //println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
         EmptyTree
       case t => t
     }
@@ -704,8 +704,6 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
         dropCasts(valdef.rhs) match {
           case t: Tree if readingOnlyVals(t) =>
-            if (valdef.symbol.name.toString.contains("21"))
-              println("dss")
             copies.put(valdef.symbol, valdef.rhs)
           case _ =>
         }
@@ -757,10 +755,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       val transformation: Tree => Tree = {
         case t: ValDef if valsToDrop.contains(t.symbol) =>
-          println(s"droping definition of ${t.symbol.showFullName} as not used")
+          //println(s"droping definition of ${t.symbol.showFullName} as not used")
           t.rhs.changeOwner(t.symbol, t.symbol.owner)
         case t: ValDef if replacements.contains(t.symbol) =>
-          println(s"droping definition of ${t.symbol.showFullName} as an alias")
+          //println(s"droping definition of ${t.symbol.showFullName} as an alias")
           EmptyTree
         case t: Block => // drop non-side-effecting stats
           t
