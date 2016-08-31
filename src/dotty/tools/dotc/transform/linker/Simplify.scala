@@ -217,9 +217,53 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         } else t
       }
     }
+
+    def isSimilar(t1: Tree, t2: Tree): Boolean = t1 match {
+      case t1: Apply =>
+        t2 match {
+          case t2: Apply =>
+            (t1.symbol == t2.symbol) && (t1.args zip t2.args).forall(x => isSimilar(x._1, x._2))
+          case _ => false
+        }
+      case t1: Ident =>
+        desugarIdent(t1) match {
+          case Some(t) =>
+            val t2i = t2 match {
+              case t2: Ident => desugarIdent(t2).getOrElse(t2)
+              case _ => t2
+            }
+            isSimilar(t, t2i)
+          case None => t1.symbol eq t2.symbol
+        }
+      case t1: Select => t2 match {
+        case t2: Select => (t1.symbol eq t2.symbol) && isSimilar(t1.qualifier, t2.qualifier)
+        case t2: Ident => desugarIdent(t2) match {
+          case Some(t2) => isSimilar(t1, t2)
+          case None => false
+        }
+        case _ => false
+      }
+      case t1: Literal => t2 match {
+        case t2: Literal if t1.const.tag == t2.const.tag && t1.const.value == t2.const.value =>
+          true
+        case _ => false
+      }
+      case _ => false
+    }
+
     val transformer: Transformer = () => localCtx => { x => preEval(x) match {
       // TODO: include handling of isInstanceOf similar to one in IsInstanceOfEvaluator
       // TODO: include methods such as Int.int2double(see ./tests/pos/harmonize.scala)
+      case If(cond1, thenp, elsep) if isSimilar(thenp, elsep) =>
+        Block(cond1 :: Nil, thenp)
+      case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, elsep2) =>
+        If(cond1.select(defn.Boolean_&&).appliedTo(cond2), thenp2, elsep1)
+      case If(cond1, If(cond2, thenp2, elsep2), elsep1) if isSimilar(elsep1, thenp2) =>
+        If(cond1.select(defn.Boolean_!).select(defn.Boolean_||).appliedTo(cond2), elsep1, elsep2)
+      case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, thenp2) =>
+        If(cond1.select(defn.Boolean_||).appliedTo(cond2), thenp1, elsep2)
+      case If(cond1, thenp1, If(cond2, thenp2, elsep2)) if isSimilar(thenp1, elsep2) =>
+        If(cond1.select(defn.Boolean_||).appliedTo(cond2.select(defn.Boolean_!)), thenp1, thenp2)
       case If(t: Literal, thenp, elsep) =>
         if (t.const.booleanValue) thenp
         else elsep
