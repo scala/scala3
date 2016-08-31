@@ -105,7 +105,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ,inlineOptions
     ,inlineLabelsCalledOnce
     ,devalify
-//    ,dropNoEffects
+    ,jumpjump
+    ,dropNoEffects
 //    ,inlineLocalObjects // followCases needs to be fixed, see ./tests/pos/rbtree.scala
     /*, varify*/  // varify could stop other transformations from being applied. postponed.
     //, bubbleUpNothing
@@ -563,6 +564,38 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case t => t
     }
     ("inlineLabelsCalledOnce", BeforeAndAfterErasure, visitor, transformer)
+  }}
+
+  val jumpjump: Optimization = { (ctx0: Context) => {
+    // optimize label defs that call other label-defs
+    implicit val ctx: Context = ctx0
+    val defined = collection.mutable.HashMap[Symbol, Symbol]()
+
+    val visitor: Visitor = {
+      case defdef: DefDef if defdef.symbol.is(Flags.Label)  =>
+        defdef.rhs match {
+          case Apply(t, args) if t.symbol.is(Flags.Label) &&
+            TypeErasure.erasure(defdef.symbol.info.finalResultType).classSymbol == TypeErasure.erasure(t.symbol.info.finalResultType).classSymbol
+            && (args zip defdef.vparamss.flatten).forall(x => x._1.symbol eq x._2.symbol) =>
+              defined(defdef.symbol) = t.symbol
+          case _ =>
+        }
+      case _ =>
+    }
+
+    val transformer: Transformer = () => localCtx => {
+      case a: Apply if  defined.contains(a.fun.symbol)=>
+        defined.get(a.symbol) match {
+          case None => a
+          case Some(fwd) =>
+            ref(fwd).appliedToArgs(a.args)
+        }
+      case a: DefDef if defined.contains(a.symbol) =>
+        println(s"dropping ${a.symbol.showFullName} as forwarder to ${defined(a.symbol).showFullName}")
+        EmptyTree
+      case t => t
+    }
+    ("jumpjump", BeforeAndAfterErasure, visitor, transformer)
   }}
 
   val inlineOptions: Optimization = { (ctx0: Context) => {
