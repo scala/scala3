@@ -42,7 +42,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   override def prepareForUnit(tree: _root_.dotty.tools.dotc.ast.tpd.Tree)(implicit ctx: Context): TreeTransform = {
     SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
-    symmetricOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*, defn.String_+)
+    symmetricOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
     this
   }
 
