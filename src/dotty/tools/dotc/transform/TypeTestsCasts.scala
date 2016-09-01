@@ -100,7 +100,7 @@ trait TypeTestsCasts {
          *  The transform happens before erasure of `argType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `argType`.
          */
-        def transformOrTypeTest(qual: Tree, argType: Type): Tree = argType match {
+        def transformOrTypeTest(qual: Tree, argType: Type): Tree = argType.dealias match {
           case OrType(tp1, tp2) =>
             evalOnce(qual) { fun =>
               transformOrTypeTest(fun, tp1)
