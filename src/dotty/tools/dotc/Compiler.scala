@@ -94,6 +94,7 @@ class Compiler {
            new SelectStatic,        // get rid of selects that would be compiled into GetStatic
            new CollectEntryPoints,  // Find classes with main methods
            new CollectSuperCalls,   // Find classes that are called with super
+           new DropInlined,         // Drop Inlined nodes, since backend has no use for them
            new MoveStatics,         // Move static methods to companion classes
            new LabelDefs),          // Converts calls to labels to jumps
       List(new GenSJSIR),           // Generate .js code

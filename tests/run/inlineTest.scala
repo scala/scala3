@@ -33,8 +33,9 @@ object Test {
     def f = "Outer.f"
     class Inner {
       val msg = " Inner"
+      @dotty.annotation.inline def m = msg
       @dotty.annotation.inline def g = f
-      @dotty.annotation.inline def h = f ++ this.msg
+      @dotty.annotation.inline def h = f ++ m
     }
   }
 
@@ -46,7 +47,8 @@ object Test {
 
     val o = new Outer
     val i = new o.Inner
-    println(i.g)
+    println(i.m)
+    //println(i.g)
     //println(i.h)
   }
 

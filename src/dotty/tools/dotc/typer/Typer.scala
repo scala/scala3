@@ -553,9 +553,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
+  def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
+    (index(stats), typedStats(stats, ctx.owner))
+
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
-    val exprCtx = index(tree.stats)
-    val stats1 = typedStats(tree.stats, ctx.owner)
+    val (exprCtx, stats1) = typedBlockStats(tree.stats)
     val ept =
       if (tree.isInstanceOf[untpd.InfixOpBlock])
         // Right-binding infix operations are expanded to InfixBlocks, which may be followed by arguments.
@@ -941,6 +943,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       else ctx.typeComparer.lub(elems1.tpes)
     val elemtpt1 = typed(tree.elemtpt, proto2)
     assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
+  }
+
+  def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Inlined = {
+    val (exprCtx, bindings1) = typedBlockStats(tree.bindings)
+    val expansion1 = typed(tree.expansion, pt)(Inliner.inlineContext(tree)(exprCtx))
+    cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1)
+      .withType(expansion1.tpe)
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
@@ -1429,6 +1438,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.TypeApply => typedTypeApply(tree, pt)
           case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
+          case tree: untpd.Inlined => typedInlined(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)

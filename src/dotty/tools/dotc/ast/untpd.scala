@@ -197,6 +197,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
   def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
   def TypeTree(original: Tree): TypeTree = new TypeTree(original)
   def TypeTree() = new TypeTree(EmptyTree)
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)

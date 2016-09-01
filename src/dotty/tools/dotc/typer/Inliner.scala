@@ -30,6 +30,8 @@ object Inliner {
 
   private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
 
+  val InlinedCall = new Property.Key[tpd.Inlined] // to be used in context
+
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
 
@@ -68,6 +70,17 @@ object Inliner {
                    | Maybe this is caused by a recursive inline method?
                    | You can use -Xmax:inlines to change the limit.""")
   }
+
+  def dropInlined(tree: tpd.Inlined)(implicit ctx: Context): Tree = {
+    val reposition = new TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree =
+        tree.withPos(tree.pos)
+    }
+    tpd.seq(tree.bindings, reposition.transform(tree.expansion))
+  }
+
+  def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =
+    ctx.fresh.setProperty(InlinedCall, tree)
 }
 
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
@@ -191,8 +204,9 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     }
 
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
-
-    val result = inliner(Block(outerBindings.toList, rhs)).withPos(call.pos)
+    val Block(bindings: List[MemberDef], expansion) =
+      inliner(Block(outerBindings.toList, rhs)).withPos(call.pos)
+    val result = tpd.Inlined(call, bindings, expansion)
 
     inlining.println(i"inlining $call\n --> \n$result")
     result

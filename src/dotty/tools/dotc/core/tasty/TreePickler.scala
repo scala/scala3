@@ -7,6 +7,7 @@ import ast.Trees._
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
+import typer.Inliner
 import NameOps._
 import TastyBuffer._
 import TypeApplications._
@@ -430,6 +431,15 @@ class TreePickler(pickler: TastyPickler) {
       case SeqLiteral(elems, elemtpt) =>
         writeByte(REPEATED)
         withLength { pickleTree(elemtpt); elems.foreach(pickleTree) }
+      case tree: Inlined =>
+        // Why drop Inlined info when pickling?
+        // Since we never inline inside an inlined method, we know that
+        // any code that continas an Inlined tree is not inlined itself.
+        // So position information for inline expansion is no longer needed.
+        // The only reason to keep the inline info around would be to have fine-grained
+        // position information in the linker. We should come back to this
+        // point once we know more what we would do with such information.
+        pickleTree(Inliner.dropInlined(tree))
       case TypeTree(original) =>
         pickleTpt(tree)
       case Bind(name, body) =>

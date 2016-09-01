@@ -503,6 +503,12 @@ object Trees {
     override def toString = s"JavaSeqLiteral($elems, $elemtpt)"
   }
 
+  /** Inlined code */
+  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
+    extends Tree[T] {
+    type ThisTree[-T >: Untyped] = Inlined[T]
+    }
+
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[-T >: Untyped] private[ast] (original: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
@@ -797,6 +803,7 @@ object Trees {
     type Try = Trees.Try[T]
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
+    type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type AndTypeTree = Trees.AndTypeTree[T]
@@ -938,6 +945,10 @@ object Trees {
           else finalize(tree, new JavaSeqLiteral(elems, elemtpt))
         case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt))
+      }
+      def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = tree match {
+        case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
+        case _ => finalize(tree, untpd.Inlined(call, bindings, expansion))
       }
       def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
         case tree: TypeTree if original eq tree.original => tree
@@ -1083,6 +1094,8 @@ object Trees {
           cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
         case SeqLiteral(elems, elemtpt) =>
           cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
+        case Inlined(call, bindings, expansion) =>
+          cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion))
         case TypeTree(original) =>
           tree
         case SingletonTypeTree(ref) =>
@@ -1185,6 +1198,8 @@ object Trees {
             this(this(this(x, block), handler), finalizer)
           case SeqLiteral(elems, elemtpt) =>
             this(this(x, elems), elemtpt)
+          case Inlined(call, bindings, expansion) =>
+            this(this(x, bindings), expansion)
           case TypeTree(original) =>
             x
           case SingletonTypeTree(ref) =>
