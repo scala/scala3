@@ -21,11 +21,15 @@ class ConsoleReporter(
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
 
-  def printSourceLine(pos: SourcePosition) =
-    printMessage(pos.lineContent.stripLineEnd)
-
-  def printColumnMarker(pos: SourcePosition) =
-    if (pos.exists) { printMessage(" " * pos.column + "^") }
+  def printPos(pos: SourcePosition): Unit =
+    if (pos.exists) {
+      printMessage(pos.lineContent.stripLineEnd)
+      printMessage(" " * pos.column + "^")
+      if (pos.outer.exists) {
+        printMessage(s"\n... this location is in code that was inlined at ${pos.outer}:\n")
+        printPos(pos.outer)
+      }
+    }
 
   /** Prints the message. */
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
@@ -34,10 +38,7 @@ class ConsoleReporter(
   def printMessageAndPos(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = {
     val posStr = if (pos.exists) s"$pos: " else ""
     printMessage(posStr + msg)
-    if (pos.exists) {
-      printSourceLine(pos)
-      printColumnMarker(pos)
-    }
+    printPos(pos)
   }
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {

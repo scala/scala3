@@ -82,11 +82,19 @@ object Inliner {
   def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCall, tree)
 
-  def inlinedSource(implicit ctx: Context): SourceFile = ctx.property(InlinedCall) match {
-    case Some(inlined) =>
-      val file = inlined.call.symbol.sourceFile
-      if (file.exists) new SourceFile(file) else NoSource
-    case _ => NoSource
+  def enclosingInlineds(implicit ctx: Context): Stream[Inlined] =
+    ctx.property(InlinedCall) match {
+      case found @ Some(inlined) =>
+        inlined #::
+          enclosingInlineds(
+            ctx.outersIterator.dropWhile(_.property(InlinedCall) == found).next)
+      case _ =>
+        Stream.Empty
+    }
+
+  def sourceFile(inlined: Inlined)(implicit ctx: Context) = {
+    val file = inlined.call.symbol.sourceFile
+    if (file.exists) new SourceFile(file) else NoSource
   }
 }
 

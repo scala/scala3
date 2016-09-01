@@ -370,12 +370,8 @@ object Contexts {
     /** The current source file; will be derived from current
      *  compilation unit.
      */
-    def source: SourceFile = {
-      val file = Inliner.inlinedSource
-      if (file.exists) file
-      else if (compilationUnit == null) NoSource
-      else compilationUnit.source
-    }
+    def source: SourceFile =
+      if (compilationUnit == null) NoSource else compilationUnit.source
 
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes

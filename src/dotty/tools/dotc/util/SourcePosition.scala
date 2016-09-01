@@ -5,7 +5,8 @@ package util
 import Positions.{Position, NoPosition}
 
 /** A source position is comprised of a position in a source file */
-case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.SourcePosition {
+case class SourcePosition(source: SourceFile, pos: Position, outer: SourcePosition = NoSourcePosition)
+extends interfaces.SourcePosition {
   def exists = pos.exists
 
   def lineContent: String = source.lineContent(point)
@@ -24,6 +25,8 @@ case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.
   def endLine: Int = source.offsetToLine(end)
   def endColumn: Int = source.column(end)
 
+  def withOuter(outer: SourcePosition) = new SourcePosition(source, pos, outer)
+
   override def toString =
     if (source.exists) s"${source.file}:${line + 1}"
     else s"(no source file, offset = ${pos.point})"
@@ -32,5 +35,6 @@ case class SourcePosition(source: SourceFile, pos: Position) extends interfaces.
 /** A sentinel for a non-existing source position */
 @sharable object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
   override def toString = "?"
+  override def withOuter(outer: SourcePosition) = outer
 }
 
