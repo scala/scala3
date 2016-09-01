@@ -18,7 +18,7 @@ import util.Positions._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
-import typer.{Implicits, ImplicitRunInfo, ImportInfo, NamerContextOps, SearchHistory, TypeAssigner, Typer}
+import typer.{Implicits, ImplicitRunInfo, ImportInfo, Inliner, NamerContextOps, SearchHistory, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -370,8 +370,12 @@ object Contexts {
     /** The current source file; will be derived from current
      *  compilation unit.
      */
-    def source: SourceFile =
-      if (compilationUnit == null) NoSource else compilationUnit.source
+    def source: SourceFile = {
+      val file = Inliner.inlinedSource
+      if (file.exists) file
+      else if (compilationUnit == null) NoSource
+      else compilationUnit.source
+    }
 
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes

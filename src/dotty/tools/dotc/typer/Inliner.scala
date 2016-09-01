@@ -18,7 +18,7 @@ import Annotations.Annotation
 import transform.ExplicitOuter
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import util.Property
+import util.{Property, SourceFile, NoSource}
 import collection.mutable
 
 object Inliner {
@@ -81,6 +81,13 @@ object Inliner {
 
   def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCall, tree)
+
+  def inlinedSource(implicit ctx: Context): SourceFile = ctx.property(InlinedCall) match {
+    case Some(inlined) =>
+      val file = inlined.call.symbol.sourceFile
+      if (file.exists) new SourceFile(file) else NoSource
+    case _ => NoSource
+  }
 }
 
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
