@@ -18,7 +18,7 @@ import Annotations.Annotation
 import transform.ExplicitOuter
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import util.Attachment
+import util.Property
 import collection.mutable
 
 object Inliner {
@@ -28,7 +28,7 @@ object Inliner {
     lazy val body = tree
   }
 
-  private val InlinedBody = new Attachment.Key[InlinedBody]
+  private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
 
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))

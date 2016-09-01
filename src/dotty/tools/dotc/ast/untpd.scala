@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import util.Attachment
+import util.Property
 import language.higherKinds
 import collection.mutable.ListBuffer
 
@@ -161,17 +161,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
   }
 
-    /** Attachment key containing TypeTrees whose type is computed
+    /** Property key containing TypeTrees whose type is computed
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References = new Attachment.Key[List[Tree]]
+  val References = new Property.Key[List[Tree]]
 
-  /** Attachment key for TypeTrees marked with TypeRefOfSym or InfoOfSym
+  /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
    *  TypeTree is derived.
    */
-  val OriginalSymbol = new Attachment.Key[Symbol]
+  val OriginalSymbol = new Property.Key[Symbol]
 
   // ------ Creation methods for untyped only -----------------
 

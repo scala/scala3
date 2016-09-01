@@ -30,6 +30,7 @@ import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import parsing.Scanners.Comment
+import util.Property.Key
 import xsbti.AnalysisCallback
 
 object Contexts {
@@ -177,9 +178,12 @@ object Contexts {
     def freshName(prefix: Name): String = freshName(prefix.toString)
 
     /** A map in which more contextual properties can be stored */
-    private var _moreProperties: Map[String, Any] = _
-    protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
-    def moreProperties: Map[String, Any] = _moreProperties
+    private var _moreProperties: Map[Key[Any], Any] = _
+    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
+    def moreProperties: Map[Key[Any], Any] = _moreProperties
+
+    def property[T](key: Key[T]): Option[T] =
+      moreProperties.get(key).asInstanceOf[Option[T]]
 
     private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
@@ -459,9 +463,10 @@ object Contexts {
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
-    def setMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
+    def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
 
-    def setProperty(prop: (String, Any)): this.type = setMoreProperties(moreProperties + prop)
+    def setProperty[T](key: Key[T], value: T): this.type =
+      setMoreProperties(moreProperties.updated(key, value))
 
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))

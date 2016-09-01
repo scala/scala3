@@ -12,7 +12,7 @@ import collection.immutable.IndexedSeq
 import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
-import util.{Stats, Attachment, DotClass}
+import util.{Stats, Attachment, Property, DotClass}
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
 import parsing.Scanners.Comment
@@ -30,8 +30,8 @@ object Trees {
   /** The total number of created tree nodes, maintained if Stats.enabled */
   @sharable var ntrees = 0
 
-  /** Attachment key for trees with documentation strings attached */
-  val DocComment = new Attachment.Key[Comment]
+  /** Property key for trees with documentation strings attached */
+  val DocComment = new Property.Key[Comment]
 
    @sharable private var nextId = 0 // for debugging
 
