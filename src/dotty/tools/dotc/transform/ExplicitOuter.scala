@@ -15,7 +15,7 @@ import ast.Trees._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
-import util.Attachment
+import util.Property
 import collection.mutable
 
 /** This phase adds outer accessors to classes and traits that need them.
@@ -36,7 +36,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   import ExplicitOuter._
   import ast.tpd._
 
-  val Outer = new Attachment.Key[Tree]
+  val Outer = new Property.Key[Tree]
 
   override def phaseName: String = "explicitOuter"
 

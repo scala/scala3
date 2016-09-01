@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Positions._
-import util.{Attachment, SourcePosition, DotClass}
+import util.{Property, SourcePosition, DotClass}
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
@@ -160,9 +160,9 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead = new Attachment.Key[tpd.Tree]
-  val ExpandedTree = new Attachment.Key[Tree]
-  val SymOfTree = new Attachment.Key[Symbol]
+  val TypedAhead = new Property.Key[tpd.Tree]
+  val ExpandedTree = new Property.Key[Tree]
+  val SymOfTree = new Property.Key[Symbol]
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
