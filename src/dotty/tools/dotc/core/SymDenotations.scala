@@ -670,9 +670,9 @@ object SymDenotations {
         val cls = owner.enclosingSubClass
         if (!cls.exists)
           fail(
-            i""" Access to protected $this not permitted because
-               | enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
-               | ${owner.showLocated} where target is defined""")
+            i"""
+               | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
+               | is not a subclass of ${owner.showLocated} where target is defined""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
@@ -680,9 +680,9 @@ object SymDenotations {
            || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
-            i""" Access to protected ${symbol.show} not permitted because
-               | prefix type ${pre.widen.show} does not conform to
-               | ${cls.showLocated} where the access takes place""")
+            i"""
+               | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
+               | does not conform to ${cls.showLocated} where the access takes place""")
         else true
       }
 
@@ -743,6 +743,11 @@ object SymDenotations {
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
+
+    def isInlineMethod(implicit ctx: Context): Boolean =
+      is(Method, butNot = Accessor) &&
+      !isCompleting &&   // don't force method type; recursive inlines are ignored anyway.
+      hasAnnotation(defn.InlineAnnot)
 
     // ------ access to related symbols ---------------------------------
 

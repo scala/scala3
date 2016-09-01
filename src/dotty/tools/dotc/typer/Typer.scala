@@ -885,12 +885,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         (EmptyTree, WildcardType)
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
-        if (owner.isCompleted) {
+        if (owner.isInlineMethod)
+          (EmptyTree, errorType(em"no explicit return allowed from inline $owner", tree.pos))
+        else if (!owner.isCompleted)
+          (EmptyTree, errorType(em"$owner has return statement; needs result type", tree.pos))
+        else {
           val from = Ident(TermRef(NoPrefix, owner.asTerm))
           val proto = returnProto(owner, cx.scope)
           (from, proto)
         }
-        else (EmptyTree, errorType(em"$owner has return statement; needs result type", tree.pos))
       }
       else enclMethInfo(cx.outer)
     }
@@ -1154,6 +1157,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
+
+    // Overwrite inline body to make sure it is not evaluated twice
+    sym.getAnnotation(defn.InlineAnnot) match {
+      case Some(ann) => Inliner.attachBody(ann, rhs1)
+      case _ =>
+    }
+
     if (sym.isAnonymousFunction) {
       // If we define an anonymous function, make sure the return type does not
       // refer to parameters. This is necessary because closure types are
@@ -1773,7 +1783,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree
         }
         else if (tree.tpe <:< pt)
-          if (ctx.typeComparer.GADTused && pt.isValueType)
+          if (tree.symbol.isInlineMethod && !ctx.owner.ownersIterator.exists(_.isInlineMethod))
+            adapt(Inliner.inlineCall(tree, pt), pt)
+          else if (ctx.typeComparer.GADTused && pt.isValueType)
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
             // if the expected type is a supertype of the GADT bound. It would be good to come

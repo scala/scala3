@@ -667,6 +667,10 @@ object Contexts {
      */
     private[dotty] var unsafeNonvariant: RunId = NoRunId
 
+    // Typer state
+
+    private[dotty] var inlineCount = 0
+
     // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = _

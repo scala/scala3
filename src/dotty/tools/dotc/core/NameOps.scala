@@ -166,7 +166,7 @@ object NameOps {
 
       // Hack to make super accessors from traits work. They would otherwise fail because of #765
       // TODO: drop this once we have more robust name handling
-      if (name.slice(idx - FalseSuperLength, idx) == FalseSuper)
+      if (idx > FalseSuperLength && name.slice(idx - FalseSuperLength, idx) == FalseSuper)
         idx -= FalseSuper.length
 
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
