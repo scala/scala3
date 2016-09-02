@@ -654,10 +654,19 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     val transformer: Transformer = () => localCtx => {
       case Block(Nil, expr) => expr
       case a: Block  =>
-        val newStats = a.stats.mapConserve(keepOnlySideEffects)
-        if (newStats.nonEmpty)
-          cpy.Block(a)(stats = newStats, a.expr)
-        else a.expr
+        val newStats0 = a.stats.mapConserve(keepOnlySideEffects)
+        val newStats1 = if (newStats0 eq a.stats) newStats0 else newStats0.flatMap{
+          case x: Block=> x.stats ::: List(x.expr)
+          case EmptyTree => Nil
+          case t => t :: Nil
+        }
+        val (newStats2, newExpr) = a.expr match {
+          case Block(stats2, expr) => (newStats1 ++ stats2, expr)
+          case _ => (newStats1, a.expr)
+        }
+        if (newStats2.nonEmpty)
+          cpy.Block(a)(stats = newStats2, newExpr)
+        else newExpr
       case a: DefDef =>
         if (a.symbol.info.finalResultType.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.UnitClass) && !a.rhs.tpe.derivesFrom(defn.NothingClass)) {
           def insertUnit(t: Tree) = {
