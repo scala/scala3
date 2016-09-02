@@ -56,6 +56,9 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private def readingOnlyVals(t: Tree)(implicit ctx: Context): Boolean = dropCasts(t) match {
     case Typed(exp, tpe) => readingOnlyVals(exp)
+    case TypeApply(fun @Select(rec, _), List(tp))
+      if (fun.symbol eq defn.Any_asInstanceOf) && rec.tpe.derivesFrom(TypeErasure.erasure(tp.tpe).classSymbol) =>
+      readingOnlyVals(rec)
     case Apply(Select(rec, _), Nil) =>
       if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) readingOnlyVals(rec) // getter of a immutable field
       else if (t.symbol.owner.derivesFrom(defn.ProductClass) && t.symbol.owner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName)
