@@ -403,8 +403,8 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = {
-    def recur(stat: Tree): Context = expanded(stat) match {
+  def indexExpanded(origStat: Tree)(implicit ctx: Context): Context = {
+    def recur(stat: Tree): Context = stat match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
         index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
@@ -415,7 +415,7 @@ class Namer { typer: Typer =>
         importContext(createSymbol(imp), imp.selectors)
       case mdef: DefTree =>
         val sym = enterSymbol(createSymbol(mdef))
-        setDocstring(sym, stat)
+        setDocstring(sym, origStat)
         addEnumConstants(mdef, sym)
         ctx
       case stats: Thicket =>
@@ -424,7 +424,7 @@ class Namer { typer: Typer =>
       case _ =>
         ctx
     }
-    recur(stat)
+    recur(expanded(origStat))
   }
 
   /** Determines whether this field holds an enum constant.
