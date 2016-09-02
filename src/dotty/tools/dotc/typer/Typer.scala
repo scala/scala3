@@ -609,7 +609,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           em"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
 
-  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
+  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)

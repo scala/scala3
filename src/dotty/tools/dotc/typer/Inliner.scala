@@ -10,6 +10,7 @@ import Flags._
 import Symbols._
 import Types._
 import Decorators._
+import Constants._
 import StdNames.nme
 import Contexts.Context
 import Names.Name
@@ -54,6 +55,18 @@ object Inliner {
             res
           }
         case res => res
+      }
+    }
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
+      val cond1 = typed(tree.cond, defn.BooleanType)
+      cond1.tpe.widenTermRefExpr match {
+        case ConstantType(Constant(condVal: Boolean)) =>
+          val selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
+          if (isIdempotentExpr(cond1)) selected
+          else Block(cond1 :: Nil, selected)
+        case _ =>
+          val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
+          super.typedIf(if1, pt)
       }
     }
   }
