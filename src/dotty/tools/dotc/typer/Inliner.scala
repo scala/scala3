@@ -82,12 +82,12 @@ object Inliner {
                    | You can use -Xmax:inlines to change the limit.""")
   }
 
-  def dropInlined(tree: tpd.Inlined)(implicit ctx: Context): Tree = {
+  def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     val reposition = new TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree =
-        tree.withPos(tree.pos)
+        tree.withPos(inlined.call.pos)
     }
-    tpd.seq(tree.bindings, reposition.transform(tree.expansion))
+    tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }
 
   def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =

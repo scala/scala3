@@ -1,6 +1,7 @@
+package p
 import collection.mutable
 
-object Test {
+object inlines {
 
   final val monitored = false
 
@@ -38,18 +39,4 @@ object Test {
       @dotty.annotation.inline def h = f ++ m
     }
   }
-
-  def main(args: Array[String]): Unit = {
-    println(f(10))
-    println(f(f(10)))
-
-    track("hello") { println("") }
-
-    val o = new Outer
-    val i = new o.Inner
-    println(i.m)
-    //println(i.g)
-    //println(i.h)
-  }
-
 }

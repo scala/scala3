@@ -7,6 +7,7 @@ import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, Name
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import util.Positions._
 import ast.{tpd, Trees, untpd}
+import typer.Inliner
 import Trees._
 import Decorators._
 import TastyUnpickler._, TastyBuffer._, PositionPickler._
@@ -468,6 +469,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
+      val rhsStart = currentAddr
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
@@ -503,6 +505,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       if (isClass) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
+      }
+      else (annots.find(_.symbol == defn.InlineAnnot)) match {
+        case Some(inlineAnnot) =>
+          Inliner.attachBody(inlineAnnot, forkAt(rhsStart).readTerm()(localContext(sym)))
+        case none =>
       }
       goto(start)
       sym
