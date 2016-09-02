@@ -399,6 +399,16 @@ class Definitions {
     def Boolean_&& = Boolean_andR.symbol
     lazy val Boolean_orR  = BooleanClass.requiredMethodRef(nme.ZOR)
     def Boolean_|| = Boolean_orR.symbol
+    lazy val Boolean_eqeqR = BooleanClass.info.member(nme.EQ).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef BooleanClass)
+      case _ => false
+    })
+    def Boolean_== = Boolean_eqeqR.symbol
+    lazy val Boolean_neqeqR = BooleanClass.info.member(nme.NE).suchThat(_.info.firstParamTypes match {
+      case List(pt) => (pt isRef BooleanClass)
+      case _ => false
+    })
+    def Boolean_!= = Boolean_neqeqR.symbol
 
   lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", BoxedByteType, java.lang.Byte.TYPE, ByteEnc)
   def ByteClass(implicit ctx: Context) = ByteType.symbol.asClass
