@@ -697,12 +697,16 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     }
 
     val transformer: Transformer = () => localCtx => {
-      case a: Apply if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramTypess == List(Nil)=>
+      case a: Apply =>
         defined.get(a.symbol) match {
           case None => a
-          case Some(defDef) =>
+          case Some(defDef) if a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && a.symbol.info.paramTypess == List(Nil)=>
             //println(s"Inlining ${defDef.name}")
             defDef.rhs.changeOwner(defDef.symbol, localCtx.owner)
+          case Some(defDef) if defDef.rhs.isInstanceOf[Literal] =>
+            defDef.rhs
+          case Some(_) =>
+            a
         }
       case a: DefDef if (a.symbol.is(Flags.Label) && timesUsed.getOrElse(a.symbol, 0) == 1 && defined.contains(a.symbol)) =>
         //println(s"Dropping ${a.name} ${timesUsed.get(a.symbol)}")
