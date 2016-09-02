@@ -404,7 +404,7 @@ class Namer { typer: Typer =>
    *  enter them into symbol table
    */
   def indexExpanded(stat: Tree)(implicit ctx: Context): Context = {
-    def recur(stat: Tree): Context = stat match {
+    def recur(stat: Tree): Context = expanded(stat) match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
         index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
@@ -424,7 +424,7 @@ class Namer { typer: Typer =>
       case _ =>
         ctx
     }
-    recur(expanded(stat))
+    recur(stat)
   }
 
   /** Determines whether this field holds an enum constant.
