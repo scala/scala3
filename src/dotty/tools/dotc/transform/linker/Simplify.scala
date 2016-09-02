@@ -106,12 +106,14 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ,inlineLabelsCalledOnce
     ,devalify
     ,jumpjump
+    ,dropGoodCasts
     ,dropNoEffects
-//    ,inlineLocalObjects // followCases needs to be fixed, see ./tests/pos/rbtree.scala
+    ,inlineLocalObjects // followCases needs to be fixed, see ./tests/pos/rbtree.scala
     /*, varify*/  // varify could stop other transformations from being applied. postponed.
     //, bubbleUpNothing
     ,constantFold
   )
+
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val ctx0 = ctx
     if (!tree.symbol.is(Flags.Label)) {
@@ -386,7 +388,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       }
     }
     val visitor: Visitor = {
-      case vdef: ValDef if vdef.symbol.info.classSymbol is Flags.CaseClass  =>
+      case vdef: ValDef if (vdef.symbol.info.classSymbol is Flags.CaseClass) && !vdef.symbol.is(Flags.Lazy)  =>
         followTailPerfect(vdef.rhs, vdef.symbol)
       case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
         checkGood.put(rhs.symbol, lhs.symbol)
@@ -399,7 +401,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case _ =>
     }
 
-    val transformer: Transformer = () => localCtx => {
+    val transformer: Transformer = () => {
       var hasChanged = true
       while(hasChanged) {
         hasChanged = false
@@ -413,12 +415,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       val newMappings: Map[Symbol, Map[Symbol, Symbol]] =
         hasPerfectRHS.iterator.map(x => x._1).filter(x => !x.is(Flags.Method) && !x.is(Flags.Label) && gettersCalled.contains(x.symbol) && (x.symbol.info.classSymbol is Flags.CaseClass))
           .map{ refVal =>
-            val fields = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
+//          println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
+          val fields = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
           val productAccessors = (1 to fields.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // todo: disambiguate
           val newLocals = fields.map(x =>
             // todo: it would be nice to have an additional optimization that
             // todo: is capable of turning those mutable ones into immutable in common cases
-            ctx.newSymbol(refVal.owner, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
+            ctx.newSymbol(ctx.owner.enclosingMethod, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
           )
             val fieldMapping = fields zip newLocals
             val productMappings = productAccessors zip newLocals
@@ -432,7 +435,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case tree@ If(_, thenp, elsep) => cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
           case Apply(sel , args) if sel.symbol.isConstructor && t.tpe.widenDealias == target.info.widenDealias.finalResultType.widenDealias =>
             val fieldsByAccessors = newMappings(target)
-            val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)
+            val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // todo: when is this filter needed?
             val assigns = (accessors zip args) map (x => ref(fieldsByAccessors(x._1)).becomes(x._2))
             val recreate = sel.appliedToArgs(accessors.map(x => ref(fieldsByAccessors(x))))
             Block(assigns, recreate)
@@ -464,7 +467,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         followCases(checkGood.getOrElse(t, NoSymbol))
       } else t
 
-      { (t: Tree) => t match {
+      hasPerfectRHS.clear()
+      //checkGood.clear()
+      gettersCalled.clear()
+
+      val res: Context => Tree => Tree = {localCtx => (t: Tree) => t match {
         case ddef: DefDef if ddef.symbol.is(Flags.Label) =>
           newMappings.get(followCases(ddef.symbol)) match {
             case Some(mappings) =>
@@ -476,7 +483,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           // break ValDef apart into fields + boxed value
           val newFields = newMappings(a.symbol).values.toSet
           Thicket(
-            newFields.map(x => tpd.ValDef(x.asTerm, EmptyTree)).toList :::
+            newFields.map(x => tpd.ValDef(x.asTerm, tpd.defaultValue(x.symbol.info.widenDealias))).toList :::
               List(cpy.ValDef(a)(rhs = splitWrites(a.rhs, a.symbol))))
         case ass: Assign =>
           newMappings.get(ass.lhs.symbol) match {
@@ -493,7 +500,10 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             case Some(newSym) => ref(newSym)
           }
         case t => t
-      }}}
+      }}
+
+    res
+    }
     ("inlineLocalObjects", BeforeAndAfterErasure, visitor, transformer)
   }}
 
