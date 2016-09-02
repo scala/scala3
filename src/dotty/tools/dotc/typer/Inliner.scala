@@ -114,8 +114,6 @@ object Inliner {
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   import tpd._
 
-  private val meth = call.symbol
-
   private def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
     case Apply(fn, args) =>
       val (meth, targs, argss) = decomposeCall(fn)
@@ -128,64 +126,73 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   }
 
   private val (methPart, targs, argss) = decomposeCall(call)
+  private val meth = methPart.symbol
 
   private lazy val prefix = methPart match {
     case Select(qual, _) => qual
     case _ => tpd.This(ctx.owner.enclosingClass.asClass)
   }
 
-  private val replacement = new mutable.HashMap[Type, NamedType]
+  private val thisProxy = new mutable.HashMap[Type, NamedType]
+  private val paramProxy = new mutable.HashMap[Type, Type]
+  private val paramBinding = new mutable.HashMap[Name, Type]
+  val bindingsBuf = new mutable.ListBuffer[MemberDef]
 
-  private val paramBindings = paramBindingsOf(meth.info, targs, argss)
-
-  private def paramBindingsOf(tp: Type, targs: List[Tree], argss: List[List[Tree]]): List[MemberDef] = tp match {
-    case tp: PolyType =>
-      val bindings =
-        (tp.paramNames, targs).zipped.map { (name, arg) =>
-          val tparam = newSym(name, EmptyFlags, TypeAlias(arg.tpe.stripTypeVar)).asType
-          TypeDef(tparam)
-        }
-      bindings ::: paramBindingsOf(tp.resultType, Nil, argss)
-    case tp: MethodType =>
-      val bindings =
-        (tp.paramNames, tp.paramTypes, argss.head).zipped.map { (name, paramtp, arg) =>
-          def isByName = paramtp.dealias.isInstanceOf[ExprType]
-          val (paramFlags, paramType) =
-            if (isByName) (Method, ExprType(arg.tpe)) else (EmptyFlags, arg.tpe)
-          val vparam = newSym(name, paramFlags, paramType).asTerm
-          if (isByName) DefDef(vparam, arg) else ValDef(vparam, arg)
-        }
-      bindings ::: paramBindingsOf(tp.resultType, targs, argss.tail)
-    case _ =>
-      assert(targs.isEmpty)
-      assert(argss.isEmpty)
-      Nil
-  }
+  computeParamBindings(meth.info, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
 
-  private def registerType(tpe: Type): Unit =
-    if (!replacement.contains(tpe)) tpe match {
-      case tpe: ThisType =>
-        if (!ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package))
-          if (tpe.cls.isStaticOwner)
-            replacement(tpe) = tpe.cls.sourceModule.termRef
-          else {
-            def outerDistance(cls: Symbol): Int = {
-              assert(cls.exists, i"not encl: ${meth.owner.enclosingClass} ${tpe.cls}")
-              if (tpe.cls eq cls) 0
-              else outerDistance(cls.owner.enclosingClass) + 1
-            }
-            val n = outerDistance(meth.owner)
-            replacement(tpe) = newSym(nme.SELF ++ n.toString, EmptyFlags, tpe.widen).termRef
+  private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
+    case tp: PolyType =>
+      (tp.paramNames, targs).zipped.foreach { (name, arg) =>
+        paramBinding(name) = arg.tpe.stripTypeVar match {
+          case argtpe: TypeRef => argtpe
+          case argtpe =>
+            val binding = newSym(name, EmptyFlags, TypeAlias(argtpe)).asType
+            bindingsBuf += TypeDef(binding)
+            binding.typeRef
+        }
+      }
+      computeParamBindings(tp.resultType, Nil, argss)
+    case tp: MethodType =>
+      (tp.paramNames, tp.paramTypes, argss.head).zipped.foreach { (name, paramtp, arg) =>
+        def isByName = paramtp.dealias.isInstanceOf[ExprType]
+        paramBinding(name) = arg.tpe.stripTypeVar match {
+          case argtpe: SingletonType if isByName || isIdempotentExpr(arg) => argtpe
+          case argtpe =>
+            val (bindingFlags, bindingType) =
+              if (isByName) (Method, ExprType(argtpe.widen)) else (EmptyFlags, argtpe.widen)
+            val binding = newSym(name, bindingFlags, bindingType).asTerm
+            bindingsBuf +=
+              (if (isByName) DefDef(binding, arg) else ValDef(binding, arg))
+            binding.termRef
+        }
+      }
+      computeParamBindings(tp.resultType, targs, argss.tail)
+    case _ =>
+      assert(targs.isEmpty)
+      assert(argss.isEmpty)
+  }
+
+  private def registerType(tpe: Type): Unit = tpe match {
+    case tpe: ThisType if !thisProxy.contains(tpe) =>
+      if (!ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package))
+        if (tpe.cls.isStaticOwner)
+          thisProxy(tpe) = tpe.cls.sourceModule.termRef
+        else {
+          def outerDistance(cls: Symbol): Int = {
+            assert(cls.exists, i"not encl: ${meth.owner.enclosingClass} ${tpe.cls}")
+            if (tpe.cls eq cls) 0
+            else outerDistance(cls.owner.enclosingClass) + 1
           }
-      case tpe: NamedType if tpe.symbol.is(Param) && tpe.symbol.owner == meth =>
-        val Some(binding) = paramBindings.find(_.name == tpe.name)
-        replacement(tpe) =
-          if (tpe.name.isTypeName) binding.symbol.typeRef else binding.symbol.termRef
-      case _ =>
-    }
+          val n = outerDistance(meth.owner)
+          thisProxy(tpe) = newSym(nme.SELF ++ n.toString, EmptyFlags, tpe.widen).termRef
+        }
+    case tpe: NamedType if tpe.symbol.is(Param) && tpe.symbol.owner == meth && !paramProxy.contains(tpe) =>
+      paramProxy(tpe) = paramBinding(tpe.name)
+    case _ =>
+  }
 
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident => registerType(tree.tpe)
@@ -198,34 +205,40 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     rhs.foreachSubTree(registerLeaf)
 
     val accessedSelfSyms =
-      (for ((tp: ThisType, ref) <- replacement) yield ref.symbol.asTerm).toSeq.sortBy(outerLevel)
+      (for ((tp: ThisType, ref) <- thisProxy) yield ref.symbol.asTerm).toSeq.sortBy(outerLevel)
 
-    val outerBindings = new mutable.ListBuffer[MemberDef]
+    var lastSelf: Symbol = NoSymbol
     for (selfSym <- accessedSelfSyms) {
       val rhs =
-        if (outerBindings.isEmpty) prefix
+        if (!lastSelf.exists) prefix
         else {
-          val lastSelf = outerBindings.last.symbol
           val outerDelta = outerLevel(selfSym) - outerLevel(lastSelf)
           def outerSelect(ref: Tree, dummy: Int): Tree = ???
             //ref.select(ExplicitOuter.outerAccessorTBD(ref.tpe.widen.classSymbol.asClass))
           (ref(lastSelf) /: (0 until outerDelta))(outerSelect)
         }
-      outerBindings += ValDef(selfSym, rhs.ensureConforms(selfSym.info))
+      bindingsBuf += ValDef(selfSym, rhs.ensureConforms(selfSym.info))
+      lastSelf = selfSym
     }
-    outerBindings ++= paramBindings
 
     val typeMap = new TypeMap {
       def apply(t: Type) = t match {
-        case _: SingletonType => replacement.getOrElse(t, t)
-        case _ => mapOver(t)
+        case t: ThisType => thisProxy.getOrElse(t, t)
+        case t: SingletonType => paramProxy.getOrElse(t, t)
+        case t => mapOver(t)
       }
     }
 
     def treeMap(tree: Tree) = tree match {
-      case _: This | _: Ident =>
-        replacement.get(tree.tpe) match {
+      case _: This =>
+        thisProxy.get(tree.tpe) match {
           case Some(t) => ref(t)
+          case None => tree
+        }
+      case _: Ident =>
+        paramProxy.get(tree.tpe) match {
+          case Some(t: TypeRef) => ref(t)
+          case Some(t: SingletonType) => singleton(t)
           case None => tree
         }
       case _ => tree
@@ -233,7 +246,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
     val Block(bindings: List[MemberDef], expansion) =
-      inliner(Block(outerBindings.toList, rhs)).withPos(call.pos)
+      inliner(Block(bindingsBuf.toList, rhs)).withPos(call.pos)
     val result = tpd.Inlined(call, bindings, expansion)
 
     inlining.println(i"inlining $call\n --> \n$result")
