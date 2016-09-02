@@ -508,6 +508,50 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     ("inlineLocalObjects", BeforeAndAfterErasure, visitor, transformer)
   }}
 
+  private def collectTypeTests(t: Tree)(implicit ctx: Context): List[(Symbol, Type)] = {
+    def recur(t: Tree): List[(Symbol, Type)] =
+      t match {
+        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
+        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
+        case TypeApply(fun @Select(x, _), List(tp)) if fun.symbol eq defn.Any_isInstanceOf =>
+          if (!x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
+            (x.symbol, tp.tpe) :: Nil
+          else Nil
+        case _ => List.empty
+      }
+    recur(t)
+  }
+
+  val dropGoodCasts: Optimization = { (ctx0: Context) => {
+    implicit val ctx: Context = ctx0
+
+    val transformer: Transformer = () => localCtx => {
+      case t @ If(cond, thenp, elsep) =>
+        val newTested = collectTypeTests(cond)
+        val testedMap = newTested.foldRight[Map[Symbol, List[Type]]](Map.empty)((x, y) =>
+          y + ((x._1, x._2 :: y.getOrElse(x._1, Nil)))
+        )
+        val dropGoodCastsInStats = new TreeMap() {
+          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform(tree) match {
+            case t: Block =>
+              val nstats = t.stats.filterConserve({
+                 case TypeApply(fun @ Select(rec, _), List(tp)) if fun.symbol == defn.Any_asInstanceOf =>
+                   !testedMap.getOrElse(rec.symbol, Nil).exists(x => x <:< tp.tpe)
+                 case _ => true
+              })
+              if (nstats eq t.stats) t
+              else Block(nstats, t.expr)
+            case t => t
+          }
+        }
+        val nthenp = dropGoodCastsInStats.transform(thenp)
+
+        cpy.If(t)(thenp = nthenp, elsep = elsep)
+      case t => t
+    }
+    ("dropGoodCasts", BeforeAndAfterErasure, NoVisitor, transformer)
+  }}
+
   private def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = {
     t match {
       case t: Literal => EmptyTree
