@@ -174,11 +174,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           if (a.tpe.derivesFrom(defn.BooleanClass)) Literal(Constant(true))
           else a.args.head
         } else if (a.tpe.derivesFrom(defn.OptionClass) && a.args.head.tpe.derivesFrom(a.symbol.owner.companionClass)) {
+          // todo: if args is an expression, this will evaluate it multiple times
+          // todo: if the static type is right, it does not mean it's not null
           val accessors = a.args.head.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Flags.Method))
           val fields = accessors.map(x => a.args.head.select(x).ensureApplied)
           val tplType = a.tpe.baseArgTypes(defn.OptionClass).head
 
-          if (!fields.tail.isEmpty) {
+          if (fields.tail.nonEmpty) {
             val tplAlloc = tpd.New(tplType, fields)
             tpd.New(a.tpe.dealias.translateParameterized(defn.OptionClass, defn.SomeClass), tplAlloc :: Nil)
           } else { // scalac does not have tupple1
@@ -268,12 +270,37 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case If(t: Literal, thenp, elsep) =>
         if (t.const.booleanValue) thenp
         else elsep
+      case ift @ If(cond, thenp: Literal, elsep: Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue && !elsep.const.booleanValue =>
+        if (thenp.const.booleanValue && !elsep.const.booleanValue) {
+          cond
+        }  else if (!thenp.const.booleanValue && elsep.const.booleanValue) {
+          cond.select(defn.Boolean_!).ensureApplied
+        } else ??? //should never happen becase it would be similar
+//         the lower two are disabled, as it may make the isSimilar rule not apply for a nested structure of iffs.
+//         see the example below:
+    //        (b1, b2) match {
+    //          case (true, true) => true
+    //          case (false, false) => true
+    //          case _ => false
+    //        }
+//      case ift @ If(cond, thenp: Literal, elsep) if ift.tpe.derivesFrom(defn.BooleanClass) && thenp.const.booleanValue =>
+//        //if (thenp.const.booleanValue)
+//          cond.select(defn.Boolean_||).appliedTo(elsep)
+//        //else // thenp is false, this tree is bigger then the original
+//        //  cond.select(defn.Boolean_!).select(defn.Boolean_&&).appliedTo(elsep)
+//      case ift @ If(cond, thenp, elsep :Literal) if ift.tpe.derivesFrom(defn.BooleanClass) && !elsep.const.booleanValue =>
+//        cond.select(defn.Boolean_&&).appliedTo(elsep)
+//        // the other case ins't handled intentionally. See previous case for explanation
       case If(t@ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         tpd.If(recv, elsep, thenp)
       case If(t@ Apply(Select(recv, _), Nil), thenp, elsep) if t.symbol eq defn.Boolean_! =>
         tpd.If(recv, elsep, thenp)
       // todo: similar trick for comparisons.
       // todo: handle comparison with min\max values
+      case Apply(meth1 @ Select(Apply(meth2 @ Select(rec, _), Nil), _), Nil) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! =>
+        rec
+      case meth1 @ Select(meth2 @ Select(rec, _), _) if meth1.symbol == defn.Boolean_! && meth2.symbol == defn.Boolean_! && !ctx.erasedTypes =>
+        rec
       case t@Apply(Select(lhs, _), List(rhs)) =>
         val sym = t.symbol
         (lhs, rhs) match {
@@ -283,6 +310,20 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
             val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
             if (const) Block(lhs :: Nil, rhs)
             else l
+
+          case (l, x: Literal) if sym == defn.Boolean_== && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+            if (x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+          case (l, x: Literal) if sym == defn.Boolean_!= && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+            if (!x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+          case (x: Literal, l) if sym == defn.Boolean_== && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+            if (x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+          case (x: Literal, l) if sym == defn.Boolean_!= && l.tpe.derivesFrom(defn.BooleanClass) && x.tpe.derivesFrom(defn.BooleanClass) =>
+            if (!x.const.booleanValue) l
+            else l.select(defn.Boolean_!).ensureApplied
+
           case (l: Literal, _) if (sym == defn.Boolean_||) && l.tpe.isInstanceOf[ConstantType]   =>
             val const = l.tpe.asInstanceOf[ConstantType].value.booleanValue
             if (l.const.booleanValue) l
