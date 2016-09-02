@@ -775,19 +775,19 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case Select(rec, nm) if nm == nme.get && somes.contains(rec.symbol) =>
           somes(rec.symbol)
         case Select(rec, nm) if nm == nme.isDefined &&
-          (rec.tpe.derivesFrom(defn.SomeClass) || somes.contains(rec.symbol)) =>
+          (/*rec.tpe.derivesFrom(defn.SomeClass) ||*/ somes.contains(rec.symbol)) =>
           Literal(Constant(true))
         case Select(rec, nm) if nm == nme.isEmpty &&
-          (rec.tpe.derivesFrom(defn.SomeClass) || somes.contains(rec.symbol)) =>
+          (/*rec.tpe.derivesFrom(defn.SomeClass) ||*/ somes.contains(rec.symbol)) =>
           Literal(Constant(false))
 
         case Select(rec, nm) if nm == nme.get && nones.contains(rec.symbol) =>
           ref(defn.NoneModuleRef)
         case Select(rec, nm) if nm == nme.isDefined &&
-          (rec.tpe.derivesFrom(defn.NoneClass) || nones.contains(rec.symbol)) =>
+          (/*rec.tpe.derivesFrom(defn.NoneClass) || */ nones.contains(rec.symbol)) =>
           Literal(Constant(false))
         case Select(rec, nm) if nm == nme.isEmpty &&
-          (rec.tpe.derivesFrom(defn.NoneClass) || nones.contains(rec.symbol)) =>
+          (/*rec.tpe.derivesFrom(defn.NoneClass) ||*/ nones.contains(rec.symbol)) =>
           Literal(Constant(true))
         case t => t
       }
