@@ -31,7 +31,7 @@ object Inliner {
 
   private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
 
-  val InlinedCall = new Property.Key[tpd.Inlined] // to be used in context
+  private val InlinedCall = new Property.Key[List[tpd.Inlined]] // to be used in context
 
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
@@ -72,12 +72,10 @@ object Inliner {
   }
 
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-    if (ctx.inlineCount < ctx.settings.xmaxInlines.value) {
-      ctx.inlineCount += 1
+    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value) {
       val rhs = inlinedBody(tree.symbol)
       val inlined = new Inliner(tree, rhs).inlined
-      try new Typer().typedUnadapted(inlined, pt)
-      finally ctx.inlineCount -= 1
+      new Typer().typedUnadapted(inlined, pt)
     } else errorTree(tree,
       i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
                    | Maybe this is caused by a recursive inline method?
@@ -93,17 +91,10 @@ object Inliner {
   }
 
   def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCall, tree)
+    ctx.fresh.setProperty(InlinedCall, tree :: enclosingInlineds)
 
-  def enclosingInlineds(implicit ctx: Context): Stream[Inlined] =
-    ctx.property(InlinedCall) match {
-      case found @ Some(inlined) =>
-        inlined #::
-          enclosingInlineds(
-            ctx.outersIterator.dropWhile(_.property(InlinedCall) == found).next)
-      case _ =>
-        Stream.Empty
-    }
+  def enclosingInlineds(implicit ctx: Context): List[Inlined] =
+    ctx.property(InlinedCall).getOrElse(Nil)
 
   def sourceFile(inlined: Inlined)(implicit ctx: Context) = {
     val file = inlined.call.symbol.sourceFile

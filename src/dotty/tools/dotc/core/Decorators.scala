@@ -151,10 +151,9 @@ object Decorators {
   }
 
   implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
-    def recur(inlineds: Stream[Inlined], pos: Position): SourcePosition = inlineds match {
-      case inlined #:: rest =>
-        Inliner.sourceFile(inlined).atPos(pos)
-          .withOuter(recur(rest, inlined.call.pos))
+    def recur(inlineds: List[Inlined], pos: Position): SourcePosition = inlineds match {
+      case inlined :: rest =>
+        Inliner.sourceFile(inlined).atPos(pos).withOuter(recur(rest, inlined.call.pos))
       case empty =>
         ctx.source.atPos(pos)
     }
