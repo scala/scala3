@@ -12,7 +12,7 @@ import model.Package
 trait DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
-  implicit var ctx: FreshContext = {
+  implicit val ctx: FreshContext = {
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh

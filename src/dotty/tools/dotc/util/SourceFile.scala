@@ -10,6 +10,7 @@ import java.io.IOException
 import Chars._
 import ScriptSourceFile._
 import Positions._
+import scala.io.Codec
 
 import java.util.Optional
 
@@ -36,9 +37,9 @@ object ScriptSourceFile {
 
 case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile {
 
-  def this(_file: AbstractFile)                 = this(_file, _file.toCharArray)
-  def this(sourceName: String, cs: Seq[Char])   = this(new VirtualFile(sourceName), cs.toArray)
-  def this(file: AbstractFile, cs: Seq[Char])   = this(file, cs.toArray)
+  def this(_file: AbstractFile, codec: Codec) = this(_file, new String(_file.toByteArray, codec.charSet).toCharArray)
+  def this(sourceName: String, cs: Seq[Char]) = this(new VirtualFile(sourceName), cs.toArray)
+  def this(file: AbstractFile, cs: Seq[Char]) = this(file, cs.toArray)
 
   /** Tab increment; can be overridden */
   def tabInc = 8

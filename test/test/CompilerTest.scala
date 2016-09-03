@@ -413,7 +413,8 @@ abstract class CompilerTest {
     val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f) ++
       List(s"-classpath $partestOutput") // Required for separate compilation tests
 
-    getExisting(dest).isDifferent(source, flags, nerr) match {
+    val difference = getExisting(dest).isDifferent(source, flags, nerr)
+    difference match {
       case NotExists => copyFiles(source, dest, partestOutput, flags, nerr, kind)
       case ExistsSame => // nothing else to do
       case ExistsDifferent =>
@@ -449,6 +450,7 @@ abstract class CompilerTest {
   /** Recursively copy over source files and directories, excluding extensions
     * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
+
     def copyfile(file: SFile, bytewise: Boolean): Unit = {
       if (bytewise) {
         val in = file.inputStream()
@@ -490,7 +492,7 @@ abstract class CompilerTest {
 
   /** Reads the existing files for the given test source if any. */
   private def getExisting(dest: Path): ExistingFiles = {
-    val content: Option[Option[String]] = processFileDir(dest, f => f.safeSlurp, d => Some(""))
+    val content: Option[Option[String]] = processFileDir(dest, f => try Some(f.slurp("UTF8")) catch {case io: java.io.IOException => Some(io.toString())}, d => Some(""))
     if (content.isDefined && content.get.isDefined) {
       val flags = (dest changeExtension "flags").toFile.safeSlurp
       val nerr = (dest changeExtension "nerr").toFile.safeSlurp
@@ -504,7 +506,7 @@ abstract class CompilerTest {
       if (!genSrc.isDefined) {
         NotExists
       } else {
-        val source = processFileDir(sourceFile, { f => f.safeSlurp }, { d => Some("") },
+        val source = processFileDir(sourceFile, { f => try Some(f.slurp("UTF8")) catch {case _: java.io.IOException => None} }, { d => Some("") },
             Some("DPCompilerTest sourceFile doesn't exist: " + sourceFile)).get
         if (source == genSrc) {
           nerr match {

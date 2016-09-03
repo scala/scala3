@@ -25,6 +25,8 @@ object Settings {
     private var values = ArrayBuffer(initialValues: _*)
     private var _wasRead: Boolean = false
 
+    override def toString = s"SettingsState(values: ${values.toList})"
+
     def value(idx: Int): Any = {
       _wasRead = true
       values(idx)

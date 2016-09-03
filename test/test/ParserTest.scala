@@ -4,6 +4,7 @@ import scala.reflect.io._
 import dotty.tools.dotc.util._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.parsing._
+import scala.io.Codec
 import Tokens._, Parsers._
 import dotty.tools.dotc.ast.untpd._
 import org.junit.Test
@@ -23,7 +24,7 @@ class ParserTest extends DottyTest {
 
   def parse(file: PlainFile): Tree = {
     //println("***** parsing " + file)
-    val source = new SourceFile(file)
+    val source = new SourceFile(file, Codec.UTF8)
     val parser = new Parser(source)
     val tree = parser.parse()
     parsed += 1
