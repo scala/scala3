@@ -95,7 +95,7 @@ object Inliner {
 
   def sourceFile(call: Tree)(implicit ctx: Context) = {
     val file = call.symbol.sourceFile
-    if (file.exists) new SourceFile(file) else NoSource
+    if (file != null && file.exists) new SourceFile(file) else NoSource
   }
 }
 
