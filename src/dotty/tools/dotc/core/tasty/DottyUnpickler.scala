@@ -8,8 +8,8 @@ import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
 import util.Positions._
 import util.{SourceFile, NoSource}
-import PositionUnpickler._
 import Annotations.Annotation
+import core.Mode
 import classfile.ClassfileParser
 
 object DottyUnpickler {
@@ -17,14 +17,15 @@ object DottyUnpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
+  class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler])
+  extends SectionUnpickler[TreeUnpickler]("ASTs") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new TreeUnpickler(reader, tastyName)
+      new TreeUnpickler(reader, tastyName, posUnpickler)
   }
 
-  class PositionsSectionUnpickler extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
+  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
-      new PositionUnpickler(reader).unpickle()
+      new PositionUnpickler(reader)
   }
 }
 
@@ -36,7 +37,8 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   import DottyUnpickler._
 
   val unpickler = new TastyUnpickler(bytes)
-  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler).get
+  private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
+  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler(posUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
@@ -44,13 +46,8 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enterTopLevel(roots)
 
-  /** The unpickled trees, and the source file they come from
-   *  @param readPositions if true, trees get decorated with position information.
-   */
-  def body(readPositions: Boolean = false)(implicit ctx: Context): List[Tree] = {
-    if (readPositions)
-      for ((totalRange, positions) <- unpickler.unpickle(new PositionsSectionUnpickler))
-        treeUnpickler.usePositions(totalRange, positions)
+  /** The unpickled trees, and the source file they come from. */
+  def body(implicit ctx: Context): List[Tree] = {
     treeUnpickler.unpickle()
   }
 }
