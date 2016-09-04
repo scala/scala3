@@ -172,7 +172,7 @@ object Scanners {
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
-    val keepComments = ctx.settings.YkeepComments.value || ctx.settings.Ydocrun.value
+    val keepComments = ctx.settings.YkeepComments.value
 
     /** All doc comments as encountered, each list contains doc comments from
      *  the same block level. Starting with the deepest level and going upward

@@ -1247,8 +1247,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
 
-    if (ctx.settings.Ydocrun.value)
-      typedUsecases(body1.map(_.symbol), self1.symbol)
+    typedUsecases(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
 
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
