@@ -78,7 +78,8 @@ object Inferencing {
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
         false
-      case tvar: TypeVar if !tvar.isInstantiated =>
+      case tvar: TypeVar
+      if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
         force.appliesTo(tvar) && {
           val direction = instDirection(tvar.origin)
           if (direction != 0) {

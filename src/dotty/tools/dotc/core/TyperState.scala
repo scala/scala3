@@ -59,18 +59,10 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** Commit state so that it gets propagated to enclosing context */
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
 
-  /** The typer state has already been committed */
-  def isCommitted: Boolean = false
-
-  /** Optionally, if this is a mutable typerstate, it's creator state */
-  def parent: Option[TyperState] = None
-
   /** The closest ancestor of this typer state (including possibly this typer state itself)
    *  which is not yet committed, or which does not have a parent.
    */
-  def uncommittedAncestor: TyperState =
-    if (!isCommitted || !parent.isDefined) this
-    else parent.get.uncommittedAncestor
+  def uncommittedAncestor: TyperState = this
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -96,7 +88,8 @@ extends TyperState(r) {
 
   override def reporter = myReporter
 
-  private var myConstraint: Constraint = previous.constraint
+  private val previousConstraint = previous.constraint
+  private var myConstraint: Constraint = previousConstraint
 
   override def constraint = myConstraint
   override def constraint_=(c: Constraint)(implicit ctx: Context) = {
@@ -109,7 +102,6 @@ extends TyperState(r) {
   override def ephemeral = myEphemeral
   override def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
 
-
   override def fresh(isCommittable: Boolean): TyperState =
     new MutableTyperState(this, new StoreReporter(reporter), isCommittable)
 
@@ -120,6 +112,11 @@ extends TyperState(r) {
     isCommittable &&
     (!previous.isInstanceOf[MutableTyperState] || previous.isGlobalCommittable)
 
+  private var isCommitted = false
+
+  override def uncommittedAncestor: TyperState =
+    if (isCommitted) previous.uncommittedAncestor else this
+
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
    *  type variables changes from this typer state to the current one. (2) Variables
@@ -128,24 +125,19 @@ extends TyperState(r) {
    */
   override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
-    assert(targetState eq previous)
     assert(isCommittable)
-    targetState.constraint = constraint
+    targetState.constraint =
+      if (targetState.constraint eq previousConstraint) constraint
+      else targetState.constraint & constraint
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState eq this)
         tvar.owningState = targetState
     }
-    targetState.ephemeral = ephemeral
+    targetState.ephemeral |= ephemeral
     targetState.gc()
     reporter.flush()
-    myIsCommitted = true
+    isCommitted = true
   }
-
-  private var myIsCommitted = false
-
-  override def isCommitted: Boolean = myIsCommitted
-
-  override def parent = Some(previous)
 
   override def gc()(implicit ctx: Context): Unit = {
     val toCollect = new mutable.ListBuffer[GenericType]

@@ -15,11 +15,13 @@ import annotation.tailrec
 
 object OrderingConstraint {
 
+  type ArrayValuedMap[T] = SimpleMap[GenericType, Array[T]]
+
   /** The type of `OrderingConstraint#boundsMap` */
-  type ParamBounds = SimpleMap[GenericType, Array[Type]]
+  type ParamBounds = ArrayValuedMap[Type]
 
   /** The type of `OrderingConstraint#lowerMap`, `OrderingConstraint#upperMap` */
-  type ParamOrdering = SimpleMap[GenericType, Array[List[PolyParam]]]
+  type ParamOrdering = ArrayValuedMap[List[PolyParam]]
 
   /** A new constraint with given maps */
   private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(implicit ctx: Context) : OrderingConstraint = {
@@ -494,6 +496,44 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         }
       }
     }
+
+  def & (other: Constraint)(implicit ctx: Context) = {
+    def merge[T](m1: ArrayValuedMap[T], m2: ArrayValuedMap[T], join: (T, T) => T): ArrayValuedMap[T] = {
+      var merged = m1
+      def mergeArrays(xs1: Array[T], xs2: Array[T]) = {
+        val xs = xs1.clone
+        for (i <- xs.indices) xs(i) = join(xs1(i), xs2(i))
+        xs
+      }
+      m2.foreachBinding { (poly, xs2) =>
+        merged = merged.updated(poly,
+            if (m1.contains(poly)) mergeArrays(m1(poly), xs2) else xs2)
+      }
+      merged
+    }
+
+    def mergeParams(ps1: List[PolyParam], ps2: List[PolyParam]) =
+      (ps1 /: ps2)((ps1, p2) => if (ps1.contains(p2)) ps1 else p2 :: ps1)
+
+    def mergeEntries(e1: Type, e2: Type): Type = e1 match {
+        case e1: TypeBounds =>
+          e2 match {
+            case e2: TypeBounds => e1 & e2
+            case _ if e1 contains e2 => e2
+            case _ => mergeError
+          }
+        case _ if e1 eq e2 => e1
+        case _ => mergeError
+    }
+
+    def mergeError = throw new AssertionError(i"cannot merge $this with $other")
+
+    val that = other.asInstanceOf[OrderingConstraint]
+    new OrderingConstraint(
+        merge(this.boundsMap, that.boundsMap, mergeEntries),
+        merge(this.lowerMap, that.lowerMap, mergeParams),
+        merge(this.upperMap, that.upperMap, mergeParams))
+  }
 
   override def checkClosed()(implicit ctx: Context): Unit = {
     def isFreePolyParam(tp: Type) = tp match {
