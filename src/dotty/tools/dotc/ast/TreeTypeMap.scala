@@ -97,6 +97,10 @@ final class TreeTypeMap(
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
+        case inlined @ Inlined(call, bindings, expanded) =>
+          val (tmap1, bindings1) = transformDefs(bindings)
+          val expanded1 = tmap1.transform(expanded)
+          cpy.Inlined(inlined)(call, bindings1, expanded1)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)

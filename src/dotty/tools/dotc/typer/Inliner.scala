@@ -31,7 +31,7 @@ object Inliner {
 
   private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
 
-  private val InlinedCall = new Property.Key[List[tpd.Inlined]] // to be used in context
+  private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
@@ -71,16 +71,13 @@ object Inliner {
     }
   }
 
-  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value) {
-      val rhs = inlinedBody(tree.symbol)
-      val inlined = new Inliner(tree, rhs).inlined
-      new Typer().typedUnadapted(inlined, pt)
-    } else errorTree(tree,
+  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
+      new Inliner(tree, inlinedBody(tree.symbol)).inlined(pt)
+    else errorTree(tree,
       i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
                    | Maybe this is caused by a recursive inline method?
                    | You can use -Xmax:inlines to change the limit.""")
-  }
 
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     val reposition = new TreeMap {
@@ -90,20 +87,21 @@ object Inliner {
     tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }
 
-  def inlineContext(tree: untpd.Inlined)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCall, tree :: enclosingInlineds)
+  def inlineContext(call: Tree)(implicit ctx: Context): Context =
+    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
 
-  def enclosingInlineds(implicit ctx: Context): List[Inlined] =
-    ctx.property(InlinedCall).getOrElse(Nil)
+  def enclosingInlineds(implicit ctx: Context): List[Tree] =
+    ctx.property(InlinedCalls).getOrElse(Nil)
 
-  def sourceFile(inlined: Inlined)(implicit ctx: Context) = {
-    val file = inlined.call.symbol.sourceFile
+  def sourceFile(call: Tree)(implicit ctx: Context) = {
+    val file = call.symbol.sourceFile
     if (file.exists) new SourceFile(file) else NoSource
   }
 }
 
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   import tpd._
+  import Inliner._
 
   private def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
     case Apply(fn, args) =>
@@ -154,10 +152,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
           case argtpe =>
             val (bindingFlags, bindingType) =
               if (isByName) (Method, ExprType(argtpe.widen)) else (EmptyFlags, argtpe.widen)
-            val binding = newSym(name, bindingFlags, bindingType).asTerm
-            bindingsBuf +=
-              (if (isByName) DefDef(binding, arg) else ValDef(binding, arg))
-            binding.termRef
+            val boundSym = newSym(name, bindingFlags, bindingType).asTerm
+            val binding =
+              if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
+              else ValDef(boundSym, arg)
+            bindingsBuf += binding
+            boundSym.termRef
         }
       }
       computeParamBindings(tp.resultType, targs, argss.tail)
@@ -192,7 +192,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
   private def outerLevel(sym: Symbol) = sym.name.drop(nme.SELF.length).toString.toInt
 
-  val inlined = {
+  def inlined(pt: Type) = {
     rhs.foreachSubTree(registerLeaf)
 
     val accessedSelfSyms =
@@ -236,9 +236,11 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     }
 
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
-    val Block(bindings: List[MemberDef], expansion) =
-      inliner(Block(bindingsBuf.toList, rhs)).withPos(call.pos)
-    val result = tpd.Inlined(call, bindings, expansion)
+    val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
+    val expansion = inliner(rhs.withPos(call.pos))
+
+    val expansion1 = new Typer().typed(expansion, pt)(inlineContext(call))
+    val result = tpd.Inlined(call, bindings, expansion1)
 
     inlining.println(i"inlining $call\n --> \n$result")
     result
