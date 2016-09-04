@@ -122,6 +122,18 @@ extends TyperState(r) {
    *  type variables changes from this typer state to the current one. (2) Variables
    *  that were temporarily instantiated in the current typer state are permanently
    *  instantiated instead.
+   *
+   *  A note on merging: A case is in isApplicableSafe.scala. It turns out that this
+   *  requires a context merge using the new `&' operator. Sequence of actions:
+   *  1) Typecheck argument in typerstate 1.
+   *  2) Cache argument.
+   *  3) Evolve same typer state (to typecheck other arguments, say)
+   *     leading to a different constraint.
+   *  4) Take typechecked argument in same state.
+   *
+   * It turns out that the merge is needed not just for
+   * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
+   * many parts of dotty itself.
    */
   override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
