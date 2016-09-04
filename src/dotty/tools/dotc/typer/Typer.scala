@@ -317,12 +317,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
       if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
       val select = typedSelect(tree, pt, qual1)
-      pt match {
-        case _ if select.tpe ne TryDynamicCallType => select
-        case _: FunProto | AssignProto             => select
-        case PolyProto(_,_)                        => select
-        case _                                     => typedDynamicSelect(tree.qualifier, tree.name, None, pt)
-      }
+      if (select.tpe ne TryDynamicCallType) select
+      else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
+      else typedDynamicSelect(tree, Nil, pt)
    }
 
     def asJavaSelectFromTypeTree(implicit ctx: Context): Tree = {
@@ -518,13 +515,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                     reassignmentToVal
                 }
               case TryDynamicCallType =>
-                tree match {
-                  case Assign(Select(qual, name), rhs) if !isDynamicMethod(name) =>
-                    typedDynamicAssign(qual, name, None, rhs, pt)
-                  case Assign(TypeApply(Select(qual, name), targs), rhs) if !isDynamicMethod(name) =>
-                    typedDynamicAssign(qual, name, Some(targs), rhs, pt)
-                  case _ => reassignmentToVal
-                }
+                typedDynamicAssign(tree, pt)
               case tpe =>
                 reassignmentToVal
             }

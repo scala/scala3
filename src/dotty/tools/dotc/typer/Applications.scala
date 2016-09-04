@@ -591,17 +591,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
       fun1.tpe match {
         case ErrorType => tree.withType(ErrorType)
-        case TryDynamicCallType =>
-          tree.fun match {
-            case Select(qual, name) if !isDynamicMethod(name) =>
-              typedDynamicApply(qual, name, None, tree.args, pt)(tree)
-            case TypeApply(Select(qual, name), targs) if !isDynamicMethod(name) =>
-              typedDynamicApply(qual, name, Some(targs), tree.args, pt)(tree)
-            case TypeApply(fun, targs) =>
-              typedDynamicApply(fun, nme.apply, Some(targs), tree.args, pt)(tree)
-            case fun =>
-              typedDynamicApply(fun, nme.apply, None, tree.args, pt)(tree)
-          }
+        case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           tryEither {
             implicit ctx => simpleApply(fun1, proto)
@@ -683,18 +673,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
       case _ =>
     }
-    if (typedFn.tpe eq TryDynamicCallType) {
-      (pt, typedFn) match {
-        case (_: FunProto, _)=>
-          tree.withType(TryDynamicCallType)
-        case (_, Select(qual, name)) =>
-          typedDynamicSelect(qual, name, Some(typedArgs), pt)
-        case _ =>
-          tree.withType(TryDynamicCallType)
-      }
-    } else {
-      assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    def tryDynamicTypeApply(): Tree = typedFn match {
+      case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs, pt)
+      case _                                             => tree.withType(TryDynamicCallType)
     }
+    if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
+    else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
