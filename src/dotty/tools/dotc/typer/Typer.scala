@@ -1793,7 +1793,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree
         }
         else if (tree.tpe <:< pt)
-          if (tree.symbol.isInlineMethod && !ctx.owner.ownersIterator.exists(_.isInlineMethod))
+          if (tree.symbol.isInlineMethod &&
+              !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
+              !ctx.isAfterTyper)
             adapt(Inliner.inlineCall(tree, pt), pt)
           else if (ctx.typeComparer.GADTused && pt.isValueType)
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
