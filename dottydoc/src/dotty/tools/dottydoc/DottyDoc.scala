@@ -55,7 +55,7 @@ abstract class DocDriver extends Driver {
     val summary = CompilerCommand.distill(args)(ctx)
 
     ctx.setSettings(summary.sstate)
-    ctx.setSetting(ctx.settings.Ydocrun, true)
+    ctx.setSetting(ctx.settings.YkeepComments, true)
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
