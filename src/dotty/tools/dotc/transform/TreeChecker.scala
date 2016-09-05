@@ -426,8 +426,9 @@ class TreeChecker extends Phase with SymTransformer {
           !isPrimaryConstructorReturn &&
           !pt.isInstanceOf[FunProto])
         assert(tree.tpe <:< pt,
-            s"error at ${sourcePos(tree.pos)}\n" +
-            err.typeMismatchStr(tree.tpe, pt) + "\ntree = " + tree)
+            i"""error at ${sourcePos(tree.pos)}
+               |${err.typeMismatchStr(tree.tpe, pt)}
+               |tree = $tree""")
       tree
     }
   }
