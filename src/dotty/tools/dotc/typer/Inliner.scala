@@ -40,37 +40,6 @@ object Inliner {
     sym.getAnnotation(defn.InlineAnnot).get.tree
       .attachment(InlinedBody).body
 
-  private object InlineTyper extends ReTyper {
-    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      val acc = tree.symbol
-      super.typedSelect(tree, pt) match {
-        case res @ Select(qual, name) =>
-          if (name.endsWith(nme.OUTER)) {
-            val outerAcc = tree.symbol
-            println(i"selecting $tree / ${acc} / ${qual.tpe.normalizedPrefix}")
-            res.withType(qual.tpe.widen.normalizedPrefix)
-          }
-          else {
-            ensureAccessible(res.tpe, qual.isInstanceOf[Super], tree.pos)
-            res
-          }
-        case res => res
-      }
-    }
-    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
-      val cond1 = typed(tree.cond, defn.BooleanType)
-      cond1.tpe.widenTermRefExpr match {
-        case ConstantType(Constant(condVal: Boolean)) =>
-          val selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
-          if (isIdempotentExpr(cond1)) selected
-          else Block(cond1 :: Nil, selected)
-        case _ =>
-          val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
-          super.typedIf(if1, pt)
-      }
-    }
-  }
-
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
       new Inliner(tree, inlinedBody(tree.symbol)).inlined(pt)
@@ -188,6 +157,37 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident => registerType(tree.tpe)
     case _ =>
+  }
+
+  private object InlineTyper extends ReTyper {
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+      val acc = tree.symbol
+      super.typedSelect(tree, pt) match {
+        case res @ Select(qual, name) =>
+          if (name.endsWith(nme.OUTER)) {
+            val outerAcc = tree.symbol
+            println(i"selecting $tree / ${acc} / ${qual.tpe.normalizedPrefix}")
+            res.withType(qual.tpe.widen.normalizedPrefix)
+          }
+          else {
+            ensureAccessible(res.tpe, qual.isInstanceOf[Super], tree.pos)
+            res
+          }
+        case res => res
+      }
+    }
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
+      val cond1 = typed(tree.cond, defn.BooleanType)
+      cond1.tpe.widenTermRefExpr match {
+        case ConstantType(Constant(condVal: Boolean)) =>
+          val selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
+          if (isIdempotentExpr(cond1)) selected
+          else Block(cond1 :: Nil, selected)
+        case _ =>
+          val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
+          super.typedIf(if1, pt)
+      }
+    }
   }
 
   def inlined(pt: Type) = {
