@@ -37,7 +37,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   def homogenize(tree: Tree[_])(implicit ctx: Context) = tree match {
-    case tree: tpd.Inlined => Inliner.dropInlined(tree)
+    case tree: tpd.Inlined if homogenizedView => Inliner.dropInlined(tree)
     case _ => tree
   }
 
