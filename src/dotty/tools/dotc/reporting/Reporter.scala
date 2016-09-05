@@ -140,28 +140,32 @@ trait Reporting { this: Context =>
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.debug.value) warning(msg, pos)
 
-  def debugTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
+  @dotty.annotation.inline
+  def debugTraceIndented[TD](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TD): TD =
     conditionalTraceIndented(this.settings.debugTrace.value, question, printer, show)(op)
 
-  def conditionalTraceIndented[T](cond: Boolean, question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
-    if (cond) traceIndented(question, printer, show)(op)
+  @dotty.annotation.inline
+  def conditionalTraceIndented[TC](cond: Boolean, question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TC): TC =
+    if (cond) traceIndented[TC](question, printer, show)(op)
     else op
 
-  def traceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
+  @dotty.annotation.inline
+  def traceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
+    if (printer eq config.Printers.noPrinter) op
+    else doTraceIndented[T](question, printer, show)(op)
+
+  def doTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
     def resStr(res: Any): String = res match {
       case res: printing.Showable if show => res.show
       case _ => String.valueOf(res)
     }
-    if (printer eq config.Printers.noPrinter) op
-    else {
-      // Avoid evaluating question multiple time, since each evaluation
-      // may cause some extra logging output.
-      lazy val q: String = question
-      traceIndented[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
-    }
+    // Avoid evaluating question multiple time, since each evaluation
+    // may cause some extra logging output.
+    lazy val q: String = question
+    doTraceIndented[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
   }
 
-  def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T =
+  def doTraceIndented[T](leading: => String, trailing: Any => String)(op: => T): T =
     if (ctx.mode.is(Mode.Printing)) op
     else {
       var finalized = false
