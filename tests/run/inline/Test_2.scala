@@ -11,8 +11,11 @@ object Test {
     val o = new Outer
     val i = new o.Inner
     println(i.m)
-    //println(i.g)
-    //println(i.h)
+    println(i.g)
+    println(i.h)
+    println(o.inner.m)
+    println(o.inner.g)
+    println(o.inner.h)
   }
 
 }

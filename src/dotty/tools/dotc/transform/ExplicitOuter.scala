@@ -57,6 +57,12 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
 
+  /** Convert a selection of the form `qual.C_<OUTER>` to an outer path from `qual` to `C` */
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
+    if (tree.name.isOuterSelect)
+      outer.path(tree.tpe.widen.classSymbol, tree.qualifier).ensureConforms(tree.tpe)
+    else tree
+
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
    *  Furthermore, if a parent trait might have an outer accessor,

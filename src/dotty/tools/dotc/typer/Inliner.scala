@@ -40,7 +40,7 @@ object Inliner {
     sym.getAnnotation(defn.InlineAnnot).get.tree
       .attachment(InlinedBody).body
 
-  private class Typer extends ReTyper {
+  private object InlineTyper extends ReTyper {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val acc = tree.symbol
       super.typedSelect(tree, pt) match {
@@ -117,12 +117,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private val (methPart, targs, argss) = decomposeCall(call)
   private val meth = methPart.symbol
 
-  private lazy val prefix = methPart match {
+  private val prefix = methPart match {
     case Select(qual, _) => qual
     case _ => tpd.This(ctx.owner.enclosingClass.asClass)
   }
 
-  private val thisProxy = new mutable.HashMap[Type, NamedType]
+  private val thisProxy = new mutable.HashMap[Type, TermRef]
   private val paramProxy = new mutable.HashMap[Type, Type]
   private val paramBinding = new mutable.HashMap[Name, Type]
   val bindingsBuf = new mutable.ListBuffer[MemberDef]
@@ -167,20 +167,20 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   }
 
   private def registerType(tpe: Type): Unit = tpe match {
-    case tpe: ThisType if !thisProxy.contains(tpe) =>
-      if (!ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package))
-        if (tpe.cls.isStaticOwner)
-          thisProxy(tpe) = tpe.cls.sourceModule.termRef
-        else {
-          def outerDistance(cls: Symbol): Int = {
-            assert(cls.exists, i"not encl: ${meth.owner.enclosingClass} ${tpe.cls}")
-            if (tpe.cls eq cls) 0
-            else outerDistance(cls.owner.enclosingClass) + 1
-          }
-          val n = outerDistance(meth.owner)
-          thisProxy(tpe) = newSym(nme.SELF ++ n.toString, EmptyFlags, tpe.widen).termRef
-        }
-    case tpe: NamedType if tpe.symbol.is(Param) && tpe.symbol.owner == meth && !paramProxy.contains(tpe) =>
+    case tpe: ThisType
+    if !ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package) &&
+       !thisProxy.contains(tpe) =>
+      if (tpe.cls.isStaticOwner)
+        thisProxy(tpe) = tpe.cls.sourceModule.termRef
+      else {
+        val proxyName = s"${tpe.cls.name}_this".toTermName
+        val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
+        thisProxy(tpe) = newSym(proxyName, EmptyFlags, proxyType).termRef
+        registerType(meth.owner.thisType) // make sure we have a base from which to outer-select
+      }
+    case tpe: NamedType
+    if tpe.symbol.is(Param) && tpe.symbol.owner == meth &&
+       !paramProxy.contains(tpe) =>
       paramProxy(tpe) = paramBinding(tpe.name)
     case _ =>
   }
@@ -190,25 +190,23 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case _ =>
   }
 
-  private def outerLevel(sym: Symbol) = sym.name.drop(nme.SELF.length).toString.toInt
-
   def inlined(pt: Type) = {
+    if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType) // make sure prefix is computed
     rhs.foreachSubTree(registerLeaf)
 
-    val accessedSelfSyms =
-      (for ((tp: ThisType, ref) <- thisProxy) yield ref.symbol.asTerm).toSeq.sortBy(outerLevel)
+    def classOf(sym: Symbol) = sym.info.widen.classSymbol
+    def outerSelector(sym: Symbol) = classOf(sym).name.toTermName ++ nme.OUTER_SELECT
+    def outerLevel(sym: Symbol) = classOf(sym).ownersIterator.length
+    val accessedSelfSyms = thisProxy.values.toList.map(_.symbol).sortBy(-outerLevel(_))
 
     var lastSelf: Symbol = NoSymbol
     for (selfSym <- accessedSelfSyms) {
       val rhs =
-        if (!lastSelf.exists) prefix
-        else {
-          val outerDelta = outerLevel(selfSym) - outerLevel(lastSelf)
-          def outerSelect(ref: Tree, dummy: Int): Tree = ???
-            //ref.select(ExplicitOuter.outerAccessorTBD(ref.tpe.widen.classSymbol.asClass))
-          (ref(lastSelf) /: (0 until outerDelta))(outerSelect)
-        }
-      bindingsBuf += ValDef(selfSym, rhs.ensureConforms(selfSym.info))
+        if (!lastSelf.exists)
+          prefix
+        else
+          untpd.Select(ref(lastSelf), outerSelector(selfSym)).withType(selfSym.info)
+      bindingsBuf += ValDef(selfSym.asTerm, rhs)
       lastSelf = selfSym
     }
 
@@ -239,7 +237,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
     val expansion = inliner(rhs.withPos(call.pos))
 
-    val expansion1 = new Typer().typed(expansion, pt)(inlineContext(call))
+    val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
     val result = tpd.Inlined(call, bindings, expansion1)
 
     inlining.println(i"inlining $call\n --> \n$result")

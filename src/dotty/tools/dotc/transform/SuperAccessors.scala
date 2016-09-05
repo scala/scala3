@@ -148,7 +148,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      */
     private def ensureProtectedAccessOK(sel: Select, targs: List[Tree])(implicit ctx: Context) = {
       val sym = sel.symbol
-      if (sym.exists && needsProtectedAccessor(sym, sel.pos)) {
+      if (sym.isTerm && !sel.name.isOuterSelect && needsProtectedAccessor(sym, sel.pos)) {
         ctx.debuglog("Adding protected accessor for " + sel)
         protectedAccessorCall(sel, targs)
       } else sel

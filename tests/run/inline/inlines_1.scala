@@ -38,5 +38,6 @@ object inlines {
       @dotty.annotation.inline def g = f
       @dotty.annotation.inline def h = f ++ m
     }
+    val inner = new Inner
   }
 }

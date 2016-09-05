@@ -84,6 +84,7 @@ object NameOps {
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
     def isSelectorName = name.startsWith(" ") && name.tail.forall(_.isDigit)
     def isLazyLocal = name.endsWith(nme.LAZY_LOCAL)
+    def isOuterSelect = name.endsWith(nme.OUTER_SELECT)
 
     /** Is name a variable name? */
     def isVariableName: Boolean = name.length > 0 && {
