@@ -7,7 +7,7 @@ import TypeErasure.ErasedValueType
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd, tpd}
-import typer.Namer
+import typer.{Namer, Inliner}
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
 import TypeApplications._
@@ -34,6 +34,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       myCtx = savedCtx
       enclosingDef = savedDef
     }
+  }
+
+  def homogenize(tree: Tree[_])(implicit ctx: Context) = tree match {
+    case tree: tpd.Inlined => Inliner.dropInlined(tree)
+    case _ => tree
   }
 
   private def enclDefIsClass = enclosingDef match {
@@ -277,7 +282,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (homogenizedView && pid.hasType) toTextLocal(pid.tpe)
       else toTextLocal(pid)
 
-    var txt: Text = tree match {
+    var txt: Text = homogenize(tree) match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
