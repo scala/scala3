@@ -155,7 +155,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   }
 
   private def registerLeaf(tree: Tree): Unit = tree match {
-    case _: This | _: Ident => registerType(tree.tpe)
+    case _: This | _: Ident | _: TypeTree => registerType(tree.tpe)
     case _ =>
   }
 
@@ -213,6 +213,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val typeMap = new TypeMap {
       def apply(t: Type) = t match {
         case t: ThisType => thisProxy.getOrElse(t, t)
+        case t: TypeRef => paramProxy.getOrElse(t, t)
         case t: SingletonType => paramProxy.getOrElse(t, t)
         case t => mapOver(t)
       }
