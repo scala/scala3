@@ -127,6 +127,9 @@ trait TypeAssigner {
     widenMap(tp)
   }
 
+  def avoidingType(expr: Tree, bindings: List[Tree])(implicit ctx: Context): Type =
+    avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
+
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
@@ -383,7 +386,10 @@ trait TypeAssigner {
     tree.withType(defn.UnitType)
 
   def assignType(tree: untpd.Block, stats: List[Tree], expr: Tree)(implicit ctx: Context) =
-    tree.withType(avoid(expr.tpe, localSyms(stats) filter (_.isTerm)))
+    tree.withType(avoidingType(expr, stats))
+
+  def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(implicit ctx: Context) =
+    tree.withType(avoidingType(expansion, bindings))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
     tree.withType(thenp.tpe | elsep.tpe)

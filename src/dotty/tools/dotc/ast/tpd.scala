@@ -117,7 +117,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
-    untpd.Inlined(call, bindings, expansion).withType(expansion.tpe)
+    ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
