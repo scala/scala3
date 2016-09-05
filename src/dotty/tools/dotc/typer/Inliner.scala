@@ -104,13 +104,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
     case tp: PolyType =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
-        paramBinding(name) = arg.tpe.stripTypeVar match {
-          case argtpe: TypeRef => argtpe
-          case argtpe =>
-            val binding = newSym(name, EmptyFlags, TypeAlias(argtpe)).asType
-            bindingsBuf += TypeDef(binding)
-            binding.typeRef
-        }
+        paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
@@ -155,7 +149,8 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   }
 
   private def registerLeaf(tree: Tree): Unit = tree match {
-    case _: This | _: Ident | _: TypeTree => registerType(tree.tpe)
+    case _: This | _: Ident | _: TypeTree =>
+      tree.tpe.foreachPart(registerType, stopAtStatic = true)
     case _ =>
   }
 
@@ -166,7 +161,6 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         case res @ Select(qual, name) =>
           if (name.endsWith(nme.OUTER)) {
             val outerAcc = tree.symbol
-            println(i"selecting $tree / ${acc} / ${qual.tpe.normalizedPrefix}")
             res.withType(qual.tpe.widen.normalizedPrefix)
           }
           else {
@@ -227,8 +221,8 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         }
       case _: Ident =>
         paramProxy.get(tree.tpe) match {
-          case Some(t: TypeRef) => ref(t)
-          case Some(t: SingletonType) => singleton(t)
+          case Some(t: SingletonType) if tree.isTerm => singleton(t)
+          case Some(t) if tree.isType => TypeTree(t)
           case None => tree
         }
       case _ => tree

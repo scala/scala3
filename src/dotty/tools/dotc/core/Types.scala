@@ -228,8 +228,8 @@ object Types {
       !existsPart(!p(_))
 
     /** Performs operation on all parts of this type */
-    final def foreachPart(p: Type => Unit)(implicit ctx: Context): Unit =
-      new ForeachAccumulator(p).apply((), this)
+    final def foreachPart(p: Type => Unit, stopAtStatic: Boolean = false)(implicit ctx: Context): Unit =
+      new ForeachAccumulator(p, stopAtStatic).apply((), this)
 
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): collection.Set[NamedType] =
@@ -3704,8 +3704,7 @@ object Types {
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
   }
 
-  class ForeachAccumulator(p: Type => Unit)(implicit ctx: Context) extends TypeAccumulator[Unit] {
-    override def stopAtStatic = false
+  class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(implicit ctx: Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
