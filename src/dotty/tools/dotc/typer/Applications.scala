@@ -861,7 +861,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** A typed unapply hook, can be overridden by re any-typers between frontend
    *  and pattern matcher.
    */
-  def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context) =
+  def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply =
     throw new UnsupportedOperationException("cannot type check an UnApply node")
 
   /** Is given method reference applicable to type arguments `targs` and argument trees `args`?

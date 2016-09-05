@@ -10,6 +10,7 @@ import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
 import scala.util.control.NonFatal
+import util.Positions.Position
 import config.Printers.typr
 
 /** A version of Typer that keeps all symbols defined and referenced in a
@@ -56,6 +57,13 @@ class ReTyper extends Typer {
     untpd.cpy.Bind(tree)(tree.name, body1).withType(tree.typeOpt)
   }
 
+  override def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply = {
+    val fun1 = typedExpr(tree.fun, AnyFunctionProto)
+    val implicits1 = tree.implicits.map(typedExpr(_))
+    val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
+    untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
+  }
+
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol
 
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
@@ -93,4 +101,7 @@ class ReTyper extends Typer {
     }
 
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
+  override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
+    Implicits.NoImplicitMatches
+  override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
 }
