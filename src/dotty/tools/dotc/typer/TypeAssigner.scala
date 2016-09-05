@@ -168,7 +168,9 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(tpe.shadowed.withDenot(d2), false)
-          else {
+          else if (pre.derivesFrom(defn.DynamicClass)) {
+            TryDynamicCallType
+          } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             val what = alts match {
               case Nil =>
@@ -203,9 +205,8 @@ trait TypeAssigner {
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val mbr = site.member(name)
-    lazy val canBeDynamicMethod = site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)
-    if (reallyExists(mbr) && (mbr.accessibleFrom(site).exists || !canBeDynamicMethod)) site.select(name, mbr)
-    else if (canBeDynamicMethod) {
+    if (reallyExists(mbr)) site.select(name, mbr)
+    else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
     } else {
       if (!site.isErroneous) {
