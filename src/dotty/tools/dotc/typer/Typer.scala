@@ -1794,7 +1794,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         else if (tree.tpe <:< pt)
           if (tree.symbol.isInlineMethod &&
-              Inliner.inlinedBody(tree.symbol).isDefined &&
+              Inliner.hasInlinedBody(tree.symbol) &&
               !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
               !ctx.settings.YnoInline.value &&
               !ctx.isAfterTyper)

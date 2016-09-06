@@ -37,13 +37,18 @@ object Inliner {
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
 
-  def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Option[Tree] =
-    sym.getAnnotation(defn.InlineAnnot).get.tree
-      .getAttachment(InlinedBody).map(_.body)
+  private def inlinedBodyAttachment(sym: SymDenotation)(implicit ctx: Context): Option[InlinedBody] =
+    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlinedBody)
+
+  def hasInlinedBody(sym: SymDenotation)(implicit ctx: Context): Boolean =
+    inlinedBodyAttachment(sym).isDefined
+
+  def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Tree =
+    inlinedBodyAttachment(sym).get.body
 
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
-      new Inliner(tree, inlinedBody(tree.symbol).get).inlined(pt)
+      new Inliner(tree, inlinedBody(tree.symbol)).inlined(pt)
     else errorTree(tree,
       i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
                    | Maybe this is caused by a recursive inline method?
