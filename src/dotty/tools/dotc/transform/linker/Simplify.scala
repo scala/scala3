@@ -375,7 +375,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   val inlineLocalObjects: Optimization = { (ctx0: Context) => {
     implicit val ctx: Context = ctx0
     val hasPerfectRHS = collection.mutable.HashMap[Symbol, Boolean]() // in the end only calls constructor. Reason for unconditional inlining
-    val checkGood = collection.mutable.HashMap[Symbol, Symbol]() // if key has perfect RHS than value has perfect RHS
+    val checkGood = collection.mutable.HashMap[Symbol, Set[Symbol]]() // if all values have perfect RHS than key has perfect RHS
+    val forwarderWritesTo = collection.mutable.HashMap[Symbol, Symbol]()
     val gettersCalled = collection.mutable.HashSet[Symbol]()
     def followTailPerfect(t: Tree, symbol: Symbol): Unit = {
       t match {
@@ -384,9 +385,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case Apply(fun, _) if fun.symbol.isConstructor && t.tpe.widenDealias == symbol.info.widenDealias.finalResultType.widenDealias =>
           hasPerfectRHS(symbol) = true
         case Apply(fun, _) if fun.symbol.is(Flags.Label) && (fun.symbol ne symbol) =>
-          checkGood.put(fun.symbol, symbol)
+          checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + fun.symbol)
+          assert(forwarderWritesTo.getOrElse(t.symbol, symbol) == symbol)
+          forwarderWritesTo(t.symbol) = symbol
         case t: Ident if !t.symbol.owner.isClass && (t.symbol ne symbol) =>
-          checkGood.put(t.symbol, symbol)
+          checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + t.symbol)
         case _ =>
       }
     }
@@ -394,7 +397,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       case vdef: ValDef if (vdef.symbol.info.classSymbol is Flags.CaseClass) && !vdef.symbol.is(Flags.Lazy)  && !vdef.symbol.info.classSymbol.caseAccessors.exists(x => x.is(Flags.Mutable)) =>
         followTailPerfect(vdef.rhs, vdef.symbol)
       case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
-        checkGood.put(rhs.symbol, lhs.symbol)
+        checkGood.put(lhs.symbol, checkGood.getOrElse(lhs.symbol, Set.empty) + rhs.symbol)
       case t @ Select(qual, _) if (t.symbol.isGetter && !t.symbol.is(Flags.Mutable)) ||
         (t.symbol.maybeOwner.derivesFrom(defn.ProductClass) && t.symbol.maybeOwner.is(Flags.CaseClass) && t.symbol.name.isProductAccessorName) ||
         (t.symbol.is(Flags.CaseAccessor) && !t.symbol.is(Flags.Mutable)) =>
@@ -408,9 +411,11 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       var hasChanged = true
       while(hasChanged) {
         hasChanged = false
-        checkGood.foreach{case (key, value) =>
-          if (hasPerfectRHS.getOrElse(key, false)) {
-            hasChanged = !hasPerfectRHS.put(value, true).getOrElse(false)
+        checkGood.foreach{case (key, values) =>
+          values.foreach { value =>
+            if (hasPerfectRHS.getOrElse(key, false)) {
+              hasChanged = !hasPerfectRHS.put(value, true).getOrElse(false)
+            }
           }
         }
       }
@@ -469,7 +474,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
       def followCases(t: Symbol): Symbol = if (t.symbol.is(Flags.Label)) {
         // todo: this can create cycles, see ./tests/pos/rbtree.scala
-        followCases(checkGood.getOrElse(t, NoSymbol))
+        followCases(forwarderWritesTo.getOrElse(t.symbol, NoSymbol))
       } else t
 
       hasPerfectRHS.clear()
