@@ -30,5 +30,5 @@ object Printers {
   val completions: Printer = noPrinter
   val cyclicErrors: Printer = noPrinter
   val pickling: Printer = noPrinter
-  val inlining: Printer = new Printer
+  val inlining: Printer = noPrinter
 }
