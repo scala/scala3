@@ -93,8 +93,6 @@ object DottyBuild extends Build {
       //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
-      resolvers += Resolver.sonatypeRepo("snapshots"),
-
       // get libraries onboard
       partestDeps := Seq(scalaCompiler,
                          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -102,7 +100,7 @@ object DottyBuild extends Build {
       libraryDependencies ++= partestDeps.value,
       libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-                                  "ch.epfl.lamp" % "dottydoc-client" % "0.1-SNAPSHOT",
+                                  "ch.epfl.lamp" % "dottydoc-client" % "0.1.0",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "com.github.spullara.mustache.java" % "compiler" % "0.9.3",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
