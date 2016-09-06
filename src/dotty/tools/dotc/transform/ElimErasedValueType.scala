@@ -67,6 +67,9 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
     transformTypeOfTree(t)
   }
 
+  override def transformInlined(tree: Inlined)(implicit ctx: Context, info: TransformerInfo): Tree =
+    transformTypeOfTree(tree)
+
   // FIXME: transformIf and transformBlock won't be required anymore once #444 is fixed.
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
