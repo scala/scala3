@@ -18,6 +18,7 @@ trait DottyTest {
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setSetting(ctx.settings.YnoInline, true)
     base.initialize()(ctx)
     ctx
   }
