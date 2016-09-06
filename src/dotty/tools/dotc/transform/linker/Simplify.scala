@@ -947,6 +947,17 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           EmptyTree
         case t: Block => // drop non-side-effecting stats
           t
+        case t: New =>
+          val symIfExists = t.tpt.tpe.normalizedPrefix.termSymbol
+          if (replacements.contains(symIfExists)) {
+            val newPrefix = deepReplacer.transform(replacements(symIfExists))
+            val newTpt = t.tpt.tpe match {
+              case t: NamedType =>
+                t.derivedSelect(newPrefix.tpe)
+            }
+            tpd.New(newTpt)
+          }
+          else t
         case t: RefTree if !t.symbol.is(Flags.Method) && !t.symbol.is(Flags.Param) && !t.symbol.is(Flags.Mutable) =>
           if (replacements.contains(t.symbol))
             deepReplacer.transform(replacements(t.symbol)).ensureConforms(t.tpe.widen)
