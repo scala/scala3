@@ -20,7 +20,7 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
-  @dotty.annotation.inline
+  @inline
   def record(fn: String, n: Int = 1) =
     if (enabled) doRecord(fn, n)
 
@@ -30,7 +30,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  @dotty.annotation.inline
+  @inline
   def track[T](fn: String)(op: => T) =
     if (enabled) doTrack(fn)(op) else op
 

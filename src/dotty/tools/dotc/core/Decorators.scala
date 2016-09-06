@@ -42,7 +42,7 @@ object Decorators {
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
 
-    @inline final def mapconserve[U](f: T => U): List[U] = {
+    final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
       def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty) {

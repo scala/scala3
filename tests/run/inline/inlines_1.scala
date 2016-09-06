@@ -5,7 +5,7 @@ object inlines {
 
   final val monitored = false
 
-  @dotty.annotation.inline
+  @inline
   def f(x: Int): Int = x * x
 
   val hits = new mutable.HashMap[String, Int] {
@@ -21,7 +21,7 @@ object inlines {
 
   @volatile private var stack: List[String] = Nil
 
-  @dotty.annotation.inline
+  @inline
   def track[T](fn: String)(op: => T) =
     if (monitored) {
       stack = fn :: stack
@@ -34,9 +34,9 @@ object inlines {
     def f = "Outer.f"
     class Inner {
       val msg = " Inner"
-      @dotty.annotation.inline def m = msg
-      @dotty.annotation.inline def g = f
-      @dotty.annotation.inline def h = f ++ m
+      @inline def m = msg
+      @inline def g = f
+      @inline def h = f ++ m
     }
     val inner = new Inner
   }

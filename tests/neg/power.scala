@@ -1,6 +1,6 @@
 object Test {
 
-  @dotty.annotation.inline
+  @inline
   def power(x: Double, n: Int): Double =
     if (n == 0) 1.0
     else if (n == 1) x

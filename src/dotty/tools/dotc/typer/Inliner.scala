@@ -17,6 +17,7 @@ import Names.Name
 import SymDenotations.SymDenotation
 import Annotations.Annotation
 import transform.ExplicitOuter
+import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{Property, SourceFile, NoSource}
@@ -36,13 +37,13 @@ object Inliner {
   def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
     inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
 
-  def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Tree =
+  def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Option[Tree] =
     sym.getAnnotation(defn.InlineAnnot).get.tree
-      .attachment(InlinedBody).body
+      .getAttachment(InlinedBody).map(_.body)
 
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
-      new Inliner(tree, inlinedBody(tree.symbol)).inlined(pt)
+      new Inliner(tree, inlinedBody(tree.symbol).get).inlined(pt)
     else errorTree(tree,
       i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
                    | Maybe this is caused by a recursive inline method?
@@ -85,6 +86,8 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
   private val (methPart, targs, argss) = decomposeCall(call)
   private val meth = methPart.symbol
+
+  for (targ <- targs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
 
   private val prefix = methPart match {
     case Select(qual, _) => qual
@@ -156,19 +159,9 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
   private object InlineTyper extends ReTyper {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      val acc = tree.symbol
-      super.typedSelect(tree, pt) match {
-        case res @ Select(qual, name) =>
-          if (name.endsWith(nme.OUTER)) {
-            val outerAcc = tree.symbol
-            res.withType(qual.tpe.widen.normalizedPrefix)
-          }
-          else {
-            ensureAccessible(res.tpe, qual.isInstanceOf[Super], tree.pos)
-            res
-          }
-        case res => res
-      }
+      val res = super.typedSelect(tree, pt)
+      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
+      res
     }
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
       val cond1 = typed(tree.cond, defn.BooleanType)
@@ -207,26 +200,27 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val typeMap = new TypeMap {
       def apply(t: Type) = t match {
         case t: ThisType => thisProxy.getOrElse(t, t)
-        case t: TypeRef => paramProxy.getOrElse(t, t)
-        case t: SingletonType => paramProxy.getOrElse(t, t)
+        case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+        case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
         case t => mapOver(t)
       }
     }
 
-    def treeMap(tree: Tree) = tree match {
+    def treeMap(tree: Tree) = {
+      tree match {
       case _: This =>
         thisProxy.get(tree.tpe) match {
-          case Some(t) => ref(t)
+          case Some(t) => ref(t).withPos(tree.pos)
           case None => tree
         }
       case _: Ident =>
         paramProxy.get(tree.tpe) match {
-          case Some(t: SingletonType) if tree.isTerm => singleton(t)
-          case Some(t) if tree.isType => TypeTree(t)
+          case Some(t: SingletonType) if tree.isTerm => singleton(t).withPos(tree.pos)
+          case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
           case None => tree
         }
       case _ => tree
-    }
+    }}
 
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
     val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
@@ -235,7 +229,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
     val result = tpd.Inlined(call, bindings, expansion1)
 
-    inlining.println(i"inlining $call\n --> \n$result")
+    inlining.println(i"inlined $call\n --> \n$result")
     result
   }
 }

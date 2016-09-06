@@ -140,16 +140,16 @@ trait Reporting { this: Context =>
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.debug.value) warning(msg, pos)
 
-  @dotty.annotation.inline
+  @inline
   def debugTraceIndented[TD](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TD): TD =
     conditionalTraceIndented(this.settings.debugTrace.value, question, printer, show)(op)
 
-  @dotty.annotation.inline
+  @inline
   def conditionalTraceIndented[TC](cond: Boolean, question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => TC): TC =
     if (cond) traceIndented[TC](question, printer, show)(op)
     else op
 
-  @dotty.annotation.inline
+  @inline
   def traceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
     if (printer eq config.Printers.noPrinter) op
     else doTraceIndented[T](question, printer, show)(op)

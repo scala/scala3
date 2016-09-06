@@ -466,7 +466,7 @@ class Definitions {
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
-  lazy val InlineAnnotType = ctx.requiredClassRef("dotty.annotation.inline")
+  lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
   def InlineAnnot(implicit ctx: Context) = InlineAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
