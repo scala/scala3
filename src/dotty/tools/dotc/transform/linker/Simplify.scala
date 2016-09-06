@@ -104,6 +104,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private lazy val _optimizations: Seq[Optimization] = Seq(
     inlineCaseIntrinsics
+    ,removeUnnecessaryNullChecks
     ,inlineOptions
     ,inlineLabelsCalledOnce
     ,valify
@@ -639,43 +640,68 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   }
 
   val removeUnnecessaryNullChecks: Optimization = { (ctx0: Context) => {
-    implicit val ctx = ctx0
+    implicit val ctx: Context = ctx0
     val initializedVals = mutable.HashSet[Symbol]()
+    val checkGood = mutable.HashMap[Symbol, Set[Symbol]]()
+    def isGood(t: Symbol) = {
+      t.exists && initializedVals.contains(t) && {
+        var changed = true
+        var set = Set(t)
+        while (changed) {
+          val oldSet = set
+          set = set ++ set.flatMap(x => checkGood.getOrElse(x, Nil))
+          changed = set != oldSet
+        }
+        !set.exists(x => !initializedVals.contains(x))
+      }
+
+    }
     val visitor: Visitor = {
       case vd: ValDef =>
         val rhs = vd.rhs
         val rhsName = rhs.symbol.name
         if (!vd.symbol.is(Flags.Mutable) &&
-          !rhs.isEmpty || rhsName != nme.WILDCARD || rhsName !=
-          nme.???) {
-          initializedVals += vd.symbol
+          !rhs.isEmpty) {
+
+          def checkNonNull(t: Tree, target: Symbol): Boolean = t match {
+            case Block(_ , expr) => checkNonNull(expr, target)
+            case If(_, thenp, elsep) => checkNonNull(thenp, target) && checkNonNull(elsep, target)
+            case t: New => true
+            case t: Apply if t.symbol.isPrimaryConstructor => true
+            case t: Literal => t.const.value != null
+            case t: This => true
+            case t: Ident if !t.symbol.owner.isClass =>
+              checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
+              true
+            case t: Apply if !t.symbol.owner.isClass =>
+              checkGood.put(target, checkGood.getOrElse(target, Set.empty) + t.symbol)
+              true
+            case t: Typed =>
+              checkNonNull(t.expr, target)
+            case _ => t.tpe.isNotNull
+          }
+          if (checkNonNull(vd.rhs, vd.symbol))
+            initializedVals += vd.symbol
         }
       case t: Tree =>
     }
-    @inline def isLhsNullLiteral(t: Tree) = t match {
-      case Select(literalLhs: Literal, _) =>
-        literalLhs.const.tag == Constants.NullTag
-      case _ => false
-    }
-    @inline def isRhsNullLiteral(args: List[Tree]) = args match {
-      case List(booleanRhs: Literal) =>
-        booleanRhs.const.tag == Constants.NullTag
+
+    @inline def isNullLiteral(tree: Tree) = tree match {
+      case literal: Literal =>
+        literal.const.tag == Constants.NullTag
       case _ => false
     }
     val transformer: Transformer = () => localCtx0 => {
-      implicit val localCtx = localCtx0
+      implicit val ctx: Context = localCtx0
       val transformation: Tree => Tree = {
-        case potentialCheck: Apply =>
-          val sym = potentialCheck.symbol
-          if (isLhsNullLiteral(potentialCheck.fun)) {
-            if (sym == defn.Boolean_==) tpd.Literal(Constant(true))
-            else if(sym == defn.Boolean_!=) tpd.Literal(Constant(false))
-            else potentialCheck
-          } else if (isRhsNullLiteral(potentialCheck.args)) {
-            if (sym == defn.Boolean_==) tpd.Literal(Constant(true))
-            else if(sym == defn.Boolean_!=) tpd.Literal(Constant(false))
-            else potentialCheck
-          } else potentialCheck
+        case check@Apply(Select(lhs, _), List(rhs)) =>
+          val sym = check.symbol
+          if ( ((sym == defn.Object_eq) || (sym == defn.Object_ne)) &&
+            ((isNullLiteral(lhs) && isGood(rhs.symbol)) || (isNullLiteral(rhs) && isGood(lhs.symbol)))) {
+            if (sym == defn.Object_eq) Block(List(lhs, rhs), tpd.Literal(Constant(false)))
+            else if(sym == defn.Object_ne) Block(List(lhs, rhs), tpd.Literal(Constant(true)))
+            else check
+          } else check
         case t => t
       }
       transformation
