@@ -391,7 +391,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       }
     }
     val visitor: Visitor = {
-      case vdef: ValDef if (vdef.symbol.info.classSymbol is Flags.CaseClass) && !vdef.symbol.is(Flags.Lazy)  =>
+      case vdef: ValDef if (vdef.symbol.info.classSymbol is Flags.CaseClass) && !vdef.symbol.is(Flags.Lazy)  && !vdef.symbol.info.classSymbol.caseAccessors.exists(x => x.is(Flags.Mutable)) =>
         followTailPerfect(vdef.rhs, vdef.symbol)
       case Assign(lhs, rhs) if !lhs.symbol.owner.isClass =>
         checkGood.put(rhs.symbol, lhs.symbol)
@@ -419,14 +419,15 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         hasPerfectRHS.iterator.map(x => x._1).filter(x => !x.is(Flags.Method) && !x.is(Flags.Label) && gettersCalled.contains(x.symbol) && (x.symbol.info.classSymbol is Flags.CaseClass))
           .map{ refVal =>
 //          println(s"replacing ${refVal.symbol.fullName} with stack-allocated fields")
-          val fields = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
-          val productAccessors = (1 to fields.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // todo: disambiguate
-          val newLocals = fields.map(x =>
+          var accessors = refVal.info.classSymbol.caseAccessors.filter(_.isGetter) // todo: drop mutable ones
+          if (accessors.isEmpty) accessors = refVal.info.classSymbol.caseAccessors
+          val productAccessors = (1 to accessors.length).map(i => refVal.info.member(nme.productAccessorName(i)).symbol) // todo: disambiguate
+          val newLocals = accessors.map(x =>
             // todo: it would be nice to have an additional optimization that
             // todo: is capable of turning those mutable ones into immutable in common cases
             ctx.newSymbol(ctx.owner.enclosingMethod, (refVal.name + "$" + x.name).toTermName, Flags.Synthetic | Flags.Mutable, x.asSeenFrom(refVal.info).info.finalResultType.widenDealias)
           )
-            val fieldMapping = fields zip newLocals
+            val fieldMapping = accessors zip newLocals
             val productMappings = productAccessors zip newLocals
             (refVal, (fieldMapping ++ productMappings).toMap)
           }.toMap
@@ -438,7 +439,8 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           case tree@ If(_, thenp, elsep) => cpy.If(tree)(thenp = splitWrites(thenp, target), elsep =  splitWrites(elsep, target))
           case Apply(sel , args) if sel.symbol.isConstructor && t.tpe.widenDealias == target.info.widenDealias.finalResultType.widenDealias =>
             val fieldsByAccessors = newMappings(target)
-            val accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // todo: when is this filter needed?
+            var accessors = target.info.classSymbol.caseAccessors.filter(_.isGetter)  // todo: when is this filter needed?
+            if (accessors.isEmpty) accessors = target.info.classSymbol.caseAccessors
             val assigns = (accessors zip args) map (x => ref(fieldsByAccessors(x._1)).becomes(x._2))
             val recreate = sel.appliedToArgs(accessors.map(x => ref(fieldsByAccessors(x))))
             Block(assigns, recreate)
