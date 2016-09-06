@@ -10,7 +10,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object DottyBuild extends Build {
 
   val baseVersion = "0.1"
-  val isNightly = sys.props.get("NIGHTLYBUILD") == Some("yes")
+  val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 
   val jenkinsMemLimit = List("-Xmx1300m")
 
