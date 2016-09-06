@@ -638,6 +638,52 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     }
   }
 
+  val removeUnnecessaryNullChecks: Optimization = { (ctx0: Context) => {
+    implicit val ctx = ctx0
+    val initializedVals = mutable.HashSet[Symbol]()
+    val visitor: Visitor = {
+      case vd: ValDef =>
+        val rhs = vd.rhs
+        val rhsName = rhs.symbol.name
+        if (!vd.symbol.is(Flags.Mutable) &&
+          !rhs.isEmpty || rhsName != nme.WILDCARD || rhsName !=
+          nme.???) {
+          initializedVals += vd.symbol
+        }
+      case t: Tree =>
+    }
+    @inline def isLhsNullLiteral(t: Tree) = t match {
+      case Select(literalLhs: Literal, _) =>
+        literalLhs.const.tag == Constants.NullTag
+      case _ => false
+    }
+    @inline def isRhsNullLiteral(args: List[Tree]) = args match {
+      case List(booleanRhs: Literal) =>
+        booleanRhs.const.tag == Constants.NullTag
+      case _ => false
+    }
+    val transformer: Transformer = () => localCtx0 => {
+      implicit val localCtx = localCtx0
+      val transformation: Tree => Tree = {
+        case potentialCheck: Apply =>
+          val sym = potentialCheck.symbol
+          if (isLhsNullLiteral(potentialCheck.fun)) {
+            if (sym == defn.Boolean_==) tpd.Literal(Constant(true))
+            else if(sym == defn.Boolean_!=) tpd.Literal(Constant(false))
+            else potentialCheck
+          } else if (isRhsNullLiteral(potentialCheck.args)) {
+            if (sym == defn.Boolean_==) tpd.Literal(Constant(true))
+            else if(sym == defn.Boolean_!=) tpd.Literal(Constant(false))
+            else potentialCheck
+          } else potentialCheck
+        case t => t
+      }
+      transformation
+    }
+    ("removeUnnecessaryNullChecks", BeforeAndAfterErasure, visitor,
+      transformer)
+  }}
+
   val bubbleUpNothing: Optimization = { (ctx0: Context) => {
     implicit val ctx: Context = ctx0
     val transformer: Transformer = () => localCtx => {
