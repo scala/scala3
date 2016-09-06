@@ -29,12 +29,14 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   private var SeqFactoryClass: Symbol = null
   private var symmetricOperations: Set[Symbol] = null
+  var optimize = false
 
 
 
   override def prepareForUnit(tree: _root_.dotty.tools.dotc.ast.tpd.Tree)(implicit ctx: Context): TreeTransform = {
     SeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
     symmetricOperations = Set(defn.Boolean_&&, defn.Boolean_||, defn.Int_+, defn.Int_*, defn.Long_+, defn.Long_*)
+    optimize = ctx.settings.optimise.value
     this
   }
 
@@ -117,7 +119,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val ctx0 = ctx
-    if (!tree.symbol.is(Flags.Label)) {
+    if (optimize && !tree.symbol.is(Flags.Label)) {
       implicit val ctx: Context = ctx0.withOwner(tree.symbol(ctx0))
       // TODO: optimize class bodies before erasure?
       var rhs0 = tree.rhs
