@@ -518,7 +518,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
         case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
         case TypeApply(fun @Select(x, _), List(tp)) if fun.symbol eq defn.Any_isInstanceOf =>
-          if (!x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
+          if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
             (x.symbol, tp.tpe) :: Nil
           else Nil
         case _ => List.empty
