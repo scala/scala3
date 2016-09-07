@@ -27,7 +27,7 @@ object desugar {
   private type VarInfo = (NameTree, Tree)
 
   /** Names of methods that are added unconditionally to case classes */
-  def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context) =
+  def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
     name == nme.isDefined ||
     name == nme.copy ||
     name == nme.productArity ||
