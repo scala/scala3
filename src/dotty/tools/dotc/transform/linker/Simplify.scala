@@ -82,7 +82,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
       else false
     case Select(qual, _) if !t.symbol.is(Flags.Mutable) =>
       readingOnlyVals(qual)
-    case t: Ident if !t.symbol.is(Flags.Mutable) && !t.symbol.is(Flags.Method) =>
+    case t: Ident if !t.symbol.is(Flags.Mutable) && !t.symbol.is(Flags.Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
       desugarIdent(t) match {
         case Some(t) => readingOnlyVals(t)
         case None => true
