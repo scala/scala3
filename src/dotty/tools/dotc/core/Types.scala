@@ -1788,6 +1788,7 @@ object Types {
         false
     }
     override def computeHash = doHash((name, sig), prefix)
+    override def toString = super.toString ++ s"/withSig($sig)"
   }
 
   trait WithFixedSym extends NamedType {
