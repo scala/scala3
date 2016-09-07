@@ -253,9 +253,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
               )
           } else {
             assert(defn.isProductSubType(prev.tpe))
-            Block(
-              List(ValDef(b.asTerm, prev)),
-              next //Substitution(b, ref(prevSym))(next)
+            val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
+            ifThenElseZero(
+              nullCheck,
+              Block(
+                List(ValDef(b.asTerm, prev)),
+                next //Substitution(b, ref(prevSym))(next)
+              )
             )
           }
         }
