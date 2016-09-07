@@ -25,7 +25,7 @@ class Compiler {
 
   /** Meta-ordering constraint:
    *
-   *  DenotTransformers that change the signature of  their denotation's info must go
+   *  DenotTransformers that change the signature of their denotation's info must go
    *  after erasure. The reason is that denotations are permanently referred to by
    *  TermRefs which contain a signature. If the signature of a symbol would change,
    *  all refs to it would become outdated - they could not be dereferenced in the
@@ -83,7 +83,7 @@ class Compiler {
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
                                        // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-           new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
+           new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
            new GetClass),           // Rewrites getClass calls on primitive types.
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
