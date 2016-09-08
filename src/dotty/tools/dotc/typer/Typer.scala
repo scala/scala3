@@ -1169,7 +1169,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     // Overwrite inline body to make sure it is not evaluated twice
     sym.getAnnotation(defn.InlineAnnot) match {
-      case Some(ann) => Inliner.attachBody(ann, rhs1)
+      case Some(ann) => Inliner.attachBody(ann, ctx => rhs1)
       case _ =>
     }
 
@@ -1493,7 +1493,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            buf += typed(mdef)
+            val mdef1 = typed(mdef)
+            buf += mdef1
+            if (Inliner.hasInlinedBody(mdef1.symbol))
+              buf ++= Inliner.inlineAccessors(mdef1.symbol)
             traverse(rest)
         }
       case Thicket(stats) :: rest =>
@@ -1793,8 +1796,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree
         }
         else if (tree.tpe <:< pt)
-          if (tree.symbol.isInlineMethod &&
-              Inliner.hasInlinedBody(tree.symbol) &&
+          if (Inliner.hasInlinedBody(tree.symbol) &&
               !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
               !ctx.settings.YnoInline.value &&
               !ctx.isAfterTyper)

@@ -14,6 +14,7 @@ import Constants._
 import StdNames.nme
 import Contexts.Context
 import Names.Name
+import NameOps._
 import SymDenotations.SymDenotation
 import Annotations.Annotation
 import transform.ExplicitOuter
@@ -22,29 +23,143 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{Property, SourceFile, NoSource}
 import collection.mutable
+import transform.TypeUtils._
 
 object Inliner {
   import tpd._
 
-  private class InlinedBody(tree: => Tree) {
-    lazy val body = tree
+  /** An attachment for inline methods, which contains
+   *
+   *   - the inlined body, as a typed tree
+   *   -
+   *
+   */
+  private final class InlinedBody(treeExpr: Context => Tree, var inlineCtx: Context) {
+    private val inlineMethod = inlineCtx.owner
+    private val myAccessors = new mutable.ListBuffer[MemberDef]
+    private var myBody: Tree = _
+    private var evaluated = false
+
+    private def prepareForInline = new TreeMap {
+      def needsAccessor(sym: Symbol)(implicit ctx: Context) =
+        sym.is(AccessFlags) || sym.privateWithin.exists
+      def accessorName(implicit ctx: Context) =
+        ctx.freshNames.newName(inlineMethod.name.asTermName.inlineAccessorName.toString)
+      def accessorSymbol(tree: Tree, accessorInfo: Type)(implicit ctx: Context): Symbol =
+        ctx.newSymbol(
+          owner = inlineMethod.owner,
+          name = if (tree.isTerm) accessorName.toTermName else accessorName.toTypeName,
+          flags = if (tree.isTerm) Synthetic | Method else Synthetic,
+          info = accessorInfo,
+          coord = tree.pos).entered
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform {
+        tree match {
+          case _: Apply | _: TypeApply | _: RefTree if needsAccessor(tree.symbol) =>
+            if (tree.isTerm) {
+              val (methPart, targs, argss) = decomposeCall(tree)
+              val (accessorDef, accessorRef) =
+                if (methPart.symbol.isStatic) {
+                  // Easy case: Reference to a static symbol
+                  val accessorType = methPart.tpe.widen.ensureMethodic
+                  val accessor = accessorSymbol(tree, accessorType).asTerm
+                  val accessorDef = polyDefDef(accessor, tps => argss =>
+                     methPart.appliedToTypes(tps).appliedToArgss(argss))
+                  val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
+                  (accessorDef, accessorRef)
+                }
+                else {
+                  // Hard case: Reference needs to go via a dyanmic prefix
+                  val qual = qualifier(methPart)
+                  inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $methPart: ${methPart.getClass}, [$targs%, %], ($argss%, %))")
+                  val dealiasMap = new TypeMap {
+                    def apply(t: Type) = mapOver(t.dealias)
+                  }
+                  val qualType = dealiasMap(qual.tpe.widen)
+                  def addQualType(tp: Type): Type = tp match {
+                    case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
+                    case tp: ExprType => addQualType(tp.resultType)
+                    case tp => MethodType(qualType :: Nil, tp)
+                  }
+                  val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
+                  def abstractQualType(mtpe: Type): Type =
+                    if (localRefs.isEmpty) mtpe
+                    else PolyType.fromSymbols(localRefs.map(_.symbol), mtpe).asInstanceOf[PolyType].flatten
+                  val accessorType = abstractQualType(addQualType(dealiasMap(methPart.tpe.widen)))
+                  val accessor = accessorSymbol(tree, accessorType).asTerm
+                  val accessorDef = polyDefDef(accessor, tps => argss =>
+                    argss.head.head.select(methPart.symbol)
+                      .appliedToTypes(tps.drop(localRefs.length))
+                      .appliedToArgss(argss.tail))
+                  val accessorRef = ref(accessor)
+                      .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
+                      .appliedToArgss((qual :: Nil) :: argss)
+                  (accessorDef, accessorRef)
+                }
+              myAccessors += accessorDef
+              inlining.println(i"added inline accessor: $accessorDef")
+              accessorRef
+            } else {
+              // TODO: Handle references to non-public types.
+              // This is quite tricky, as such types can appear anywhere, including as parts
+              // of types of other things. For the moment we do nothing and complain
+              // at the implicit expansion site if there's a reference to an inaccessible type.
+              // Draft code (incomplete):
+              //
+              //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
+              //  myAccessors += TypeDef(accessor)
+              //  ref(accessor)
+              //
+              tree
+            }
+          case _ => tree
+        }
+      }
+    }
+
+    def isEvaluated = evaluated
+    private def ensureEvaluated()(implicit ctx: Context) =
+      if (!evaluated) {
+        evaluated = true
+        myBody = treeExpr(inlineCtx)
+        myBody = prepareForInline.transform(myBody)(inlineCtx)
+        inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
+        inlineCtx = null
+      }
+
+    def body(implicit ctx: Context): Tree = {
+      ensureEvaluated()
+      myBody
+    }
+
+    def accessors(implicit ctx: Context): List[MemberDef] = {
+      ensureEvaluated()
+      myAccessors.toList
+    }
   }
 
   private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
 
   private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
-  def attachBody(inlineAnnot: Annotation, tree: => Tree)(implicit ctx: Context): Unit =
-    inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(tree))
+  def attachBody(inlineAnnot: Annotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
+    inlineAnnot.tree.getAttachment(InlinedBody) match {
+      case Some(inlinedBody) if inlinedBody.isEvaluated => // keep existing attachment
+      case _ =>
+        if (!ctx.isAfterTyper)
+          inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(treeExpr, ctx))
+    }
 
   private def inlinedBodyAttachment(sym: SymDenotation)(implicit ctx: Context): Option[InlinedBody] =
     sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlinedBody)
 
   def hasInlinedBody(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    inlinedBodyAttachment(sym).isDefined
+    sym.isInlineMethod && inlinedBodyAttachment(sym).isDefined
 
   def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Tree =
     inlinedBodyAttachment(sym).get.body
+
+  def inlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] =
+    inlinedBodyAttachment(sym).get.accessors
 
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
@@ -72,32 +187,23 @@ object Inliner {
     val file = call.symbol.sourceFile
     if (file != null && file.exists) new SourceFile(file) else NoSource
   }
+
+  private def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
+    case Select(qual, _) => qual
+    case SelectFromTypeTree(qual, _) => qual
+    case _ => This(ctx.owner.enclosingClass.asClass)
+  }
 }
 
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   import tpd._
   import Inliner._
 
-  private def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
-    case Apply(fn, args) =>
-      val (meth, targs, argss) = decomposeCall(fn)
-      (meth, targs, argss :+ args)
-    case TypeApply(fn, targs) =>
-      val (meth, Nil, Nil) = decomposeCall(fn)
-      (meth, targs, Nil)
-    case _ =>
-      (tree, Nil, Nil)
-  }
-
   private val (methPart, targs, argss) = decomposeCall(call)
   private val meth = methPart.symbol
+  private val prefix = qualifier(methPart)
 
   for (targ <- targs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
-
-  private val prefix = methPart match {
-    case Select(qual, _) => qual
-    case _ => tpd.This(ctx.owner.enclosingClass.asClass)
-  }
 
   private val thisProxy = new mutable.HashMap[Type, TermRef]
   private val paramProxy = new mutable.HashMap[Type, Type]

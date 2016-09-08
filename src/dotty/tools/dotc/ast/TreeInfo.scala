@@ -435,6 +435,20 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** Decompose a call fn[targs](vargs_1)...(vargs_n)
+   *  into its constituents (where targs, vargss may be empty)
+   */
+  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
+    case Apply(fn, args) =>
+      val (meth, targs, argss) = decomposeCall(fn)
+      (meth, targs, argss :+ args)
+    case TypeApply(fn, targs) =>
+      val (meth, Nil, Nil) = decomposeCall(fn)
+      (meth, targs, Nil)
+    case _ =>
+      (tree, Nil, Nil)
+  }
+
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(implicit ctx: Context): List[Symbol] = {
     val acc = new TreeAccumulator[List[Symbol]] {

@@ -490,8 +490,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       }
       else (annots.find(_.symbol == defn.InlineAnnot)) match {
         case Some(inlineAnnot) =>
-          Inliner.attachBody(inlineAnnot,
-            forkAt(rhsStart).readTerm()(localContext(sym).addMode(Mode.ReadPositions)))
+          val inlineCtx = localContext(sym).addMode(Mode.ReadPositions)
+          Inliner.attachBody(inlineAnnot, implicit ctx => forkAt(rhsStart).readTerm())(inlineCtx)
         case none =>
       }
       goto(start)

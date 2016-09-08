@@ -2555,6 +2555,24 @@ object Types {
         x => paramBounds mapConserve (_.subst(this, x).bounds),
         x => resType.subst(this, x))
 
+    /** Merge nested polytypes into one polytype. nested polytypes are normally not suported
+     *  but can arise as temporary data structures.
+     */
+    def flatten(implicit ctx: Context): PolyType = resType match {
+      case that: PolyType =>
+        val shift = new TypeMap {
+          def apply(t: Type) = t match {
+            case PolyParam(`that`, n) => PolyParam(that, n + paramNames.length)
+            case t => mapOver(t)
+          }
+        }
+        PolyType(paramNames ++ that.paramNames)(
+          x => this.paramBounds.mapConserve(_.subst(this, x).bounds) ++
+               that.paramBounds.mapConserve(shift(_).subst(that, x).bounds),
+          x => shift(that.resultType).subst(that, x).subst(this, x))
+      case _ => this
+    }
+
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
 
     override def computeHash = doHash(paramNames, resType, paramBounds)

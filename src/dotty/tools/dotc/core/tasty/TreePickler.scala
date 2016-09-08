@@ -308,7 +308,7 @@ class TreePickler(pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
 
   def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context) = {
-    assert(symRefs(sym) == NoAddr)
+    assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
     withLength {

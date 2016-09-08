@@ -24,7 +24,7 @@ import collection.mutable
   def record(fn: String, n: Int = 1) =
     if (enabled) doRecord(fn, n)
 
-  def doRecord(fn: String, n: Int) =
+  private def doRecord(fn: String, n: Int) =
     if (monitored) {
       val name = if (fn.startsWith("member-")) "member" else fn
       hits(name) += n

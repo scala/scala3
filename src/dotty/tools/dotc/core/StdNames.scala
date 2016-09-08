@@ -100,6 +100,7 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = "$$"
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
+    val INLINE_ACCESSOR_PREFIX        = "$inlineAccessor$"
     val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
     val INTERPRETER_LINE_PREFIX: N    = "line"
     val INTERPRETER_VAR_PREFIX: N     = "res"

@@ -154,7 +154,7 @@ trait Reporting { this: Context =>
     if (printer eq config.Printers.noPrinter) op
     else doTraceIndented[T](question, printer, show)(op)
 
-  def doTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
+  private def doTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
     def resStr(res: Any): String = res match {
       case res: printing.Showable if show => res.show
       case _ => String.valueOf(res)
