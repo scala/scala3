@@ -228,7 +228,7 @@ abstract class CompilerTest {
 
   private def expectedErrors(filePath: String): List[ErrorsInFile] = expectedErrors(List(filePath))
 
-  private def isNegTest(testPath: String) = testPath.contains(JFile.separator + "neg" + JFile.separator)
+  private def isNegTest(testPath: String) = testPath.contains("/neg/")
 
   private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {
