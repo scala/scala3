@@ -6,7 +6,7 @@ package core
 import dotc.ast.Trees._
 import dotc.CompilationUnit
 import dotc.config.Printers.dottydoc
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{ Context, DocBase }
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 
@@ -17,6 +17,7 @@ class DocASTPhase extends Phase {
   import model.comment.Comment
   import dotty.tools.dotc.core.Flags
   import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dottydoc.util.syntax._
   import util.traversing._
   import util.internal.setters._
 
@@ -161,7 +162,7 @@ class DocASTPhase extends Phase {
     } setParent(child, to = parent)
 
     // (3) Update Doc AST in ctx.base
-    for (kv <- packages) ctx.docbase.packages += kv
+    for (kv <- packages) ctx.docbase.packagesMutable += kv
 
     // Return super's result
     compUnits

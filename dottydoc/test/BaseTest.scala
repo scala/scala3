@@ -2,12 +2,13 @@ package dotty.tools
 package dottydoc
 
 import dotc.core.Contexts
-import Contexts.{ Context, ContextBase, FreshContext }
+import Contexts.{ Context, ContextBase, FreshContext, DocContext, DocBase }
 import dotc.util.SourceFile
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dottydoc.core.DocASTPhase
 import model.Package
+import dotty.tools.dottydoc.util.syntax._
 
 trait DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
@@ -19,6 +20,7 @@ trait DottyTest {
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setProperty(DocContext, new DocBase)
     base.initialize()(ctx)
     ctx
   }
@@ -28,7 +30,7 @@ trait DottyTest {
       List(new Phase {
         def phaseName = "assertionPhase"
         override def run(implicit ctx: Context): Unit =
-          assertion(ctx.docbase.packages[Package].toMap)
+          assertion(ctx.docbase.packages)
       }) :: Nil
 
     override def phases =

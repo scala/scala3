@@ -9,6 +9,7 @@ import transform.DocMiniPhase
 import model.internal._
 import model.factories._
 import dotty.tools.dotc.core.Symbols.Symbol
+import util.syntax._
 
 class UsecasePhase extends DocMiniPhase {
   private def defdefToDef(d: tpd.DefDef, sym: Symbol)(implicit ctx: Context) = {

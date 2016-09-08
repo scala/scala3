@@ -155,7 +155,7 @@ object Comments {
      */
     def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: Context): String = cookedDocComments.getOrElseUpdate(sym, {
       var ownComment =
-        if (docStr.length == 0) ctx.docbase.docstring(sym).map(c => template(c.raw)).getOrElse("")
+        if (docStr.length == 0) ctx.getDocbase.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
         else template(docStr)
       ownComment = replaceInheritDocToInheritdoc(ownComment)
 
@@ -365,7 +365,7 @@ object Comments {
     def defineVariables(sym: Symbol)(implicit ctx: Context) = {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
-      val raw = ctx.docbase.docstring(sym).map(_.raw).getOrElse("")
+      val raw = ctx.getDocbase.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
       defs(sym) ++= defines(raw).map {
         str => {
           val start = skipWhitespace(str, "@define".length)
@@ -406,7 +406,7 @@ object Comments {
      *  the position of the doc comment of the overridden version is returned instead.
      */
     def docCommentPos(sym: Symbol)(implicit ctx: Context): Position =
-      ctx.docbase.docstring(sym).map(_.pos).getOrElse(NoPosition)
+      ctx.getDocbase.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoPosition)
 
     /** A version which doesn't consider self types, as a temporary measure:
      *  an infinite loop has broken out between superComment and cookedDocComment

@@ -3,10 +3,11 @@ package dottydoc
 package core
 
 import dotc.CompilationUnit
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{ Context, DocBase }
 import dotc.core.Phases.Phase
 import model._
 import model.internal._
+import util.syntax._
 
 object transform {
   /**
@@ -43,9 +44,9 @@ object transform {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       for {
         rootName    <- rootPackages
-        pack        =  ctx.docbase.packages[Package](rootName)
+        pack        =  ctx.docbase.packages(rootName)
         transformed =  performPackageTransform(pack)
-      } yield ctx.docbase.packages(rootName) = transformed
+      } yield ctx.docbase.packagesMutable(rootName) = transformed
       super.runOn(units)
     }
 
@@ -85,7 +86,7 @@ object transform {
           )
 
           // Update reference in context to newPackage
-          ctx.docbase.packages[Package] += (newPackage.path.mkString(".") -> newPackage)
+          ctx.docbase.packagesMutable += (newPackage.path.mkString(".") -> newPackage)
 
           newPackage
         }

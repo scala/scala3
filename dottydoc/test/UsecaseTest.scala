@@ -8,6 +8,7 @@ import dotc.util.SourceFile
 import model._
 import model.internal._
 import model.references._
+import util.syntax._
 
 class UsecaseTest extends DottyTest {
   @Test def simpleUsecase = {

@@ -1541,7 +1541,7 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      def isUsecase = sym.name.show.takeRight(4) == "$doc"
+      def isUsecase = ctx.property(DocContext).isDefined && sym.name.show.takeRight(4) == "$doc"
       require(
           (sym.denot.flagsUNSAFE is Private) ||
           !(this is Frozen) ||
