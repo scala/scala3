@@ -172,17 +172,14 @@ object Types {
       loop(this)
     }
 
-    final def isPhantom(implicit ctx: Context): Boolean = phantomTopClass.exists
+    final def isPhantom(implicit ctx: Context): Boolean = phantomLatticeClass.exists
 
-    final def phantomTopClass(implicit ctx: Context): Type = this match {
-      case tp: ClassInfo if isPhantomClass(tp.classSymbol) => tp
-      case tp: TypeProxy => tp.superType.phantomTopClass
-      case tp: AndOrType => tp.tp1.phantomTopClass
+    final def phantomLatticeClass(implicit ctx: Context): Type = this match {
+      case tp: ClassInfo if tp.classSymbol.owner eq defn.PhantomClass => tp.prefix
+      case tp: TypeProxy => tp.superType.phantomLatticeClass
+      case tp: AndOrType => tp.tp1.phantomLatticeClass
       case _ => NoType
     }
-
-    private def isPhantomClass(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.isClass && (sym.owner eq defn.PhantomClass) && (sym.name == tpnme.Any || sym.name == tpnme.Nothing)
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could

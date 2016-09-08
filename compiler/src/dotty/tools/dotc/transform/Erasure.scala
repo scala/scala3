@@ -615,8 +615,17 @@ object Erasure extends TypeTestsCasts{
                     s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
                   val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
                   val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
+
+                  def isPhantomFunctionApply(sym: Symbol) = {
+                    val owner = sym.owner
+                    defn.isPhantomFunctionClass(owner) &&
+                    !owner.name.phantomicity.allPhantoms && // as it is already erased to ():Object
+                    ctx.owner.derivesFrom(defn.erasedPhantomsFunctionClass(owner))
+                  }
+
                   def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
-                  val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
+
+                  val neededBridges = (oldOverridden -- newOverridden).filter(s => stillInBaseClass(s) || isPhantomFunctionApply(s))
 
                   var minimalSet = Set[Symbol]()
                   // compute minimal set of bridges that are needed:

@@ -185,6 +185,8 @@ object StdNames {
     final val ExprApi: N             = "ExprApi"
     final val Function: N            = "Function"
     final val ImplicitFunction: N    = "ImplicitFunction"
+    final val PhantomFunction: N       = "PhantomFunction"
+    final val ImplicitPhantomFunction: N = "ImplicitPhantomFunction"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
     final val Null: N                = "Null"
