@@ -30,7 +30,6 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
-import parsing.Scanners.Comment
 import util.Property.Key
 import xsbti.AnalysisCallback
 
@@ -69,6 +68,9 @@ object Contexts {
 
     /** The context base at the root */
     val base: ContextBase
+
+    /** Documentation base */
+    def getDocbase = property(DocContext)
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator = new Iterator[Context] {
@@ -538,9 +540,6 @@ object Contexts {
     /** The symbol loaders */
     val loaders = new SymbolLoaders
 
-    /** Documentation base */
-    val docbase = new DocBase
-
     /** The platform, initialized by `initPlatform()`. */
     private var _platform: Platform = _
 
@@ -579,6 +578,7 @@ object Contexts {
     }
   }
 
+  val DocContext = new Key[DocBase]
   class DocBase {
     private[this] val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
@@ -598,7 +598,7 @@ object Contexts {
      * map of `String -> AnyRef`
      */
     private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
-    def packages[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
+    def packagesAs[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
 
     /** Should perhaps factorize this into caches that get flushed */
     private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
