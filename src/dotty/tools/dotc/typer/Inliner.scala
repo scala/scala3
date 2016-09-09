@@ -41,10 +41,13 @@ object Inliner {
     private var evaluated = false
 
     private def prepareForInline = new TreeMap {
+
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.is(AccessFlags) || sym.privateWithin.exists
+
       def accessorName(implicit ctx: Context) =
         ctx.freshNames.newName(inlineMethod.name.asTermName.inlineAccessorName.toString)
+
       def accessorSymbol(tree: Tree, accessorInfo: Type)(implicit ctx: Context): Symbol =
         ctx.newSymbol(
           owner = inlineMethod.owner,
@@ -52,53 +55,59 @@ object Inliner {
           flags = if (tree.isTerm) Synthetic | Method else Synthetic,
           info = accessorInfo,
           coord = tree.pos).entered
+
+      def addAccessor(tree: Tree, methPart: Tree, targs: List[Tree], argss: List[List[Tree]],
+                      accessedType: Type, rhs: (Tree, List[Type], List[List[Tree]]) => Tree)(implicit ctx: Context): Tree = {
+        val (accessorDef, accessorRef) =
+          if (methPart.symbol.isStatic) {
+            // Easy case: Reference to a static symbol
+            val accessorType = accessedType.ensureMethodic
+            val accessor = accessorSymbol(tree, accessorType).asTerm
+            val accessorDef = polyDefDef(accessor, tps => argss =>
+              rhs(methPart, tps, argss))
+            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
+            (accessorDef, accessorRef)
+          } else {
+            // Hard case: Reference needs to go via a dyanmic prefix
+            val qual = qualifier(methPart)
+            inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $methPart: ${methPart.getClass}, [$targs%, %], ($argss%, %))")
+            val dealiasMap = new TypeMap {
+              def apply(t: Type) = mapOver(t.dealias)
+            }
+            val qualType = dealiasMap(qual.tpe.widen)
+            def addQualType(tp: Type): Type = tp match {
+              case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
+              case tp: ExprType => addQualType(tp.resultType)
+              case tp => MethodType(qualType :: Nil, tp)
+            }
+            val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
+            def abstractQualType(mtpe: Type): Type =
+              if (localRefs.isEmpty) mtpe
+              else PolyType.fromSymbols(localRefs.map(_.symbol), mtpe).asInstanceOf[PolyType].flatten
+            val accessorType = abstractQualType(addQualType(dealiasMap(accessedType)))
+            val accessor = accessorSymbol(tree, accessorType).asTerm
+            println(i"accessor: $accessorType")
+            val accessorDef = polyDefDef(accessor, tps => argss =>
+              rhs(argss.head.head.select(methPart.symbol), tps.drop(localRefs.length), argss.tail))
+            val accessorRef = ref(accessor)
+              .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
+              .appliedToArgss((qual :: Nil) :: argss)
+            (accessorDef, accessorRef)
+          }
+        myAccessors += accessorDef
+        inlining.println(i"added inline accessor: $accessorDef")
+        accessorRef
+      }
+
       override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform {
         tree match {
           case _: Apply | _: TypeApply | _: RefTree if needsAccessor(tree.symbol) =>
             if (tree.isTerm) {
               val (methPart, targs, argss) = decomposeCall(tree)
-              val (accessorDef, accessorRef) =
-                if (methPart.symbol.isStatic) {
-                  // Easy case: Reference to a static symbol
-                  val accessorType = methPart.tpe.widen.ensureMethodic
-                  val accessor = accessorSymbol(tree, accessorType).asTerm
-                  val accessorDef = polyDefDef(accessor, tps => argss =>
-                     methPart.appliedToTypes(tps).appliedToArgss(argss))
-                  val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
-                  (accessorDef, accessorRef)
-                }
-                else {
-                  // Hard case: Reference needs to go via a dyanmic prefix
-                  val qual = qualifier(methPart)
-                  inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $methPart: ${methPart.getClass}, [$targs%, %], ($argss%, %))")
-                  val dealiasMap = new TypeMap {
-                    def apply(t: Type) = mapOver(t.dealias)
-                  }
-                  val qualType = dealiasMap(qual.tpe.widen)
-                  def addQualType(tp: Type): Type = tp match {
-                    case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
-                    case tp: ExprType => addQualType(tp.resultType)
-                    case tp => MethodType(qualType :: Nil, tp)
-                  }
-                  val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
-                  def abstractQualType(mtpe: Type): Type =
-                    if (localRefs.isEmpty) mtpe
-                    else PolyType.fromSymbols(localRefs.map(_.symbol), mtpe).asInstanceOf[PolyType].flatten
-                  val accessorType = abstractQualType(addQualType(dealiasMap(methPart.tpe.widen)))
-                  val accessor = accessorSymbol(tree, accessorType).asTerm
-                  val accessorDef = polyDefDef(accessor, tps => argss =>
-                    argss.head.head.select(methPart.symbol)
-                      .appliedToTypes(tps.drop(localRefs.length))
-                      .appliedToArgss(argss.tail))
-                  val accessorRef = ref(accessor)
-                      .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
-                      .appliedToArgss((qual :: Nil) :: argss)
-                  (accessorDef, accessorRef)
-                }
-              myAccessors += accessorDef
-              inlining.println(i"added inline accessor: $accessorDef")
-              accessorRef
-            } else {
+              addAccessor(tree, methPart, targs, argss,
+                  accessedType = methPart.tpe.widen,
+                  rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss))
+           } else {
               // TODO: Handle references to non-public types.
               // This is quite tricky, as such types can appear anywhere, including as parts
               // of types of other things. For the moment we do nothing and complain
@@ -111,6 +120,10 @@ object Inliner {
               //
               tree
             }
+          case Assign(lhs: RefTree, rhs) if needsAccessor(lhs.symbol) =>
+            addAccessor(tree, lhs, Nil, (rhs :: Nil) :: Nil,
+                accessedType = MethodType(rhs.tpe.widen :: Nil, defn.UnitType),
+                rhs = (lhs, tps, argss) => lhs.becomes(argss.head.head))
           case _ => tree
         }
       }
