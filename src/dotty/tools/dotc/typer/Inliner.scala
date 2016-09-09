@@ -494,9 +494,9 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     lazy val paramProxies = paramProxy.values.toSet
     def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
       if (paramProxies.contains(tree.tpe)) {
-        bindingsBuf.find(_.name == tree.name).get.rhs match {
-          case Closure(_, meth, _) if meth.symbol.isInlineMethod => Some(meth)
-          case Block(_, Closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
+        bindingsBuf.find(_.name == tree.name).map(_.rhs) match {
+          case Some(Closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
+          case Some(Block(_, Closure(_, meth, _))) if meth.symbol.isInlineMethod => Some(meth)
           case _ => None
         }
       } else None
