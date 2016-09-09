@@ -801,14 +801,15 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
       def updateMap(csyms: List[ClassSymbol], seen: Map[ClassSymbol, Int]): SearchHistory = csyms match {
         case csym :: csyms1 =>
           seen get csym match {
+            // proto complexity is >= than the last time it was seen → diverge
             case Some(prevSize) if size >= prevSize => this
             case _ => updateMap(csyms1, seen.updated(csym, size))
           }
-        case nil =>
-          if (csyms.isEmpty) this
-          else new SearchHistory(searchDepth + 1, seen)
+        case _ =>
+          new SearchHistory(searchDepth + 1, seen)
       }
-      updateMap(proto.classSymbols, seen)
+      if (proto.classSymbols.isEmpty) this
+      else updateMap(proto.classSymbols, seen)
     }
   }
 }
