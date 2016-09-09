@@ -503,7 +503,20 @@ object Trees {
     override def toString = s"JavaSeqLiteral($elems, $elemtpt)"
   }
 
-  /** Inlined code */
+  /** A tree representing inlined code.
+   *
+   *  @param  call      The original call that was inlined
+   *  @param  bindings  Bindings for proxies to be used in the inlined code
+   *  @param  expansion The inlined tree, minus bindings.
+   *
+   *  The full inlined code is equivalent to
+   *
+   *      { bindings; expansion }
+   *
+   *  The reason to keep `bindings` separate is because they are typed in a
+   *  different context: `bindings` represent the arguments to the inlined
+   *  call, whereas `expansion` represents the body of the inlined function.
+   */
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]

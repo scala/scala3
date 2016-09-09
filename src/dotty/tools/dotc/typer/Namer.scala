@@ -573,7 +573,7 @@ class Namer { typer: Typer =>
 
     private def addInlineInfo(inlineMethod: Symbol, inlineAnnot: Annotation, original: untpd.Tree) = original match {
       case original: untpd.DefDef =>
-        Inliner.attachBody(
+        Inliner.attachInlineInfo(
             inlineAnnot,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
           )(localContext(inlineMethod))

@@ -13,7 +13,7 @@ import Decorators._
 import Constants._
 import StdNames.nme
 import Contexts.Context
-import Names.Name
+import Names.{Name, TermName}
 import NameOps._
 import SymDenotations.SymDenotation
 import Annotations.Annotation
@@ -30,24 +30,40 @@ object Inliner {
 
   /** An attachment for inline methods, which contains
    *
-   *   - the inlined body, as a typed tree
-   *   -
+   *   - the body to inline, as a typed tree
+   *   - the definitions of all needed accessors to non-public members from inlined code
    *
+   *  @param treeExpr    A function that computes the tree to be inlined, given a context
+   *                     This tree may still refer to non-public members.
+   *  @param inlineCtx   The context in which to compute the tree. This context needs
+   *                     to have the inlined method as owner.
    */
-  private final class InlinedBody(treeExpr: Context => Tree, var inlineCtx: Context) {
+  private final class InlineInfo(treeExpr: Context => Tree, var inlineCtx: Context) {
     private val inlineMethod = inlineCtx.owner
     private val myAccessors = new mutable.ListBuffer[MemberDef]
     private var myBody: Tree = _
     private var evaluated = false
 
+    /** A tree map which inserts accessors for all non-public term members accessed
+     *  from inlined code. Non-public type members are currently left as they are.
+     *  This means that references to a provate type will lead to typing failures
+     *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
+     */
     private def prepareForInline = new TreeMap {
 
+      /** A definition needs an accessor if it is private, protected, or qualified private */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.is(AccessFlags) || sym.privateWithin.exists
 
+      /** The name of the next accessor to be generated */
       def accessorName(implicit ctx: Context) =
         ctx.freshNames.newName(inlineMethod.name.asTermName.inlineAccessorName.toString)
 
+      /** A fresh accessor symbol.
+       *
+       *  @param tree          The tree representing the original access to the non-public member
+       *  @param accessorInfo  The type of the accessor
+       */
       def accessorSymbol(tree: Tree, accessorInfo: Type)(implicit ctx: Context): Symbol =
         ctx.newSymbol(
           owner = inlineMethod.owner,
@@ -56,39 +72,65 @@ object Inliner {
           info = accessorInfo,
           coord = tree.pos).entered
 
-      def addAccessor(tree: Tree, methPart: Tree, targs: List[Tree], argss: List[List[Tree]],
+      /** Add an accessor to a non-public method and replace the original access with a
+       *  call to the accessor.
+       *
+       *  @param tree         The original access to the non-public symbol
+       *  @param refPart      The part that refers to the method or field of the original access
+       *  @param targs        All type arguments passed in the access, if any
+       *  @param argss        All value arguments passed in the access, if any
+       *  @param accessedType The type of the accessed method or field, as seen from the access site.
+       *  @param rhs          A function that builds the right-hand side of the accessor,
+       *                      given a reference to the accessed symbol and any type and
+       *                      value arguments the need to be integrated.
+       *  @return The call to the accessor method that replaces the original access.
+       */
+      def addAccessor(tree: Tree, refPart: Tree, targs: List[Tree], argss: List[List[Tree]],
                       accessedType: Type, rhs: (Tree, List[Type], List[List[Tree]]) => Tree)(implicit ctx: Context): Tree = {
         val (accessorDef, accessorRef) =
-          if (methPart.symbol.isStatic) {
+          if (refPart.symbol.isStatic) {
             // Easy case: Reference to a static symbol
             val accessorType = accessedType.ensureMethodic
             val accessor = accessorSymbol(tree, accessorType).asTerm
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(methPart, tps, argss))
+              rhs(refPart, tps, argss))
             val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
             (accessorDef, accessorRef)
           } else {
             // Hard case: Reference needs to go via a dyanmic prefix
-            val qual = qualifier(methPart)
-            inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $methPart: ${methPart.getClass}, [$targs%, %], ($argss%, %))")
+            val qual = qualifier(refPart)
+            inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+
+            // Need to dealias in order to catch all possible references to abstracted over types in
+            // substitutions
             val dealiasMap = new TypeMap {
               def apply(t: Type) = mapOver(t.dealias)
             }
+
             val qualType = dealiasMap(qual.tpe.widen)
+
+            // Add qualifier type as leading method argument to argument `tp`
             def addQualType(tp: Type): Type = tp match {
               case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
               case tp: ExprType => addQualType(tp.resultType)
               case tp => MethodType(qualType :: Nil, tp)
             }
+
+            // The types that are local to the inlined method, and that therefore have
+            // to be abstracted out in the accessor, which is external to the inlined method
             val localRefs = qualType.namedPartsWith(_.symbol.isContainedIn(inlineMethod)).toList
+
+            // Abstract accessed type over local refs
             def abstractQualType(mtpe: Type): Type =
               if (localRefs.isEmpty) mtpe
               else PolyType.fromSymbols(localRefs.map(_.symbol), mtpe).asInstanceOf[PolyType].flatten
+
             val accessorType = abstractQualType(addQualType(dealiasMap(accessedType)))
             val accessor = accessorSymbol(tree, accessorType).asTerm
-            println(i"accessor: $accessorType")
+
             val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(argss.head.head.select(methPart.symbol), tps.drop(localRefs.length), argss.tail))
+              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail))
+
             val accessorRef = ref(accessor)
               .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
               .appliedToArgss((qual :: Nil) :: argss)
@@ -129,59 +171,94 @@ object Inliner {
       }
     }
 
+    /** Is the inline info evaluated? */
     def isEvaluated = evaluated
+
     private def ensureEvaluated()(implicit ctx: Context) =
       if (!evaluated) {
-        evaluated = true
+        evaluated = true // important to set early to prevent overwrites by attachInlineInfo in typedDefDef
         myBody = treeExpr(inlineCtx)
         myBody = prepareForInline.transform(myBody)(inlineCtx)
         inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
-        inlineCtx = null
+        inlineCtx = null // null out to avoid space leaks
       }
 
+    /** The body to inline */
     def body(implicit ctx: Context): Tree = {
       ensureEvaluated()
       myBody
     }
 
+    /** The accessor defs to non-public members which need to be defined
+     *  together with the inline method
+     */
     def accessors(implicit ctx: Context): List[MemberDef] = {
       ensureEvaluated()
       myAccessors.toList
     }
   }
 
-  private val InlinedBody = new Property.Key[InlinedBody] // to be used as attachment
+  /** A key to be used in an attachment for `@inline` annotations */
+  private val InlineInfo = new Property.Key[InlineInfo]
 
+  /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
-  def attachBody(inlineAnnot: Annotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
-    inlineAnnot.tree.getAttachment(InlinedBody) match {
-      case Some(inlinedBody) if inlinedBody.isEvaluated => // keep existing attachment
+  /** Attach inline info to `@inline` annotation.
+   *
+   *  @param treeExpr    A function that computes the tree to be inlined, given a context
+   *                     This tree may still refer to non-public members.
+   *  @param ctx         The current context is the one in which the tree is computed. It needs
+   *                     to have the inlined method as owner.
+   */
+  def attachInlineInfo(inlineAnnot: Annotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
+    inlineAnnot.tree.getAttachment(InlineInfo) match {
+      case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
       case _ =>
         if (!ctx.isAfterTyper)
-          inlineAnnot.tree.putAttachment(InlinedBody, new InlinedBody(treeExpr, ctx))
+          inlineAnnot.tree.putAttachment(InlineInfo, new InlineInfo(treeExpr, ctx))
     }
 
-  private def inlinedBodyAttachment(sym: SymDenotation)(implicit ctx: Context): Option[InlinedBody] =
-    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlinedBody)
+  /** Optionally, the inline info attached to the `@inline` annotation of `sym`. */
+  private def inlineInfo(sym: SymDenotation)(implicit ctx: Context): Option[InlineInfo] =
+    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlineInfo)
 
-  def hasInlinedBody(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlineMethod && inlinedBodyAttachment(sym).isDefined
+  /** Definition is an inline method with a known body to inline (note: definitions coming
+   *  from Scala2x class files might be `@inline`, but still lack that body.
+   */
+  def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
+    sym.isInlineMethod && inlineInfo(sym).isDefined
 
-  def inlinedBody(sym: SymDenotation)(implicit ctx: Context): Tree =
-    inlinedBodyAttachment(sym).get.body
+  /** The body to inline for method `sym`.
+   *  @pre  hasBodyToInline(sym)
+   */
+  def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
+    inlineInfo(sym).get.body
+
+ /** The accessors to non-public members needed by the inlinable body of `sym`.
+   * @pre  hasBodyToInline(sym)
+   */
 
   def inlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] =
-    inlinedBodyAttachment(sym).get.accessors
+    inlineInfo(sym).get.accessors
 
+  /** Try to inline a call to a `@inline` method. Fail with error if the maximal
+   *  inline depth is exceeded.
+   *
+   *  @param tree   The call to inline
+   *  @param pt     The expected type of the call.
+   *  @return   An `Inlined` node that refers to the original call and the inlined bindings
+   *            and body that replace it.
+   */
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
-      new Inliner(tree, inlinedBody(tree.symbol)).inlined(pt)
+      new Inliner(tree, bodyToInline(tree.symbol)).inlined(pt)
     else errorTree(tree,
       i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
                    | Maybe this is caused by a recursive inline method?
                    | You can use -Xmax:inlines to change the limit.""")
 
+  /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     val reposition = new TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree =
@@ -190,17 +267,27 @@ object Inliner {
     tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }
 
+  /** A context derived form `ctx` that records `call` as innermost enclosing
+   *  call for which the inlined version is currently processed.
+   */
   def inlineContext(call: Tree)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
 
+  /** All enclosing calls that are currently inlined, from innermost to outermost */
   def enclosingInlineds(implicit ctx: Context): List[Tree] =
     ctx.property(InlinedCalls).getOrElse(Nil)
 
+  /** The source file where the symbol of the `@inline` method referred to by `call`
+   *  is defined
+   */
   def sourceFile(call: Tree)(implicit ctx: Context) = {
     val file = call.symbol.sourceFile
     if (file != null && file.exists) new SourceFile(file) else NoSource
   }
 
+  /** The qualifier part of a Select, Ident, or SelectFromTypeTree tree.
+   *  For an Ident, this is the `This` of the current class. (TODO: use elsewhere as well?)
+   */
   private def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
     case Select(qual, _) => qual
     case SelectFromTypeTree(qual, _) => qual
@@ -208,6 +295,11 @@ object Inliner {
   }
 }
 
+/** Produces an inlined version of `call` via its `inlined` method.
+ *
+ *  @param  call  The original call to a `@inline` method
+ *  @param  rhs   The body of the inline method that replaces the call.
+ */
 class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   import tpd._
   import Inliner._
@@ -216,18 +308,37 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private val meth = methPart.symbol
   private val prefix = qualifier(methPart)
 
+  // Make sure all type arguments to the call are fully determined
   for (targ <- targs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
 
-  private val thisProxy = new mutable.HashMap[Type, TermRef]
-  private val paramProxy = new mutable.HashMap[Type, Type]
+  /** A map from parameter names of the inline method to references of the actual arguments.
+   *  For a type argument this is the full argument type.
+   *  For a value argument, it is a reference to either the argument value
+   *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
+   *  as a proxy (if the argument is something else).
+   */
   private val paramBinding = new mutable.HashMap[Name, Type]
-  val bindingsBuf = new mutable.ListBuffer[MemberDef]
+
+  /** A map from references to (type and value) parameters of the inline method
+   *  to their corresponding argument or proxy references, as given by `paramBinding`.
+   */
+  private val paramProxy = new mutable.HashMap[Type, Type]
+
+  /** A map from (direct and outer) this references in `rhs` to references of their proxies */
+  private val thisProxy = new mutable.HashMap[Type, TermRef]
+
+  /** A buffer for bindings that define proxies for actual arguments */
+  val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
   computeParamBindings(meth.info, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
 
+  /** Populate `paramBinding` and `bindingsBuf` by matching parameters with
+   *  corresponding arguments. `bindingbuf` will be further extended later by
+   *  proxies to this-references.
+   */
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
     case tp: PolyType =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
@@ -256,6 +367,17 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       assert(argss.isEmpty)
   }
 
+  /** Populate `thisProxy` and `paramProxy` as follows:
+   *
+   *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
+   *  1b. If given type refers to an instance this, create a proxy symbol and bind the thistype to
+   *      refer to the proxy. The proxy is not yet entered in `bindingsBuf` that will come later.
+   *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
+   *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
+   *      references to proxies is done because  we not known a priori what the parameter
+   *      references of a method are (we only know the method's type, but that contains PolyParams
+   *      and MethodParams, not TypeRefs or TermRefs.
+   */
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType
     if !ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package) &&
@@ -275,12 +397,96 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case _ =>
   }
 
+  /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident | _: TypeTree =>
       tree.tpe.foreachPart(registerType, stopAtStatic = true)
     case _ =>
   }
 
+  /** The Inlined node representing the inlined call */
+  def inlined(pt: Type) = {
+    // make sure prefix is executed if it is impure
+    if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType)
+
+    // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
+    rhs.foreachSubTree(registerLeaf)
+
+    // The class that the this-proxy `selfSym` represents
+    def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
+
+    // The name of the outer selector that computes the rhs of `selfSym`
+    def outerSelector(selfSym: Symbol): TermName = classOf(selfSym).name.toTermName ++ nme.OUTER_SELECT
+
+    // The total nesting depth of the class represented by `selfSym`.
+    def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
+
+    // All needed this-proxies, sorted by nesting depth of the classes they represent (innermost first)
+    val accessedSelfSyms = thisProxy.values.toList.map(_.symbol).sortBy(-outerLevel(_))
+
+    // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
+    var lastSelf: Symbol = NoSymbol
+    for (selfSym <- accessedSelfSyms) {
+      val rhs =
+        if (!lastSelf.exists)
+          prefix
+        else
+          untpd.Select(ref(lastSelf), outerSelector(selfSym)).withType(selfSym.info)
+      bindingsBuf += ValDef(selfSym.asTerm, rhs)
+      lastSelf = selfSym
+    }
+
+    // The type map to apply to the inlined tree. This maps references to this-types
+    // and parameters to type references of their arguments or proxies.
+    val typeMap = new TypeMap {
+      def apply(t: Type) = t match {
+        case t: ThisType => thisProxy.getOrElse(t, t)
+        case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+        case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
+        case t => mapOver(t)
+      }
+    }
+
+    // The tree map to apply to the inlined tree. This maps references to this-types
+    // and parameters to references of their arguments or their proxies.
+    def treeMap(tree: Tree) = {
+      tree match {
+      case _: This =>
+        thisProxy.get(tree.tpe) match {
+          case Some(t) => ref(t).withPos(tree.pos)
+          case None => tree
+        }
+      case _: Ident =>
+        paramProxy.get(tree.tpe) match {
+          case Some(t: SingletonType) if tree.isTerm => singleton(t).withPos(tree.pos)
+          case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
+          case None => tree
+        }
+      case _ => tree
+    }}
+
+    // The complete translation maps referenves to this and parameters to
+    // corresponding arguments or proxies on the type and term level. It also changes
+    // the owner from the inlined method to the current owner.
+    val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
+
+    val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
+    val expansion = inliner(rhs.withPos(call.pos))
+
+    // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
+    val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
+    val result = tpd.Inlined(call, bindings, expansion1)
+
+    inlining.println(i"inlined $call\n --> \n$result")
+    result
+  }
+
+  /** A typer for inlined code. Its purpose is:
+   *  1. Implement constant folding over inlined code
+   *  2. Selectively expand ifs with constant conditions
+   *  3. Make sure inlined code is type-correct.
+   *  4. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
+   */
   private object InlineTyper extends ReTyper {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val res = super.typedSelect(tree, pt)
@@ -299,61 +505,5 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
           super.typedIf(if1, pt)
       }
     }
-  }
-
-  def inlined(pt: Type) = {
-    if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType) // make sure prefix is computed
-    rhs.foreachSubTree(registerLeaf)
-
-    def classOf(sym: Symbol) = sym.info.widen.classSymbol
-    def outerSelector(sym: Symbol) = classOf(sym).name.toTermName ++ nme.OUTER_SELECT
-    def outerLevel(sym: Symbol) = classOf(sym).ownersIterator.length
-    val accessedSelfSyms = thisProxy.values.toList.map(_.symbol).sortBy(-outerLevel(_))
-
-    var lastSelf: Symbol = NoSymbol
-    for (selfSym <- accessedSelfSyms) {
-      val rhs =
-        if (!lastSelf.exists)
-          prefix
-        else
-          untpd.Select(ref(lastSelf), outerSelector(selfSym)).withType(selfSym.info)
-      bindingsBuf += ValDef(selfSym.asTerm, rhs)
-      lastSelf = selfSym
-    }
-
-    val typeMap = new TypeMap {
-      def apply(t: Type) = t match {
-        case t: ThisType => thisProxy.getOrElse(t, t)
-        case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
-        case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
-        case t => mapOver(t)
-      }
-    }
-
-    def treeMap(tree: Tree) = {
-      tree match {
-      case _: This =>
-        thisProxy.get(tree.tpe) match {
-          case Some(t) => ref(t).withPos(tree.pos)
-          case None => tree
-        }
-      case _: Ident =>
-        paramProxy.get(tree.tpe) match {
-          case Some(t: SingletonType) if tree.isTerm => singleton(t).withPos(tree.pos)
-          case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
-          case None => tree
-        }
-      case _ => tree
-    }}
-
-    val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
-    val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
-    val expansion = inliner(rhs.withPos(call.pos))
-
-    val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
-    val result = tpd.Inlined(call, bindings, expansion1)
-
-    inlining.println(i"inlined $call\n --> \n$result")
-    result
   }
 }
