@@ -470,29 +470,53 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     // the owner from the inlined method to the current owner.
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
 
-    val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
     val expansion = inliner(rhs.withPos(call.pos))
 
     // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
     val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
-    val result = tpd.Inlined(call, bindings, expansion1)
 
+    /** Does given definition bind a closure that will be inlined? */
+    def bindsInlineableClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
+      case InlineableClosure(_) => true
+      case _ => false
+    }
+
+    /** All bindings in `bindingsBuf` except bindings of inlineable closures */
+    val bindings = bindingsBuf.toList.filterNot(bindsInlineableClosure).map(_.withPos(call.pos))
+
+    val result = tpd.Inlined(call, bindings, expansion1)
     inlining.println(i"inlined $call\n --> \n$result")
     result
+  }
+
+  /** An extractor for references to closure arguments that refer to `@inline` methods */
+  private object InlineableClosure {
+    lazy val paramProxies = paramProxy.values.toSet
+    def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
+      if (paramProxies.contains(tree.tpe)) {
+        bindingsBuf.find(_.name == tree.name).get.rhs match {
+          case Closure(_, meth, _) if meth.symbol.isInlineMethod => Some(meth)
+          case Block(_, Closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
+          case _ => None
+        }
+      } else None
   }
 
   /** A typer for inlined code. Its purpose is:
    *  1. Implement constant folding over inlined code
    *  2. Selectively expand ifs with constant conditions
-   *  3. Make sure inlined code is type-correct.
-   *  4. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
+   *  3. Inline arguments that are inlineable closures
+   *  4. Make sure inlined code is type-correct.
+   *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
   private object InlineTyper extends ReTyper {
+
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val res = super.typedSelect(tree, pt)
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
       res
     }
+
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
       val cond1 = typed(tree.cond, defn.BooleanType)
       cond1.tpe.widenTermRefExpr match {
@@ -504,6 +528,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
           super.typedIf(if1, pt)
       }
+    }
+
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = tree.asInstanceOf[tpd.Tree] match {
+      case Apply(Select(InlineableClosure(fn), nme.apply), args) =>
+        typed(fn.appliedToArgs(args), pt)
+      case _ =>
+        super.typedApply(tree, pt)
     }
   }
 }
