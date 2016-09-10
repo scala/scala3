@@ -2,8 +2,7 @@ package p
 
 object pow {
 
-  @inline
-  def power(x: Double, n: Int): Double =
+  inline def power(x: Double, n: Int): Double =
     if (n == 0) 1.0
     else if (n == 1) x
     else {

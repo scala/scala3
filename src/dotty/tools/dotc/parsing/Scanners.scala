@@ -12,7 +12,7 @@ import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
 import mutable.ListBuffer
 import Utility.isNameStart
-
+import rewrite.Rewrites.patch
 
 object Scanners {
 
@@ -108,6 +108,7 @@ object Scanners {
         target.token = toToken(idx)
       }
     }
+
     def toToken(idx: Int): Token
 
     /** Clear buffer and set string */
@@ -212,8 +213,22 @@ object Scanners {
     /** A buffer for comments */
     val commentBuf = new StringBuilder
 
+    private def handleMigration(keyword: Token): Token =
+      if (!isScala2Mode) keyword
+      else if (keyword == INLINE) treatAsIdent()
+      else keyword
+
+
+    private def treatAsIdent() = {
+      testScala2Mode(i"$name is now a keyword, put in `...` to keep as an identifier")
+      patch(source, Position(offset), "`")
+      patch(source, Position(offset + name.length), "`")
+      IDENTIFIER
+    }
+
     def toToken(idx: Int): Token =
-      if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
+      if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
+      else IDENTIFIER
 
     private class TokenData0 extends TokenData
 
@@ -234,6 +249,16 @@ object Scanners {
      *             expression is a multiline string literal).
      */
     var sepRegions: List[Token] = List()
+
+// Scala 2 compatibility
+
+    val isScala2Mode = ctx.settings.language.value.contains(nme.Scala2.toString)
+
+    /** Cannot use ctx.featureEnabled because accessing the context would force too much */
+    def testScala2Mode(msg: String, pos: Position = Position(offset)) = {
+      if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
+      isScala2Mode
+    }
 
 // Get next token ------------------------------------------------------------
 

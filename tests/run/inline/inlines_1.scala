@@ -5,8 +5,7 @@ object inlines {
 
   final val monitored = false
 
-  @inline
-  def f(x: Int): Int = x * x
+  inline def f(x: Int): Int = x * x
 
   val hits = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0
@@ -21,8 +20,7 @@ object inlines {
 
   @volatile private var stack: List[String] = Nil
 
-  @inline
-  def track[T](fn: String)(op: => T) =
+  inline def track[T](fn: String)(op: => T) =
     if (monitored) {
       stack = fn :: stack
       record(fn)
@@ -34,9 +32,9 @@ object inlines {
     def f = "Outer.f"
     class Inner {
       val msg = " Inner"
-      @inline def m = msg
-      @inline def g = f
-      @inline def h = f ++ m
+      inline def m = msg
+      inline def g = f
+      inline def h = f ++ m
     }
     val inner = new Inner
   }

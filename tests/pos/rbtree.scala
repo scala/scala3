@@ -430,12 +430,12 @@ object RedBlackTree {
    * An alternative is to implement the these classes using plain old Java code...
    */
   sealed abstract class Tree[A, +B](
-    @(inline @getter) final val key: A,
-    @(inline @getter) final val value: B,
-    @(inline @getter) final val left: Tree[A, B],
-    @(inline @getter) final val right: Tree[A, B])
+    @(`inline` @getter) final val key: A,
+    @(`inline` @getter) final val value: B,
+    @(`inline` @getter) final val left: Tree[A, B],
+    @(`inline` @getter) final val right: Tree[A, B])
   extends Serializable {
-    @(inline @getter) final val count: Int = 1 + RedBlackTree.count(left) + RedBlackTree.count(right)
+    @(`inline` @getter) final val count: Int = 1 + RedBlackTree.count(left) + RedBlackTree.count(right)
     def black: Tree[A, B]
     def red: Tree[A, B]
   }

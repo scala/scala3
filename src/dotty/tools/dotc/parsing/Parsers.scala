@@ -275,20 +275,11 @@ object Parsers {
       } finally inFunReturnType = saved
     }
 
-    private val isScala2Mode =
-      ctx.settings.language.value.contains(nme.Scala2.toString)
-
     def migrationWarningOrError(msg: String, offset: Int = in.offset) =
-      if (isScala2Mode)
+      if (in.isScala2Mode)
         ctx.migrationWarning(msg, source atPos Position(offset))
       else
         syntaxError(msg, offset)
-
-    /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    private def testScala2Mode(msg: String, pos: Position = Position(in.offset)) = {
-      if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
-      isScala2Mode
-    }
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
@@ -1467,6 +1458,7 @@ object Parsers {
       case ABSTRACT  => Abstract
       case FINAL     => Final
       case IMPLICIT  => ImplicitCommon
+      case INLINE    => Inline
       case LAZY      => Lazy
       case OVERRIDE  => Override
       case PRIVATE   => Private
@@ -1570,7 +1562,10 @@ object Parsers {
     /** Annotation        ::=  `@' SimpleType {ParArgumentExprs}
      */
     def annot() =
-      adjustStart(accept(AT)) { ensureApplied(parArgumentExprss(wrapNew(simpleType()))) }
+      adjustStart(accept(AT)) {
+        if (in.token == INLINE) in.token = BACKQUOTED_IDENT // allow for now
+        ensureApplied(parArgumentExprss(wrapNew(simpleType())))
+      }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
       if (skipNewLines) newLineOptWhenFollowedBy(AT)
@@ -1856,7 +1851,7 @@ object Parsers {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
-        testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
+        in.testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
           patch(source, Position(in.lastOffset), toInsert)
           true
         }

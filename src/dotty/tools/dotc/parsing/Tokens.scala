@@ -91,6 +91,7 @@ abstract class TokensCommon {
   //final val LAZY = 59;             enter(LAZY, "lazy")
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
+  //final val INLINE = 62;           enter(INLINE, "inline")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -171,6 +172,7 @@ object Tokens extends TokensCommon {
   final val LAZY = 59;             enter(LAZY, "lazy")
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
+  final val INLINE = 62;           enter(INLINE, "inline")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -188,7 +190,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, FORSOME)
+  final val alphaKeywords = tokenRange(IF, INLINE)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -214,7 +216,7 @@ object Tokens extends TokensCommon {
   final val defIntroTokens = templateIntroTokens | dclIntroTokens
 
   final val localModifierTokens = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY)
+    ABSTRACT, FINAL, SEALED, IMPLICIT, INLINE, LAZY)
 
   final val accessModifierTokens = BitSet(
     PRIVATE, PROTECTED)

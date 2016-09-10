@@ -562,11 +562,24 @@ class Namer { typer: Typer =>
 
     protected def addAnnotations(denot: SymDenotation): Unit = original match {
       case original: untpd.MemberDef =>
+        var hasInlineAnnot = false
         for (annotTree <- untpd.modsDeco(original).mods.annotations) {
           val cls = typedAheadAnnotation(annotTree)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           denot.addAnnotation(ann)
-          if (cls == defn.InlineAnnot) addInlineInfo(denot, original)
+          if (cls == defn.InlineAnnot) {
+            hasInlineAnnot = true
+            addInlineInfo(denot, original)
+          }
+        }
+        if (!hasInlineAnnot && denot.is(InlineMethod)) {
+          // create a @inline annotation. Currently, the inlining trigger
+          // is really the annotation, not the flag. This is done so that
+          // we can still compile inline methods from Scala2x. Once we stop
+          // being compatible with Scala2 we should revise the logic to
+          // be based on the flag. Then creating a separate annotation becomes unnecessary.
+          denot.addAnnotation(Annotation(defn.InlineAnnot))
+          addInlineInfo(denot, original)
         }
       case _ =>
     }

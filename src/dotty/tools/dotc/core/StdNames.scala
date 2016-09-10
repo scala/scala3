@@ -46,6 +46,7 @@ object StdNames {
     final val IFkw: N        = kw("if")
     final val IMPLICITkw: N  = kw("implicit")
     final val IMPORTkw: N    = kw("import")
+    final val INLINEkw: N    = kw("inline")
     final val LAZYkw: N      = kw("lazy")
     final val MACROkw: N     = kw("macro")
     final val MATCHkw: N     = kw("match")

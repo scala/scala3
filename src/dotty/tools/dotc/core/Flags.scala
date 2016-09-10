@@ -450,7 +450,7 @@ object Flags {
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
-    LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
+    Inline | LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -540,6 +540,9 @@ object Flags {
 
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
+
+  /** An inline method */
+  final val InlineMethod = allOf(Inline, Method)
 
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | ParamAccessor

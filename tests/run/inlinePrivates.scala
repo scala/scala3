@@ -6,19 +6,19 @@ object Test {
 
     private var y: T = _
 
-    @inline def get1 = x
-    @inline def get2[U](c: C[U]) = c.x
+    inline def get1 = x
+    inline def get2[U](c: C[U]) = c.x
 
-    @inline def foo1(x: Int) = foo(x)
-    @inline def foo2[U](c: C[U]) = c.foo(x)
+    inline def foo1(x: Int) = foo(x)
+    inline def foo2[U](c: C[U]) = c.foo(x)
 
-    @inline def set1(z: T) = { y = z; y }
-    @inline def set2[U](c: C[U]) = { c.y = c.x; c.y }
+    inline def set1(z: T) = { y = z; y }
+    inline def set2[U](c: C[U]) = { c.y = c.x; c.y }
   }
 
   object CC {
     private val x = 3
-    @inline def get1 = x
+    inline def get1 = x
   }
 
   def main(args: Array[String]) = {
@@ -29,24 +29,6 @@ object Test {
     assert(cc.foo2(cc) == 2)
     assert(cc.set1(3) == 3)
     assert(cc.set2(cc) == 2)
-object Test {
-
-  @inline
-  def swap[T](x: T, x_= : T => Unit, y: T, y_= : T => Unit) = {
-    val t = x
-    x_=(y)
-    y_=(t)
-  }
-
-  def main(args: Array[String]) = {
-    var x = 1
-    var y = 2
-    @inline def setX(z: Int) = x = z
-    @inline def setY(z: Int) = y = z
-    swap[Int](x, setX, y, setY)
-    assert(x == 2 && y == 1)
-  }
-}
 
     assert(CC.get1 == 3)
   }
