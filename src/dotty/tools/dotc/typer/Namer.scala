@@ -566,17 +566,17 @@ class Namer { typer: Typer =>
           val cls = typedAheadAnnotation(annotTree)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           denot.addAnnotation(ann)
-          if (cls == defn.InlineAnnot) addInlineInfo(denot.symbol, ann, original)
+          if (cls == defn.InlineAnnot) addInlineInfo(denot, original)
         }
       case _ =>
     }
 
-    private def addInlineInfo(inlineMethod: Symbol, inlineAnnot: Annotation, original: untpd.Tree) = original match {
+    private def addInlineInfo(denot: SymDenotation, original: untpd.Tree) = original match {
       case original: untpd.DefDef =>
-        Inliner.attachInlineInfo(
-            inlineAnnot,
+        Inliner.registerInlineInfo(
+            denot,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(inlineMethod))
+          )(localContext(denot.symbol))
       case _ =>
     }
 

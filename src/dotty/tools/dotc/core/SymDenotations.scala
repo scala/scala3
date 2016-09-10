@@ -281,6 +281,15 @@ object SymDenotations {
         case nil => None
       }
 
+    /** The same as getAnnotation, but without ensuring
+     *  that the symbol carrying the annotation is completed
+     */
+    final def unforcedAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
+      dropOtherAnnotations(myAnnotations, cls) match {
+        case annot :: _ => Some(annot)
+        case nil => None
+      }
+
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations

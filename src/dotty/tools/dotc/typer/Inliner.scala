@@ -204,20 +204,23 @@ object Inliner {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
-  /** Attach inline info to `@inline` annotation.
+  /** Register inline info for given inline method `sym`.
    *
+   *  @param sym         The symbol denotatioon of the inline method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The current context is the one in which the tree is computed. It needs
    *                     to have the inlined method as owner.
    */
-  def attachInlineInfo(inlineAnnot: Annotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
+  def registerInlineInfo(sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+    val inlineAnnot = sym.unforcedAnnotation(defn.InlineAnnot).get
     inlineAnnot.tree.getAttachment(InlineInfo) match {
       case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
       case _ =>
         if (!ctx.isAfterTyper)
           inlineAnnot.tree.putAttachment(InlineInfo, new InlineInfo(treeExpr, ctx))
     }
+  }
 
   /** Optionally, the inline info attached to the `@inline` annotation of `sym`. */
   private def inlineInfo(sym: SymDenotation)(implicit ctx: Context): Option[InlineInfo] =
