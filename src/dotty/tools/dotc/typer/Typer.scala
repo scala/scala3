@@ -1498,7 +1498,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             val mdef1 = typed(mdef)
             buf += mdef1
             if (Inliner.hasBodyToInline(mdef1.symbol))
-              buf ++= Inliner.inlineAccessors(mdef1.symbol)
+              buf ++= Inliner.removeInlineAccessors(mdef1.symbol)
             traverse(rest)
         }
       case Thicket(stats) :: rest =>

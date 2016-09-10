@@ -192,9 +192,11 @@ object Inliner {
     /** The accessor defs to non-public members which need to be defined
      *  together with the inline method
      */
-    def accessors(implicit ctx: Context): List[MemberDef] = {
+    def removeAccessors(implicit ctx: Context): List[MemberDef] = {
       ensureEvaluated()
-      myAccessors.toList
+      val res = myAccessors.toList
+      myAccessors.clear()
+      res
     }
   }
 
@@ -242,8 +244,8 @@ object Inliner {
    * @pre  hasBodyToInline(sym)
    */
 
-  def inlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] =
-    inlineInfo(sym).get.accessors
+  def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] =
+    inlineInfo(sym).get.removeAccessors
 
   /** Try to inline a call to a `@inline` method. Fail with error if the maximal
    *  inline depth is exceeded.
