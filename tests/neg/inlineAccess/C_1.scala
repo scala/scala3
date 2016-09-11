@@ -1,4 +1,3 @@
-// error not yet recognized (independent of inlining)
 package p
 private class D
 class C {
