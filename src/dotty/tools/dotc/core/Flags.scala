@@ -530,7 +530,7 @@ object Flags {
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 
   /** Labeled `private` or `final` */
-  final val PrivateOrFinal = Private | Final
+  final val PrivateOrFinalOrInline = Private | Final | Inline
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
