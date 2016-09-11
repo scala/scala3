@@ -1495,10 +1495,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            val mdef1 = typed(mdef)
-            buf += mdef1
-            if (Inliner.hasBodyToInline(mdef1.symbol))
-              buf ++= Inliner.removeInlineAccessors(mdef1.symbol)
+            typed(mdef) match {
+              case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
+                buf ++= inlineExpansion(mdef1)
+              case mdef1 =>
+                buf += mdef1
+            }
             traverse(rest)
         }
       case Thicket(stats) :: rest =>
@@ -1511,6 +1513,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     traverse(stats)
   }
+
+  /** Given an inline method `mdef`, the method rewritten so that its body
+   *  uses accessors to access non-public members, followed by the accessor definitions.
+   *  Overwritten in Retyper to return `mdef` unchanged.
+   */
+  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
+    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
+        Inliner.removeInlineAccessors(mdef.symbol)
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)

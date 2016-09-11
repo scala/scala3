@@ -1,7 +1,9 @@
-package p {
+// error not yet recognized (independent of inlining)
+package p
+private class D
 class C {
-  protected def f(): Unit = ()
+  inline def inl(): Unit = {
+    val d = new D()     // error (when inlined): not accessible
+  }
+}
 
-  inline def inl() = f() // error (when inlined): not accessible
-}
-}

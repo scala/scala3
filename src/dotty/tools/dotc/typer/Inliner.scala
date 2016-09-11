@@ -175,12 +175,18 @@ object Inliner {
     def isEvaluated = evaluated
 
     private def ensureEvaluated()(implicit ctx: Context) =
-      if (!evaluated) {
+      try if (!evaluated) {
         evaluated = true // important to set early to prevent overwrites by attachInlineInfo in typedDefDef
         myBody = treeExpr(inlineCtx)
         myBody = prepareForInline.transform(myBody)(inlineCtx)
         inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
         inlineCtx = null // null out to avoid space leaks
+      }
+      else assert(myBody != null)
+      catch {
+        case ex: AssertionError =>
+          println(i"failure while expanding $inlineMethod")
+          throw ex
       }
 
     /** The body to inline */
