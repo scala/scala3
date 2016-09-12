@@ -1140,6 +1140,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    if (sym.is(Inline, butNot = DeferredOrParamAccessor))
+      checkInlineConformant(rhs1, "right-hand side of inline value")
     patchIfLazy(vdef1)
     vdef1
   }
@@ -1808,7 +1810,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           }
           tree
         }
-        else if (tree.tpe <:< pt)
+        else if (tree.tpe <:< pt) {
+          if (pt.hasAnnotation(defn.InlineParamAnnot))
+            checkInlineConformant(tree, "argument to inline parameter")
           if (Inliner.hasBodyToInline(tree.symbol) &&
               !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
               !ctx.settings.YnoInline.value &&
@@ -1822,6 +1826,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             tree.asInstance(pt)
           else
             tree
+        }
         else if (wtp.isInstanceOf[MethodType]) missingArgs
         else {
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")

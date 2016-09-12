@@ -2419,7 +2419,12 @@ object Types {
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
+
+    /** Produce method type from parameter symbols, with special mappings for repeated
+     *  and inline parameters.
+     */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+      /** Replace @repeated annotations on Seq or Array types by <repeated> types */
       def translateRepeated(tp: Type): Type = tp match {
         case tp @ ExprType(tp1) => tp.derivedExprType(translateRepeated(tp1))
         case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
@@ -2429,7 +2434,15 @@ object Types {
         case tp =>
           tp
       }
-      def paramInfo(param: Symbol): Type = translateRepeated(param.info)
+      /** Add @inlineParam to inline call-by-value parameters */
+      def translateInline(tp: Type): Type = tp match {
+        case tp @ ExprType(tp1) => tp
+        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
+      }
+      def paramInfo(param: Symbol): Type = {
+        val paramType = translateRepeated(param.info)
+        if (param.is(Inline)) translateInline(paramType) else paramType
+      }
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
       apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)

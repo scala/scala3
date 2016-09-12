@@ -891,7 +891,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(Final, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and approximate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2).

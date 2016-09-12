@@ -1641,12 +1641,13 @@ object Parsers {
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
      *  ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] id `:' ParamType [`=' Expr]
+     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
      *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
      *  DefParamClause    ::=  [nl] `(' [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
-     *  DefParam          ::=  {Annotation} id `:' ParamType [`=' Expr]
-    */
+     *  DefParam          ::=  {Annotation} [`inline'] Param
+     *  Param             ::=  id `:' ParamType [`=' Expr]
+     */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var implicitFlag = EmptyFlags
       var firstClauseOfCaseClass = ofCaseClass
@@ -1665,12 +1666,16 @@ object Parsers {
                 in.nextToken()
                 addFlag(mods, Mutable)
               } else {
-                if (!(mods.flags &~ ParamAccessor).isEmpty) syntaxError("`val' or `var' expected")
+                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
+                  syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods else mods | PrivateLocal
               }
             }
         }
-        else mods = atPos(start) { mods | Param }
+        else {
+          if (in.token == INLINE) mods = addModifier(mods)
+          mods = atPos(start) { mods | Param }
+        }
         atPos(start, nameStart) {
           val name = ident()
           val tpt =

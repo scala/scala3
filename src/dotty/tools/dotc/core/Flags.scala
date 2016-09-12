@@ -556,6 +556,12 @@ object Flags {
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
 
+  /** A deferred member or a parameter accessor (these don't have right hand sides) */
+  final val DeferredOrParamAccessor = Deferred | ParamAccessor
+
+  /** value that's final or inline */
+  final val FinalOrInline = Final | Inline
+
   /** If symbol of a type alias has these flags, prefer the alias */
   final val AliasPreferred = TypeParam | BaseTypeArg | ExpandedName
 
