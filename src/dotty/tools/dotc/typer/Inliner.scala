@@ -42,11 +42,16 @@ object Inliner {
    *
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
-   *  @param inlineCtx   The context in which to compute the tree. This context needs
+   *  @param inlineCtxFn A function that maps the current context to the context in
+   *                     which to compute the tree. The resulting context needs
    *                     to have the inlined method as owner.
+   *
+   *                     The reason to use a function rather than a fixed context here
+   *                     is to avoid space leaks. InlineInfos can survive multiple runs
+   *                     because they might be created as part of an unpickled method
+   *                     and consumed only in a future run (or never).
    */
-  private final class InlineInfo(treeExpr: Context => Tree, var inlineCtx: Context) {
-    private val inlineMethod = inlineCtx.owner
+  private final class InlineInfo(treeExpr: Context => Tree, var inlineCtxFn: Context => Context) {
     private val myAccessors = new mutable.ListBuffer[MemberDef]
     private var myBody: Tree = _
     private var evaluated = false
@@ -56,7 +61,8 @@ object Inliner {
      *  This means that references to a provate type will lead to typing failures
      *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
      */
-    private def prepareForInline = new TreeMap {
+    private def prepareForInline(inlineCtx: Context) = new TreeMap {
+      val inlineMethod = inlineCtx.owner
 
       /** A definition needs an accessor if it is private, protected, or qualified private */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
@@ -182,19 +188,22 @@ object Inliner {
     def isEvaluated = evaluated
 
     private def ensureEvaluated()(implicit ctx: Context) =
-      try if (!evaluated) {
+      if (!evaluated) {
         evaluated = true // important to set early to prevent overwrites by attachInlineInfo in typedDefDef
-        myBody = treeExpr(inlineCtx)
-        myBody = prepareForInline.transform(myBody)(inlineCtx)
-        inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
-        inlineCtx = null // null out to avoid space leaks
+        val inlineCtx = inlineCtxFn(ctx)
+        inlineCtxFn = null // null out to avoid space leaks
+        try {
+          myBody = treeExpr(inlineCtx)
+          myBody = prepareForInline(inlineCtx).transform(myBody)(inlineCtx)
+          inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
+        }
+        catch {
+          case ex: AssertionError =>
+            println(i"failure while expanding ${inlineCtx.owner}")
+            throw ex
+        }
       }
       else assert(myBody != null)
-      catch {
-        case ex: AssertionError =>
-          println(i"failure while expanding $inlineMethod")
-          throw ex
-      }
 
     /** The body to inline */
     def body(implicit ctx: Context): Tree = {
@@ -224,16 +233,18 @@ object Inliner {
    *  @param sym         The symbol denotatioon of the inline method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
-   *  @param ctx         The current context is the one in which the tree is computed. It needs
+   *  @param inlineCtxFn A function that maps the current context to the context in
+   *                     which to compute the tree. The resulting context needs
    *                     to have the inlined method as owner.
    */
-  def registerInlineInfo(sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+  def registerInlineInfo(
+      sym: SymDenotation, treeExpr: Context => Tree, inlineCtxFn: Context => Context)(implicit ctx: Context): Unit = {
     val inlineAnnot = sym.unforcedAnnotation(defn.InlineAnnot).get
     inlineAnnot.tree.getAttachment(InlineInfo) match {
       case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
       case _ =>
         if (!ctx.isAfterTyper)
-          inlineAnnot.tree.putAttachment(InlineInfo, new InlineInfo(treeExpr, ctx))
+          inlineAnnot.tree.putAttachment(InlineInfo, new InlineInfo(treeExpr, inlineCtxFn))
     }
   }
 

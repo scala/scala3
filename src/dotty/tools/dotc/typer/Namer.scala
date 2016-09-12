@@ -588,8 +588,8 @@ class Namer { typer: Typer =>
       case original: untpd.DefDef =>
         Inliner.registerInlineInfo(
             denot,
-            implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(denot.symbol))
+            implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs,
+            _ => localContext(denot.symbol))
       case _ =>
     }
 

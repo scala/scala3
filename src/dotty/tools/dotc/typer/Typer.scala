@@ -1176,7 +1176,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.hasAnnotation(defn.InlineAnnot))
-      Inliner.registerInlineInfo(sym, ctx => rhs1)
+      Inliner.registerInlineInfo(sym, _ => rhs1, _ => ctx)
 
     if (sym.isAnonymousFunction) {
       // If we define an anonymous function, make sure the return type does not

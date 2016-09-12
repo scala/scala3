@@ -489,8 +489,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
       else if (annots.exists(_.symbol == defn.InlineAnnot)) {
-        val inlineCtx = localContext(sym).addMode(Mode.ReadPositions)
-        Inliner.registerInlineInfo(sym, implicit ctx => forkAt(rhsStart).readTerm())(inlineCtx)
+        Inliner.registerInlineInfo(
+            sym,
+            implicit ctx => forkAt(rhsStart).readTerm(),
+            implicit ctx => localContext(sym).addMode(Mode.ReadPositions)) 
+              // Previous line avoids space leaks because it does not capture the current context.
       }
       goto(start)
       sym
