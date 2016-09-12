@@ -533,7 +533,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
-    val expr1 = typedExpr(tree.expr, pt)(exprCtx)
+
+    // A block might appear in function position after desugaring (see
+    // i1503.scala), so adaptation may insert a `.apply` at the end of expr1.
+    // When this happens we simply remove the select to make expr1 a valid
+    // block expression. The `.apply` will be added back around the block when
+    // the block itself is adapted later.
+    val expr1 = typedExpr(tree.expr, pt)(exprCtx) match {
+      case Select(x, nme.apply) => x
+      case x => x
+    }
     ensureNoLocalRefs(
         assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1))
   }
