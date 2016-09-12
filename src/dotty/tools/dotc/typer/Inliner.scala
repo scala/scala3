@@ -25,6 +25,13 @@ import util.{Property, SourceFile, NoSource}
 import collection.mutable
 import transform.TypeUtils._
 
+/** Todo wrt inline SIP:
+ *
+ *  1. According to Inline SIP, by-name parameters are not hoisted out, but we currently
+ *  do hoist them.
+ *
+ *  2. Inline call-by-name parameters are currently ignored. Not sure what the rules should be.
+ */
 object Inliner {
   import tpd._
 
