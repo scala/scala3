@@ -848,29 +848,41 @@ object Types {
       case tp => tp
     }
 
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
-     *  is no longer alias type, LazyRef, or instantiated type variable.
-     */
-    final def dealias(implicit ctx: Context): Type = this match {
+    private def dealias(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias
+          case TypeAlias(tp) => tp.dealias(keepAnnots)
           case _ => tp
         }
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias else tp
+        if (tp1.exists) tp1.dealias(keepAnnots) else tp
       case tp: AnnotatedType =>
-        tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
+        val tp1 = tp.tpe.dealias(keepAnnots)
+        if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias
+        tp.ref.dealias(keepAnnots)
       case app @ HKApply(tycon, args) =>
-        val tycon1 = tycon.dealias
-        if (tycon1 ne tycon) app.superType.dealias
+        val tycon1 = tycon.dealias(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias(keepAnnots)
         else this
       case _ => this
     }
+
+    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+     *  is no longer alias type, LazyRef, or instantiated type variable.
+     *  Goes through annotated types and rewraps annotations on the result.
+     */
+    final def dealiasKeepAnnots(implicit ctx: Context): Type =
+      dealias(keepAnnots = true)
+
+    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+     *  or instantiated type variable.
+     */
+    final def dealias(implicit ctx: Context): Type =
+      dealias(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     final def widenDealias(implicit ctx: Context): Type = {
