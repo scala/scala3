@@ -305,6 +305,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs)
     case _ =>
       Impure
+      // TODO: It seem like this should be exprPurity(tree)
+      // But if we do that the repl/vars test break. Need to figure out why that's the case.
   }
 
   /** The purity level of this expression.
@@ -321,7 +323,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case EmptyTree
        | This(_)
        | Super(_, _)
-       | Literal(_) =>
+       | Literal(_)
+       | Closure(_, _, _) =>
       Pure
     case Ident(_) =>
       refPurity(tree)
