@@ -6,6 +6,8 @@ object Test {
     y_=(t)
   }
 
+  inline def f(x: Int => Unit) = x
+
   def main(args: Array[String]) = {
     var x = 1
     var y = 2
@@ -13,5 +15,7 @@ object Test {
     inline def setY(z: Int) = y = z
     swap(x, setX, y, setY)
     assert(x == 2 && y == 1)
+
+    val z = f(setX)  // tests case where inline arg is not applied
   }
 }

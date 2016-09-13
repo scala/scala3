@@ -88,12 +88,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case mp => mp
   }
 
-  /** If tree is a closure, it's body, otherwise tree itself */
-  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
-    case _ => tree
-  }
-
   /** If this is an application, its function part, stripping all
    *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
    */
@@ -447,6 +441,22 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       (meth, targs, Nil)
     case _ =>
       (tree, Nil, Nil)
+  }
+
+  /** An extractor for closures, either contained in a block or standalone.
+   */
+  object closure {
+    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
+      case Block(_, Closure(env, meth, tpt)) => Some(env, meth, tpt)
+      case Closure(env, meth, tpt) => Some(env, meth, tpt)
+      case _ => None
+    }
+  }
+
+  /** If tree is a closure, it's body, otherwise tree itself */
+  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
+    case _ => tree
   }
 
   /** The variables defined by a pattern, in reverse order of their appearance. */

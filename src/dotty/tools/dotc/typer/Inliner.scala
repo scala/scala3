@@ -505,13 +505,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
 
     /** Does given definition bind a closure that will be inlined? */
-    def bindsInlineableClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
-      case InlineableClosure(_) => true
+    def bindsDeadClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
+      case InlineableClosure(_) => !InlineTyper.retainedClosures.contains(defn.symbol)
       case _ => false
     }
 
     /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-    val bindings = bindingsBuf.toList.filterNot(bindsInlineableClosure).map(_.withPos(call.pos))
+    val bindings = bindingsBuf.toList.filterNot(bindsDeadClosure).map(_.withPos(call.pos))
 
     val result = tpd.Inlined(call, bindings, expansion1)
     inlining.println(i"inlined $call\n --> \n$result")
@@ -524,8 +524,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
       if (paramProxies.contains(tree.tpe)) {
         bindingsBuf.find(_.name == tree.name).map(_.rhs) match {
-          case Some(Closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
-          case Some(Block(_, Closure(_, meth, _))) if meth.symbol.isInlineMethod => Some(meth)
+          case Some(closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
           case _ => None
         }
       } else None
@@ -539,6 +538,17 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
   private object InlineTyper extends ReTyper {
+
+    var retainedClosures = Set[Symbol]()
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) = {
+      val tree1 = super.typedIdent(tree, pt)
+      tree1 match {
+        case InlineableClosure(_) => retainedClosures += tree.symbol
+        case _ =>
+      }
+      tree1
+    }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val res = super.typedSelect(tree, pt)
