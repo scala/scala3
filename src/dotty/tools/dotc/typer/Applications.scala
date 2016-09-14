@@ -31,7 +31,7 @@ import language.implicitConversions
 object Applications {
   import tpd._
 
-  def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx:Context) = {
+  def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx: Context) = {
     val ref = tp.member(name).suchThat(_.info.isParameterless)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
@@ -41,12 +41,12 @@ object Applications {
       ref.info.widenExpr.dealias
   }
 
-  def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx:Context): List[Type] = {
+  def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
     sels.takeWhile(_.exists).toList
   }
 
-  def productSelectors(tp: Type)(implicit ctx:Context): List[Symbol] = {
+  def productSelectors(tp: Type)(implicit ctx: Context): List[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield tp.member(nme.selectorName(n)).symbol
     sels.takeWhile(_.exists).toList
   }
@@ -58,7 +58,7 @@ object Applications {
       else tp :: Nil
     } else tp :: Nil
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn:Tree, args:List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
+  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
 
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
