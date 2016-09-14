@@ -525,7 +525,7 @@ object RefChecks {
                         subclassMsg(concreteSym, abstractSym)
                       else ""
 
-                    undefined(s"\n(Note that $pa does not match $pc$addendum)")
+                    undefined(s"\n(Note that ${pa.show} does not match ${pc.show}$addendum)")
                   case xs =>
                     undefined(s"\n(The class implements a member with a different type: ${concrete.showDcl})")
                 }
