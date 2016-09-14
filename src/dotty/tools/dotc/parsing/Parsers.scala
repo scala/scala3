@@ -17,6 +17,7 @@ import ast.Trees._
 import Decorators._
 import StdNames._
 import util.Positions._
+import reporting.ErrorExplanations._
 import Constants._
 import ScriptParsers._
 import Comments._
@@ -97,17 +98,17 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: String, offset: Int = in.offset): Unit =
+    def syntaxError(expl: Explanation, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
-        syntaxError(msg, Position(offset))
+        syntaxError(expl, Position(offset))
         lastErrorOffset = in.offset
       }
 
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(msg: String, pos: Position): Unit =
-      ctx.error(msg, source atPos pos)
+    def syntaxError(expl: Explanation, pos: Position): Unit =
+      ctx.explainError(expl, source atPos pos)
 
   }
 
@@ -213,8 +214,8 @@ object Parsers {
       }
     }
 
-    def warning(msg: String, offset: Int = in.offset) =
-      ctx.warning(msg, source atPos Position(offset))
+    def warning(msg: Explanation, offset: Int = in.offset) =
+      ctx.explainWarning(msg, source atPos Position(offset))
 
     def deprecationWarning(msg: String, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
@@ -1013,19 +1014,15 @@ object Parsers {
             } else EmptyTree
 
           handler match {
-            case Block(Nil, EmptyTree) => syntaxError(
-              "`catch` block does not contain a valid expression, try adding a case like - `case e: Exception =>` to the block",
-              handler.pos
-            )
+            case Block(Nil, EmptyTree) =>
+              syntaxError(EmptyCatchBlock(body), handler.pos)
             case _ =>
           }
 
           val finalizer =
             if (in.token == FINALLY) { accept(FINALLY); expr() }
             else {
-              if (handler.isEmpty)
-                warning("A try without `catch` or `finally` is equivalent to putting its body in a block; no exceptions are handled.")
-
+              if (handler.isEmpty) warning(EmptyCatchAndFinallyBlock(body))
               EmptyTree
             }
           ParsedTry(body, handler, finalizer)
