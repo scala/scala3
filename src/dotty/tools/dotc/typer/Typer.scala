@@ -37,6 +37,8 @@ import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
 import language.implicitConversions
+import printing.SyntaxHighlighting._
+import reporting.ErrorExplanations._
 
 object Typer {
 
@@ -141,9 +143,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *      imported by <tree>
        *  or  defined in <symbol>
        */
-      def bindingString(prec: Int, whereFound: Context, qualifier: String = "")(implicit ctx: Context) =
-        if (prec == wildImport || prec == namedImport) ex"imported$qualifier by ${whereFound.importInfo}"
-        else ex"defined$qualifier in ${whereFound.owner}"
+      def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
+        if (prec == wildImport || prec == namedImport) {
+          ex"""imported$qualifier by ${hl"${whereFound.importInfo.toString}"}"""
+        } else
+          ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -166,9 +170,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else {
           if (!scala2pkg && !previous.isError && !found.isError) {
             error(
-              ex"""reference to $name is ambiguous;
-                  |it is both ${bindingString(newPrec, ctx, "")}
-                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
+              ex"""|reference to `$name` is ambiguous
+                   |it is both ${bindingString(newPrec, ctx, "")}
+                   |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
               tree.pos)
           }
           previous
@@ -181,7 +185,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && found.exists && (found != other))
-            error(em"reference to $name is ambiguous; it is imported twice in ${ctx.tree}",
+            error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
                   tree.pos)
           found
         }
@@ -839,11 +843,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             mapOver(t)
         }
       }
-      override def transform(tree: Tree)(implicit ctx: Context) =
-        super.transform(tree.withType(elimWildcardSym(tree.tpe))) match {
+      override def transform(trt: Tree)(implicit ctx: Context) =
+        super.transform(trt.withType(elimWildcardSym(trt.tpe))) match {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(em"duplicate pattern variable: ${b.name}", b.pos)
+            else ctx.explainError(DuplicateBind(b, tree), b.pos)
             b.symbol.info = elimWildcardSym(b.symbol.info)
             b
           case t => t

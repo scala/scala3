@@ -2,8 +2,10 @@ package dotty.tools
 package dotc
 package reporting
 
-import dotc.core.Contexts.Context
+import dotc.core._
+import Contexts.Context, Decorators._, Symbols._
 import dotc.printing.SyntaxHighlighting._
+import util.{SourcePosition, NoSourcePosition}
 
 object ErrorExplanations {
   import dotc.ast.Trees._
@@ -72,5 +74,33 @@ object ErrorExplanations {
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context) extends EmptyCatchOrFinallyBlock(tryBody) {
     val msg =
       hl"""A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting its body in a block; no exceptions are handled."""
+  }
+
+  case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context) extends Explanation {
+    val msg =
+      em"duplicate pattern variable: `${bind.name}`"
+
+    val explanation = {
+      val pat = tree.pat.show
+      val guard = tree.guard match {
+        case untpd.EmptyTree => ""
+        case guard => s"if ${guard.show}"
+      }
+
+      val body = tree.body match {
+        case Block(Nil, untpd.EmptyTree) => ""
+        case body => s" ${body.show}"
+      }
+
+      val caseDef = s"case $pat$guard => $body"
+
+      hl"""|Explanation
+           |===========
+           |For each ${"case"} bound variable names  have to be unique. In:
+           |
+           |$caseDef
+           |
+           |`${bind.name}` is not unique. Rename one of the binds!""".stripMargin
+    }
   }
 }
