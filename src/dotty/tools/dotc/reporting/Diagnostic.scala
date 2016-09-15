@@ -11,7 +11,7 @@ object Diagnostic {
   val nonSensicalEndTag = "</nonsensical>"
 }
 
-class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int)
+class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int, val kind: String)
     extends Exception with interfaces.Diagnostic {
   import Diagnostic._
   private var myMsg: String = null

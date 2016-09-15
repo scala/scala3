@@ -22,17 +22,6 @@ class ConsoleReporter(
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
 
-<<<<<<< HEAD
-  def printPos(pos: SourcePosition): Unit =
-    if (pos.exists) {
-      printMessage(pos.lineContent.stripLineEnd)
-      printMessage(" " * pos.column + "^")
-      if (pos.outer.exists) {
-        printMessage(s"\n... this location is in code that was inlined at ${pos.outer}:\n")
-        printPos(pos.outer)
-      }
-    }
-=======
   def sourceLine(pos: SourcePosition): (String, Int) = {
     val lineNum = s"${pos.line}:"
     (lineNum + hl"${pos.lineContent.stripLineEnd}", lineNum.length)
@@ -78,8 +67,9 @@ class ConsoleReporter(
         printStr(pos.outer) + "\n" + "-" * ctx.settings.pageWidth.value
       } else ""
 
-      s"${Console.CYAN}$kind: $file " +
-      "-" * math.max(ctx.settings.pageWidth.value - file.length - kind.length - 1, 0) +
+      val prefix = s"${Console.CYAN}-- $kind: $file "
+      prefix +
+      ("-" * math.max(ctx.settings.pageWidth.value - prefix.replaceAll("\u001B\\[[;\\d]*m", "").length, 0)) +
       "\n" + outer + NoColor
     }
     else ""
@@ -101,13 +91,13 @@ class ConsoleReporter(
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
     case d: Error =>
-      printMessageAndPos(d.message, d.pos, "Error in")
+      printMessageAndPos(d.message, d.pos, d.kind)
       if (ctx.settings.prompt.value) displayPrompt()
     case d: ConditionalWarning if !d.enablingOption.value =>
     case d: MigrationWarning =>
-      printMessageAndPos(d.message, d.pos, "Migration Warning in")
+      printMessageAndPos(d.message, d.pos, d.kind)
     case d: Warning =>
-      printMessageAndPos(d.message, d.pos, "Warning in")
+      printMessageAndPos(d.message, d.pos, d.kind)
     case _ =>
       printMessageAndPos(d.message, d.pos)
   }

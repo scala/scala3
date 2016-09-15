@@ -110,7 +110,7 @@ object ErrorMessages {
              |
              |$caseDef
              |
-             |`${bind.name}` is not unique. Rename one of the binds!""".stripMargin
+             |`${bind.name}` is not unique. Rename one of the bound variables!""".stripMargin
       }
     }
   }

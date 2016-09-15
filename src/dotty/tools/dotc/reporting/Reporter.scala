@@ -16,23 +16,23 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import ErrorMessages._
 
 object Reporter {
-  class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
-  class Warning(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, WARNING)
-  class Info(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, INFO)
+  class Error(msgFn: => String, pos: SourcePosition, kind: String = "Error") extends Diagnostic(msgFn, pos, ERROR, kind)
+  class Warning(msgFn: => String, pos: SourcePosition, kind: String = "Warning") extends Diagnostic(msgFn, pos, WARNING, kind)
+  class Info(msgFn: => String, pos: SourcePosition, kind: String = "Info") extends Diagnostic(msgFn, pos, INFO, kind)
 
-  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition) extends Warning(msgFn, pos) {
+  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition, kind: String) extends Warning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context): Setting[Boolean]
   }
-  class FeatureWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+  class FeatureWarning(msgFn: => String, pos: SourcePosition, kind: String = "Feature Warning") extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.feature
   }
-  class UncheckedWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+  class UncheckedWarning(msgFn: => String, pos: SourcePosition, kind: String = "Unchecked Warning") extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
   }
-  class DeprecationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+  class DeprecationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Deprecation Warning") extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
   }
-  class MigrationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+  class MigrationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Migration Warning") extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.migration
   }
 
@@ -56,19 +56,19 @@ trait Reporting { this: Context =>
     if (this.settings.verbose.value) this.echo(msg, pos)
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Info(msg, pos))
+    reporter.report(new Info(msg, pos, "Info"))
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new DeprecationWarning(msg, pos))
+    reporter.report(new DeprecationWarning(msg, pos, "Deprecation Warning"))
 
   def migrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new MigrationWarning(msg, pos))
+    reporter.report(new MigrationWarning(msg, pos, "Migration Warning"))
 
   def uncheckedWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new UncheckedWarning(msg, pos))
+    reporter.report(new UncheckedWarning(msg, pos, "Unchecked Warning"))
 
   def featureWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new FeatureWarning(msg, pos))
+    reporter.report(new FeatureWarning(msg, pos, "Feature Warning"))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
@@ -97,7 +97,7 @@ trait Reporting { this: Context =>
     reporter.report(new Warning(msg, pos))
 
   def explainWarning(err: => ErrorMessage, pos: SourcePosition = NoSourcePosition): Unit = {
-    warning(err.msg, pos)
+    reporter.report(new Warning(err.msg, pos, s"${err.kind} warning"))
     if (this.shouldExplain(err))
       reporter.report(new Info(err.explanation, NoSourcePosition))
   }
@@ -112,7 +112,7 @@ trait Reporting { this: Context =>
   }
 
   def explainError(err: => ErrorMessage, pos: SourcePosition = NoSourcePosition): Unit = {
-    error(err.msg, pos)
+    reporter.report(new Error(err.msg, pos, s"${err.kind} error"))
     if (this.shouldExplain(err))
       reporter.report(new Info(err.explanation, NoSourcePosition))
   }
