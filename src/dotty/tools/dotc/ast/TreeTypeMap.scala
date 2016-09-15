@@ -6,7 +6,6 @@ import core._
 import Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._
-import typer.Inliner
 import config.Printers.inlining
 import dotty.tools.dotc.transform.SymUtils._
 
@@ -95,9 +94,9 @@ final class TreeTypeMap(
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
           val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
-          if (Inliner.hasBodyToInline(res.symbol)) {
-            inlining.println(i"update inline body ${res.symbol}")
-            Inliner.updateInlineBody(res.symbol, res.rhs)
+          res.symbol.transformAnnotations {
+            case ann: BodyAnnotation => ann.derivedAnnotation(res.rhs)
+            case ann => ann
           }
           res
         case blk @ Block(stats, expr) =>

@@ -1118,7 +1118,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
-    sym.annotations.foreach(_.tree)
+    sym.annotations.foreach(_.ensureCompleted)
     val annotCtx = ctx.outersIterator.dropWhile(_.owner == sym).next
     // necessary in order to mark the typed ahead annotations as definitely typed:
     untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
@@ -1173,7 +1173,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.hasAnnotation(defn.InlineAnnot))
-      Inliner.registerInlineInfo(sym, _ => rhs1, _ => ctx)
+      Inliner.registerInlineInfo(sym, _ => rhs1)
 
     if (sym.isAnonymousFunction) {
       // If we define an anonymous function, make sure the return type does not

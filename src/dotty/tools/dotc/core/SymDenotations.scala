@@ -298,6 +298,12 @@ object SymDenotations {
     final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)
 
+    /** Remove any annotations with same class as `annot`, and add `annot` */
+    final def updateAnnotation(annot: Annotation)(implicit ctx: Context): Unit = {
+      removeAnnotation(annot.symbol)
+      addAnnotation(annot)
+    }
+
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit =
       annots.foreach(addAnnotation)

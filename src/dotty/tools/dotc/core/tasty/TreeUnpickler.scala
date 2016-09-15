@@ -7,7 +7,6 @@ import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, Name
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import util.Positions._
 import ast.{tpd, Trees, untpd}
-import typer.Inliner
 import Trees._
 import Decorators._
 import TastyUnpickler._, TastyBuffer._

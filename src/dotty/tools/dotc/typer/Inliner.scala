@@ -25,44 +25,28 @@ import util.{Property, SourceFile, NoSource}
 import collection.mutable
 import transform.TypeUtils._
 
-/** Todo wrt inline SIP:
- *
- *  1. According to Inline SIP, by-name parameters are not hoisted out, but we currently
- *  do hoist them.
- *
- *  2. Inline call-by-name parameters are currently ignored. Not sure what the rules should be.
- */
 object Inliner {
   import tpd._
 
-  /** An attachment for inline methods, which contains
-   *
-   *   - the body to inline, as a typed tree
-   *   - the definitions of all needed accessors to non-public members from inlined code
-   *
-   *  @param treeExpr    A function that computes the tree to be inlined, given a context
-   *                     This tree may still refer to non-public members.
-   *  @param inlineCtxFn A function that maps the current context to the context in
-   *                     which to compute the tree. The resulting context needs
-   *                     to have the inlined method as owner.
-   *
-   *                     The reason to use a function rather than a fixed context here
-   *                     is to avoid space leaks. InlineInfos can survive multiple runs
-   *                     because they might be created as part of an unpickled method
-   *                     and consumed only in a future run (or never).
+  /** A key to be used in a context property that tracks enclosing inlined calls */
+  private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
+
+  /** Adds accessors accessors for all non-public term members accessed
+   *  from `tree`. Non-public type members are currently left as they are.
+   *  This means that references to a private type will lead to typing failures
+   *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
+   *  
+   *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
+   *          and all accessors, otherwise the original tree.
    */
-  private final class InlineInfo(treeExpr: Context => Tree, var inlineCtxFn: Context => Context) {
-    private val myAccessors = new mutable.ListBuffer[MemberDef]
-    private var myBody: Tree = _
-    private var evaluated = false
+  def makeInlineable(tree: Tree)(implicit ctx: Context) = {
 
     /** A tree map which inserts accessors for all non-public term members accessed
-     *  from inlined code. Non-public type members are currently left as they are.
-     *  This means that references to a provate type will lead to typing failures
-     *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
+     *  from inlined code. Accesors are collected in the `accessors` buffer.
      */
-    private def prepareForInline(inlineCtx: Context) = new TreeMap {
-      val inlineMethod = inlineCtx.owner
+    object addAccessors extends TreeMap {
+      val inlineMethod = ctx.owner
+      val accessors = new mutable.ListBuffer[MemberDef]
 
       /** A definition needs an accessor if it is private, protected, or qualified private */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
@@ -149,7 +133,7 @@ object Inliner {
               .appliedToArgss((qual :: Nil) :: argss)
             (accessorDef, accessorRef)
           }
-        myAccessors += accessorDef
+        accessors += accessorDef
         inlining.println(i"added inline accessor: $accessorDef")
         accessorRef
       }
@@ -184,106 +168,61 @@ object Inliner {
       }
     }
 
-    /** Is the inline info evaluated? */
-    def isEvaluated = evaluated
-
-    private def ensureEvaluated()(implicit ctx: Context) =
-      if (!evaluated) {
-        evaluated = true // important to set early to prevent overwrites by attachInlineInfo in typedDefDef
-        val inlineCtx = inlineCtxFn(ctx)
-        inlineCtxFn = null // null out to avoid space leaks
-        try {
-          myBody = treeExpr(inlineCtx)
-          myBody = prepareForInline(inlineCtx).transform(myBody)(inlineCtx)
-          inlining.println(i"inlinable body of ${inlineCtx.owner} = $myBody")
-        }
-        catch {
-          case ex: AssertionError =>
-            println(i"failure while expanding ${inlineCtx.owner}")
-            throw ex
-        }
-      }
-      else assert(myBody != null)
-
-    /** The body to inline */
-    def body(implicit ctx: Context): Tree = {
-      ensureEvaluated()
-      myBody
-    }
-
-    /** The accessor defs to non-public members which need to be defined
-     *  together with the inline method
-     */
-    def accessors(implicit ctx: Context): List[MemberDef] = {
-      ensureEvaluated()
-      myAccessors.toList
-    }
+    val tree1 = addAccessors.transform(tree)
+    flatTree(tree1 :: addAccessors.accessors.toList)
   }
-
-  /** A key to be used in an attachment for `@inline` annotations */
-  private val InlineInfo = new Property.Key[InlineInfo]
-
-  /** A key to be used in a context property that tracks enclosing inlined calls */
-  private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
   /** Register inline info for given inline method `sym`.
    *
    *  @param sym         The symbol denotatioon of the inline method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
-   *  @param inlineCtxFn A function that maps the current context to the context in
-   *                     which to compute the tree. The resulting context needs
+   *  @param ctx         The context to use for evaluating `treeExpr`. It needs
    *                     to have the inlined method as owner.
    */
   def registerInlineInfo(
-      sym: SymDenotation, treeExpr: Context => Tree, inlineCtxFn: Context => Context)(implicit ctx: Context): Unit = {
-    if (sym.unforcedAnnotation(defn.BodyAnnot).isEmpty) {
-      val inlineAnnotTree = sym.unforcedAnnotation(defn.InlineAnnot).get.tree
-      inlineAnnotTree.getAttachment(InlineInfo) match {
-        case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
-        case _ =>
-          if (!ctx.isAfterTyper)
-          inlineAnnotTree.putAttachment(InlineInfo, new InlineInfo(treeExpr, inlineCtxFn))
-      }
+      sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+    sym.unforcedAnnotation(defn.BodyAnnot) match {
+      case Some(ann: ConcreteBodyAnnotation) =>
+      case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
+      case _ =>
+        if (!ctx.isAfterTyper) {
+          val inlineCtx = ctx
+          sym.updateAnnotation(LazyBodyAnnotation { _ =>
+            implicit val ctx: Context = inlineCtx
+            val tree1 = treeExpr(ctx)
+            makeInlineable(tree1)
+          })
+        }
     }
   }
 
-  /** Register an evaluated inline body for `sym` */
-  def updateInlineBody(sym: SymDenotation, body: Tree)(implicit ctx: Context): Unit = {
-    assert(sym.unforcedAnnotation(defn.BodyAnnot).isDefined)
-    sym.removeAnnotation(defn.BodyAnnot)
-    sym.addAnnotation(ConcreteBodyAnnotation(body))
-  }
-
-  /** Optionally, the inline info attached to the `@inline` annotation of `sym`. */
-  private def inlineInfo(sym: SymDenotation)(implicit ctx: Context): Option[InlineInfo] =
-    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlineInfo)
-
-  /** Optionally, the inline body attached to the `@inline` annotation of `sym`. */
-  private def inlineBody(sym: SymDenotation)(implicit ctx: Context): Option[Tree] =
-    sym.getAnnotation(defn.BodyAnnot).map(_.tree)
-
-    /** Definition is an inline method with a known body to inline (note: definitions coming
+  /** `sym` has an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlineMethod && (inlineInfo(sym).isDefined || inlineBody(sym).isDefined)
+    sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
+
+  private def bodyAndAccessors(sym: SymDenotation)(implicit ctx: Context): (Tree, List[MemberDef]) =
+    sym.unforcedAnnotation(defn.BodyAnnot).get.tree match {
+      case Thicket(body :: accessors) => (body, accessors.asInstanceOf[List[MemberDef]])
+      case body => (body, Nil)
+    }
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
-    inlineInfo(sym).map(_.body).getOrElse(inlineBody(sym).get)
+    bodyAndAccessors(sym)._1
 
  /** The accessors to non-public members needed by the inlinable body of `sym`.
+   * These accessors are dropped as a side effect of calling this method.
    * @pre  hasBodyToInline(sym)
    */
   def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] = {
-    val inlineAnnotTree = sym.getAnnotation(defn.InlineAnnot).get.tree
-    val inlineInfo = inlineAnnotTree.removeAttachment(InlineInfo).get
-    sym.addAnnotation(ConcreteBodyAnnotation(inlineInfo.body))
-    assert(sym.getAnnotation(defn.BodyAnnot).isDefined)
-    inlineInfo.accessors
+    val (body, accessors) = bodyAndAccessors(sym)
+    if (accessors.nonEmpty) sym.updateAnnotation(ConcreteBodyAnnotation(body))
+    accessors
   }
 
   /** Try to inline a call to a `@inline` method. Fail with error if the maximal
