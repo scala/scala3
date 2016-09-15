@@ -745,10 +745,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case WildcardType(_) => untpd.TypeTree()
             case _ => untpd.TypeTree(protoResult)
           }
-          val inlineable = fnBody match {
-            case Apply(untpd.TypedSplice(fn), _) => Inliner.hasBodyToInline(fn.symbol)
-            case _ => false
-          }
+          val inlineable = pt.hasAnnotation(defn.InlineParamAnnot)
           desugar.makeClosure(inferredParams, fnBody, resultTpt, inlineable)
         }
       typed(desugared, pt)

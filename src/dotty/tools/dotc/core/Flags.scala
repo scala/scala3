@@ -431,7 +431,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final,
+    commonFlags(Private, Protected, Abstract, Final, Inline,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic)
 
   /** Flags representing modifiers that can appear in trees */

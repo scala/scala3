@@ -377,11 +377,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case tp: MethodType =>
       (tp.paramNames, tp.paramTypes, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
-        paramBinding(name) = arg.tpe.stripTypeVar match {
+        paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
           case argtpe: SingletonType if isByName || isIdempotentExpr(arg) => argtpe
           case argtpe =>
+            val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
             val (bindingFlags, bindingType) =
-              if (isByName) (Method, ExprType(argtpe.widen)) else (EmptyFlags, argtpe.widen)
+              if (isByName) (inlineFlag | Method, ExprType(argtpe.widen))
+              else (inlineFlag, argtpe.widen)
             val boundSym = newSym(name, bindingFlags, bindingType).asTerm
             val binding =
               if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
@@ -500,22 +502,22 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
 
     val expansion = inliner(rhs.withPos(call.pos))
+    ctx.traceIndented(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
 
-    // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
-    val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
+      // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
+      val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
 
-    /** Does given definition bind a closure that will be inlined? */
-    def bindsDeadClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
-      case InlineableClosure(_) => !InlineTyper.retainedClosures.contains(defn.symbol)
-      case _ => false
+      /** Does given definition bind a closure that will be inlined? */
+      def bindsDeadClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
+        case InlineableClosure(_) => !InlineTyper.retainedClosures.contains(defn.symbol)
+        case _ => false
+      }
+
+      /** All bindings in `bindingsBuf` except bindings of inlineable closures */
+      val bindings = bindingsBuf.toList.filterNot(bindsDeadClosure).map(_.withPos(call.pos))
+
+      tpd.Inlined(call, bindings, expansion1)
     }
-
-    /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-    val bindings = bindingsBuf.toList.filterNot(bindsDeadClosure).map(_.withPos(call.pos))
-
-    val result = tpd.Inlined(call, bindings, expansion1)
-    inlining.println(i"inlined $call\n --> \n$result")
-    result
   }
 
   /** An extractor for references to closure arguments that refer to `@inline` methods */
@@ -523,8 +525,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     lazy val paramProxies = paramProxy.values.toSet
     def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
       if (paramProxies.contains(tree.tpe)) {
-        bindingsBuf.find(_.name == tree.name).map(_.rhs) match {
-          case Some(closure(_, meth, _)) if meth.symbol.isInlineMethod => Some(meth)
+        bindingsBuf.find(_.name == tree.name) match {
+          case Some(ddef: ValDef) if ddef.symbol.is(Inline) =>
+            ddef.rhs match {
+              case closure(_, meth, _) => Some(meth)
+              case _ => None
+            }
           case _ => None
         }
       } else None
@@ -571,6 +577,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = tree.asInstanceOf[tpd.Tree] match {
       case Apply(Select(InlineableClosure(fn), nme.apply), args) =>
+        inlining.println(i"reducing $tree with closure $fn")
         typed(fn.appliedToArgs(args), pt)
       case _ =>
         super.typedApply(tree, pt)
