@@ -6,6 +6,8 @@ import core._
 import Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._
+import typer.Inliner
+import config.Printers.inlining
 import dotty.tools.dotc.transform.SymUtils._
 
 /** A map that applies three functions and a substitution together to a tree and
@@ -92,7 +94,12 @@ final class TreeTypeMap(
         case ddef @ DefDef(name, tparams, vparamss, tpt, _) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
+          val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
+          if (Inliner.hasBodyToInline(res.symbol)) {
+            inlining.println(i"update inline body ${res.symbol}")
+            Inliner.updateInlineBody(res.symbol, res.rhs)
+          }
+          res
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)

@@ -572,7 +572,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, % when pickling $trees%\n %")
+    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, % when pickling ${ctx.source}")
   }
 
   def compactify() = {

@@ -1359,10 +1359,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case tree1: TypeTree => tree1  // no change owner necessary here ...
       case tree1: Ident => tree1     // ... or here
       case tree1 =>
-        if (ctx.owner ne tree.owner) {
-          println(i"changing owner of $tree1 from ${tree.owner} to ${ctx.owner}")
-          tree1.changeOwner(tree.owner, ctx.owner)
-        }
+        if (ctx.owner ne tree.owner) tree1.changeOwner(tree.owner, ctx.owner)
         else tree1
     }
 

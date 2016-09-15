@@ -214,16 +214,17 @@ object Inliner {
     /** The accessor defs to non-public members which need to be defined
      *  together with the inline method
      */
-    def removeAccessors(implicit ctx: Context): List[MemberDef] = {
+    def accessors(implicit ctx: Context): List[MemberDef] = {
       ensureEvaluated()
-      val res = myAccessors.toList
-      myAccessors.clear()
-      res
+      myAccessors.toList
     }
   }
 
   /** A key to be used in an attachment for `@inline` annotations */
   private val InlineInfo = new Property.Key[InlineInfo]
+
+  /** A key to be used in an attachment for `@inline` annotations */
+  private val InlineBody = new Property.Key[Tree]
 
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
@@ -239,37 +240,51 @@ object Inliner {
    */
   def registerInlineInfo(
       sym: SymDenotation, treeExpr: Context => Tree, inlineCtxFn: Context => Context)(implicit ctx: Context): Unit = {
+    val inlineAnnotTree = sym.unforcedAnnotation(defn.InlineAnnot).get.tree
+    if (inlineAnnotTree.getAttachment(InlineBody).isEmpty)
+      inlineAnnotTree.getAttachment(InlineInfo) match {
+        case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
+        case _ =>
+          if (!ctx.isAfterTyper)
+          inlineAnnotTree.putAttachment(InlineInfo, new InlineInfo(treeExpr, inlineCtxFn))
+      }
+  }
+
+  /** Register an evaluated inline body for `sym` */
+  def updateInlineBody(sym: SymDenotation, body: Tree)(implicit ctx: Context): Unit = {
     val inlineAnnot = sym.unforcedAnnotation(defn.InlineAnnot).get
-    inlineAnnot.tree.getAttachment(InlineInfo) match {
-      case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
-      case _ =>
-        if (!ctx.isAfterTyper)
-          inlineAnnot.tree.putAttachment(InlineInfo, new InlineInfo(treeExpr, inlineCtxFn))
-    }
+    assert(inlineAnnot.tree.putAttachment(InlineBody, body).isDefined)
   }
 
   /** Optionally, the inline info attached to the `@inline` annotation of `sym`. */
   private def inlineInfo(sym: SymDenotation)(implicit ctx: Context): Option[InlineInfo] =
     sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlineInfo)
 
-  /** Definition is an inline method with a known body to inline (note: definitions coming
+  /** Optionally, the inline body attached to the `@inline` annotation of `sym`. */
+  private def inlineBody(sym: SymDenotation)(implicit ctx: Context): Option[Tree] =
+    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlineBody)
+
+    /** Definition is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlineMethod && inlineInfo(sym).isDefined
+    sym.isInlineMethod && (inlineInfo(sym).isDefined || inlineBody(sym).isDefined)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
-    inlineInfo(sym).get.body
+    inlineInfo(sym).map(_.body).getOrElse(inlineBody(sym).get)
 
  /** The accessors to non-public members needed by the inlinable body of `sym`.
    * @pre  hasBodyToInline(sym)
    */
-
-  def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] =
-    inlineInfo(sym).get.removeAccessors
+  def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] = {
+    val inlineAnnotTree = sym.getAnnotation(defn.InlineAnnot).get.tree
+    val inlineInfo = inlineAnnotTree.removeAttachment(InlineInfo).get
+    inlineAnnotTree.putAttachment(InlineBody, inlineInfo.body)
+    inlineInfo.accessors
+  }
 
   /** Try to inline a call to a `@inline` method. Fail with error if the maximal
    *  inline depth is exceeded.

@@ -17,7 +17,7 @@ object Test {
   implicit class intWrapper(private val start: Int) extends AnyVal {
     def until(end: Int) = new Range(start, end)
     def to(limit: Int) = new Range(start, limit + 1)
-  }/*
+  }
 
   def matmul(xs: Array[Array[Double]], ys: Array[Array[Double]]): Array[Array[Double]] = {
     def nrows = xs.length
@@ -34,11 +34,15 @@ object Test {
       }
     zs
   }
-*/
+
   def main(args: Array[String]) = {
-  /*  1.until(10).foreach(i => println(i))
-    1.until(10).foreach(println(_))*/
+    1.until(10).foreach(i => println(i))
+    1.until(10).foreach(println(_))
     1.until(10).foreach(println)
     for (i <- 1 to 10) println(i)
+
+    for (k1 <- 1 to 10)
+      for (k2 <- 1 to 10)
+        println(s"$k1")
   }
 }
