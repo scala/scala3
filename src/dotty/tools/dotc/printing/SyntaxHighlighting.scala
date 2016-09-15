@@ -51,7 +51,7 @@ object SyntaxHighlighting {
   private val typeEnders =
    '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: '\n' :: Nil
 
-  def apply(chars: Iterable[Char]): Vector[Char] = {
+  def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
@@ -281,6 +281,6 @@ object SyntaxHighlighting {
       prev = curr
     }
 
-    newBuf.toVector
+    newBuf.toIterable
   }
 }
