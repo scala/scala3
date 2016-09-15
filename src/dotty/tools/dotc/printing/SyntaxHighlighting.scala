@@ -36,6 +36,7 @@ object SyntaxHighlighting {
   private def typeDef(str: String)    = TypeColor + str + NoColor
   private def literal(str: String)    = LiteralColor + str + NoColor
   private def annotation(str: String) = AnnotationColor + str + NoColor
+  private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
     index <- IF to INLINE // All alpha keywords
@@ -123,7 +124,11 @@ object SyntaxHighlighting {
           case '`'  =>
             appendTo('`', _ == '`', none)
           case _    => {
-            if (n.isUpper && keywordStart)
+            if (n == '?' && remaining.take(2).mkString == "??") {
+              takeChars(2)
+              newBuf append tripleQs
+              prev = '?'
+            } else if (n.isUpper && keywordStart)
               appendWhile(n, !typeEnders.contains(_), typeDef)
             else if (numberStart(n))
               appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
