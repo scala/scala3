@@ -5,9 +5,25 @@ package printing
 import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
+import core.Contexts.Context
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
+
+  implicit class SyntaxFormatting(val sc: StringContext) extends AnyVal {
+    def hl(args: Any*)(implicit ctx: Context): String =
+      new SyntaxFormatter(sc).assemble(args)
+  }
+
+  private class SyntaxFormatter(sc: StringContext) extends Formatting.StringFormatter(sc) {
+    override def assemble(args: Seq[Any])(implicit ctx: Context): String = super.assemble {
+      args.map {
+        case str: String => new String(apply(str).toArray)
+        case x => x
+      }
+    }
+  }
+
   val NoColor         = Console.RESET
   val CommentColor    = Console.GREEN
   val KeywordColor    = Console.CYAN
