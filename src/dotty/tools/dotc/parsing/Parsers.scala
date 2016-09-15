@@ -1009,9 +1009,23 @@ object Parsers {
               in.nextToken()
               expr()
             } else EmptyTree
+
+          handler match {
+            case Block(Nil, EmptyTree) => syntaxError(
+              "`catch` block does not contain a valid expression, try adding a case like - `case e: Exception =>` to the block",
+              handler.pos
+            )
+            case _ =>
+          }
+
           val finalizer =
-            if (handler.isEmpty || in.token == FINALLY) { accept(FINALLY); expr() }
-            else EmptyTree
+            if (in.token == FINALLY) { accept(FINALLY); expr() }
+            else {
+              if (handler.isEmpty)
+                warning("A try without `catch` or `finally` is equivalent to putting its body in a block; no exceptions are handled.")
+
+              EmptyTree
+            }
           ParsedTry(body, handler, finalizer)
         }
       case THROW =>
