@@ -11,17 +11,8 @@ import core.Contexts.Context
 object SyntaxHighlighting {
 
   implicit class SyntaxFormatting(val sc: StringContext) extends AnyVal {
-    def hl(args: Any*)(implicit ctx: Context): String =
-      new SyntaxFormatter(sc).assemble(args)
-  }
-
-  private class SyntaxFormatter(sc: StringContext) extends Formatting.StringFormatter(sc) {
-    override def assemble(args: Seq[Any])(implicit ctx: Context): String = super.assemble {
-      args.map {
-        case str: String => new String(apply(str).toArray)
-        case x => x
-      }
-    }
+    def hl(args: Any*): String =
+      sc.s(args.map(x => new String(apply(x.toString).toArray)): _*)
   }
 
   val NoColor         = Console.RESET
