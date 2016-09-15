@@ -565,10 +565,11 @@ class TreePickler(pickler: TastyPickler) {
     sym.annotations.foreach(pickleAnnotation)
   }
 
-  def pickleAnnotation(ann: Annotation)(implicit ctx: Context) = {
-    writeByte(ANNOTATION)
-    withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
-  }
+  def pickleAnnotation(ann: Annotation)(implicit ctx: Context) =
+    if (ann.symbol != defn.BodyAnnot) { // inline bodies are reconstituted automatically when unpickling
+      writeByte(ANNOTATION)
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
+    }
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))

@@ -138,10 +138,7 @@ final class TreeTypeMap(
 
   def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
 
-  def apply(annot: Annotation): Annotation = {
-    val tree1 = apply(annot.tree)
-    if (tree1 eq annot.tree) annot else ConcreteAnnotation(tree1)
-  }
+  def apply(annot: Annotation): Annotation = annot.derivedAnnotation(apply(annot.tree))
 
   /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =

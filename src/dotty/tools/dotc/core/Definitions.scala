@@ -456,6 +456,8 @@ class Definitions {
   def AliasAnnot(implicit ctx: Context) = AliasAnnotType.symbol.asClass
   lazy val AnnotationDefaultAnnotType = ctx.requiredClassRef("dotty.annotation.internal.AnnotationDefault")
   def AnnotationDefaultAnnot(implicit ctx: Context) = AnnotationDefaultAnnotType.symbol.asClass
+  lazy val BodyAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Body")
+  def BodyAnnot(implicit ctx: Context) = BodyAnnotType.symbol.asClass
   lazy val ChildAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Child")
   def ChildAnnot(implicit ctx: Context) = ChildAnnotType.symbol.asClass
   lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.CovariantBetween")

@@ -42,6 +42,34 @@ object Annotations {
     override def symbol(implicit ctx: Context): Symbol = sym
   }
 
+  /** An annotation indicating the body of a right-hand side,
+   *  typically of an inline method. Treated specially in
+   *  pickling/unpickling and treecopies
+   */
+  abstract class BodyAnnotation extends Annotation {
+    override def symbol(implicit ctx: Context) = defn.BodyAnnot
+    override def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
+      if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
+    override def arguments(implicit ctx: Context) = Nil
+  }
+
+  case class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
+    def tree(implicit ctx: Context) = body
+  }
+
+  case class LazyBodyAnnotation(bodyExpr: Context => Tree) extends BodyAnnotation {
+    private var evaluated = false
+    private var myBody: Tree = _
+    def tree(implicit ctx: Context) = {
+      if (evaluated) assert(myBody != null)
+      else {
+        evaluated = true
+        myBody = bodyExpr(ctx)
+      }
+      myBody
+    }
+  }
+
   object Annotation {
 
     def apply(tree: Tree) = ConcreteAnnotation(tree)

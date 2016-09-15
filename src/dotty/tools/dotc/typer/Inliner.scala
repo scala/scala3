@@ -16,7 +16,7 @@ import Contexts.Context
 import Names.{Name, TermName}
 import NameOps._
 import SymDenotations.SymDenotation
-import Annotations.Annotation
+import Annotations._
 import transform.ExplicitOuter
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
@@ -223,9 +223,6 @@ object Inliner {
   /** A key to be used in an attachment for `@inline` annotations */
   private val InlineInfo = new Property.Key[InlineInfo]
 
-  /** A key to be used in an attachment for `@inline` annotations */
-  private val InlineBody = new Property.Key[Tree]
-
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
 
@@ -240,20 +237,22 @@ object Inliner {
    */
   def registerInlineInfo(
       sym: SymDenotation, treeExpr: Context => Tree, inlineCtxFn: Context => Context)(implicit ctx: Context): Unit = {
-    val inlineAnnotTree = sym.unforcedAnnotation(defn.InlineAnnot).get.tree
-    if (inlineAnnotTree.getAttachment(InlineBody).isEmpty)
+    if (sym.unforcedAnnotation(defn.BodyAnnot).isEmpty) {
+      val inlineAnnotTree = sym.unforcedAnnotation(defn.InlineAnnot).get.tree
       inlineAnnotTree.getAttachment(InlineInfo) match {
         case Some(inlineInfo) if inlineInfo.isEvaluated => // keep existing attachment
         case _ =>
           if (!ctx.isAfterTyper)
           inlineAnnotTree.putAttachment(InlineInfo, new InlineInfo(treeExpr, inlineCtxFn))
       }
+    }
   }
 
   /** Register an evaluated inline body for `sym` */
   def updateInlineBody(sym: SymDenotation, body: Tree)(implicit ctx: Context): Unit = {
-    val inlineAnnot = sym.unforcedAnnotation(defn.InlineAnnot).get
-    assert(inlineAnnot.tree.putAttachment(InlineBody, body).isDefined)
+    assert(sym.unforcedAnnotation(defn.BodyAnnot).isDefined)
+    sym.removeAnnotation(defn.BodyAnnot)
+    sym.addAnnotation(ConcreteBodyAnnotation(body))
   }
 
   /** Optionally, the inline info attached to the `@inline` annotation of `sym`. */
@@ -262,7 +261,7 @@ object Inliner {
 
   /** Optionally, the inline body attached to the `@inline` annotation of `sym`. */
   private def inlineBody(sym: SymDenotation)(implicit ctx: Context): Option[Tree] =
-    sym.getAnnotation(defn.InlineAnnot).get.tree.getAttachment(InlineBody)
+    sym.getAnnotation(defn.BodyAnnot).map(_.tree)
 
     /** Definition is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@inline`, but still lack that body.
@@ -282,7 +281,8 @@ object Inliner {
   def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] = {
     val inlineAnnotTree = sym.getAnnotation(defn.InlineAnnot).get.tree
     val inlineInfo = inlineAnnotTree.removeAttachment(InlineInfo).get
-    inlineAnnotTree.putAttachment(InlineBody, inlineInfo.body)
+    sym.addAnnotation(ConcreteBodyAnnotation(inlineInfo.body))
+    assert(sym.getAnnotation(defn.BodyAnnot).isDefined)
     inlineInfo.accessors
   }
 
