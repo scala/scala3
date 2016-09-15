@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.util.DotClass
-import dotty.tools.dotc.typer.Inliner
 import scala.annotation.tailrec
 import config.Printers.transforms
 import scala.util.control.NonFatal
@@ -1117,7 +1116,7 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val bindings = transformSubTrees(tree.bindings, mutatedInfo, cur)
-            val expansion = transform(tree.expansion, mutatedInfo, cur)(Inliner.inlineContext(tree))
+            val expansion = transform(tree.expansion, mutatedInfo, cur)(inlineContext(tree))
             goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), mutatedInfo.nx.nxTransInlined(cur))
           }
         case tree: TypeTree =>

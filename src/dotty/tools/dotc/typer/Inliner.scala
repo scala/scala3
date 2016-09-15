@@ -21,25 +21,21 @@ import transform.ExplicitOuter
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import util.{Property, SourceFile, NoSource}
 import collection.mutable
 import transform.TypeUtils._
 
 object Inliner {
   import tpd._
 
-  /** A key to be used in a context property that tracks enclosing inlined calls */
-  private val InlinedCalls = new Property.Key[List[Tree]] // to be used in context
-
   /** Adds accessors accessors for all non-public term members accessed
    *  from `tree`. Non-public type members are currently left as they are.
    *  This means that references to a private type will lead to typing failures
    *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
-   *  
+   *
    *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
    *          and all accessors, otherwise the original tree.
    */
-  def makeInlineable(tree: Tree)(implicit ctx: Context) = {
+  private def makeInlineable(tree: Tree)(implicit ctx: Context) = {
 
     /** A tree map which inserts accessors for all non-public term members accessed
      *  from inlined code. Accesors are collected in the `accessors` buffer.
@@ -248,24 +244,6 @@ object Inliner {
         tree.withPos(inlined.call.pos)
     }
     tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
-  }
-
-  /** A context derived form `ctx` that records `call` as innermost enclosing
-   *  call for which the inlined version is currently processed.
-   */
-  def inlineContext(call: Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
-
-  /** All enclosing calls that are currently inlined, from innermost to outermost */
-  def enclosingInlineds(implicit ctx: Context): List[Tree] =
-    ctx.property(InlinedCalls).getOrElse(Nil)
-
-  /** The source file where the symbol of the `@inline` method referred to by `call`
-   *  is defined
-   */
-  def sourceFile(call: Tree)(implicit ctx: Context) = {
-    val file = call.symbol.sourceFile
-    if (file != null && file.exists) new SourceFile(file) else NoSource
   }
 
   /** The qualifier part of a Select, Ident, or SelectFromTypeTree tree.

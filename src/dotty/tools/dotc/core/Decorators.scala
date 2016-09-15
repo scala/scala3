@@ -7,8 +7,7 @@ import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer, printi
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.TreeTransforms._
-import typer.Inliner
-import ast.tpd.Tree
+import ast.tpd._
 import scala.language.implicitConversions
 import printing.Formatting._
 
@@ -153,11 +152,11 @@ object Decorators {
   implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
     def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
       case inlinedCall :: rest =>
-        Inliner.sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
+        sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
       case empty =>
         ctx.source.atPos(pos)
     }
-    recur(Inliner.enclosingInlineds, pos)
+    recur(enclosingInlineds, pos)
   }
 
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {

@@ -949,7 +949,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Inlined = {
     val (exprCtx, bindings1) = typedBlockStats(tree.bindings)
-    val expansion1 = typed(tree.expansion, pt)(Inliner.inlineContext(tree.call)(exprCtx))
+    val expansion1 = typed(tree.expansion, pt)(inlineContext(tree.call)(exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
         bindings1, expansion1)
   }

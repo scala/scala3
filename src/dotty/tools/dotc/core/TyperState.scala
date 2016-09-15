@@ -123,7 +123,7 @@ extends TyperState(r) {
    *  that were temporarily instantiated in the current typer state are permanently
    *  instantiated instead.
    *
-   *  A note on merging: A case is in isApplicableSafe.scala. It turns out that this
+   *  A note on merging: An interesting test case is isApplicableSafe.scala. It turns out that this
    *  requires a context merge using the new `&' operator. Sequence of actions:
    *  1) Typecheck argument in typerstate 1.
    *  2) Cache argument.
