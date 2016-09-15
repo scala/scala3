@@ -299,7 +299,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)) :: Nil, WildcardType, typer)
+    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType, typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *

@@ -21,8 +21,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  case class TypedSplice(tree: tpd.Tree) extends ProxyTree {
+  abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
     def forwardTo = tree
+  }
+
+  object TypedSplice {
+    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice =
+      new TypedSplice(tree)(ctx.owner) {}
   }
 
   /** mods object name impl */
@@ -232,7 +237,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
       case TypedSplice(AppliedTypeTree(tycon, targs)) =>
-        (TypedSplice(tycon), targs map TypedSplice)
+        (TypedSplice(tycon), targs map (TypedSplice(_)))
       case TypedSplice(tpt1: Tree) =>
         val argTypes = tpt1.tpe.argTypes
         val tycon = tpt1.tpe.withoutArgs(argTypes)
@@ -260,7 +265,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
+  def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
   def TypeDef(name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
     if (tparams.isEmpty) TypeDef(name, rhs) else new PolyTypeDef(name, tparams, rhs)

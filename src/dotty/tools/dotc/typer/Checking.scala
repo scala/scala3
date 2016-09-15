@@ -484,7 +484,8 @@ trait Checking {
   def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if isPureExpr(tree) => // ok
-      case _ => ctx.error(em"$what must be a constant expression", tree.pos)
+      case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
+      case _ => ctx.error(em"$what must be a constant expression or a function", tree.pos)
     }
 
   /** Check that class does not define same symbol twice */

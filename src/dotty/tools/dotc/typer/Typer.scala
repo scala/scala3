@@ -513,8 +513,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
         val wrappedUpdate =
           if (targs.isEmpty) rawUpdate
-          else untpd.TypeApply(rawUpdate, targs map untpd.TypedSplice)
-        val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map untpd.TypedSplice) :+ tree.rhs)
+          else untpd.TypeApply(rawUpdate, targs map (untpd.TypedSplice(_)))
+        val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map (untpd.TypedSplice(_))) :+ tree.rhs)
         typed(appliedUpdate, pt)
       case lhs =>
         val lhsCore = typedUnadapted(lhs, AssignProto)
@@ -1357,6 +1357,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
+  def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
+    tree.tree match {
+      case tree1: TypeTree => tree1  // no change owner necessary here ...
+      case tree1: Ident => tree1     // ... or here
+      case tree1 =>
+        if (ctx.owner ne tree.owner) {
+          println(i"changing owner of $tree1 from ${tree.owner} to ${ctx.owner}")
+          tree1.changeOwner(tree.owner, ctx.owner)
+        }
+        else tree1
+    }
+
+
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.PostfixOp(qual, nme.WILDCARD) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
@@ -1456,7 +1469,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Alternative => typedAlternative(tree, pt)
           case tree: untpd.PackageDef => typedPackageDef(tree)
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
-          case tree: untpd.TypedSplice => tree.tree
+          case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree:  untpd.UnApply => typedUnApply(tree, pt)
           case tree @ untpd.PostfixOp(qual, nme.WILDCARD) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
