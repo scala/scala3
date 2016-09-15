@@ -30,6 +30,7 @@ import scala.reflect.internal.util.Collections._
 object JavaParsers {
 
   import ast.untpd._
+  import reporting.ErrorMessages.Syntax._
 
   class JavaParser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
 

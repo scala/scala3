@@ -38,7 +38,7 @@ import NavigateAST._
 import transform.SymUtils._
 import language.implicitConversions
 import printing.SyntaxHighlighting._
-import reporting.ErrorExplanations._
+import reporting.ErrorMessages._
 
 object Typer {
 
@@ -66,6 +66,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   import tpd.{cpy => _, _}
   import untpd.cpy
   import Dynamic.isDynamicMethod
+  import reporting.ErrorMessages.Type._
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been

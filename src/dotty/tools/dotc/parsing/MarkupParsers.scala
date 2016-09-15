@@ -32,6 +32,7 @@ import Utility._
 object MarkupParsers {
 
   import ast.untpd._
+  import reporting.ErrorMessages.Syntax._
 
   case object MissingEndTagControl extends ControlThrowable {
     override def getMessage = "start tag was here: "

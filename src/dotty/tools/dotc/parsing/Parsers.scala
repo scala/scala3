@@ -17,7 +17,7 @@ import ast.Trees._
 import Decorators._
 import StdNames._
 import util.Positions._
-import reporting.ErrorExplanations._
+import reporting.ErrorMessages._
 import Constants._
 import ScriptParsers._
 import Comments._
@@ -28,6 +28,7 @@ import rewrite.Rewrites.patch
 object Parsers {
 
   import ast.untpd._
+  import reporting.ErrorMessages.Syntax._
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 
@@ -98,7 +99,7 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(expl: Explanation, offset: Int = in.offset): Unit =
+    def syntaxError(expl: ErrorMessage, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         syntaxError(expl, Position(offset))
         lastErrorOffset = in.offset
@@ -107,7 +108,7 @@ object Parsers {
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(expl: Explanation, pos: Position): Unit =
+    def syntaxError(expl: ErrorMessage, pos: Position): Unit =
       ctx.explainError(expl, source atPos pos)
 
   }
@@ -214,7 +215,7 @@ object Parsers {
       }
     }
 
-    def warning(msg: Explanation, offset: Int = in.offset) =
+    def warning(msg: ErrorMessage, offset: Int = in.offset) =
       ctx.explainWarning(msg, source atPos Position(offset))
 
     def deprecationWarning(msg: String, offset: Int = in.offset) =
