@@ -65,6 +65,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   import tpd.{cpy => _, _}
   import untpd.cpy
   import Dynamic.isDynamicMethod
+  import reporting.diagnostic.MessageCreator
   import reporting.diagnostic.tpe._
 
   /** A temporary data item valid for a single typed ident:
@@ -98,7 +99,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /** Method is necessary because error messages need to bind to
      *  to typedIdent's context which is lost in nested calls to findRef
      */
-    def error(msg: => String, pos: Position) = ctx.error(msg, pos)
+    def error(msg: => MessageCreator, pos: Position) = ctx.explainError(msg, pos)
 
     /** Is this import a root import that has been shadowed by an explicit
      *  import in the same program?
@@ -330,7 +331,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
       else {
-        error(em"not found: $kind$name", tree.pos)
+        error(new MissingIdent(tree, kind, name), tree.pos)
         ErrorType
       }
 
