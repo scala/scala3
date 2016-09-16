@@ -8,6 +8,7 @@ import core.Contexts._
 import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
+import diagnostic.Message
 
 /**
  * This class implements a Reporter that displays messages on a text
@@ -40,17 +41,17 @@ class ConsoleReporter(
     }
   }
 
-  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
-    case d: Error =>
-      printMessageAndPos(d.message, d.pos, d.kind)
+  override def doReport(m: Message)(implicit ctx: Context): Unit = m match {
+    case m: Error =>
+      printMessageAndPos(m.message, m.pos, m.kind)
       if (ctx.settings.prompt.value) displayPrompt()
-    case d: ConditionalWarning if !d.enablingOption.value =>
-    case d: MigrationWarning =>
-      printMessageAndPos(d.message, d.pos, d.kind)
-    case d: Warning =>
-      printMessageAndPos(d.message, d.pos, d.kind)
+    case m: ConditionalWarning if !m.enablingOption.value =>
+    case m: MigrationWarning =>
+      printMessageAndPos(m.message, m.pos, m.kind)
+    case m: Warning =>
+      printMessageAndPos(m.message, m.pos, m.kind)
     case _ =>
-      printMessageAndPos(d.message, d.pos, d.kind)
+      printMessageAndPos(m.message, m.pos, m.kind)
   }
 
   def displayPrompt(): Unit = {

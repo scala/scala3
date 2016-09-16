@@ -8,7 +8,7 @@ import collection.Map
 import Decorators._
 import scala.annotation.switch
 import scala.util.control.NonFatal
-import reporting.Diagnostic
+import reporting.diagnostic.Message
 
 object Formatting {
 
@@ -75,7 +75,8 @@ object Formatting {
         case _ => true
       }
       val str = super.showArg(arg)
-      if (isSensical(arg)) str else Diagnostic.nonSensicalStartTag + str + Diagnostic.nonSensicalEndTag
+      if (isSensical(arg)) str
+      else Message.nonSensicalStartTag + str + Message.nonSensicalEndTag
     }
   }
 

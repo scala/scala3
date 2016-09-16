@@ -13,36 +13,47 @@ import java.lang.System.currentTimeMillis
 import core.Mode
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 import dotty.tools.dotc.core.Symbols.Symbol
+import diagnostic.Message
 import ErrorMessages._
 
 object Reporter {
-  class Error(msgFn: => String, pos: SourcePosition, kind: String = "Error") extends Diagnostic(msgFn, pos, ERROR, kind)
-  class Warning(msgFn: => String, pos: SourcePosition, kind: String = "Warning") extends Diagnostic(msgFn, pos, WARNING, kind)
-  class Info(msgFn: => String, pos: SourcePosition, kind: String = "Info") extends Diagnostic(msgFn, pos, INFO, kind)
+  class Error(msgFn: => String, pos: SourcePosition, kind: String = "Error")
+  extends Message(msgFn, pos, ERROR, kind)
 
-  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition, kind: String) extends Warning(msgFn, pos, kind) {
+  class Warning(msgFn: => String, pos: SourcePosition, kind: String = "Warning")
+  extends Message(msgFn, pos, WARNING, kind)
+
+  class Info(msgFn: => String, pos: SourcePosition, kind: String = "Info")
+  extends Message(msgFn, pos, INFO, kind)
+
+  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition, kind: String)
+  extends Warning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context): Setting[Boolean]
   }
-  class FeatureWarning(msgFn: => String, pos: SourcePosition, kind: String = "Feature Warning") extends ConditionalWarning(msgFn, pos, kind) {
+  class FeatureWarning(msgFn: => String, pos: SourcePosition, kind: String = "Feature Warning")
+  extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.feature
   }
-  class UncheckedWarning(msgFn: => String, pos: SourcePosition, kind: String = "Unchecked Warning") extends ConditionalWarning(msgFn, pos, kind) {
+  class UncheckedWarning(msgFn: => String, pos: SourcePosition, kind: String = "Unchecked Warning")
+  extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
   }
-  class DeprecationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Deprecation Warning") extends ConditionalWarning(msgFn, pos, kind) {
+  class DeprecationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Deprecation Warning")
+  extends ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
   }
-  class MigrationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Migration Warning") extends ConditionalWarning(msgFn, pos, kind) {
+  class MigrationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Migration Warning") extends
+  ConditionalWarning(msgFn, pos, kind) {
     def enablingOption(implicit ctx: Context) = ctx.settings.migration
   }
 
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
-        case d: ConditionalWarning if !d.enablingOption.value =>
+      override def doReport(m: Message)(implicit ctx: Context): Unit = m match {
+        case m: ConditionalWarning if !m.enablingOption.value =>
         case _ =>
-          simple.report(d)
+          simple.report(m)
       }
     }
 }
@@ -211,7 +222,7 @@ trait Reporting { this: Context =>
 abstract class Reporter extends interfaces.ReporterResult {
 
   /** Report a diagnostic */
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit
+  def doReport(d: Message)(implicit ctx: Context): Unit
 
   /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -226,7 +237,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally _truncationOK = saved
   }
 
-  type ErrorHandler = Diagnostic => Context => Unit
+  type ErrorHandler = Message => Context => Unit
   private var incompleteHandler: ErrorHandler = d => c => report(d)(c)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
@@ -255,7 +266,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     override def default(key: String) = 0
   }
 
-  def report(d: Diagnostic)(implicit ctx: Context): Unit =
+  def report(d: Message)(implicit ctx: Context): Unit =
     if (!isHidden(d)) {
       doReport(d)(ctx.addMode(Mode.Printing))
       d match {
@@ -269,7 +280,7 @@ abstract class Reporter extends interfaces.ReporterResult {
       }
     }
 
-  def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
+  def incomplete(d: Message)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
 
 
@@ -302,7 +313,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
+  def isHidden(m: Message)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
   def hasPending: Boolean = false

@@ -8,7 +8,6 @@ import Trees._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Applications._, Implicits._, Flags._
 import util.Positions._
-import reporting.Diagnostic
 import printing.{Showable, RefinedPrinter}
 import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement

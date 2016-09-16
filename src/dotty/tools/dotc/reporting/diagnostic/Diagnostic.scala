@@ -1,19 +1,20 @@
 package dotty.tools
 package dotc
 package reporting
+package diagnostic
 
 import util.SourcePosition
 
 import java.util.Optional
 
-object Diagnostic {
+object Message {
   val nonSensicalStartTag = "<nonsensical>"
   val nonSensicalEndTag = "</nonsensical>"
 }
 
-class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int, val kind: String)
-    extends Exception with interfaces.Diagnostic {
-  import Diagnostic._
+class Message(msgFn: => String, val pos: SourcePosition, val level: Int, val kind: String)
+extends Exception with interfaces.Diagnostic {
+  import Message._
   private var myMsg: String = null
   private var myIsNonSensical: Boolean = false
 

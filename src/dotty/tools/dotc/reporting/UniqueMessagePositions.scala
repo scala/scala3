@@ -5,6 +5,7 @@ package reporting
 import scala.collection.mutable
 import util.{SourcePosition, SourceFile}
 import core.Contexts.Context
+import diagnostic.Message
 
 /**
  * This trait implements `isHidden` so that multiple messages per position
@@ -17,12 +18,12 @@ trait UniqueMessagePositions extends Reporter {
   /** Logs a position and returns true if it was already logged.
    *  @note  Two positions are considered identical for logging if they have the same point.
    */
-  override def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean =
-    super.isHidden(d) || {
-      d.pos.exists && {
-        positions get (ctx.source, d.pos.point) match {
-          case Some(level) if level >= d.level => true
-          case _ => positions((ctx.source, d.pos.point)) = d.level; false
+  override def isHidden(m: Message)(implicit ctx: Context): Boolean =
+    super.isHidden(m) || {
+      m.pos.exists && {
+        positions get (ctx.source, m.pos.point) match {
+          case Some(level) if level >= m.level => true
+          case _ => positions((ctx.source, m.pos.point)) = m.level; false
         }
       }
     }
