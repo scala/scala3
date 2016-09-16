@@ -64,6 +64,7 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
             myExcluded += name
           case Pair(Ident(from: TermName), Ident(to: TermName)) =>
             myMapped = myMapped.updated(to, from)
+            myExcluded += from
             myOriginals += from
           case Ident(nme.WILDCARD) =>
             myWildcardImport = true

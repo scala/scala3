@@ -72,6 +72,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+  /** Temporary data item for single call to typed ident:
+   *  This symbol would be found under Scala2 mode, but is not
+   *  in dotty (because dotty conforms to spec section 2
+   *  wrt to package member resolution but scalac doe not).
+   */
+  private var foundUnderScala2: Type = NoType
+
   def newLikeThis: Typer = new Typer
 
   /** Attribute an identifier consisting of a simple name or wildcard
@@ -133,14 +140,20 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *      imported by <tree>
        *  or  defined in <symbol>
        */
-      def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
+      def bindingString(prec: Int, whereFound: Context, qualifier: String = "")(implicit ctx: Context) =
         if (prec == wildImport || prec == namedImport) ex"imported$qualifier by ${whereFound.importInfo}"
         else ex"defined$qualifier in ${whereFound.owner}"
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
+       *  @param found     The newly found result
+       *  @param newPrec   Its precedence
+       *  @param scala2pkg Special mode where we check members of the same package, but defined
+       *                   in different compilation units under Scala2. If set, and the
+       *                   previous and new contexts do not have the same scope, we select
+       *                   the previous (inner) definition. This models what scalac does.
        */
-      def checkNewOrShadowed(found: Type, newPrec: Int): Type =
+      def checkNewOrShadowed(found: Type, newPrec: Int, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
         if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
         else if ((prevCtx.scope eq ctx.scope) &&
                  (newPrec == definition ||
@@ -150,7 +163,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           found
         }
         else {
-          if (!previous.isError && !found.isError) {
+          if (!scala2pkg && !previous.isError && !found.isError) {
             error(
               ex"""reference to $name is ambiguous;
                   |it is both ${bindingString(newPrec, ctx, "")}
@@ -163,7 +176,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
-      def namedImportRef(site: Type, selectors: List[untpd.Tree]): Type = {
+      def namedImportRef(site: Type, selectors: List[untpd.Tree])(implicit ctx: Context): Type = {
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && found.exists && (found != other))
@@ -190,7 +203,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** The type representing a wildcard import with enclosing name when imported
        *  from given import info
        */
-      def wildImportRef(imp: ImportInfo): Type = {
+      def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
         if (imp.isWildcardImport) {
           val pre = imp.site
           if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName) && name != nme.CONSTRUCTOR) {
@@ -204,54 +217,71 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** Is (some alternative of) the given predenotation `denot`
        *  defined in current compilation unit?
        */
-      def isDefinedInCurrentUnit(denot: Denotation): Boolean = denot match {
+      def isDefinedInCurrentUnit(denot: Denotation)(implicit ctx: Context): Boolean = denot match {
         case MultiDenotation(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
         case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source.file
       }
 
       /** Is `denot` the denotation of a self symbol? */
-      def isSelfDenot(denot: Denotation) = denot match {
+      def isSelfDenot(denot: Denotation)(implicit ctx: Context) = denot match {
         case denot: SymDenotation => denot is SelfName
         case _ => false
       }
 
-      // begin findRef
-      if (ctx.scope == null) previous
-      else {
-        val outer = ctx.outer
-        if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
-          val defDenot = ctx.denotNamed(name)
-          if (qualifies(defDenot)) {
-            val curOwner = ctx.owner
-            val found =
-              if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
-              else curOwner.thisType.select(name, defDenot)
-            if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenot))
-              return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
-            else if (defDenot.symbol is Package)
-              return checkNewOrShadowed(previous orElse found, packageClause)
-            else if (prevPrec < packageClause)
-              return findRef(found, packageClause, ctx)(outer)
+      /** Would import of kind `prec` be not shadowed by a nested higher-precedence definition? */
+      def isPossibleImport(prec: Int)(implicit ctx: Context) =
+        prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope)
+
+      @tailrec def loop(implicit ctx: Context): Type = {
+        if (ctx.scope == null) previous
+        else {
+          val outer = ctx.outer
+          var result: Type = NoType
+
+          // find definition
+          if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
+            val defDenot = ctx.denotNamed(name)
+            if (qualifies(defDenot)) {
+              val curOwner = ctx.owner
+              val found =
+                if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
+                else curOwner.thisType.select(name, defDenot)
+              if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenot))
+                result = checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
+              else {
+                if (ctx.scala2Mode && !foundUnderScala2.exists)
+                  foundUnderScala2 = checkNewOrShadowed(found, definition, scala2pkg = true)
+                if (defDenot.symbol is Package)
+                  result = checkNewOrShadowed(previous orElse found, packageClause)
+                else if (prevPrec < packageClause)
+                  result = findRef(found, packageClause, ctx)(outer)
+              }
+            }
+          }
+
+          if (result.exists) result
+          else {  // find import
+            val curImport = ctx.importInfo
+            if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
+              previous // no more conflicts possible in this case
+            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
+              val namedImp = namedImportRef(curImport.site, curImport.selectors)
+              if (namedImp.exists)
+                findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
+              else if (isPossibleImport(wildImport)) {
+                val wildImp = wildImportRef(curImport)
+                if (wildImp.exists)
+                  findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
+                else loop(outer)
+              }
+              else loop(outer)
+            }
+            else loop(outer)
           }
         }
-        val curImport = ctx.importInfo
-        if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
-          return previous // no more conflicts possible in this case
-        // would import of kind `prec` be not shadowed by a nested higher-precedence definition?
-        def isPossibleImport(prec: Int) =
-          prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope)
-        if (isPossibleImport(namedImport) && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
-          val namedImp = namedImportRef(curImport.site, curImport.selectors)
-          if (namedImp.exists)
-            return findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
-          if (isPossibleImport(wildImport)) {
-            val wildImp = wildImportRef(curImport)
-            if (wildImp.exists)
-              return findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
-          }
-        }
-        findRef(previous, prevPrec, prevCtx)(outer)
       }
+
+      loop
     }
 
     // begin typedIdent
@@ -264,12 +294,28 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         return typed(desugar.patternVar(tree), pt)
     }
 
-    val saved = importedFromRoot
-    importedFromRoot = Set.empty
 
-    val rawType =
-      try findRef(NoType, BindingPrec.nothingBound, NoContext)
-      finally importedFromRoot = saved
+    val rawType = {
+      val saved1 = importedFromRoot
+      val saved2 = foundUnderScala2
+      importedFromRoot = Set.empty
+      foundUnderScala2 = NoType
+      try {
+        var found = findRef(NoType, BindingPrec.nothingBound, NoContext)
+        if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
+          ctx.migrationWarning(
+            ex"""Name resolution will change.
+              | currently selected                     : $foundUnderScala2
+              | in the future, without -language:Scala2: $found""", tree.pos)
+          found = foundUnderScala2
+        }
+        found
+      }
+      finally {
+      	importedFromRoot = saved1
+      	foundUnderScala2 = saved2
+      }
+    }
 
     val ownType =
       if (rawType.exists)
