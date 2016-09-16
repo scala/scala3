@@ -9,7 +9,7 @@ import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 
-object basic {
+object messages {
 
   class Error(
     msgFn: => String,

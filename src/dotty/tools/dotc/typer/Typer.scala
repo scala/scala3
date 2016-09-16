@@ -38,7 +38,6 @@ import NavigateAST._
 import transform.SymUtils._
 import language.implicitConversions
 import printing.SyntaxHighlighting._
-import reporting.ErrorMessages._
 
 object Typer {
 
@@ -66,7 +65,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   import tpd.{cpy => _, _}
   import untpd.cpy
   import Dynamic.isDynamicMethod
-  import reporting.ErrorMessages.Type._
+  import reporting.diagnostic.tpe._
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -848,7 +847,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         super.transform(trt.withType(elimWildcardSym(trt.tpe))) match {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.explainError(DuplicateBind(b, tree), b.pos)
+            else ctx.explainError(new DuplicateBind(b, tree), b.pos)
             b.symbol.info = elimWildcardSym(b.symbol.info)
             b
           case t => t

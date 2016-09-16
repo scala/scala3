@@ -10,9 +10,9 @@ import config.Printers
 import java.lang.System.currentTimeMillis
 import core.Mode
 import dotty.tools.dotc.core.Symbols.Symbol
-import diagnostic.Message
-import ErrorMessages._
-import diagnostic.basic._
+import diagnostic.messages._
+import diagnostic._
+import MessageCreator._
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -75,10 +75,10 @@ trait Reporting { this: Context =>
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Warning(msg, pos))
 
-  def explainWarning(err: => ErrorMessage, pos: SourcePosition = NoSourcePosition): Unit = {
-    reporter.report(new Warning(err.msg, pos, s"${err.kind} warning"))
-    if (this.shouldExplain(err))
-      reporter.report(new Info(err.explanation, NoSourcePosition))
+  def explainWarning(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit = {
+    reporter.report(msg.warning(pos))
+    if (this.shouldExplain(msg))
+      reporter.report(new Info(msg.explanation, NoSourcePosition))
   }
 
   def strictWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
@@ -90,10 +90,10 @@ trait Reporting { this: Context =>
     reporter.report(new Error(msg, pos))
   }
 
-  def explainError(err: => ErrorMessage, pos: SourcePosition = NoSourcePosition): Unit = {
-    reporter.report(new Error(err.msg, pos, s"${err.kind} error"))
-    if (this.shouldExplain(err))
-      reporter.report(new Info(err.explanation, NoSourcePosition))
+  def explainError(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit = {
+    reporter.report(msg.error(pos))
+    if (this.shouldExplain(msg))
+      reporter.report(new Info(msg.explanation, NoSourcePosition))
   }
 
   def errorOrMigrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =

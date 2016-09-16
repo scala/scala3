@@ -4,6 +4,7 @@ package reporting
 package diagnostic
 
 import util.SourcePosition
+import core.Contexts.Context
 
 import java.util.Optional
 
@@ -54,10 +55,4 @@ class Message(
 
   override def toString = s"$getClass at $pos: $message"
   override def getMessage() = message
-}
-
-object NoExplanation {
-  def unapply(m: Message): Option[Message] =
-    if (m.explanation == "") Some(m)
-    else None
 }
