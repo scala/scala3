@@ -1,8 +1,4 @@
-
-
-
-
-
+import scala.language.dynamics
 
 object dynamicObject extends Dynamic {
   def applyDynamic(m: String)() = println("obj: " + m);
@@ -38,7 +34,7 @@ object dynamicMixin extends dynamicAbstractClass with dynamicTrait {
 
 object Test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]) = {
     val cls = new dynamicClass
     dynamicMixin
   }

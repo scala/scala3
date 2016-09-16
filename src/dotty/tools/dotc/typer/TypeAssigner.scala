@@ -168,7 +168,9 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(tpe.shadowed.withDenot(d2), false)
-          else {
+          else if (pre.derivesFrom(defn.DynamicClass)) {
+            TryDynamicCallType
+          } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             val what = alts match {
               case Nil =>

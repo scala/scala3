@@ -23,7 +23,16 @@ class Baz extends scala.Dynamic {
   def updateDynamic(name: String)(value: String): String = "updateDynamic(" + name + ")(" + value + ")"
 }
 
+class Qux extends scala.Dynamic {
+  def selectDynamic[T](name: String): String = "selectDynamic(" + name + ")"
+  def applyDynamic[T](name: String)(args: String*): String = "applyDynamic(" + name + ")" + args.mkString("(", ", ", ")")
+  def applyDynamicNamed[T](name: String)(args: (String, Any)*): String = "applyDynamicNamed(" + name + ")" + args.mkString("(", ", ", ")")
+  def updateDynamic[T](name: String)(value: T): String = "updateDynamic(" + name + ")(" + value + ")"
+}
+
 object Test {
+  val qux = new Qux
+
   implicit class StringUpdater(str: String) {
     def update(name: String, v: String) = s"$str.update(" + name + ", " + v + ")"
   }
@@ -42,6 +51,7 @@ object Test {
     runFooTests2()
     runBarTests()
     runBazTests()
+    runQuxTests()
     assert(!failed)
   }
 
@@ -160,5 +170,36 @@ object Test {
     assertEquals("selectDynamic(bazSelectUpdate).update(key, 10)", baz.bazSelectUpdate("key") = 10)
     assertEquals("selectDynamic(bazSelectUpdate).update(7, value)", baz.bazSelectUpdate(7) = "value")
     assertEquals("selectDynamic(bazSelectUpdate).update(7, 10)", baz.bazSelectUpdate(7) = 10)
+  }
+
+  /** Test correct lifting of type parameters */
+  def runQuxTests() = {
+    implicit def intToString(n: Int): String = n.toString
+
+    val qux = new Qux
+
+    assertEquals("selectDynamic(quxSelect)", qux.quxSelect)
+    assertEquals("selectDynamic(quxSelect)", qux.quxSelect[Int])
+
+    assertEquals("applyDynamic(quxApply)()", qux.quxApply())
+    assertEquals("applyDynamic(quxApply)()", qux.quxApply[Int]())
+    assertEquals("applyDynamic(quxApply)(1)", qux.quxApply(1))
+    assertEquals("applyDynamic(quxApply)(1)", qux.quxApply[Int](1))
+    assertEquals("applyDynamic(quxApply)(1, 2, 3)", qux.quxApply(1, 2, 3))
+    assertEquals("applyDynamic(quxApply)(1, 2, 3)", qux.quxApply[Int](1, 2, 3))
+    assertEquals("applyDynamic(quxApply)(1, 2, a)", qux.quxApply(1, 2, "a"))
+    assertEquals("applyDynamic(quxApply)(1, 2, a)", qux.quxApply[Int](1, 2, "a"))
+
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1))", qux.quxApplyNamed(a = 1))
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1))", qux.quxApplyNamed[Int](a = 1))
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1), (b,2))", qux.quxApplyNamed(a = 1, b = "2"))
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1), (b,2))", qux.quxApplyNamed[Int](a = 1, b = "2"))
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1), (,abc))", qux.quxApplyNamed(a = 1, "abc"))
+    assertEquals("applyDynamicNamed(quxApplyNamed)((a,1), (,abc))", qux.quxApplyNamed[Int](a = 1, "abc"))
+
+    assertEquals("updateDynamic(quxUpdate)(abc)", qux.quxUpdate = "abc")
+
+    assertEquals("selectDynamic(quxSelectUpdate).update(key, value)", qux.quxSelectUpdate("key") = "value")
+    assertEquals("selectDynamic(quxSelectUpdate).update(key, value)", qux.quxSelectUpdate[Int]("key") = "value")
   }
 }

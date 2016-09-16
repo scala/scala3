@@ -1,3 +1,4 @@
+import scala.language.dynamics
 object Test extends dotty.runtime.LegacyApp {
   object stubUpdate {
     def update(as: Any*) = println(".update"+as.toList.mkString("(",", ", ")"))
