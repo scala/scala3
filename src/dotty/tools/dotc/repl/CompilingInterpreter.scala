@@ -16,7 +16,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, ArrayBuffer}
 //import ast.parser.SyntaxAnalyzer
 import io.{PlainFile, VirtualDirectory}
 import scala.reflect.io.{PlainDirectory, Directory}
-import reporting.{FancyConsoleReporter, Reporter}
+import reporting.{ConsoleReporter, FancyConsoleReporter, Reporter}
 import core.Flags
 import util.{SourceFile, NameTransformer}
 import io.ClassPath
@@ -117,22 +117,30 @@ class CompilingInterpreter(
     }
   }
 
-  private def newReporter = new FancyConsoleReporter(Console.in, out) {
-    override def printMessage(msg: String) = {
-      if (!delayOutput) {
-        out.print(/*clean*/(msg) + "\n")
-          // Suppress clean for now for compiler messages
-          // Otherwise we will completely delete all references to
-          // line$object$ module classes. The previous interpreter did not
-          // have the project because the module class was written without the final `$'
-          // and therefore escaped the purge. We can turn this back on once
-          // we drop the final `$' from module classes.
-        out.flush()
-      } else {
-        previousOutput += (/*clean*/(msg) + "\n")
-      }
+  private def customPrintMessage(msg: String) = {
+    if (!delayOutput) {
+      out.print(/*clean*/(msg) + "\n")
+        // Suppress clean for now for compiler messages
+        // Otherwise we will completely delete all references to
+        // line$object$ module classes. The previous interpreter did not
+        // have the project because the module class was written without the final `$'
+        // and therefore escaped the purge. We can turn this back on once
+        // we drop the final `$' from module classes.
+      out.flush()
+    } else {
+      previousOutput += (/*clean*/(msg) + "\n")
     }
   }
+
+  private def newReporter(implicit ctx: Context) =
+    if (ctx.settings.color.value == "never")
+      new ConsoleReporter(Console.in, out) {
+        override def printMessage(msg: String) = customPrintMessage(msg)
+      }
+    else
+      new FancyConsoleReporter(Console.in, out) {
+        override def printMessage(msg: String) = customPrintMessage(msg)
+      }
 
   /** the previous requests this interpreter has processed */
   private val prevRequests = new ArrayBuffer[Request]()

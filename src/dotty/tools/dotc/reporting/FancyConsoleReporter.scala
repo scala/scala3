@@ -11,18 +11,15 @@ import scala.reflect.internal.util._
 import printing.SyntaxHighlighting._
 
 /**
- * This class implements a Reporter that displays messages on a text
- * console.
+ * This class implements a more Fancy version (with colors!) of the regular
+ * `ConsoleReporter`
  */
 class FancyConsoleReporter(
-    reader: BufferedReader = Console.in,
-    writer: PrintWriter = new PrintWriter(Console.err, true))
-  extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {
+  reader: BufferedReader = Console.in,
+  writer: PrintWriter = new PrintWriter(Console.err, true)
+) extends ConsoleReporter(reader, writer) {
 
-  /** maximal number of error messages to be printed */
-  protected def ErrorLimit = 100
-
-  def sourceLine(pos: SourcePosition): (String, Int) = {
+  def sourceLine(pos: SourcePosition)(implicit ctx: Context): (String, Int) = {
     val lineNum = s"${pos.line}:"
     (lineNum + hl"${pos.lineContent.stripLineEnd}", lineNum.length)
   }
@@ -74,11 +71,8 @@ class FancyConsoleReporter(
     }
     else ""
 
-  /** Prints the message. */
-  def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
-
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
+  override def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
     printMessage(posStr(pos, kind))
     if (pos.exists) {
       val (src, offset) = sourceLine(pos)
@@ -88,34 +82,4 @@ class FancyConsoleReporter(
       printMessage(List(src, marker, err).mkString("\n"))
     } else printMessage(msg)
   }
-
-  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
-    case d: Error =>
-      printMessageAndPos(d.message, d.pos, d.kind)
-      if (ctx.settings.prompt.value) displayPrompt()
-    case d: ConditionalWarning if !d.enablingOption.value =>
-    case d: MigrationWarning =>
-      printMessageAndPos(d.message, d.pos, d.kind)
-    case d: Warning =>
-      printMessageAndPos(d.message, d.pos, d.kind)
-    case _ =>
-      printMessageAndPos(d.message, d.pos)
-  }
-
-  def displayPrompt(): Unit = {
-    writer.print("\na)bort, s)tack, r)esume: ")
-    writer.flush()
-    if (reader != null) {
-      val response = reader.read().asInstanceOf[Char].toLower
-      if (response == 'a' || response == 's') {
-        Thread.dumpStack()
-        if (response == 'a')
-          sys.exit(1)
-      }
-      writer.print("\n")
-      writer.flush()
-    }
-  }
-
-  override def flush()(implicit ctx: Context): Unit = { writer.flush() }
 }
