@@ -140,10 +140,6 @@ class Compiler {
       .setTyper(new Typer)
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
-      .setReporter(
-        if (ctx.settings.color.value == "never") new ConsoleReporter()
-        else new FancyConsoleReporter()
-      )
     ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))

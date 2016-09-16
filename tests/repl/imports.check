@@ -7,14 +7,14 @@ defined module o
 scala> import o._
 import o._
 scala> buf += xs
-<console>:11: error: type mismatch:
- found   : scala.collection.immutable.List[Int](o.xs)
- required: String
+<console>:11: Error: type mismatch:
+found:    scala.collection.immutable.List[Int](o.xs)
+required: String
 buf += xs
        ^
-<console>:11: error: type mismatch:
- found   : String
- required: scala.collection.mutable.ListBuffer[Int]
+<console>:11: Error: type mismatch:
+found:    String
+required: scala.collection.mutable.ListBuffer[Int]
 buf += xs
 ^
 scala> buf ++= xs

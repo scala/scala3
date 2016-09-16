@@ -5,6 +5,7 @@ import dotty.partest.DPConfig
 import dotty.tools.dotc.{Main, Bench, Driver}
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting._
+import diagnostic.Message
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io.PlainFile
@@ -237,13 +238,13 @@ abstract class CompilerTest {
     val storeReporter = new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
       private val consoleReporter = new ConsoleReporter()
       private val innerStoreReporter = new StoreReporter(consoleReporter)
-      def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
-        if (d.level == ERROR) {
+      def doReport(m: Message)(implicit ctx: Context): Unit = {
+        if (m.level == ERROR) {
           innerStoreReporter.flush()
-          consoleReporter.doReport(d)
+          consoleReporter.doReport(m)
         }
-        else if (errorCount > 0) consoleReporter.doReport(d)
-        else innerStoreReporter.doReport(d)
+        else if (errorCount > 0) consoleReporter.doReport(m)
+        else innerStoreReporter.doReport(m)
       }
     }
     val reporter = processor.process(allArgs, storeReporter)

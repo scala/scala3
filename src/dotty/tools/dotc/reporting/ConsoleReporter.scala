@@ -37,7 +37,7 @@ class ConsoleReporter(
   /** Prints the message with the given position indication. */
   def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
     val posStr = if (pos.exists) s"$pos: " else ""
-    printMessage(posStr + kind + msg)
+    printMessage(s"${posStr}$kind: $msg")
     if (pos.exists) {
       printSourceLine(pos)
       printColumnMarker(pos)

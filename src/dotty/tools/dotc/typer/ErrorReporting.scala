@@ -131,9 +131,9 @@ object ErrorReporting {
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
-      ex"""type mismatch:
-          | found   : $found1
-          | required: $expected1""" + whyNoMatchStr(found, expected)
+      ex"""|type mismatch:
+           |found:    $found1
+           |required: $expected1""".stripMargin + whyNoMatchStr(found, expected)
     }
 
     /** Format `raw` implicitNotFound argument, replacing all

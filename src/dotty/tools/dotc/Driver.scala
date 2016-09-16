@@ -22,7 +22,11 @@ abstract class Driver extends DotClass {
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty)
       try {
-        val run = compiler.newRun
+        val fresh = ctx.fresh.setReporter {
+          if (ctx.settings.color.value == "never") new ConsoleReporter()
+          else new FancyConsoleReporter()
+        }
+        val run = compiler.newRun(fresh)
         run.compile(fileNames)
         run.printSummary()
       }

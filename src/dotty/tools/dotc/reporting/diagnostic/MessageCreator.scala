@@ -7,7 +7,7 @@ import util.{SourcePosition, NoSourcePosition}
 import core.Contexts.Context
 
 object MessageCreator {
-  implicit def toNoExplanation(str: String) =
+  implicit def toNoExplanation(str: String): MessageCreator =
     new NoExplanation(str)
 }
 

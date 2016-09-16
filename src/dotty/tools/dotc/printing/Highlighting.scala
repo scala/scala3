@@ -6,33 +6,38 @@ import scala.collection.mutable
 
 object Highlighting {
 
-  implicit def colorToString(c: Color): String = c.toString
-  implicit def cbufToString(cb: ColorBuffer): String = cb.toString
+  implicit def highlightToString(h: Highlight): String = h.toString
+  implicit def hbufToString(hb: HighlightBuffer): String = hb.toString
 
-  abstract class Color(private val color: String) {
+  abstract class Highlight(private val highlight: String) {
     def text: String
 
-    override def toString = color + text + Console.RESET
+    override def toString = highlight + text + Console.RESET
 
-    def +(other: Color): ColorBuffer =
-      new ColorBuffer(this) + other
+    def +(other: Highlight): HighlightBuffer =
+      new HighlightBuffer(this) + other
 
-    def +(other: String): ColorBuffer =
-      new ColorBuffer(this) + other
+    def +(other: String): HighlightBuffer =
+      new HighlightBuffer(this) + other
   }
 
-  case class ColorBuffer(color: Color) {
+  abstract class Modifier(private val mod: String, text: String) extends Highlight(Console.RESET) {
+    override def toString =
+      mod + super.toString
+  }
+
+  case class HighlightBuffer(hl: Highlight) {
     val buffer = new mutable.ListBuffer[String]
 
-    buffer += color.toString
+    buffer += hl.toString
 
-    def +(color: Color): ColorBuffer = {
-      buffer += color.toString
+    def +(other: Highlight): HighlightBuffer = {
+      buffer += other.toString
       this
     }
 
-    def +(str: String): ColorBuffer = {
-      buffer += str
+    def +(other: String): HighlightBuffer = {
+      buffer += other
       this
     }
 
@@ -40,21 +45,24 @@ object Highlighting {
       buffer.mkString
   }
 
-  case class Red(text: String) extends Color(Console.RED)
-  case class Blue(text: String) extends Color(Console.BLUE)
-  case class Cyan(text: String) extends Color(Console.CYAN)
-  case class Black(text: String) extends Color(Console.BLACK)
-  case class Green(text: String) extends Color(Console.GREEN)
-  case class White(text: String) extends Color(Console.WHITE)
-  case class Yellow(text: String) extends Color(Console.YELLOW)
-  case class Magenta(text: String) extends Color(Console.MAGENTA)
+  case class Red(text: String) extends Highlight(Console.RED)
+  case class Blue(text: String) extends Highlight(Console.BLUE)
+  case class Cyan(text: String) extends Highlight(Console.CYAN)
+  case class Black(text: String) extends Highlight(Console.BLACK)
+  case class Green(text: String) extends Highlight(Console.GREEN)
+  case class White(text: String) extends Highlight(Console.WHITE)
+  case class Yellow(text: String) extends Highlight(Console.YELLOW)
+  case class Magenta(text: String) extends Highlight(Console.MAGENTA)
 
-  case class RedB(text: String) extends Color(Console.RED_B)
-  case class BlueB(text: String) extends Color(Console.BLUE_B)
-  case class CyanB(text: String) extends Color(Console.CYAN_B)
-  case class BlackB(text: String) extends Color(Console.BLACK_B)
-  case class GreenB(text: String) extends Color(Console.GREEN_B)
-  case class WhiteB(text: String) extends Color(Console.WHITE_B)
-  case class YellowB(text: String) extends Color(Console.YELLOW_B)
-  case class MagentaB(text: String) extends Color(Console.MAGENTA_B)
+  case class RedB(text: String) extends Highlight(Console.RED_B)
+  case class BlueB(text: String) extends Highlight(Console.BLUE_B)
+  case class CyanB(text: String) extends Highlight(Console.CYAN_B)
+  case class BlackB(text: String) extends Highlight(Console.BLACK_B)
+  case class GreenB(text: String) extends Highlight(Console.GREEN_B)
+  case class WhiteB(text: String) extends Highlight(Console.WHITE_B)
+  case class YellowB(text: String) extends Highlight(Console.YELLOW_B)
+  case class MagentaB(text: String) extends Highlight(Console.MAGENTA_B)
+
+  case class Bold(text: String) extends Modifier(Console.BOLD, text)
+  case class Underlined(text: String) extends Modifier(Console.UNDERLINED, text)
 }
