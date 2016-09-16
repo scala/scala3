@@ -12,7 +12,7 @@ object SyntaxHighlighting {
 
   implicit class SyntaxFormatting(val sc: StringContext) extends AnyVal {
     def hl(args: Any*)(implicit ctx: Context): String =
-      if (ctx.settings.color.value == "never") sc.s(args)
+      if (ctx.settings.color.value == "never") sc.s(args: _*)
       else sc.s(args.map(x => new String(apply(x.toString).toArray)): _*)
   }
 

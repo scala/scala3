@@ -7,6 +7,7 @@ import collection.mutable
 import Reporter.{Error, Warning}
 import config.Printers.typr
 import diagnostic.Message
+import diagnostic.basic._
 
 /**
  * This class implements a Reporter that stores all messages

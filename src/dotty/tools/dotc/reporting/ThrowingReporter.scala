@@ -5,6 +5,7 @@ package reporting
 import core.Contexts.Context
 import collection.mutable
 import diagnostic.Message
+import diagnostic.basic.Error
 import Reporter._
 
 /**

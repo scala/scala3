@@ -9,6 +9,7 @@ import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 import diagnostic.Message
+import diagnostic.basic._
 
 /**
  * This class implements a Reporter that displays messages on a text

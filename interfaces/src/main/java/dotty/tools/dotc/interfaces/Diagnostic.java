@@ -20,6 +20,9 @@ public interface Diagnostic {
   /** @return The message to report */
   String message();
 
+  /** @return The explanation behind the message */
+  String explanation();
+
   /** @return Level of the diagnostic, can be either ERROR, WARNING or INFO */
   int level();
 

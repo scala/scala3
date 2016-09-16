@@ -4,49 +4,17 @@ package reporting
 
 import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
-import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
-import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
 import core.Mode
-import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 import dotty.tools.dotc.core.Symbols.Symbol
 import diagnostic.Message
 import ErrorMessages._
+import diagnostic.basic._
 
 object Reporter {
-  class Error(msgFn: => String, pos: SourcePosition, kind: String = "Error")
-  extends Message(msgFn, pos, ERROR, kind)
-
-  class Warning(msgFn: => String, pos: SourcePosition, kind: String = "Warning")
-  extends Message(msgFn, pos, WARNING, kind)
-
-  class Info(msgFn: => String, pos: SourcePosition, kind: String = "Info")
-  extends Message(msgFn, pos, INFO, kind)
-
-  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition, kind: String)
-  extends Warning(msgFn, pos, kind) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean]
-  }
-  class FeatureWarning(msgFn: => String, pos: SourcePosition, kind: String = "Feature Warning")
-  extends ConditionalWarning(msgFn, pos, kind) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.feature
-  }
-  class UncheckedWarning(msgFn: => String, pos: SourcePosition, kind: String = "Unchecked Warning")
-  extends ConditionalWarning(msgFn, pos, kind) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
-  }
-  class DeprecationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Deprecation Warning")
-  extends ConditionalWarning(msgFn, pos, kind) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
-  }
-  class MigrationWarning(msgFn: => String, pos: SourcePosition, kind: String = "Migration Warning") extends
-  ConditionalWarning(msgFn, pos, kind) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.migration
-  }
-
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
