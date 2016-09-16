@@ -29,9 +29,7 @@ object syntax {
             |  // perform your cleanup here!
             |}""".stripMargin
 
-      hl"""|Explanation:
-           |============
-           |A ${"try"} expression should be followed by some mechanism to handle any exceptions
+      hl"""|A ${"try"} expression should be followed by some mechanism to handle any exceptions
            |thrown. Typically a ${"catch"} expression follows the ${"try"} and pattern matches
            |on any expected exceptions. For example:
            |

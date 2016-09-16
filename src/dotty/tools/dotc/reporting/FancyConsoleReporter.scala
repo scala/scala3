@@ -9,6 +9,8 @@ import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 import printing.SyntaxHighlighting._
+import printing.Highlighting._
+import diagnostic.Message
 
 /**
  * This class implements a more Fancy version (with colors!) of the regular
@@ -56,7 +58,7 @@ class FancyConsoleReporter(
   }
 
   def posStr(pos: SourcePosition, kind: String)(implicit ctx: Context) =
-    if (pos.exists) {
+    if (pos.exists) Blue({
       val file = pos.source.file.toString
 
       val outer = if (pos.outer.exists) {
@@ -64,12 +66,11 @@ class FancyConsoleReporter(
         printStr(pos.outer) + "\n" + "-" * ctx.settings.pageWidth.value
       } else ""
 
-      val prefix = s"${Console.CYAN}-- $kind: $file "
+      val prefix = s"-- $kind: $file "
       prefix +
       ("-" * math.max(ctx.settings.pageWidth.value - prefix.replaceAll("\u001B\\[[;\\d]*m", "").length, 0)) +
-      "\n" + outer + NoColor
-    }
-    else ""
+      "\n" + outer
+    }).toString else ""
 
   /** Prints the message with the given position indication. */
   override def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
@@ -81,5 +82,25 @@ class FancyConsoleReporter(
 
       printMessage(List(src, marker, err).mkString("\n"))
     } else printMessage(msg)
+  }
+
+  override def printExplanation(m: Message): Unit =
+    printMessage(
+      s"""|
+          |${Blue("Explanation")}
+          |${Blue("===========")}
+          |${m.explanation}""".stripMargin
+    )
+
+
+  override def summary: String = {
+    val b = new mutable.ListBuffer[String]
+    if (warningCount > 0)
+      b += countString(warningCount, Yellow("warning")) + " found"
+    if (errorCount > 0)
+      b += countString(errorCount, Red("error")) + " found"
+    for ((settingName, count) <- unreportedWarnings)
+      b += s"there were $count ${settingName.tail} ${Yellow("warning(s)")}; re-run with $settingName for details"
+    b.mkString("\n")
   }
 }

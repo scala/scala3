@@ -7,16 +7,6 @@ import util.{SourcePosition, NoSourcePosition}
 import core.Contexts.Context
 
 object MessageCreator {
-  implicit class DiagnosticContext(val c: Context) extends AnyVal {
-    def shouldExplain(msg: MessageCreator): Boolean = {
-      implicit val ctx: Context = c
-      msg match {
-        case NoExplanation(_) => false
-        case _ => ctx.settings.explain.value
-      }
-    }
-  }
-
   implicit def toNoExplanation(str: String) =
     new NoExplanation(str)
 }

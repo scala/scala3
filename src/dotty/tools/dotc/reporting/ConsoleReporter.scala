@@ -20,6 +20,8 @@ class ConsoleReporter(
     writer: PrintWriter = new PrintWriter(Console.err, true))
   extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {
 
+  import Message._
+
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
 
@@ -42,17 +44,29 @@ class ConsoleReporter(
     }
   }
 
-  override def doReport(m: Message)(implicit ctx: Context): Unit = m match {
-    case m: Error =>
-      printMessageAndPos(m.message, m.pos, m.kind)
-      if (ctx.settings.prompt.value) displayPrompt()
-    case m: ConditionalWarning if !m.enablingOption.value =>
-    case m: MigrationWarning =>
-      printMessageAndPos(m.message, m.pos, m.kind)
-    case m: Warning =>
-      printMessageAndPos(m.message, m.pos, m.kind)
-    case _ =>
-      printMessageAndPos(m.message, m.pos, m.kind)
+  def printExplanation(m: Message): Unit =
+    printMessage(
+      s"""|
+          |Explanation
+          |===========
+          |${m.explanation}""".stripMargin
+    )
+
+  override def doReport(m: Message)(implicit ctx: Context): Unit = {
+    m match {
+      case m: Error =>
+        printMessageAndPos(m.message, m.pos, m.kind)
+        if (ctx.settings.prompt.value) displayPrompt()
+      case m: ConditionalWarning if !m.enablingOption.value =>
+      case m: MigrationWarning =>
+        printMessageAndPos(m.message, m.pos, m.kind)
+      case m: Warning =>
+        printMessageAndPos(m.message, m.pos, m.kind)
+      case _ =>
+        printMessageAndPos(m.message, m.pos, m.kind)
+    }
+
+    if (ctx.shouldExplain(m)) printExplanation(m)
   }
 
   def displayPrompt(): Unit = {

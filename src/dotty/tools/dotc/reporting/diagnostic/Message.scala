@@ -11,6 +11,16 @@ import java.util.Optional
 object Message {
   val nonSensicalStartTag = "<nonsensical>"
   val nonSensicalEndTag = "</nonsensical>"
+
+  implicit class MessageContext(val c: Context) extends AnyVal {
+    def shouldExplain(msg: Message): Boolean = {
+      implicit val ctx: Context = c
+      msg.explanation match {
+        case "" => false
+        case _ => ctx.settings.explain.value
+      }
+    }
+  }
 }
 
 class Message(

@@ -75,11 +75,8 @@ trait Reporting { this: Context =>
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Warning(msg, pos))
 
-  def explainWarning(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit = {
+  def explainWarning(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(msg.warning(pos))
-    if (this.shouldExplain(msg))
-      reporter.report(new Info(msg.explanation, NoSourcePosition))
-  }
 
   def strictWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
@@ -90,11 +87,8 @@ trait Reporting { this: Context =>
     reporter.report(new Error(msg, pos))
   }
 
-  def explainError(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit = {
+  def explainError(msg: => MessageCreator, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(msg.error(pos))
-    if (this.shouldExplain(msg))
-      reporter.report(new Info(msg.explanation, NoSourcePosition))
-  }
 
   def errorOrMigrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
@@ -271,7 +265,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Returns a string meaning "n elements". */
-  private def countString(n: Int, elements: String): String = n match {
+  protected def countString(n: Int, elements: String): String = n match {
     case 0 => "no " + elements + "s"
     case 1 => "one " + elements
     case 2 => "two " + elements + "s"
