@@ -93,7 +93,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    *
    *  should behave differently.
    *
-   *     O1.x  should have the same effect as   { println("43"; 42 }
+   *     O1.x  should have the same effect as   { println("43"); 42 }
    *
    *  whereas
    *
@@ -103,10 +103,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    *  purity of the prefix unless the selection goes to an inline val.
    */
   private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case tree: TypeTree => tree
-    case TypeApply(fn, args) =>
-      Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-      tree
+    case _: TypeTree | _: TypeApply => tree
     case _ =>
       if (tree.isType) {
         Checking.typeChecker.traverse(tree)
