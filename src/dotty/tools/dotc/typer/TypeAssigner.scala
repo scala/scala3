@@ -323,21 +323,30 @@ trait TypeAssigner {
       case pt: PolyType =>
         val paramNames = pt.paramNames
         if (hasNamedArg(args)) {
-          val argMap = new mutable.HashMap[Name, Type]
+          // Type arguments which are specified by name (immutable after this first loop)
+          val namedArgMap = new mutable.HashMap[Name, Type]
           for (NamedArg(name, arg) <- args)
-            if (argMap.contains(name))
+            if (namedArgMap.contains(name))
               ctx.error("duplicate name", arg.pos)
             else if (!paramNames.contains(name))
               ctx.error(s"undefined parameter name, required: ${paramNames.mkString(" or ")}", arg.pos)
             else
-              argMap(name) = arg.tpe
+              namedArgMap(name) = arg.tpe
+
+          // Holds indexes of non-named typed arguments in paramNames
           val gapBuf = new mutable.ListBuffer[Int]
-          def nextPoly = {
-            val idx = gapBuf.length
+          def nextPoly(idx: Int) = {
+            val newIndex = gapBuf.length
             gapBuf += idx
-            PolyParam(pt, idx)
+            // Re-index unassigned type arguments that remain after transformation
+            PolyParam(pt, newIndex)
           }
-          val normArgs = paramNames.map(pname => argMap.getOrElse(pname, nextPoly))
+
+          // Type parameters after naming assignment, conserving paramNames order
+          val normArgs: List[Type] = paramNames.zipWithIndex.map { case (pname, idx) =>
+            namedArgMap.getOrElse(pname, nextPoly(idx))
+          }
+
           val transform = new TypeMap {
             def apply(t: Type) = t match {
               case PolyParam(`pt`, idx) => normArgs(idx)
@@ -349,19 +358,20 @@ trait TypeAssigner {
           else {
             val gaps = gapBuf.toList
             pt.derivedPolyType(
-              gaps.map(paramNames.filterNot(argMap.contains)),
+              gaps.map(paramNames),
               gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
               resultType1)
           }
         }
         else {
           val argTypes = args.tpes
-          if (sameLength(argTypes, paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
+          if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
           else wrongNumberOfArgs(fn.tpe, "type ", pt.paramNames.length, tree.pos)
         }
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
+
     tree.withType(ownType)
   }
 
@@ -385,8 +395,8 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
-        if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
-        else target.tpe)
+      if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
+      else target.tpe)
 
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)

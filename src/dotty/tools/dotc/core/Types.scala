@@ -2532,8 +2532,8 @@ object Types {
   /** A type for polymorphic methods */
   class PolyType(val paramNames: List[TypeName])(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)
     extends CachedGroundType with GenericType with MethodOrPoly {
-    val paramBounds = paramBoundsExp(this)
-    val resType = resultTypeExp(this)
+    val paramBounds: List[TypeBounds] = paramBoundsExp(this)
+    val resType: Type = resultTypeExp(this)
     def variances = Nil
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
