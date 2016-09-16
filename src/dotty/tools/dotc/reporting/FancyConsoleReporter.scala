@@ -14,7 +14,7 @@ import printing.SyntaxHighlighting._
  * This class implements a Reporter that displays messages on a text
  * console.
  */
-class ConsoleReporter(
+class FancyConsoleReporter(
     reader: BufferedReader = Console.in,
     writer: PrintWriter = new PrintWriter(Console.err, true))
   extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {

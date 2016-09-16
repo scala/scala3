@@ -501,7 +501,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(new ConsoleReporter())
+    typerState = new TyperState(new FancyConsoleReporter())
     printerFn = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState

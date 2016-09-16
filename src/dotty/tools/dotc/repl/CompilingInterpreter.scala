@@ -16,7 +16,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, ArrayBuffer}
 //import ast.parser.SyntaxAnalyzer
 import io.{PlainFile, VirtualDirectory}
 import scala.reflect.io.{PlainDirectory, Directory}
-import reporting.{ConsoleReporter, Reporter}
+import reporting.{FancyConsoleReporter, Reporter}
 import core.Flags
 import util.{SourceFile, NameTransformer}
 import io.ClassPath
@@ -117,7 +117,7 @@ class CompilingInterpreter(
     }
   }
 
-  private def newReporter = new ConsoleReporter(Console.in, out) {
+  private def newReporter = new FancyConsoleReporter(Console.in, out) {
     override def printMessage(msg: String) = {
       if (!delayOutput) {
         out.print(/*clean*/(msg) + "\n")

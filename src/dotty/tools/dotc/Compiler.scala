@@ -8,7 +8,7 @@ import Symbols._
 import Types._
 import Scopes._
 import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
-import reporting.{Reporter, ConsoleReporter}
+import reporting.{Reporter, FancyConsoleReporter}
 import Phases.Phase
 import transform._
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
