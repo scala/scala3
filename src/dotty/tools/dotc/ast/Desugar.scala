@@ -699,7 +699,7 @@ object desugar {
         Apply(Select(left, op), args)
       } else {
         val x = ctx.freshName().toTermName
-        Block(
+        new InfixOpBlock(
           ValDef(x, TypeTree(), left).withMods(synthetic),
           Apply(Select(right, op), Ident(x)))
       }
