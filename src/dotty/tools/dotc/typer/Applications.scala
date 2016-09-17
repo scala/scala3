@@ -652,7 +652,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
-    throw new Error(s"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
+    throw new Error(i"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(implicit ctx: Context) =
     for (arg @ NamedArg(id, argtpt) <- args) yield {
