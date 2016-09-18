@@ -44,7 +44,7 @@ class ConsoleReporter(
     }
   }
 
-  def printExplanation(m: Message): Unit =
+  def printExplanation(m: Message)(implicit ctx: Context): Unit =
     printMessage(
       s"""|
           |Explanation

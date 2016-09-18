@@ -3,36 +3,47 @@ package dotc
 package printing
 
 import scala.collection.mutable
+import core.Contexts.Context
 
 object Highlighting {
 
-  implicit def highlightToString(h: Highlight): String = h.toString
-  implicit def hbufToString(hb: HighlightBuffer): String = hb.toString
+  implicit def highlightShow(h: Highlight)(implicit ctx: Context): String =
+    h.show
+  implicit def highlightToString(h: Highlight): String =
+    h.toString
+  implicit def hbufToString(hb: HighlightBuffer): String =
+    hb.toString
 
   abstract class Highlight(private val highlight: String) {
     def text: String
 
-    override def toString = highlight + text + Console.RESET
+    def show(implicit ctx: Context) =
+      if (ctx.settings.color.value == "never") text
+      else highlight + text + Console.RESET
 
-    def +(other: Highlight): HighlightBuffer =
+    override def toString =
+      highlight + text + Console.RESET
+
+    def +(other: Highlight)(implicit ctx: Context): HighlightBuffer =
       new HighlightBuffer(this) + other
 
-    def +(other: String): HighlightBuffer =
+    def +(other: String)(implicit ctx: Context): HighlightBuffer =
       new HighlightBuffer(this) + other
   }
 
   abstract class Modifier(private val mod: String, text: String) extends Highlight(Console.RESET) {
-    override def toString =
-      mod + super.toString
+    override def show(implicit ctx: Context) =
+      if (ctx.settings.color.value == "never") ""
+      else mod + super.show
   }
 
-  case class HighlightBuffer(hl: Highlight) {
+  case class HighlightBuffer(hl: Highlight)(implicit ctx: Context) {
     val buffer = new mutable.ListBuffer[String]
 
-    buffer += hl.toString
+    buffer += hl.show
 
     def +(other: Highlight): HighlightBuffer = {
-      buffer += other.toString
+      buffer += other.show
       this
     }
 
@@ -44,6 +55,8 @@ object Highlighting {
     override def toString =
       buffer.mkString
   }
+
+  case class NoColor(text: String) extends Highlight(Console.RESET)
 
   case class Red(text: String) extends Highlight(Console.RED)
   case class Blue(text: String) extends Highlight(Console.BLUE)

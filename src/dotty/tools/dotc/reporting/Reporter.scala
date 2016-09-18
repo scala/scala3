@@ -247,7 +247,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
 
   /** Summary of warnings and errors */
-  def summary: String = {
+  def summary/*(implicit ctx: Context)*/: String = {
     val b = new mutable.ListBuffer[String]
     if (warningCount > 0)
       b += countString(warningCount, "warning") + " found"
