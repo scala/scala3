@@ -572,7 +572,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
-    val ept = if (tree.isInstanceOf[untpd.InfixOpBlock]) pt else pt.notApplied
+    val ept =
+      if (tree.isInstanceOf[untpd.InfixOpBlock])
+        // Right-binding infix operations are expanded to InfixBlocks, which may be followed by arguments.
+        // Example: `(a /: bs)(op)` expands to `{ val x = a; bs./:(x) } (op)` where `{...}` is an InfixBlock.
+        pt
+      else pt.notApplied
     val expr1 = typedExpr(tree.expr, ept)(exprCtx)
     ensureNoLocalRefs(
         assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1))

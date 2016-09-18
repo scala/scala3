@@ -935,10 +935,10 @@ object Types {
       case _ => NoType
     }
 
-	/** If this is a FunProto or PolyProto, WildcardType, otherwise this */
+  	/** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
     def notApplied: Type = this
 
-     // ----- Normalizing typerefs over refined types ----------------------------
+    // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
      *  by other refinements), and the refined info is a type alias, return the alias,
