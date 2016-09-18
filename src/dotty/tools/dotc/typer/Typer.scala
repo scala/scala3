@@ -572,7 +572,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
-    val expr1 = typedExpr(tree.expr, pt)(exprCtx)
+    val ept =
+      if (tree.isInstanceOf[untpd.InfixOpBlock])
+        // Right-binding infix operations are expanded to InfixBlocks, which may be followed by arguments.
+        // Example: `(a /: bs)(op)` expands to `{ val x = a; bs./:(x) } (op)` where `{...}` is an InfixBlock.
+        pt
+      else pt.notApplied
+    val expr1 = typedExpr(tree.expr, ept)(exprCtx)
     ensureNoLocalRefs(
         assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1))
   }
@@ -619,8 +625,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
-    val thenp1 = typed(tree.thenp, pt)
-    val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt)
+    val thenp1 = typed(tree.thenp, pt.notApplied)
+    val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
@@ -793,7 +799,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val selType = widenForMatchSelector(
             fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
 
-        val cases1 = typedCases(tree.cases, selType, pt)
+        val cases1 = typedCases(tree.cases, selType, pt.notApplied)
         val cases2 = harmonize(cases1).asInstanceOf[List[CaseDef]]
         assignType(cpy.Match(tree)(sel1, cases2), cases2)
     }
@@ -920,8 +926,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
-    val expr1 = typed(tree.expr, pt)
-    val cases1 = typedCases(tree.cases, defn.ThrowableType, pt)
+    val expr1 = typed(tree.expr, pt.notApplied)
+    val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val expr2 :: cases2x = harmonize(expr1 :: cases1)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
@@ -1535,8 +1541,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
-   *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
-   *  return `tree` itself.
+   *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {

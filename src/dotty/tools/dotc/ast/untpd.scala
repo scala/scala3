@@ -63,6 +63,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class PolyTypeDef(name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
     extends TypeDef(name, rhs)
 
+  /** A block arising from a right-associative infix operation, where, e.g.
+   *
+   *     a +: b
+   *
+   *  is expanded to
+   *
+   *     { val x = a; b.+:(x) }
+   */
+  class InfixOpBlock(leftOperand: Tree, rightOp: Tree) extends Block(leftOperand :: Nil, rightOp)
+
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
   /** A type tree that gets its type from some other tree's symbol. Enters the

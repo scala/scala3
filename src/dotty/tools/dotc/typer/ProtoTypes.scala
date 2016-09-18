@@ -182,6 +182,8 @@ object ProtoTypes {
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType, typer)
 
+    override def notApplied = WildcardType
+
     /** Forget the types of any arguments that have been typed producing a constraint in a
      *  typer state that is not yet committed into the one of the current context `ctx`.
      *  This is necessary to avoid "orphan" PolyParams that are referred to from
@@ -318,6 +320,8 @@ object ProtoTypes {
     def derivedPolyProto(targs: List[Type], resultType: Type) =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
+
+    override def notApplied = WildcardType
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
       derivedPolyProto(targs mapConserve tm, tm(resultType))

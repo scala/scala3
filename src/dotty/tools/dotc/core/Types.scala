@@ -927,13 +927,16 @@ object Types {
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
 
-    /** Useful for diagnsotics: The underlying type if this type is a type proxy,
+    /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
      */
     def underlyingIfProxy(implicit ctx: Context) = this match {
       case this1: TypeProxy => this1.underlying
       case _ => NoType
     }
+
+  	/** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
+    def notApplied: Type = this
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
