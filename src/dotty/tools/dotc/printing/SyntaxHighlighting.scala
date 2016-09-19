@@ -54,7 +54,8 @@ object SyntaxHighlighting {
     'q' :: 'r' :: 's' :: 't' :: 'u' :: 'v' :: 'w' :: 'x' :: 'y' :: 'z' :: Nil
 
   private val typeEnders =
-   '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: '\n' :: Nil
+   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' ::
+   '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
@@ -63,7 +64,8 @@ object SyntaxHighlighting {
     var lastToken  = ""
 
     @inline def keywordStart =
-      prev == 0 || prev == ' ' || prev == '{' || prev == '(' || prev == '\n'
+      prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
+      prev == '\n' || prev == '[' || prev == ','
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -258,6 +260,7 @@ object SyntaxHighlighting {
         case ' ' => true
         case '\n' => true
         case '(' => true
+        case '[' => true
         case ':' => true
         case '@' => true
         case _ => false
