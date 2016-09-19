@@ -734,7 +734,7 @@ object Parsers {
 
     def withTypeRest(t: Tree): Tree =
       if (in.token == WITH) {
-        deprecationWarning("`with' as a type operator has been deprecated; use `&' instead")
+        deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
         AndTypeTree(t, withType())
       }
