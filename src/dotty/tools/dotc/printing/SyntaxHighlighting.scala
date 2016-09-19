@@ -26,17 +26,20 @@ object SyntaxHighlighting {
   }
 
   val NoColor         = Console.RESET
-  val CommentColor    = Console.GREEN
-  val KeywordColor    = Console.CYAN
-  val LiteralColor    = Console.MAGENTA
-  val TypeColor       = Console.GREEN
-  val AnnotationColor = Console.RED
+  val CommentColor    = Console.BLUE
+  val KeywordColor    = Console.YELLOW
+  val ValDefColor     = Console.CYAN
+  val LiteralColor    = Console.RED
+  val TypeColor       = Console.MAGENTA
+  val AnnotationColor = Console.MAGENTA
 
-  private def none(str: String)       = str
-  private def keyword(str: String)    = KeywordColor + str + NoColor
-  private def typeDef(str: String)    = TypeColor + str + NoColor
-  private def literal(str: String)    = LiteralColor + str + NoColor
-  private def annotation(str: String) = AnnotationColor + str + NoColor
+  private def none(str: String) = str
+  private def keyword(str: String) = KeywordColor + str + NoColor
+  private def typeDef(str: String) = TypeColor + str + NoColor
+  private def literal(str: String) = LiteralColor + str + NoColor
+  private def valDef(str: String) = ValDefColor + str + NoColor
+  private def annotation(str: String) =
+    if (str.trim == "@") str else AnnotationColor + str + NoColor
   private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
@@ -57,6 +60,7 @@ object SyntaxHighlighting {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
+    var lastToken  = ""
 
     @inline def keywordStart =
       prev == 0 || prev == ' ' || prev == '{' || prev == '(' || prev == '\n'
@@ -117,7 +121,7 @@ object SyntaxHighlighting {
             else newBuf += n
             prev = '#'
           case '@'  =>
-            appendWhile('@', _ != ' ', annotation)
+            appendWhile('@', !typeEnders.contains(_), annotation)
           case '\"' =>
             appendLiteral('\"', multiline = remaining.take(2).mkString == "\"\"")
           case '\'' =>
@@ -191,7 +195,7 @@ object SyntaxHighlighting {
           prev = '$'
         } else if (next == '{') {
           var open = 1 // keep track of open blocks
-          newBuf append (KeywordColor + curr)
+          newBuf append (ValDefColor + curr)
           newBuf += next
           while (remaining.nonEmpty && open > 0) {
             var c = takeChar()
@@ -201,7 +205,7 @@ object SyntaxHighlighting {
           }
           newBuf append LiteralColor
         } else {
-          newBuf append (KeywordColor + curr)
+          newBuf append (ValDefColor + curr)
           newBuf += next
           var c: Char = 'a'
           while (c.isLetterOrDigit && remaining.nonEmpty) {
@@ -249,15 +253,31 @@ object SyntaxHighlighting {
     def append(c: Char, shouldHL: String => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while (remaining.nonEmpty && curr != ' ' && curr != '(' && curr != '\n') {
+
+      def delim(c: Char) = (c: @switch) match {
+        case ' ' => true
+        case '\n' => true
+        case '(' => true
+        case ':' => true
+        case '@' => true
+        case _ => false
+      }
+
+      while (remaining.nonEmpty && !delim(curr)) {
         curr = takeChar()
-        if (curr != ' ' && curr != '\n') sb += curr
+        if (!delim(curr)) sb += curr
       }
 
       val str    = sb.toString
-      val toAdd  = if (shouldHL(str)) highlight(str) else str
-      val suffix = if (curr == ' ' || curr == '\n') s"$curr" else ""
+      val toAdd  =
+        if (shouldHL(str))
+          highlight(str)
+        else if (lastToken == "val" || lastToken == "def" || lastToken == "case")
+          valDef(str)
+        else str
+      val suffix = if (delim(curr)) s"$curr" else ""
       newBuf append (toAdd + suffix)
+      lastToken = str
       prev = curr
     }
 
