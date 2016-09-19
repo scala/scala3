@@ -9,6 +9,7 @@ import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 import diagnostic.Message
+import diagnostic.MessageContainer
 import diagnostic.messages._
 
 /**
@@ -16,11 +17,11 @@ import diagnostic.messages._
  * console.
  */
 class ConsoleReporter(
-    reader: BufferedReader = Console.in,
-    writer: PrintWriter = new PrintWriter(Console.err, true))
-  extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {
+  reader: BufferedReader = Console.in,
+  writer: PrintWriter = new PrintWriter(Console.err, true)
+) extends Reporter with UniqueMessagePositions with HideNonSensicalMessages {
 
-  import Message._
+  import MessageContainer._
 
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
@@ -35,9 +36,9 @@ class ConsoleReporter(
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
+  def printMessageAndPos(msg: Message, pos: SourcePosition, kind: String)(implicit ctx: Context): Unit = {
     val posStr = if (pos.exists) s"$pos: " else ""
-    printMessage(s"${posStr}$kind: $msg")
+    printMessage(s"${posStr}${kind}: ${msg.msg}")
     if (pos.exists) {
       printSourceLine(pos)
       printColumnMarker(pos)
@@ -52,21 +53,21 @@ class ConsoleReporter(
           |${m.explanation}""".stripMargin
     )
 
-  override def doReport(m: Message)(implicit ctx: Context): Unit = {
+  override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     m match {
       case m: Error =>
-        printMessageAndPos(m.message, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, m.kind)
         if (ctx.settings.prompt.value) displayPrompt()
       case m: ConditionalWarning if !m.enablingOption.value =>
       case m: MigrationWarning =>
-        printMessageAndPos(m.message, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, m.kind)
       case m: Warning =>
-        printMessageAndPos(m.message, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, m.kind)
       case _ =>
-        printMessageAndPos(m.message, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, m.kind)
     }
 
-    if (ctx.shouldExplain(m)) printExplanation(m)
+    if (ctx.shouldExplain(m)) printExplanation(m.contained)
   }
 
   def displayPrompt(): Unit = {

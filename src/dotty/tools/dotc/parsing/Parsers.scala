@@ -27,9 +27,8 @@ import rewrite.Rewrites.patch
 object Parsers {
 
   import ast.untpd._
-  import reporting.diagnostic.MessageCreator
-  import MessageCreator._
-  import reporting.diagnostic.syntax._
+  import reporting.diagnostic.Message
+  import reporting.diagnostic.messages._
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 
@@ -100,17 +99,17 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(expl: MessageCreator, offset: Int = in.offset): Unit =
+    def syntaxError(msg: Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
-        syntaxError(expl, Position(offset))
+        syntaxError(msg, Position(offset))
         lastErrorOffset = in.offset
       }
 
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(expl: MessageCreator, pos: Position): Unit =
-      ctx.explainError(expl, source atPos pos)
+    def syntaxError(msg: Message, pos: Position): Unit =
+      ctx.error(msg, source atPos pos)
 
   }
 
@@ -216,20 +215,20 @@ object Parsers {
       }
     }
 
-    def warning(msg: MessageCreator, offset: Int = in.offset) =
-      ctx.explainWarning(msg, source atPos Position(offset))
+    def warning(msg: Message, offset: Int = in.offset) =
+      ctx.warning(msg, source atPos Position(offset))
 
-    def deprecationWarning(msg: String, offset: Int = in.offset) =
+    def deprecationWarning(msg: Message, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
 
     /** Issue an error at current offset taht input is incomplete */
-    def incompleteInputError(msg: String) =
+    def incompleteInputError(msg: Message) =
       ctx.incompleteInputError(msg, source atPos Position(in.offset))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: String) =
+    def syntaxErrorOrIncomplete(msg: Message) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg)

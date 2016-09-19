@@ -3,66 +3,60 @@ package dotc
 package reporting
 package diagnostic
 
-import util.SourcePosition
+import util.{SourcePosition, NoSourcePosition}
 import core.Contexts.Context
 
-import java.util.Optional
-
 object Message {
-  val nonSensicalStartTag = "<nonsensical>"
-  val nonSensicalEndTag = "</nonsensical>"
-
-  implicit class MessageContext(val c: Context) extends AnyVal {
-    def shouldExplain(msg: Message): Boolean = {
-      implicit val ctx: Context = c
-      msg.explanation match {
-        case "" => false
-        case _ => ctx.settings.explain.value
-      }
-    }
-  }
+  implicit def toNoExplanation(str: String): Message =
+    new NoExplanation(str)
 }
 
-class Message(
-  msgFn: => String,
-  val pos: SourcePosition,
-  val level: Int,
-  val kind: String,
-  val explanation: String
-) extends Exception with interfaces.Diagnostic {
-  import Message._
-  private var myMsg: String = null
-  private var myIsNonSensical: Boolean = false
+abstract class Message(val errorId: String) { self =>
+  import messages._
 
-  override def position: Optional[interfaces.SourcePosition] =
-    if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
+  def msg: String
+  def kind: String
+  def explanation: String
 
-  /** The message to report */
-  def message: String = {
-    if (myMsg == null) {
-      myMsg = msgFn
-      if (myMsg.contains(nonSensicalStartTag)) {
-        myIsNonSensical = true
-        // myMsg might be composed of several d"..." invocations -> nested
-        // nonsensical tags possible
-        myMsg =
-          myMsg
-          .replaceAllLiterally(nonSensicalStartTag, "")
-          .replaceAllLiterally(nonSensicalEndTag, "")
-      }
-    }
-    myMsg
+  def container(c: String) =
+    if (kind == "") c
+    else s"$kind $c"
+
+  def mapMsg(f: String => String) = new Message(errorId) {
+    val msg = f(self.msg)
+    val kind = self.kind
+    val explanation = self.explanation
   }
 
-  /** A message is non-sensical if it contains references to <nonsensical>
-   *  tags.  Such tags are inserted by the error diagnostic framework if a
-   *  message contains references to internally generated error types. Normally
-   *  we want to suppress error messages referring to types like this because
-   *  they look weird and are normally follow-up errors to something that was
-   *  diagnosed before.
-   */
-  def isNonSensical = { message; myIsNonSensical }
+  def error(pos: SourcePosition) =
+    new Error(self, pos, container("Error"), explanation)
 
-  override def toString = s"$getClass at $pos: $message"
-  override def getMessage() = message
+  def warning(pos: SourcePosition) =
+    new Warning(self, pos, container("Warning"), explanation)
+
+  def info(pos: SourcePosition) =
+    new Info(self, pos, container("Info"), explanation)
+
+  def featureWarning(pos: SourcePosition) =
+    new FeatureWarning(self, pos, container("Feature Warning"), explanation)
+
+  def uncheckedWarning(pos: SourcePosition) =
+    new UncheckedWarning(self, pos, container("Unchecked Warning"), explanation)
+
+  def deprecationWarning(pos: SourcePosition) =
+    new DeprecationWarning(self, pos, container("Deprecation Warning"), explanation)
+
+  def migrationWarning(pos: SourcePosition) =
+    new MigrationWarning(self, pos, container("Migration Warning"), explanation)
+}
+
+class NoExplanation(val msg: String) extends Message("") {
+  val explanation = ""
+  val kind = ""
+}
+
+object NoExplanation {
+  def unapply(m: Message): Option[Message] =
+    if (m.explanation == "") Some(m)
+    else None
 }

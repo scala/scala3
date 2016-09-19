@@ -11,6 +11,7 @@ import util.Positions._
 import printing.{Showable, RefinedPrinter}
 import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement
+import reporting.diagnostic.Message
 
 object ErrorReporting {
 
@@ -19,7 +20,7 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: => String)(implicit ctx: Context): tpd.Tree =
     tree withType errorType(msg, tree.pos)
 
-  def errorType(msg: => String, pos: Position)(implicit ctx: Context): ErrorType = {
+  def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)
     ErrorType
   }

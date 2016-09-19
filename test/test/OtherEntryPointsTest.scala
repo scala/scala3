@@ -5,7 +5,7 @@ import org.junit.Assert._
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.{CompilerCallback, SourceFile}
 import dotty.tools.dotc.reporting._
-import dotty.tools.dotc.reporting.diagnostic.Message
+import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.core.Contexts._
 import java.io.File
 import scala.collection.mutable.ListBuffer
@@ -51,7 +51,7 @@ class OtherEntryPointsTest {
   private class CustomReporter extends Reporter
       with UniqueMessagePositions
       with HideNonSensicalMessages {
-    def doReport(m: Message)(implicit ctx: Context): Unit = {
+    def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     }
   }
 

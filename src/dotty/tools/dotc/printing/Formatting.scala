@@ -8,7 +8,7 @@ import collection.Map
 import Decorators._
 import scala.annotation.switch
 import scala.util.control.NonFatal
-import reporting.diagnostic.Message
+import reporting.diagnostic.MessageContainer
 
 object Formatting {
 
@@ -67,6 +67,7 @@ object Formatting {
    */
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
     override protected def showArg(arg: Any)(implicit ctx: Context): String = {
+      import MessageContainer._
       def isSensical(arg: Any): Boolean = arg match {
         case tpe: Type =>
           tpe.exists && !tpe.isErroneous
@@ -76,7 +77,7 @@ object Formatting {
       }
       val str = super.showArg(arg)
       if (isSensical(arg)) str
-      else Message.nonSensicalStartTag + str + Message.nonSensicalEndTag
+      else nonSensicalStartTag + str + nonSensicalEndTag
     }
   }
 

@@ -73,15 +73,15 @@ class FancyConsoleReporter(
     }).show else ""
 
   /** Prints the message with the given position indication. */
-  override def printMessageAndPos(msg: String, pos: SourcePosition, kind: String = "")(implicit ctx: Context): Unit = {
+  override def printMessageAndPos(msg: Message, pos: SourcePosition, kind: String)(implicit ctx: Context): Unit = {
     printMessage(posStr(pos, kind))
     if (pos.exists) {
       val (src, offset) = sourceLine(pos)
       val marker = columnMarker(pos, offset)
-      val err = errorMsg(pos, msg, offset)
+      val err = errorMsg(pos, msg.msg, offset)
 
       printMessage(List(src, marker, err).mkString("\n"))
-    } else printMessage(msg)
+    } else printMessage(msg.msg)
   }
 
   override def printExplanation(m: Message)(implicit ctx: Context): Unit = {
@@ -90,16 +90,4 @@ class FancyConsoleReporter(
                       |${Blue("===========")}""".stripMargin)
     printMessage(m.explanation)
   }
-
-
-  //override def summary(implicit ctx: Context): String = {
-  //  val b = new mutable.ListBuffer[String]
-  //  if (warningCount > 0)
-  //    b += countString(warningCount, Yellow("warning").show) + " found"
-  //  if (errorCount > 0)
-  //    b += countString(errorCount, Red("error").show) + " found"
-  //  for ((settingName, count) <- unreportedWarnings)
-  //    b += s"there were $count ${settingName.tail} ${Yellow("warning(s)").show}; re-run with $settingName for details"
-  //  b.mkString("\n")
-  //}
 }

@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import diagnostic.Message
+import diagnostic.MessageContainer
 import diagnostic.messages.Error
 import Reporter._
 
@@ -13,7 +13,7 @@ import Reporter._
  * info to the underlying reporter.
  */
 class ThrowingReporter(reportInfo: Reporter) extends Reporter {
-  def doReport(m: Message)(implicit ctx: Context): Unit = m match {
+  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = m match {
     case _: Error => throw m
     case _ => reportInfo.doReport(m)
   }

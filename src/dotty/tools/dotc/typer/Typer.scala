@@ -65,8 +65,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   import tpd.{cpy => _, _}
   import untpd.cpy
   import Dynamic.isDynamicMethod
-  import reporting.diagnostic.MessageCreator
-  import reporting.diagnostic.tpe._
+  import reporting.diagnostic.Message
+  import reporting.diagnostic.messages._
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -99,7 +99,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /** Method is necessary because error messages need to bind to
      *  to typedIdent's context which is lost in nested calls to findRef
      */
-    def error(msg: => MessageCreator, pos: Position) = ctx.explainError(msg, pos)
+    def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
 
     /** Is this import a root import that has been shadowed by an explicit
      *  import in the same program?
@@ -772,10 +772,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 TypeTree(pt)
               case _ =>
                 if (!mt.isDependent) EmptyTree
-                else throw new Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
+                else throw new java.lang.Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
             }
           case tp =>
-            throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
+            throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
         }
       else typed(tree.tpt)
     //println(i"typing closure $tree : ${meth1.tpe.widen}")
@@ -848,7 +848,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         super.transform(trt.withType(elimWildcardSym(trt.tpe))) match {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.explainError(new DuplicateBind(b, tree), b.pos)
+            else ctx.error(new DuplicateBind(b, tree), b.pos)
             b.symbol.info = elimWildcardSym(b.symbol.info)
             b
           case t => t

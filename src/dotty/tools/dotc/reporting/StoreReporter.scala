@@ -6,7 +6,7 @@ import core.Contexts.Context
 import collection.mutable
 import Reporter.{Error, Warning}
 import config.Printers.typr
-import diagnostic.Message
+import diagnostic.MessageContainer
 import diagnostic.messages._
 
 /**
@@ -14,9 +14,9 @@ import diagnostic.messages._
  */
 class StoreReporter(outer: Reporter) extends Reporter {
 
-  private var infos: mutable.ListBuffer[Message] = null
+  private var infos: mutable.ListBuffer[MessageContainer] = null
 
-  def doReport(m: Message)(implicit ctx: Context): Unit = {
+  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     typr.println(s">>>> StoredError: ${m.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += m
