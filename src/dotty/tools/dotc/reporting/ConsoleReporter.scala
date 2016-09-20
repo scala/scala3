@@ -40,7 +40,7 @@ class ConsoleReporter(
 
   def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context) =
     if (pos.startLine == pos.endLine) {
-      val whitespace = " " * (pos.column + offset)
+      val whitespace = " " * (pos.startColumn + offset)
       val carets =
         Red("^" * math.max(1, pos.endColumn - pos.startColumn))
 
