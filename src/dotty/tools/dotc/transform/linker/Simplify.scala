@@ -473,9 +473,13 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
         }
       }
 
-      def followCases(t: Symbol): Symbol = if (t.symbol.is(Flags.Label)) {
+      def followCases(t: Symbol, limit: Int = 0): Symbol = if (t.symbol.is(Flags.Label)) {
         // todo: this can create cycles, see ./tests/pos/rbtree.scala
-        followCases(forwarderWritesTo.getOrElse(t.symbol, NoSymbol))
+        if (limit > 100 && limit > forwarderWritesTo.size + 1) NoSymbol
+          // there may be cycles in labels, that never in the end write to a valdef(the value is always on stack)
+          // there's not much we can do here, except finding such cases and bailing out
+          // there may not be a cycle bigger that hashmapSize > 1
+        else followCases(forwarderWritesTo.getOrElse(t.symbol, NoSymbol), limit + 1)
       } else t
 
       hasPerfectRHS.clear()
