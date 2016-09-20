@@ -592,6 +592,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
   private def keepOnlySideEffects(t: Tree)(implicit ctx: Context): Tree = {
     t match {
       case t: Literal => EmptyTree
+      case t: This => EmptyTree
       case Typed(exp, tpe) =>
         keepOnlySideEffects(exp)
       case t @ If(cond, thenp, elsep) =>
