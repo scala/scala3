@@ -387,7 +387,7 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
           hasPerfectRHS(symbol) = true
         case Apply(fun, _) if fun.symbol.is(Flags.Label) && (fun.symbol ne symbol) =>
           checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + fun.symbol)
-          assert(forwarderWritesTo.getOrElse(t.symbol, symbol) == symbol)
+          //assert(forwarderWritesTo.getOrElse(t.symbol, symbol) == symbol)
           forwarderWritesTo(t.symbol) = symbol
         case t: Ident if !t.symbol.owner.isClass && (t.symbol ne symbol) =>
           checkGood.put(symbol, checkGood.getOrElse(symbol, Set.empty) + t.symbol)
@@ -536,13 +536,28 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
     recur(t)
   }
 
+  private def collectNullTests(t: Tree)(implicit ctx: Context): List[Symbol] = {
+    def recur(t: Tree): List[Symbol] =
+      t match {
+        case Apply(x, _) if (x.symbol == defn.Boolean_! || x.symbol == defn.Boolean_||) => List.empty
+        case Apply(fun @ Select(x, _), y) if (fun.symbol == defn.Boolean_&&) => recur(x) ++ recur(y.head)
+        case Apply(fun @Select(x, _), List(tp)) if fun.symbol eq defn.Object_ne =>
+          if (x.symbol.exists && !x.symbol.owner.isClass && !x.symbol.is(Flags.Method|Flags.Mutable))
+            x.symbol :: Nil
+          else Nil
+        case _ => List.empty
+      }
+    recur(t)
+  }
+
   val dropGoodCasts: Optimization = { (ctx0: Context) => {
     implicit val ctx: Context = ctx0
 
     val transformer: Transformer = () => localCtx => {
       case t @ If(cond, thenp, elsep) =>
-        val newTested = collectTypeTests(cond)
-        val testedMap = newTested.foldRight[Map[Symbol, List[Type]]](Map.empty)((x, y) =>
+        val newTypeTested = collectTypeTests(cond)
+        val nullTested = collectNullTests(cond).toSet
+        val testedMap = newTypeTested.foldRight[Map[Symbol, List[Type]]](Map.empty)((x, y) =>
           y + ((x._1, x._2 :: y.getOrElse(x._1, Nil)))
         )
         val dropGoodCastsInStats = new TreeMap() {
@@ -555,6 +570,14 @@ class Simplify extends MiniPhaseTransform with IdentityDenotTransformer {
               })
               if (nstats eq t.stats) t
               else Block(nstats, t.expr)
+            case Apply(fun @ Select(lhs, _), List(Literal(const)))
+              if const.tag == Constants.NullTag && (fun.symbol == defn.Object_eq || fun.symbol == defn.Object_ne) && nullTested.contains(lhs.symbol) =>
+              if (fun.symbol == defn.Object_eq) Literal(Constant(false))
+              else Literal(Constant(true))
+            case Apply(fun @ Select(Literal(const), _), List(rhs))
+              if const.tag == Constants.NullTag && (fun.symbol == defn.Object_eq || fun.symbol == defn.Object_ne) && nullTested.contains(rhs.symbol) =>
+              if (fun.symbol == defn.Object_eq) Literal(Constant(false))
+              else Literal(Constant(true))
             case t => t
           }
         }
