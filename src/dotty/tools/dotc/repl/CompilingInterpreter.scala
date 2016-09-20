@@ -212,8 +212,10 @@ class CompilingInterpreter(
       case None => Interpreter.Incomplete
       case Some(Nil) => Interpreter.Error // parse error or empty input
       case Some(tree :: Nil) if tree.isTerm && !tree.isInstanceOf[Assign] =>
+        previousOutput.clear() // clear previous error reporting
         interpret(s"val $newVarName =\n$line")
       case Some(trees) =>
+        previousOutput.clear() // clear previous error reporting
         val req = new Request(line, newLineName)
         if (!req.compile())
           Interpreter.Error // an error happened during compilation, e.g. a type error
@@ -314,9 +316,13 @@ class CompilingInterpreter(
 
   /** One line of code submitted by the user for interpretation */
   private class Request(val line: String, val lineName: String)(implicit ctx: Context) {
-    private val trees = parse(line) match {
-      case Some(ts) => ts
-      case None => Nil
+    private val trees = {
+      val parsed = parse(line)
+      previousOutput.clear() // clear previous error reporting
+      parsed match {
+        case Some(ts) => ts
+        case None => Nil
+      }
     }
 
     /** name to use for the object that will compute "line" */
