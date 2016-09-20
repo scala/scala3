@@ -38,6 +38,7 @@ object SyntaxHighlighting {
   private def typeDef(str: String) = TypeColor + str + NoColor
   private def literal(str: String) = LiteralColor + str + NoColor
   private def valDef(str: String) = ValDefColor + str + NoColor
+  private def operator(str: String) = TypeColor + str + NoColor
   private def annotation(str: String) =
     if (str.trim == "@") str else AnnotationColor + str + NoColor
   private val tripleQs = Console.RED_B + "???" + NoColor
@@ -113,13 +114,13 @@ object SyntaxHighlighting {
               }
             } else newBuf += '/'
           case '='  =>
-            append('=', _ == "=>", keyword)
+            append('=', _ == "=>", operator)
           case '<'  =>
-            append('<', { x => x == "<-" || x == "<:" || x == "<%" }, keyword)
+            append('<', { x => x == "<-" || x == "<:" || x == "<%" }, operator)
           case '>'  =>
-            append('>', { x => x == ">:" }, keyword)
+            append('>', { x => x == ">:" }, operator)
           case '#'  =>
-            if (prev != ' ' && prev != '.') newBuf append keyword("#")
+            if (prev != ' ' && prev != '.') newBuf append operator("#")
             else newBuf += n
             prev = '#'
           case '@'  =>
