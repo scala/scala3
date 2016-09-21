@@ -10,11 +10,11 @@ import core.Contexts._
 
 import xsbti.Maybe
 
-private object DelegatingReporter {
+object DelegatingReporter {
   def apply(delegate: xsbti.Reporter) = new DelegatingReporter(delegate)
 }
 
-private final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
+final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   with UniqueMessagePositions
   with HideNonSensicalMessages {
 
@@ -38,7 +38,10 @@ private final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporte
       def pointer(): xsbti.Maybe[Integer] = offset()
       def pointerSpace(): xsbti.Maybe[String] = Maybe.just(" " * pos.point)
       def sourceFile(): xsbti.Maybe[java.io.File] = maybe(file)
-      def sourcePath(): xsbti.Maybe[String] = maybe(file.map(_.getPath))        
+      def sourcePath(): xsbti.Maybe[String] = {
+        println(file)
+        maybe(file.map(_.getPath))
+      }
     }
 
     delegate.log(position, d.message, severity)
