@@ -19,25 +19,21 @@ class SelectStatic extends MiniPhaseTransform with IdentityDenotTransformer { th
   import ast.tpd._
 
   override def phaseName: String = "selectStatic"
-  private val isPackage = FlagConjunction(PackageCreationFlags.bits)
 
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     val sym = tree.symbol
-    val r1 =
-      if (!sym.is(isPackage) && !sym.maybeOwner.is(isPackage) &&
-        (
-          ((sym is Flags.Module) && sym.maybeOwner.isStaticOwner) ||
-            (sym is Flags.JavaStatic) ||
-            (sym.maybeOwner is Flags.ImplClass) ||
-            sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
-          )
-      )
-        if (!tree.qualifier.symbol.is(JavaModule) && !tree.qualifier.isType)
-          Block(List(tree.qualifier), ref(sym))
-        else tree
+    def isStaticMember =
+      (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
+      (sym is Flags.JavaStatic) ||
+      (sym.maybeOwner is Flags.ImplClass) ||
+      sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
+    val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
+    val tree1 =
+      if (isStaticRef && !tree.qualifier.symbol.is(JavaModule) && !tree.qualifier.isType)
+        Block(List(tree.qualifier), ref(sym))
       else tree
 
-    normalize(r1)
+    normalize(tree1)
   }
 
   private def normalize(t: Tree)(implicit ctx: Context) = t match {
