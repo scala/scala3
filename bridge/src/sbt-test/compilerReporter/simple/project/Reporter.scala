@@ -36,10 +36,9 @@ object Reporter {
     check <<= (compile in Compile).mapFailure( _ => {
       val problems = reporter.get.problems
       println(problems.toList)
-      assert(problems.size == 3)
+      assert(problems.size == 2)
       assert(problems.count(_.severity == Severity.Error) == 1) // not found: er1,
       assert(problems.count(_.severity == Severity.Warn) == 1)  // `with' as a type operator has been deprecated; use `&' instead,
-      assert(problems.count(_.severity == Severity.Info) == 1)  // one error found
     })
   )
 }
