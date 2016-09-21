@@ -239,6 +239,7 @@ object DottyBuild extends Build {
     ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
+      // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
       cleanBridge := {
         println("*** cleanBridge ***")
         val dottyBridgeVersion = version.value
