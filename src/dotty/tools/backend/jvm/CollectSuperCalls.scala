@@ -4,9 +4,13 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Flags.Trait
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 
-/** Collect all super calls except to the parent class.
+/** Collect all super calls to trait members.
+ *
+ *  For each super reference to trait member, register a call from the current class to the
+ *  owner of the referenced member.
  *
  *  This information is used to know if it is safe to remove a redundant mixin class.
  *  A redundant mixin class is one that is implemented by another mixin class. As the
@@ -20,12 +24,9 @@ class CollectSuperCalls extends MiniPhaseTransform {
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     tree.qualifier match {
-      case Super(qual, mix) if mix.nonEmpty =>
-        val classSymbol: ClassSymbol = qual match {
-          case qual: This => qual.symbol.asClass.classSymbol
-          case qual => qual.symbol.info.classSymbol.asClass
-        }
-        registerSuperCall(classSymbol, tree.symbol.owner.asClass)
+      case sup: Super =>
+        if (tree.symbol.owner.is(Trait))
+          registerSuperCall(ctx.owner.enclosingClass.asClass, tree.symbol.owner.asClass)
       case _ =>
     }
     tree
