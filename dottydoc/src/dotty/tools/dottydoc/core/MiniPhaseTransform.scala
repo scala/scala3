@@ -3,7 +3,8 @@ package dottydoc
 package core
 
 import dotc.CompilationUnit
-import dotc.core.Contexts.{ Context, DocBase }
+import dotc.core.Contexts.Context
+import dotc.core.Comments.ContextDocstrings
 import dotc.core.Phases.Phase
 import model._
 import model.internal._

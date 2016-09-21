@@ -457,7 +457,7 @@ class Namer { typer: Typer =>
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
-      ctx.getDocbase.foreach(_.addDocstring(sym, t.rawComment))
+      ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
     case _ => ()
   }
 

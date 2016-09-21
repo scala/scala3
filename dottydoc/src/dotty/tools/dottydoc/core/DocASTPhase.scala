@@ -6,7 +6,8 @@ package core
 import dotc.ast.Trees._
 import dotc.CompilationUnit
 import dotc.config.Printers.dottydoc
-import dotc.core.Contexts.{ Context, DocBase }
+import dotc.core.Contexts.Context
+import dotc.core.Comments.ContextDocstrings
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 

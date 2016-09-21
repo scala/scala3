@@ -69,9 +69,6 @@ object Contexts {
     /** The context base at the root */
     val base: ContextBase
 
-    /** Documentation base */
-    def getDocbase = property(DocContext)
-
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator = new Iterator[Context] {
       var current = thiscontext
@@ -576,37 +573,6 @@ object Contexts {
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
-  }
-
-  val DocContext = new Key[DocBase]
-  class DocBase {
-    private[this] val _docstrings: mutable.Map[Symbol, Comment] =
-      mutable.Map.empty
-
-    val templateExpander = new CommentExpander
-
-    def docstrings: Map[Symbol, Comment] = _docstrings.toMap
-
-    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
-
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings += (sym -> d))
-
-    /*
-     * Dottydoc places instances of `Package` in this map - but we do not want
-     * to depend on `dottydoc` for the compiler, as such this is defined as a
-     * map of `String -> AnyRef`
-     */
-    private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
-    def packagesAs[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
-
-    /** Should perhaps factorize this into caches that get flushed */
-    private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
-    def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
-
-    def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
-      s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
-    })
   }
 
   /** The essential mutable state of a context base, collected into a common class */

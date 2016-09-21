@@ -58,7 +58,7 @@ object Typer {
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking {
+class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1247,8 +1247,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
 
-    if (ctx.property(DocContext).isDefined)
-      typedUsecases(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
+    // Expand comments and type usecases
+    cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
 
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
@@ -1537,45 +1537,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
     tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
         Inliner.removeInlineAccessors(mdef.symbol)
-
-  private def typedUsecases(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit =
-    ctx.getDocbase.foreach { docbase =>
-      val relevantSyms = syms.filter(docbase.docstring(_).isDefined)
-      relevantSyms.foreach { sym =>
-        expandParentDocs(sym)
-        val usecases = docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
-
-        usecases.foreach { usecase =>
-          enterSymbol(createSymbol(usecase.untpdCode))
-
-          typedStats(usecase.untpdCode :: Nil, owner) match {
-            case List(df: tpd.DefDef) => usecase.tpdCode = df
-            case _ => ctx.error("`@usecase` was not a valid definition", usecase.codePos)
-          }
-        }
-      }
-    }
-
-  private def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
-    ctx.getDocbase.foreach { docbase =>
-      docbase.docstring(sym).foreach { cmt =>
-        def expandDoc(owner: Symbol): Unit = if (!cmt.isExpanded) {
-          val tplExp = docbase.templateExpander
-          tplExp.defineVariables(sym)
-
-          val newCmt = cmt
-            .expand(tplExp.expandedDocComment(sym, owner, _))
-            .withUsecases
-
-          docbase.addDocstring(sym, Some(newCmt))
-        }
-
-        if (sym ne NoSymbol) {
-          expandParentDocs(sym.owner)
-          expandDoc(sym.owner)
-        }
-      }
-    }
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)

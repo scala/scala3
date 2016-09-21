@@ -5,6 +5,13 @@
  */
 package dotty.tools.dotc.util
 
+/** The comment parsing in `dotc` is used by both the comment cooking and the
+  * dottydoc tool.
+  *
+  * The comment cooking is used to expand comments with `@inheritdoc` and
+  * `@define` annotations. The rest of the comment is untouched and later
+  * handled by dottydoc.
+  */
 object CommentParsing {
   import scala.reflect.internal.Chars._
 

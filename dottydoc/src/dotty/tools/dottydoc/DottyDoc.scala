@@ -7,6 +7,7 @@ import core.transform._
 import dotc.config.CompilerCommand
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts._
+import dotc.core.Comments.ContextDoc
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
 import dotc.{ CompilationUnit, Compiler, Driver, Run }
@@ -57,7 +58,7 @@ abstract class DocDriver extends Driver {
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YkeepComments, true)
-    ctx.setProperty(DocContext, new DocBase)
+    ctx.setProperty(ContextDoc, new ContextDottydoc)
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)

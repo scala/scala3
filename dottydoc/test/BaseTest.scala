@@ -1,12 +1,12 @@
 package dotty.tools
 package dottydoc
 
-import dotc.core.Contexts
-import Contexts.{ Context, ContextBase, FreshContext, DocContext, DocBase }
+import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
+import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dotc.util.SourceFile
 import dotc.core.Phases.Phase
 import dotc.typer.FrontEnd
-import dottydoc.core.DocASTPhase
+import dottydoc.core.{ DocASTPhase, ContextDottydoc }
 import model.Package
 import dotty.tools.dottydoc.util.syntax._
 
@@ -20,7 +20,7 @@ trait DottyTest {
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.YkeepComments, true)
-    ctx.setProperty(DocContext, new DocBase)
+    ctx.setProperty(ContextDoc, new ContextDottydoc)
     base.initialize()(ctx)
     ctx
   }

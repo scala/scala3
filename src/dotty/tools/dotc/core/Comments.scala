@@ -2,17 +2,40 @@ package dotty.tools
 package dotc
 package core
 
-import dotc.ast.{ untpd, tpd }
-import Decorators._
-import Symbols._
-import Contexts.Context
-import Flags.EmptyFlags
-import dotc.util.SourceFile
-import dotc.util.Positions._
-import dotc.util.CommentParsing._
-import dotc.parsing.Parsers.Parser
+import ast.{ untpd, tpd }
+import Decorators._, Symbols._, Contexts._, Flags.EmptyFlags
+import util.SourceFile
+import util.Positions._
+import util.CommentParsing._
+import util.Property.Key
+import parsing.Parsers.Parser
 
 object Comments {
+  val ContextDoc =  new Key[ContextDocstrings]
+
+  /** Decorator for getting docbase out of context */
+  implicit class CommentsContext(val ctx: Context) extends AnyVal {
+    def docCtx: Option[ContextDocstrings] = ctx.property(ContextDoc)
+  }
+
+  /** Context for Docstrings, contains basic functionality for getting
+    * docstrings via `Symbol` and expanding templates
+    */
+  class ContextDocstrings {
+    import scala.collection.mutable
+
+    private[this] val _docstrings: mutable.Map[Symbol, Comment] =
+      mutable.Map.empty
+
+    val templateExpander = new CommentExpander
+
+    def docstrings: Map[Symbol, Comment] = _docstrings.toMap
+
+    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
+
+    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
+      doc.map(d => _docstrings += (sym -> d))
+  }
 
   abstract case class Comment(pos: Position, raw: String)(implicit ctx: Context) { self =>
     def isExpanded: Boolean
@@ -155,7 +178,7 @@ object Comments {
      */
     def cookedDocComment(sym: Symbol, docStr: String = "")(implicit ctx: Context): String = cookedDocComments.getOrElseUpdate(sym, {
       var ownComment =
-        if (docStr.length == 0) ctx.getDocbase.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
+        if (docStr.length == 0) ctx.docCtx.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
         else template(docStr)
       ownComment = replaceInheritDocToInheritdoc(ownComment)
 
@@ -365,7 +388,7 @@ object Comments {
     def defineVariables(sym: Symbol)(implicit ctx: Context) = {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
-      val raw = ctx.getDocbase.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
+      val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
       defs(sym) ++= defines(raw).map {
         str => {
           val start = skipWhitespace(str, "@define".length)
@@ -406,7 +429,7 @@ object Comments {
      *  the position of the doc comment of the overridden version is returned instead.
      */
     def docCommentPos(sym: Symbol)(implicit ctx: Context): Position =
-      ctx.getDocbase.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoPosition)
+      ctx.docCtx.flatMap(_.docstring(sym).map(_.pos)).getOrElse(NoPosition)
 
     /** A version which doesn't consider self types, as a temporary measure:
      *  an infinite loop has broken out between superComment and cookedDocComment
