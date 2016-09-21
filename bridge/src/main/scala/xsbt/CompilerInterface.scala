@@ -60,7 +60,6 @@ class CachedCompilerImpl(args: Array[String], output: Output, resident: Boolean)
     val freshContext = (new ContextBase).initialCtx.fresh
     val ctx = freshContext.setSbtCallback(callback).setReporter(DelegatingReporter(delegate))
     val cl = getClass.getClassLoader.asInstanceOf[URLClassLoader]
-
     val reporter = DottyMain.process(commandArguments(sources.toArray), ctx)
     if (reporter.hasErrors) {
       throw new InterfaceCompileFailed(args, Array())

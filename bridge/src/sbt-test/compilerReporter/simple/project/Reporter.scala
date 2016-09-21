@@ -1,40 +1,24 @@
 import sbt._
+import Keys._
+import KeyRanks.DTask
 
 object Reporter {
   import xsbti.{Reporter, Problem, Position, Severity, Maybe}
 
-  val check = TaskKey[Unit]("check", "make sure compilation info are forwared to sbt")
+  lazy val check = TaskKey[Unit]("check", "make sure compilation info are forwared to sbt")
 
-  val reporter = 
+  // compilerReporter is marked private in sbt
+  lazy val compilerReporter = TaskKey[Option[xsbti.Reporter]]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
+  
+  lazy val reporter = 
     Some(new xsbti.Reporter {
       private val buffer = collection.mutable.ArrayBuffer.empty[Problem]
-      def reset(): Unit = {
-        println("reset")
-        buffer.clear()
-      }
-      def hasErrors: Boolean = {
-        println("hasErrors")
-        buffer.exists(_.severity == Severity.Error)
-      }
-      def hasWarnings: Boolean = {
-        println("hasWarnings")
-        buffer.exists(_.severity == Severity.Warn)
-      }
-      def printSummary(): Unit = {
-        println("printSummary")
-        def toOption[T](m: Maybe[T]): Option[T] = {
-          if(m.isEmpty) None
-          else Some(m.get)
-        }
-        println(problems.mkString(System.lineSeparator))
-      }
-      def problems: Array[Problem] = {
-        println("problems")
-        println(buffer.toList)
-        buffer.toArray
-      }
+      def reset(): Unit = buffer.clear()
+      def hasErrors: Boolean = buffer.exists(_.severity == Severity.Error)
+      def hasWarnings: Boolean = buffer.exists(_.severity == Severity.Warn)
+      def printSummary(): Unit = println(problems.mkString(System.lineSeparator))
+      def problems: Array[Problem] = buffer.toArray
       def log(pos: Position, msg: String, sev: Severity): Unit = {
-        println("log")
         object MyProblem extends Problem {
           def category: String = null
           def severity: Severity = sev
@@ -44,22 +28,18 @@ object Reporter {
         }
         buffer.append(MyProblem)
       }
-      def comment(pos: xsbti.Position, msg: String): Unit = {
-        println("comment")
-      }
-
+      def comment(pos: xsbti.Position, msg: String): Unit = ()
     })
 
-  val checkSettings = Seq(
-    check := {
+  lazy val checkSettings = Seq(
+    compilerReporter in (Compile, compile) := reporter,
+    check <<= (compile in Compile).mapFailure( _ => {
       val problems = reporter.get.problems
-
-      assert(problems.size == 2)
-    }
+      println(problems.toList)
+      assert(problems.size == 3)
+      assert(problems.count(_.severity == Severity.Error) == 1) // not found: er1,
+      assert(problems.count(_.severity == Severity.Warn) == 1)  // `with' as a type operator has been deprecated; use `&' instead,
+      assert(problems.count(_.severity == Severity.Info) == 1)  // one error found
+    })
   )
-
-  // compilerReporter is marked private in sbt
-  val hack = TaskKey[Option[Reporter]]("compilerReporter", "")
-
-  
 }

@@ -9,8 +9,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 object DottyBuild extends Build {
 
-  val cleanBridge = TaskKey[Unit]("clean-sbt-bridge", "delete dotty-sbt-bridge cache")
-
+  lazy val cleanBridge = TaskKey[Unit]("clean-sbt-bridge", "delete dotty-sbt-bridge cache")
+  
   val baseVersion = "0.1"
   val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 

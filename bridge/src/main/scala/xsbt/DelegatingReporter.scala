@@ -19,6 +19,7 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   with HideNonSensicalMessages {
 
   def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
+    println("doReport " + d.toString)
     val severity = 
       d match {
         case _: Reporter.Error   => xsbti.Severity.Error
