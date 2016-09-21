@@ -249,15 +249,10 @@ object DottyBuild extends Build {
         val org = organization.value
         val artifact = moduleName.value
 
-        IO.delete(file(home) / ".ivy2" / "local" / "ch.epfl.lamp" / artifact)
         IO.delete(file(home) / ".ivy2" / "cache" / "org.scala-sbt" / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
         IO.delete(file(home) / ".sbt"  / "boot" / "scala-2.10.6" / "org.scala-sbt" / "sbt" / sbtV / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
       },
-
-      ScriptedPlugin.scripted <<= ScriptedPlugin.scripted
-        .dependsOn(publishLocal) // 2nd
-        .dependsOn(cleanBridge), // 1st
-
+      publishLocal <<= publishLocal.dependsOn(cleanBridge),
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
