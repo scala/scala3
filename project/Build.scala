@@ -9,6 +9,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 object DottyBuild extends Build {
 
+  lazy val cleanBridge = TaskKey[Unit]("clean-sbt-bridge", "delete dotty-sbt-bridge cache")
+  
   val baseVersion = "0.1"
   val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 
@@ -237,6 +239,21 @@ object DottyBuild extends Build {
     ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
+      // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
+      cleanBridge := {
+        println("*** cleanBridge ***")
+        val dottyBridgeVersion = version.value
+        val dottyVersion = (version in dotty).value
+        val classVersion = System.getProperty("java.class.version")
+        val sbtV = sbtVersion.value
+        val home = System.getProperty("user.home")
+        val org = organization.value
+        val artifact = moduleName.value
+
+        IO.delete(file(home) / ".ivy2" / "cache" / "org.scala-sbt" / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
+        IO.delete(file(home) / ".sbt"  / "boot" / "scala-2.10.6" / "org.scala-sbt" / "sbt" / sbtV / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
+      },
+      publishLocal <<= publishLocal.dependsOn(cleanBridge),
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala

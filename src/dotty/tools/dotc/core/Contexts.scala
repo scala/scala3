@@ -13,6 +13,7 @@ import Scopes._
 import NameOps._
 import Uniques._
 import SymDenotations._
+import Comments._
 import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
@@ -29,7 +30,7 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
-import parsing.Scanners.Comment
+import util.Property.Key
 import xsbti.AnalysisCallback
 
 object Contexts {
@@ -67,6 +68,9 @@ object Contexts {
 
     /** The context base at the root */
     val base: ContextBase
+
+    /** Documentation base */
+    def getDocbase = property(DocContext)
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
     def outersIterator = new Iterator[Context] {
@@ -177,9 +181,12 @@ object Contexts {
     def freshName(prefix: Name): String = freshName(prefix.toString)
 
     /** A map in which more contextual properties can be stored */
-    private var _moreProperties: Map[String, Any] = _
-    protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
-    def moreProperties: Map[String, Any] = _moreProperties
+    private var _moreProperties: Map[Key[Any], Any] = _
+    protected def moreProperties_=(moreProperties: Map[Key[Any], Any]) = _moreProperties = moreProperties
+    def moreProperties: Map[Key[Any], Any] = _moreProperties
+
+    def property[T](key: Key[T]): Option[T] =
+      moreProperties.get(key).asInstanceOf[Option[T]]
 
     private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
@@ -459,9 +466,10 @@ object Contexts {
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setFreshNames(freshNames: FreshNameCreator): this.type = { this.freshNames = freshNames; this }
-    def setMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
+    def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
 
-    def setProperty(prop: (String, Any)): this.type = setMoreProperties(moreProperties + prop)
+    def setProperty[T](key: Key[T], value: T): this.type =
+      setMoreProperties(moreProperties.updated(key, value))
 
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
@@ -532,9 +540,6 @@ object Contexts {
     /** The symbol loaders */
     val loaders = new SymbolLoaders
 
-    /** Documentation base */
-    val docbase = new DocBase
-
     /** The platform, initialized by `initPlatform()`. */
     private var _platform: Platform = _
 
@@ -573,9 +578,14 @@ object Contexts {
     }
   }
 
+  val DocContext = new Key[DocBase]
   class DocBase {
     private[this] val _docstrings: mutable.Map[Symbol, Comment] =
       mutable.Map.empty
+
+    val templateExpander = new CommentExpander
+
+    def docstrings: Map[Symbol, Comment] = _docstrings.toMap
 
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
@@ -588,7 +598,7 @@ object Contexts {
      * map of `String -> AnyRef`
      */
     private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
-    def packages[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
+    def packagesAs[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
 
     /** Should perhaps factorize this into caches that get flushed */
     private var _defs: Map[Symbol, Set[Symbol]] = Map.empty

@@ -3,15 +3,10 @@
  * @author Martin Odersky
  * @author Felix Mulder
  */
+package dotty.tools.dotc.util
 
-package dotty.tools
-package dottydoc
-package model
-package comment
-
-import scala.reflect.internal.Chars._
-
-object CommentUtils {
+object CommentParsing {
+  import scala.reflect.internal.Chars._
 
   /** Returns index of string `str` following `start` skipping longest
    *  sequence of whitespace characters characters (but no newlines)
@@ -221,4 +216,17 @@ object CommentUtils {
     result
   }
 
+
+  def removeSections(raw: String, xs: String*): String = {
+    val sections = tagIndex(raw)
+
+    val toBeRemoved = for {
+      section <- xs
+      lines = sections filter { startsWithTag(raw, _, section) }
+    } yield lines
+
+    val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1).toList)
+
+    if (end == raw.length - 2) raw else raw.substring(0, end) + "*/"
+  }
 }

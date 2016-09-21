@@ -49,15 +49,17 @@ class CachedCompilerImpl(args: Array[String], output: Output, resident: Boolean)
   def commandArguments(sources: Array[File]): Array[String] =
     (outputArgs ++ args.toList ++ sources.map(_.getAbsolutePath).sortWith(_ < _)).toArray[String]
 
-  def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, progress: CompileProgress): Unit = synchronized {
-    run(sources.toList, changes, callback, log, progress)
-  }
-  private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, compileProgress: CompileProgress): Unit = {
-    debug(log, args.mkString("Calling Dotty compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
-    val ctx = (new ContextBase).initialCtx.fresh
-      .setSbtCallback(callback)
-    val cl = getClass.getClassLoader.asInstanceOf[URLClassLoader]
+  def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, 
+      log: Logger, delegate: Reporter, progress: CompileProgress): Unit = synchronized {
 
+    run(sources.toList, changes, callback, log, delegate, progress)
+  }
+  private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, 
+    log: Logger, delegate: Reporter, compileProgress: CompileProgress): Unit = {
+    debug(log, args.mkString("Calling Dotty compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
+    val freshContext = (new ContextBase).initialCtx.fresh
+    val ctx = freshContext.setSbtCallback(callback).setReporter(DelegatingReporter(delegate))
+    val cl = getClass.getClassLoader.asInstanceOf[URLClassLoader]
     val reporter = DottyMain.process(commandArguments(sources.toArray), ctx)
     if (reporter.hasErrors) {
       throw new InterfaceCompileFailed(args, Array())

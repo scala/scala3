@@ -1,6 +1,7 @@
 package dotty.tools
 package dottydoc
 
+import dotty.tools.dottydoc.util.syntax._
 import core._
 import core.transform._
 import dotc.config.CompilerCommand
@@ -31,7 +32,9 @@ class DocCompiler extends Compiler {
     List(new DocFrontEnd),
     List(new DocImplicitsPhase),
     List(new DocASTPhase),
-    List(DocMiniTransformations(new LinkReturnTypes,
+    List(DocMiniTransformations(new UsecasePhase,
+                                new DocstringPhase,
+                                new LinkReturnTypes,
                                 new LinkParamListTypes,
                                 new LinkImplicitlyAddedTypes,
                                 new LinkSuperTypes,
@@ -54,6 +57,7 @@ abstract class DocDriver extends Driver {
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setProperty(DocContext, new DocBase)
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
@@ -65,7 +69,7 @@ abstract class DocDriver extends Driver {
     val (fileNames, ctx) = setup(args, initCtx.fresh)
     doCompile(newCompiler(ctx), fileNames)(ctx)
 
-    ctx.docbase.packages[Package]
+    ctx.docbase.packages
   }
 
   def compiledDocsJava(args: Array[String]): JMap[String, Package] =

@@ -14,15 +14,16 @@ import BodyParsers._
 import util.MemberLookup
 import util.traversing._
 import util.internal.setters._
+import util.syntax._
 
 class LinkReturnTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
-    val returnValue = linkReference(df, df.returnValue, ctx.docbase.packages[Package].toMap)
+    val returnValue = linkReference(df, df.returnValue, ctx.docbase.packages)
     df.copy(returnValue = returnValue)
   }
 
   override def transformVal(implicit ctx: Context) = { case vl: ValImpl =>
-    val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages[Package].toMap)
+    val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages)
     vl.copy(returnValue = returnValue)
   }
 }
@@ -31,7 +32,7 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val newParamLists = for {
       ParamListImpl(list, isImplicit) <- df.paramLists
-      newList = list.map(linkReference(df, _, ctx.docbase.packages[Package].toMap))
+      newList = list.map(linkReference(df, _, ctx.docbase.packages))
     } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]], isImplicit)
 
     df.copy(paramLists = newParamLists)
@@ -42,7 +43,7 @@ class LinkSuperTypes extends DocMiniPhase with TypeLinker {
   def linkSuperTypes(ent: Entity with SuperTypes)(implicit ctx: Context): List[MaterializableLink] =
     ent.superTypes.collect {
       case UnsetLink(title, query) =>
-        val packages = ctx.docbase.packages[Package].toMap
+        val packages = ctx.docbase.packages
         val entityLink = makeEntityLink(ent, packages, Text(title), NoPosition, query).link
         handleEntityLink(title, entityLink, ent)
     }
@@ -67,13 +68,13 @@ class LinkSuperTypes extends DocMiniPhase with TypeLinker {
 class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = {
     case df: DefImpl if df.implicitlyAddedFrom.isDefined =>
-      val implicitlyAddedFrom = linkReference(df, df.implicitlyAddedFrom.get, ctx.docbase.packages[Package].toMap)
+      val implicitlyAddedFrom = linkReference(df, df.implicitlyAddedFrom.get, ctx.docbase.packages)
       df.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
   }
 
   override def transformVal(implicit ctx: Context) = {
     case vl: ValImpl if vl.implicitlyAddedFrom.isDefined =>
-      val implicitlyAddedFrom = linkReference(vl, vl.implicitlyAddedFrom.get, ctx.docbase.packages[Package].toMap)
+      val implicitlyAddedFrom = linkReference(vl, vl.implicitlyAddedFrom.get, ctx.docbase.packages)
       vl.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
   }
 }

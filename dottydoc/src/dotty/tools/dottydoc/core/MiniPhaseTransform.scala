@@ -3,10 +3,11 @@ package dottydoc
 package core
 
 import dotc.CompilationUnit
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{ Context, DocBase }
 import dotc.core.Phases.Phase
 import model._
 import model.internal._
+import util.syntax._
 
 object transform {
   /**
@@ -43,9 +44,9 @@ object transform {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       for {
         rootName    <- rootPackages
-        pack        =  ctx.docbase.packages[Package](rootName)
+        pack        =  ctx.docbase.packages(rootName)
         transformed =  performPackageTransform(pack)
-      } yield ctx.docbase.packages(rootName) = transformed
+      } yield ctx.docbase.packagesMutable(rootName) = transformed
       super.runOn(units)
     }
 
@@ -77,6 +78,7 @@ object transform {
       def traverse(ent: Entity): Entity = ent match {
         case p: Package => transformEntity(p, _.packageTransformation) { p =>
           val newPackage = PackageImpl(
+            p.symbol,
             p.name,
             p.members.map(traverse),
             p.path,
@@ -84,12 +86,13 @@ object transform {
           )
 
           // Update reference in context to newPackage
-          ctx.docbase.packages[Package] += (newPackage.path.mkString(".") -> newPackage)
+          ctx.docbase.packagesMutable += (newPackage.path.mkString(".") -> newPackage)
 
           newPackage
         }
         case c: Class => transformEntity(c, _.classTransformation) { cls =>
           ClassImpl(
+            cls.symbol,
             cls.name,
             cls.members.map(traverse),
             cls.modifiers,
@@ -102,6 +105,7 @@ object transform {
         }
         case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
           CaseClassImpl(
+            cc.symbol,
             cc.name,
             cc.members.map(traverse),
             cc.modifiers,
@@ -114,6 +118,7 @@ object transform {
         }
         case trt: Trait => transformEntity(trt, _.traitTransformation) { trt =>
           TraitImpl(
+            trt.symbol,
             trt.name,
             trt.members.map(traverse),
             trt.modifiers,
@@ -126,6 +131,7 @@ object transform {
         }
         case obj: Object => transformEntity(obj, _.objectTransformation) { obj =>
           ObjectImpl(
+            obj.symbol,
             obj.name,
             obj.members.map(traverse),
             obj.modifiers,
@@ -136,6 +142,7 @@ object transform {
         }
         case df: Def => transformEntity(df, _.defTransformation) { df =>
           DefImpl(
+            df.symbol,
             df.name,
             df.modifiers,
             df.path,
@@ -148,6 +155,7 @@ object transform {
         }
         case vl: Val => transformEntity(vl, _.valTransformation) { vl =>
           ValImpl(
+            vl.symbol,
             vl.name,
             vl.modifiers,
             vl.path,
