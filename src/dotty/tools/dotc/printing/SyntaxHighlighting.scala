@@ -278,7 +278,7 @@ object SyntaxHighlighting {
       val toAdd  =
         if (shouldHL(str))
           highlight(str)
-        else if (lastToken == "val" || lastToken == "def" || lastToken == "case")
+        else if (("var" :: "val" :: "def" :: "case" :: Nil).contains(lastToken))
           valDef(str)
         else str
       val suffix = if (delim(curr)) s"$curr" else ""

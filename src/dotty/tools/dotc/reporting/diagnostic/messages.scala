@@ -4,12 +4,13 @@ package reporting
 package diagnostic
 
 import dotc.core._
-import Contexts.Context, Decorators._, Symbols._, Names._
+import Contexts.Context, Decorators._, Symbols._, Names._, Types._
 import util.{SourceFile, NoSource}
 import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
-import dotc.printing.SyntaxHighlighting._
+import printing.SyntaxHighlighting._
+import printing.Formatting
 
 object messages {
 
@@ -127,7 +128,7 @@ object messages {
     }
   }
 
-  class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
+  case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
   extends EmptyCatchOrFinallyBlock(tryBody, "E001") {
     val kind = "Syntax"
     val msg =
@@ -174,7 +175,7 @@ object messages {
   }
 
   /** Type Errors ----------------------------------------------------------- */
-  class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
+  case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
   extends Message("E004") {
     val kind = "Naming"
     val msg = em"duplicate pattern variable: `${bind.name}`"
@@ -201,14 +202,28 @@ object messages {
     }
   }
 
-  class MissingIdent(tree: untpd.Ident, treeKind: String, name: Name)(implicit ctx: Context)
+  case class MissingIdent(tree: untpd.Ident, treeKind: String, name: Name)(implicit ctx: Context)
   extends Message("E005") {
-    val kind = "Missing identifier"
+    val kind = "Missing Identifier"
     val msg = em"not found: $treeKind$name"
 
     val explanation = {
       hl"""|An identifier for `${name.show}` is missing. This means that something
            |has either been misspelt or you're forgetting an import""".stripMargin
     }
+  }
+
+  case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "")(implicit ctx: Context)
+  extends Message("E006") {
+    val kind = "Type Mismatch"
+    private val where = Formatting.disambiguateTypes(found, expected)
+    private val (fnd, exp) = Formatting.typeDiff(found, expected)
+    val msg =
+      s"""|found:    $fnd
+          |required: $exp
+          |
+          |$where""".stripMargin + whyNoMatch
+
+    val explanation = ""
   }
 }

@@ -27,6 +27,7 @@ import collection.mutable
 import config.Printers.{typr, unapp, overload}
 import TypeApplications._
 import language.implicitConversions
+import reporting.diagnostic.Message
 
 object Applications {
   import tpd._
@@ -132,10 +133,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: => String, arg: Arg): Unit
+    protected def fail(msg: => Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: => String): Unit
+    protected def fail(msg: => Message): Unit
 
     protected def appPos: Position
 
@@ -186,7 +187,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               // it might be healed by an implicit conversion
               assert(ctx.typerState.constraint eq savedConstraint)
             else
-              fail(err.typeMismatchStr(methType.resultType, resultType))
+              fail(err.typeMismatchMsg(methType.resultType, resultType))
         }
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramTypes, 0)
@@ -388,9 +389,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def addArg(arg: TypedArg, formal: Type) =
       ok = ok & isCompatible(argType(arg, formal), formal)
     def makeVarArg(n: Int, elemFormal: Type) = {}
-    def fail(msg: => String, arg: Arg) =
+    def fail(msg: => Message, arg: Arg) =
       ok = false
-    def fail(msg: => String) =
+    def fail(msg: => Message) =
       ok = false
     def appPos = NoPosition
     lazy val normalizedFun = ref(methRef)
@@ -455,12 +456,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     override def appPos = app.pos
 
-    def fail(msg: => String, arg: Trees.Tree[T]) = {
+    def fail(msg: => Message, arg: Trees.Tree[T]) = {
       ctx.error(msg, arg.pos)
       ok = false
     }
 
-    def fail(msg: => String) = {
+    def fail(msg: => Message) = {
       ctx.error(msg, app.pos)
       ok = false
     }

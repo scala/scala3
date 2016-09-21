@@ -9,6 +9,9 @@ import Decorators._
 import scala.annotation.switch
 import scala.util.control.NonFatal
 import reporting.diagnostic.MessageContainer
+import util.DiffUtil
+import Highlighting.{ highlightToString => _, _ }
+import SyntaxHighlighting._
 
 object Formatting {
 
@@ -113,65 +116,99 @@ object Formatting {
       seen.record(super.polyParamNameString(param), param)
   }
 
-  def explained2(op: Context => String)(implicit ctx: Context): String = {
-    val seen = new Seen
-    val explainCtx = ctx.printer match {
-      case dp: ExplainingPrinter => ctx // re-use outer printer and defer explanation to it
-      case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
+  def explanation(entry: Recorded)(implicit ctx: Context): String = {
+    def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
+      if (bound.isRef(default)) "" else i"$cmp $bound"
+
+    def boundsStr(bounds: TypeBounds): String = {
+      val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
+      val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
+      if (lo.isEmpty) hi
+      else if (hi.isEmpty) lo
+      else s"$lo and $hi"
     }
 
-    def explanation(entry: Recorded): String = {
-      def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
-        if (bound.isRef(default)) "" else i"$cmp $bound"
-
-      def boundsStr(bounds: TypeBounds): String = {
-        val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
-        val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
-        if (lo.isEmpty) hi
-        else if (hi.isEmpty) lo
-        else s"$lo and $hi"
-      }
-
-      def addendum(cat: String, info: Type)(implicit ctx: Context): String = info match {
-        case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
-          if (lo eq hi) i" which is an alias of $lo"
-          else i" with $cat ${boundsStr(bounds)}"
-        case _ =>
-          ""
-      }
-
-      entry match {
-        case param: PolyParam =>
-          s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
-        case sym: Symbol =>
-          s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
-      }
+    def addendum(cat: String, info: Type): String = info match {
+      case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
+        if (lo eq hi) i" which is an alias of $lo"
+        else i" with $cat ${boundsStr(bounds)}"
+      case _ =>
+        ""
     }
 
-    def explanations(seen: Seen)(implicit ctx: Context): String = {
-      def needsExplanation(entry: Recorded) = entry match {
-        case param: PolyParam => ctx.typerState.constraint.contains(param)
-        case _ => false
-      }
-      val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
-        case (str, entry :: Nil) =>
-          if (needsExplanation(entry)) (str, entry) :: Nil else Nil
-        case (str, entries) =>
-          entries.map(alt => (seen.record(str, alt), alt))
-      }.sortBy(_._1)
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
-      val explainLines = columnar(explainParts, "  ")
-      if (explainLines.isEmpty) "" else i"\n\nwhere  $explainLines%\n       %\n"
+    entry match {
+      case param: PolyParam =>
+        s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
+      case sym: Symbol =>
+        s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
     }
-
-    op(explainCtx) ++ explanations(seen)
   }
 
-  def columnar(parts: List[(String, String)], sep: String): List[String] = {
-    lazy val maxLen = parts.map(_._1.length).max
-    parts.map {
-      case (leader, trailer) =>
-        s"$leader${" " * (maxLen - leader.length)}$sep$trailer"
+  private def explanations(seen: Seen)(implicit ctx: Context): String = {
+    def needsExplanation(entry: Recorded) = entry match {
+      case param: PolyParam => ctx.typerState.constraint.contains(param)
+      case _ => false
+    }
+
+    val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
+      case (str, entry :: Nil) =>
+        if (needsExplanation(entry)) (str, entry) :: Nil else Nil
+      case (str, entries) =>
+        entries.map(alt => (seen.record(str, alt), alt))
+    }.sortBy(_._1)
+
+    def columnar(parts: List[(String, String)]): List[String] = {
+      lazy val maxLen = parts.map(_._1.length).max
+      parts.map {
+        case (leader, trailer) =>
+          val variable = hl"$leader"
+          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
+      }
+    }
+
+    val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
+    val explainLines = columnar(explainParts)
+    if (explainLines.isEmpty) "" else i"$explainLines%\n%\n"
+  }
+
+  private def explainCtx(seen: Seen)(implicit ctx: Context): Context = ctx.printer match {
+    case dp: ExplainingPrinter =>
+      ctx // re-use outer printer and defer explanation to it
+    case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
+  }
+
+  def explained2(op: Context => String)(implicit ctx: Context): String = {
+    val seen = new Seen
+    op(explainCtx(seen)) ++ explanations(seen)
+  }
+
+  def disambiguateTypes(args: Type*)(implicit ctx: Context): String = {
+    val seen = new Seen
+    object polyparams extends TypeTraverser {
+      def traverse(tp: Type): Unit = tp match {
+        case tp: TypeRef =>
+          seen.record(tp.show(explainCtx(seen)), tp.symbol)
+          traverseChildren(tp)
+        case tp: TermRef =>
+          seen.record(tp.show(explainCtx(seen)), tp.symbol)
+          traverseChildren(tp)
+        case tp: PolyParam =>
+          seen.record(tp.show(explainCtx(seen)), tp)
+          traverseChildren(tp)
+        case _ =>
+          traverseChildren(tp)
+      }
+    }
+    args.foreach(polyparams.traverse)
+    explanations(seen)
+  }
+
+  def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
+    (found, expected) match {
+      case (rf1: RefinedType, rf2: RefinedType) =>
+        DiffUtil.mkColoredTypeDiff(rf1.show, rf2.show)
+      case _ =>
+        (hl"${found.show}", hl"${expected.show}")
     }
   }
 }

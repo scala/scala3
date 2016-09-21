@@ -12,12 +12,13 @@ import printing.{Showable, RefinedPrinter}
 import scala.collection.mutable
 import java.util.regex.Matcher.quoteReplacement
 import reporting.diagnostic.Message
+import reporting.diagnostic.messages._
 
 object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: untpd.Tree, msg: => String)(implicit ctx: Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: => Message)(implicit ctx: Context): tpd.Tree =
     tree withType errorType(msg, tree.pos)
 
   def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
@@ -101,7 +102,7 @@ object ErrorReporting {
     def patternConstrStr(tree: Tree): String = ???
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree =
-      errorTree(tree, typeMismatchStr(normalize(tree.tpe, pt), pt) + implicitFailure.postscript)
+      errorTree(tree, typeMismatchMsg(normalize(tree.tpe, pt), pt) /*+ implicitFailure.postscript*/)
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type) =
@@ -110,7 +111,7 @@ object ErrorReporting {
       else
         ""
 
-    def typeMismatchStr(found: Type, expected: Type) = {
+    def typeMismatchMsg(found: Type, expected: Type) = {
       // replace constrained polyparams and their typevars by their bounds where possible
       object reported extends TypeMap {
         def setVariance(v: Int) = variance = v
@@ -132,9 +133,7 @@ object ErrorReporting {
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
-      ex"""|type mismatch:
-           |found:    $found1
-           |required: $expected1""".stripMargin + whyNoMatchStr(found, expected)
+      TypeMismatch(found1, expected1, whyNoMatchStr(found, expected))
     }
 
     /** Format `raw` implicitNotFound argument, replacing all
