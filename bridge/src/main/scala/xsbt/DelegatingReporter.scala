@@ -25,23 +25,28 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
         case _: Reporter.Warning => xsbti.Severity.Warn
         case _                   => xsbti.Severity.Info
       }
-    val pos  = d.pos
-
-    val file = 
-      if(pos.source.file.exists) Some(pos.source.file.file)
+    val pos  = 
+      if(d.pos.exists) Some(d.pos)
       else None
 
-    val position = new xsbti.Position {
-      def line: Maybe[Integer] = Maybe.just(pos.line)
-      def lineContent(): String = pos.lineContent
-      def offset(): xsbti.Maybe[Integer] = Maybe.just(pos.point)
-      def pointer(): xsbti.Maybe[Integer] = offset()
-      def pointerSpace(): xsbti.Maybe[String] = Maybe.just(" " * pos.point)
-      def sourceFile(): xsbti.Maybe[java.io.File] = maybe(file)
-      def sourcePath(): xsbti.Maybe[String] = {
-        println(file)
-        maybe(file.map(_.getPath))
+    val file = 
+      if(d.pos.source.file.exists) {
+        val r = d.pos.source.file.file 
+        if(r == null) None
+        else Some(r)
       }
+      else None
+
+    val offset0 = pos.map(_.point)
+
+    val position = new xsbti.Position {
+      def line: Maybe[Integer] = maybe(pos.map(_.line))
+      def lineContent(): String = pos.map(_.lineContent).getOrElse("")
+      def offset(): xsbti.Maybe[Integer] = maybeInt(offset0)
+      def pointer(): xsbti.Maybe[Integer] = offset()
+      def pointerSpace(): xsbti.Maybe[String] = maybe(offset0.map(" " * _))
+      def sourceFile(): xsbti.Maybe[java.io.File] = maybe(file)
+      def sourcePath(): xsbti.Maybe[String] = maybe(file.map(_.getPath))
     }
 
     delegate.log(position, d.message, severity)
@@ -50,5 +55,10 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match { 
     case None => Maybe.nothing[T]
     case Some(s) => Maybe.just[T](s)
+  }
+  import java.lang.{ Integer => I }
+  private[this] def maybeInt(opt: Option[Int]): Maybe[I] = opt match { 
+    case None => Maybe.nothing[I]
+    case Some(s) => Maybe.just[I](s)
   }
 }

@@ -1,0 +1,3 @@
+object B {
+  er1
+}
