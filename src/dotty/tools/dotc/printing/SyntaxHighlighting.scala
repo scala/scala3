@@ -92,7 +92,9 @@ object SyntaxHighlighting {
           if (n.isUpper && keywordStart) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
           } else if (keywordStart) {
-            append(n, keywords.contains(_), keyword)
+            append(n, keywords.contains(_), { kw =>
+              if (kw == "new") typeDef(kw) else keyword(kw)
+            })
           } else {
             newBuf += n
             prev = n
