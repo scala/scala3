@@ -207,11 +207,31 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
+  // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
+  lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
+
   lazy val `dotty-bridge` = project.in(file("bridge")).
     dependsOn(dotty).
     settings(
       overrideScalaVersionSetting,
 
+      cleanSbtBridge := {
+        val dottyBridgeVersion = version.value
+        val dottyVersion = (version in dotty).value
+        val classVersion = System.getProperty("java.class.version")
+
+        val sbtV = sbtVersion.value
+        val sbtOrg = "org.scala-sbt"
+        val sbtScalaVersion = "2.10.6"
+
+        val home = System.getProperty("user.home")
+        val org = organization.value
+        val artifact = moduleName.value
+
+        IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
+        IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
+      },
+      publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
       description := "sbt compiler bridge for Dotty",
       resolvers += Resolver.typesafeIvyRepo("releases"),
       libraryDependencies ++= Seq(
