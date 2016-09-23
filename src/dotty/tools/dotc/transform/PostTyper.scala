@@ -13,7 +13,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
-import config.Printers._
+import config.Printers.typr
 import Symbols._, TypeUtils._
 
 /** A macro transform that runs immediately after typer and that performs the following functions:

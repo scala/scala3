@@ -4,12 +4,10 @@ object Printers {
 
   class Printer {
     def println(msg: => String): Unit = System.out.println(msg)
-    def echo[T](msg: => String, value: T): T = { println(msg + value); value }
   }
 
   object noPrinter extends Printer {
     override def println(msg: => String): Unit = ()
-    override def echo[T](msg: => String, value: T): T = value
   }
 
   val default: Printer = new Printer

@@ -8,7 +8,7 @@ import StdNames.{nme, tpnme}
 import collection.mutable
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
-import config.Printers._
+import config.Printers.{typr, constr, subtyping}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal

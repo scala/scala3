@@ -8,7 +8,7 @@ import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
 import config.Config
-import config.Printers._
+import config.Printers.constr
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:

@@ -1,7 +1,8 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._, config.Printers._
+import Contexts._
+import config.Printers.typr
 
 trait ConstraintRunInfo { self: RunInfo =>
   private var maxSize = 0

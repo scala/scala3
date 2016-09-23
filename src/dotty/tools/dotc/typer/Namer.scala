@@ -15,7 +15,7 @@ import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Config
-import config.Printers._
+import config.Printers.{typr, completions, noPrinter}
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._

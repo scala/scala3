@@ -31,7 +31,7 @@ import collection.mutable
 import annotation.tailrec
 import Implicits._
 import util.Stats.{track, record}
-import config.Printers._
+import config.Printers.{typr, gadts}
 import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._

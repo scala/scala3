@@ -24,7 +24,7 @@ import ProtoTypes._
 import EtaExpansion._
 import Inferencing._
 import collection.mutable
-import config.Printers._
+import config.Printers.{typr, unapp, overload}
 import TypeApplications._
 import language.implicitConversions
 

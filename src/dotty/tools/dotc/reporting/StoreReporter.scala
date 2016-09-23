@@ -5,7 +5,7 @@ package reporting
 import core.Contexts.Context
 import collection.mutable
 import Reporter.{Error, Warning}
-import config.Printers._
+import config.Printers.typr
 
 /**
  * This class implements a Reporter that stores all messages

@@ -15,7 +15,7 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import config.Printers._
+import config.Printers.{typr, constr}
 import annotation.tailrec
 import reporting._
 import collection.mutable

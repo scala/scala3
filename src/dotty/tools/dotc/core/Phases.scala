@@ -9,7 +9,7 @@ import util.DotClass
 import DenotTransformers._
 import Denotations._
 import Decorators._
-import config.Printers._
+import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform._
