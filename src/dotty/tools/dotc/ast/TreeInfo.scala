@@ -329,8 +329,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
-      refPurity(tree).min(
-       if (tree.symbol.is(Inline)) Pure else exprPurity(qual))
+      refPurity(tree).min(exprPurity(qual))
     case TypeApply(fn, _) =>
       exprPurity(fn)
 /*
