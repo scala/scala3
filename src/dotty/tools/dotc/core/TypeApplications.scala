@@ -13,7 +13,7 @@ import NameOps._
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position
-import config.Printers._
+import config.Printers.core
 import collection.mutable
 import dotty.tools.dotc.config.Config
 import java.util.NoSuchElementException

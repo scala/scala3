@@ -4,7 +4,7 @@ package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._, Denotations.SingleDenotation
-import config.Printers._
+import config.Printers.typr
 import util.Positions._
 import NameOps._
 import Decorators._

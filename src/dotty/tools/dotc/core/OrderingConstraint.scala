@@ -8,7 +8,6 @@ import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
 import config.Config
-import config.Printers._
 import collection.immutable.BitSet
 import reflect.ClassTag
 import annotation.tailrec

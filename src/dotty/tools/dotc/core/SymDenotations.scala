@@ -16,7 +16,7 @@ import CheckRealizable._
 import util.SimpleMap
 import util.Stats
 import config.Config
-import config.Printers._
+import config.Printers.{completions, incremental, noPrinter}
 
 trait SymDenotations { this: Context =>
   import SymDenotations._

@@ -9,7 +9,6 @@ import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
 import util.Attachment
-import config.Printers._
 
 object desugar {
 

@@ -28,11 +28,11 @@ import Hashable._
 import Uniques._
 import collection.{mutable, Seq, breakOut}
 import config.Config
-import config.Printers._
 import annotation.tailrec
 import Flags.FlagSet
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
+import config.Printers.{core, typr, cyclicErrors}
 
 object Types {
 

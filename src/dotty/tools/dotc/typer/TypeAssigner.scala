@@ -8,7 +8,7 @@ import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, 
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import TypeApplications.AppliedType
 import util.Positions._
-import config.Printers._
+import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import collection.mutable
@@ -81,10 +81,11 @@ trait TypeAssigner {
                   parentType.findMember(decl.name, info.cls.thisType, Private)
                     .suchThat(decl.matches(_))
                 val inheritedInfo = inherited.info
-                if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info))
-                  typr.echo(
-                    i"add ref $parent $decl --> ",
-                    RefinedType(parent, decl.name, decl.info))
+                if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
+                  val r = RefinedType(parent, decl.name, decl.info)
+                  typr.println(i"add ref $parent $decl --> " + r)
+                  r
+                }
                 else
                   parent
               }

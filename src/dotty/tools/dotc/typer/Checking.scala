@@ -26,7 +26,7 @@ import transform.SymUtils._
 import Decorators._
 import Uniques._
 import ErrorReporting.{err, errorType}
-import config.Printers._
+import config.Printers.typr
 import collection.mutable
 import SymDenotations.NoCompleter
 

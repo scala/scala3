@@ -7,7 +7,7 @@ import Contexts._
 import Symbols._
 import dotty.tools.dotc.parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
-import config.Printers._
+import config.Printers.{typr, default}
 import util.Stats._
 import scala.util.control.NonFatal
 import ast.Trees._

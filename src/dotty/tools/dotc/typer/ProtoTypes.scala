@@ -15,7 +15,7 @@ import util.common._
 import Decorators._
 import Uniques._
 import ErrorReporting.errorType
-import config.Printers._
+import config.Printers.typr
 import collection.mutable
 
 object ProtoTypes {

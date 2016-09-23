@@ -5,7 +5,7 @@ package core
 import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
-import config.Printers._
+import config.Printers.{constr, typr}
 import TypeApplications.EtaExpansion
 import collection.mutable
 

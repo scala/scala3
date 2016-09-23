@@ -28,7 +28,7 @@ import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
 import config.Config
-import config.Printers._
+import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 
 /** Implicit resolution */
