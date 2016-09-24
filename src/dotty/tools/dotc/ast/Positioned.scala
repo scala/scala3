@@ -171,7 +171,6 @@ abstract class Positioned extends DotClass with Product {
         }
         if (nonOverlapping) {
           this match {
-            case _: InterpolatedString => // ignore, strings and elements are interleaved in source, separated in tree
             case _: Function => // ignore, functions produced from wildcards (e.g. (_ op _) mix parameters and body
             case _ =>
               assert(!lastPos.exists || !p.pos.exists || lastPos.end <= p.pos.start,

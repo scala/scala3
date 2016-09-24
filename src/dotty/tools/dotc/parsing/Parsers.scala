@@ -600,30 +600,30 @@ object Parsers {
     }
 
     private def interpolatedString(inPattern: Boolean = false): Tree = atPos(in.offset) {
-      val partsBuf = new ListBuffer[Literal]
-      val exprBuf = new ListBuffer[Tree]
+      val segmentBuf = new ListBuffer[Tree]
       val interpolator = in.name
       in.nextToken()
       while (in.token == STRINGPART) {
-        partsBuf += literal().asInstanceOf[Literal]
-        exprBuf += atPos(in.offset) {
-          if (in.token == IDENTIFIER)
-            termIdent()
-          else if (in.token == THIS) {
-            in.nextToken()
-            This(tpnme.EMPTY)
-          }
-          else if (in.token == LBRACE)
-            if (inPattern) Block(Nil, inBraces(pattern()))
-            else expr()
-          else {
-            syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
-            EmptyTree
-          }
-        }
+        segmentBuf += Thicket(List(
+            literal(),
+            atPos(in.offset) {
+              if (in.token == IDENTIFIER)
+                termIdent()
+              else if (in.token == THIS) {
+                in.nextToken()
+                This(tpnme.EMPTY)
+              }
+              else if (in.token == LBRACE)
+                if (inPattern) Block(Nil, inBraces(pattern()))
+                else expr()
+              else {
+                syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
+                EmptyTree
+              }
+            }))
       }
-      if (in.token == STRINGLIT) partsBuf += literal().asInstanceOf[Literal]
-      InterpolatedString(interpolator, partsBuf.toList, exprBuf.toList)
+      if (in.token == STRINGLIT) segmentBuf += literal()
+      InterpolatedString(interpolator, segmentBuf.toList)
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */

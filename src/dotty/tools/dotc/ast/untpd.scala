@@ -35,7 +35,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
   case class SymbolLit(str: String) extends TermTree
-  case class InterpolatedString(id: TermName, strings: List[Literal], elems: List[Tree]) extends TermTree
+
+  /** An interpolated string
+   *  @param segments  a list of two element tickets consisting of string literal and argument tree,
+   *                   possibly with a simple string literal as last element of the list
+   */
+  case class InterpolatedString(id: TermName, segments: List[Tree]) extends TermTree
+
   case class Function(args: List[Tree], body: Tree) extends Tree {
     override def isTerm = body.isTerm
     override def isType = body.isType
@@ -305,9 +311,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: SymbolLit if str == tree.str => tree
       case _ => untpd.SymbolLit(str).withPos(tree.pos)
     }
-    def InterpolatedString(tree: Tree)(id: TermName, strings: List[Literal], elems: List[Tree]) = tree match {
-      case tree: InterpolatedString if (id eq tree.id) && (strings eq tree.strings) && (elems eq tree.elems) => tree
-      case _ => untpd.InterpolatedString(id, strings, elems).withPos(tree.pos)
+    def InterpolatedString(tree: Tree)(id: TermName, segments: List[Tree]) = tree match {
+      case tree: InterpolatedString if (id eq tree.id) && (segments eq tree.segments) => tree
+      case _ => untpd.InterpolatedString(id, segments).withPos(tree.pos)
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree) = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
@@ -379,8 +385,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ParsedTry(tree)(transform(expr), transform(handler), transform(finalizer))
       case SymbolLit(str) =>
         cpy.SymbolLit(tree)(str)
-      case InterpolatedString(id, strings, elems) =>
-        cpy.InterpolatedString(tree)(id, transformSub(strings), transform(elems))
+      case InterpolatedString(id, segments) =>
+        cpy.InterpolatedString(tree)(id, transform(segments))
       case Function(args, body) =>
         cpy.Function(tree)(transform(args), transform(body))
       case InfixOp(left, op, right) =>
@@ -426,8 +432,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(this(x, expr), handler), finalizer)
       case SymbolLit(str) =>
         x
-      case InterpolatedString(id, strings, elems) =>
-        this(this(x, strings), elems)
+      case InterpolatedString(id, segments) =>
+        this(x, segments)
       case Function(args, body) =>
         this(this(x, args), body)
       case InfixOp(left, op, right) =>

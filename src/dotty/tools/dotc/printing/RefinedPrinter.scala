@@ -446,15 +446,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case SymbolLit(str) =>
         "'" + str
-      case InterpolatedString(id, strings, elems) =>
-        def interleave(strs: List[Text], elems: List[Text]): Text = ((strs, elems): @unchecked) match {
-          case (Nil, Nil) => ""
-          case (str :: Nil, Nil) => str
-          case (str :: strs1, elem :: elems1) => str ~ elem ~ interleave(strs1, elems1)
+      case InterpolatedString(id, segments) =>
+        def strText(str: Literal) = Str(escapedString(str.const.stringValue))
+        def segmentText(segment: Tree) = segment match {
+          case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
+          case str: Literal => strText(str)
         }
-        val strTexts = strings map (str => Str(escapedString(str.const.stringValue)))
-        val elemsTexts = elems map (elem => "{" ~ toTextGlobal(elem) ~ "}")
-        toText(id) ~ "\"" ~ interleave(strTexts, elemsTexts) ~ "\""
+        toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
       case Function(args, body) =>
         var implicitSeen: Boolean = false
         def argToText(arg: Tree) = arg match {

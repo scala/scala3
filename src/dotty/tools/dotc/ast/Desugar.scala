@@ -889,7 +889,15 @@ object desugar {
         Apply(
           ref(defn.SymbolClass.companionModule.termRef),
           Literal(Constant(str)) :: Nil)
-      case InterpolatedString(id, strs, elems) =>
+      case InterpolatedString(id, segments) =>
+        val strs = segments map {
+          case ts: Thicket => ts.trees.head
+          case t => t
+        }
+        val elems = segments flatMap {
+          case ts: Thicket => ts.trees.tail
+          case t => Nil
+        }
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
@@ -1054,8 +1062,8 @@ object desugar {
           ctx.error("illegal variable in pattern alternative", vble.pos)
       case Annotated(arg, _) =>
         collect(arg)
-      case InterpolatedString(_, _, elems) =>
-        elems foreach collect
+      case InterpolatedString(_, segments) =>
+        segments foreach collect
       case InfixOp(left, _, right) =>
         collect(left)
         collect(right)
