@@ -252,7 +252,7 @@ class TreeChecker extends Phase with SymTransformer {
       // case tree: TypeBoundsTree =>
       // case tree: Alternative =>
       // case tree: PackageDef =>
-      case Annotated(_, arg) =>
+      case Annotated(arg, _) =>
         assertIdentNotJavaClass(arg)
       case _ =>
     }

@@ -183,7 +183,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
     case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
     case SelectFromTypeTree(tpt, _) => mayBeTypePat(tpt)
-    case Annotated(_, tpt) => mayBeTypePat(tpt)
+    case Annotated(tpt, _) => mayBeTypePat(tpt)
     case _ => false
   }
 

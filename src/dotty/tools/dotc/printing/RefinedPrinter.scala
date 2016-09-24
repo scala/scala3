@@ -434,7 +434,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "package " ~ toTextPackageId(pid) ~ bodyText
       case tree: Template =>
         toTextTemplate(tree)
-      case Annotated(annot, arg) =>
+      case Annotated(arg, annot) =>
         toTextLocal(arg) ~~ annotText(annot)
       case EmptyTree =>
         "<empty>"

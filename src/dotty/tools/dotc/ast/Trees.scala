@@ -709,7 +709,7 @@ object Trees {
   }
 
   /** arg @annot */
-  case class Annotated[-T >: Untyped] private[ast] (annot: Tree[T], arg: Tree[T])
+  case class Annotated[-T >: Untyped] private[ast] (arg: Tree[T], annot: Tree[T])
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo = arg
@@ -1082,9 +1082,9 @@ object Trees {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats))
       }
-      def Annotated(tree: Tree)(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated = tree match {
-        case tree: Annotated if (annot eq tree.annot) && (arg eq tree.arg) => tree
-        case _ => finalize(tree, untpd.Annotated(annot, arg))
+      def Annotated(tree: Tree)(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated = tree match {
+        case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
+        case _ => finalize(tree, untpd.Annotated(arg, annot))
       }
       def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
         case tree: Thicket if trees eq tree.trees => tree
@@ -1198,8 +1198,8 @@ object Trees {
           cpy.Import(tree)(transform(expr), selectors)
         case PackageDef(pid, stats) =>
           cpy.PackageDef(tree)(transformSub(pid), transformStats(stats))
-        case Annotated(annot, arg) =>
-          cpy.Annotated(tree)(transform(annot), transform(arg))
+        case Annotated(arg, annot) =>
+          cpy.Annotated(tree)(transform(arg), transform(annot))
         case Thicket(trees) =>
           val trees1 = transform(trees)
           if (trees1 eq trees) tree else Thicket(trees1)
@@ -1304,8 +1304,8 @@ object Trees {
             this(x, expr)
           case PackageDef(pid, stats) =>
             this(this(x, pid), stats)(localCtx)
-          case Annotated(annot, arg) =>
-            this(this(x, annot), arg)
+          case Annotated(arg, annot) =>
+            this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
         }

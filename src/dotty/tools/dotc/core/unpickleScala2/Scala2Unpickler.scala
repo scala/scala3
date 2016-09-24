@@ -1186,7 +1186,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case ANNOTATEDtree =>
         val annot = readTreeRef()
         val arg = readTreeRef()
-        Annotated(annot, arg)
+        Annotated(arg, annot)
 
       case SINGLETONTYPEtree =>
         SingletonTypeTree(readTreeRef())

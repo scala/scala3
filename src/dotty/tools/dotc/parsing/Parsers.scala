@@ -338,7 +338,7 @@ object Parsers {
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
       case Typed(t1, _) => isWildcard(t1)
-      case t: Annotated => isWildcard(t.arg)
+      case Annotated(t1, _) => isWildcard(t1)
       case Parens(t1) => isWildcard(t1)
       case _ => false
     }
@@ -742,7 +742,7 @@ object Parsers {
     def annotType(): Tree = annotTypeRest(simpleType())
 
     def annotTypeRest(t: Tree): Tree =
-      if (in.token == AT) annotTypeRest(atPos(t.pos.start) { Annotated(annot(), t) })
+      if (in.token == AT) annotTypeRest(atPos(t.pos.start) { Annotated(t, annot()) })
       else t
 
     /** SimpleType       ::=  SimpleType TypeArgs
@@ -900,7 +900,7 @@ object Parsers {
     private final def findWildcardType(t: Tree): Option[Position] = t match {
       case TypeBoundsTree(_, _) => Some(t.pos)
       case Parens(t1) => findWildcardType(t1)
-      case Annotated(_, t1) => findWildcardType(t1)
+      case Annotated(t1, _) => findWildcardType(t1)
       case _ => None
     }
 
@@ -1071,7 +1071,7 @@ object Parsers {
             syntaxErrorOrIncomplete("`*' expected"); t
           }
         case AT if location != Location.InPattern =>
-          (t /: annotations()) ((t, annot) => Annotated(annot, t))
+          (t /: annotations())(Annotated)
         case _ =>
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && location != Location.InPattern) {

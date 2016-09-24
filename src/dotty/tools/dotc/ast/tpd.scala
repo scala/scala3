@@ -292,8 +292,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
     ta.assignType(untpd.PackageDef(pid, stats), pid)
 
-  def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
-    ta.assignType(untpd.Annotated(annot, arg), annot, arg)
+  def Annotated(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated =
+    ta.assignType(untpd.Annotated(arg, annot), arg, annot)
 
   def Throw(expr: Tree)(implicit ctx: Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
@@ -568,11 +568,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Annotated(tree: Tree)(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated = {
-      val tree1 = untpd.cpy.Annotated(tree)(annot, arg)
+    override def Annotated(tree: Tree)(arg: Tree, annot: Tree)(implicit ctx: Context): Annotated = {
+      val tree1 = untpd.cpy.Annotated(tree)(arg, annot)
       tree match {
         case tree: Annotated if (arg.tpe eq tree.arg.tpe) && (annot eq tree.annot) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, annot, arg)
+        case _ => ta.assignType(tree1, arg, annot)
       }
     }
 

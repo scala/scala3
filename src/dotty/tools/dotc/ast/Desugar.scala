@@ -632,7 +632,7 @@ object desugar {
     val selector = makeTuple(params.map(p => Ident(p.name)))
 
     if (unchecked)
-      Function(params, Match(Annotated(New(ref(defn.UncheckedAnnotType)), selector), cases))
+      Function(params, Match(Annotated(selector, New(ref(defn.UncheckedAnnotType))), cases))
     else
       Function(params, Match(selector, cases))
   }
@@ -661,7 +661,7 @@ object desugar {
    *      tree @cls
    */
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(untpd.New(untpd.TypeTree(cls.typeRef), Nil), tree)
+    Annotated(tree, untpd.New(untpd.TypeTree(cls.typeRef), Nil))
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
@@ -904,8 +904,8 @@ object desugar {
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            New(ref(defn.RepeatedAnnotType), Nil :: Nil),
-            AppliedTypeTree(ref(seqType), t))
+            AppliedTypeTree(ref(seqType), t),
+            New(ref(defn.RepeatedAnnotType), Nil :: Nil))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
           Select(t, op)
@@ -1052,7 +1052,7 @@ object desugar {
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
           ctx.error("illegal variable in pattern alternative", vble.pos)
-      case Annotated(annot, arg) =>
+      case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, _, elems) =>
         elems foreach collect
