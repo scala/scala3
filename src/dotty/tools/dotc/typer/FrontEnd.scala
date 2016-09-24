@@ -35,7 +35,8 @@ class FrontEnd extends Phase {
       else new Parser(unit.source).parse()
     val printer = if (ctx.settings.Xprint.value.contains("parser")) default else typr
     printer.println("parsed:\n" + unit.untpdTree.show)
-    if (Config.checkPositions) unit.untpdTree.checkPos(complete = true)
+    if (Config.checkPositions) 
+      unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
   }
 
   def enterSyms(implicit ctx: Context) = monitor("indexing") {

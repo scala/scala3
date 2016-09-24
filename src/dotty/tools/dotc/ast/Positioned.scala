@@ -151,23 +151,41 @@ abstract class Positioned extends DotClass with Product {
    *  - Parent positions contain child positions
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(complete: Boolean)(implicit ctx: Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(implicit ctx: Context): Unit = try {
     import untpd._
+    var lastPositioned: Positioned = null
+    var lastPos = NoPosition
     def check(p: Any): Unit = p match {
       case p: Positioned =>
         assert(pos contains p.pos,
           s"""position error, parent position does not contain child positon
-                 |parent = $this,
-                 |parent position = $pos,
-                 |child = $p,
-                 |child position = ${p.pos}""".stripMargin)
+             |parent          = $this,
+             |parent position = $pos,
+             |child           = $p,
+             |child position  = ${p.pos}""".stripMargin)
         p match {
           case tree: Tree if !tree.isEmpty =>
             assert(tree.pos.exists,
               s"position error: position not set for $tree # ${tree.uniqueId}")
           case _ =>
         }
-        p.checkPos(complete)
+        if (nonOverlapping) {
+          this match {
+            case _: InterpolatedString => // ignore, strings and elements are interleaved in source, separated in tree
+            case _: Function => // ignore, functions produced from wildcards (e.g. (_ op _) mix parameters and body
+            case _ =>
+              assert(!lastPos.exists || !p.pos.exists || lastPos.end <= p.pos.start,
+                s"""position error, child positions overlap or in wrong order
+                   |parent             = $this
+                   |1st child          = $lastPositioned
+                   |1st child position = $lastPos
+                   |2nd child          = $p
+                   |2nd child position = ${p.pos}""".stripMargin)
+              lastPositioned = p
+              lastPos = p.pos
+          }
+        }
+        p.checkPos(nonOverlapping)
       case xs: List[_] =>
         xs.foreach(check)
       case _ =>
@@ -179,10 +197,11 @@ abstract class Positioned extends DotClass with Product {
         check(tree.mods)
         check(tree.vparamss)
       case _ =>
-        var n = productArity
-        while (n > 0) {
-          n -= 1
+        val end = productArity
+        var n = 0
+        while (n < end) {
           check(productElement(n))
+          n += 1
         }
     }
   } catch {
