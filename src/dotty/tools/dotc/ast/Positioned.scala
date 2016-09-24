@@ -171,7 +171,9 @@ abstract class Positioned extends DotClass with Product {
         }
         if (nonOverlapping) {
           this match {
-            case _: Function => // ignore, functions produced from wildcards (e.g. (_ op _) mix parameters and body
+            case _: WildcardFunction
+            if lastPositioned.isInstanceOf[ValDef] && !p.isInstanceOf[ValDef] =>
+              // ignore transition from last wildcard parameter to body
             case _ =>
               assert(!lastPos.exists || !p.pos.exists || lastPos.end <= p.pos.start,
                 s"""position error, child positions overlap or in wrong order
@@ -180,9 +182,9 @@ abstract class Positioned extends DotClass with Product {
                    |1st child position = $lastPos
                    |2nd child          = $p
                    |2nd child position = ${p.pos}""".stripMargin)
-              lastPositioned = p
-              lastPos = p.pos
           }
+          lastPositioned = p
+          lastPos = p.pos
         }
         p.checkPos(nonOverlapping)
       case xs: List[_] =>

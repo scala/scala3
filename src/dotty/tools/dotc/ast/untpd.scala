@@ -46,6 +46,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
+  /** A function created from a wildcard expression
+   *  @param  placeHolderParams  a list of definitions of synthetic parameters
+   *  @param  body               the function body where wildcards are replaced by
+   *                             references to synthetic parameters.
+   */
+  class WildcardFunction(placeholderParams: List[ValDef], body: Tree) extends Function(placeholderParams, body)
+
   case class InfixOp(left: Tree, op: Name, right: Tree) extends OpTree
   case class PostfixOp(od: Tree, op: Name) extends OpTree
   case class PrefixOp(op: Name, od: Tree) extends OpTree

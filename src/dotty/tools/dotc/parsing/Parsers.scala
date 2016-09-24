@@ -973,7 +973,7 @@ object Parsers {
       else
         try
           if (placeholderParams.isEmpty) t
-          else Function(placeholderParams.reverse, t)
+          else new WildcardFunction(placeholderParams.reverse, t)
         finally placeholderParams = saved
     }
 
