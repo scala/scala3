@@ -253,6 +253,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
         else {
           var modsText = modText(constr.mods, "")
+          if (!modsText.isEmpty) modsText = " " ~ modsText
           if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
           withEnclosingDef(constr) { addVparamssText(tparamsTxt ~~ modsText, vparamss) }
         }

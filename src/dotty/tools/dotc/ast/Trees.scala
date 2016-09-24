@@ -341,8 +341,6 @@ object Trees {
     }
 
     protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
-
-    override def envelope: Position = rawMods.pos.union(pos).union(initialPos)
   }
 
   /** A ValDef or DefDef tree */
@@ -619,7 +617,6 @@ object Trees {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def isType = name.isTypeName
     override def isTerm = name.isTermName
-    override def envelope: Position = pos union initialPos
   }
 
   /** tree_1 | ... | tree_n */
@@ -740,6 +737,7 @@ object Trees {
       val newTrees = trees.map(_.withPos(pos))
       new Thicket[T](newTrees).asInstanceOf[this.type]
     }
+    override def pos = (NoPosition /: trees) ((pos, t) => pos union t.pos)
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
       trees foreach (_.foreachInThicket(op))
   }

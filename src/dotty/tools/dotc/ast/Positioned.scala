@@ -3,6 +3,10 @@ package ast
 
 import util.Positions._
 import util.DotClass
+import core.Contexts.Context
+import core.Decorators._
+import core.Flags.JavaDefined
+import core.StdNames.nme
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
@@ -16,18 +20,13 @@ abstract class Positioned extends DotClass with Product {
    */
   def pos: Position = curPos
 
-  /** Destructively update `curPos` to given position. Also, set any missing
+ /** Destructively update `curPos` to given position. Also, set any missing
    *  positions in children.
    */
   protected def setPos(pos: Position): Unit = {
     curPos = pos
     if (pos.exists) setChildPositions(pos.toSynthetic)
   }
-
-  /** The envelope containing the item in its entirety. Envelope is different from
-   *  `pos` for definitions (instances of MemberDef).
-   */
-  def envelope: Position = pos.toSynthetic
 
   /** A positioned item like this one with the position set to `pos`.
    *  if the positioned item is source-derived, a clone is returned.
@@ -106,8 +105,7 @@ abstract class Positioned extends DotClass with Product {
     }
   }
 
-  /** The initial, synthetic position. This is usually the union of all positioned children's
-   *  envelopes.
+  /** The initial, synthetic position. This is usually the union of all positioned children's positions.
    */
   protected def initialPos: Position = {
     var n = productArity
@@ -115,7 +113,7 @@ abstract class Positioned extends DotClass with Product {
     while (n > 0) {
       n -= 1
       productElement(n) match {
-        case p: Positioned => pos = pos union p.envelope
+        case p: Positioned => pos = pos union p.pos
         case xs: List[_] => pos = unionPos(pos, xs)
         case _ =>
       }
@@ -124,7 +122,7 @@ abstract class Positioned extends DotClass with Product {
   }
 
   private def unionPos(pos: Position, xs: List[_]): Position = xs match {
-    case (p: Positioned) :: xs1 => unionPos(pos union p.envelope, xs1)
+    case (p: Positioned) :: xs1 => unionPos(pos union p.pos, xs1)
     case _ => pos
   }
 
@@ -138,7 +136,7 @@ abstract class Positioned extends DotClass with Product {
         false
     }
     (this eq that) ||
-      (this.envelope contains that.pos) && {
+      (this.pos contains that.pos) && {
         var n = productArity
         var found = false
         while (n > 0 && !found) {
@@ -147,5 +145,49 @@ abstract class Positioned extends DotClass with Product {
         }
         found
       }
+  }
+
+  /** Check that all positioned items in this tree satisfy the following conditions:
+   *  - Parent positions contain child positions
+   *  - If item is a non-empty tree, it has a position
+   */
+  def checkPos(complete: Boolean)(implicit ctx: Context): Unit = try {
+    import untpd._
+    def check(p: Any): Unit = p match {
+      case p: Positioned =>
+        assert(pos contains p.pos,
+          s"""position error, parent position does not contain child positon
+                 |parent = $this,
+                 |parent position = $pos,
+                 |child = $p,
+                 |child position = ${p.pos}""".stripMargin)
+        p match {
+          case tree: Tree if !tree.isEmpty =>
+            assert(tree.pos.exists,
+              s"position error: position not set for $tree # ${tree.uniqueId}")
+          case _ =>
+        }
+        p.checkPos(complete)
+      case xs: List[_] =>
+        xs.foreach(check)
+      case _ =>
+    }
+    this match {
+      case tree: DefDef if tree.name == nme.CONSTRUCTOR && tree.mods.is(JavaDefined) =>
+        // Special treatment for constructors coming from Java:
+        // Leave out tparams, they are copied with wrong positions from parent class
+        check(tree.mods)
+        check(tree.vparamss)
+      case _ =>
+        var n = productArity
+        while (n > 0) {
+          n -= 1
+          check(productElement(n))
+        }
+    }
+  } catch {
+    case ex: AssertionError =>
+      println(i"error while checking $this")
+      throw ex
   }
 }

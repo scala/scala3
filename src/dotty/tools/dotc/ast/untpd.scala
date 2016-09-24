@@ -258,7 +258,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   implicit class UntypedTreeDecorator(val self: Tree) extends AnyVal {
     def locateEnclosing(base: List[Tree], pos: Position): List[Tree] = {
       def encloses(elem: Any) = elem match {
-        case t: Tree => t.envelope contains pos
+        case t: Tree => t.pos contains pos
         case _ => false
       }
       base.productIterator find encloses match {

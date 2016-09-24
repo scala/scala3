@@ -63,6 +63,9 @@ object Config {
     */
   final val checkNoDoubleBindings = true
 
+  /** Check positions for consistency after parsing */
+  final val checkPositions = true
+
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 

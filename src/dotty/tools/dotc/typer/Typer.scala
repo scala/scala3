@@ -1149,7 +1149,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
         ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
-      patch(Position(toUntyped(vdef).envelope.start), "@volatile ")
+      patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {

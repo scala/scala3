@@ -480,7 +480,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     require(sym.pos.exists)
     object accum extends TreeAccumulator[List[Tree]] {
       def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
-        if (tree.envelope.contains(sym.pos))
+        if (tree.pos.contains(sym.pos))
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)
