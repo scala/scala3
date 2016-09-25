@@ -200,7 +200,6 @@ class TreeChecker extends Phase with SymTransformer {
     def checkIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
       // case tree: untpd.Ident =>
       // case tree: untpd.Select =>
-      // case tree: untpd.SelectFromTypeTree =>
       // case tree: untpd.Bind =>
       case vd : ValDef =>
         assertIdentNotJavaClass(vd.forceIfLazy)

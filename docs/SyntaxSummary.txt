@@ -105,7 +105,7 @@ grammar.
   WithType          ::=  AnnotType {`with' AnnotType}                           (deprecated)
   AnnotType         ::=  SimpleType {Annotation}                                Annotated(t, annot)
   SimpleType        ::=  SimpleType (TypeArgs | NamedTypeArgs)                  AppliedTypeTree(t, args)
-                      |  SimpleType `#' id                                      SelectFromTypeTree(t, name)
+                      |  SimpleType `#' id                                      Select(t, name)
                       |  StableId
                       |  Path `.' `type'                                        SingletonTypeTree(p)
                       |  `(' ArgTypes ')'                                       Tuple(ts)

@@ -281,11 +281,8 @@ object JavaParsers {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
           var t = typeArgs(atPos(in.offset)(Ident(ident())))
-          // typeSelect generates Select nodes is the lhs is an Ident or Select,
-          // SelectFromTypeTree otherwise. See #3567.
-          // Select nodes can be later
-          // converted in the typechecker to SelectFromTypeTree if the class
-          // turns out to be an instance inner class instead of a static inner class.
+          // typeSelect generates Select nodes if the lhs is an Ident or Select,
+          // For other nodes it always assumes that the selected item is a type.
           def typeSelect(t: Tree, name: Name) = t match {
             case Ident(_) | Select(_, _) => Select(t, name)
             case _ => Select(t, name.toTypeName)
