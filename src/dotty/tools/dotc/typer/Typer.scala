@@ -363,52 +363,45 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     else tree
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
-    def asSelect(implicit ctx: Context): Tree = {
-      val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-      if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-      val select = typedSelect(tree, pt, qual1)
-      if (select.tpe ne TryDynamicCallType) select
-      else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
-      else typedDynamicSelect(tree, Nil, pt)
-   }
-
-    def asJavaSelectFromTypeTree(implicit ctx: Context): Tree = {
-      // Translate names in Select/Ident nodes to type names.
-      def convertToTypeName(tree: untpd.Tree): Option[untpd.Tree] = tree match {
-        case Select(qual, name) => Some(untpd.Select(qual, name.toTypeName))
-        case Ident(name)        => Some(untpd.Ident(name.toTypeName))
-        case _                  => None
+    def typeAsIs(implicit ctx: Context): Tree = {
+      if (tree.qualifier.isType) {
+        val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
+        assignType(cpy.Select(tree)(qual1, tree.name), qual1)
       }
-
-      // Try to convert Select(qual, name) to a SelectFromTypeTree.
-      def convertToSelectFromType(qual: untpd.Tree, origName: Name): Option[untpd.SelectFromTypeTree] =
-        convertToTypeName(qual) match {
-          case Some(qual1)  => Some(untpd.SelectFromTypeTree(qual1 withPos qual.pos, origName.toTypeName))
-          case _            => None
-        }
-
-      convertToSelectFromType(tree.qualifier, tree.name) match {
-        case Some(sftt) => typedSelectFromTypeTree(sftt, pt)
-        case _ => ctx.error(em"Could not convert $tree to a SelectFromTypeTree"); EmptyTree
+      else {
+        val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
+        if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
+        val select = typedSelect(tree, pt, qual1)
+        if (select.tpe ne TryDynamicCallType) select
+        else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
+        else typedDynamicSelect(tree, Nil, pt)
       }
     }
 
-    def selectWithFallback(fallBack: => Tree) =
-      tryEither(tryCtx => asSelect(tryCtx))((_, _) => fallBack)
+    def asJavaSelectFromType(implicit ctx: Context): Tree = {
+      def typeSelectOnType(qual: untpd.Tree) =
+        typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
+      tree.qualifier match {
+        case Select(qual, name) => typeSelectOnType(untpd.Select(qual, name.toTypeName))
+        case Ident(name)        => typeSelectOnType(untpd.Ident(name.toTypeName))
+        case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
+      }
+    }
+
+    def selectWithFallback(fallBack: Context => Tree) =
+      tryAlternatively(typeAsIs(_))(fallBack)
 
     if (ctx.compilationUnit.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      selectWithFallback(asJavaSelectFromTypeTree(ctx))
+      selectWithFallback(asJavaSelectFromType(_)) // !!! possibly exponential bcs of qualifier retyping
     else if (tree.name == nme.withFilter && tree.getAttachment(desugar.MaybeFilter).isDefined)
-      selectWithFallback(typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt))
+      selectWithFallback {
+        implicit ctx =>
+          typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt) // !!! possibly exponential bcs of qualifier retyping
+      }
     else
-      asSelect(ctx)
-  }
-
-  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
-    val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
-    assignType(cpy.SelectFromTypeTree(tree)(qual1, tree.name), qual1)
+      typeAsIs(ctx)
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
@@ -1393,7 +1386,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           tree match {
             case tree: untpd.Ident => typedIdent(tree, pt)
             case tree: untpd.Select => typedSelect(tree, pt)
-            case tree: untpd.SelectFromTypeTree => typedSelectFromTypeTree(tree, pt)
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
               if (tree.isEmpty) tpd.EmptyValDef
@@ -1515,6 +1507,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       result
     }
   }
+
+  /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
+   *  to errors and result of `op1`.
+   */
+  def tryAlternatively[T](op1: Context => T)(op2: Context => T)(implicit ctx: Context): T =
+    tryEither(op1) { (failedVal, failedState) =>
+      tryEither(op2) { (_, _) =>
+        failedState.commit
+        failedVal
+      }
+    }
 
   /** Add apply node or implicit conversions. Two strategies are tried, and the first
    *  that is successful is picked. If neither of the strategies are successful, continues with

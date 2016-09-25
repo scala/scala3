@@ -795,7 +795,7 @@ object Parsers {
     private def typeProjection(t: Tree): Tree = {
       accept(HASH)
       val id = typeIdent()
-      atPos(t.pos.start, id.pos.start) { SelectFromTypeTree(t, id.name) }
+      atPos(t.pos.start, id.pos.start) { Select(t, id.name) }
     }
 
     /** NamedTypeArg      ::=  id `=' Type

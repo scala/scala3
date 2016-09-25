@@ -281,7 +281,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => toText(name)
         }
       case tree @ Select(qual, name) =>
-        toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
+        if (qual.isType) toTextLocal(qual) ~ "#" ~ toText(name)
+        else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case tree: This =>
         optDotPrefix(tree) ~ "this" ~ idText(tree)
       case Super(qual: This, mix) =>
@@ -349,8 +350,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tree.hasType) toText(tree.typeOpt) else toText(orig)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ ".type"
-      case SelectFromTypeTree(qual, name) =>
-        toTextLocal(qual) ~ "#" ~ toText(name)
       case AndTypeTree(l, r) =>
         changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
       case OrTypeTree(l, r) =>

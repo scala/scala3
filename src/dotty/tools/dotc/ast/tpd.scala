@@ -30,11 +30,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
     ta.assignType(untpd.Select(qualifier, name), qualifier)
 
-  def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
-    ta.assignType(untpd.SelectFromTypeTree(qualifier, name), qualifier)
-
-  def SelectFromTypeTree(qualifier: Tree, tp: NamedType)(implicit ctx: Context): SelectFromTypeTree =
-    untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp)
+  def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
+    untpd.Select(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
     untpd.This(cls.name).withType(cls.thisType)
@@ -333,7 +330,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Ident(tp)
     else tp.prefix match {
       case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
-      case pre => SelectFromTypeTree(TypeTree(pre), tp)
+      case pre => Select(TypeTree(pre), tp)
     } // no checks necessary
 
   def ref(sym: Symbol)(implicit ctx: Context): Tree =

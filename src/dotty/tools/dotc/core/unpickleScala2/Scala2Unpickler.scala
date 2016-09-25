@@ -1194,7 +1194,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SELECTFROMTYPEtree =>
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
-        SelectFromTypeTree(qualifier, symbol.namedType)
+        Select(qualifier, symbol.namedType)
 
       case COMPOUNDTYPEtree =>
         readTemplateRef()
