@@ -183,7 +183,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
     case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
     case SelectFromTypeTree(tpt, _) => mayBeTypePat(tpt)
-    case Annotated(_, tpt) => mayBeTypePat(tpt)
+    case Annotated(tpt, _) => mayBeTypePat(tpt)
     case _ => false
   }
 
@@ -480,7 +480,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     require(sym.pos.exists)
     object accum extends TreeAccumulator[List[Tree]] {
       def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
-        if (tree.envelope.contains(sym.pos))
+        if (tree.pos.contains(sym.pos))
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)

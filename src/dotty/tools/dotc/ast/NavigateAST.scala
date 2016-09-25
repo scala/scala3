@@ -19,10 +19,9 @@ object NavigateAST {
       case _ =>
         val loosePath = untypedPath(tree, exactMatch = false)
         throw new
-          Error(i"""no untyped tree for $tree, pos = ${tree.pos}, envelope = ${tree.envelope}
+          Error(i"""no untyped tree for $tree, pos = ${tree.pos}
                    |best matching path =\n$loosePath%\n====\n%
-                   |path positions = ${loosePath.map(_.pos)}
-                   |path envelopes = ${loosePath.map(_.envelope)}""")
+                   |path positions = ${loosePath.map(_.pos)}""")
     }
 
   /** The reverse path of untyped trees starting with a tree that closest matches
@@ -40,7 +39,7 @@ object NavigateAST {
   def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: Context): List[Positioned] =
     tree match {
       case tree: MemberDef[_] =>
-        untypedPath(tree.envelope) match {
+        untypedPath(tree.pos) match {
           case path @ (last: DefTree[_]) :: _ => path
           case path if !exactMatch => path
           case _ => Nil
@@ -76,7 +75,7 @@ object NavigateAST {
       path
     }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
-      if (p.envelope contains pos) childPath(p.productIterator, p :: path)
+      if (p.pos contains pos) childPath(p.productIterator, p :: path)
       else path
     singlePath(from, Nil)
   }

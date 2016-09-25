@@ -505,7 +505,7 @@ object desugar {
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
-      Thicket(modul, classDef(cls))
+      Thicket(modul, classDef(cls).withPos(mdef.pos))
     }
   }
 
@@ -516,7 +516,7 @@ object desugar {
   def patDef(pdef: PatDef)(implicit ctx: Context): Tree = {
     val PatDef(mods, pats, tpt, rhs) = pdef
     val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-    flatTree(pats1 map (makePatDef(mods, _, rhs)))
+    flatTree(pats1 map (makePatDef(pdef, mods, _, rhs)))
   }
 
   /** If `pat` is a variable pattern,
@@ -534,9 +534,9 @@ object desugar {
    *  If the original pattern variable carries a type annotation, so does the corresponding
    *  ValDef or DefDef.
    */
-  def makePatDef(mods: Modifiers, pat: Tree, rhs: Tree)(implicit ctx: Context): Tree = pat match {
+  def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(implicit ctx: Context): Tree = pat match {
     case VarPattern(named, tpt) =>
-      derivedValDef(named, tpt, rhs, mods)
+      derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
       val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
       val vars = getVariables(pat)
@@ -553,7 +553,7 @@ object desugar {
         case Nil =>
           matchExpr
         case (named, tpt) :: Nil =>
-          derivedValDef(named, tpt, matchExpr, mods)
+          derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
           val tmpName = ctx.freshName().toTermName
           val patMods = mods & (AccessFlags | Lazy) | Synthetic
@@ -564,8 +564,8 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex)
             yield
-              if (mods is Lazy) derivedDefDef(named, tpt, selector(n), mods &~ Lazy)
-              else derivedValDef(named, tpt, selector(n), mods)
+              if (mods is Lazy) derivedDefDef(original, named, tpt, selector(n), mods &~ Lazy)
+              else derivedValDef(original, named, tpt, selector(n), mods)
           flatTree(firstDef :: restDefs)
       }
   }
@@ -632,7 +632,7 @@ object desugar {
     val selector = makeTuple(params.map(p => Ident(p.name)))
 
     if (unchecked)
-      Function(params, Match(Annotated(New(ref(defn.UncheckedAnnotType)), selector), cases))
+      Function(params, Match(Annotated(selector, New(ref(defn.UncheckedAnnotType))), cases))
     else
       Function(params, Match(selector, cases))
   }
@@ -661,16 +661,20 @@ object desugar {
    *      tree @cls
    */
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(untpd.New(untpd.TypeTree(cls.typeRef), Nil), tree)
+    Annotated(tree, untpd.New(untpd.TypeTree(cls.typeRef), Nil))
 
-  private def derivedValDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
-    val vdef = ValDef(named.name.asTermName, tpt, rhs).withMods(mods).withPos(named.pos)
+  private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
+    val vdef = ValDef(named.name.asTermName, tpt, rhs)
+      .withMods(mods)
+      .withPos(original.pos.withPoint(named.pos.start))
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
    }
 
-  private def derivedDefDef(named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
-    DefDef(named.name.asTermName, Nil, Nil, tpt, rhs).withMods(mods).withPos(named.pos)
+  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers) =
+    DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
+      .withMods(mods)
+      .withPos(original.pos.withPoint(named.pos.start))
 
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
@@ -760,7 +764,7 @@ object desugar {
        */
       def makeLambda(pat: Tree, body: Tree): Tree = pat match {
         case VarPattern(named, tpt) =>
-          Function(derivedValDef(named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
+          Function(derivedValDef(pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, unchecked = false)
       }
@@ -863,7 +867,7 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = (defpats, rhss).zipped map (makePatDef(Modifiers(), _, _))
+          val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = pat :: pats
           val vfrom1 = new IrrefutableGenFrom(makeTuple(allpats), rhs1)
@@ -885,7 +889,15 @@ object desugar {
         Apply(
           ref(defn.SymbolClass.companionModule.termRef),
           Literal(Constant(str)) :: Nil)
-      case InterpolatedString(id, strs, elems) =>
+      case InterpolatedString(id, segments) =>
+        val strs = segments map {
+          case ts: Thicket => ts.trees.head
+          case t => t
+        }
+        val elems = segments flatMap {
+          case ts: Thicket => ts.trees.tail
+          case t => Nil
+        }
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
@@ -900,8 +912,8 @@ object desugar {
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            New(ref(defn.RepeatedAnnotType), Nil :: Nil),
-            AppliedTypeTree(ref(seqType), t))
+            AppliedTypeTree(ref(seqType), t),
+            New(ref(defn.RepeatedAnnotType), Nil :: Nil))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
           Select(t, op)
@@ -946,7 +958,7 @@ object desugar {
         makeFor(nme.map, nme.flatMap, enums, body) orElse tree
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        flatTree(pats1 map (makePatDef(mods, _, rhs)))
+        flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ParsedTry(body, handler, finalizer) =>
         handler match {
           case Match(EmptyTree, cases) => Try(body, cases, finalizer)
@@ -1048,10 +1060,10 @@ object desugar {
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
           ctx.error("illegal variable in pattern alternative", vble.pos)
-      case Annotated(annot, arg) =>
+      case Annotated(arg, _) =>
         collect(arg)
-      case InterpolatedString(_, _, elems) =>
-        elems foreach collect
+      case InterpolatedString(_, segments) =>
+        segments foreach collect
       case InfixOp(left, _, right) =>
         collect(left)
         collect(right)

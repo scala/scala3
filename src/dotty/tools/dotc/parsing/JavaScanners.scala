@@ -27,6 +27,7 @@ object JavaScanners {
 
     def nextToken(): Unit = {
       if (next.token == EMPTY) {
+        lastOffset = lastCharOffset
         fetchToken()
       }
       else {

@@ -262,8 +262,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: New if !inJavaAnnot && !parentNews.contains(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
-        case tree @ Annotated(annot, annotated) =>
-          cpy.Annotated(tree)(transformAnnot(annot), transform(annotated))
+        case tree @ Annotated(annotated, annot) =>
+          cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {

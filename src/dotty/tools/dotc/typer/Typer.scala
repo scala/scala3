@@ -1149,7 +1149,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
         ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
-      patch(Position(toUntyped(vdef).envelope.start), "@volatile ")
+      patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
@@ -1342,7 +1342,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val annot1 = typedExpr(tree.annot, defn.AnnotationType)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type)
-      assignType(cpy.Annotated(tree)(annot1, arg1), annot1, arg1)
+      assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
     else {
       val tpt = TypeTree(AnnotatedType(arg1.tpe.widen, Annotation(annot1)))
       assignType(cpy.Typed(tree)(arg1, tpt), tpt)

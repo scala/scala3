@@ -23,8 +23,8 @@ object parsePackage extends ParserTest {
           TypedSplice(t)
         case SymbolLit(str) =>
           tree
-        case InterpolatedString(id, parts, elems) =>
-          InterpolatedString(id, parts map (transformSub(_)), elems map transform)
+        case InterpolatedString(id, segments) =>
+          InterpolatedString(id, segments map transform)
         case mdef @ ModuleDef(name, impl) =>
           ModuleDef(name, transformSub(impl)).withMods(mdef.mods)
         case Function(params, body) =>
