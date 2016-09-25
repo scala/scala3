@@ -614,7 +614,7 @@ object Parsers {
       val interpolator = in.name
       in.nextToken()
       while (in.token == STRINGPART) {
-        segmentBuf += Thicket(List(
+        segmentBuf += Thicket(
             literal(),
             atPos(in.offset) {
               if (in.token == IDENTIFIER)
@@ -630,7 +630,7 @@ object Parsers {
                 syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
                 EmptyTree
               }
-            }))
+            })
       }
       if (in.token == STRINGLIT) segmentBuf += literal()
       InterpolatedString(interpolator, segmentBuf.toList)
