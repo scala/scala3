@@ -311,8 +311,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
                 toTextLocal(tpt)
           }
         }
-      case Pair(l, r) =>
-        "(" ~ toTextGlobal(l) ~ ", " ~ toTextGlobal(r) ~ ")"
       case Typed(expr, tpt) =>
         changePrec(InfixPrec) { toText(expr) ~ ": " ~ toText(tpt) }
       case NamedArg(name, arg) =>
@@ -416,7 +414,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
-          case Pair(l, r) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
+          case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
           case _ => toTextGlobal(sel)
         }
         val selectorsText: Text = selectors match {

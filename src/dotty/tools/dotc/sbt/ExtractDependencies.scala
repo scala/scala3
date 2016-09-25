@@ -184,7 +184,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
         selectors foreach {
           case Ident(name) =>
             addImported(name)
-           case Pair(Ident(name), Ident(rename)) =>
+          case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
             if (rename ne nme.WILDCARD)
               addUsedName(rename)

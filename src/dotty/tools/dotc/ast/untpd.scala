@@ -139,7 +139,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def TypeApply(fun: Tree, args: List[Tree]): TypeApply = new TypeApply(fun, args)
   def Literal(const: Constant): Literal = new Literal(const)
   def New(tpt: Tree): New = new New(tpt)
-  def Pair(left: Tree, right: Tree): Pair = new Pair(left, right)
   def Typed(expr: Tree, tpt: Tree): Typed = new Typed(expr, tpt)
   def NamedArg(name: Name, arg: Tree): NamedArg = new NamedArg(name, arg)
   def Assign(lhs: Tree, rhs: Tree): Assign = new Assign(lhs, rhs)

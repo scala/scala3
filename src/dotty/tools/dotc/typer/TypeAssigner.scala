@@ -376,9 +376,6 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.Pair, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(defn.PairType.appliedTo(left.tpe :: right.tpe :: Nil))
-
   def assignType(tree: untpd.Typed, tpt: Tree)(implicit ctx: Context) =
     tree.withType(tpt.tpe)
 

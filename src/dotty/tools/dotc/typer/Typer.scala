@@ -186,15 +186,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         val Name = name.toTermName.decode
         selectors match {
-          case Pair(Ident(from), Ident(Name)) :: rest =>
-            val selName = if (name.isTypeName) from.toTypeName else from
-            // Pass refctx so that any errors are reported in the context of the
-            // reference instead of the context of the import.
-            checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
-          case Ident(Name) :: rest =>
-            checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
-          case _ :: rest =>
-            namedImportRef(site, rest)
+          case selector :: rest =>
+            selector match {
+              case Thicket(fromId :: Ident(Name) :: _) =>
+                val Ident(from) = fromId
+                val selName = if (name.isTypeName) from.toTypeName else from
+                // Pass refctx so that any errors are reported in the context of the
+                // reference instead of the context of the import.
+                checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
+              case Ident(Name) =>
+                checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
+              case _ =>
+                namedImportRef(site, rest)
+            }
           case nil =>
             NoType
         }
@@ -446,16 +450,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
-  }
-
-  def typedPair(tree: untpd.Pair, pt: Type)(implicit ctx: Context) = track("typedPair") {
-    val (leftProto, rightProto) = pt.argTypesLo match {
-      case l :: r :: Nil if pt isRef defn.PairClass => (l, r)
-      case _ => (WildcardType, WildcardType)
-    }
-    val left1 = typed(tree.left, leftProto)
-    val right1 = typed(tree.right, rightProto)
-    assignType(cpy.Pair(tree)(left1, right1), left1, right1)
   }
 
   def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
@@ -1422,7 +1416,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
-          case tree: untpd.Pair => typedPair(tree, pt)
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)

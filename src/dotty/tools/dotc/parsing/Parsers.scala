@@ -1786,7 +1786,7 @@ object Parsers {
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
         atPos(from.pos.start, in.skipToken()) {
-          Pair(from, termIdentOrWildcard())
+          Thicket(from, termIdentOrWildcard())
         }
       else from
     }

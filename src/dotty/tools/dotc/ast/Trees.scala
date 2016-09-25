@@ -428,15 +428,6 @@ object Trees {
     type ThisTree[-T >: Untyped] = New[T]
   }
 
-  /** (left, right) */
-  case class Pair[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])
-    extends TermTree[T] {
-    type ThisTree[-T >: Untyped] = Pair[T]
-    override def isTerm = left.isTerm && right.isTerm
-    override def isType = left.isType && right.isType
-    override def isPattern = !isTerm && (left.isPattern || left.isTerm) && (right.isPattern || right.isTerm)
-  }
-
   /** expr : tpt */
   case class Typed[-T >: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])
     extends ProxyTree[T] with TermTree[T] {
@@ -694,7 +685,7 @@ object Trees {
 
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
-   *  an untyped `Pair` `name => rename`
+   *  an untyped thicket consisting of `name` and `rename`.
    */
   case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])
     extends DenotingTree[T] {
@@ -836,7 +827,6 @@ object Trees {
     type TypeApply = Trees.TypeApply[T]
     type Literal = Trees.Literal[T]
     type New = Trees.New[T]
-    type Pair = Trees.Pair[T]
     type Typed = Trees.Typed[T]
     type NamedArg = Trees.NamedArg[T]
     type Assign = Trees.Assign[T]
@@ -954,10 +944,6 @@ object Trees {
       def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New = tree match {
         case tree: New if tpt eq tree.tpt => tree
         case _ => finalize(tree, untpd.New(tpt))
-      }
-      def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = tree match {
-        case tree: Pair if (left eq tree.left) && (right eq tree.right) => tree
-        case _ => finalize(tree, untpd.Pair(left, right))
       }
       def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
@@ -1132,8 +1118,6 @@ object Trees {
           tree
         case New(tpt) =>
           cpy.New(tree)(transform(tpt))
-        case Pair(left, right) =>
-          cpy.Pair(tree)(transform(left), transform(right))
         case Typed(expr, tpt) =>
           cpy.Typed(tree)(transform(expr), transform(tpt))
         case NamedArg(name, arg) =>
@@ -1238,8 +1222,6 @@ object Trees {
             x
           case New(tpt) =>
             this(x, tpt)
-          case Pair(left, right) =>
-            this(this(x, left), right)
           case Typed(expr, tpt) =>
             this(this(x, expr), tpt)
           case NamedArg(name, arg) =>

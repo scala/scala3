@@ -213,9 +213,6 @@ class TreeChecker extends Phase with SymTransformer {
       // case tree: untpd.This =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
-      case Pair(left, right) =>
-        assertIdentNotJavaClass(left)
-        assertIdentNotJavaClass(right)
       case Typed(expr, _) =>
         assertIdentNotJavaClass(expr)
       case NamedArg(_, arg) =>

@@ -70,7 +70,6 @@ object TreeTransforms {
     def prepareForApply(tree: Apply)(implicit ctx: Context) = this
     def prepareForTypeApply(tree: TypeApply)(implicit ctx: Context) = this
     def prepareForLiteral(tree: Literal)(implicit ctx: Context) = this
-    def prepareForPair(tree: Pair)(implicit ctx: Context) = this
     def prepareForNew(tree: New)(implicit ctx: Context) = this
     def prepareForTyped(tree: Typed)(implicit ctx: Context) = this
     def prepareForAssign(tree: Assign)(implicit ctx: Context) = this
@@ -104,7 +103,6 @@ object TreeTransforms {
     def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformLiteral(tree: Literal)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformNew(tree: New)(implicit ctx: Context, info: TransformerInfo): Tree = tree
-    def transformPair(tree: Pair)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformAssign(tree: Assign)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = tree
@@ -267,7 +265,6 @@ object TreeTransforms {
       nxPrepTypeApply = index(transformations, "prepareForTypeApply")
       nxPrepLiteral = index(transformations, "prepareForLiteral")
       nxPrepNew = index(transformations, "prepareForNew")
-      nxPrepPair = index(transformations, "prepareForPair")
       nxPrepTyped = index(transformations, "prepareForTyped")
       nxPrepAssign = index(transformations, "prepareForAssign")
       nxPrepBlock = index(transformations, "prepareForBlock")
@@ -299,7 +296,6 @@ object TreeTransforms {
       nxTransTypeApply = index(transformations, "transformTypeApply")
       nxTransLiteral = index(transformations, "transformLiteral")
       nxTransNew = index(transformations, "transformNew")
-      nxTransPair = index(transformations, "transformPair")
       nxTransTyped = index(transformations, "transformTyped")
       nxTransAssign = index(transformations, "transformAssign")
       nxTransBlock = index(transformations, "transformBlock")
@@ -341,7 +337,6 @@ object TreeTransforms {
       nxPrepTypeApply = indexUpdate(prev.nxPrepTypeApply, changedTransformationClass, transformationIndex, "prepareForTypeApply", copy)
       nxPrepLiteral = indexUpdate(prev.nxPrepLiteral, changedTransformationClass, transformationIndex, "prepareForLiteral", copy)
       nxPrepNew = indexUpdate(prev.nxPrepNew, changedTransformationClass, transformationIndex, "prepareForNew", copy)
-      nxPrepPair = indexUpdate(prev.nxPrepPair, changedTransformationClass, transformationIndex, "prepareForPair", copy)
       nxPrepTyped = indexUpdate(prev.nxPrepTyped, changedTransformationClass, transformationIndex, "prepareForTyped", copy)
       nxPrepAssign = indexUpdate(prev.nxPrepAssign, changedTransformationClass, transformationIndex, "prepareForAssign", copy)
       nxPrepBlock = indexUpdate(prev.nxPrepBlock, changedTransformationClass, transformationIndex, "prepareForBlock", copy)
@@ -372,7 +367,6 @@ object TreeTransforms {
       nxTransTypeApply = indexUpdate(prev.nxTransTypeApply, changedTransformationClass, transformationIndex, "transformTypeApply", copy)
       nxTransLiteral = indexUpdate(prev.nxTransLiteral, changedTransformationClass, transformationIndex, "transformLiteral", copy)
       nxTransNew = indexUpdate(prev.nxTransNew, changedTransformationClass, transformationIndex, "transformNew", copy)
-      nxTransPair = indexUpdate(prev.nxTransPair, changedTransformationClass, transformationIndex, "transformPair", copy)
       nxTransTyped = indexUpdate(prev.nxTransTyped, changedTransformationClass, transformationIndex, "transformTyped", copy)
       nxTransAssign = indexUpdate(prev.nxTransAssign, changedTransformationClass, transformationIndex, "transformAssign", copy)
       nxTransBlock = indexUpdate(prev.nxTransBlock, changedTransformationClass, transformationIndex, "transformBlock", copy)
@@ -409,7 +403,6 @@ object TreeTransforms {
     var nxPrepTypeApply: Array[Int] = _
     var nxPrepLiteral: Array[Int] = _
     var nxPrepNew: Array[Int] = _
-    var nxPrepPair: Array[Int] = _
     var nxPrepTyped: Array[Int] = _
     var nxPrepAssign: Array[Int] = _
     var nxPrepBlock: Array[Int] = _
@@ -441,7 +434,6 @@ object TreeTransforms {
     var nxTransTypeApply: Array[Int] = _
     var nxTransLiteral: Array[Int] = _
     var nxTransNew: Array[Int] = _
-    var nxTransPair: Array[Int] = _
     var nxTransTyped: Array[Int] = _
     var nxTransAssign: Array[Int] = _
     var nxTransBlock: Array[Int] = _
@@ -520,7 +512,6 @@ object TreeTransforms {
     val prepForApply: Mutator[Apply] = (trans, tree, ctx) => trans.prepareForApply(tree)(ctx)
     val prepForTypeApply: Mutator[TypeApply] = (trans, tree, ctx) => trans.prepareForTypeApply(tree)(ctx)
     val prepForNew: Mutator[New] = (trans, tree, ctx) => trans.prepareForNew(tree)(ctx)
-    val prepForPair: Mutator[Pair] = (trans, tree, ctx) => trans.prepareForPair(tree)(ctx)
     val prepForTyped: Mutator[Typed] = (trans, tree, ctx) => trans.prepareForTyped(tree)(ctx)
     val prepForAssign: Mutator[Assign] = (trans, tree, ctx) => trans.prepareForAssign(tree)(ctx)
     val prepForLiteral: Mutator[Literal] = (trans, tree, ctx) => trans.prepareForLiteral(tree)(ctx)
@@ -632,17 +623,6 @@ object TreeTransforms {
         val trans = info.transformers(cur)
         trans.transformNew(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: New => goNew(t, info.nx.nxTransNew(cur + 1))
-          case t => transformSingle(t, cur + 1)
-        }
-      } else tree
-    }
-
-    @tailrec
-    final private[TreeTransforms] def goPair(tree: Pair, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (cur < info.transformers.length) {
-        val trans = info.transformers(cur)
-        trans.transformPair(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
-          case t: Pair => goPair(t, info.nx.nxTransPair(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
       } else tree
@@ -917,7 +897,6 @@ object TreeTransforms {
         case tree: TypeApply => goTypeApply(tree, info.nx.nxTransTypeApply(cur))
         case tree: Literal => goLiteral(tree, info.nx.nxTransLiteral(cur))
         case tree: New => goNew(tree, info.nx.nxTransNew(cur))
-        case tree: Pair => goPair(tree, info.nx.nxTransPair(cur))
         case tree: Typed => goTyped(tree, info.nx.nxTransTyped(cur))
         case tree: Assign => goAssign(tree, info.nx.nxTransAssign(cur))
         case tree: Block => goBlock(tree, info.nx.nxTransBlock(cur))
@@ -1051,14 +1030,6 @@ object TreeTransforms {
           else {
             val tpt = transform(tree.tpt, mutatedInfo, cur)
             goNew(cpy.New(tree)(tpt), mutatedInfo.nx.nxTransNew(cur))
-          }
-        case tree: Pair =>
-          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForPair, info.nx.nxPrepPair, tree, cur)
-          if (mutatedInfo eq null) tree
-          else {
-            val left = transform(tree.left, mutatedInfo, cur)
-            val right = transform(tree.right, mutatedInfo, cur)
-            goPair(cpy.Pair(tree)(left, right), mutatedInfo.nx.nxTransPair(cur))
           }
         case tree: Typed =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTyped, info.nx.nxPrepTyped, tree, cur)

@@ -59,9 +59,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def New(tp: Type)(implicit ctx: Context): New = New(TypeTree(tp))
 
-  def Pair(left: Tree, right: Tree)(implicit ctx: Context): Pair =
-    ta.assignType(untpd.Pair(left, right), left, right)
-
   def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
     ta.assignType(untpd.Typed(expr, tpt), tpt)
 
@@ -492,14 +489,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New =
       ta.assignType(untpd.cpy.New(tree)(tpt), tpt)
-
-    override def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = {
-      val tree1 = untpd.cpy.Pair(tree)(left, right)
-      tree match {
-        case tree: Pair if (left.tpe eq tree.left.tpe) && (right.tpe eq tree.right.tpe) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, left, right)
-      }
-    }
 
     override def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
       ta.assignType(untpd.cpy.Typed(tree)(expr, tpt), tpt)

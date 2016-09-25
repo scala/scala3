@@ -60,9 +60,9 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
     def recur(sels: List[untpd.Tree]): Unit = sels match {
       case sel :: sels1 =>
         sel match {
-          case Pair(Ident(name: TermName), Ident(nme.WILDCARD)) =>
+          case Thicket(Ident(name: TermName) :: Ident(nme.WILDCARD) :: Nil) =>
             myExcluded += name
-          case Pair(Ident(from: TermName), Ident(to: TermName)) =>
+          case Thicket(Ident(from: TermName) :: Ident(to: TermName) :: Nil) =>
             myMapped = myMapped.updated(to, from)
             myExcluded += from
             myOriginals += from
@@ -99,7 +99,7 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
   lazy val hiddenRoot: Symbol = {
     val sym = site.termSymbol
     def hasMaskingSelector = selectors exists {
-      case Pair(_, Ident(nme.WILDCARD)) => true
+      case Thicket(_ :: Ident(nme.WILDCARD) :: Nil) => true
       case _ => false
     }
     if ((defn.RootImportTypes exists (_.symbol == sym)) && hasMaskingSelector) sym else NoSymbol
