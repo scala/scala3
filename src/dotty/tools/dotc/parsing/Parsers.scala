@@ -59,17 +59,27 @@ object Parsers {
 
     /* ------------- POSITIONS ------------------------------------------- */
 
+    /** Positions tree.
+     *  If `t` does not have a position yet, set its position to the given one.
+     */
+    def atPos[T <: Positioned](pos: Position)(t: T): T =
+      if (t.pos.isSourceDerived) t else t.withPos(pos)
+
     def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atPos(Position(start, end, point))(t)
 
+    /** If the last read offset is strictly greater than `start`, position tree
+     *  to position spanning from `start` to last read offset, with given point.
+     *  If the last offset is less than or equal to start, the tree `t` did not
+     *  consume any source for its construction. In this case, don't position it yet,
+     *  but wait for its position to be determined by `setChildPositions` when the
+     *  parent node is positioned.
+     */
     def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
       if (in.lastOffset > start) atPos(start, point, in.lastOffset)(t) else t
 
     def atPos[T <: Positioned](start: Offset)(t: T): T =
       atPos(start, start)(t)
-
-    def atPos[T <: Positioned](pos: Position)(t: T): T =
-      if (t.pos.isSourceDerived) t else t.withPos(pos)
 
     def nameStart: Offset =
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset

@@ -605,11 +605,8 @@ object JavaParsers {
           makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & (Flags.AccessFlags | Flags.JavaDefined)).toTermFlags)
       }
 
-    private def wild     = Ident(nme.WILDCARD)
-    private def wildList = List(wild) // OPT This list is shared for performance.
-
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(Ident(cdef.name.toTermName).withPos(NoPosition), wildList)
+      Import(Ident(cdef.name.toTermName).withPos(NoPosition), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
