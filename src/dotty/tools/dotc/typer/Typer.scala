@@ -363,45 +363,42 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     else tree
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
-    def typeAsIs(implicit ctx: Context): Tree = {
-      if (tree.qualifier.isType) {
-        val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
-        assignType(cpy.Select(tree)(qual1, tree.name), qual1)
-      }
-      else {
-        val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-        if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-        val select = typedSelect(tree, pt, qual1)
-        if (select.tpe ne TryDynamicCallType) select
-        else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
-        else typedDynamicSelect(tree, Nil, pt)
-      }
+    def typeSelectOnTerm(implicit ctx: Context): Tree = {
+      val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
+      if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
+      val select = typedSelect(tree, pt, qual1)
+      if (select.tpe ne TryDynamicCallType) select
+      else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
+      else typedDynamicSelect(tree, Nil, pt)
     }
 
-    def asJavaSelectFromType(implicit ctx: Context): Tree = {
-      def typeSelectOnType(qual: untpd.Tree) =
-        typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
-      tree.qualifier match {
-        case Select(qual, name) => typeSelectOnType(untpd.Select(qual, name.toTypeName))
-        case Ident(name)        => typeSelectOnType(untpd.Ident(name.toTypeName))
-        case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
-      }
+    def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
+      typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
+
+    def tryJavaSelectOnType(implicit ctx: Context): Tree = tree.qualifier match {
+      case Select(qual, name) => typeSelectOnType(untpd.Select(qual, name.toTypeName))
+      case Ident(name)        => typeSelectOnType(untpd.Ident(name.toTypeName))
+      case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
     def selectWithFallback(fallBack: Context => Tree) =
-      tryAlternatively(typeAsIs(_))(fallBack)
+      tryAlternatively(typeSelectOnTerm(_))(fallBack)
 
-    if (ctx.compilationUnit.isJava && tree.name.isTypeName)
+    if (tree.qualifier.isType) {
+      val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
+      assignType(cpy.Select(tree)(qual1, tree.name), qual1)
+    }
+    else if (ctx.compilationUnit.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      selectWithFallback(asJavaSelectFromType(_)) // !!! possibly exponential bcs of qualifier retyping
+      selectWithFallback(tryJavaSelectOnType(_)) // !!! possibly exponential bcs of qualifier retyping
     else if (tree.name == nme.withFilter && tree.getAttachment(desugar.MaybeFilter).isDefined)
       selectWithFallback {
         implicit ctx =>
           typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt) // !!! possibly exponential bcs of qualifier retyping
       }
     else
-      typeAsIs(ctx)
+      typeSelectOnTerm(ctx)
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
