@@ -446,10 +446,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       } else foldOver(sym, tree)
   }
 
-  implicit class modsDeco(mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
-    def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
-  }
-
   override val cpy = new TypedTreeCopier
 
   class TypedTreeCopier extends TreeCopier {

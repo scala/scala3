@@ -164,7 +164,6 @@ class TreeChecker extends Phase with SymTransformer {
           tree match {
             case t: MemberDef =>
               if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
-              if (sym.flags != t.mods.flags) ctx.warning(s"symbol ${sym.fullName} flags ${sym.flags} doesn't match AST definition flags ${t.mods.flags}")
             // todo: compare trees inside annotations
             case _ =>
           }

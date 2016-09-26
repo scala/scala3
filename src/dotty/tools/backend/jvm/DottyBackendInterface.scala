@@ -944,7 +944,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object ValDef extends ValDefDeconstructor {
-    def _1: Modifiers = field.mods
+    def _1: Modifiers = tpd.Modifiers(field.symbol)
     def _2: Name = field.name
     def _3: Tree = field.tpt
     def _4: Tree = field.rhs
@@ -1055,7 +1055,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object DefDef extends DefDefDeconstructor {
-    def _1: Modifiers = field.mods
+    def _1: Modifiers = tpd.Modifiers(field.symbol)
     def _2: Name = field.name
     def _3: List[TypeDef] = field.tparams
     def _4: List[List[ValDef]] = field.vparamss
@@ -1081,7 +1081,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object ClassDef extends ClassDefDeconstructor {
-    def _1: Modifiers = field.mods
+    def _1: Modifiers = tpd.Modifiers(field.symbol)
     def _2: Name = field.name
     def _4: Template = field.rhs.asInstanceOf[Template]
     def _3: List[TypeDef] = Nil

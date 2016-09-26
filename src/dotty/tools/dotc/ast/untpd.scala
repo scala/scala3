@@ -264,22 +264,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context) = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ------- Decorators -------------------------------------------------
+// ----- Accessing modifiers ----------------------------------------------------
 
-  implicit class UntypedTreeDecorator(val self: Tree) extends AnyVal {
-    def locateEnclosing(base: List[Tree], pos: Position): List[Tree] = {
-      def encloses(elem: Any) = elem match {
-        case t: Tree => t.pos contains pos
-        case _ => false
-      }
-      base.productIterator find encloses match {
-        case Some(tree: Tree) => locateEnclosing(tree :: base, pos)
-        case none => base
-      }
-    }
-  }
+  abstract class ModsDecorator { def mods: Modifiers }
 
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
+  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
     def mods = mdef.rawMods
   }
 

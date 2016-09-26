@@ -210,7 +210,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     def transformMemberDefNonVolatile(x: ValOrDefDef)(implicit ctx: Context) = {
         val claz = x.symbol.owner.asClass
         val tpe = x.tpe.widen.resultType.widen
-        assert(!(x.mods is Flags.Mutable))
+        assert(!(x.symbol is Flags.Mutable))
         val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName,
           x.symbol.flags &~ containerFlagsMask | containerFlags | Flags.Private,
@@ -331,7 +331,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     }
 
     def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context) = {
-        assert(!(x.mods is Flags.Mutable))
+        assert(!(x.symbol is Flags.Mutable))
 
         val tpe = x.tpe.widen.resultType.widen
         val claz = x.symbol.owner.asClass
@@ -377,7 +377,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         }
 
         val containerName = ctx.freshName(x.name.asTermName.lazyLocalName).toTermName
-        val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
+        val containerSymbol = ctx.newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags, tpe, coord = x.symbol.coord).enteredAfter(this)
 
         val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 

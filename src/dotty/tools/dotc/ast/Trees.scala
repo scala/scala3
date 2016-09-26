@@ -322,7 +322,7 @@ object Trees {
 
     private[this] var myMods: Modifiers[T] = null
 
-    private[ast] def rawMods: Modifiers[T] =
+    private[dotc] def rawMods: Modifiers[T] =
       if (myMods == null) genericEmptyModifiers else myMods
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
@@ -869,11 +869,6 @@ object Trees {
       case x :: Nil => x
       case ys => Thicket(ys)
     }
-
-    // ----- Accessing modifiers ----------------------------------------------------
-
-    abstract class ModsDeco { def mods: Modifiers }
-    implicit def modsDeco(mdef: MemberDef)(implicit ctx: Context): ModsDeco
 
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
