@@ -163,8 +163,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
     implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDecorator =
       new untpd.ModsDecorator {
-        def mods = if (mdef.hasType) tpd.Modifiers(mdef.symbol) else mdef.rawMods
+        def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
       }
+
+    def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = untpd.Modifiers(
+      sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
+      if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
+      sym.annotations map (_.tree))
 
     def isLocalThis(tree: Tree) = tree.typeOpt match {
       case tp: ThisType => tp.cls == ctx.owner.enclosingClass

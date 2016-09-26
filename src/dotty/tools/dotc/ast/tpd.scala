@@ -19,11 +19,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
-  def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = Modifiers(
-    sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
-    if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
-    sym.annotations map (_.tree))
-
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
     ta.assignType(untpd.Ident(tp.name), tp)
 
