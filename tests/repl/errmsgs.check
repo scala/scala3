@@ -34,7 +34,7 @@ scala> val a: Inv[String] = new Inv(new Inv(1))
                                    found:    Inv[T]
                                    required: String
                                    
-                                   T is a type variable with constraint >: Int(1)
+                                   where:    T is a type variable with constraint >: Int(1)
 scala> val b: Inv[String] = new Inv(1)
 -- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 4:val b: Inv[String] = new Inv(1)
@@ -61,16 +61,16 @@ scala> abstract class C {
 8:      var y: T = x
                    ^
                    found:    C.this.T(C.this.x)
-                   required: T
+                   required: T'
                    
-                   T  is a type in class C
-                   T' is a type in the initalizer of value s which is an alias of String
+                   where:    T  is a type in class C
+                             T' is a type in the initalizer of value s which is an alias of String
 -- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 12:          val z: T = y
                         ^
                         found:    T(y)
-                        required: T
+                        required: T'
                         
-                        T  is a type in the initalizer of value s which is an alias of String
-                        T' is a type in method f which is an alias of Int
+                        where:    T  is a type in the initalizer of value s which is an alias of String
+                                  T' is a type in method f which is an alias of Int
 scala> :quit

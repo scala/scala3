@@ -216,8 +216,8 @@ object messages {
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "")(implicit ctx: Context)
   extends Message("E006") {
     val kind = "Type Mismatch"
-    private val where = Formatting.disambiguateTypes(found, expected)
-    private val (fnd, exp) = Formatting.typeDiff(found, expected)
+    private val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
+    private val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
     val msg =
       s"""|found:    $fnd
           |required: $exp

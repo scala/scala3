@@ -116,6 +116,7 @@ object Formatting {
       seen.record(super.polyParamNameString(param), param)
   }
 
+  /** Create explanation for single `Recorded` type or symbol */
   def explanation(entry: Recorded)(implicit ctx: Context): String = {
     def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
       if (bound.isRef(default)) "" else i"$cmp $bound"
@@ -144,6 +145,7 @@ object Formatting {
     }
   }
 
+  /** Turns a `Seen => String` to produce a `where: T is...` clause */
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: PolyParam => ctx.typerState.constraint.contains(param)
@@ -168,41 +170,56 @@ object Formatting {
 
     val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
     val explainLines = columnar(explainParts)
-    if (explainLines.isEmpty) "" else i"$explainLines%\n%\n"
+    if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
   }
 
+  /** Context with correct printer set for explanations */
   private def explainCtx(seen: Seen)(implicit ctx: Context): Context = ctx.printer match {
     case dp: ExplainingPrinter =>
       ctx // re-use outer printer and defer explanation to it
     case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
   }
 
+  /** Entrypoint for explanation string interpolator:
+    *
+    * ```
+    * ex"disambiguate $tpe1 and $tpe2"
+    * ```
+    */
   def explained2(op: Context => String)(implicit ctx: Context): String = {
     val seen = new Seen
     op(explainCtx(seen)) ++ explanations(seen)
   }
 
-  def disambiguateTypes(args: Type*)(implicit ctx: Context): String = {
+  /** When getting a type mismatch it is useful to disambiguate placeholders like:
+    *
+    * ```
+    * found:    List[Int]
+    * required: List[T]
+    * where:    T is a type in the initalizer of value s which is an alias of
+    *           String
+    * ```
+    *
+    * @return the `where` section as well as the printing context for the
+    *         placeholders - `("T is a...", printCtx)`
+    */
+  def disambiguateTypes(args: Type*)(implicit ctx: Context): (String, Context) = {
     val seen = new Seen
-    object polyparams extends TypeTraverser {
-      def traverse(tp: Type): Unit = tp match {
-        case tp: TypeRef =>
-          seen.record(tp.show(explainCtx(seen)), tp.symbol)
-          traverseChildren(tp)
-        case tp: TermRef =>
-          seen.record(tp.show(explainCtx(seen)), tp.symbol)
-          traverseChildren(tp)
-        case tp: PolyParam =>
-          seen.record(tp.show(explainCtx(seen)), tp)
-          traverseChildren(tp)
-        case _ =>
-          traverseChildren(tp)
-      }
-    }
-    args.foreach(polyparams.traverse)
-    explanations(seen)
+    val printCtx = explainCtx(seen)
+    args.foreach(_.show(printCtx)) // showing each member will put it into `seen`
+    (explanations(seen), printCtx)
   }
 
+  /** This method will produce a colored type diff from the given arguments.
+    * The idea is to do this for known cases that are useful and then fall back
+    * on regular syntax highlighting for the cases which are unhandled.
+    *
+    * Please not that if used in combination with `disambiguateTypes` the
+    * correct `Context` for printing should also be passed when calling the
+    * method.
+    *
+    * @return the (found, expected) with coloring to highlight the difference
+    */
   def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
     (found, expected) match {
       case (rf1: RefinedType, rf2: RefinedType) =>
