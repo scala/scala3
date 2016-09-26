@@ -74,7 +74,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECT                possiblySigned_NameRef qual_Term
                   NEW                   cls_Type
                   SUPER          Length this_Term mixinTrait_Type?
-                  PAIR           Length left_Term right_Term
                   TYPED          Length expr_Term ascription_Type
                   NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
@@ -300,7 +299,8 @@ object TastyFormat {
   final val RENAMED = 138
   final val APPLY = 139
   final val TYPEAPPLY = 140
-  final val PAIR = 142
+
+
   final val TYPED = 143
   final val NAMEDARG = 144
   final val ASSIGN = 145
@@ -452,7 +452,6 @@ object TastyFormat {
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
     case NEW => "NEW"
-    case PAIR => "PAIR"
     case TYPED => "TYPED"
     case NAMEDARG => "NAMEDARG"
     case ASSIGN => "ASSIGN"

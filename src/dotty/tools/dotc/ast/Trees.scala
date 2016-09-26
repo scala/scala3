@@ -364,7 +364,7 @@ object Trees {
     override def toString = s"BackquotedIdent($name)"
   }
 
-  /** qualifier.name */
+  /** qualifier.name, or qualifier#name, if qualifier is a type */
   case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Select[T]
@@ -426,15 +426,6 @@ object Trees {
   case class New[-T >: Untyped] private[ast] (tpt: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = New[T]
-  }
-
-  /** (left, right) */
-  case class Pair[-T >: Untyped] private[ast] (left: Tree[T], right: Tree[T])
-    extends TermTree[T] {
-    type ThisTree[-T >: Untyped] = Pair[T]
-    override def isTerm = left.isTerm && right.isTerm
-    override def isType = left.isType && right.isType
-    override def isPattern = !isTerm && (left.isPattern || left.isTerm) && (right.isPattern || right.isTerm)
   }
 
   /** expr : tpt */
@@ -556,15 +547,6 @@ object Trees {
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
-  }
-
-  /** qualifier # name
-   *  In Scala, this always refers to a type, but in a Java
-   *  compilation unit this might refer to a term.
-   */
-  case class SelectFromTypeTree[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
-    extends RefTree[T] {
-    type ThisTree[-T >: Untyped] = SelectFromTypeTree[T]
   }
 
   /** left & right */
@@ -694,7 +676,7 @@ object Trees {
 
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
-   *  an untyped `Pair` `name => rename`
+   *  an untyped thicket consisting of `name` and `rename`.
    */
   case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])
     extends DenotingTree[T] {
@@ -836,7 +818,6 @@ object Trees {
     type TypeApply = Trees.TypeApply[T]
     type Literal = Trees.Literal[T]
     type New = Trees.New[T]
-    type Pair = Trees.Pair[T]
     type Typed = Trees.Typed[T]
     type NamedArg = Trees.NamedArg[T]
     type Assign = Trees.Assign[T]
@@ -851,7 +832,6 @@ object Trees {
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
-    type SelectFromTypeTree = Trees.SelectFromTypeTree[T]
     type AndTypeTree = Trees.AndTypeTree[T]
     type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
@@ -955,10 +935,6 @@ object Trees {
         case tree: New if tpt eq tree.tpt => tree
         case _ => finalize(tree, untpd.New(tpt))
       }
-      def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = tree match {
-        case tree: Pair if (left eq tree.left) && (right eq tree.right) => tree
-        case _ => finalize(tree, untpd.Pair(left, right))
-      }
       def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Typed(expr, tpt))
@@ -1013,10 +989,6 @@ object Trees {
       def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
-      }
-      def SelectFromTypeTree(tree: Tree)(qualifier: Tree, name: Name): SelectFromTypeTree = tree match {
-        case tree: SelectFromTypeTree if (qualifier eq tree.qualifier) && (name == tree.name) => tree
-        case _ => finalize(tree, untpd.SelectFromTypeTree(qualifier, name))
       }
       def AndTypeTree(tree: Tree)(left: Tree, right: Tree): AndTypeTree = tree match {
         case tree: AndTypeTree if (left eq tree.left) && (right eq tree.right) => tree
@@ -1132,8 +1104,6 @@ object Trees {
           tree
         case New(tpt) =>
           cpy.New(tree)(transform(tpt))
-        case Pair(left, right) =>
-          cpy.Pair(tree)(transform(left), transform(right))
         case Typed(expr, tpt) =>
           cpy.Typed(tree)(transform(expr), transform(tpt))
         case NamedArg(name, arg) =>
@@ -1160,8 +1130,6 @@ object Trees {
           tree
         case SingletonTypeTree(ref) =>
           cpy.SingletonTypeTree(tree)(transform(ref))
-        case SelectFromTypeTree(qualifier, name) =>
-          cpy.SelectFromTypeTree(tree)(transform(qualifier), name)
         case AndTypeTree(left, right) =>
           cpy.AndTypeTree(tree)(transform(left), transform(right))
         case OrTypeTree(left, right) =>
@@ -1238,8 +1206,6 @@ object Trees {
             x
           case New(tpt) =>
             this(x, tpt)
-          case Pair(left, right) =>
-            this(this(x, left), right)
           case Typed(expr, tpt) =>
             this(this(x, expr), tpt)
           case NamedArg(name, arg) =>
@@ -1266,8 +1232,6 @@ object Trees {
             x
           case SingletonTypeTree(ref) =>
             this(x, ref)
-          case SelectFromTypeTree(qualifier, name) =>
-            this(x, qualifier)
           case AndTypeTree(left, right) =>
             this(this(x, left), right)
           case OrTypeTree(left, right) =>
@@ -1343,7 +1307,6 @@ object Trees {
         case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
         case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(newName.asTypeName, tree.tparams, tree.rhs).withMods(tree.rawMods)
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
-        case tree: SelectFromTypeTree => cpy.SelectFromTypeTree(tree)(tree.qualifier, newName)
       }
     }.asInstanceOf[tree.ThisTree[T]]
   }

@@ -614,7 +614,7 @@ object Parsers {
       val interpolator = in.name
       in.nextToken()
       while (in.token == STRINGPART) {
-        segmentBuf += Thicket(List(
+        segmentBuf += Thicket(
             literal(),
             atPos(in.offset) {
               if (in.token == IDENTIFIER)
@@ -630,7 +630,7 @@ object Parsers {
                 syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
                 EmptyTree
               }
-            }))
+            })
       }
       if (in.token == STRINGLIT) segmentBuf += literal()
       InterpolatedString(interpolator, segmentBuf.toList)
@@ -795,7 +795,7 @@ object Parsers {
     private def typeProjection(t: Tree): Tree = {
       accept(HASH)
       val id = typeIdent()
-      atPos(t.pos.start, id.pos.start) { SelectFromTypeTree(t, id.name) }
+      atPos(t.pos.start, id.pos.start) { Select(t, id.name) }
     }
 
     /** NamedTypeArg      ::=  id `=' Type
@@ -1786,7 +1786,7 @@ object Parsers {
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
         atPos(from.pos.start, in.skipToken()) {
-          Pair(from, termIdentOrWildcard())
+          Thicket(from, termIdentOrWildcard())
         }
       else from
     }

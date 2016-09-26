@@ -38,12 +38,6 @@ class ReTyper extends Typer {
     untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
-  override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = {
-    assert(tree.hasType)
-    val qual1 = typed(tree.qualifier, AnySelectionProto)
-    untpd.cpy.SelectFromTypeTree(tree)(qual1, tree.name).withType(tree.typeOpt)
-  }
-
   override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
     promote(tree)
 

@@ -831,7 +831,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case RENAMED =>
           readByte()
           readEnd()
-          untpd.Pair(untpd.Ident(readName()), untpd.Ident(readName())) :: readSelectors()
+          untpd.Thicket(untpd.Ident(readName()), untpd.Ident(readName())) :: readSelectors()
         case IMPORTED =>
           readByte()
           untpd.Ident(readName()) :: readSelectors()
@@ -915,8 +915,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               tpd.Apply(fn, until(end)(readArg()))
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
-            case PAIR =>
-              Pair(readTerm(), readTerm())
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()

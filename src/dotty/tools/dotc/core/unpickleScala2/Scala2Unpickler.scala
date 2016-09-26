@@ -1044,7 +1044,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val toName = readNameRef()
           val from = untpd.Ident(fromName)
           val to = untpd.Ident(toName)
-          if (toName.isEmpty) from else untpd.Pair(from, untpd.Ident(toName))
+          if (toName.isEmpty) from else untpd.Thicket(from, untpd.Ident(toName))
         })
 
         Import(expr, selectors)
@@ -1194,7 +1194,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SELECTFROMTYPEtree =>
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
-        SelectFromTypeTree(qualifier, symbol.namedType)
+        Select(qualifier, symbol.namedType)
 
       case COMPOUNDTYPEtree =>
         readTemplateRef()

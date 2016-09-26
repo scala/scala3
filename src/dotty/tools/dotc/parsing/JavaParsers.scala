@@ -227,7 +227,7 @@ object JavaParsers {
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
       case Some(t)  => t withPos tree.pos
       case _        => tree match {
-        case AppliedTypeTree(_, _) | SelectFromTypeTree(_, _) =>
+        case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
         case _ =>
           syntaxError("identifier expected", tree.pos)
@@ -281,14 +281,11 @@ object JavaParsers {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
           var t = typeArgs(atPos(in.offset)(Ident(ident())))
-          // typeSelect generates Select nodes is the lhs is an Ident or Select,
-          // SelectFromTypeTree otherwise. See #3567.
-          // Select nodes can be later
-          // converted in the typechecker to SelectFromTypeTree if the class
-          // turns out to be an instance ionner class instead of a static inner class.
+          // typeSelect generates Select nodes if the lhs is an Ident or Select,
+          // For other nodes it always assumes that the selected item is a type.
           def typeSelect(t: Tree, name: Name) = t match {
             case Ident(_) | Select(_, _) => Select(t, name)
-            case _ => SelectFromTypeTree(t, name.toTypeName)
+            case _ => Select(t, name.toTypeName)
           }
           while (in.token == DOT) {
             in.nextToken()

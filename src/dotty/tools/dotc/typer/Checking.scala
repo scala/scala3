@@ -99,8 +99,6 @@ object Checking {
           checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
         case Select(qual, name) if name.isTypeName =>
           checkRealizable(qual.tpe, qual.pos)
-        case SelectFromTypeTree(qual, name) if name.isTypeName =>
-          checkRealizable(qual.tpe, qual.pos)
         case SingletonTypeTree(ref) =>
           checkRealizable(ref.tpe, ref.pos)
         case _ =>

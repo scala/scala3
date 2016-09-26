@@ -388,9 +388,6 @@ object Erasure extends TypeTestsCasts{
       recur(typed(tree.qualifier, AnySelectionProto))
     }
 
-    override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context) =
-      untpd.Ident(tree.name).withPos(tree.pos).withType(erasedType(tree))
-
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {

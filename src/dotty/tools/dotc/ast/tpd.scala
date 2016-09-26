@@ -30,11 +30,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
     ta.assignType(untpd.Select(qualifier, name), qualifier)
 
-  def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
-    ta.assignType(untpd.SelectFromTypeTree(qualifier, name), qualifier)
-
-  def SelectFromTypeTree(qualifier: Tree, tp: NamedType)(implicit ctx: Context): SelectFromTypeTree =
-    untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp)
+  def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
+    untpd.Select(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
     untpd.This(cls.name).withType(cls.thisType)
@@ -58,9 +55,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.New(tpt), tpt)
 
   def New(tp: Type)(implicit ctx: Context): New = New(TypeTree(tp))
-
-  def Pair(left: Tree, right: Tree)(implicit ctx: Context): Pair =
-    ta.assignType(untpd.Pair(left, right), left, right)
 
   def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
     ta.assignType(untpd.Typed(expr, tpt), tpt)
@@ -336,7 +330,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Ident(tp)
     else tp.prefix match {
       case pre: SingletonType => followOuterLinks(singleton(pre)).select(tp)
-      case pre => SelectFromTypeTree(TypeTree(pre), tp)
+      case pre => Select(TypeTree(pre), tp)
     } // no checks necessary
 
   def ref(sym: Symbol)(implicit ctx: Context): Tree =
@@ -492,14 +486,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New =
       ta.assignType(untpd.cpy.New(tree)(tpt), tpt)
-
-    override def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = {
-      val tree1 = untpd.cpy.Pair(tree)(left, right)
-      tree match {
-        case tree: Pair if (left.tpe eq tree.left.tpe) && (right.tpe eq tree.right.tpe) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, left, right)
-      }
-    }
 
     override def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
       ta.assignType(untpd.cpy.Typed(tree)(expr, tpt), tpt)

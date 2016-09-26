@@ -392,9 +392,6 @@ class TreePickler(pickler: TastyPickler) {
       case New(tpt) =>
         writeByte(NEW)
         pickleTpt(tpt)
-      case Pair(left, right) =>
-        writeByte(PAIR)
-        withLength { pickleTree(left); pickleTree(right) }
       case Typed(expr, tpt) =>
         writeByte(TYPED)
         withLength { pickleTree(expr); pickleTpt(tpt) }
@@ -496,7 +493,7 @@ class TreePickler(pickler: TastyPickler) {
         withLength {
           pickleTree(expr)
           selectors foreach {
-            case Pair(Ident(from), Ident(to)) =>
+            case Thicket(Ident(from) :: Ident(to) :: Nil) =>
               writeByte(RENAMED)
               withLength { pickleName(from); pickleName(to) }
             case Ident(name) =>
