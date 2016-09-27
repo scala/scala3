@@ -102,7 +102,7 @@ object ErrorReporting {
     def patternConstrStr(tree: Tree): String = ???
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree =
-      errorTree(tree, typeMismatchMsg(normalize(tree.tpe, pt), pt) /*+ implicitFailure.postscript*/)
+      errorTree(tree, typeMismatchMsg(normalize(tree.tpe, pt), pt, implicitFailure.postscript))
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type) =
@@ -111,7 +111,7 @@ object ErrorReporting {
       else
         ""
 
-    def typeMismatchMsg(found: Type, expected: Type) = {
+    def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
       // replace constrained polyparams and their typevars by their bounds where possible
       object reported extends TypeMap {
         def setVariance(v: Int) = variance = v
@@ -133,7 +133,7 @@ object ErrorReporting {
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
-      TypeMismatch(found1, expected1, whyNoMatchStr(found, expected))
+      TypeMismatch(found1, expected1, whyNoMatchStr(found, expected), postScript)
     }
 
     /** Format `raw` implicitNotFound argument, replacing all

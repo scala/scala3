@@ -213,7 +213,7 @@ object messages {
     }
   }
 
-  case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "")(implicit ctx: Context)
+  case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
   extends Message("E006") {
     val kind = "Type Mismatch"
     private val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
@@ -222,7 +222,7 @@ object messages {
       s"""|found:    $fnd
           |required: $exp
           |
-          |$where""".stripMargin + whyNoMatch
+          |$where""".stripMargin + whyNoMatch + implicitFailure
 
     val explanation = ""
   }
