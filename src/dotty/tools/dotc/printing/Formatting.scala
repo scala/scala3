@@ -241,7 +241,7 @@ object Formatting {
     */
   def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
     val fnd = wrapNonSensical(found, found.show)
-    val exp = wrapNonSensical(expected, found.show)
+    val exp = wrapNonSensical(expected, expected.show)
 
     (found, expected) match {
       case (_: RefinedType, _: RefinedType) =>
