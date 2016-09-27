@@ -3,7 +3,6 @@
 *.log
 *.swp
 *~
-*.swp
 
 # sbt specific
 dist/*
@@ -29,6 +28,7 @@ classes/
 /.worksheet/
 
 # Partest
+dotty.jar
 tests/partest-generated/
 tests/locks/
 /test-classes/
