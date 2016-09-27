@@ -69,19 +69,38 @@ object Formatting {
    *  message composition methods, this is crucial.
    */
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
+    override protected def showArg(arg: Any)(implicit ctx: Context): String =
+      wrapNonSensical(arg, super.showArg(arg))
+  }
+
+  class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
     override protected def showArg(arg: Any)(implicit ctx: Context): String = {
-      import MessageContainer._
-      def isSensical(arg: Any): Boolean = arg match {
-        case tpe: Type =>
-          tpe.exists && !tpe.isErroneous
-        case sym: Symbol if sym.isCompleted =>
-          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info.exists
-        case _ => true
+      arg match {
+        case arg: Showable =>
+          val highlighted =
+            SyntaxHighlighting(wrapNonSensical(arg, super.showArg(arg)))
+          new String(highlighted.toArray)
+        case hl: Highlight =>
+          hl.show
+        case hb: HighlightBuffer =>
+          hb.toString
+        case _ => super.showArg(arg)
       }
-      val str = super.showArg(arg)
-      if (isSensical(arg)) str
-      else nonSensicalStartTag + str + nonSensicalEndTag
     }
+  }
+
+  private def wrapNonSensical(arg: Any, str: String)(implicit ctx: Context): String = {
+    import MessageContainer._
+    def isSensical(arg: Any): Boolean = arg match {
+      case tpe: Type =>
+        tpe.exists && !tpe.isErroneous
+      case sym: Symbol if sym.isCompleted =>
+        sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info.exists
+      case _ => true
+    }
+
+    if (isSensical(arg)) str
+    else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
   private type Recorded = AnyRef /*Symbol | PolyParam*/
@@ -117,7 +136,7 @@ object Formatting {
   }
 
   /** Create explanation for single `Recorded` type or symbol */
-  def explanation(entry: Recorded)(implicit ctx: Context): String = {
+  def explanation(entry: AnyRef)(implicit ctx: Context): String = {
     def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
       if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -221,11 +240,14 @@ object Formatting {
     * @return the (found, expected) with coloring to highlight the difference
     */
   def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
+    val fnd = wrapNonSensical(found, found.show)
+    val exp = wrapNonSensical(expected, found.show)
+
     (found, expected) match {
-      case (rf1: RefinedType, rf2: RefinedType) =>
-        DiffUtil.mkColoredTypeDiff(rf1.show, rf2.show)
+      case (_: RefinedType, _: RefinedType) =>
+        DiffUtil.mkColoredTypeDiff(fnd, exp)
       case _ =>
-        (hl"${found.show}", hl"${expected.show}")
+        (hl"$fnd", hl"$exp")
     }
   }
 }

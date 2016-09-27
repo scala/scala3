@@ -4,7 +4,7 @@ package reporting
 
 import scala.collection.mutable
 import util.SourcePosition
-import core.Contexts._
+import core.Contexts._, core.Decorators._
 import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._

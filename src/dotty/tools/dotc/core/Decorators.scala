@@ -176,6 +176,10 @@ object Decorators {
      */
     def ex(args: Any*)(implicit ctx: Context): String =
       explained2(implicit ctx => em(args: _*))
+
+    /** Formatter that adds syntax highlighting to all interpolated values */
+    def hl(args: Any*)(implicit ctx: Context): String =
+      new SyntaxFormatter(sc).assemble(args)
   }
 }
 

@@ -41,7 +41,7 @@ class MessageContainer(
   /** The message to report */
   def message: String = {
     if (myMsg == null) {
-      myMsg = msgFn.msg
+      myMsg = msgFn.msg.replaceAll("\u001B\\[[;\\d]*m", "")
       if (myMsg.contains(nonSensicalStartTag)) {
         myIsNonSensical = true
         // myMsg might be composed of several d"..." invocations -> nested

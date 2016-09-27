@@ -11,20 +11,6 @@ import Highlighting.{Highlight, HighlightBuffer}
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
-  implicit class SyntaxFormatting(val sc: StringContext) extends AnyVal {
-    def hl(args: Any*)(implicit ctx: Context): String =
-      sc.s(args.map ({
-        case hl: Highlight =>
-          hl.show
-        case hb: HighlightBuffer =>
-          hb.toString
-        case x if ctx.settings.color.value != "never" =>
-          new String(apply(x.toString).toArray)
-        case x =>
-          x.toString
-      }): _*)
-  }
-
   val NoColor         = Console.RESET
   val CommentColor    = Console.BLUE
   val KeywordColor    = Console.YELLOW

@@ -331,7 +331,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
       else {
-        error(new MissingIdent(tree, kind, name), tree.pos)
+        error(new MissingIdent(tree, kind, name.show), tree.pos)
         ErrorType
       }
 
