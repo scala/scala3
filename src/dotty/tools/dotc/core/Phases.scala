@@ -79,8 +79,13 @@ object Phases {
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    def squashPhases(phasess: List[List[Phase]],
-                             phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
+    def squashPhases(
+      phasess: List[List[Phase]],
+      phasesToSkip: List[String],
+      stopBeforePhases: List[String],
+      stopAfterPhases: List[String],
+      YCheckAfter: List[String]
+    ): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
