@@ -255,7 +255,6 @@ abstract class Reporter extends interfaces.ReporterResult {
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
 
-
   /** Summary of warnings and errors */
   def summary: String = {
     val b = new mutable.ListBuffer[String]
@@ -272,6 +271,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   def printSummary(implicit ctx: Context): Unit = {
     val s = summary
     if (s != "") ctx.echo(s)
+    println(s"total trees created: ${ast.Trees.ntrees}")
   }
 
   /** Returns a string meaning "n elements". */

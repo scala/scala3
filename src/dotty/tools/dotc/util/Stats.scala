@@ -68,4 +68,30 @@ import collection.mutable
       }
     } else op
   }
+
+  import ast.untpd
+
+  def countNodes(tree: untpd.Tree): (Int, Int) = {
+    val seen = mutable.Set[untpd.Tree]()
+    def count(x: Any): Int = {
+      def childNodes(p: ast.Positioned): Int = p.productIterator.map {
+        case pp: ast.Positioned => count(pp)
+        case xs: List[_] => xs.map(count).sum
+        case _ => 0
+      }.sum
+      x match {
+        case x: ast.Trees.WithoutTypeOrPos[_] => childNodes(x)
+        case x: untpd.Tree => seen += x; 1 + childNodes(x)
+        case x: ast.Positioned => childNodes(x)
+        case _ => 0
+      }
+    }
+    (count(tree), seen.size)
+  }
+
+  def nodesStat(ts: List[untpd.Tree]) = {
+    val retaineds = ts.map(t => Stats.countNodes(t)).unzip
+    s"${retaineds._1.sum} (${retaineds._2.sum} uniques)"
+  }
+
 }

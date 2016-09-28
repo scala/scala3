@@ -67,9 +67,13 @@ class FrontEnd extends Phase {
     val unitContexts = for (unit <- units) yield
       ctx.fresh.setCompilationUnit(unit).setFreshNames(new FreshNameCreator.Default)
     unitContexts foreach (parse(_))
+    println(s"total trees created after parsing: ${ast.Trees.ntrees}")
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
+    println(s"total trees created after typing: ${ast.Trees.ntrees}")
+    println(s"retained parse trees: ${nodesStat(unitContexts.map(ctx => ctx.compilationUnit.untpdTree))}")
+    println(s"retained typed trees: ${nodesStat(unitContexts.map(ctx => ctx.compilationUnit.tpdTree))}")
     record("totalTrees", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
