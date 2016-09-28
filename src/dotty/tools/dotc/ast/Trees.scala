@@ -3,8 +3,8 @@ package dotc
 package ast
 
 import core._
-import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
-import Denotations._, StdNames._, Comments._
+import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._
+import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import annotation.tailrec
 import language.higherKinds
 import collection.IndexedSeqOptimized

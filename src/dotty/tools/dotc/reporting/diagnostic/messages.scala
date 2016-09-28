@@ -14,7 +14,7 @@ import printing.Formatting
 
 object messages {
 
-  /** Message container to be consumed by the reporter ---------------------- */
+  // `MessageContainer`s to be consumed by `Reporter` ---------------------- //
   class Error(
     msgFn: => Message,
     pos: SourcePosition,
@@ -73,22 +73,22 @@ object messages {
     def enablingOption(implicit ctx: Context) = ctx.settings.migration
   }
 
-  /**  Messages ----------------------------------------------------------------
-    *
+  /**  Messages
+    *  ========
     *  The role of messages is to provide the necessary details for a simple to
     *  understand diagnostic event. Each message can be turned into a message
     *  container (one of the above) by calling the appropriate method on them.
     *  For instance:
     *
     *  ```scala
-    *  EmptyCatchBlock(tree).error   // res: Error
-    *  EmptyCatchBlock(tree).warning // res: Warning
+    *  EmptyCatchBlock(tree).error(pos)   // res: Error
+    *  EmptyCatchBlock(tree).warning(pos) // res: Warning
     *  ```
     */
   import dotc.ast.Trees._
   import dotc.ast.untpd
 
-  /** Syntax Errors --------------------------------------------------------- */
+  // Syntax Errors ---------------------------------------------------------- //
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: String)(implicit ctx: Context)
   extends Message(errNo) {
     val explanation = {
@@ -166,7 +166,7 @@ object messages {
     }
   }
 
-  /** Type Errors ----------------------------------------------------------- */
+  // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
   extends Message("E004") {
     val kind = "Naming"
