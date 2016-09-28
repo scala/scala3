@@ -12,6 +12,7 @@ import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import dotty.tools.dotc.typer.ProtoTypes.{FunProtoTyped, FunProto}
 import util.Positions._
 import dotty.tools.dotc.ast.{tpd, Trees, untpd}, ast.tpd._
+import ast.untpd.Modifiers
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -1236,7 +1237,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val pflags = (pflagsHi.toLong << 32) + pflagsLo
     val flags = unpickleScalaFlags(pflags, isType)
     val privateWithin = readNameRef().asTypeName
-    Trees.Modifiers[Type](flags, privateWithin, Nil)
+    Modifiers(flags, privateWithin, Nil)
   }
 
   protected def readTemplateRef()(implicit ctx: Context): Template =

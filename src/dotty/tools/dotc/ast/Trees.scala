@@ -33,51 +33,7 @@ object Trees {
   /** Attachment key for trees with documentation strings attached */
   val DocComment = new Attachment.Key[Comment]
 
-  /** Modifiers and annotations for definitions
-   *  @param flags          The set flags
-   *  @param privateWithin  If a private or protected has is followed by a
-   *                        qualifier [q], the name q, "" as a typename otherwise.
-   *  @param annotations    The annotations preceding the modifiers
-   */
-  case class Modifiers[-T >: Untyped] (
-    flags: FlagSet = EmptyFlags,
-    privateWithin: TypeName = tpnme.EMPTY,
-    annotations: List[Tree[T]] = Nil) extends Positioned with Cloneable {
-
-    def is(fs: FlagSet): Boolean = flags is fs
-    def is(fc: FlagConjunction): Boolean = flags is fc
-
-    def | (fs: FlagSet): Modifiers[T] = withFlags(flags | fs)
-    def & (fs: FlagSet): Modifiers[T] = withFlags(flags & fs)
-    def &~(fs: FlagSet): Modifiers[T] = withFlags(flags &~ fs)
-
-    def toTypeFlags: Modifiers[T] = withFlags(flags.toTypeFlags)
-    def toTermFlags: Modifiers[T] = withFlags(flags.toTermFlags)
-
-    def withFlags(flags: FlagSet) =
-      if (this.flags == flags) this
-      else copy(flags = flags)
-
-    def withAddedAnnotation[U >: Untyped <: T](annot: Tree[U]): Modifiers[U] =
-      if (annotations.exists(_ eq annot)) this
-      else withAnnotations(annotations :+ annot)
-
-    def withAnnotations[U >: Untyped <: T](annots: List[Tree[U]]): Modifiers[U] =
-      if (annots eq annotations) this
-      else copy(annotations = annots)
-
-    def withPrivateWithin(pw: TypeName) =
-      if (pw.isEmpty) this
-      else copy(privateWithin = pw)
-
-    def hasFlags = flags != EmptyFlags
-    def hasAnnotations = annotations.nonEmpty
-    def hasPrivateWithin = privateWithin != tpnme.EMPTY
-
-    def tokenPos: Seq[(Token, Position)] = ???
-  }
-
-  @sharable private var nextId = 0 // for debugging
+   @sharable private var nextId = 0 // for debugging
 
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
@@ -320,27 +276,27 @@ object Trees {
   abstract class MemberDef[-T >: Untyped] extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: MemberDef[T]
 
-    private[this] var myMods: Modifiers[T] = null
+    private[this] var myMods: untpd.Modifiers = null
 
-    private[dotc] def rawMods: Modifiers[T] =
-      if (myMods == null) genericEmptyModifiers else myMods
+    private[dotc] def rawMods: untpd.Modifiers =
+      if (myMods == null) untpd.EmptyModifiers else myMods
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
 
-    def withMods(mods: Modifiers[Untyped]): ThisTree[Untyped] = {
+    def withMods(mods: untpd.Modifiers): ThisTree[Untyped] = {
       val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
       tree.setMods(mods)
       tree.asInstanceOf[ThisTree[Untyped]]
     }
 
-    def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(Modifiers(flags))
+    def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
 
     def setComment(comment: Option[Comment]): ThisTree[Untyped] = {
       comment.map(putAttachment(DocComment, _))
       asInstanceOf[ThisTree[Untyped]]
     }
 
-    protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
+    protected def setMods(mods: untpd.Modifiers) = myMods = mods
   }
 
   /** A ValDef or DefDef tree */
@@ -727,16 +683,14 @@ object Trees {
   class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     override def isEmpty: Boolean = true
-    setMods(Modifiers[T](PrivateLocal))
+    setMods(untpd.Modifiers(PrivateLocal))
   }
 
   @sharable val theEmptyTree: Thicket[Type] = Thicket(Nil)
   @sharable val theEmptyValDef = new EmptyValDef[Type]
-  @sharable val theEmptyModifiers = new Modifiers()
 
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
-  def genericEmptyModifiers[T >: Untyped]: Modifiers[T] = theEmptyModifiers.asInstanceOf[Modifiers[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
@@ -795,7 +749,6 @@ object Trees {
 
   abstract class Instance[T >: Untyped <: Type] extends DotClass { inst =>
 
-    type Modifiers = Trees.Modifiers[T]
     type Tree = Trees.Tree[T]
     type TypTree = Trees.TypTree[T]
     type TermTree = Trees.TermTree[T]
@@ -853,13 +806,8 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val EmptyModifiers: Modifiers = genericEmptyModifiers
 
     // ----- Auxiliary creation methods ------------------
-
-    def Modifiers(flags: FlagSet = EmptyFlags,
-                  privateWithin: TypeName = tpnme.EMPTY,
-                  annotations: List[Tree] = Nil) = new Modifiers(flags, privateWithin, annotations)
 
     def Thicket(trees: List[Tree]): Thicket = new Thicket(trees)
     def Thicket(): Thicket = EmptyTree

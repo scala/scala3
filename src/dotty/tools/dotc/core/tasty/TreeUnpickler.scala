@@ -729,8 +729,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           }
       }
       val mods =
-        if (sym.annotations.isEmpty) EmptyModifiers
-        else Modifiers(annotations = sym.annotations.map(_.tree))
+        if (sym.annotations.isEmpty) untpd.EmptyModifiers
+        else untpd.Modifiers(annotations = sym.annotations.map(_.tree))
       tree.withMods(mods) // record annotations in tree so that tree positions can be filled in.
       goto(end)
       setPos(start, tree)
