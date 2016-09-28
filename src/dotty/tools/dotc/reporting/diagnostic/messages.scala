@@ -89,7 +89,7 @@ object messages {
   import dotc.ast.untpd
 
   // Syntax Errors ---------------------------------------------------------- //
-  abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: String)(implicit ctx: Context)
+  abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: Int)(implicit ctx: Context)
   extends Message(errNo) {
     val explanation = {
       val tryString = tryBody match {
@@ -121,7 +121,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
-  extends EmptyCatchOrFinallyBlock(tryBody, "E001") {
+  extends EmptyCatchOrFinallyBlock(tryBody, 1) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -129,7 +129,7 @@ object messages {
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
-  extends EmptyCatchOrFinallyBlock(tryBody, "E002") {
+  extends EmptyCatchOrFinallyBlock(tryBody, 2) {
     val kind = "Syntax"
     val msg =
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
@@ -137,7 +137,7 @@ object messages {
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
-  extends Message("E003") {
+  extends Message(3) {
     val kind = "Syntax"
     val msg =
       hl"""${"with"} as a type operator has been deprecated; use `&' instead"""
@@ -168,7 +168,7 @@ object messages {
 
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
-  extends Message("E004") {
+  extends Message(4) {
     val kind = "Naming"
     val msg = em"duplicate pattern variable: `${bind.name}`"
 
@@ -195,7 +195,7 @@ object messages {
   }
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
-  extends Message("E005") {
+  extends Message(5) {
     val kind = "Missing Identifier"
     val msg = em"not found: $treeKind$name"
 
@@ -206,7 +206,7 @@ object messages {
   }
 
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
-  extends Message("E006") {
+  extends Message(6) {
     val kind = "Type Mismatch"
     private val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
     private val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)

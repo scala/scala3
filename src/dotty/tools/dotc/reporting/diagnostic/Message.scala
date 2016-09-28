@@ -15,7 +15,7 @@ object Message {
     new NoExplanation(str)
 }
 
-abstract class Message(val errorId: String) { self =>
+abstract class Message(val errorId: Int) { self =>
   import messages._
 
   /** The `msg` contains the diagnostic message e.g:
@@ -81,7 +81,7 @@ abstract class Message(val errorId: String) { self =>
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-class NoExplanation(val msg: String) extends Message("") {
+class NoExplanation(val msg: String) extends Message(NoExplanation.ID) {
   val explanation = ""
   val kind = ""
 }
@@ -90,6 +90,8 @@ class NoExplanation(val msg: String) extends Message("") {
   * lacks an explanation
   */
 object NoExplanation {
+  final val ID = -1
+
   def unapply(m: Message): Option[Message] =
     if (m.explanation == "") Some(m)
     else None

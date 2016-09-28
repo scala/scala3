@@ -10,7 +10,7 @@ import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 import printing.SyntaxHighlighting._
 import printing.Highlighting._
-import diagnostic.{ Message, MessageContainer }
+import diagnostic.{ Message, MessageContainer, NoExplanation }
 import diagnostic.messages._
 
 /**
@@ -68,7 +68,10 @@ class ConsoleReporter(
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context) =
     if (pos.exists) Blue({
       val file = pos.source.file.toString
-      val errId = if (message.errorId != "") s"[${message.errorId}] " else ""
+      val errId =
+        if (message.errorId != NoExplanation.ID)
+          s"[E${"0" * (3 - message.errorId.toString.length) + message.errorId}] "
+        else ""
       val kind =
         if (message.kind == "") diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
