@@ -14,9 +14,6 @@ public interface Diagnostic {
   public static final int WARNING = 1;
   public static final int INFO = 0;
 
-  /** @return The kind of message being reported */
-  String kind();
-
   /** @return The message to report */
   String message();
 

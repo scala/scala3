@@ -14,9 +14,8 @@ import diagnostic.{ Message, MessageContainer }
 import diagnostic.messages._
 
 /**
- * This class implements a more Fancy version (with colors!) of the regular
- * `ConsoleReporter`
- */
+  * This class implements a Reporter that displays messages on a text console
+  */
 class ConsoleReporter(
   reader: BufferedReader = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true)
@@ -66,18 +65,22 @@ class ConsoleReporter(
       .mkString(sys.props("line.separator"))
   }
 
-  def posStr(pos: SourcePosition, kind: String, errorId: String)(implicit ctx: Context) =
+  def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context) =
     if (pos.exists) Blue({
       val file = pos.source.file.toString
-      val errId = if (errorId != "") s"[$errorId] " else ""
+      val errId = if (message.errorId != "") s"[${message.errorId}] " else ""
+      val kind =
+        if (message.kind == "") diagnosticLevel
+        else s"${message.kind} $diagnosticLevel"
       val prefix = s"-- ${errId}${kind}: $file "
+
       prefix +
       ("-" * math.max(ctx.settings.pageWidth.value - stripColor(prefix).length, 0))
     }).show else ""
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: Message, pos: SourcePosition, kind: String)(implicit ctx: Context): Unit = {
-    printMessage(posStr(pos, kind, msg.errorId))
+  def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Unit = {
+    printMessage(posStr(pos, diagnosticLevel, msg))
     if (pos.exists) {
       val (src, offset) = sourceLine(pos)
       val marker = columnMarker(pos, offset)
@@ -97,15 +100,21 @@ class ConsoleReporter(
   override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     m match {
       case m: Error =>
-        printMessageAndPos(m.contained, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, "Error")
         if (ctx.settings.prompt.value) displayPrompt()
       case m: ConditionalWarning if !m.enablingOption.value =>
+      case m: FeatureWarning =>
+        printMessageAndPos(m.contained, m.pos, "Feature Warning")
+      case m: DeprecationWarning =>
+        printMessageAndPos(m.contained, m.pos, "Deprecation Warning")
+      case m: UncheckedWarning =>
+        printMessageAndPos(m.contained, m.pos, "Unchecked Warning")
       case m: MigrationWarning =>
-        printMessageAndPos(m.contained, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, "Migration Warning")
       case m: Warning =>
-        printMessageAndPos(m.contained, m.pos, m.kind)
-      case _ =>
-        printMessageAndPos(m.contained, m.pos, m.kind)
+        printMessageAndPos(m.contained, m.pos, "Warning")
+      case m: Info =>
+        printMessageAndPos(m.contained, m.pos, "Info")
     }
 
     if (ctx.shouldExplain(m)) printExplanation(m.contained)

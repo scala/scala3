@@ -27,7 +27,6 @@ class MessageContainer(
   msgFn: => Message,
   val pos: SourcePosition,
   val level: Int,
-  val kind: String,
   val explanation: String
 ) extends Exception with interfaces.Diagnostic {
   import MessageContainer._

@@ -18,10 +18,6 @@ abstract class Message(val errorId: String) { self =>
   def kind: String
   def explanation: String
 
-  def container(c: String) =
-    if (kind == "") c
-    else s"$kind $c"
-
   def mapMsg(f: String => String) = new Message(errorId) {
     val msg = f(self.msg)
     val kind = self.kind
@@ -29,25 +25,25 @@ abstract class Message(val errorId: String) { self =>
   }
 
   def error(pos: SourcePosition) =
-    new Error(self, pos, container("Error"), explanation)
+    new Error(self, pos, explanation)
 
   def warning(pos: SourcePosition) =
-    new Warning(self, pos, container("Warning"), explanation)
+    new Warning(self, pos, explanation)
 
   def info(pos: SourcePosition) =
-    new Info(self, pos, container("Info"), explanation)
+    new Info(self, pos, explanation)
 
   def featureWarning(pos: SourcePosition) =
-    new FeatureWarning(self, pos, container("Feature Warning"), explanation)
+    new FeatureWarning(self, pos, explanation)
 
   def uncheckedWarning(pos: SourcePosition) =
-    new UncheckedWarning(self, pos, container("Unchecked Warning"), explanation)
+    new UncheckedWarning(self, pos, explanation)
 
   def deprecationWarning(pos: SourcePosition) =
-    new DeprecationWarning(self, pos, container("Deprecation Warning"), explanation)
+    new DeprecationWarning(self, pos, explanation)
 
   def migrationWarning(pos: SourcePosition) =
-    new MigrationWarning(self, pos, container("Migration Warning"), explanation)
+    new MigrationWarning(self, pos, explanation)
 }
 
 class NoExplanation(val msg: String) extends Message("") {

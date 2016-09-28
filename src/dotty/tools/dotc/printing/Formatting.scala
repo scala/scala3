@@ -75,7 +75,7 @@ object Formatting {
 
   class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
     override protected def showArg(arg: Any)(implicit ctx: Context): String = {
-      arg match {
+      if (ctx.settings.color.value != "never") arg match {
         case arg: Showable =>
           val highlighted =
             SyntaxHighlighting(wrapNonSensical(arg, super.showArg(arg)))
@@ -84,8 +84,11 @@ object Formatting {
           hl.show
         case hb: HighlightBuffer =>
           hb.toString
+        case str: String =>
+          new String(SyntaxHighlighting(str).toArray)
         case _ => super.showArg(arg)
       }
+      else super.showArg(arg)
     }
   }
 
