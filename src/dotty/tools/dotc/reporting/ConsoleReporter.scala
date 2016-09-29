@@ -120,7 +120,10 @@ class ConsoleReporter(
         printMessageAndPos(m.contained, m.pos, "Info")
     }
 
-    if (ctx.shouldExplain(m)) printExplanation(m.contained)
+    if (ctx.shouldExplain(m))
+      printExplanation(m.contained)
+    else if (m.contained.explanation.nonEmpty)
+      printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 
   def displayPrompt(): Unit = {
