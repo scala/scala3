@@ -274,17 +274,6 @@ class Namer { typer: Typer =>
 
     val inSuperCall = if (ctx.mode is Mode.InSuperCall) InSuperCall else EmptyFlags
 
-    /** The position of the name defined by `tree`
-     *  This is a point position if tree is synthetic, a range position if it comes from source.
-     *  It might also be that tree does not have a position (for instance when synthesized by
-     *  a calling chain from `viewExists`), in that case the return position is NoPosition.
-     */
-    def namePos(tree: MemberDef) =
-      if (tree.pos.exists)
-        if (tree.mods.is(Synthetic)) Position(tree.pos.point, tree.pos.point)
-        else Position(tree.pos.point, tree.pos.point + tree.name.length, tree.pos.point)
-      else tree.pos
-
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name.encode).asTypeName
@@ -292,7 +281,7 @@ class Namer { typer: Typer =>
         val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-          privateWithinClass(tree.mods), namePos(tree), ctx.source.file), tree)
+          privateWithinClass(tree.mods), tree.namePos, ctx.source.file), tree)
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -327,7 +316,7 @@ class Namer { typer: Typer =>
         recordSym(ctx.newSymbol(
           ctx.owner, name, flags | deferred | method | higherKinded | inSuperCall1,
           adjustIfModule(completer, tree),
-          privateWithinClass(tree.mods), namePos(tree)), tree)
+          privateWithinClass(tree.mods), tree.namePos), tree)
       case tree: Import =>
         recordSym(ctx.newSymbol(
           ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos), tree)

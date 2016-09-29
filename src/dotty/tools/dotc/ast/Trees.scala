@@ -297,6 +297,20 @@ object Trees {
     }
 
     protected def setMods(mods: untpd.Modifiers) = myMods = mods
+
+    /** The position of the name defined by this definition.
+     *  This is a point position if the definition is synthetic, or a range position
+     *  if the definition comes from source.
+     *  It might also be that the definition does not have a position (for instance when synthesized by
+     *  a calling chain from `viewExists`), in that case the return position is NoPosition.
+     */
+    def namePos =
+      if (pos.exists)
+        if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
+        else Position(pos.point, pos.point + name.length, pos.point)
+      else pos
+
+
   }
 
   /** A ValDef or DefDef tree */
