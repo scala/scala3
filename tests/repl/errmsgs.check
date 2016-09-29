@@ -1,34 +1,34 @@
 scala> class Inv[T](x: T)
 defined class Inv
 scala> val x: List[String] = List(1)
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 4 |val x: List[String] = List(1)
   |                           ^
   |                           found:    Int(1)
   |                           required: String
   |                           
 scala> val y: List[List[String]] = List(List(1))
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 4 |val y: List[List[String]] = List(List(1))
   |                                      ^
   |                                      found:    Int(1)
   |                                      required: String
   |                                      
 scala> val z: (List[String], List[Int]) = (List(1), List("a"))
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 4 |val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                         ^
   |                                         found:    Int(1)
   |                                         required: String
   |                                         
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 4 |val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                                  ^^^
   |                                                  found:    String("a")
   |                                                  required: Int
   |                                                  
 scala> val a: Inv[String] = new Inv(new Inv(1))
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 5 |val a: Inv[String] = new Inv(new Inv(1))
   |                                 ^^^^^
   |                                 found:    Inv[T]
@@ -36,7 +36,7 @@ scala> val a: Inv[String] = new Inv(new Inv(1))
   |                                 
   |                                 where:    T is a type variable with constraint >: Int(1)
 scala> val b: Inv[String] = new Inv(1)
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 5 |val b: Inv[String] = new Inv(1)
   |                             ^
   |                             found:    Int(1)
@@ -57,7 +57,7 @@ scala> abstract class C {
              }
            }
          }
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 9 |      var y: T = x
   |                 ^
   |                 found:    C.this.T(C.this.x)
@@ -65,7 +65,7 @@ scala> abstract class C {
   |                 
   |                 where:    T  is a type in class C
   |                           T' is a type in the initalizer of value s which is an alias of String
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: <console> -------------------------------------------------------------------------------
 13 |          val z: T = y
    |                     ^
    |                     found:    T(y)

@@ -7,10 +7,8 @@ import util.{SourcePosition, SourceFile}
 import core.Contexts.Context
 import diagnostic.MessageContainer
 
-/**
- * This trait implements `isHidden` so that multiple messages per position
- * are suppressed, unless they are of increasing severity.
- */
+/** This trait implements `isHidden` so that multiple messages per position
+  * are suppressed, unless they are of increasing severity. */
 trait UniqueMessagePositions extends Reporter {
 
   private val positions = new mutable.HashMap[(SourceFile, Int), Int]
@@ -21,10 +19,14 @@ trait UniqueMessagePositions extends Reporter {
   override def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
     super.isHidden(m) || {
       m.pos.exists && {
-        positions get (ctx.source, m.pos.point) match {
-          case Some(level) if level >= m.level => true
-          case _ => positions((ctx.source, m.pos.point)) = m.level; false
+        var shouldHide = false
+        for (pos <- m.pos.start to m.pos.end) {
+          positions get (ctx.source, pos) match {
+            case Some(level) if level >= m.level => shouldHide = true
+            case _ => positions((ctx.source, pos)) = m.level
+          }
         }
+        shouldHide
       }
     }
 }

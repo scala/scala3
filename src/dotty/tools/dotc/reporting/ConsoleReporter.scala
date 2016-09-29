@@ -108,6 +108,7 @@ class ConsoleReporter(
                       |${Blue("Explanation")}
                       |${Blue("===========")}""".stripMargin)
     printMessage(m.explanation)
+    if (m.explanation.lastOption != Some('\n')) printMessage("")
   }
 
   override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {

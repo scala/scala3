@@ -166,9 +166,22 @@ object messages {
     }
   }
 
+  case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
+  extends Message(4) {
+    val kind = "Syntax"
+    val msg =
+      hl"""|A ${"case class"} must have at least one parameter list"""
+
+    val explanation =
+      hl"""|${cdef.name} must have at least one parameter list, if you would rather
+           |have a singleton representation of ${cdef.name}, use a "${"case object"}".
+           |Or, add an explicit `()' as a parameter list to ${cdef.name}.""".stripMargin
+  }
+
+
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
-  extends Message(4) {
+  extends Message(5) {
     val kind = "Naming"
     val msg = em"duplicate pattern variable: `${bind.name}`"
 
@@ -195,7 +208,7 @@ object messages {
   }
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
-  extends Message(5) {
+  extends Message(6) {
     val kind = "Missing Identifier"
     val msg = em"not found: $treeKind$name"
 
@@ -206,7 +219,7 @@ object messages {
   }
 
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
-  extends Message(6) {
+  extends Message(7) {
     val kind = "Type Mismatch"
     private val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
     private val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)

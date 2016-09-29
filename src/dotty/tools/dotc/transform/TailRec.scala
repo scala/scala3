@@ -145,17 +145,22 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
                 })
                 Block(List(labelDef), ref(label).appliedToArgss(vparamss0.map(_.map(x=> ref(x.symbol)))))
             }} else {
-              if (mandatory)
-                ctx.error("TailRec optimisation not applicable, method not tail recursive", dd.pos)
+              if (mandatory) ctx.error(
+                "TailRec optimisation not applicable, method not tail recursive",
+                // FIXME: want to report this error on `dd.namePos`, but
+                // because of extension method getting a weird pos, it is
+                // better to report on symbol so there's no overlap
+                sym.pos
+              )
               dd.rhs
             }
           })
         }
       case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
-        ctx.error("TailRec optimisation not applicable, method is neither private nor final so can be overridden", d.pos)
+        ctx.error("TailRec optimisation not applicable, method is neither private nor final so can be overridden", sym.pos)
         d
       case d if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
-        ctx.error("TailRec optimisation not applicable, not a method", d.pos)
+        ctx.error("TailRec optimisation not applicable, not a method", sym.pos)
         d
       case _ => tree
     }

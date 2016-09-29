@@ -4,7 +4,7 @@ class Bad[X, Y](val v: Int) extends AnyVal {
     println("tail")
   }
 
-  @annotation.tailrec final def differentTypeArgs : Unit = { // error
+  @annotation.tailrec final def differentTypeArgs: Unit = { // error
     {(); new Bad[String, Unit](0)}.differentTypeArgs // error
   }
 }
