@@ -14,6 +14,17 @@ extends interfaces.SourcePosition {
   def point: Int = pos.point
   /** The line of the position, starting at 0 */
   def line: Int = source.offsetToLine(point)
+
+  /** The lines of the position */
+  def lines: List[Int] =
+    List.range(source.offsetToLine(start), source.offsetToLine(end)) match {
+      case Nil => line :: Nil
+      case xs => xs
+    }
+
+  def lineContent(lineNumber: Int): String =
+    source.lineContent(source.lineToOffset(lineNumber))
+
   /** The column of the position, starting at 0 */
   def column: Int = source.column(point)
 

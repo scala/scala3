@@ -32,24 +32,35 @@ class ConsoleReporter(
   def stripColor(str: String): String =
     str.replaceAll("\u001B\\[[;\\d]*m", "")
 
-  def sourceLine(pos: SourcePosition)(implicit ctx: Context): (String, Int) = {
-    val lineNum = s"${pos.line}:"
-    (lineNum + hl"${pos.lineContent.stripLineEnd}", lineNum.length)
+  def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], Int) = {
+    var maxLen = Int.MinValue
+    val lines = pos.lines
+      .map { lineNbr =>
+        val prefix = s"${lineNbr + 1} |"
+        maxLen = math.max(maxLen, prefix.length)
+        (prefix, pos.lineContent(lineNbr).stripLineEnd)
+      }
+      .map { case (prefix, line) =>
+        val lnum = Red(" " * math.max(0, maxLen - prefix.length) + prefix)
+        hl"$lnum$line"
+      }
+
+    (lines, maxLen)
   }
 
-  def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context) =
-    if (pos.startLine == pos.endLine) {
-      val whitespace = " " * (pos.startColumn + offset)
-      val carets =
-        Red("^" * math.max(1, pos.endColumn - pos.startColumn))
-
-      whitespace + carets.show
-    } else {
-      Red(" " * (pos.column + offset) + "^").show
+  def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context) = {
+    val prefix = " " * (offset - 1)
+    val whitespace = " " * pos.startColumn
+    val carets = Red {
+      if (pos.startLine == pos.endLine)
+        "^" * math.max(1, pos.endColumn - pos.startColumn)
+      else "^"
     }
 
+    s"$prefix|$whitespace${carets.show}"
+  }
+
   def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context) = {
-    var hasLongLines = false
     val leastWhitespace = msg.lines.foldLeft(Int.MaxValue) { (minPad, line) =>
       val lineLength = stripColor(line).length
       val padding =
@@ -59,9 +70,8 @@ class ConsoleReporter(
       else minPad
     }
 
-    msg
-      .lines
-      .map { line => " " * leastWhitespace + line }
+    msg.lines
+      .map { line => " " * (offset - 1) + "|" + (" " * (leastWhitespace - offset)) + line }
       .mkString(sys.props("line.separator"))
   }
 
@@ -85,11 +95,11 @@ class ConsoleReporter(
   def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Unit = {
     printMessage(posStr(pos, diagnosticLevel, msg))
     if (pos.exists) {
-      val (src, offset) = sourceLine(pos)
+      val (srcLines, offset) = sourceLines(pos)
       val marker = columnMarker(pos, offset)
       val err = errorMsg(pos, msg.msg, offset)
 
-      printMessage(List(src, marker, err).mkString("\n"))
+      printMessage((srcLines ::: marker :: err :: Nil).mkString("\n"))
     } else printMessage(msg.msg)
   }
 

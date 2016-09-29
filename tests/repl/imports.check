@@ -8,17 +8,11 @@ scala> import o._
 import o._
 scala> buf += xs
 -- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
-10:buf += xs
-          ^^
-          found:    scala.collection.immutable.List[Int](o.xs)
-          required: String
-          
--- [E006] Type Mismatch Error: <console> -------------------------------------------------------------------------------
-10:buf += xs
-   ^^^^^^^^^
-   found:    String
-   required: scala.collection.mutable.ListBuffer[Int]
-   
+11 |buf += xs
+   |       ^^
+   |       found:    scala.collection.immutable.List[Int](o.xs)
+   |       required: String
+   |       
 scala> buf ++= xs
 res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> :quit
