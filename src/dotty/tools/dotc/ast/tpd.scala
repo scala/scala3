@@ -19,11 +19,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
-  def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = Modifiers(
-    sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
-    if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
-    sym.annotations map (_.tree))
-
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
     ta.assignType(untpd.Ident(tp.name), tp)
 
@@ -444,10 +439,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else if (owner == cls) foldOver(sym, tree)
         else sym
       } else foldOver(sym, tree)
-  }
-
-  implicit class modsDeco(mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
-    def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
   }
 
   override val cpy = new TypedTreeCopier

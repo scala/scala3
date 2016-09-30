@@ -249,17 +249,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is this case guarded? */
   def isGuardedCase(cdef: CaseDef) = cdef.guard ne EmptyTree
 
-  /** True iff definition is a val or def with no right-hand-side, or it
-   *  is an abstract typoe declaration
-   */
-  def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
-    case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
-    case mdef: TypeDef =>
-      mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
-    case _ => false
-  }
-
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)
@@ -279,9 +268,21 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
   import TreeInfo._
+  import untpd._
+
+  /** True iff definition is a val or def with no right-hand-side, or it
+   *  is an abstract typoe declaration
+   */
+  def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
+    case mdef: ValOrDefDef =>
+      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
+    case mdef: TypeDef =>
+      mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
+    case _ => false
+  }
 
   def isFunctionWithUnknownParamType(tree: Tree) = tree match {
-    case untpd.Function(args, _) =>
+    case Function(args, _) =>
       args.exists {
         case ValDef(_, tpt, _) => tpt.isEmpty
         case _ => false
@@ -307,7 +308,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | DefDef(_, _, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>
-      if (vdef.mods is Mutable) Impure else exprPurity(vdef.rhs)
+      if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs)
     case _ =>
       Impure
   }

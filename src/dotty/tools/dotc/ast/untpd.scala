@@ -86,6 +86,52 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   class InfixOpBlock(leftOperand: Tree, rightOp: Tree) extends Block(leftOperand :: Nil, rightOp)
 
+  // ----- Modifiers -----------------------------------------------------
+
+ /** Modifiers and annotations for definitions
+   *  @param flags          The set flags
+   *  @param privateWithin  If a private or protected has is followed by a
+   *                        qualifier [q], the name q, "" as a typename otherwise.
+   *  @param annotations    The annotations preceding the modifiers
+   */
+  case class Modifiers (
+    flags: FlagSet = EmptyFlags,
+    privateWithin: TypeName = tpnme.EMPTY,
+    annotations: List[Tree] = Nil) extends Positioned with Cloneable {
+
+    def is(fs: FlagSet): Boolean = flags is fs
+    def is(fc: FlagConjunction): Boolean = flags is fc
+
+    def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
+    def & (fs: FlagSet): Modifiers = withFlags(flags & fs)
+    def &~(fs: FlagSet): Modifiers = withFlags(flags &~ fs)
+
+    def toTypeFlags: Modifiers = withFlags(flags.toTypeFlags)
+    def toTermFlags: Modifiers = withFlags(flags.toTermFlags)
+
+    def withFlags(flags: FlagSet) =
+      if (this.flags == flags) this
+      else copy(flags = flags)
+
+    def withAddedAnnotation(annot: Tree): Modifiers =
+      if (annotations.exists(_ eq annot)) this
+      else withAnnotations(annotations :+ annot)
+
+    def withAnnotations(annots: List[Tree]): Modifiers =
+      if (annots eq annotations) this
+      else copy(annotations = annots)
+
+    def withPrivateWithin(pw: TypeName) =
+      if (pw.isEmpty) this
+      else copy(privateWithin = pw)
+
+    def hasFlags = flags != EmptyFlags
+    def hasAnnotations = annotations.nonEmpty
+    def hasPrivateWithin = privateWithin != tpnme.EMPTY
+  }
+
+  @sharable val EmptyModifiers: Modifiers = new Modifiers()
+
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
   /** A type tree that gets its type from some other tree's symbol. Enters the
@@ -264,22 +310,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context) = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ------- Decorators -------------------------------------------------
+// ----- Accessing modifiers ----------------------------------------------------
 
-  implicit class UntypedTreeDecorator(val self: Tree) extends AnyVal {
-    def locateEnclosing(base: List[Tree], pos: Position): List[Tree] = {
-      def encloses(elem: Any) = elem match {
-        case t: Tree => t.pos contains pos
-        case _ => false
-      }
-      base.productIterator find encloses match {
-        case Some(tree: Tree) => locateEnclosing(tree :: base, pos)
-        case none => base
-      }
-    }
-  }
+  abstract class ModsDecorator { def mods: Modifiers }
 
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
+  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
     def mods = mdef.rawMods
   }
 
