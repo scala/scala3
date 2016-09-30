@@ -5,6 +5,7 @@ import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
+import typer.Inliner
 
 import dotty.tools.io.Path
 import java.io.PrintWriter
@@ -497,6 +498,21 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.is(SuperAccessor))
   }
 
-  // TODO: Annotation support
-  def apiAnnotations(s: Symbol): List[api.Annotation] = Nil
+  // TODO: Support other annotations
+  def apiAnnotations(s: Symbol): List[api.Annotation] = {
+    val annots = new mutable.ListBuffer[api.Annotation]
+
+    if (Inliner.hasBodyToInline(s)) {
+      // FIXME: If the body of an inline method changes, all the reverse
+      // dependencies of this method need to be recompiled. sbt has no way
+      // of tracking method bodies, so as a hack we include the pretty-printed
+      // typed tree of the method as part of the signature we send to sbt.
+      // To do this properly we would need a way to hash trees and types in
+      // dotty itself.
+      val printTypesCtx = ctx.fresh.setSetting(ctx.settings.printtypes, true)
+      annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
+    }
+
+    annots.toList
+  }
 }

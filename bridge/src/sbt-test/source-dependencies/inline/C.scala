@@ -1,5 +1,5 @@
 object C {
-  def test: Unit = {
+  def main(args: Array[String]): Unit = {
     val i: Int = B.getInline
   }
 }
