@@ -1,0 +1,6 @@
+$ copy-file changes/B1.scala B.scala
+> compile
+
+$ copy-file changes/B2.scala B.scala
+# Compilation of C.scala should fail because B.getInline now has type Double instead of Int
+-> compile
