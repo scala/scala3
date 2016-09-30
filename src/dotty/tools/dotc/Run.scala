@@ -73,6 +73,8 @@ class Run(comp: Compiler)(implicit ctx: Context) {
               printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           }
         }
+        println(s"total trees after $phase: ${ast.Trees.ntrees}")
+        println(s"retained trees after $phase: ${Stats.nodesStat(units.map(_.tpdTree))}")
         ctx.informTime(s"$phase ", start)
       }
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
