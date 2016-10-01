@@ -35,6 +35,15 @@ trait ConstraintHandling {
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
+  protected var alwaysFluid = false
+
+  /** Perform `op` in a mode where all attempts to set `frozen` to true are ignored */
+  def fluidly[T](op: => T): T = {
+    val saved = alwaysFluid
+    alwaysFluid = true
+    try op finally alwaysFluid = saved
+  }
+
   /** We are currently comparing lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
@@ -126,14 +135,14 @@ trait ConstraintHandling {
 
   final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
-    frozenConstraint = true
+    frozenConstraint = !alwaysFluid
     try isSubType(tp1, tp2)
     finally frozenConstraint = saved
   }
 
   final def isSameTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
-    frozenConstraint = true
+    frozenConstraint = !alwaysFluid
     try isSameType(tp1, tp2)
     finally frozenConstraint = saved
   }
@@ -219,7 +228,7 @@ trait ConstraintHandling {
     // is not a union type, approximate the union type from above by an intersection
     // of all common base types.
     if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
-      inst = inst.approximateUnion
+      inst = ctx.harmonizeUnion(inst)
 
     // 3. If instance is from below, and upper bound has open named parameters
     //    make sure the instance has all named parameters of the bound.

@@ -898,7 +898,7 @@ class Namer { typer: Typer =>
       // definition is inline (i.e. final in Scala2).
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
         case tp: ConstantType if isInline => tp
-        case _ => tp.widen.approximateUnion
+        case _ => ctx.harmonizeUnion(tp.widen)
       }
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
