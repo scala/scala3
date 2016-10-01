@@ -121,7 +121,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =
       f.getOrElseUpdate(sym, newSymSet)
 
-    def freeVars(sym: Symbol): List[Symbol] = free.getOrElse(sym, Nil).toList
+    def freeVars(sym: Symbol): List[Symbol] = free get sym match {
+      case Some(set) => set.toList
+      case None => Nil
+    }
 
     def proxyOf(sym: Symbol, fv: Symbol) = proxyMap.getOrElse(sym, Map.empty)(fv)
 
