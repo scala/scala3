@@ -87,8 +87,12 @@ object Config {
    */
   final val checkLambdaVariance = false
 
-  /** Check that certain types cannot be created in erasedTypes phases */
-  final val checkUnerased = true
+  /** Check that certain types cannot be created in erasedTypes phases.
+   *  Note: Turning this option on will get some false negatives, since it is
+   *  possible that And/Or types are still created during erasure as the result
+   *  of some operation on an existing type.
+   */
+  final val checkUnerased = false
 
   /** In `derivedSelect`, rewrite
    *
