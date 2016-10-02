@@ -1859,7 +1859,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass)
-        return adapt(tpd.Block(tree :: Nil, Literal(Constant(()))), pt)
+        // local adaptation makes sure every adapted tree conforms to its pt
+        // so will take the code path that decides on inlining
+        return tpd.Block(adapt(tree, WildcardType) :: Nil, Literal(Constant(())))
       // convert function literal to SAM closure
       tree match {
         case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
