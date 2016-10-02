@@ -80,9 +80,14 @@ object Inliner {
        */
       def addAccessor(tree: Tree, refPart: Tree, targs: List[Tree], argss: List[List[Tree]],
                       accessedType: Type, rhs: (Tree, List[Type], List[List[Tree]]) => Tree)(implicit ctx: Context): Tree = {
+        val qual = qualifier(refPart)
+        def refIsLocal = qual match {
+          case qual: This => qual.symbol == refPart.symbol.owner
+          case _ => false
+        }
         val (accessorDef, accessorRef) =
-          if (refPart.symbol.isStatic) {
-            // Easy case: Reference to a static symbol
+          if (refPart.symbol.isStatic || refIsLocal) {
+            // Easy case: Reference to a static symbol or a symbol referenced via `this.`
             val accessorType = accessedType.ensureMethodic
             val accessor = accessorSymbol(tree, accessorType).asTerm
             val accessorDef = polyDefDef(accessor, tps => argss =>
@@ -90,8 +95,7 @@ object Inliner {
             val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss)
             (accessorDef, accessorRef)
           } else {
-            // Hard case: Reference needs to go via a dyanmic prefix
-            val qual = qualifier(refPart)
+            // Hard case: Reference needs to go via a dynamic prefix
             inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
             // Need to dealias in order to catch all possible references to abstracted over types in
@@ -246,12 +250,11 @@ object Inliner {
     tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }
 
-  /** The qualifier part of a Select, Ident, or SelectFromTypeTree tree.
+  /** The qualifier part of a Select or Ident.
    *  For an Ident, this is the `This` of the current class. (TODO: use elsewhere as well?)
    */
   private def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
     case Select(qual, _) => qual
-    case SelectFromTypeTree(qual, _) => qual
     case _ => This(ctx.owner.enclosingClass.asClass)
   }
 }

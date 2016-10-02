@@ -520,7 +520,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
-    }
+  }
 
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[-T >: Untyped] private[ast] (original: Tree[T])

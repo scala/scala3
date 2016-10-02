@@ -1,9 +1,8 @@
 object Test {
 
   inline def swap[T](x: T, inline x_= : T => Unit, y: T, inline y_= : T => Unit) = {
-    val t = x
     x_=(y)
-    y_=(t)
+    y_=(x)
   }
 
   inline def f(x: Int => Unit) = x

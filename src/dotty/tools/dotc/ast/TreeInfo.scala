@@ -455,7 +455,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** If tree is a closure, it's body, otherwise tree itself */
+  /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
     case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
     case _ => tree

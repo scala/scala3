@@ -2448,7 +2448,7 @@ object Types {
       }
       /** Add @inlineParam to inline call-by-value parameters */
       def translateInline(tp: Type): Type = tp match {
-        case tp @ ExprType(tp1) => tp
+        case _: ExprType => tp
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
       def paramInfo(param: Symbol): Type = {
@@ -2580,7 +2580,7 @@ object Types {
         x => paramBounds mapConserve (_.subst(this, x).bounds),
         x => resType.subst(this, x))
 
-    /** Merge nested polytypes into one polytype. nested polytypes are normally not suported
+    /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
      */
     def flatten(implicit ctx: Context): PolyType = resType match {

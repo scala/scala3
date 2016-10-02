@@ -220,7 +220,7 @@ object Scanners {
 
 
     private def treatAsIdent() = {
-      testScala2Mode(i"$name is now a keyword, put in `...` to keep as an identifier")
+      testScala2Mode(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")
       patch(source, Position(offset), "`")
       patch(source, Position(offset + name.length), "`")
       IDENTIFIER

@@ -1357,7 +1357,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
     tree.tree match {
       case tree1: TypeTree => tree1  // no change owner necessary here ...
-      case tree1: Ident => tree1     // ... or here
+      case tree1: Ident => tree1     // ... or here, since these trees cannot contain bindings
       case tree1 =>
         if (ctx.owner ne tree.owner) tree1.changeOwner(tree.owner, ctx.owner)
         else tree1
@@ -1859,7 +1859,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (folded ne tree) return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass)
-        return tpd.Block(tree :: Nil, Literal(Constant(())))
+        return adapt(tpd.Block(tree :: Nil, Literal(Constant(()))), pt)
       // convert function literal to SAM closure
       tree match {
         case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
