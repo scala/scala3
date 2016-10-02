@@ -542,6 +542,13 @@ trait Checking {
       errorTree(tpt, ex"missing type parameter for ${tpt.tpe}")
     }
     else tpt
+
+  /** Check that `tpt` does not refer to a singleton type */
+  def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree =
+    if (tpt.tpe.isInstanceOf[SingletonType]) {
+      errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
+    }
+    else tpt
 }
 
 trait NoChecking extends Checking {
@@ -556,4 +563,5 @@ trait NoChecking extends Checking {
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
+  override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
 }
