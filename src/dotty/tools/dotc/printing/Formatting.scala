@@ -10,7 +10,7 @@ import scala.annotation.switch
 import scala.util.control.NonFatal
 import reporting.diagnostic.MessageContainer
 import util.DiffUtil
-import Highlighting.{ highlightToString => _, _ }
+import Highlighting._
 import SyntaxHighlighting._
 
 object Formatting {
@@ -165,7 +165,11 @@ object Formatting {
     }
   }
 
-  /** Turns a `Seen => String` to produce a `where: T is...` clause */
+  /** Turns a `Seen` into a `String` to produce an explanation for types on the
+    * form `where: T is...`
+    *
+    * @return string disambiguating types
+    */
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: PolyParam => ctx.typerState.constraint.contains(param)
@@ -245,7 +249,7 @@ object Formatting {
     val exp = wrapNonSensical(expected, expected.show)
 
     (found, expected) match {
-      case (_: RefinedType, _: RefinedType) =>
+      case (_: RefinedType, _: RefinedType) if ctx.settings.color.value != "never" =>
         DiffUtil.mkColoredTypeDiff(fnd, exp)
       case _ =>
         (hl"$fnd", hl"$exp")

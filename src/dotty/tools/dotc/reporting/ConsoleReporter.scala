@@ -32,9 +32,10 @@ class ConsoleReporter(
   def stripColor(str: String): String =
     str.replaceAll("\u001B\\[[;\\d]*m", "")
 
-  def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], Int) = {
+  def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], List[String], Int) = {
     var maxLen = Int.MinValue
-    val lines = pos.lines
+    def render(xs: List[Int]) =
+      xs.map(pos.source.offsetToLine(_))
       .map { lineNbr =>
         val prefix = s"${lineNbr + 1} |"
         maxLen = math.max(maxLen, prefix.length)
@@ -45,7 +46,8 @@ class ConsoleReporter(
         hl"$lnum$line"
       }
 
-    (lines, maxLen)
+    val (before, after) = pos.beforeAndAfterPoint
+    (render(before), render(after), maxLen)
   }
 
   def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context) = {
@@ -95,11 +97,11 @@ class ConsoleReporter(
   def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Unit = {
     printMessage(posStr(pos, diagnosticLevel, msg))
     if (pos.exists) {
-      val (srcLines, offset) = sourceLines(pos)
+      val (srcBefore, srcAfter, offset) = sourceLines(pos)
       val marker = columnMarker(pos, offset)
       val err = errorMsg(pos, msg.msg, offset)
 
-      printMessage((srcLines ::: marker :: err :: Nil).mkString("\n"))
+      printMessage((srcBefore ::: marker :: err :: srcAfter).mkString("\n"))
     } else printMessage(msg.msg)
   }
 

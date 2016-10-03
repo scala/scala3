@@ -22,8 +22,14 @@ extends interfaces.SourcePosition {
       case xs => xs
     }
 
+  def lineOffsets: List[Int] =
+    lines.map(source.lineToOffset(_))
+
   def lineContent(lineNumber: Int): String =
     source.lineContent(source.lineToOffset(lineNumber))
+
+  def beforeAndAfterPoint: (List[Int], List[Int]) =
+    lineOffsets.partition(_ < point)
 
   /** The column of the position, starting at 0 */
   def column: Int = source.column(point)

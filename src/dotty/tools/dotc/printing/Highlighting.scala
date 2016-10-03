@@ -9,10 +9,6 @@ object Highlighting {
 
   implicit def highlightShow(h: Highlight)(implicit ctx: Context): String =
     h.show
-  implicit def highlightToString(h: Highlight): String =
-    h.toString
-  implicit def hbufToString(hb: HighlightBuffer): String =
-    hb.toString
 
   abstract class Highlight(private val highlight: String) {
     def text: String

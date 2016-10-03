@@ -90,8 +90,10 @@ object messages {
       }
 
       val code1 =
-        s"""|try $tryString catch {
-            |  case t: Throwable => ???
+        s"""|import scala.util.control.NonFatal
+            |
+            |try $tryString catch {
+            |  case NonFatal(e) => ???
             |}""".stripMargin
 
       val code2 =
@@ -108,7 +110,10 @@ object messages {
            |It is also possible to follow a ${"try"} immediately by a ${"finally"} - letting the
            |exception propagate - but still allowing for some clean up in ${"finally"}:
            |
-           |$code2""".stripMargin
+           |$code2
+           |
+           |It is recommended to use the ${"NonFatal"} extractor to catch all exceptions as it
+           |correctly handles transfer functions like ${"return"}.""".stripMargin
     }
   }
 
@@ -133,29 +138,10 @@ object messages {
     val kind = "Syntax"
     val msg =
       hl"""${"with"} as a type operator has been deprecated; use `&' instead"""
-    val explanation = {
-      val codeBlock1 =
-        """|trait A {
-           |  type T = Int
-           |}
-           |
-           |trait B {
-           |  type T = Double
-           |}""".stripMargin
-
+    val explanation =
       hl"""|Dotty introduces intersection types - `&' types. These replace the
            |use of the ${"with"} keyword. There are a few differences in
-           |semantics between intersection types and using `${"with"}'.
-           |
-           |`${"A with B"}' is ordered, `${"A & B"}' is not.
-           |
-           |In:
-           |
-           |$codeBlock1
-           |
-           |The type of `${"T"}' in `${"A with B"}' is ${"Int"} whereas in `${"A & B"}'
-           |the type of `${"T"}' is ${"Int & Double"}.""".stripMargin
-    }
+           |semantics between intersection types and using `${"with"}'.""".stripMargin
   }
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)

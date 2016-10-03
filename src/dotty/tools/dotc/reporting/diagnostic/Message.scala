@@ -15,6 +15,14 @@ object Message {
     new NoExplanation(str)
 }
 
+/** A `Message` contains all semantic information necessary to easily
+  * comprehend what caused the message to be logged. Each message can be turned
+  * into a `MessageContainer` which contains the log level and can later be
+  * consumed by a subclass of `Reporter`.
+  *
+  * @param errorId a unique number identifying the message, this will later be
+  *                used to reference documentation online
+  */
 abstract class Message(val errorId: Int) { self =>
   import messages._
 
