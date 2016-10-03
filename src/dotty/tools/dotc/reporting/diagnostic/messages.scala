@@ -17,59 +17,51 @@ object messages {
   // `MessageContainer`s to be consumed by `Reporter` ---------------------- //
   class Error(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends MessageContainer(msgFn, pos, ERROR, explanation)
+    pos: SourcePosition
+  ) extends MessageContainer(msgFn, pos, ERROR)
 
   class Warning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends MessageContainer(msgFn, pos, WARNING, explanation)
+    pos: SourcePosition
+  ) extends MessageContainer(msgFn, pos, WARNING)
 
   class Info(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends MessageContainer(msgFn, pos, INFO, explanation)
+    pos: SourcePosition
+  ) extends MessageContainer(msgFn, pos, INFO)
 
   abstract class ConditionalWarning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends Warning(msgFn, pos, explanation) {
+    pos: SourcePosition
+  ) extends Warning(msgFn, pos) {
     def enablingOption(implicit ctx: Context): Setting[Boolean]
   }
 
   class FeatureWarning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends ConditionalWarning(msgFn, pos, explanation) {
+    pos: SourcePosition
+  ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.feature
   }
 
   class UncheckedWarning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends ConditionalWarning(msgFn, pos, explanation) {
+    pos: SourcePosition
+  ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
   }
 
   class DeprecationWarning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends ConditionalWarning(msgFn, pos, explanation) {
+    pos: SourcePosition
+  ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
   }
 
   class MigrationWarning(
     msgFn: => Message,
-    pos: SourcePosition,
-    explanation: String = ""
-  ) extends ConditionalWarning(msgFn, pos, explanation) {
+    pos: SourcePosition
+  ) extends ConditionalWarning(msgFn, pos) {
     def enablingOption(implicit ctx: Context) = ctx.settings.migration
   }
 

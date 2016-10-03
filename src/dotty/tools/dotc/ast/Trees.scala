@@ -308,8 +308,6 @@ object Trees {
         if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
         else Position(pos.point, pos.point + name.length, pos.point)
       else pos
-
-
   }
 
   /** A ValDef or DefDef tree */

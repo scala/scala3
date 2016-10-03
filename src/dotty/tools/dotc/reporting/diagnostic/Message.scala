@@ -53,31 +53,31 @@ abstract class Message(val errorId: Int) { self =>
 
   /** Enclose this message in an `Error` container */
   def error(pos: SourcePosition) =
-    new Error(self, pos, explanation)
+    new Error(self, pos)
 
   /** Enclose this message in an `Warning` container */
   def warning(pos: SourcePosition) =
-    new Warning(self, pos, explanation)
+    new Warning(self, pos)
 
   /** Enclose this message in an `Info` container */
   def info(pos: SourcePosition) =
-    new Info(self, pos, explanation)
+    new Info(self, pos)
 
   /** Enclose this message in an `FeatureWarning` container */
   def featureWarning(pos: SourcePosition) =
-    new FeatureWarning(self, pos, explanation)
+    new FeatureWarning(self, pos)
 
   /** Enclose this message in an `UncheckedWarning` container */
   def uncheckedWarning(pos: SourcePosition) =
-    new UncheckedWarning(self, pos, explanation)
+    new UncheckedWarning(self, pos)
 
   /** Enclose this message in an `DeprecationWarning` container */
   def deprecationWarning(pos: SourcePosition) =
-    new DeprecationWarning(self, pos, explanation)
+    new DeprecationWarning(self, pos)
 
   /** Enclose this message in an `MigrationWarning` container */
   def migrationWarning(pos: SourcePosition) =
-    new MigrationWarning(self, pos, explanation)
+    new MigrationWarning(self, pos)
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */

@@ -15,7 +15,7 @@ object MessageContainer {
   implicit class MessageContext(val c: Context) extends AnyVal {
     def shouldExplain(cont: MessageContainer): Boolean = {
       implicit val ctx: Context = c
-      cont.explanation match {
+      cont.contained.explanation match {
         case "" => false
         case _ => ctx.settings.explain.value
       }
@@ -26,8 +26,7 @@ object MessageContainer {
 class MessageContainer(
   msgFn: => Message,
   val pos: SourcePosition,
-  val level: Int,
-  val explanation: String
+  val level: Int
 ) extends Exception with interfaces.Diagnostic {
   import MessageContainer._
   private var myMsg: String = null

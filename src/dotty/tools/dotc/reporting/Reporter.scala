@@ -35,7 +35,7 @@ trait Reporting { this: Context =>
     if (this.settings.verbose.value) this.echo(msg, pos)
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Info(msg, pos, "Info"))
+    reporter.report(new Info(msg, pos))
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(msg.deprecationWarning(pos))
