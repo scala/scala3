@@ -1012,22 +1012,20 @@ object Parsers {
         val tryOffset = in.offset
         atPos(in.skipToken()) {
           val body = expr()
-          val handler =
+          val (handler, handlerStart) =
             if (in.token == CATCH) {
+              val pos = in.offset
               in.nextToken()
-              expr()
-            } else EmptyTree
-
-          // A block ends before RBRACE, if next token is RBRACE, simply add 1
-          def realEnd(pos: Position) =
-            if (in.token == RBRACE) pos.end + 1
-            else pos.end
+              (expr(), pos)
+            } else (EmptyTree, -1)
 
           handler match {
-            case Block(Nil, EmptyTree) => syntaxError(
-              new EmptyCatchBlock(body),
-              Position(tryOffset, realEnd(handler.pos))
-            )
+            case Block(Nil, EmptyTree) =>
+              assert(handlerStart != -1)
+              syntaxError(
+                new EmptyCatchBlock(body),
+                Position(handlerStart, handler.pos.end)
+              )
             case _ =>
           }
 
@@ -1036,7 +1034,7 @@ object Parsers {
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
-                source atPos Position(tryOffset, realEnd(body.pos))
+                source atPos Position(tryOffset, body.pos.end)
               )
               EmptyTree
             }

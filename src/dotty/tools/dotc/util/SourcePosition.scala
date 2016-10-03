@@ -17,7 +17,7 @@ extends interfaces.SourcePosition {
 
   /** The lines of the position */
   def lines: List[Int] =
-    List.range(source.offsetToLine(start), source.offsetToLine(end)) match {
+    List.range(source.offsetToLine(start), source.offsetToLine(end + 1)) match {
       case Nil => line :: Nil
       case xs => xs
     }
