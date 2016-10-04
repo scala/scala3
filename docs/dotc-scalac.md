@@ -59,7 +59,7 @@ if (sym is Flags.PackageClass)  // dotc (*)
   `Long`
 * Each flag is either valid for types, terms, or both
 
-````
+```
 000..0001000..01
         ^     ^^
         flag  | \
