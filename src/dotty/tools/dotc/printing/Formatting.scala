@@ -242,17 +242,17 @@ object Formatting {
     * correct `Context` for printing should also be passed when calling the
     * method.
     *
-    * @return the (found, expected) with coloring to highlight the difference
+    * @return the (found, expected, changePercentage) with coloring to
+    *         highlight the difference
     */
   def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
     val fnd = wrapNonSensical(found, found.show)
     val exp = wrapNonSensical(expected, expected.show)
 
-    (found, expected) match {
-      case (_: RefinedType, _: RefinedType) if ctx.settings.color.value != "never" =>
-        DiffUtil.mkColoredTypeDiff(fnd, exp)
-      case _ =>
-        (hl"$fnd", hl"$exp")
+    DiffUtil.mkColoredTypeDiff(fnd, exp) match {
+      case _ if ctx.settings.color.value == "never" => (fnd, exp)
+      case (fnd, exp, change) if change < 0.5 => (fnd, exp)
+      case _ => (fnd, exp)
     }
   }
 }

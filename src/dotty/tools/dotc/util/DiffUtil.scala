@@ -32,8 +32,9 @@ object DiffUtil {
     }
 
 
-  /** @return a tuple of the (found, expected) diffs as strings */
-  def mkColoredTypeDiff(found: String, expected: String): (String, String) = {
+  /** @return a tuple of the (found, expected, changedPercentage) diffs as strings */
+  def mkColoredTypeDiff(found: String, expected: String): (String, String, Double) = {
+    var totalChange = 0
     val foundTokens   = splitTokens(found, Nil).toArray
     val expectedTokens = splitTokens(expected, Nil).toArray
 
@@ -42,15 +43,19 @@ object DiffUtil {
 
     val exp = diffExp.collect {
       case Unmodified(str) => str
-      case Inserted(str) => ADDITION_COLOR + str + ANSI_DEFAULT
+      case Inserted(str) =>
+        totalChange += str.length
+        ADDITION_COLOR + str + ANSI_DEFAULT
     }.mkString
 
     val fnd = diffAct.collect {
       case Unmodified(str) => str
-      case Inserted(str) => DELETION_COLOR + str + ANSI_DEFAULT
+      case Inserted(str) =>
+        totalChange += str.length
+        DELETION_COLOR + str + ANSI_DEFAULT
     }.mkString
 
-    (fnd, exp)
+    (fnd, exp, totalChange.toDouble / (expected.length + found.length))
   }
 
   def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
