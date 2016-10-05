@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Getting Started"
+---
+
 Getting Started
 ===============
 
@@ -29,6 +34,7 @@ git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala
 # Run it with the proper classpath
 ./bin/dotr HelloWorld
 ```
+
 Starting a REPL
 ---------------
 ```bash

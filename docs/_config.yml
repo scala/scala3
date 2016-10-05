@@ -1,0 +1,6 @@
+title: Dotty Documentation
+baseurl: "/"
+markdown: JekyllMarkdownLinkConverter
+theme: minima
+gems:
+    - jekyll-toc

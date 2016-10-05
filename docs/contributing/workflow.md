@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Workflow"
+---
+
 Workflow
 ========
 This document details common workflow patterns when working with Dotty.
@@ -5,13 +10,14 @@ This document details common workflow patterns when working with Dotty.
 ## Compiling files with dotc ##
 
 From sbt:
-```
-run <OPTIONS> <FILE>
+
+```bash
+> run <OPTIONS> <FILE>
 ```
 
 From terminal:
 
-```
+```bash
 $ ./bin/dotc <OPTIONS> <FILE>
 ```
 
@@ -33,7 +39,7 @@ Additional logging information can be obtained by changes some `noPrinter` to
 
 ## Running tests ##
 
-```
+```bash
 $ sbt
 > partest --show-diff --verbose
 ```
@@ -41,7 +47,7 @@ $ sbt
 ## Running single tests ##
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 
-```
+```bash
 > partest-only-no-bootstrap --show-diff --verbose tests/partest-generated/x/y.scala
 ```
 
@@ -53,14 +59,14 @@ way partest has been set up.
 There is no power mode for the REPL yet, but you can inspect types with the
 type stealer:
 
-```
+```bash
 $ ./bin/dotr
 scala> import test.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
 ```
 
 Now, you can define types and access their representation. For example:
 
-```
+```scala
 scala> val s = stealType("class O { type X }", "O#X")
 scala> implicit val ctx: Context = s._1
 scala> val t = s._2(0)

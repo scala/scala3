@@ -1,10 +1,9 @@
 ---
+layout: blog
 author: Martin Odersky and Dmitry Petrashko
 title: "We got liftoff!"
 subTitle: The Dotty compiler for Scala bootstraps.
 ---
-
-## We got liftoff!
 
 The [Dotty project](https://github.com/lampepfl/dotty)
 is a platform to develop new technology for Scala

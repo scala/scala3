@@ -1,4 +1,5 @@
 ---
+layout: blog
 title: The Essence of Scala
 author: Martin Odersky
 authorImg: /images/martin.jpg

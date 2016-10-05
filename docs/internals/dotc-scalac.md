@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Scalac vs Dotty"
+---
+
 Differences between Scalac and Dotty
 ====================================
 Overview explanation how symbols, named types and denotations hang together:

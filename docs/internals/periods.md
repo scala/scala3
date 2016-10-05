@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Periods"
+toc: true
+---
+
 Dotc's concept of time
 ======================
 Conceptually, the `dotc` compiler's job is to maintain views of various
@@ -51,7 +57,7 @@ class Period(val code: Int) extends AnyVal {
   def runId: RunId            // The run identifier of this period.
   def firstPhaseId: PhaseId   // The first phase of this period
   def lastPhaseId: PhaseId    // The last phase of this period
-  def phaseId: PhaseId        // The phase identifier of this single-phase period.
+  def phaseId: PhaseId        // The phase identifier of this single-phase period
 
   def containsPhaseId(id: PhaseId): Boolean
   def contains(that: Period): Boolean
@@ -76,7 +82,7 @@ Periods are constructed using two `apply` methods:
 ```scala
 object Period {
   /** The single-phase period consisting of given run id and phase id */
-  def apply(rid: RunId, pid: PhaseId): Period      }
+  def apply(rid: RunId, pid: PhaseId): Period
 
   /** The period consisting of given run id, and lo/hi phase ids */
   def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period

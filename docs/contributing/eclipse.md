@@ -1,3 +1,8 @@
+---
+layout: default
+title: Eclipse
+---
+
 Building Dotty with Eclipse
 ===========================
 

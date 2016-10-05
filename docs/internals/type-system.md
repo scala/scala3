@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 Type System
 ===========
 The types are defined in [dotty/tools/dotc/core/Types.scala][1]

@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Higher-Kinded Types in Dotty"
+---
+
 Higher-Kinded Types in Dotty V2
 ===============================
 
@@ -403,7 +408,7 @@ This gives:
 ```scala
 Lambda1 { type Apply = List[$hkArg$0] } { type $hkArg$0 = A } # Apply
  =>  Lambda1 { type Apply = List[$hkArg$0] } { type $hkArg$0 = B } # Apply
- ```
+```
 
 This type simplifies to:
 

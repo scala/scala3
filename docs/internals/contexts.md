@@ -1,3 +1,8 @@
+---
+title: Contexts
+layout: default
+---
+
 Contexts
 ========
 The `Context` contains the state of the compiler, for example

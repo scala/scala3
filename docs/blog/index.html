@@ -1,0 +1,22 @@
+---
+layout: default
+title: "Blog"
+---
+
+<h1>Blog</h1>
+
+<ul class="post-list">
+    {% for post in site.posts %}
+    <li>
+        <div>
+            <a href="{{ post.url }}">{{ post.title }}</a>
+        </div>
+        <div class="date">
+            {{ post.date | date: '%B %d, %Y' }}
+        </div>
+        <div class="excerpt">
+            {{ post.excerpt }}
+        </div>
+    </li>
+    {% endfor %}
+</ul>

@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Migrating to Dotty"
+---
+
 Migrating to Dotty
 ==================
 

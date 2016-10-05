@@ -1,9 +1,14 @@
+---
+layout: default
+title: "Project Structure"
+---
+
 Dotc Overall Structure
 ======================
 The compiler code is found in package [dotty.tools]. It spans the
 following three sub-packages:
 
-```
+```none
 backend     Compiler backends (currently for JVM and JS)
    dotc     The main compiler
      io     Helper modules for file access and classpath handling.
@@ -20,7 +25,7 @@ Package Structure
 Most functionality of `dotc` is implemented in subpackages of `dotc`. Here's a
 list of sub-packages and their focus.
 
-```
+```none
 .
 ├── ast                 // Abstract syntax trees
 ├── config              // Compiler configuration, settings, platform specific definitions.
