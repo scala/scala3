@@ -1344,7 +1344,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: PolyType =>
       tp2 match {
         case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedPolyType(
+          tp1.derivedGenericType(
               mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
               tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
         case _ =>

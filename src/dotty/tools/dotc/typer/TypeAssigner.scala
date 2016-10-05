@@ -360,7 +360,7 @@ trait TypeAssigner {
           if (gapBuf.isEmpty) resultType1
           else {
             val gaps = gapBuf.toList
-            pt.derivedPolyType(
+            pt.derivedGenericType(
               gaps.map(paramNames),
               gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
               resultType1)

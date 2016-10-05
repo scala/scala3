@@ -485,7 +485,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased
-                .derivedTypeLambda(resType = tycon.safeDealias.appliedTo(args1))
+                .derivedGenericType(resType = tycon.safeDealias.appliedTo(args1))
                 .appliedTo(args)
             case _ =>
               val reducer = new Reducer(dealiased, args)

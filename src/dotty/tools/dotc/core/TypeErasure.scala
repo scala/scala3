@@ -169,7 +169,7 @@ object TypeErasure {
     val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
-      tp.derivedPolyType(
+      tp.derivedGenericType(
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
@@ -356,8 +356,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
       defn.FunctionClass(0).typeRef
-    case tp: TypeProxy =>
-      this(tp.underlying)
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
@@ -398,6 +396,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       tp
     case tp: WildcardType if wildcardOK =>
       tp
+    case tp: TypeProxy =>
+      this(tp.underlying)
   }
 
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
