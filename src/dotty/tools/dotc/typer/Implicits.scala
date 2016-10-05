@@ -412,7 +412,7 @@ trait Implicits { self: Typer =>
     && !to.isError
     && !ctx.isAfterTyper
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && from.isInstanceOf[ValueType]
+    && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
             (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)

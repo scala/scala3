@@ -543,7 +543,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
           }
-          (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
+          (tp1.symbol eq NothingClass) && tp2.isValueTypeOrLambda ||
           (tp1.symbol eq NullClass) && isNullable(tp2)
       }
     case tp1: SingletonType =>

@@ -96,6 +96,9 @@ object Types {
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
 
+    /** Is the is value type or type lambda? */
+    final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[TypeLambda]
+
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
       case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
@@ -2197,7 +2200,7 @@ object Types {
 
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
+      assert(tp1.isValueType && tp2.isValueType, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {

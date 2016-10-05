@@ -393,7 +393,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val replacement = tp.dealias.stripTypeVar
     if (param == replacement) this
     else {
-      assert(replacement.isValueType)
+      assert(replacement.isValueTypeOrLambda)
       val poly = param.binder
       val idx = param.paramNum
 
