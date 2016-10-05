@@ -11,7 +11,7 @@ import util.Property.Key
 import parsing.Parsers.Parser
 
 object Comments {
-  val ContextDoc =  new Key[ContextDocstrings]
+  val ContextDoc = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
   implicit class CommentsContext(val ctx: Context) extends AnyVal {
@@ -37,7 +37,12 @@ object Comments {
       doc.map(d => _docstrings += (sym -> d))
   }
 
-  abstract case class Comment(pos: Position, raw: String)(implicit ctx: Context) { self =>
+  /** A `Comment` contains the unformatted docstring as well as a position
+    *
+    * The `Comment` contains functionality to create versions of itself without
+    * `@usecase` sections as well as functionality to map the `raw` docstring
+    */
+  abstract case class Comment(pos: Position, raw: String) { self =>
     def isExpanded: Boolean
 
     def usecases: List[UseCase]
@@ -49,7 +54,7 @@ object Comments {
       val usecases = self.usecases
     }
 
-    def withUsecases: Comment = new Comment(pos, stripUsecases) {
+    def withUsecases(implicit ctx: Context): Comment = new Comment(pos, stripUsecases) {
       val isExpanded = self.isExpanded
       val usecases = parseUsecases
     }
@@ -57,7 +62,7 @@ object Comments {
     private[this] lazy val stripUsecases: String =
       removeSections(raw, "@usecase", "@define")
 
-    private[this] lazy val parseUsecases: List[UseCase] =
+    private[this] def parseUsecases(implicit ctx: Context): List[UseCase] =
       if (!raw.startsWith("/**"))
         List.empty[UseCase]
       else
@@ -73,7 +78,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(start: Int, end: Int): UseCase = {
+    private[this] def decomposeUseCase(start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (pos == NoPosition) NoPosition
         else {
@@ -102,22 +107,29 @@ object Comments {
       }
   }
 
-  case class UseCase(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) {
+  abstract case class UseCase(comment: Comment, code: String, codePos: Position) {
     /** Set by typer */
     var tpdCode: tpd.DefDef = _
 
-    lazy val untpdCode: untpd.Tree = {
-      val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start, EmptyFlags)
+    def untpdCode: untpd.Tree
+  }
 
-      tree match {
-        case tree: untpd.DefDef =>
-          val newName = (tree.name.show + "$" + codePos + "$doc").toTermName
-          untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
-        case _ =>
-          ctx.error("proper definition was not found in `@usecase`", codePos)
-          tree
+  object UseCase {
+    def apply(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) =
+      new UseCase(comment, code, codePos) {
+        val untpdCode = {
+          val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start, EmptyFlags)
+
+          tree match {
+            case tree: untpd.DefDef =>
+              val newName = (tree.name.show + "$" + codePos + "$doc").toTermName
+              untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
+            case _ =>
+              ctx.error("proper definition was not found in `@usecase`", codePos)
+              tree
+          }
+        }
       }
-    }
   }
 
   /**
