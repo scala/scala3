@@ -7,6 +7,7 @@ import dotc.ast.Trees._
 import dotc.CompilationUnit
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
+import dotc.core.Comments.ContextDocstrings
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 
@@ -14,29 +15,17 @@ class DocASTPhase extends Phase {
   import model._
   import model.factories._
   import model.internal._
-  import model.parsers.WikiParser
   import model.comment.Comment
   import dotty.tools.dotc.core.Flags
   import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dottydoc.util.syntax._
   import util.traversing._
   import util.internal.setters._
 
   def phaseName = "docphase"
 
-  private[this] val commentParser = new WikiParser
-
-  /** Saves the commentParser function for later evaluation, for when the AST has been filled */
-  def track(symbol: Symbol, ctx: Context, parent: Symbol = NoSymbol)(op: => Entity) = {
-    val entity = op
-
-    if (entity != NonEntity)
-      commentParser += (entity, symbol, parent, ctx)
-
-    entity
-  }
-
   /** Build documentation hierarchy from existing tree */
-  def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = track(tree.symbol, ctx) {
+  def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree], ps: List[String]): List[Entity] =
@@ -58,28 +47,26 @@ class DocASTPhase extends Phase {
       val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
         .filterNot(_.symbol.owner.name.show == "Any")
         .map { meth =>
-          track(meth.symbol, ctx, tree.symbol) {
-            DefImpl(
-              meth.symbol.name.show,
-              Nil,
-              path(meth.symbol),
-              returnType(meth.info),
-              typeParams(meth.symbol),
-              paramLists(meth.info),
-              implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
-            )
-          }
+          DefImpl(
+            meth.symbol,
+            meth.symbol.name.show,
+            Nil,
+            path(meth.symbol),
+            returnType(meth.info),
+            typeParams(meth.symbol),
+            paramLists(meth.info),
+            implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
+          )
         }.toList
 
       val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
-        track(value.symbol, ctx, tree.symbol) {
-          ValImpl(
-            value.symbol.name.show,
-            Nil, path(value.symbol),
-            returnType(value.info),
-            implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
-          )
-        }
+        ValImpl(
+          value.symbol,
+          value.symbol.name.show,
+          Nil, path(value.symbol),
+          returnType(value.info),
+          implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
+        )
       }
 
       defs ++ vals
@@ -90,38 +77,38 @@ class DocASTPhase extends Phase {
       /** package */
       case pd @ PackageDef(pid, st) =>
         val newPath = prev :+ pid.name.toString
-        addEntity(PackageImpl(newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
+        addEntity(PackageImpl(pd.symbol, newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
+        TraitImpl(t.symbol, name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
         val name = n.decode.toString.dropRight(1)
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
+        ObjectImpl(o.symbol, name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         val name = n.decode.toString
         val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
+        (c.symbol, name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }
 
       /** def */
       case d: DefDef =>
-        DefImpl(d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
+        DefImpl(d.symbol, d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
 
       /** val */
       case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-        ValImpl(v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe))
+        ValImpl(v.symbol, v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe))
 
       case x => {
         //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
@@ -175,15 +162,8 @@ class DocASTPhase extends Phase {
       child  <- parent.children
     } setParent(child, to = parent)
 
-    // (3) Create documentation template from docstrings, with internal links
-    println("Generating documentation, this might take a while...")
-    commentParser.parse(packages)
-
-    // (4) Clear caches
-    commentParser.clear()
-
-    // (5) Update Doc AST in ctx.base
-    for (kv <- packages) ctx.docbase.packages += kv
+    // (3) Update Doc AST in ctx.base
+    for (kv <- packages) ctx.docbase.packagesMutable += kv
 
     // Return super's result
     compUnits

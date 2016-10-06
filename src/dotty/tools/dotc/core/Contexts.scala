@@ -13,6 +13,7 @@ import Scopes._
 import NameOps._
 import Uniques._
 import SymDenotations._
+import Comments._
 import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
@@ -29,7 +30,6 @@ import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
-import parsing.Scanners.Comment
 import util.Property.Key
 import xsbti.AnalysisCallback
 
@@ -537,9 +537,6 @@ object Contexts {
     /** The symbol loaders */
     val loaders = new SymbolLoaders
 
-    /** Documentation base */
-    val docbase = new DocBase
-
     /** The platform, initialized by `initPlatform()`. */
     private var _platform: Platform = _
 
@@ -576,32 +573,6 @@ object Contexts {
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
-  }
-
-  class DocBase {
-    private[this] val _docstrings: mutable.Map[Symbol, Comment] =
-      mutable.Map.empty
-
-    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
-
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings += (sym -> d))
-
-    /*
-     * Dottydoc places instances of `Package` in this map - but we do not want
-     * to depend on `dottydoc` for the compiler, as such this is defined as a
-     * map of `String -> AnyRef`
-     */
-    private[this] val _packages: mutable.Map[String, AnyRef] = mutable.Map.empty
-    def packages[A]: mutable.Map[String, A] = _packages.asInstanceOf[mutable.Map[String, A]]
-
-    /** Should perhaps factorize this into caches that get flushed */
-    private var _defs: Map[Symbol, Set[Symbol]] = Map.empty
-    def defs(sym: Symbol): Set[Symbol] = _defs.get(sym).getOrElse(Set.empty)
-
-    def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
-      s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
-    })
   }
 
   /** The essential mutable state of a context base, collected into a common class */

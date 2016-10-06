@@ -3,6 +3,7 @@ package model
 
 import comment.Comment
 import references._
+import dotty.tools.dotc.core.Symbols.Symbol
 
 object internal {
 
@@ -11,6 +12,7 @@ object internal {
   }
 
   final case class PackageImpl(
+    symbol: Symbol,
     name: String,
     var members: List[Entity],
     path: List[String],
@@ -21,6 +23,7 @@ object internal {
   }
 
   final case class ClassImpl(
+    symbol: Symbol,
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -32,6 +35,7 @@ object internal {
   ) extends Class with Impl
 
   final case class CaseClassImpl(
+    symbol: Symbol,
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -43,6 +47,7 @@ object internal {
   ) extends CaseClass with Impl
 
   final case class TraitImpl(
+    symbol: Symbol,
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -54,6 +59,7 @@ object internal {
   ) extends Trait with Impl
 
   final case class ObjectImpl(
+    symbol: Symbol,
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -63,6 +69,7 @@ object internal {
   ) extends Object with Impl
 
   final case class DefImpl(
+    symbol: Symbol,
     name: String,
     modifiers: List[String],
     path: List[String],
@@ -74,6 +81,7 @@ object internal {
   ) extends Def with Impl
 
   final case class ValImpl(
+    symbol: Symbol,
     name: String,
     modifiers: List[String],
     path: List[String],

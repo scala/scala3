@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
-import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
+import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
 import NameOps._
 import Scopes.Scope
 import collection.mutable
@@ -1541,13 +1541,15 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-
+      def isUsecase = ctx.docCtx.isDefined && sym.name.show.takeRight(4) == "$doc"
       require(
           (sym.denot.flagsUNSAFE is Private) ||
           !(this is Frozen) ||
           (scope ne this.unforcedDecls) ||
           sym.hasAnnotation(defn.ScalaStaticAnnot) ||
-          sym.name.isInlineAccessor)
+          sym.name.isInlineAccessor ||
+          isUsecase)
+
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)

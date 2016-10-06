@@ -3,8 +3,11 @@ package model
 
 import comment._
 import references._
+import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
 trait Entity {
+  def symbol: Symbol
+
   def name: String
 
   /** Path from root, i.e. `scala.Option$` */
@@ -103,6 +106,7 @@ trait Var extends Entity with Modifiers with ReturnValue {
 
 trait NonEntity extends Entity {
   val name    = ""
+  val symbol  = NoSymbol
   val comment = None
   val path    = Nil
   val kind    = ""

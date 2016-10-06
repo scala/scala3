@@ -5,6 +5,7 @@ package core
 import dotty.tools.dotc.transform.TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
 import dotty.tools.dotc.core.Flags
 import dotc.core.Contexts.Context
+import util.syntax._
 
 class DocImplicitsPhase extends MiniPhaseTransform { thisTransformer =>
   import dotty.tools.dotc.ast.tpd._

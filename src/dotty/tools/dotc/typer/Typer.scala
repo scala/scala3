@@ -11,6 +11,7 @@ import Scopes._
 import Denotations._
 import ProtoTypes._
 import Contexts._
+import Comments._
 import Symbols._
 import Types._
 import SymDenotations._
@@ -57,7 +58,7 @@ object Typer {
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
-class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking {
+class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1181,6 +1182,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // function types so no dependencies on parameters are allowed.
       tpt1 = tpt1.withType(avoid(tpt1.tpe, vparamss1.flatMap(_.map(_.symbol))))
     }
+
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
@@ -1244,6 +1246,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+
+    // Expand comments and type usecases
+    cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
+
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)

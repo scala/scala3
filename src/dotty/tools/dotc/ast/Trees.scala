@@ -4,7 +4,7 @@ package ast
 
 import core._
 import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
-import Denotations._, StdNames._
+import Denotations._, StdNames._, Comments._
 import annotation.tailrec
 import language.higherKinds
 import collection.IndexedSeqOptimized
@@ -15,7 +15,6 @@ import printing.Printer
 import util.{Stats, Attachment, Property, DotClass}
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
-import parsing.Scanners.Comment
 
 object Trees {
 
