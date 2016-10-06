@@ -9,37 +9,22 @@ import util.Positions._
 import ast.{tpd, Trees, untpd}
 import Trees._
 import Decorators._
-import TastyUnpickler._, TastyBuffer._, PositionPickler._
+import TastyUnpickler._, TastyBuffer._
 import scala.annotation.{tailrec, switch}
 import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 
 /** Unpickler for typed trees
- *  @param reader         the reader from which to unpickle
- *  @param tastyName      the nametable
+ *  @param reader          the reader from which to unpickle
+ *  @param tastyName       the nametable
+ *  @param posUNpicklerOpt the unpickler for positions, if it exists
  */
-class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
+class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpicklerOpt: Option[PositionUnpickler]) {
   import TastyFormat._
   import TastyName._
   import TreeUnpickler._
   import tpd._
-
-  private var readPositions = false
-  private var totalRange = NoPosition
-  private var positions: collection.Map[Addr, Position] = _
-
-  /** Make a subsequent call to `unpickle` return trees with positions
-   *  @param totalRange     the range position enclosing all returned trees,
-   *                        or NoPosition if positions should not be unpickled
-   *  @param positions      a map from tree addresses to their positions relative
-   *                        to positions of parent nodes.
-   */
-  def usePositions(totalRange: Position, positions: collection.Map[Addr, Position]): Unit = {
-    readPositions = true
-    this.totalRange = totalRange
-    this.positions = positions
-  }
 
   /** A map from addresses of definition entries to the symbols they define */
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
@@ -85,10 +70,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
   /** The unpickled trees */
   def unpickle()(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
-    val stats = new TreeReader(reader)
-      .readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
-    normalizePos(stats, totalRange)
-    stats
+    new TreeReader(reader).readTopLevel()(ctx.addMode(Mode.AllowDependentFunctions))
   }
 
   def toTermName(tname: TastyName): TermName = tname match {
@@ -468,6 +450,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
+      val rhsStart = currentAddr
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
@@ -504,6 +487,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
+      else if (annots.exists(_.symbol == defn.InlineAnnot))
+        sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
+          implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
+            // avoids space leaks by not capturing the current context
+          forkAt(rhsStart).readTerm()
+        })
       goto(start)
       sym
     }
@@ -1010,44 +999,29 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       new LazyReader(localReader, op)
     }
 
-// ------ Hooks for positions ------------------------------------------------
+// ------ Setting positions ------------------------------------------------
 
-    /** Record address from which tree was created as a temporary position in the tree.
-     *  The temporary position contains deltas relative to the position of the (as yet unknown)
-     *  parent node. It is marked as a non-synthetic source position.
-     */
-    def setPos[T <: Tree](addr: Addr, tree: T): T = {
-      if (readPositions)
-        tree.setPosUnchecked(positions.getOrElse(addr, Position(0, 0, 0)))
-      tree
-    }
+    /** Set position of `tree` at given `addr`. */
+    def setPos[T <: Tree](addr: Addr, tree: T)(implicit ctx: Context): tree.type =
+      if (ctx.mode.is(Mode.ReadPositions)) {
+        posUnpicklerOpt match {
+          case Some(posUnpickler) => tree.withPos(posUnpickler.posAt(addr))
+          case _  => tree
+        }
+      }
+      else tree
   }
 
-  private def setNormalized(tree: Tree, parentPos: Position): Unit =
-    tree.setPosUnchecked(
-      if (tree.pos.exists)
-        Position(parentPos.start + offsetToInt(tree.pos.start), parentPos.end - tree.pos.end)
-      else
-        parentPos)
-
-  def normalizePos(x: Any, parentPos: Position)(implicit ctx: Context): Unit =
-    traverse(x, parentPos, setNormalized)
-
-  class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] with DeferredPosition {
+  class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr}")
-      val res = op(reader)(ctx.addMode(Mode.AllowDependentFunctions).withPhaseNoLater(ctx.picklerPhase))
-      normalizePos(res, parentPos)
-      res
+      op(reader)(ctx.addMode(Mode.AllowDependentFunctions).withPhaseNoLater(ctx.picklerPhase))
     }
   }
 
-  class LazyAnnotationReader(sym: Symbol, reader: TreeReader)
-      extends LazyAnnotation(sym) with DeferredPosition {
+  class LazyAnnotationReader(sym: Symbol, reader: TreeReader) extends LazyAnnotation(sym) {
     def complete(implicit ctx: Context) = {
-      val res = reader.readTerm()(ctx.withPhaseNoLater(ctx.picklerPhase))
-      normalizePos(res, parentPos)
-      res
+      reader.readTerm()(ctx.withPhaseNoLater(ctx.picklerPhase))
     }
   }
 

@@ -1,0 +1,6 @@
+class Outer {
+
+  class Inner
+
+}
+

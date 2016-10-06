@@ -86,7 +86,7 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd) match {
                   case Some(unpickler: DottyUnpickler) =>
-                    val List(unpickled) = unpickler.body(readPositions = true)
+                    val List(unpickled) = unpickler.body(ctx.addMode(Mode.ReadPositions))
                     val unit1 = new CompilationUnit(new SourceFile(clsd.symbol.sourceFile, Seq()))
                     unit1.tpdTree = unpickled
                     unit1.unpicklers += (clsd.classSymbol -> unpickler.unpickler)

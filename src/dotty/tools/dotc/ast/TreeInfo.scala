@@ -88,12 +88,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case mp => mp
   }
 
-  /** If tree is a closure, it's body, otherwise tree itself */
-  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
-    case _ => tree
-  }
-
   /** If this is an application, its function part, stripping all
    *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
    */
@@ -311,6 +305,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs)
     case _ =>
       Impure
+      // TODO: It seem like this should be exprPurity(tree)
+      // But if we do that the repl/vars test break. Need to figure out why that's the case.
   }
 
   /** The purity level of this expression.
@@ -327,13 +323,13 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case EmptyTree
        | This(_)
        | Super(_, _)
-       | Literal(_) =>
+       | Literal(_)
+       | Closure(_, _, _) =>
       Pure
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
-      refPurity(tree).min(
-       if (tree.symbol.is(Inline)) Pure else exprPurity(qual))
+      refPurity(tree).min(exprPurity(qual))
     case TypeApply(fn, _) =>
       exprPurity(fn)
 /*
@@ -433,6 +429,36 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case t =>
         t
     }
+  }
+
+  /** Decompose a call fn[targs](vargs_1)...(vargs_n)
+   *  into its constituents (where targs, vargss may be empty)
+   */
+  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
+    case Apply(fn, args) =>
+      val (meth, targs, argss) = decomposeCall(fn)
+      (meth, targs, argss :+ args)
+    case TypeApply(fn, targs) =>
+      val (meth, Nil, Nil) = decomposeCall(fn)
+      (meth, targs, Nil)
+    case _ =>
+      (tree, Nil, Nil)
+  }
+
+  /** An extractor for closures, either contained in a block or standalone.
+   */
+  object closure {
+    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
+      case Block(_, Closure(env, meth, tpt)) => Some(env, meth, tpt)
+      case Closure(env, meth, tpt) => Some(env, meth, tpt)
+      case _ => None
+    }
+  }
+
+  /** If tree is a closure, its body, otherwise tree itself */
+  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
+    case _ => tree
   }
 
   /** The variables defined by a pattern, in reverse order of their appearance. */

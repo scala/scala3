@@ -231,14 +231,15 @@ grammar.
   ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
   ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
   ClsParams         ::=  ClsParam {`' ClsParam}
-  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] Param        ValDef(mods, id, tpe, expr) -- point of mods on val/var
+  ClsParam          ::=  {Annotation}
+                         [{Modifier} (`val' | `var') | `inline'] Param          ValDef(mods, id, tpe, expr) -- point of mods on val/var
   Param             ::=  id `:' ParamType [`=' Expr]
                       |  INT
 
   DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
   DefParamClause    ::=  [nl] `(' [DefParams] ')'
   DefParams         ::=  DefParam {`,' DefParam}
-  DefParam          ::=  {Annotation} Param                                     ValDef(mods, id, tpe, expr) -- point of mods at id.
+  DefParam          ::=  {Annotation} [`inline'] Param                          ValDef(mods, id, tpe, expr) -- point of mods at id.
 
   Bindings          ::=  `(' Binding {`,' Binding `)'                           bindings
   Binding           ::=  (id | `_') [`:' Type]                                  ValDef(_, id, tpe, EmptyTree)

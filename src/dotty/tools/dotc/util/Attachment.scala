@@ -4,9 +4,7 @@ package dotty.tools.dotc.util
  *  adding, removing and lookup of attachments. Attachments are typed key/value pairs.
  */
 object Attachment {
-
-  /** The class of keys for attachments yielding values of type V */
-  class Key[+V]
+  import Property.Key
 
   /** An implementation trait for attachments.
    *  Clients should inherit from Container instead.

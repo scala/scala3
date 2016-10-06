@@ -344,6 +344,7 @@ object Checking {
         fail(i"only classes can have declared but undefined members$varNote")
       checkWithDeferred(Private)
       checkWithDeferred(Final)
+      checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(i"$sym cannot extend AnyVal")
@@ -479,6 +480,14 @@ trait Checking {
       tp
   }
 
+  /** Check that `tree` is a pure expression of constant type */
+  def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =
+    tree.tpe.widenTermRefExpr match {
+      case tp: ConstantType if isPureExpr(tree) => // ok
+      case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
+      case _ => ctx.error(em"$what must be a constant expression or a function", tree.pos)
+    }
+
   /** Check that class does not define same symbol twice */
   def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
@@ -543,6 +552,7 @@ trait NoChecking extends Checking {
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
+  override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt

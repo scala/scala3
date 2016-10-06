@@ -12,7 +12,7 @@ import collection.immutable.IndexedSeq
 import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
-import util.{Stats, Attachment, DotClass}
+import util.{Stats, Attachment, Property, DotClass}
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
 import parsing.Scanners.Comment
@@ -30,8 +30,8 @@ object Trees {
   /** The total number of created tree nodes, maintained if Stats.enabled */
   @sharable var ntrees = 0
 
-  /** Attachment key for trees with documentation strings attached */
-  val DocComment = new Attachment.Key[Comment]
+  /** Property key for trees with documentation strings attached */
+  val DocComment = new Property.Key[Comment]
 
    @sharable private var nextId = 0 // for debugging
 
@@ -503,6 +503,25 @@ object Trees {
     override def toString = s"JavaSeqLiteral($elems, $elemtpt)"
   }
 
+  /** A tree representing inlined code.
+   *
+   *  @param  call      The original call that was inlined
+   *  @param  bindings  Bindings for proxies to be used in the inlined code
+   *  @param  expansion The inlined tree, minus bindings.
+   *
+   *  The full inlined code is equivalent to
+   *
+   *      { bindings; expansion }
+   *
+   *  The reason to keep `bindings` separate is because they are typed in a
+   *  different context: `bindings` represent the arguments to the inlined
+   *  call, whereas `expansion` represents the body of the inlined function.
+   */
+  case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
+    extends Tree[T] {
+    type ThisTree[-T >: Untyped] = Inlined[T]
+  }
+
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[-T >: Untyped] private[ast] (original: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
@@ -797,6 +816,7 @@ object Trees {
     type Try = Trees.Try[T]
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
+    type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type AndTypeTree = Trees.AndTypeTree[T]
@@ -938,6 +958,10 @@ object Trees {
           else finalize(tree, new JavaSeqLiteral(elems, elemtpt))
         case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt))
+      }
+      def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined = tree match {
+        case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
+        case _ => finalize(tree, untpd.Inlined(call, bindings, expansion))
       }
       def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
         case tree: TypeTree if original eq tree.original => tree
@@ -1083,6 +1107,8 @@ object Trees {
           cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
         case SeqLiteral(elems, elemtpt) =>
           cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
+        case Inlined(call, bindings, expansion) =>
+          cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion))
         case TypeTree(original) =>
           tree
         case SingletonTypeTree(ref) =>
@@ -1185,6 +1211,8 @@ object Trees {
             this(this(this(x, block), handler), finalizer)
           case SeqLiteral(elems, elemtpt) =>
             this(this(x, elems), elemtpt)
+          case Inlined(call, bindings, expansion) =>
+            this(this(x, bindings), expansion)
           case TypeTree(original) =>
             x
           case SingletonTypeTree(ref) =>

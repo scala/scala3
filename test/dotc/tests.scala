@@ -160,7 +160,7 @@ class tests extends CompilerTest {
    .filter(_.nonEmpty)
    .toList
 
-  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
+  @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
       """tests/pos/B.scala
         |./scala-scala/src/library/scala/collection/immutable/Seq.scala
@@ -278,7 +278,7 @@ class tests extends CompilerTest {
     "ClassOf.scala", "CollectEntryPoints.scala", "Constructors.scala", "CrossCastAnd.scala",
     "CtxLazy.scala", "ElimByName.scala", "ElimErasedValueType.scala", "ElimRepeated.scala",
     "ElimStaticThis.scala", "Erasure.scala", "ExpandPrivate.scala", "ExpandSAMs.scala",
-    "ExplicitOuter.scala", "ExplicitSelf.scala", "ExtensionMethods.scala", "FirstTransform.scala",
+    "ExplicitOuter.scala", "ExtensionMethods.scala", "FirstTransform.scala",
     "Flatten.scala", "FullParameterization.scala", "FunctionalInterfaces.scala", "GetClass.scala",
     "Getters.scala", "InterceptedMethods.scala", "LambdaLift.scala", "LiftTry.scala", "LinkScala2ImplClasses.scala",
     "MacroTransform.scala", "Memoize.scala", "Mixin.scala", "MixinOps.scala", "NonLocalReturns.scala",

@@ -31,7 +31,6 @@ class TastyPickler {
     sections += ((nameBuffer.nameIndex(name), buf))
 
   def assembleParts(): Array[Byte] = {
-    treePkl.compactify()
     def lengthWithLength(buf: TastyBuffer) = {
       buf.assemble()
       buf.length + natSize(buf.length)

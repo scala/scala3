@@ -16,9 +16,10 @@ import Flags._
  *  where `C` is a class with explicit self type and `C` is not a
  *  subclass of the owner of `m` to
  *
- *     C.this.asInstanceOf[S].m
+ *     C.this.asInstanceOf[S & C.this.type].m
  *
  *  where `S` is the self type of `C`.
+ *  See run/i789.scala for a test case why this is needed.
  */
 class ExplicitSelf extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
@@ -30,7 +31,7 @@ class ExplicitSelf extends MiniPhaseTransform { thisTransform =>
       val cls = thiz.symbol.asClass
       val cinfo = cls.classInfo
       if (cinfo.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))
-        cpy.Select(tree)(thiz.asInstance(cinfo.selfType), name)
+        cpy.Select(tree)(thiz.asInstance(AndType(cinfo.selfType, thiz.tpe)), name)
       else tree
     case _ => tree
   }

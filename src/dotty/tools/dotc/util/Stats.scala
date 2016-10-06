@@ -7,10 +7,12 @@ import collection.mutable
 
 @sharable object Stats {
 
-  final val enabled = true
+  final val enabled = false
 
   /** The period in ms in which stack snapshots are displayed */
   final val HeartBeatPeriod = 250
+
+  var monitored = false
 
   @volatile private var stack: List[String] = Nil
 
@@ -18,16 +20,21 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
-  def record(fn: String, n: Int = 1) = {
+  @inline
+  def record(fn: String, n: Int = 1) =
+    if (enabled) doRecord(fn, n)
+
+  private def doRecord(fn: String, n: Int) =
     if (monitored) {
       val name = if (fn.startsWith("member-")) "member" else fn
       hits(name) += n
     }
-  }
 
-  var monitored = false
-
+  @inline
   def track[T](fn: String)(op: => T) =
+    if (enabled) doTrack(fn)(op) else op
+
+  def doTrack[T](fn: String)(op: => T) =
     if (monitored) {
       stack = fn :: stack
       record(fn)

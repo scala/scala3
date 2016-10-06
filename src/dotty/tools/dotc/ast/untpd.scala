@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import util.Attachment
+import util.Property
 import language.higherKinds
 import collection.mutable.ListBuffer
 
@@ -20,9 +20,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType = op.isTypeName
   }
 
-  /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  case class TypedSplice(tree: tpd.Tree) extends ProxyTree {
+  /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
+   *  @param owner  The current owner at the time the tree was defined
+   */
+  abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
     def forwardTo = tree
+  }
+
+  object TypedSplice {
+    def apply(tree: tpd.Tree)(implicit ctx: Context): TypedSplice =
+      new TypedSplice(tree)(ctx.owner) {}
   }
 
   /** mods object name impl */
@@ -161,17 +168,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
   }
 
-    /** Attachment key containing TypeTrees whose type is computed
+    /** Property key containing TypeTrees whose type is computed
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References = new Attachment.Key[List[Tree]]
+  val References = new Property.Key[List[Tree]]
 
-  /** Attachment key for TypeTrees marked with TypeRefOfSym or InfoOfSym
+  /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
    *  TypeTree is derived.
    */
-  val OriginalSymbol = new Attachment.Key[Symbol]
+  val OriginalSymbol = new Property.Key[Symbol]
 
   // ------ Creation methods for untyped only -----------------
 
@@ -197,6 +204,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
   def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
   def TypeTree(original: Tree): TypeTree = new TypeTree(original)
   def TypeTree() = new TypeTree(EmptyTree)
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
@@ -231,7 +239,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
       case TypedSplice(AppliedTypeTree(tycon, targs)) =>
-        (TypedSplice(tycon), targs map TypedSplice)
+        (TypedSplice(tycon), targs map (TypedSplice(_)))
       case TypedSplice(tpt1: Tree) =>
         val argTypes = tpt1.tpe.argTypes
         val tycon = tpt1.tpe.withoutArgs(argTypes)
@@ -259,7 +267,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
+  def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
   def TypeDef(name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
     if (tparams.isEmpty) TypeDef(name, rhs) else new PolyTypeDef(name, tparams, rhs)

@@ -46,6 +46,7 @@ object StdNames {
     final val IFkw: N        = kw("if")
     final val IMPLICITkw: N  = kw("implicit")
     final val IMPORTkw: N    = kw("import")
+    final val INLINEkw: N    = kw("inline")
     final val LAZYkw: N      = kw("lazy")
     final val MACROkw: N     = kw("macro")
     final val MATCHkw: N     = kw("match")
@@ -100,6 +101,7 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = "$$"
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
+    val INLINE_ACCESSOR_PREFIX        = "$inlineAccessor$"
     val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
     val INTERPRETER_LINE_PREFIX: N    = "line"
     val INTERPRETER_VAR_PREFIX: N     = "res"
@@ -252,7 +254,7 @@ object StdNames {
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
     val OUTER_LOCAL: N              = "$outer "
-    val OUTER_SYNTH: N              = "<outer>" // emitted by virtual pattern matcher, replaced by outer accessor in explicitouter
+    val OUTER_SELECT: N             = "_<outer>" // emitted by inliner, replaced by outer path in explicitouter
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"

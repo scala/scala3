@@ -7,7 +7,7 @@ import TypeErasure.ErasedValueType
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd, tpd}
-import typer.Namer
+import typer.{Namer, Inliner}
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
 import TypeApplications._
@@ -154,7 +154,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
-    "{" ~ toText(trees, "\n") ~ "}"
+    ("{" ~ toText(trees, "\n") ~ "}").close
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
@@ -277,7 +277,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (homogenizedView && pid.hasType) toTextLocal(pid.tpe)
       else toTextLocal(pid)
 
-    var txt: Text = tree match {
+    def toTextCore(tree: Tree): Text = tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
@@ -351,6 +351,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
+      case tree @ Inlined(call, bindings, body) =>
+        if (homogenizedView) toTextCore(Inliner.dropInlined(tree.asInstanceOf[tpd.Inlined]))
+        else "/* inlined from " ~ toText(call) ~ "*/ " ~ blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
       case TypeTree(orig) =>
@@ -514,13 +517,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         tree.fallbackToText(this)
     }
+    var txt = toTextCore(tree)
     if (ctx.settings.printtypes.value && tree.hasType) {
       val tp = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
         case tp => tp
       }
       if (tree.isType) txt = toText(tp)
-      else if (!tree.isDef) txt = "<" ~ txt ~ ":" ~ toText(tp) ~ ">"
+      else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]])
       txt = txt ~ "@" ~ tree.pos.toString

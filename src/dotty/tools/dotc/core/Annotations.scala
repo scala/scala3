@@ -26,6 +26,8 @@ object Annotations {
     }
     def argumentConstant(i: Int)(implicit ctx: Context): Option[Constant] =
       for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
+
+    def ensureCompleted(implicit ctx: Context): Unit = tree
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation {
@@ -40,6 +42,36 @@ object Annotations {
     }
     def complete(implicit ctx: Context): Tree
     override def symbol(implicit ctx: Context): Symbol = sym
+  }
+
+  /** An annotation indicating the body of a right-hand side,
+   *  typically of an inline method. Treated specially in
+   *  pickling/unpickling and TypeTreeMaps
+   */
+  abstract class BodyAnnotation extends Annotation {
+    override def symbol(implicit ctx: Context) = defn.BodyAnnot
+    override def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
+      if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
+    override def arguments(implicit ctx: Context) = Nil
+    override def ensureCompleted(implicit ctx: Context) = ()
+  }
+
+  case class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
+    def tree(implicit ctx: Context) = body
+  }
+
+  case class LazyBodyAnnotation(bodyExpr: Context => Tree) extends BodyAnnotation {
+    private var evaluated = false
+    private var myBody: Tree = _
+    def tree(implicit ctx: Context) = {
+      if (evaluated) assert(myBody != null)
+      else {
+        evaluated = true
+        myBody = bodyExpr(ctx)
+      }
+      myBody
+    }
+    def isEvaluated = evaluated
   }
 
   object Annotation {

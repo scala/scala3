@@ -140,5 +140,6 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
 
 @sharable object NoSource extends SourceFile("<no source>", Nil) {
   override def exists = false
+  override def atPos(pos: Position): SourcePosition = NoSourcePosition
 }
 

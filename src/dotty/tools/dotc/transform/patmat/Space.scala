@@ -522,7 +522,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
 
     val Match(sel, cases) = tree
-    isCheckable(sel.tpe.widen.deAnonymize.dealias)
+    isCheckable(sel.tpe.widen.deAnonymize.dealiasKeepAnnots)
   }
 
 

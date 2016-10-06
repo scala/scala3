@@ -89,5 +89,8 @@ object Mode {
    */
   val AllowLambdaWildcardApply = newMode(15, "AllowHKApplyToWildcards")
 
+  /** Read original positions when unpickling from TASTY */
+  val ReadPositions = newMode(16, "ReadPositions")
+
   val PatternOrType = Pattern | Type
 }

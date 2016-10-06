@@ -72,8 +72,8 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
-      case Select(qual, _) if tree.symbol.exists =>
-        assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe}")
+      case Select(qual, name) if !name.isOuterSelect && tree.symbol.exists =>
+        assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
       case _: TypeTree =>
       case _: Import | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")

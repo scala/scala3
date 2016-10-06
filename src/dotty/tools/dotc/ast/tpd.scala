@@ -10,6 +10,7 @@ import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
+import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
 
 import scala.annotation.tailrec
@@ -115,6 +116,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
     ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
+
+  def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
+    ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -918,8 +922,25 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  // ensure that constructors are fully applied?
-  // ensure that normal methods are fully applied?
+  /** A key to be used in a context property that tracks enclosing inlined calls */
+  private val InlinedCalls = new Property.Key[List[Tree]]
 
+  /** A context derived form `ctx` that records `call` as innermost enclosing
+   *  call for which the inlined version is currently processed.
+   */
+  def inlineContext(call: Tree)(implicit ctx: Context): Context =
+    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
+
+  /** All enclosing calls that are currently inlined, from innermost to outermost */
+  def enclosingInlineds(implicit ctx: Context): List[Tree] =
+    ctx.property(InlinedCalls).getOrElse(Nil)
+
+  /** The source file where the symbol of the `@inline` method referred to by `call`
+   *  is defined
+   */
+  def sourceFile(call: Tree)(implicit ctx: Context) = {
+    val file = call.symbol.sourceFile
+    if (file != null && file.exists) new SourceFile(file) else NoSource
+  }
 }
 

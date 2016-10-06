@@ -92,11 +92,20 @@ final class TreeTypeMap(
         case ddef @ DefDef(name, tparams, vparamss, tpt, _) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
+          val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
+          res.symbol.transformAnnotations {
+            case ann: BodyAnnotation => ann.derivedAnnotation(res.rhs)
+            case ann => ann
+          }
+          res
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
+        case inlined @ Inlined(call, bindings, expanded) =>
+          val (tmap1, bindings1) = transformDefs(bindings)
+          val expanded1 = tmap1.transform(expanded)
+          cpy.Inlined(inlined)(call, bindings1, expanded1)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)
@@ -127,10 +136,7 @@ final class TreeTypeMap(
 
   def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
 
-  def apply(annot: Annotation): Annotation = {
-    val tree1 = apply(annot.tree)
-    if (tree1 eq annot.tree) annot else ConcreteAnnotation(tree1)
-  }
+  def apply(annot: Annotation): Annotation = annot.derivedAnnotation(apply(annot.tree))
 
   /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =

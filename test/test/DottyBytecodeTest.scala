@@ -105,7 +105,7 @@ trait DottyBytecodeTest extends DottyTest {
         val a = isaPadded(line-1)
         val b = isbPadded(line-1)
 
-        sb append (s"""$line${" " * (lineWidth-line.toString.length)} ${if (a==b) "==" else "<>"} $a${" " * (width-a.length)} | $b""")
+        sb append (s"""$line${" " * (lineWidth-line.toString.length)} ${if (a==b) "==" else "<>"} $a${" " * (width-a.length)} | $b\n""")
       }
     }
     sb.toString

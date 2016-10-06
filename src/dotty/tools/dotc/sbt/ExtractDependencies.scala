@@ -190,6 +190,10 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
               addUsedName(rename)
           case _ =>
         }
+      case Inlined(call, _, _) =>
+        // The inlined call is normally ignored by TreeTraverser but we need to
+        // record it as a dependency
+        traverse(call)
       case t: TypeTree =>
         usedTypeTraverser.traverse(t.tpe)
       case ref: RefTree =>

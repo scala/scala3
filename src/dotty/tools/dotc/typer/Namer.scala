@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Positions._
-import util.{Attachment, SourcePosition, DotClass}
+import util.{Property, SourcePosition, DotClass}
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
@@ -160,9 +160,9 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead = new Attachment.Key[tpd.Tree]
-  val ExpandedTree = new Attachment.Key[Tree]
-  val SymOfTree = new Attachment.Key[Symbol]
+  val TypedAhead = new Property.Key[tpd.Tree]
+  val ExpandedTree = new Property.Key[Tree]
+  val SymOfTree = new Property.Key[Symbol]
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -403,37 +403,28 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
-    case pcl: PackageDef =>
-      val pkg = createPackageSymbol(pcl.pid)
-      index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
-      invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
-      setDocstring(pkg, stat)
-      ctx
-    case imp: Import =>
-      importContext(createSymbol(imp), imp.selectors)
-    case mdef: DefTree =>
-      val sym = enterSymbol(createSymbol(mdef))
-      setDocstring(sym, stat)
-
-      // add java enum constants
-      mdef match {
-        case vdef: ValDef if (isEnumConstant(vdef)) =>
-          val enumClass = sym.owner.linkedClass
-          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-          enumClass.addAnnotation(Annotation.makeChild(sym))
-        case _ =>
-      }
-
-      ctx
-    case stats: Thicket =>
-      for (tree <- stats.toList) {
-        val sym = enterSymbol(createSymbol(tree))
-        setDocstring(sym, stat)
-      }
-      ctx
-    case _ =>
-      ctx
+  def indexExpanded(origStat: Tree)(implicit ctx: Context): Context = {
+    def recur(stat: Tree): Context = stat match {
+      case pcl: PackageDef =>
+        val pkg = createPackageSymbol(pcl.pid)
+        index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
+        invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
+        setDocstring(pkg, stat)
+        ctx
+      case imp: Import =>
+        importContext(createSymbol(imp), imp.selectors)
+      case mdef: DefTree =>
+        val sym = enterSymbol(createSymbol(mdef))
+        setDocstring(sym, origStat)
+        addEnumConstants(mdef, sym)
+        ctx
+      case stats: Thicket =>
+        stats.toList.foreach(recur)
+        ctx
+      case _ =>
+        ctx
+    }
+    recur(expanded(origStat))
   }
 
   /** Determines whether this field holds an enum constant.
@@ -453,6 +444,16 @@ class Namer { typer: Typer =>
     //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
     vd.mods.is(allOf(Enum,  Stable, JavaStatic, JavaDefined)) // && ownerHasEnumFlag
   }
+
+  /** Add java enum constants */
+  def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
+    case vdef: ValDef if (isEnumConstant(vdef)) =>
+      val enumClass = sym.owner.linkedClass
+      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+      enumClass.addAnnotation(Annotation.makeChild(sym))
+    case _ =>
+  }
+
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef => ctx.docbase.addDocstring(sym, t.rawComment)
@@ -561,11 +562,34 @@ class Namer { typer: Typer =>
 
     protected def addAnnotations(denot: SymDenotation): Unit = original match {
       case original: untpd.MemberDef =>
+        var hasInlineAnnot = false
         for (annotTree <- untpd.modsDeco(original).mods.annotations) {
           val cls = typedAheadAnnotation(annotTree)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           denot.addAnnotation(ann)
+          if (cls == defn.InlineAnnot) {
+            hasInlineAnnot = true
+            addInlineInfo(denot, original)
+          }
         }
+        if (!hasInlineAnnot && denot.is(InlineMethod)) {
+          // create a @inline annotation. Currently, the inlining trigger
+          // is really the annotation, not the flag. This is done so that
+          // we can still compile inline methods from Scala2x. Once we stop
+          // being compatible with Scala2 we should revise the logic to
+          // be based on the flag. Then creating a separate annotation becomes unnecessary.
+          denot.addAnnotation(Annotation(defn.InlineAnnot))
+          addInlineInfo(denot, original)
+        }
+      case _ =>
+    }
+
+    private def addInlineInfo(denot: SymDenotation, original: untpd.Tree) = original match {
+      case original: untpd.DefDef =>
+        Inliner.registerInlineInfo(
+            denot,
+            implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
+          )(localContext(denot.symbol))
       case _ =>
     }
 
@@ -867,7 +891,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(Final, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and approximate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2).

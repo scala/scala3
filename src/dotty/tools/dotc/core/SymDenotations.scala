@@ -281,6 +281,15 @@ object SymDenotations {
         case nil => None
       }
 
+    /** The same as getAnnotation, but without ensuring
+     *  that the symbol carrying the annotation is completed
+     */
+    final def unforcedAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
+      dropOtherAnnotations(myAnnotations, cls) match {
+        case annot :: _ => Some(annot)
+        case nil => None
+      }
+
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
@@ -288,6 +297,12 @@ object SymDenotations {
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)
+
+    /** Remove any annotations with same class as `annot`, and add `annot` */
+    final def updateAnnotation(annot: Annotation)(implicit ctx: Context): Unit = {
+      removeAnnotation(annot.symbol)
+      addAnnotation(annot)
+    }
 
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit =
@@ -670,9 +685,9 @@ object SymDenotations {
         val cls = owner.enclosingSubClass
         if (!cls.exists)
           fail(
-            i""" Access to protected $this not permitted because
-               | enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
-               | ${owner.showLocated} where target is defined""")
+            i"""
+               | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
+               | is not a subclass of ${owner.showLocated} where target is defined""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
@@ -680,9 +695,9 @@ object SymDenotations {
            || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
-            i""" Access to protected ${symbol.show} not permitted because
-               | prefix type ${pre.widen.show} does not conform to
-               | ${cls.showLocated} where the access takes place""")
+            i"""
+               | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
+               | does not conform to ${cls.showLocated} where the access takes place""")
         else true
       }
 
@@ -743,6 +758,11 @@ object SymDenotations {
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
+
+    def isInlineMethod(implicit ctx: Context): Boolean =
+      is(Method, butNot = Accessor) &&
+      !isCompleting &&   // don't force method type; recursive inlines are ignored anyway.
+      hasAnnotation(defn.InlineAnnot)
 
     // ------ access to related symbols ---------------------------------
 
@@ -851,7 +871,7 @@ object SymDenotations {
 
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      is(PrivateOrFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
+      is(PrivateOrFinalOrInline) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
@@ -1521,7 +1541,13 @@ object SymDenotations {
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen) || (scope ne this.unforcedDecls) || sym.hasAnnotation(defn.ScalaStaticAnnot))
+
+      require(
+          (sym.denot.flagsUNSAFE is Private) ||
+          !(this is Frozen) ||
+          (scope ne this.unforcedDecls) ||
+          sym.hasAnnotation(defn.ScalaStaticAnnot) ||
+          sym.name.isInlineAccessor)
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)

@@ -22,7 +22,7 @@ object SyntaxHighlighting {
   private def annotation(str: String) = AnnotationColor + str + NoColor
 
   private val keywords: Seq[String] = for {
-    index <- IF to FORSOME // All alpha keywords
+    index <- IF to INLINE // All alpha keywords
   } yield tokenString(index)
 
   private val interpolationPrefixes =

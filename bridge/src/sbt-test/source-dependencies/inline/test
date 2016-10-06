@@ -1,0 +1,14 @@
+$ copy-file changes/B1.scala B.scala
+> compile
+
+$ copy-file changes/B2.scala B.scala
+# Compilation of C.scala should fail because B.getInline now has type Double instead of Int
+-> compile
+
+$ copy-file changes/B1.scala B.scala
+> run
+
+$ copy-file changes/B3.scala B.scala
+# The body of B.getInline was changed so C.scala should be recompiled
+# If it was recompiled, run should fail since B.getInline now throws an exception
+-> run

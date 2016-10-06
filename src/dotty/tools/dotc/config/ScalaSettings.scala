@@ -67,6 +67,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val genPhaseGraph = StringSetting("-Xgenerate-phase-graph", "file", "Generate the phase graphs (outputs .dot files) to fileX.dot.", "")
   val XlogImplicits = BooleanSetting("-Xlog-implicits", "Show more detail on why some implicits are not applicable.")
   val XminImplicitSearchDepth = IntSetting("-Xmin-implicit-search-depth", "Set number of levels of implicit searches undertaken before checking for divergence.", 5)
+  val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 70)
   val logImplicitConv = BooleanSetting("-Xlog-implicit-conversions", "Print a message whenever an implicit conversion is inserted.")
   val logReflectiveCalls = BooleanSetting("-Xlog-reflective-calls", "Print a message when a reflective method call is generated")
   val logFreeTerms = BooleanSetting("-Xlog-free-terms", "Print a message when reification creates a free term.")
@@ -120,7 +121,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val debugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
   //val doc           = BooleanSetting    ("-Ydoc", "Generate documentation")
   val termConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
-  val inline = BooleanSetting("-Yinline", "Perform inlining when possible.")
   val inlineHandlers = BooleanSetting("-Yinline-handlers", "Perform exception handler inlining when possible.")
   val YinlinerWarnings = BooleanSetting("-Yinline-warnings", "Emit inlining warnings. (Normally surpressed due to high volume)")
   val Ylinearizer = ChoiceSetting("-Ylinearizer", "which", "Linearizer to use", List("normal", "dfs", "rpo", "dump"), "rpo")
@@ -185,6 +185,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Yexplainlowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
+  val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
 
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"
 

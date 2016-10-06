@@ -431,7 +431,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final,
+    commonFlags(Private, Protected, Abstract, Final, Inline,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic)
 
   /** Flags representing modifiers that can appear in trees */
@@ -450,7 +450,7 @@ object Flags {
     AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
-    LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
+    Inline | LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -529,8 +529,8 @@ object Flags {
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 
-  /** Labeled `private` or `final` */
-  final val PrivateOrFinal = Private | Final
+  /** Labeled `private`, `final`, or `inline` */
+  final val PrivateOrFinalOrInline = Private | Final | Inline
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -540,6 +540,9 @@ object Flags {
 
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
+
+  /** An inline method */
+  final val InlineMethod = allOf(Inline, Method)
 
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | ParamAccessor
@@ -552,6 +555,12 @@ object Flags {
 
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
+
+  /** A deferred member or a parameter accessor (these don't have right hand sides) */
+  final val DeferredOrParamAccessor = Deferred | ParamAccessor
+
+  /** value that's final or inline */
+  final val FinalOrInline = Final | Inline
 
   /** If symbol of a type alias has these flags, prefer the alias */
   final val AliasPreferred = TypeParam | BaseTypeArg | ExpandedName

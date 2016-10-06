@@ -148,7 +148,7 @@ object EtaExpansion {
       case _ =>
     }
     val fn = untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.toList map untpd.TypedSplice, fn) else fn
+    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }
 }
 

@@ -7,6 +7,7 @@ import ast.Trees._
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
+import typer.Inliner
 import NameOps._
 import TastyBuffer._
 import TypeApplications._
@@ -307,7 +308,7 @@ class TreePickler(pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
 
   def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context) = {
-    assert(symRefs(sym) == NoAddr)
+    assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
     withLength {
@@ -430,6 +431,15 @@ class TreePickler(pickler: TastyPickler) {
       case SeqLiteral(elems, elemtpt) =>
         writeByte(REPEATED)
         withLength { pickleTree(elemtpt); elems.foreach(pickleTree) }
+      case tree: Inlined =>
+        // Why drop Inlined info when pickling?
+        // Since we never inline inside an inlined method, we know that
+        // any code that continas an Inlined tree is not inlined itself.
+        // So position information for inline expansion is no longer needed.
+        // The only reason to keep the inline info around would be to have fine-grained
+        // position information in the linker. We should come back to this
+        // point once we know more what we would do with such information.
+        pickleTree(Inliner.dropInlined(tree))
       case TypeTree(original) =>
         pickleTpt(tree)
       case Bind(name, body) =>
@@ -555,19 +565,19 @@ class TreePickler(pickler: TastyPickler) {
     sym.annotations.foreach(pickleAnnotation)
   }
 
-  def pickleAnnotation(ann: Annotation)(implicit ctx: Context) = {
-    writeByte(ANNOTATION)
-    withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
-  }
+  def pickleAnnotation(ann: Annotation)(implicit ctx: Context) =
+    if (ann.symbol != defn.BodyAnnot) { // inline bodies are reconstituted automatically when unpickling
+      writeByte(ANNOTATION)
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
+    }
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
+    assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, % when pickling ${ctx.source}")
   }
 
   def compactify() = {
     buf.compactify()
-    assert(forwardSymRefs.isEmpty, s"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
 
     def updateMapWithDeltas[T](mp: collection.mutable.Map[T, Addr]) =
       for (key <- mp.keysIterator.toBuffer[T]) mp(key) = adjusted(mp(key))

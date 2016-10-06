@@ -275,20 +275,11 @@ object Parsers {
       } finally inFunReturnType = saved
     }
 
-    private val isScala2Mode =
-      ctx.settings.language.value.contains(nme.Scala2.toString)
-
     def migrationWarningOrError(msg: String, offset: Int = in.offset) =
-      if (isScala2Mode)
+      if (in.isScala2Mode)
         ctx.migrationWarning(msg, source atPos Position(offset))
       else
         syntaxError(msg, offset)
-
-    /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    private def testScala2Mode(msg: String, pos: Position = Position(in.offset)) = {
-      if (isScala2Mode) ctx.migrationWarning(msg, source atPos pos)
-      isScala2Mode
-    }
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
@@ -1467,6 +1458,7 @@ object Parsers {
       case ABSTRACT  => Abstract
       case FINAL     => Final
       case IMPLICIT  => ImplicitCommon
+      case INLINE    => Inline
       case LAZY      => Lazy
       case OVERRIDE  => Override
       case PRIVATE   => Private
@@ -1570,7 +1562,10 @@ object Parsers {
     /** Annotation        ::=  `@' SimpleType {ParArgumentExprs}
      */
     def annot() =
-      adjustStart(accept(AT)) { ensureApplied(parArgumentExprss(wrapNew(simpleType()))) }
+      adjustStart(accept(AT)) {
+        if (in.token == INLINE) in.token = BACKQUOTED_IDENT // allow for now
+        ensureApplied(parArgumentExprss(wrapNew(simpleType())))
+      }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
       if (skipNewLines) newLineOptWhenFollowedBy(AT)
@@ -1646,12 +1641,13 @@ object Parsers {
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
      *  ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] id `:' ParamType [`=' Expr]
+     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
      *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
      *  DefParamClause    ::=  [nl] `(' [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
-     *  DefParam          ::=  {Annotation} id `:' ParamType [`=' Expr]
-    */
+     *  DefParam          ::=  {Annotation} [`inline'] Param
+     *  Param             ::=  id `:' ParamType [`=' Expr]
+     */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var implicitFlag = EmptyFlags
       var firstClauseOfCaseClass = ofCaseClass
@@ -1670,12 +1666,16 @@ object Parsers {
                 in.nextToken()
                 addFlag(mods, Mutable)
               } else {
-                if (!(mods.flags &~ ParamAccessor).isEmpty) syntaxError("`val' or `var' expected")
+                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
+                  syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods else mods | PrivateLocal
               }
             }
         }
-        else mods = atPos(start) { mods | Param }
+        else {
+          if (in.token == INLINE) mods = addModifier(mods)
+          mods = atPos(start) { mods | Param }
+        }
         atPos(start, nameStart) {
           val name = ident()
           val tpt =
@@ -1856,7 +1856,7 @@ object Parsers {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
-        testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
+        in.testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
           patch(source, Position(in.lastOffset), toInsert)
           true
         }

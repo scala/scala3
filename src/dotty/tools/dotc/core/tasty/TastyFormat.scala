@@ -185,21 +185,16 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 4 (tags 112-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
-Standard Section: "Positions" sourceLength_Nat Assoc*
+Standard Section: "Positions" Assoc*
 
-  Assoc         = addr_Delta offset_Delta offset_Delta?
-                                            // addr_Delta      :
-                                            //    Difference of address to last recorded node.
-                                            //    All but the first addr_Deltas are > 0, the first is >= 0.
-                                            // 2nd offset_Delta:
-                                            //    Difference of end offset of addressed node vs parent node. Always <= 0
-                                            // 1st offset Delta, if delta >= 0 or 2nd offset delta exists
-                                            //    Difference of start offset of addressed node vs parent node.
-                                            // 1st offset Delta, if delta < 0 and 2nd offset delta does not exist:
-                                            //    Difference of end offset of addressed node vs parent node.
-                                            // Offsets and addresses are difference encoded.
+  Assoc         = Header offset_Delta? offset_Delta?
+  Header        = addr_Delta +              // in one Nat: difference of address to last recorded node << 2 +
+                  hasStartDiff +            // one bit indicating whether there follows a start address delta << 1
+                  hasEndDiff                // one bit indicating whether there follows an end address delta
                                             // Nodes which have the same positions as their parents are omitted.
-  Delta         = Int                       // Difference between consecutive offsets / tree addresses,
+                                            // offset_Deltas give difference of start/end offset wrt to the
+                                            // same offset in the previously recorded node (or 0 for the first recorded node)
+  Delta         = Int                       // Difference between consecutive offsets,
 
 **************************************************************************************/
 

@@ -228,8 +228,8 @@ object Types {
       !existsPart(!p(_))
 
     /** Performs operation on all parts of this type */
-    final def foreachPart(p: Type => Unit)(implicit ctx: Context): Unit =
-      new ForeachAccumulator(p).apply((), this)
+    final def foreachPart(p: Type => Unit, stopAtStatic: Boolean = false)(implicit ctx: Context): Unit =
+      new ForeachAccumulator(p, stopAtStatic).apply((), this)
 
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): collection.Set[NamedType] =
@@ -848,29 +848,41 @@ object Types {
       case tp => tp
     }
 
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
-     *  is no longer alias type, LazyRef, or instantiated type variable.
-     */
-    final def dealias(implicit ctx: Context): Type = this match {
+    private def dealias(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias
+          case TypeAlias(tp) => tp.dealias(keepAnnots)
           case _ => tp
         }
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias else tp
+        if (tp1.exists) tp1.dealias(keepAnnots) else tp
       case tp: AnnotatedType =>
-        tp.derivedAnnotatedType(tp.tpe.dealias, tp.annot)
+        val tp1 = tp.tpe.dealias(keepAnnots)
+        if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias
+        tp.ref.dealias(keepAnnots)
       case app @ HKApply(tycon, args) =>
-        val tycon1 = tycon.dealias
-        if (tycon1 ne tycon) app.superType.dealias
+        val tycon1 = tycon.dealias(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias(keepAnnots)
         else this
       case _ => this
     }
+
+    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+     *  is no longer alias type, LazyRef, or instantiated type variable.
+     *  Goes through annotated types and rewraps annotations on the result.
+     */
+    final def dealiasKeepAnnots(implicit ctx: Context): Type =
+      dealias(keepAnnots = true)
+
+    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+     *  or instantiated type variable.
+     */
+    final def dealias(implicit ctx: Context): Type =
+      dealias(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     final def widenDealias(implicit ctx: Context): Type = {
@@ -1788,6 +1800,7 @@ object Types {
         false
     }
     override def computeHash = doHash((name, sig), prefix)
+    override def toString = super.toString ++ s"/withSig($sig)"
   }
 
   trait WithFixedSym extends NamedType {
@@ -2418,7 +2431,12 @@ object Types {
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
+
+    /** Produce method type from parameter symbols, with special mappings for repeated
+     *  and inline parameters.
+     */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+      /** Replace @repeated annotations on Seq or Array types by <repeated> types */
       def translateRepeated(tp: Type): Type = tp match {
         case tp @ ExprType(tp1) => tp.derivedExprType(translateRepeated(tp1))
         case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
@@ -2428,7 +2446,15 @@ object Types {
         case tp =>
           tp
       }
-      def paramInfo(param: Symbol): Type = translateRepeated(param.info)
+      /** Add @inlineParam to inline call-by-value parameters */
+      def translateInline(tp: Type): Type = tp match {
+        case _: ExprType => tp
+        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
+      }
+      def paramInfo(param: Symbol): Type = {
+        val paramType = translateRepeated(param.info)
+        if (param.is(Inline)) translateInline(paramType) else paramType
+      }
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
       apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)
@@ -2553,6 +2579,24 @@ object Types {
       PolyType(paramNames)(
         x => paramBounds mapConserve (_.subst(this, x).bounds),
         x => resType.subst(this, x))
+
+    /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
+     *  but can arise as temporary data structures.
+     */
+    def flatten(implicit ctx: Context): PolyType = resType match {
+      case that: PolyType =>
+        val shift = new TypeMap {
+          def apply(t: Type) = t match {
+            case PolyParam(`that`, n) => PolyParam(that, n + paramNames.length)
+            case t => mapOver(t)
+          }
+        }
+        PolyType(paramNames ++ that.paramNames)(
+          x => this.paramBounds.mapConserve(_.subst(this, x).bounds) ++
+               that.paramBounds.mapConserve(shift(_).subst(that, x).bounds),
+          x => shift(that.resultType).subst(that, x).subst(this, x))
+      case _ => this
+    }
 
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
 
@@ -3704,8 +3748,7 @@ object Types {
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
   }
 
-  class ForeachAccumulator(p: Type => Unit)(implicit ctx: Context) extends TypeAccumulator[Unit] {
-    override def stopAtStatic = false
+  class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(implicit ctx: Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 

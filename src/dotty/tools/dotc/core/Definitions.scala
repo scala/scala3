@@ -456,6 +456,8 @@ class Definitions {
   def AliasAnnot(implicit ctx: Context) = AliasAnnotType.symbol.asClass
   lazy val AnnotationDefaultAnnotType = ctx.requiredClassRef("dotty.annotation.internal.AnnotationDefault")
   def AnnotationDefaultAnnot(implicit ctx: Context) = AnnotationDefaultAnnotType.symbol.asClass
+  lazy val BodyAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Body")
+  def BodyAnnot(implicit ctx: Context) = BodyAnnotType.symbol.asClass
   lazy val ChildAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Child")
   def ChildAnnot(implicit ctx: Context) = ChildAnnotType.symbol.asClass
   lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.CovariantBetween")
@@ -466,6 +468,10 @@ class Definitions {
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
+  lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
+  def InlineAnnot(implicit ctx: Context) = InlineAnnotType.symbol.asClass
+  lazy val InlineParamAnnotType = ctx.requiredClassRef("dotty.annotation.internal.InlineParam")
+  def InlineParamAnnot(implicit ctx: Context) = InlineParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType = ctx.requiredClassRef("scala.annotation.migration")
