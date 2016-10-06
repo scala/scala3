@@ -3,9 +3,13 @@ layout: default
 title: "Higher-Kinded Types in Dotty"
 ---
 
+**This page is out of date and preserved for posterity. Please see [Implementing
+Higher-Kinded Types in
+Dotty](http://guillaume.martres.me/publications/dotty-hk.pdf) for a more up to
+date version**
+
 Higher-Kinded Types in Dotty V2
 ===============================
-
 This note outlines how we intend to represent higher-kinded types in Dotty.
 The principal idea is to collapse the four previously disparate features of
 refinements, type parameters, existentials and higher-kinded types into just
