@@ -14,6 +14,7 @@ import util.{Property, SourceFile, NoSource}
 import typer.ErrorReporting._
 
 import scala.annotation.tailrec
+import scala.io.Codec
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -940,7 +941,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def sourceFile(call: Tree)(implicit ctx: Context) = {
     val file = call.symbol.sourceFile
-    if (file != null && file.exists) new SourceFile(file) else NoSource
+    val encoding = ctx.settings.encoding.value
+    if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
   }
 }
 
