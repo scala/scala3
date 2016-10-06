@@ -1,9 +1,9 @@
 <html>
     <head>
         <title>Dotty - {{ page.title }}</title>
-        <link rel="shortcut icon" type="image/png" href="/images/favicon.png"/>
+        <link rel="shortcut icon" type="image/png" href="{{ site.baseurl}}/images/favicon.png"/>
         <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/github.min.css">
-        <link rel="stylesheet" href="/css/main.css">
+        <link rel="stylesheet" href="{{ site.baseurl }}/css/main.css">
     </head>
     <body>
         <div id="container">
@@ -18,6 +18,14 @@
             </div>
         </div>
     </body>
-    <script src="/js/highlight.pack.js"></script>
-    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="{{ site.baseurl }}/js/highlight.pack.js"></script>
+    <script language="javascript">
+        hljs.initHighlightingOnLoad();
+        var x = document.links.length;
+        for (i = 0; i < x; i++) {
+            var thisHREF = document.links[i].href;
+            if (thisHREF.indexOf(window.location.hostname) > -1) thisHREF = thisHREF.replace(".md",".html")
+            document.links[i].setAttribute('href', thisHREF);
+        }
+    </script>
 </html>
