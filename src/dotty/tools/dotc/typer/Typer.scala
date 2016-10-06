@@ -23,6 +23,7 @@ import ErrorReporting._
 import Checking._
 import Inferencing._
 import EtaExpansion.etaExpand
+import dotty.tools.dotc.core.TypeErasure.ErasedValueType
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
@@ -931,7 +932,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val elems1 = tree.elems mapconserve (typed(_, proto1))
     val proto2 = // the computed type of the `elemtpt` field
-      if (!tree.elemtpt.isEmpty) WildcardType
+      //ErasedValueType should be elemtpt for SeqLiteral (in case of arrays of value classes)
+      if (ctx.erasedTypes && proto1.isInstanceOf[ErasedValueType]) proto1
+      else if (!tree.elemtpt.isEmpty) WildcardType
       else if (isFullyDefined(proto1, ForceDegree.none)) proto1
       else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]])
         defn.ObjectType // generic empty Java varargs are of type Object[]

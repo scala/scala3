@@ -15,6 +15,7 @@ import TypeErasure.ErasedValueType, ValueClasses._
 class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
 
   import tpd._
+  import ElimErasedValueType._
 
   override def phaseName: String = "elimErasedValueType"
 
@@ -38,17 +39,6 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
       }
     case _ =>
       elimEVT(tp)
-  }
-
-  def elimEVT(tp: Type)(implicit ctx: Context): Type = tp match {
-    case ErasedValueType(_, underlying) =>
-      elimEVT(underlying)
-    case tp: MethodType =>
-      val paramTypes = tp.paramTypes.mapConserve(elimEVT)
-      val retType = elimEVT(tp.resultType)
-      tp.derivedMethodType(tp.paramNames, paramTypes, retType)
-    case _ =>
-      tp
   }
 
   def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
@@ -78,4 +68,17 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
     transformTypeOfTree(tree)
   override def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
+}
+
+object ElimErasedValueType {
+  def elimEVT(tp: Type)(implicit ctx: Context): Type = tp match {
+    case ErasedValueType(_, underlying) =>
+      elimEVT(underlying)
+    case tp: MethodType =>
+      val paramTypes = tp.paramTypes.mapConserve(elimEVT)
+      val retType = elimEVT(tp.resultType)
+      tp.derivedMethodType(tp.paramNames, paramTypes, retType)
+    case _ =>
+      tp
+  }
 }

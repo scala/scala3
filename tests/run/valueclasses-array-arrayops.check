@@ -1,0 +1,14 @@
+Array(X@1, X@2)
+SeqView(...)
+SeqViewS(...)
+List(X@1, X@2)
+List()
+non-empty iterator
+ArrayBuffer(X@1, X@2)
+X@1
+WrappedArray(X@1, X@2)
+List(X@1, X@2)
+Set(X@1, X@2)
+Set(ArrayBuffer(X@1, X@4), ArrayBuffer(X@2, X@5), ArrayBuffer(X@3, X@6))
+t4.transpose: List([X, [X, [X)
+t21.transpose: List()

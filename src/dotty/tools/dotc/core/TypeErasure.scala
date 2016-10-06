@@ -402,8 +402,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val defn.ArrayOf(elemtp) = tp
+    // Arrays are semi-erased to ErasedValueType(V, U)[] and fully erased in
+    // VCArrays
     def arrayErasure(tpToErase: Type) =
-      erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
+      erasureFn(isJava, semiEraseVCs = true, isConstructor, wildcardOK)(tpToErase)
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp) && !isJava) defn.ObjectType
     else JavaArrayType(arrayErasure(elemtp))

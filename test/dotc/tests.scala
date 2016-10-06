@@ -48,6 +48,7 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
+  val vcArraysDir        = posDir + "vc-arrays/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -104,6 +105,20 @@ class tests extends CompilerTest {
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
   @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
   @Test def pos_companions = compileFile(posDir, "companions", twice)
+  @Test def pos_vc_proto_any_val = compileFile(vcArraysDir, "prototypeAnyVal", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_functions = compileFile(runDir, "valueclasses-array-functions", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_functions2 = compileFile(runDir, "valueclasses-array-functions2", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_usage = compileFile(runDir, "valueclasses-array-usage", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_gen = compileFile(runDir, "valueclasses-array-gen", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_int = compileFile(runDir, "valueclasses-array-int", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_object = compileFile(runDir, "valueclasses-array-object", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_newarray = compileFile(runDir, "valueclasses-array-newarray", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_underlying_null = compileFile(runDir, "valueclasses-underlying-null", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_creation = compileFile(runDir, "valueclasses-array-creation", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_caseclasses = compileFile(runDir, "valueclasses-array-caseclasses", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_arrayops = compileFile(runDir, "valueclasses-array-arrayops", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_array = compileFile(runDir, "valueclasses-array-array", args = "-Ycheck:all" :: Nil)
+  @Test def pos_vc_array_und_array = compileFile(runDir, "valueclasses-array-und-array", args = "-Ycheck:all" :: Nil)
 
   @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 

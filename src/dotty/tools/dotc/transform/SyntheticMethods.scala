@@ -32,7 +32,6 @@ import scala.language.postfixOps
  *  implementation already exists:
  *
  *    def equals(other: Any): Boolean
- *    def hashCode(): Int
  */
 class SyntheticMethods(thisTransformer: DenotTransformer) {
   import ast.tpd._
@@ -42,8 +41,9 @@ class SyntheticMethods(thisTransformer: DenotTransformer) {
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
-      myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
+      myValueSymbols = List(defn.Any_equals)
+      //Any_hashCode should be in myCaseSymbols
+      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Any_hashCode, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix)
     }
 
