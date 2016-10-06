@@ -23,8 +23,7 @@ class tests extends CompilerTest {
   val defaultOutputDir = "./out/"
 
   implicit val defaultOptions = noCheckOptions ++ List(
-      "-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases",
-      "-d", defaultOutputDir) ++ {
+      "-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-d", defaultOutputDir) ++ {
     if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   }
@@ -37,6 +36,9 @@ class tests extends CompilerTest {
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
   val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
   val scala2mode = List("-language:Scala2")
+
+  val explicitUTF8 = List("-encoding", "UTF8")
+  val explicitUTF16 = List("-encoding", "UTF16")
 
   val testsDir      = "./tests/"
   val posDir        = testsDir + "pos/"
@@ -95,7 +97,7 @@ class tests extends CompilerTest {
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
   @Test def pos_tailcall = compileDir(posDir, "tailcall", twice)
-  @Test def pos_valueclasses = compileFiles(posDir + "valueclasses/", twice)
+  @Test def pos_valueclasses = compileFiles(posDir + "pos_valueclasses/", twice)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", args = "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping", twice)
   @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
@@ -118,6 +120,8 @@ class tests extends CompilerTest {
     compileFile(posSpecialDir, "spec-t5545/S_1")
     compileFile(posSpecialDir, "spec-t5545/S_2")
   }
+  @Test def pos_utf8 = compileFile(posSpecialDir, "utf8encoded", explicitUTF8)
+  @Test def pos_utf16 = compileFile(posSpecialDir, "utf16encoded", explicitUTF16)
 
   @Test def new_all = compileFiles(newDir, twice)
   @Test def repl_all = replFiles(replDir)

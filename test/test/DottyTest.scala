@@ -23,6 +23,7 @@ class DottyTest /*extends ContextEscapeDetection*/ {
     import base.settings._
     val ctx = base.initialCtx.fresh
     base.initialize()(ctx)
+    ctx.setSetting(ctx.settings.encoding, "UTF8")
     ctx
   }
 /*

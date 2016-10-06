@@ -34,7 +34,7 @@ class TestREPL(script: String) extends REPL {
           while (lines.hasNext && lines.head.startsWith(continuationPrompt)) {
             val continued = lines.next
             output.println(continued)
-            buf append "\n"
+            buf append System.lineSeparator()
             buf append continued.drop(continuationPrompt.length)
           }
           buf.toString
@@ -49,7 +49,7 @@ class TestREPL(script: String) extends REPL {
     out.close()
     val printed = out.toString
     val transcript = printed.drop(printed.indexOf(config.prompt))
-    if (transcript.toString != script) {
+    if (transcript.toString.lines.toList != script.lines.toList) {
       println("input differs from transcript:")
       println(transcript)
       assert(false)

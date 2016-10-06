@@ -18,7 +18,7 @@ import scala.collection.mutable.ListBuffer
  */
 class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
-    val sources = List("./tests/pos/HelloWorld.scala")
+    val sources = List("./tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
     val args = sources ++ List("-d", "./out/")
 
     val mainClass = Class.forName("dotty.tools.dotc.Main")

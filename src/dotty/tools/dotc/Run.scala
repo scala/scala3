@@ -9,6 +9,7 @@ import Phases._
 import Decorators._
 import dotty.tools.dotc.transform.TreeTransforms.TreeTransformer
 import io.PlainFile
+import scala.io.Codec
 import util._
 import reporting.Reporter
 import transform.TreeChecker
@@ -28,8 +29,9 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   var units: List[CompilationUnit] = _
 
   def getSource(fileName: String): SourceFile = {
+    val encoding = ctx.settings.encoding.value
     val f = new PlainFile(fileName)
-    if (f.exists) new SourceFile(f)
+    if (f.exists) new SourceFile(f, Codec(encoding))
     else {
       ctx.error(s"not found: $fileName")
       NoSource
@@ -113,7 +115,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
     writer.write(sourceCode)
     writer.close()
-    compileSources(List(new SourceFile(virtualFile)))
+    compileSources(List(new SourceFile(virtualFile, Codec.UTF8)))
   }
 
   /** The context created for this run */

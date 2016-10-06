@@ -1,6 +1,7 @@
 package test
 
 import scala.reflect.io._
+import scala.io.Codec
 import dotty.tools.dotc.util._
 import dotty.tools.dotc.parsing._
 import Tokens._, Scanners._
@@ -16,8 +17,8 @@ class ScannerTest extends DottyTest {
   def scan(name: String): Unit = scan(new PlainFile(name))
 
   def scan(file: PlainFile): Unit = {
-    println("***** scanning " + file)
-    val source = new SourceFile(file)
+    //println("***** scanning " + file)
+    val source = new SourceFile(file, Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {

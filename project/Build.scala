@@ -40,7 +40,7 @@ object DottyBuild extends Build {
       homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
 
       // scalac options
-      scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:existentials,higherKinds,implicitConversions"),
+      scalacOptions in Global ++= Seq("-feature", "-deprecation", "-encoding", "UTF8", "-language:existentials,higherKinds,implicitConversions"),
 
       javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     )
