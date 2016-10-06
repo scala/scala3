@@ -1,6 +1,5 @@
 package test;
 
-import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 import org.junit.Assert;
@@ -43,6 +42,7 @@ public class ContextEscapeDetector extends RunListener {
         return count;
     }
 
+    @SuppressWarnings("unused")
     private static volatile Object o = null;
 
     private static synchronized void forceGCHeuristic0() {
@@ -59,7 +59,7 @@ public class ContextEscapeDetector extends RunListener {
 
     private static synchronized void forceGCHeuristic1() {
         Object obj = new Object();
-        WeakReference ref = new WeakReference<Object>(obj);
+        WeakReference<Object> ref = new WeakReference<>(obj);
         obj = null;
         while (ref.get() != null) {
             System.gc();
@@ -69,7 +69,7 @@ public class ContextEscapeDetector extends RunListener {
     private static synchronized void forceGCHeuristic2() {
         try {
             Object[] arr = new Object[1024]; // upto 8 GB
-            WeakReference ref = new WeakReference<Object>(arr);
+            WeakReference<Object> ref = new WeakReference<>(arr);
             o = arr; // make sure array isn't optimized away
 
             Runtime runtime = Runtime.getRuntime();

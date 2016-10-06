@@ -1,7 +1,5 @@
 package dotty.tools.dotc.interfaces;
 
-import java.io.File;
-
 /** A source file.
  *
  *  User code should not implement this interface, but it may have to
