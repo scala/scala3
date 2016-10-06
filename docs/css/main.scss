@@ -1,0 +1,238 @@
+---
+# Only the main Sass file needs front matter (the dashes are enough)
+---
+@charset "utf-8";
+
+@import 'https://fonts.googleapis.com/css?family=Source+Code+Pro';
+
+// Our variables
+$base-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+$base-font-size:   16px;
+$code-font-family: 'Source Code Pro', sans-serif;
+$base-font-weight: 400;
+$small-font-size:  $base-font-size * 0.875;
+$base-line-height: 1.5;
+
+$spacing-unit:     30px;
+
+$text-color:       #111;
+$background-color: #fdfdfd;
+$brand-color:      #2a7ae2;
+
+
+$blue:          #3498db;
+$blue-light:    rgba(52, 152, 219, 0.12);
+$grey:          #f8f8f8;
+$red:           #de332e;
+
+// content area
+$distance-top:     80px;
+$content-width:    1150px;
+$on-palm:          600px;
+$on-laptop:        800px;
+$toc-width:        220px;
+// Minima also includes a mixin for defining media queries.
+// Use media queries like this:
+// @include media-query($on-palm) {
+//     .wrapper {
+//         padding-right: $spacing-unit / 2;
+//         padding-left: $spacing-unit / 2;
+//     }
+// }
+@import "minima";
+
+html {
+    box-sizing: border-box;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+div#container {
+    position: relative;
+    max-width: $content-width;
+    margin: 0 auto;
+    overflow: hidden;
+
+    > div#scala-logo-mobile {
+        display: none;
+    }
+
+    div#content {
+        margin-top: $distance-top;
+        width: $content-width - $toc-width;
+        float: right;
+        display: inline;
+
+        > h1.title {
+            margin-bottom: 0;
+        }
+
+        > h2.subtitle {
+            font-size: 20px;
+        }
+    }
+
+    div#toc {
+        float: left;
+        margin-top: $distance-top;
+        padding-right: 20px;
+        width: $toc-width;
+
+        > div {
+            position: fixed;
+            top: $distance-top;
+            bottom: auto;
+
+            div#scala-logo {
+                width: 64px;
+                margin-bottom: 25px;
+
+                > svg path {
+                    fill: $red;
+                }
+            }
+
+            ul#categories {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                background-color: transparent;
+
+                > li {
+                    border-right: 2px solid transparent;
+                    margin-bottom: 15px;
+
+                    ul {
+                        list-style-type: none;
+                        margin: 0;
+                        padding: 0;
+                        background: transparent;
+
+                        li:hover {
+                            border-right: 3px solid $blue;
+                            background-color: $blue-light;
+
+                            a:link, a:visited, a:hover, a:focus {
+                                text-decoration: none;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+div.author-container {
+    height: 50px;
+    margin-bottom: 15px;
+    > img {
+        float: left;
+        width: 100px;
+        border-radius: 50%;
+    }
+
+    > div.author-info {
+        color: rgba(0,0,0,0.45);
+        float: left;
+    }
+}
+
+div.author-container.spaced {
+    height: 100px;
+
+    > div.author-info {
+        margin: 28px 0 0 20px;
+    }
+}
+
+ul.post-list {
+    > li+li {
+        margin-top: 15px;
+    }
+
+    > li {
+        div.date {
+            color: rgba(0,0,0,0.45);
+        }
+    }
+}
+
+pre, code {
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background-color: $grey;
+    font-family: $code-font-family;
+}
+
+body {
+    font: 400 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #111;
+}
+
+@include media-query(1166px) {
+    div#container {
+        max-width: 1000px;
+
+        div#content {
+            width: 1000px - $toc-width;
+        }
+    }
+}
+
+@include media-query(1016px) {
+    div#container {
+        max-width: 900px;
+
+        div#content {
+            width: 900px - $toc-width;
+        }
+    }
+}
+
+@include media-query(915px) {
+    body {
+        min-width: 0;
+    }
+
+    div#container {
+        max-width: none;
+        padding: 12px;
+
+        > div#scala-logo-mobile {
+            display: block;
+            width: 64px;
+            margin: 15px auto 0;
+
+            > svg path {
+                fill: $red;
+            }
+        }
+
+        div#toc {
+            float: none;
+            width: 100%;
+            height: auto;
+            margin-top: 0;
+
+            > div {
+                top: 0;
+                position: relative;
+
+                svg {
+                    display: none;
+                    top: auto;
+                }
+            }
+        }
+        div#content {
+            float: none;
+            width: 100%;
+            height: auto;
+            max-width: none;
+        }
+    }
+}
