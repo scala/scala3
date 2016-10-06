@@ -48,7 +48,7 @@ object Trees {
    *     the existing tree transparently, assigning its `tpe` field,
    *     provided it was `null` before.
    *   - It is impossible to embed untyped trees in typed ones.
-   *   - Typed trees can be embedded untyped ones provided they are rooted
+   *   - Typed trees can be embedded in untyped ones provided they are rooted
    *     in a TypedSplice node.
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
@@ -855,7 +855,7 @@ object Trees {
 
     val cpy: TreeCopier
 
-    /** A class for copying trees. The copy methods avid creating a new tree
+    /** A class for copying trees. The copy methods avoid creating a new tree
      *  If all arguments stay the same.
      *
      * Note: Some of the copy methods take a context.
