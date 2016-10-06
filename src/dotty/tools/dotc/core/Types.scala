@@ -61,14 +61,14 @@ object Types {
    *        |              +- ExprType
    *        |              +- AnnotatedType
    *        |              +- TypeVar
+   *        |              +- GenericType ----+- PolyType
+   *        |                                 +- TypeLambda
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
    *                       +- MethodType -----+- ImplicitMethodType
    *                       |                  +- JavaMethodType
    *                       +- ClassInfo
-   *                       +- GenericType ----+- PolyType
-   *                       |                  +- TypeLambda
    *                       |
    *                       +- NoType
    *                       +- NoPrefix
