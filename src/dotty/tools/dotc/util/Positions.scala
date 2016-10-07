@@ -12,7 +12,7 @@ import language.implicitConversions
 object Positions {
 
   private val StartEndBits = 26
-  val StartEndMask: Long = (1L << StartEndBits) - 1
+   val StartEndMask: Long = (1L << StartEndBits) - 1
   private val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** The maximal representable offset in a position */
