@@ -199,13 +199,78 @@ object messages {
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
   extends Message(7) {
     val kind = "Type Mismatch"
-    private val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
-    private val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
-    val msg =
+    val msg = {
+      val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
+      val (fnd, exp) = Formatting.typeDiff(found, expected)(printCtx)
       s"""|found:    $fnd
           |required: $exp
           |
           |$where""".stripMargin + whyNoMatch + implicitFailure
+    }
+
+    val explanation = ""
+  }
+
+  case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
+  extends Message(8) {
+    val kind = "Member Not Found"
+
+    val msg = {
+      import core.Flags._
+      val maxDist = 3
+      val decls = site.decls.flatMap { sym =>
+        if (sym.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
+        else List((sym.name.show, sym))
+      }
+
+      // Calculate Levenshtein distance
+      def distance(n1: Iterable[_], n2: Iterable[_]) =
+        n1.foldLeft(List.range(0, n2.size)) { (prev, x) =>
+          (prev zip prev.tail zip n2).scanLeft(prev.head + 1) {
+            case (h, ((d, v), y)) => math.min(
+              math.min(h + 1, v + 1),
+              if (x == y) d else d + 1
+            )
+          }
+        }.last
+
+      // Count number of wrong characters
+      def incorrectChars(x: (String, Int, Symbol)): (String, Symbol, Int) = {
+        val (currName, _, sym) = x
+        val matching = name.show.zip(currName).foldLeft(0) {
+          case (acc, (x,y)) => if (x != y) acc + 1 else acc
+        }
+        (currName, sym, matching)
+      }
+
+      // Get closest match in `site`
+      val closest =
+        decls
+        .map { case (n, sym) => (n, distance(n, name.show), sym) }
+        .collect { case (n, dist, sym) if dist <= maxDist => (n, dist, sym) }
+        .groupBy(_._2).toList
+        .sortBy(_._1)
+        .headOption.map(_._2).getOrElse(Nil)
+        .map(incorrectChars).toList
+        .sortBy(_._3)
+        .take(1).map { case (n, sym, _) => (n, sym) }
+
+      val siteName = site match {
+        case site: NamedType => site.name.show
+        case site => i"$site"
+      }
+
+      val closeMember = closest match {
+        case (n, sym) :: Nil => hl""" - did you mean `${s"$siteName.$n"}`?"""
+        case Nil => ""
+        case _ => assert(
+          false,
+          "Could not single out one distinct member to match on input with"
+        )
+      }
+
+      ex"$selected `$name` is not a member of $site$closeMember"
+    }
 
     val explanation = ""
   }

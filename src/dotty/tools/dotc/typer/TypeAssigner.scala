@@ -12,6 +12,8 @@ import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import collection.mutable
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages._
 
 trait TypeAssigner {
   import tpd._
@@ -220,7 +222,7 @@ trait TypeAssigner {
           else ""
         ctx.error(
           if (name == nme.CONSTRUCTOR) ex"$site does not have a constructor"
-          else ex"$kind $name is not a member of $site$addendum",
+          else NotAMember(site, name, kind),
           pos)
       }
       ErrorType
