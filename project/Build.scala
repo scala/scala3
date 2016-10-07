@@ -61,8 +61,71 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
-  lazy val dotty = project.in(file(".")).
+  lazy val `dotty-library` =
+    project.in(file("library"))
+    .settings(
+      scalaSource in Compile := baseDirectory.value / "src",
+      javaSource in Compile := baseDirectory.value / "src",
+
+      libraryDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value
+      )
+    )
+    .settings(publishing)
+
+  lazy val `dotty-repl` =
+    project.in(file("repl"))
+    .dependsOn(`dotty-compiler`)
+    .dependsOn(`dotty-compiler` % "test->test")
+    .settings(
+      scalaSource in Compile := baseDirectory.value / "src",
+      javaSource in Compile := baseDirectory.value / "src",
+      scalaSource in Test := baseDirectory.value / "test",
+      javaSource in Test := baseDirectory.value / "test",
+
+      // set system in/out for repl
+      connectInput in run := true,
+      outputStrategy := Some(StdoutOutput),
+
+      fork in run := true,
+      fork in Test := true,
+      parallelExecution in Test := false,
+      publishArtifact in Test := false,
+
+      libraryDependencies ++= Seq(
+        "com.novocode" % "junit-interface" % "0.11" % "test"
+      ),
+
+      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+        // put the Scala {library, reflect} in the classpath
+        val path = for {
+          file <- attList.map(_.data)
+          path = file.getAbsolutePath
+        } yield "-Xbootclasspath/p:" + path
+        // dotty itself needs to be in the bootclasspath
+        val fullpath = ("-Xbootclasspath/p:" + "dotty.jar") :: ("-Xbootclasspath/a:" + bin) :: path.toList
+        // System.err.println("BOOTPATH: " + fullpath)
+
+        val travis_build = // propagate if this is a travis build
+          if (sys.props.isDefinedAt(JENKINS_BUILD))
+            List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
+          else
+            List()
+
+        val tuning =
+          if (sys.props.isDefinedAt("Oshort"))
+            // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+            List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
+          else
+            List()
+
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
+      }
+    )
+
+  lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library`). // this will disappear once we snip the cord from scalac
     settings(
       // Disable scaladoc generation, makes publishLocal much faster
       publishArtifact in packageDoc := false,
@@ -75,14 +138,14 @@ object DottyBuild extends Build {
       scalaSource in Test := baseDirectory.value / "test",
       javaSource in Test := baseDirectory.value / "test",
       resourceDirectory in Compile := baseDirectory.value / "resources",
-      unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "dottydoc" / "src",
-      unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
-      unmanagedSourceDirectories in Test += baseDirectory.value / "dottydoc" / "test",
+      publishArtifact in Test := false,
 
-      // set system in/out for repl
-      connectInput in run := true,
-      outputStrategy := Some(StdoutOutput),
+      // Dottydoc should not be part of the sbt project `dotty-compiler`, but
+      // this is a necessary evil because of sbt integration
+      unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
+      unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "src",
+      unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
+      unmanagedSourceDirectories in Test += baseDirectory.value / ".." / "doc-tool" / "test",
 
       // Generate compiler.properties, used by sbt
       resourceGenerators in Compile += Def.task {
@@ -205,22 +268,23 @@ object DottyBuild extends Build {
     settings(
       addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
       addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("dottydoc", ";dottydoc/run")
+      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
     ).
     settings(publishing)
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
-  lazy val `dotty-bridge` = project.in(file("bridge")).
-    dependsOn(dotty).
-    settings(
+  lazy val `dotty-sbt-bridge` =
+    project.in(file("sbt-bridge"))
+    .dependsOn(`dotty-compiler`)
+    .dependsOn(`dotty-repl`)
+    .settings(
       overrideScalaVersionSetting,
 
       cleanSbtBridge := {
         val dottyBridgeVersion = version.value
-        val dottyVersion = (version in dotty).value
+        val dottyVersion = (version in `dotty-compiler`).value
         val classVersion = System.getProperty("java.class.version")
 
         val sbtV = sbtVersion.value
@@ -234,6 +298,7 @@ object DottyBuild extends Build {
         IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
         IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
       },
+
       publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
       description := "sbt compiler bridge for Dotty",
       resolvers += Resolver.typesafeIvyRepo("releases"),
@@ -334,11 +399,11 @@ object DottyInjectedPlugin extends AutoPlugin {
     )))
 
   lazy val `dotty-bench` = project.in(file("bench")).
-    dependsOn(dotty % "compile->test").
+    dependsOn(`dotty-compiler` % "compile->test").
     settings(
       overrideScalaVersionSetting,
 
-      baseDirectory in (Test,run) := (baseDirectory in dotty).value,
+      baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
       libraryDependencies ++= Seq(
         scalaCompiler % Test,
@@ -370,12 +435,6 @@ object DottyInjectedPlugin extends AutoPlugin {
         res
       }
     )
-
-   lazy val `scala-library` = project
-    .settings(
-      libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
-    )
-    .settings(publishing)
 
    lazy val publishing = Seq(
      publishMavenStyle := true,
@@ -473,7 +532,7 @@ object DottyInjectedPlugin extends AutoPlugin {
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
 
-        val compilerCp = Attributed.data((fullClasspath in (dotty, Compile)).value)
+        val compilerCp = Attributed.data((fullClasspath in (`dotty-compiler`, Compile)).value)
         val cpStr = cpToString(classpath ++ compilerCp)
 
         // List all my dependencies (recompile if any of these changes)

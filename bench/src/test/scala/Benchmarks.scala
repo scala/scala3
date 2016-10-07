@@ -6,7 +6,7 @@ import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
 import org.scalameter.{Context, History, currentContext, persistence}
 import org.scalameter.reporting.RegressionReporter.Tester
-import test.CompilerTest
+import dotty.tools.dotc.test.CompilerTest
 
 import scala.io.Source
 

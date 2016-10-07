@@ -74,22 +74,32 @@ function build_jar {
 function update_packages {
     echo "$INTERFACES_JAR" >  $DOTTY_ROOT/.packages
     echo "$MAIN_JAR"       >> $DOTTY_ROOT/.packages
+    echo "$LIB_JAR"        >> $DOTTY_ROOT/.packages
+    echo "$REPL_JAR"       >> $DOTTY_ROOT/.packages
     echo "$TEST_JAR"       >> $DOTTY_ROOT/.packages
 }
 
 function build_all {
     echo "The script is going to build the required jar files"
 
-    printf "Building dotty-interfaces..."
+    printf "Building compiler interfaces..."
     INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)
     printf "done\n"
 
-    printf "Building dotty..."
-    MAIN_JAR=$(build_jar package "target/scala-$SCALA_BINARY_VERSION")
+    printf "Building compiler..."
+    MAIN_JAR=$(build_jar dotty-compiler/package "compiler/target/scala-$SCALA_BINARY_VERSION")
+    printf "done\n"
+
+    printf "Building library..."
+    LIB_JAR=$(build_jar dotty-library/package "library/target/scala-$SCALA_BINARY_VERSION")
+    printf "done\n"
+
+    printf "Building repl..."
+    REPL_JAR=$(build_jar dotty-repl/package "repl/target/scala-$SCALA_BINARY_VERSION")
     printf "done\n"
 
     printf "Building tests..."
-    TEST_JAR=$(build_jar test:package "target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
+    TEST_JAR=$(build_jar dotty-compiler/test:package "compiler/target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
     printf "done\n"
 
     update_packages
@@ -101,10 +111,12 @@ if  [ ! -f "$DOTTY_ROOT/.packages" ]; then
 else
     IFS=$'\r\n' GLOBIGNORE='*' command eval 'JARS=($(cat $DOTTY_ROOT/.packages))'
 
-    if [ "${#JARS[@]}" == "3" ]; then
+    if [ "${#JARS[@]}" == "5" ]; then
         INTERFACES_JAR="${JARS[0]}"
         MAIN_JAR="${JARS[1]}"
-        TEST_JAR="${JARS[2]}"
+        LIB_JAR="${JARS[2]}"
+        REPL_JAR="${JARS[3]}"
+        TEST_JAR="${JARS[4]}"
     else
         echo "Failed to parse .packages file"
         build_all
@@ -124,9 +136,11 @@ function check_jar {
     fi
 }
 
-check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty"            $MAIN_JAR       "src"        'MAIN_JAR=$(build_jar package target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-tests"      $TEST_JAR       "test"       'TEST_JAR=$(build_jar test:package target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
+check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces"          'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
+check_jar "dotty"            $MAIN_JAR       "compiler/src"        'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-library"    $LIB_JAR        "library"             'LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "repl"             $REPL_JAR       "repl"                'REPL_JAR=$(build_jar dotty-repl/package repl/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-tests"      $TEST_JAR       "compiler/test"       'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]; then
