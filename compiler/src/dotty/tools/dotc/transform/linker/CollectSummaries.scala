@@ -523,10 +523,14 @@ object Summaries {
   case class CallInfo(call: Type, // this is type of method, that includes full type of reciever, eg: TermRef(reciever, Method)
                        targs: List[Type],
                        argumentsPassed: List[Type]
-                       ) {
+                       )(implicit ctx: Context) {
+    call.widenDealias match {
+      case t: PolyType => assert(t.paramNames.size == targs.size)
+      case _ =>
+    }
   }
 
-  final case class OuterTargs(val mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
+  final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
     def ++(parent: (Symbol, List[Type]))(implicit ctx: Context): OuterTargs = {
       parent._2.foldLeft(this)((x, y) => x.+(parent._1, y))
     }
@@ -557,14 +561,13 @@ object Summaries {
     def empty = new OuterTargs(Map.empty)
   }
 
-  var nextCallId  = 0
+  private var nextCallId = 0
 
   class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-                        val parent: CallWithContext, val callee: CallInfo) extends CallInfo(call, targs, argumentsPassed) {
+                        val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context) extends CallInfo(call, targs, argumentsPassed) {
 
-    val id = { nextCallId += 1; nextCallId}
-//    if ((id == 11) || (id == 167))
-//      println("dsds")
+    val id = { nextCallId += 1; nextCallId }
+
     val outEdges = mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil)
 
     override def hashCode(): Int = super.hashCode() ^ outerTargs.hashCode()
@@ -862,11 +865,11 @@ class BuildCallGraph extends Phase {
       }
 
       def addCast(from: Type, to: Type) =
-        if (!(from <:< to)) {
+        if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
           val newCast = new Cast(from, to)
 
           for (tp <- reachableTypes.reachableItems) {
-            if (filterTypes(tp.tp, from)) {
+            if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
               casts += newCast
               tp.castsCache += newCast
             }
@@ -903,7 +906,12 @@ class BuildCallGraph extends Phase {
             else
               for (tp <- getTypesByMemberName(calleeSymbol.name);
                    cast <- tp.castsCache
-                   if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, recieverType);
+                   if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, recieverType) && {
+                     val receiverBases = recieverType.classSymbols
+                     val targetBases = cast.to.classSymbols
+                     receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
+                     //cast.to.classSymbol != defn.NothingClass
+                   };
                    alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
                    if alt.exists && {
                      // this additionaly introduces a cast of result type and argument types
@@ -1035,7 +1043,7 @@ class BuildCallGraph extends Phase {
       }
     }
 
-    def processCallSites(callSites: immutable.Set[CallWithContext], instantiatedTypes: immutable.Set[TypeWithContext]) = {
+    def processCallSites(callSites: immutable.Set[CallWithContext], instantiatedTypes: immutable.Set[TypeWithContext]): Unit = {
 
       for (method <- callSites) {
         // Find new call sites
@@ -1082,15 +1090,15 @@ class BuildCallGraph extends Phase {
 
       println(s"\t Found ${reachableTypes.size} new instantiated types")
       val newReachableTypes = reachableTypes.newItems
-      newReachableTypes.foreach{ x =>
+      newReachableTypes.foreach { x =>
         val clas = x.tp match {
           case t: ClosureType =>
             t.u.classSymbol.asClass
           case _ => x.tp.classSymbol.asClass
         }
-        if (!clas.is(Flags.JavaDefined)) {
+        if (!clas.is(Flags.JavaDefined) && clas.is(Flags.Module)) {
           val fields = clas.classInfo.decls.filter(x => !x.is(Flags.Method) && !x.isType)
-          val parent = new CallWithContext(x.tp.select(clas.primaryConstructor), Nil, Nil, x.outerTargs, null, null)
+          val parent = new CallWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs, null, null)
           reachableMethods ++= fields.map {
             fieldSym =>
               new CallWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs, parent, null)
