@@ -55,7 +55,7 @@ div#container {
     margin: 0 auto;
     overflow: hidden;
 
-    > div#scala-logo-mobile {
+    > a.logo-container {
         display: none;
     }
 
@@ -85,7 +85,7 @@ div#container {
             top: $distance-top;
             bottom: auto;
 
-            div#scala-logo {
+            a > div#scala-logo {
                 width: 64px;
                 margin-bottom: 25px;
 
@@ -202,13 +202,15 @@ body {
         max-width: none;
         padding: 12px;
 
-        > div#scala-logo-mobile {
+        a.logo-container {
             display: block;
-            width: 64px;
-            margin: 15px auto 0;
+            > div#scala-logo-mobile {
+                width: 64px;
+                margin: 15px auto 0;
 
-            > svg path {
-                fill: $red;
+                > svg path {
+                    fill: $red;
+                }
             }
         }
 

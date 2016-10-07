@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="theme-color" content="#de332e">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta property="og:image" content="http://dotty.epfl.ch/images/preview.png" />
+
+        <title>Dotty</title>
+
+        <link rel="icon" type="image/png" href="{{ site.baseurl }}/images/favicon.png">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" integrity="sha384-y3tfxAZXuh4HwSYylfB+J125MxIs6mR5FOHamPBG064zB+AFeWH94NdvaCBm8qnd" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="{{ site.baseurl }}/css/animate.css" />
+        <link rel="stylesheet" type="text/css" href="{{ site.baseurl }}/css/default.css" />
+
+        <!-- Yandex.Metrika counter -->
+        <script type="text/javascript">
+            (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter37916575 = new Ya.Metrika({ id:37916575, clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true, trackHash:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })
+            (document, window, "yandex_metrika_callbacks");
+        </script>
+        <noscript><div><img src="https://mc.yandex.ru/watch/37916575" style="position:absolute; left:-9999px;" alt /></div></noscript> <!-- /Yandex.Metrika counter -->
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js" defer></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" integrity="sha384-vZ2WRJMwsjRMW/8U7i6PWi6AlO1L79snBrmgiDpgIWJ82z8eA5lenwvxbMV1PAh7" crossorigin="anonymous" defer></script>
+        <script src="https://cdn.jsdelivr.net/scrollreveal.js/3.1.4/scrollreveal.min.js" defer></script>
+        <script src="{{ site.baseurl }}/js/index.js" defer></script>
+    </head>
+    <body>
+        <div id="content">
+            {% include logo-page.html %}
+            {% include faq.html %}
+            {% include features.html %}
+            {% include getting-started.html %}
+        </div>
+    </body>
+</html>

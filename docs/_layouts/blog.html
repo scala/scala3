@@ -7,7 +7,7 @@ layout: default
 
 <div class="author-container {% if page.authorImg != null %} spaced {% endif %}">
     {% if page.authorImg != null %}
-    <img src="{{ page.authorImg }}"/>
+    <img src="{{ site.baseurl }}/{{ page.authorImg }}"/>
     {% endif %}
     <div class="author-info">
         <div>{{ page.author }}</div>

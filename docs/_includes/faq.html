@@ -1,0 +1,101 @@
+<div class="page blue">
+    <div class="centered questions">
+        <h1 id="why-dotty">Why Dotty?</h1>
+        <p>
+            Dotty is a platform to try out new language concepts and compiler
+            technologies for Scala. The focus is mainly on simplification. We
+            remove extraneous syntax (e.g. no XML literals), and try to boil
+            down Scala’s types into a smaller set of more fundamental
+            constructors. The theory behind these constructors is researched in
+            <a href="https://infoscience.epfl.ch/record/215280">DOT</a>, a
+            calculus for dependent object types.
+        </p>
+
+        <h1 id="is-it-the-future-scala">Is it the future Scala?</h1>
+        <div class="centered-text">
+            <p>Yes, it will be - eventually.</p>
+        </div>
+
+        <h1 id="can-i-use-it">Can I use it?</h1>
+        <div class="centered-text">
+            <p>
+                <a href="#getting-started">You can!</a> But it currently comes with
+                no guarantees of stability.
+            </p>
+        </div>
+
+        <h1 id="is-there-scala-2-interop">Is there Scala 2 interop?</h1>
+        <div class="centered-text">
+            <p>
+                Dotty currently interops with libraries compiled with Scala
+                2.11 - but not 2.12
+            </p>
+        </div>
+
+        <h1 id="how-do-i-migrate-my-code-to-dotty">How do I migrate my code to Dotty?</h1>
+        <p>
+            An automated rewriting tool is planned for Dotty, more on this to come.
+            Scala 2 sources can be compiled to some degree by issuing:
+        </p>
+        <pre class="sourceCode bright"><code>./bin/dotc -language:Scala2 file.scala</code></pre>
+        <p>when compiling your program.</p>
+
+        <h1 id="whos-working-on-it">Who’s working on it?</h1>
+        <div class="contributors">
+            <div class="contributors-cell">
+                <div class="contributor">
+                    <a href="http://github.com/odersky">
+                        <img src="{{ site.baseurl }}/images/martin.jpg">
+                    </a>
+                    Martin Odersky
+                </div>
+
+                <div class="contributor">
+                    <a href="http://www.d-d.me">
+                        <img src="{{ site.baseurl }}/images/petrashko.png">
+                    </a>
+                    Dmitry Petrashko
+                </div>
+
+                <div class="contributor">
+                    <a href="http://guillaume.martres.me/">
+                        <img src="{{ site.baseurl }}/images/smarter.jpg">
+                    </a>
+                    Guillaume Martres
+                </div>
+            </div>
+            <div class="contributors-cell">
+                <div class="contributor">
+                    <a href="http://fengy.me/">
+                        <img src="{{ site.baseurl }}/images/fengyun.png">
+                    </a>
+                    Liu Fengyun
+                </div>
+
+                <div class="contributor">
+                    <a href="https://github.com/felixmulder">
+                        <img src="{{ site.baseurl }}/images/felix.jpeg">
+                    </a>
+                    Felix Mulder
+                </div>
+
+                <div class="contributor">
+                    <a href="https://github.com/nicolasstucki">
+                        <img src="{{ site.baseurl }}/images/nico.png">
+                    </a>
+                    Nicolas Stucki
+                </div>
+            </div>
+        </div>
+
+        <div class="centered-text">
+            <p>
+                And a long line of
+                <a href="https://github.com/lampepfl/dotty/graphs/contributors">
+                    contributors!
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
