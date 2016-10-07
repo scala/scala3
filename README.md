@@ -62,7 +62,7 @@ Yes, Dotty itself is a project that can be compiled by both Dotty and Scalac.<br
 It's not very hard, and the biggest thing that you will likely miss is using macros.
 
 ####How can I try it out?
-https://github.com/lampepfl/dotty/wiki/Getting-Started.
+http://lampepfl.github.io/dotty/docs/contributing/getting-started.html.
 Here’s an example sbt project and instructions on how to set it up: https://github.com/smarter/dotty-example-project/ <br>
 We have colored REPL :-). You can invoke it by running `dotc -repl`.
 
