@@ -90,7 +90,7 @@ object Formatting {
       }
   }
 
-  private def wrapNonSensical(arg: Any, str: String)(implicit ctx: Context): String = {
+  private def wrapNonSensical(arg: Any /* Type | Symbol */, str: String)(implicit ctx: Context): String = {
     import MessageContainer._
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>

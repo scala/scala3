@@ -94,7 +94,7 @@ class ConsoleReporter(
     }).show else ""
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Unit = {
+  def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Boolean = {
     printMessage(posStr(pos, diagnosticLevel, msg))
     if (pos.exists) {
       val (srcBefore, srcAfter, offset) = sourceLines(pos)
@@ -103,6 +103,7 @@ class ConsoleReporter(
 
       printMessage((srcBefore ::: marker :: err :: srcAfter).mkString("\n"))
     } else printMessage(msg.msg)
+    true
   }
 
   def printExplanation(m: Message)(implicit ctx: Context): Unit = {
@@ -114,11 +115,13 @@ class ConsoleReporter(
   }
 
   override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
-    m match {
+    val didPrint = m match {
       case m: Error =>
-        printMessageAndPos(m.contained, m.pos, "Error")
+        val didPrint = printMessageAndPos(m.contained, m.pos, "Error")
         if (ctx.settings.prompt.value) displayPrompt()
+        didPrint
       case m: ConditionalWarning if !m.enablingOption.value =>
+        false
       case m: FeatureWarning =>
         printMessageAndPos(m.contained, m.pos, "Feature Warning")
       case m: DeprecationWarning =>
@@ -133,9 +136,9 @@ class ConsoleReporter(
         printMessageAndPos(m.contained, m.pos, "Info")
     }
 
-    if (ctx.shouldExplain(m))
+    if (didPrint && ctx.shouldExplain(m))
       printExplanation(m.contained)
-    else if (m.contained.explanation.nonEmpty)
+    else if (didPrint && m.contained.explanation.nonEmpty)
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 
