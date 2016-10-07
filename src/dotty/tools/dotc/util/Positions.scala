@@ -108,10 +108,12 @@ object Positions {
     /** A synthetic copy of this position */
     def toSynthetic = if (isSynthetic) this else Position(start, end)
 
-    override def toString = {
-      val (left, right) = if (isSynthetic) ("<", ">") else ("[", "]")
+    override def toString: String = toString(simplified = false)
+
+    def toString(simplified: Boolean): String = {
+      val (left, right) = if (simplified || isSynthetic) ("<", ">") else ("[", "]")
       if (exists)
-        s"$left$start..${if (point == start) "" else s"$point.."}$end$right"
+        s"$left$start..${if (simplified || point == start) "" else s"$point.."}$end$right"
       else
         s"${left}no position${right}"
     }

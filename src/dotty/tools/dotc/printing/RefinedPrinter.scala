@@ -531,7 +531,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]])
-      txt = txt ~ "@" ~ tree.pos.toString
+      txt = txt ~ "@" ~ tree.pos.toString(simplified = true)
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close
