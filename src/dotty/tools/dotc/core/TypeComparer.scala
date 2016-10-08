@@ -478,16 +478,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           false
       }
       compareMethod
-    case tp2: PolyType =>
-      def comparePoly = tp1 match {
-        case tp1: PolyType =>
-          (tp1.signature consistentParams tp2.signature) &&
-            matchingTypeParams(tp1, tp2) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          false
-      }
-      comparePoly
     case tp2 @ ExprType(restpe2) =>
       def compareExpr = tp1 match {
         // We allow ()T to be a subtype of => T.

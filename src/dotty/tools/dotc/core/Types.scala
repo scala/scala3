@@ -2508,8 +2508,6 @@ object Types {
                             (paramBoundsExp: GenericType => List[TypeBounds],
                              resultTypeExp: GenericType => Type)
   extends CachedProxyType with BindingType with TermType {
-    type This <: GenericType
-    protected[this] def companion: GenericCompanion[This]
 
     /** The bounds of the type parameters */
     val paramBounds: List[TypeBounds] = paramBoundsExp(this)
@@ -2532,10 +2530,7 @@ object Types {
       paramBounds.mapConserve(_.substParams(this, argTypes).bounds)
 
     /** Unconditionally create a new generic type like this one with given elements */
-    def newLikeThis(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): This =
-      companion.apply(paramNames, variances)(
-          x => paramBounds mapConserve (_.subst(this, x).bounds),
-          x => resType.subst(this, x))
+    def newLikeThis(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, resType: Type)(implicit ctx: Context): GenericType
 
     def derivedGenericType(paramNames: List[TypeName] = this.paramNames,
                            paramBounds: List[TypeBounds] = this.paramBounds,
@@ -2580,15 +2575,12 @@ object Types {
   }
 
   /** A type for polymorphic methods */
-  class PolyType(paramNames: List[TypeName])(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)
-    extends GenericType(paramNames)(paramBoundsExp, resultTypeExp) with MethodOrPoly {
+  class PolyType(paramNames: List[TypeName], variances: List[Int])(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)
+    extends TypeLambda(paramNames, variances)(paramBoundsExp, resultTypeExp) with MethodOrPoly {
 
-    type This = PolyType
-    def companion = PolyType
+    protected override def computeSignature(implicit ctx: Context) = resultSignature
 
-    protected def computeSignature(implicit ctx: Context) = resultSignature
-
-    def isPolymorphicMethodType: Boolean = resType match {
+    override def isPolymorphicMethodType: Boolean = resType match {
       case _: MethodType => true
       case _ => false
     }
@@ -2596,7 +2588,7 @@ object Types {
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
      */
-    def flatten(implicit ctx: Context): PolyType = resType match {
+    override def flatten(implicit ctx: Context): PolyType = resType match {
       case that: PolyType =>
         val shift = new TypeMap {
           def apply(t: Type) = t match {
@@ -2611,12 +2603,17 @@ object Types {
       case _ => this
     }
 
+    override def newLikeThis(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): PolyType =
+      PolyType.apply(paramNames, variances)(
+          x => paramBounds mapConserve (_.subst(this, x).bounds),
+          x => resType.subst(this, x))
+
     override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
   }
 
   object PolyType extends GenericCompanion[PolyType] {
     def apply(paramNames: List[TypeName], variances: List[Int] = Nil)(paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)(implicit ctx: Context): PolyType = {
-      unique(new PolyType(paramNames)(paramBoundsExp, resultTypeExp))
+      unique(new PolyType(paramNames, paramNames.map(alwaysZero))(paramBoundsExp, resultTypeExp))
     }
   }
 
@@ -2625,16 +2622,25 @@ object Types {
   /** A type lambda of the form `[v_0 X_0, ..., v_n X_n] => T` */
   class TypeLambda(paramNames: List[TypeName], override val variances: List[Int])(
       paramBoundsExp: GenericType => List[TypeBounds], resultTypeExp: GenericType => Type)
-  extends GenericType(paramNames)(paramBoundsExp, resultTypeExp) {
+  extends GenericType(paramNames)(paramBoundsExp, resultTypeExp) with MethodOrPoly {
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    type This = TypeLambda
-    def companion = TypeLambda
+    protected def computeSignature(implicit ctx: Context) = resultSignature
+
+    def isPolymorphicMethodType: Boolean = resType match {
+      case _: MethodType => true
+      case _ => false
+    }
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
+
+    override def newLikeThis(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): TypeLambda =
+      TypeLambda.apply(paramNames, variances)(
+          x => paramBounds mapConserve (_.subst(this, x).bounds),
+          x => resType.subst(this, x))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
@@ -2648,14 +2654,33 @@ object Types {
           derivedGenericType(paramNames, paramBounds, resType)
       }
 
+    /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
+     *  but can arise as temporary data structures.
+     */
+    def flatten(implicit ctx: Context): TypeLambda = resType match {
+      case that: PolyType =>
+        val shift = new TypeMap {
+          def apply(t: Type) = t match {
+            case PolyParam(`that`, n) => PolyParam(that, n + paramNames.length)
+            case t => mapOver(t)
+          }
+        }
+        PolyType(paramNames ++ that.paramNames)(
+          x => this.paramBounds.mapConserve(_.subst(this, x).bounds) ++
+               that.paramBounds.mapConserve(shift(_).subst(that, x).bounds),
+          x => shift(that.resultType).subst(that, x).subst(this, x))
+      case _ => this
+    }
+
     override def toString = s"TypeLambda($variances, $paramNames, $paramBounds, $resType)"
   }
 
   object TypeLambda extends GenericCompanion[TypeLambda] {
-    def apply(paramNames: List[TypeName], variances: List[Int])(
+    def apply(paramNames: List[TypeName], variances: List[Int] = Nil)(
         paramBoundsExp: GenericType => List[TypeBounds],
         resultTypeExp: GenericType => Type)(implicit ctx: Context): TypeLambda = {
-      unique(new TypeLambda(paramNames, variances)(paramBoundsExp, resultTypeExp))
+      val vs = if (variances.isEmpty) paramNames.map(alwaysZero) else variances
+      unique(new TypeLambda(paramNames, vs)(paramBoundsExp, resultTypeExp))
     }
 
     def unapply(tl: TypeLambda): Some[(List[LambdaParam], Type)] =
