@@ -41,7 +41,7 @@ trait SymDenotations { this: Context =>
   }
 
   def stillValid(denot: SymDenotation): Boolean =
-    if (denot.is(ValidForever) || denot.isRefinementClass) true
+    if (denot.is(ValidForever) || denot.isRefinementClass || denot.isImport) true
     else {
       val initial = denot.initial
       val firstPhaseId = initial.validFor.firstPhaseId.max(ctx.typerPhase.id)
@@ -589,6 +589,9 @@ object SymDenotations {
       (this is Accessor) &&
       originalName.isSetterName &&
       (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
+
+    /** is this a symbol representing an import? */
+    final def isImport = name == nme.IMPORT
 
     /** is this the constructor of a class? */
     final def isClassConstructor = name == nme.CONSTRUCTOR

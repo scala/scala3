@@ -553,7 +553,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       (sym.allOverriddenSymbols exists (_ is TypeParam))
 
   override def toText(sym: Symbol): Text = {
-    if (sym.name == nme.IMPORT) {
+    if (sym.isImport) {
       def importString(tree: untpd.Tree) = s"import ${tree.show}"
       sym.infoOrCompleter match {
         case info: Namer#Completer => return importString(info.original)
