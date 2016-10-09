@@ -38,6 +38,7 @@ object DottyBuild extends Build {
       organizationName in Global := "LAMP/EPFL",
       organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
       homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+      parallelExecution in Test := false,
 
       // scalac options
       scalacOptions in Global ++= Seq("-feature", "-deprecation", "-encoding", "UTF8", "-language:existentials,higherKinds,implicitConversions"),
@@ -264,13 +265,44 @@ object DottyBuild extends Build {
 
         ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
       }
-    ).
-    settings(
-      addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
-      addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner")
-    ).
-    settings(publishing)
+    )
+    .settings(publishing)
+
+  lazy val root = project.in(file("."))
+    .settings(
+      addCommandAlias(
+        "partest",
+        ";dotty-repl/test" +
+        ";dotty-sbt-bridge/test" +
+        ";dotty-compiler/test:package" +
+        ";dotty-compiler/package" +
+        ";dotty-compiler/test:runMain dotc.build" +
+        ";dotty-compiler/lockPartestFile" +
+        ";dotty-compiler/test:test" +
+        ";dotty-compiler/runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-only",
+        ";dotty-repl/test" +
+        ";dotty-sbt-bridge/test" +
+        ";dotty-compiler/test:package" +
+        ";dotty-compiler/package" +
+        ";dotty-compiler/test:runMain dotc.build" +
+        ";dotty-compiler/lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.tests" +
+        ";dotty-compiler/runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-only-no-bootstrap",
+        ";dotty-repl/test" +
+        ";dotty-sbt-bridge/test" +
+        ";dotty-compiler/test:package" +
+        ";dotty-compiler/package" +
+        ";dotty-compiler/lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.tests" +
+        ";dotty-compiler/runPartestRunner"
+      )
+    )
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
