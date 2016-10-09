@@ -169,7 +169,7 @@ object TypeErasure {
     val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
-      tp.derivedGenericType(
+      tp.derivedPolyType(
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
@@ -370,11 +370,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         case rt =>
           tp.derivedMethodType(tp.paramNames, formals, rt)
       }
-    case tp: PolyType =>
-      this(tp.resultType) match {
-        case rt: MethodType => rt
-        case rt => MethodType(Nil, Nil, rt)
-      }
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp
       else {
@@ -409,9 +404,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     else JavaArrayType(arrayErasure(elemtp))
   }
 
-  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s are
-   *  treated. `eraseInfo` maps them them to nullary method types, whereas `apply` maps them
-   *  to `Function0`.
+  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
+   *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
+   *  to the underlying type.
    */
   def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case ExprType(rt) =>
@@ -421,6 +416,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         // forwarders to mixin methods.
         // See doc comment for ElimByName for speculation how we could improve this.
       else MethodType(Nil, Nil, eraseResult(rt))
+    case tp: PolyType =>
+      this(tp.resultType) match {
+        case rt: MethodType => rt
+        case rt => MethodType(Nil, Nil, rt)
+      }
     case tp => this(tp)
   }
 

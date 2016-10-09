@@ -23,7 +23,7 @@ abstract class Constraint extends Showable {
   type This <: Constraint
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: GenericType): Boolean
+  def contains(pt: PolyType): Boolean
 
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: PolyParam): Boolean
@@ -79,7 +79,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: GenericType, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: PolyType, tvars: List[TypeVar])(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -121,13 +121,13 @@ abstract class Constraint extends Showable {
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
    */
-  def isRemovable(pt: GenericType): Boolean
+  def isRemovable(pt: PolyType): Boolean
 
   /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: GenericType)(implicit ctx: Context): This
+  def remove(pt: PolyType)(implicit ctx: Context): This
 
   /** The polytypes constrained by this constraint */
-  def domainPolys: List[GenericType]
+  def domainPolys: List[PolyType]
 
   /** The polytype parameters constrained by this constraint */
   def domainParams: List[PolyParam]

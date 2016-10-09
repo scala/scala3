@@ -702,7 +702,7 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (isIdent && in.name.toString == "->")
-            atPos(start, in.skipToken())(TypeLambdaTree(tparams, typ()))
+            atPos(start, in.skipToken())(PolyTypeTree(tparams, typ()))
           else { syntaxErrorOrIncomplete(expectedMessage("`->'")); typ() }
         }
         else infixType()

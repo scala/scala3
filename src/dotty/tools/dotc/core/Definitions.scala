@@ -92,17 +92,17 @@ class Definitions {
   }
 
   private def newPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
-                    resultTypeFn: GenericType => Type, flags: FlagSet = EmptyFlags) = {
+                    resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
     val tparamBounds = tparamNames map (_ => TypeBounds.empty)
     val ptype = PolyType(tparamNames)(_ => tparamBounds, resultTypeFn)
     newMethod(cls, name, ptype, flags)
   }
 
-  private def newT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: GenericType => Type, flags: FlagSet) =
+  private def newT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     newPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def newT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: GenericType => Type, flags: FlagSet) =
+  private def newT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     newPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {

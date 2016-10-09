@@ -251,7 +251,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
-    case tpe: TypeLambda =>
+    case tpe: PolyType =>
       writeByte(LAMBDAtype)
       val paramNames = tpe.typeParams.map(tparam =>
         varianceToPrefix(tparam.paramVariance) +: tparam.paramName)
@@ -259,9 +259,6 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: MethodType if richTypes =>
       writeByte(METHODtype)
       pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramTypes)
-    case tpe: PolyType if richTypes =>
-      writeByte(POLYtype)
-      pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramBounds)
     case tpe: PolyParam =>
       if (!pickleParamType(tpe))
       // TODO figure out why this case arises in e.g. pickling AbstractFileReader.

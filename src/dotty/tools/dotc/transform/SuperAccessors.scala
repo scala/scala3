@@ -175,7 +175,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val accType = {
         def accTypeOf(tpe: Type): Type = tpe match {
           case tpe: PolyType =>
-            tpe.derivedGenericType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
+            tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
           case _ =>
             MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
         }
@@ -227,7 +227,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         else clazz.classInfo.selfType
       def accTypeOf(tpe: Type): Type = tpe match {
         case tpe: PolyType =>
-          tpe.derivedGenericType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
+          tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
         case _ =>
           MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
       }

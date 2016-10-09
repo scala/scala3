@@ -412,9 +412,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2 @ TypeLambda(tparams2, body2) =>
+    case tp2 @ PolyType(tparams2, body2) =>
       def compareHkLambda: Boolean = tp1.stripTypeVar match {
-        case tp1 @ TypeLambda(tparams1, body1) =>
+        case tp1 @ PolyType(tparams1, body1) =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -432,13 +432,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             ctx.scala2Mode ||
             tparams1.corresponds(tparams2)((tparam1, tparam2) =>
               isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
-          val saved = comparingLambdas
-          comparingLambdas = true
+          val saved = comparedPolyTypes
+          comparedPolyTypes += tp1
+          comparedPolyTypes += tp2
           try
             variancesConform(tparams1, tparams2) &&
             boundsOK &&
             isSubType(body1, body2.subst(tp2, tp1))
-          finally comparingLambdas = saved
+          finally comparedPolyTypes = saved
         case _ =>
           if (!tp1.isHK) {
             tp2 match {
@@ -650,7 +651,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = TypeLambda(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
+              tycon1b = PolyType(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
                 tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(PolyParam(tl, _))))
@@ -1264,7 +1265,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else if (tparams2.isEmpty)
       original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
     else
-      TypeLambda(
+      PolyType(
         paramNames = tpnme.syntheticLambdaParamNames(tparams1.length),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           (tparam1.paramVariance + tparam2.paramVariance) / 2))(

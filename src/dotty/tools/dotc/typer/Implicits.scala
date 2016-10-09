@@ -302,7 +302,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             case _ => arg
           }
           (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: TypeLambda =>
+        case tp: PolyType =>
           apply(tp.resType)
         case _ =>
           mapOver(tp)

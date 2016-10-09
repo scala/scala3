@@ -1019,7 +1019,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           // todo: make sure implicit method types are not dependent?
           // but check test case in /tests/pos/depmet_implicit_chaining_zw.scala
       case pt: PolyType =>
-        pt.derivedGenericType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
+        pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
       case _ =>
         tp
     }
