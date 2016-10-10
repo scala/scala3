@@ -29,10 +29,14 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   var units: List[CompilationUnit] = _
 
   def getSource(fileName: String): SourceFile = {
-    val encoding = ctx.settings.encoding.value
     val f = new PlainFile(fileName)
-    if (f.exists) new SourceFile(f, Codec(encoding))
-    else {
+    if (f.isDirectory) {
+      ctx.error(s"expected file, received directory '$fileName'")
+      NoSource
+    } else if (f.exists) {
+      val encoding = ctx.settings.encoding.value
+      new SourceFile(f, Codec(encoding))
+    } else {
       ctx.error(s"not found: $fileName")
       NoSource
     }
