@@ -28,8 +28,8 @@ class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extend
   val selectionFilter = GUILikeFilters.SelectionFilter(indent = 2)
   val multilineFilter: Filter = Filter("multilineFilter") {
     case TermState(lb ~: rest, b, c, _)
-      if (lb == 10 || lb == 13) && incompleteInput(b.mkString) =>
-      BasicFilters.injectNewLine(b, c, rest)
+    if (lb == 10 || lb == 13) && incompleteInput(b.mkString) =>
+      BasicFilters.injectNewLine(b, c, rest, indent = 2)
   }
 
   def readLine(prompt: String): String = {
@@ -61,7 +61,7 @@ class AmmoniteReader(val interpreter: Interpreter)(implicit ctx: Context) extend
           if (ctx.useColors) SyntaxHighlighting(buffer)
           else buffer
 
-        val ansiBuffer = Ansi.Str.parse(coloredBuffer)
+        val ansiBuffer = Ansi.Str.parse(coloredBuffer.toVector)
         val (newBuffer, cursorOffset) = SelectionFilter.mangleBuffer(
           selectionFilter, ansiBuffer, cursor, Ansi.Reversed.On
         )

@@ -45,7 +45,7 @@ object Checking {
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
           ex"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
-          arg.pos)
+          arg.pos.focus)
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly`
@@ -98,9 +98,9 @@ object Checking {
             checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
           checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
         case Select(qual, name) if name.isTypeName =>
-          checkRealizable(qual.tpe, qual.pos)
+          checkRealizable(qual.tpe, qual.pos.focus)
         case SingletonTypeTree(ref) =>
-          checkRealizable(ref.tpe, ref.pos)
+          checkRealizable(ref.tpe, ref.pos.focus)
         case _ =>
       }
       traverseChildren(tree)
@@ -378,7 +378,7 @@ object Checking {
             if (tp.symbol.is(Private) &&
                 !accessBoundary(sym).isContainedIn(tp.symbol.owner)) {
               errors = (em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}",
-                        pos) :: errors
+                        sym.pos) :: errors
               tp
             }
             else mapOver(tp)

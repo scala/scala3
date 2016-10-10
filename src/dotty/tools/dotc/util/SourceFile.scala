@@ -97,7 +97,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   private lazy val lineIndices: Array[Int] = calculateLineIndices(content)
 
   /** Map line to offset of first character in line */
-  def lineToOffset(index : Int): Int = lineIndices(index)
+  def lineToOffset(index: Int): Int = lineIndices(index)
 
   /** A cache to speed up offsetToLine searches to similar lines */
   private var lastLine = 0

@@ -6,6 +6,8 @@ package xsbt
 import dotty.tools._
 import dotc._
 import reporting._
+import reporting.diagnostic.MessageContainer
+import reporting.diagnostic.messages
 import core.Contexts._
 
 import xsbti.{Maybe, Position}
@@ -16,19 +18,19 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
 
   override def printSummary(implicit ctx: Context): Unit = delegate.printSummary()
 
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit = {
-    val severity = 
-      d match {
-        case _: Reporter.Error   => xsbti.Severity.Error
-        case _: Reporter.Warning => xsbti.Severity.Warn
+  def doReport(cont: MessageContainer)(implicit ctx: Context): Unit = {
+    val severity =
+      cont match {
+        case _: messages.Error   => xsbti.Severity.Error
+        case _: messages.Warning => xsbti.Severity.Warn
         case _                   => xsbti.Severity.Info
       }
-    val pos = 
-      if (d.pos.exists) Some(d.pos)
+    val pos =
+      if (cont.pos.exists) Some(cont.pos)
       else None
 
-    val file = 
-      if (d.pos.source.file.exists) Option(d.pos.source.file.file)
+    val file =
+      if (cont.pos.source.file.exists) Option(cont.pos.source.file.file)
       else None
 
     val offset0 = pos.map(_.point)
@@ -43,15 +45,15 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       def sourcePath: Maybe[String] = maybe(file.map(_.getPath))
     }
 
-    delegate.log(position, d.message, severity)
+    delegate.log(position, cont.message, severity)
   }
 
-  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match { 
+  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match {
     case None => Maybe.nothing[T]
     case Some(s) => Maybe.just[T](s)
   }
   import java.lang.{ Integer => I }
-  private[this] def maybeInt(opt: Option[Int]): Maybe[I] = opt match { 
+  private[this] def maybeInt(opt: Option[Int]): Maybe[I] = opt match {
     case None => Maybe.nothing[I]
     case Some(s) => Maybe.just[I](s)
   }

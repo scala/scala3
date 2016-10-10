@@ -23,6 +23,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val migration = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.")
   val encoding = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding)
   val explaintypes = BooleanSetting("-explaintypes", "Explain type errors in more detail.")
+  val explain = BooleanSetting("-explain", "Explain errors in more detail.")
   val feature = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")
   val g = ChoiceSetting("-g", "level", "Set level of generated debugging info.", List("none", "source", "line", "vars", "notailcalls"), "vars")
   val help = BooleanSetting("-help", "Print a synopsis of standard options")

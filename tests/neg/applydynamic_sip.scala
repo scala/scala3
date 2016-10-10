@@ -18,9 +18,9 @@ object Test extends App {
   }
   val bad1 = new Bad1
   bad1.sel // error
-  bad1.sel(1) // error // error
-  bad1.sel(a = 1) // error // error
-  bad1.sel = 1 // error // error
+  bad1.sel(1) // error
+  bad1.sel(a = 1) // error
+  bad1.sel = 1 // error
 
   class Bad2 extends Dynamic {
     def selectDynamic = 1

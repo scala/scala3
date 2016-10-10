@@ -4,44 +4,24 @@ package reporting
 
 import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
-import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
-import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
 import core.Mode
-import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 import dotty.tools.dotc.core.Symbols.Symbol
+import diagnostic.messages._
+import diagnostic._
+import Message._
 
 object Reporter {
-  class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
-  class Warning(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, WARNING)
-  class Info(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, INFO)
-
-  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition) extends Warning(msgFn, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean]
-  }
-  class FeatureWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.feature
-  }
-  class UncheckedWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
-  }
-  class DeprecationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
-  }
-  class MigrationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
-    def enablingOption(implicit ctx: Context) = ctx.settings.migration
-  }
-
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
-        case d: ConditionalWarning if !d.enablingOption.value =>
+      override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = m match {
+        case m: ConditionalWarning if !m.enablingOption.value =>
         case _ =>
-          simple.report(d)
+          simple.report(m)
       }
     }
 }
@@ -57,17 +37,17 @@ trait Reporting { this: Context =>
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
-  def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new DeprecationWarning(msg, pos))
+  def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.deprecationWarning(pos))
 
-  def migrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new MigrationWarning(msg, pos))
+  def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.migrationWarning(pos))
 
-  def uncheckedWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new UncheckedWarning(msg, pos))
+  def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.uncheckedWarning(pos))
 
-  def featureWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new FeatureWarning(msg, pos))
+  def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.featureWarning(pos))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
@@ -92,26 +72,24 @@ trait Reporting { this: Context =>
     else reporter.report(new FeatureWarning(msg, pos))
   }
 
-  def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Warning(msg, pos))
+  def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.warning(pos))
 
-  def strictWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
-    else warning(msg + "\n(This would be an error under strict mode)", pos)
+    else warning(msg.mapMsg(_ + "\n(This would be an error under strict mode)"), pos)
 
-  def error(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
-    // println("*** ERROR: " + msg) // !!! DEBUG
-    reporter.report(new Error(msg, pos))
-  }
+  def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    reporter.report(msg.error(pos))
 
-  def errorOrMigrationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
 
-  def restrictionError(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    error(s"Implementation restriction: $msg", pos)
+  def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
+    error(msg.mapMsg(m => s"Implementation restriction: $m"), pos)
 
-  def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
-    reporter.incomplete(new Error(msg, pos))(ctx)
+  def incompleteInputError(msg: Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
+    reporter.incomplete(msg.error(pos))(ctx)
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
@@ -198,7 +176,7 @@ trait Reporting { this: Context =>
 abstract class Reporter extends interfaces.ReporterResult {
 
   /** Report a diagnostic */
-  def doReport(d: Diagnostic)(implicit ctx: Context): Unit
+  def doReport(d: MessageContainer)(implicit ctx: Context): Unit
 
   /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -213,7 +191,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally _truncationOK = saved
   }
 
-  type ErrorHandler = Diagnostic => Context => Unit
+  type ErrorHandler = MessageContainer => Context => Unit
   private var incompleteHandler: ErrorHandler = d => c => report(d)(c)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
@@ -242,7 +220,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     override def default(key: String) = 0
   }
 
-  def report(d: Diagnostic)(implicit ctx: Context): Unit =
+  def report(d: MessageContainer)(implicit ctx: Context): Unit =
     if (!isHidden(d)) {
       doReport(d)(ctx.addMode(Mode.Printing))
       d match {
@@ -256,9 +234,8 @@ abstract class Reporter extends interfaces.ReporterResult {
       }
     }
 
-  def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
+  def incomplete(d: MessageContainer)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
-
 
   /** Summary of warnings and errors */
   def summary: String = {
@@ -279,7 +256,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Returns a string meaning "n elements". */
-  private def countString(n: Int, elements: String): String = n match {
+  protected def countString(n: Int, elements: String): String = n match {
     case 0 => "no " + elements + "s"
     case 1 => "one " + elements
     case 2 => "two " + elements + "s"
@@ -289,7 +266,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
+  def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
   def hasPending: Boolean = false

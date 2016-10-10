@@ -200,7 +200,7 @@ object RefChecks {
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.debug.value)
-            err.typeMismatchStr(memberTp, otherTp)
+            err.typeMismatchMsg(memberTp, otherTp)
           else ""
 
         "overriding %s;\n %s %s%s".format(

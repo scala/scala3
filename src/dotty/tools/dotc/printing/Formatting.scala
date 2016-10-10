@@ -8,7 +8,10 @@ import collection.Map
 import Decorators._
 import scala.annotation.switch
 import scala.util.control.NonFatal
-import reporting.Diagnostic
+import reporting.diagnostic.MessageContainer
+import util.DiffUtil
+import Highlighting._
+import SyntaxHighlighting._
 
 object Formatting {
 
@@ -66,17 +69,39 @@ object Formatting {
    *  message composition methods, this is crucial.
    */
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) {
-    override protected def showArg(arg: Any)(implicit ctx: Context): String = {
-      def isSensical(arg: Any): Boolean = arg match {
-        case tpe: Type =>
-          tpe.exists && !tpe.isErroneous
-        case sym: Symbol if sym.isCompleted =>
-          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info.exists
-        case _ => true
+    override protected def showArg(arg: Any)(implicit ctx: Context): String =
+      wrapNonSensical(arg, super.showArg(arg))
+  }
+
+  class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
+    override protected def showArg(arg: Any)(implicit ctx: Context): String =
+      arg match {
+        case arg: Showable if ctx.settings.color.value != "never" =>
+          val highlighted =
+            SyntaxHighlighting(wrapNonSensical(arg, super.showArg(arg)))
+          new String(highlighted.toArray)
+        case hl: Highlight =>
+          hl.show
+        case hb: HighlightBuffer =>
+          hb.toString
+        case str: String if ctx.settings.color.value != "never" =>
+          new String(SyntaxHighlighting(str).toArray)
+        case _ => super.showArg(arg)
       }
-      val str = super.showArg(arg)
-      if (isSensical(arg)) str else Diagnostic.nonSensicalStartTag + str + Diagnostic.nonSensicalEndTag
+  }
+
+  private def wrapNonSensical(arg: Any /* Type | Symbol */, str: String)(implicit ctx: Context): String = {
+    import MessageContainer._
+    def isSensical(arg: Any): Boolean = arg match {
+      case tpe: Type =>
+        tpe.exists && !tpe.isErroneous
+      case sym: Symbol if sym.isCompleted =>
+        sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info.exists
+      case _ => true
     }
+
+    if (isSensical(arg)) str
+    else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
   private type Recorded = AnyRef /*Symbol | PolyParam*/
@@ -111,65 +136,123 @@ object Formatting {
       seen.record(super.polyParamNameString(param), param)
   }
 
-  def explained2(op: Context => String)(implicit ctx: Context): String = {
-    val seen = new Seen
-    val explainCtx = ctx.printer match {
-      case dp: ExplainingPrinter => ctx // re-use outer printer and defer explanation to it
-      case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
+  /** Create explanation for single `Recorded` type or symbol */
+  def explanation(entry: AnyRef)(implicit ctx: Context): String = {
+    def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
+      if (bound.isRef(default)) "" else i"$cmp $bound"
+
+    def boundsStr(bounds: TypeBounds): String = {
+      val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
+      val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
+      if (lo.isEmpty) hi
+      else if (hi.isEmpty) lo
+      else s"$lo and $hi"
     }
 
-    def explanation(entry: Recorded): String = {
-      def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
-        if (bound.isRef(default)) "" else i"$cmp $bound"
-
-      def boundsStr(bounds: TypeBounds): String = {
-        val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
-        val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
-        if (lo.isEmpty) hi
-        else if (hi.isEmpty) lo
-        else s"$lo and $hi"
-      }
-
-      def addendum(cat: String, info: Type)(implicit ctx: Context): String = info match {
-        case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
-          if (lo eq hi) i" which is an alias of $lo"
-          else i" with $cat ${boundsStr(bounds)}"
-        case _ =>
-          ""
-      }
-
-      entry match {
-        case param: PolyParam =>
-          s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
-        case sym: Symbol =>
-          s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
-      }
+    def addendum(cat: String, info: Type): String = info match {
+      case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
+        if (lo eq hi) i" which is an alias of $lo"
+        else i" with $cat ${boundsStr(bounds)}"
+      case _ =>
+        ""
     }
 
-    def explanations(seen: Seen)(implicit ctx: Context): String = {
-      def needsExplanation(entry: Recorded) = entry match {
-        case param: PolyParam => ctx.typerState.constraint.contains(param)
-        case _ => false
-      }
-      val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
-        case (str, entry :: Nil) =>
-          if (needsExplanation(entry)) (str, entry) :: Nil else Nil
-        case (str, entries) =>
-          entries.map(alt => (seen.record(str, alt), alt))
-      }.sortBy(_._1)
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
-      val explainLines = columnar(explainParts, "  ")
-      if (explainLines.isEmpty) "" else i"\n\nwhere  $explainLines%\n       %\n"
+    entry match {
+      case param: PolyParam =>
+        s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
+      case sym: Symbol =>
+        s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
     }
-
-    op(explainCtx) ++ explanations(seen)
   }
 
-  def columnar(parts: List[(String, String)], sep: String): List[String] = {
-    lazy val maxLen = parts.map(_._1.length).max
-    parts.map {
-      case (leader, trailer) =>
-        s"$leader${" " * (maxLen - leader.length)}$sep$trailer"
+  /** Turns a `Seen` into a `String` to produce an explanation for types on the
+    * form `where: T is...`
+    *
+    * @return string disambiguating types
+    */
+  private def explanations(seen: Seen)(implicit ctx: Context): String = {
+    def needsExplanation(entry: Recorded) = entry match {
+      case param: PolyParam => ctx.typerState.constraint.contains(param)
+      case _ => false
+    }
+
+    val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
+      case (str, entry :: Nil) =>
+        if (needsExplanation(entry)) (str, entry) :: Nil else Nil
+      case (str, entries) =>
+        entries.map(alt => (seen.record(str, alt), alt))
+    }.sortBy(_._1)
+
+    def columnar(parts: List[(String, String)]): List[String] = {
+      lazy val maxLen = parts.map(_._1.length).max
+      parts.map {
+        case (leader, trailer) =>
+          val variable = hl"$leader"
+          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
+      }
+    }
+
+    val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
+    val explainLines = columnar(explainParts)
+    if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
+  }
+
+  /** Context with correct printer set for explanations */
+  private def explainCtx(seen: Seen)(implicit ctx: Context): Context = ctx.printer match {
+    case dp: ExplainingPrinter =>
+      ctx // re-use outer printer and defer explanation to it
+    case _ => ctx.fresh.setPrinterFn(ctx => new ExplainingPrinter(seen)(ctx))
+  }
+
+  /** Entrypoint for explanation string interpolator:
+    *
+    * ```
+    * ex"disambiguate $tpe1 and $tpe2"
+    * ```
+    */
+  def explained2(op: Context => String)(implicit ctx: Context): String = {
+    val seen = new Seen
+    op(explainCtx(seen)) ++ explanations(seen)
+  }
+
+  /** When getting a type mismatch it is useful to disambiguate placeholders like:
+    *
+    * ```
+    * found:    List[Int]
+    * required: List[T]
+    * where:    T is a type in the initalizer of value s which is an alias of
+    *           String
+    * ```
+    *
+    * @return the `where` section as well as the printing context for the
+    *         placeholders - `("T is a...", printCtx)`
+    */
+  def disambiguateTypes(args: Type*)(implicit ctx: Context): (String, Context) = {
+    val seen = new Seen
+    val printCtx = explainCtx(seen)
+    args.foreach(_.show(printCtx)) // showing each member will put it into `seen`
+    (explanations(seen), printCtx)
+  }
+
+  /** This method will produce a colored type diff from the given arguments.
+    * The idea is to do this for known cases that are useful and then fall back
+    * on regular syntax highlighting for the cases which are unhandled.
+    *
+    * Please not that if used in combination with `disambiguateTypes` the
+    * correct `Context` for printing should also be passed when calling the
+    * method.
+    *
+    * @return the (found, expected, changePercentage) with coloring to
+    *         highlight the difference
+    */
+  def typeDiff(found: Type, expected: Type)(implicit ctx: Context): (String, String) = {
+    val fnd = wrapNonSensical(found, found.show)
+    val exp = wrapNonSensical(expected, expected.show)
+
+    DiffUtil.mkColoredTypeDiff(fnd, exp) match {
+      case _ if ctx.settings.color.value == "never" => (fnd, exp)
+      case (fnd, exp, change) if change < 0.5 => (fnd, exp)
+      case _ => (fnd, exp)
     }
   }
 }

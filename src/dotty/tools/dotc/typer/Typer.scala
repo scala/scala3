@@ -37,6 +37,7 @@ import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
 import language.implicitConversions
+import printing.SyntaxHighlighting._
 
 object Typer {
 
@@ -64,6 +65,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   import tpd.{cpy => _, _}
   import untpd.cpy
   import Dynamic.isDynamicMethod
+  import reporting.diagnostic.Message
+  import reporting.diagnostic.messages._
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -96,7 +99,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     /** Method is necessary because error messages need to bind to
      *  to typedIdent's context which is lost in nested calls to findRef
      */
-    def error(msg: => String, pos: Position) = ctx.error(msg, pos)
+    def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
 
     /** Is this import a root import that has been shadowed by an explicit
      *  import in the same program?
@@ -141,9 +144,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        *      imported by <tree>
        *  or  defined in <symbol>
        */
-      def bindingString(prec: Int, whereFound: Context, qualifier: String = "")(implicit ctx: Context) =
-        if (prec == wildImport || prec == namedImport) ex"imported$qualifier by ${whereFound.importInfo}"
-        else ex"defined$qualifier in ${whereFound.owner}"
+      def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
+        if (prec == wildImport || prec == namedImport) {
+          ex"""imported$qualifier by ${hl"${whereFound.importInfo.toString}"}"""
+        } else
+          ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -166,9 +171,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         else {
           if (!scala2pkg && !previous.isError && !found.isError) {
             error(
-              ex"""reference to $name is ambiguous;
-                  |it is both ${bindingString(newPrec, ctx, "")}
-                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
+              ex"""|reference to `$name` is ambiguous
+                   |it is both ${bindingString(newPrec, ctx, "")}
+                   |and ${bindingString(prevPrec, prevCtx, " subsequently")}""",
               tree.pos)
           }
           previous
@@ -181,7 +186,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && found.exists && (found != other))
-            error(em"reference to $name is ambiguous; it is imported twice in ${ctx.tree}",
+            error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
                   tree.pos)
           found
         }
@@ -326,7 +331,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
       else {
-        error(em"not found: $kind$name", tree.pos)
+        error(new MissingIdent(tree, kind, name.show), tree.pos)
         ErrorType
       }
 
@@ -767,10 +772,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 TypeTree(pt)
               case _ =>
                 if (!mt.isDependent) EmptyTree
-                else throw new Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
+                else throw new java.lang.Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
             }
           case tp =>
-            throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
+            throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
         }
       else typed(tree.tpt)
     //println(i"typing closure $tree : ${meth1.tpe.widen}")
@@ -839,11 +844,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             mapOver(t)
         }
       }
-      override def transform(tree: Tree)(implicit ctx: Context) =
-        super.transform(tree.withType(elimWildcardSym(tree.tpe))) match {
+      override def transform(trt: Tree)(implicit ctx: Context) =
+        super.transform(trt.withType(elimWildcardSym(trt.tpe))) match {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(em"duplicate pattern variable: ${b.name}", b.pos)
+            else ctx.error(new DuplicateBind(b, tree), b.pos)
             b.symbol.info = elimWildcardSym(b.symbol.info)
             b
           case t => t
@@ -1254,7 +1259,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
-    if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.pos)
+    if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
     val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
     if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
       val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))

@@ -13,7 +13,7 @@ object assignments {
     x = x + 1
     x *= 2
 
-    x_= = 2  // error should give missing arguments + // error reassignment to val
+    x_= = 2  // error should give missing arguments
   }
 
   var c = new C

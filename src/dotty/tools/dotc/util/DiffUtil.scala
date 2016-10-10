@@ -12,9 +12,7 @@ object DiffUtil {
   private final val DELETION_COLOR = ANSI_RED
   private final val ADDITION_COLOR = ANSI_GREEN
 
-  def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
-
-    @tailrec def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
+  @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
       if (str == "") {
         acc.reverse
       } else {
@@ -32,6 +30,35 @@ object DiffUtil {
         splitTokens(rest, token :: acc)
       }
     }
+
+
+  /** @return a tuple of the (found, expected, changedPercentage) diffs as strings */
+  def mkColoredTypeDiff(found: String, expected: String): (String, String, Double) = {
+    var totalChange = 0
+    val foundTokens   = splitTokens(found, Nil).toArray
+    val expectedTokens = splitTokens(expected, Nil).toArray
+
+    val diffExp = hirschberg(foundTokens, expectedTokens)
+    val diffAct = hirschberg(expectedTokens, foundTokens)
+
+    val exp = diffExp.collect {
+      case Unmodified(str) => str
+      case Inserted(str) =>
+        totalChange += str.length
+        ADDITION_COLOR + str + ANSI_DEFAULT
+    }.mkString
+
+    val fnd = diffAct.collect {
+      case Unmodified(str) => str
+      case Inserted(str) =>
+        totalChange += str.length
+        DELETION_COLOR + str + ANSI_DEFAULT
+    }.mkString
+
+    (fnd, exp, totalChange.toDouble / (expected.length + found.length))
+  }
+
+  def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
 
     val tokens = splitTokens(code, Nil).toArray
     val lastTokens = splitTokens(lastCode, Nil).toArray

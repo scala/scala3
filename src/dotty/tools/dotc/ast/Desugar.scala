@@ -9,6 +9,7 @@ import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
 import util.Property
+import reporting.diagnostic.messages._
 
 object desugar {
   import untpd._
@@ -71,7 +72,9 @@ object desugar {
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next
             var local = defctx.denotNamed(tp.name).suchThat(_ is ParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealias
-            else throw new Error(s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}")
+            else throw new java.lang.Error(
+              s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}"
+            )
           case _ =>
             mapOver(tp)
         }
@@ -281,7 +284,7 @@ object desugar {
     val constrVparamss =
       if (constr1.vparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
-          ctx.error("case class needs to have at least one parameter list", cdef.pos)
+          ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
         ListOfNil
       }
       else constr1.vparamss.nestedMap(toDefParam)

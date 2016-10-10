@@ -27,6 +27,8 @@ import rewrite.Rewrites.patch
 object Parsers {
 
   import ast.untpd._
+  import reporting.diagnostic.Message
+  import reporting.diagnostic.messages._
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 
@@ -97,7 +99,7 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: String, offset: Int = in.offset): Unit =
+    def syntaxError(msg: Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         syntaxError(msg, Position(offset))
         lastErrorOffset = in.offset
@@ -106,7 +108,7 @@ object Parsers {
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(msg: String, pos: Position): Unit =
+    def syntaxError(msg: Message, pos: Position): Unit =
       ctx.error(msg, source atPos pos)
 
   }
@@ -213,20 +215,23 @@ object Parsers {
       }
     }
 
-    def warning(msg: String, offset: Int = in.offset) =
+    def warning(msg: Message, sourcePos: SourcePosition) =
+      ctx.warning(msg, sourcePos)
+
+    def warning(msg: Message, offset: Int = in.offset) =
       ctx.warning(msg, source atPos Position(offset))
 
-    def deprecationWarning(msg: String, offset: Int = in.offset) =
+    def deprecationWarning(msg: Message, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
 
     /** Issue an error at current offset taht input is incomplete */
-    def incompleteInputError(msg: String) =
+    def incompleteInputError(msg: Message) =
       ctx.incompleteInputError(msg, source atPos Position(in.offset))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: String) =
+    def syntaxErrorOrIncomplete(msg: Message) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg)
@@ -732,7 +737,7 @@ object Parsers {
 
     def withTypeRest(t: Tree): Tree =
       if (in.token == WITH) {
-        deprecationWarning("`with' as a type operator has been deprecated; use `&' instead")
+        deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
         AndTypeTree(t, withType())
       }
@@ -1004,28 +1009,33 @@ object Parsers {
           DoWhile(body, cond)
         }
       case TRY =>
+        val tryOffset = in.offset
         atPos(in.skipToken()) {
           val body = expr()
-          val handler =
+          val (handler, handlerStart) =
             if (in.token == CATCH) {
+              val pos = in.offset
               in.nextToken()
-              expr()
-            } else EmptyTree
+              (expr(), pos)
+            } else (EmptyTree, -1)
 
           handler match {
-            case Block(Nil, EmptyTree) => syntaxError(
-              "`catch` block does not contain a valid expression, try adding a case like - `case e: Exception =>` to the block",
-              handler.pos
-            )
+            case Block(Nil, EmptyTree) =>
+              assert(handlerStart != -1)
+              syntaxError(
+                new EmptyCatchBlock(body),
+                Position(handlerStart, handler.pos.end)
+              )
             case _ =>
           }
 
           val finalizer =
             if (in.token == FINALLY) { accept(FINALLY); expr() }
             else {
-              if (handler.isEmpty)
-                warning("A try without `catch` or `finally` is equivalent to putting its body in a block; no exceptions are handled.")
-
+              if (handler.isEmpty) warning(
+                EmptyCatchAndFinallyBlock(body),
+                source atPos Position(tryOffset, body.pos.end)
+              )
               EmptyTree
             }
           ParsedTry(body, handler, finalizer)

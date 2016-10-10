@@ -5,21 +5,29 @@ package printing
 import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
+import core.Contexts.Context
+import Highlighting.{Highlight, HighlightBuffer}
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
-  val NoColor         = Console.RESET
-  val CommentColor    = Console.GREEN
-  val KeywordColor    = Console.CYAN
-  val LiteralColor    = Console.MAGENTA
-  val TypeColor       = Console.GREEN
-  val AnnotationColor = Console.RED
 
-  private def none(str: String)       = str
-  private def keyword(str: String)    = KeywordColor + str + NoColor
-  private def typeDef(str: String)    = TypeColor + str + NoColor
-  private def literal(str: String)    = LiteralColor + str + NoColor
-  private def annotation(str: String) = AnnotationColor + str + NoColor
+  val NoColor         = Console.RESET
+  val CommentColor    = Console.BLUE
+  val KeywordColor    = Console.YELLOW
+  val ValDefColor     = Console.CYAN
+  val LiteralColor    = Console.RED
+  val TypeColor       = Console.MAGENTA
+  val AnnotationColor = Console.MAGENTA
+
+  private def none(str: String) = str
+  private def keyword(str: String) = KeywordColor + str + NoColor
+  private def typeDef(str: String) = TypeColor + str + NoColor
+  private def literal(str: String) = LiteralColor + str + NoColor
+  private def valDef(str: String) = ValDefColor + str + NoColor
+  private def operator(str: String) = TypeColor + str + NoColor
+  private def annotation(str: String) =
+    if (str.trim == "@") str else AnnotationColor + str + NoColor
+  private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
     index <- IF to INLINE // All alpha keywords
@@ -33,15 +41,18 @@ object SyntaxHighlighting {
     'q' :: 'r' :: 's' :: 't' :: 'u' :: 'v' :: 'w' :: 'x' :: 'y' :: 'z' :: Nil
 
   private val typeEnders =
-   '{' :: '}' :: ')' :: '(' :: '=' :: ' ' :: ',' :: '.' :: '\n' :: Nil
+   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' ::
+   '\n' :: Nil
 
-  def apply(chars: Iterable[Char]): Vector[Char] = {
+  def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
+    var lastToken  = ""
 
     @inline def keywordStart =
-      prev == 0 || prev == ' ' || prev == '{' || prev == '(' || prev == '\n'
+      prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
+      prev == '\n' || prev == '[' || prev == ','
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -67,7 +78,9 @@ object SyntaxHighlighting {
           if (n.isUpper && keywordStart) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
           } else if (keywordStart) {
-            append(n, keywords.contains(_), keyword)
+            append(n, keywords.contains(_), { kw =>
+              if (kw == "new") typeDef(kw) else keyword(kw)
+            })
           } else {
             newBuf += n
             prev = n
@@ -89,17 +102,17 @@ object SyntaxHighlighting {
               }
             } else newBuf += '/'
           case '='  =>
-            append('=', _ == "=>", keyword)
+            append('=', _ == "=>", operator)
           case '<'  =>
-            append('<', { x => x == "<-" || x == "<:" || x == "<%" }, keyword)
+            append('<', { x => x == "<-" || x == "<:" || x == "<%" }, operator)
           case '>'  =>
-            append('>', { x => x == ">:" }, keyword)
+            append('>', { x => x == ">:" }, operator)
           case '#'  =>
-            if (prev != ' ' && prev != '.') newBuf append keyword("#")
+            if (prev != ' ' && prev != '.') newBuf append operator("#")
             else newBuf += n
             prev = '#'
           case '@'  =>
-            appendWhile('@', _ != ' ', annotation)
+            appendWhile('@', !typeEnders.contains(_), annotation)
           case '\"' =>
             appendLiteral('\"', multiline = remaining.take(2).mkString == "\"\"")
           case '\'' =>
@@ -107,7 +120,11 @@ object SyntaxHighlighting {
           case '`'  =>
             appendTo('`', _ == '`', none)
           case _    => {
-            if (n.isUpper && keywordStart)
+            if (n == '?' && remaining.take(2).mkString == "??") {
+              takeChars(2)
+              newBuf append tripleQs
+              prev = '?'
+            } else if (n.isUpper && keywordStart)
               appendWhile(n, !typeEnders.contains(_), typeDef)
             else if (numberStart(n))
               appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
@@ -169,7 +186,7 @@ object SyntaxHighlighting {
           prev = '$'
         } else if (next == '{') {
           var open = 1 // keep track of open blocks
-          newBuf append (KeywordColor + curr)
+          newBuf append (ValDefColor + curr)
           newBuf += next
           while (remaining.nonEmpty && open > 0) {
             var c = takeChar()
@@ -179,7 +196,7 @@ object SyntaxHighlighting {
           }
           newBuf append LiteralColor
         } else {
-          newBuf append (KeywordColor + curr)
+          newBuf append (ValDefColor + curr)
           newBuf += next
           var c: Char = 'a'
           while (c.isLetterOrDigit && remaining.nonEmpty) {
@@ -227,15 +244,32 @@ object SyntaxHighlighting {
     def append(c: Char, shouldHL: String => Boolean, highlight: String => String) = {
       var curr: Char = 0
       val sb = new StringBuilder(s"$c")
-      while (remaining.nonEmpty && curr != ' ' && curr != '(' && curr != '\n') {
+
+      def delim(c: Char) = (c: @switch) match {
+        case ' ' => true
+        case '\n' => true
+        case '(' => true
+        case '[' => true
+        case ':' => true
+        case '@' => true
+        case _ => false
+      }
+
+      while (remaining.nonEmpty && !delim(curr)) {
         curr = takeChar()
-        if (curr != ' ' && curr != '\n') sb += curr
+        if (!delim(curr)) sb += curr
       }
 
       val str    = sb.toString
-      val toAdd  = if (shouldHL(str)) highlight(str) else str
-      val suffix = if (curr == ' ' || curr == '\n') s"$curr" else ""
+      val toAdd  =
+        if (shouldHL(str))
+          highlight(str)
+        else if (("var" :: "val" :: "def" :: "case" :: Nil).contains(lastToken))
+          valDef(str)
+        else str
+      val suffix = if (delim(curr)) s"$curr" else ""
       newBuf append (toAdd + suffix)
+      lastToken = str
       prev = curr
     }
 
@@ -265,6 +299,6 @@ object SyntaxHighlighting {
       prev = curr
     }
 
-    newBuf.toVector
+    newBuf.toIterable
   }
 }

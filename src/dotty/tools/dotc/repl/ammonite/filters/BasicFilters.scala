@@ -25,11 +25,10 @@ object BasicFilters {
     typingFilter
   )
 
-  def injectNewLine(b: Vector[Char], c: Int, rest: LazyList[Int]) = {
+  def injectNewLine(b: Vector[Char], c: Int, rest: LazyList[Int], indent: Int = 0) = {
     val (first, last) = b.splitAt(c)
-    TermState(rest, (first :+ '\n') ++ last, c + 1)
+    TermState(rest, (first :+ '\n') ++ last ++ Vector.fill(indent)(' '), c + 1 + indent)
   }
-
 
   def navFilter = Filter.merge(
     Case(Up)((b, c, m) => moveUp(b, c, m.width)),
