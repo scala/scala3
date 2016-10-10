@@ -3,10 +3,9 @@ package dotc
 import test._
 import dotty.tools.dotc.test.CompilerTest
 
-object comptest extends CompilerTest {
+object comptest extends CompilerTest("") {
 
   override val generatePartestFiles = false
-  val defaultOutputDir: String = ""
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"

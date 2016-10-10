@@ -10,11 +10,8 @@ import dotty.tools.dotc.test.CompilerTest
 import dotty.tools.io._
 
 class ReplCompilerTest extends CompilerTest {
-  val defaultOutputDir = ""
-  val testsDir = "../tests/"
-  val replDir = testsDir + "repl/"
-
-  @Test def repl_all = replFiles(replDir)
+  implicit val options = defaultOptions
+  @Test def replOutput = replFiles("../tests/repl/")
 
   def replFile(prefix: String, fileName: String): Unit = {
     val path = s"$prefix$fileName"

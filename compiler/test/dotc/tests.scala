@@ -10,26 +10,7 @@ import scala.io.Source
 
 // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
 class tests extends CompilerTest {
-
-  def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
-
-  val noCheckOptions = List(
-//        "-verbose",
-//         "-Ylog:frontend",
-//        "-Xprompt",
-//        "-explaintypes",
-//        "-Yshow-suppressed-errors",
-        "-pagewidth", "160")
-
-  val defaultOutputDir = "../out/"
-
-  implicit val defaultOptions = noCheckOptions ++ List(
-      "-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-d", defaultOutputDir) ++ {
-    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-  }
-
-  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
+  implicit val options = defaultOptions
 
   val twice = List("#runs", "2")
   val staleSymbolError: List[String] = List()
@@ -49,7 +30,7 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
 
-  val sourceDir = "./src/"
+  val sourceDir = "../compiler/src/"
   val dottyDir  = sourceDir + "dotty/"
   val toolsDir  = dottyDir + "tools/"
   val backendDir = toolsDir + "backend/"
@@ -58,6 +39,9 @@ class tests extends CompilerTest {
   val parsingDir = dotcDir + "parsing/"
   val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
+
+  val libDir = "../library/src"
+  val replDir = "../repl"
 
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
 // This directory doesn't exist anymore
@@ -224,10 +208,12 @@ class tests extends CompilerTest {
   // Disabled because we get stale symbol errors on the SourceFile annotation, which is normal.
   // @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
 
-  @Test def tasty_runtime = compileDir(s"$dottyDir", "runtime", testPickling)
-  @Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
-
   @Test def tasty_tools = compileDir(dottyDir, "tools", testPickling)
+
+  @Test def tasty_runtime = compileDir(s"$libDir/dotty/", "runtime", testPickling)
+  @Test def tasty_runtime_vc = compileDir(s"$libDir/dotty/runtime/", "vc", testPickling)
+
+  @Test def tasty_dotc_repl = compileDir(s"$replDir/", "src", testPickling)
 
   //TODO: issue with ./src/dotty/tools/backend/jvm/DottyBackendInterface.scala
   @Test def tasty_backend_jvm = compileList("tasty_backend_jvm", List(
@@ -265,8 +251,6 @@ class tests extends CompilerTest {
   ) map (parsingDir + _), testPickling)
 
   @Test def tasty_dotc_printing = compileDir(dotcDir, "printing", testPickling)
-
-  @Test def tasty_dotc_repl = compileDir(dotcDir, "repl", testPickling)
 
   //@Test def tasty_dotc_reporting = compileDir(dotcDir, "reporting", testPickling)
   @Test def tasty_dotc_rewrite = compileDir(dotcDir, "rewrite", testPickling)

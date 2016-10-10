@@ -37,12 +37,36 @@ import java.io.{ RandomAccessFile, File => JFile }
   *        <test>.check. Run tests always need to be:
   *        object Test { def main(args: Array[String]): Unit = ... }
   *        Classpath jars can be added to partestDeps in the sbt Build.scala.
+  *
+  * @param outputDir: override with output dir of test so it can be patched.
+  *                   Partest expects classes to be in
+  *                   partest-generated/[kind]/[testname]-[kind].obj/
   */
-abstract class CompilerTest {
+abstract class CompilerTest(val outputDir: String = "../out/") {
 
-  /** Override with output dir of test so it can be patched. Partest expects
-    * classes to be in partest-generated/[kind]/[testname]-[kind].obj/ */
-  val defaultOutputDir: String
+  def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
+
+  protected val noCheckOptions = List(
+//    "-verbose",
+//    "-Ylog:frontend",
+//    "-Xprompt",
+//    "-explaintypes",
+//    "-Yshow-suppressed-errors",
+    "-pagewidth", "160"
+  )
+
+  // Default options for compilation both locally and on CI
+  val defaultOptions: List[String] = noCheckOptions ++ List(
+    "-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-d", outputDir
+  ) ++ {
+    if (isRunByJenkins)
+      List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    else
+      List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+  }
+
+  // Options for testing pickling
+  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   /** Override to filter out tests that should not be run by partest. */
   def partestableFile(prefix: String, fileName: String, extension: String, args: List[String]) = true
@@ -63,7 +87,7 @@ abstract class CompilerTest {
     if (pid == null)
       false
     else
-      new JFile("." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
+      new JFile(".." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
   }
 
   // Delete generated files from previous run and create new log
@@ -142,6 +166,7 @@ abstract class CompilerTest {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
       val (filePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
+      filePaths.foreach(println)
       compileArgs(filePaths ++ normArgs, expErrors)
     } else {
       val (sourceDir, flags, deep) = args match {
@@ -391,7 +416,7 @@ abstract class CompilerTest {
     * different flags). Detects existing versions and computes the path to be
     * used for this version, e.g. testname_v1 for the first alternative. */
   private def computeDestAndCopyFiles(source: JFile, dest: Path, kind: String, oldFlags: List[String], nerr: String,
-      nr: Int = 0, oldOutput: String = defaultOutputDir): Unit = {
+      nr: Int = 0, oldOutput: String = outputDir): Unit = {
 
     val partestOutput = dest.jfile.getParentFile + JFile.separator + dest.stripExtension + "-" + kind + ".obj"
     val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f) ++

@@ -25,6 +25,13 @@ object DottyBuild extends Build {
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
+  lazy val sourceLayout = Seq(
+    scalaSource in Compile := baseDirectory.value / "src",
+    scalaSource in Test    := baseDirectory.value / "test",
+    javaSource  in Compile := baseDirectory.value / "src",
+    javaSource  in Test    := baseDirectory.value / "test"
+  )
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
@@ -64,10 +71,8 @@ object DottyBuild extends Build {
 
   lazy val `dotty-library` =
     project.in(file("library"))
+    .settings(sourceLayout)
     .settings(
-      scalaSource in Compile := baseDirectory.value / "src",
-      javaSource in Compile := baseDirectory.value / "src",
-
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value
       )
@@ -78,12 +83,8 @@ object DottyBuild extends Build {
     project.in(file("repl"))
     .dependsOn(`dotty-compiler`)
     .dependsOn(`dotty-compiler` % "test->test")
+    .settings(sourceLayout)
     .settings(
-      scalaSource in Compile := baseDirectory.value / "src",
-      javaSource in Compile := baseDirectory.value / "src",
-      scalaSource in Test := baseDirectory.value / "test",
-      javaSource in Test := baseDirectory.value / "test",
-
       // set system in/out for repl
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
@@ -124,20 +125,17 @@ object DottyBuild extends Build {
       }
     )
 
-  lazy val `dotty-compiler` = project.in(file("compiler")).
-    dependsOn(`dotty-interfaces`).
-    dependsOn(`dotty-library`). // this will disappear once we snip the cord from scalac
-    settings(
+  lazy val `dotty-compiler` =
+    project.in(file("compiler"))
+    .dependsOn(`dotty-interfaces`)
+    .dependsOn(`dotty-library`) // this will disappear once we snip the cord from scalac
+    .settings(sourceLayout)
+    .settings(
       // Disable scaladoc generation, makes publishLocal much faster
       publishArtifact in packageDoc := false,
 
       overrideScalaVersionSetting,
 
-      // set sources to src/, tests to test/ and resources to resources/
-      scalaSource in Compile := baseDirectory.value / "src",
-      javaSource in Compile := baseDirectory.value / "src",
-      scalaSource in Test := baseDirectory.value / "test",
-      javaSource in Test := baseDirectory.value / "test",
       resourceDirectory in Compile := baseDirectory.value / "resources",
       publishArtifact in Test := false,
 
@@ -273,7 +271,7 @@ object DottyBuild extends Build {
       addCommandAlias(
         "partest",
         ";dotty-repl/test" +
-        ";dotty-sbt-bridge/test" +
+        //";dotty-sbt-bridge/test" +
         ";dotty-compiler/test:package" +
         ";dotty-compiler/package" +
         ";dotty-compiler/test:runMain dotc.build" +
@@ -284,7 +282,7 @@ object DottyBuild extends Build {
       addCommandAlias(
         "partest-only",
         ";dotty-repl/test" +
-        ";dotty-sbt-bridge/test" +
+        //";dotty-sbt-bridge/test" +
         ";dotty-compiler/test:package" +
         ";dotty-compiler/package" +
         ";dotty-compiler/test:runMain dotc.build" +
