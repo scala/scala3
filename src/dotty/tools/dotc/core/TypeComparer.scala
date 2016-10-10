@@ -8,7 +8,7 @@ import StdNames.{nme, tpnme}
 import collection.mutable
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
-import config.Printers.{typr, constr, subtyping}
+import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
@@ -837,8 +837,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     op1 && {
       val leftConstraint = constraint
       constraint = preConstraint
-      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint)))
+      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
+        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
+          constr.println(i"CUT - prefer $leftConstraint over $constraint")
         constraint = leftConstraint
+      }
       true
     } || op2
   }
