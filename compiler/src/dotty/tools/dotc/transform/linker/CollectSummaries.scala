@@ -28,6 +28,7 @@ import dotty.tools.dotc.transform.TreeTransforms._
 
 import collection.{immutable, mutable}
 import collection.mutable.{LinkedHashMap, LinkedHashSet, TreeSet}
+import scala.annotation.tailrec
 
 class CollectSummaries extends MiniPhase { thisTransform =>
   import tpd._
@@ -331,7 +332,37 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             case _ => x.tpe
       }})
 
-      curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
+      // Create calls to wappXArray for varArgs
+      val primitiveClasses = Array[Symbol](defn.IntClass, defn.LongClass, defn.ShortClass, defn.CharClass, defn.ByteClass,
+          defn.BooleanClass, defn.FloatClass, defn.DoubleClass, defn.UnitClass)
+      val repeatedArgsCalls = tree match {
+        case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
+          @tailrec def getVarArgTypes(tp: Type, acc: List[Type]): List[Type] = tp match {
+            case tp: PolyType => getVarArgTypes(tp.resultType, acc)
+            case tp @ MethodType(_, paramTypes) if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam => getVarArgTypes(tp.resultType, paramTypes.last :: acc)
+            case _ => acc
+          }
+          val varArgsTypes = getVarArgTypes(fun.tpe.widenDealias, Nil)
+          val argsTpes = varArgsTypes.map {
+            case tp: RefinedType => tp.refinedInfo
+            case tp              => tp
+          }
+
+          argsTpes.map { tp =>
+            def wrapArrayTermRef(arrayName: TermName) =
+              TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
+            val args = List(defn.ArrayOf(tp))
+            val sym = tp.typeSymbol
+            if (primitiveClasses.contains(sym))
+              CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args)
+            else
+              CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args)
+          }
+
+        case _ => Nil
+      }
+
+      curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: repeatedArgsCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
