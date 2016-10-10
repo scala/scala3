@@ -114,25 +114,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => toTextGlobal(arg)
   }
 
-  /** The text for a PolyType
-   *
-   *     [v_1 p_1: B_1, ..., v_n p_n: B_n] -> T
-   *
-   *  where
-   *  @param  paramNames  = p_1, ..., p_n
-   *  @param  variances   = v_1, ..., v_n
-   *  @param  argBoundss  = B_1, ..., B_n
-   *  @param  body        = T
-   */
-  protected def polyTypeText(paramNames: List[String], variances: List[Int], argBoundss: List[TypeBounds], body: Type): Text = {
-    def lambdaParamText(variance: Int, name: String, bounds: TypeBounds): Text =
-      varianceString(variance) ~ name ~ toText(bounds)
-    changePrec(GlobalPrec) {
-      "[" ~ Text((variances, paramNames, argBoundss).zipped.map(lambdaParamText), ", ") ~
-      "] -> " ~ toTextGlobal(body)
-    }
-  }
-
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
    */
@@ -186,7 +167,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: PolyType =>
-        polyTypeText(tp.paramNames.map(_.toString), tp.variances, tp.paramBounds, tp.resultType)
+        def paramText(variance: Int, name: Name, bounds: TypeBounds): Text =
+          varianceString(variance) ~ name.toString ~ toText(bounds)
+        changePrec(GlobalPrec) {
+          "[" ~ Text((tp.variances, tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
+          "] => " ~ toTextGlobal(tp.resultType)
+        }
       case tp: PolyParam =>
         polyParamNameString(tp) ~ polyHash(tp.binder)
       case AnnotatedType(tpe, annot) =>

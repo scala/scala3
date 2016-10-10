@@ -20,7 +20,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private var lambdaNestingLevel: Int = 0
   private var myCtx: Context = _ctx
   override protected[this] implicit def ctx: Context = myCtx
 
