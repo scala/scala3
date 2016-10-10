@@ -517,7 +517,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
     def toPrefix(sym: Symbol): String =
-      if (!sym.exists || (sym eq defn.LanguageModuleClass) || (sym eq defn.Scala2LanguageModuleClass)) ""
+      if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
       else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = {
@@ -536,13 +536,13 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** Is auto-tupling enabled? */
   def canAutoTuple =
-    !featureEnabled(defn.Scala2LanguageModuleClass, nme.noAutoTupling)
+    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
 
   def scala2Mode =
     featureEnabled(defn.LanguageModuleClass, nme.Scala2)
 
   def dynamicsEnabled =
-    featureEnabled(defn.Scala2LanguageModuleClass, nme.dynamics)
+    featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
   def testScala2Mode(msg: String, pos: Position) = {
     if (scala2Mode) migrationWarning(msg, pos)
