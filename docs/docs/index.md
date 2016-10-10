@@ -15,7 +15,7 @@ Index
 * Usage
     - [Migrating from Scala 2](usage/migrating.md)
     - [Using Dotty with sbt](usage/sbt-projects.md)
-* Contributing
+* [Contributing](contributing/index.md)
     - [Getting Started](contributing/getting-started.md) details on how to run
       tests, use the cli scripts
     - [Workflow](contributing/workflow.md) common dev patterns and hints
