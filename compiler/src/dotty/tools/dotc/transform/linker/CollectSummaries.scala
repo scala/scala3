@@ -2,33 +2,32 @@ package dotty.tools.dotc
 package transform
 package linker
 
-import TreeTransforms._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Flags._
-import core.Decorators._
-import core.SymDenotations._
-import core.StdNames.nme
-import core.Names._
-import core.NameOps._
-import ast.Trees._
-import SymUtils._
-import dotty.tools.backend.jvm.CollectEntryPoints
+
 import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
+
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees._
+
+import dotty.tools.backend.jvm.CollectEntryPoints
+
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.tasty.DottyUnpickler.TreeSectionUnpickler
-import dotty.tools.dotc.core.tasty.TastyName.Table
-import dotty.tools.dotc.core.tasty.TastyUnpickler.SectionUnpickler
-import dotty.tools.dotc.core.{Hashable, ClassfileLoader, TypeErasure, Flags}
+import dotty.tools.dotc.core.{Flags, Hashable, TypeErasure}
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.tasty._
-import dotty.tools.dotc.transform.CollectSummaries.{SubstituteByParentMap}
+
+import dotty.tools.dotc.transform.CollectSummaries.SubstituteByParentMap
 import dotty.tools.dotc.transform.Summaries._
-import collection.{ mutable, immutable }
-import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
+import dotty.tools.dotc.transform.TreeTransforms._
+
+import collection.{immutable, mutable}
+import collection.mutable.{LinkedHashMap, LinkedHashSet, TreeSet}
 
 class CollectSummaries extends MiniPhase { thisTransform =>
   import tpd._
