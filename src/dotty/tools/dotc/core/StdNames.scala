@@ -307,7 +307,7 @@ object StdNames {
     val ??? = encode("???")
 
     val genericWrapArray: N     = "genericWrapArray"
-    def wrapRefArray: N         = "wrapRefArray"
+    val wrapRefArray: N         = "wrapRefArray"
     def wrapXArray(clsName: Name): N = "wrap" + clsName + "Array"
 
     // Compiler utilized names
