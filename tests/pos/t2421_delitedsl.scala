@@ -15,8 +15,8 @@ trait DeliteDSL {
   import scala.collection.Traversable
   class DeliteCollection[T](val xs: Traversable[T]) {
     // must use existential in bound of P, instead of T itself, because we cannot both have:
-        // Test.x below: DeliteCollection[T=Int] -> P=DeliteInt <: Forcible[T=Int], as T=Int <~< P=DeliteInt
-        // Test.xAlready below: DeliteCollection[T=DeliteInt] -> P=DeliteInt <: Forcible[T=DeliteInt], as T=DeliteInt <~< P=DeliteInt
+        // Test.x below: DeliteCollection[T=Int] => P=DeliteInt <: Forcible[T=Int], as T=Int <~< P=DeliteInt
+        // Test.xAlready below: DeliteCollection[T=DeliteInt] => P=DeliteInt <: Forcible[T=DeliteInt], as T=DeliteInt <~< P=DeliteInt
         // this would required DeliteInt <: Forcible[Int] with Forcible[DeliteInt]
 
     def headProxy[P <: Forcible[_]](implicit w: T <~< P): P = xs.head
