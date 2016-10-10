@@ -4,12 +4,9 @@ package linker
 
 
 import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees._
-
 import dotty.tools.backend.jvm.CollectEntryPoints
-
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Types._
@@ -21,7 +18,6 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.{Flags, Hashable, TypeErasure}
 import dotty.tools.dotc.core.Phases.Phase
-
 import dotty.tools.dotc.transform.CollectSummaries.SubstituteByParentMap
 import dotty.tools.dotc.transform.Summaries._
 import dotty.tools.dotc.transform.TreeTransforms._
@@ -333,27 +329,29 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }})
 
       // Create calls to wappXArray for varArgs
-      val primitiveClasses = Array[Symbol](defn.IntClass, defn.LongClass, defn.ShortClass, defn.CharClass, defn.ByteClass,
-          defn.BooleanClass, defn.FloatClass, defn.DoubleClass, defn.UnitClass)
       val repeatedArgsCalls = tree match {
         case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
-          @tailrec def getVarArgTypes(tp: Type, acc: List[Type]): List[Type] = tp match {
+          @tailrec def refine(tp: Type): Type = tp match {
+            case tp: TypeAlias   => refine(tp.alias.dealias)
+            case tp: RefinedType => refine(tp.refinedInfo)
+            case _               => tp
+          }
+          @tailrec def getVarArgTypes(tp: Type, acc: List[Type] = Nil): List[Type] = tp match {
             case tp: PolyType => getVarArgTypes(tp.resultType, acc)
-            case tp @ MethodType(_, paramTypes) if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam => getVarArgTypes(tp.resultType, paramTypes.last :: acc)
+            case tp @ MethodType(_, paramTypes) if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam =>
+              getVarArgTypes(tp.resultType, refine(paramTypes.last) :: acc)
             case _ => acc
           }
-          val varArgsTypes = getVarArgTypes(fun.tpe.widenDealias, Nil)
-          val argsTpes = varArgsTypes.map {
-            case tp: RefinedType => tp.refinedInfo
-            case tp              => tp
-          }
 
-          argsTpes.map { tp =>
-            def wrapArrayTermRef(arrayName: TermName) =
-              TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
+          def wrapArrayTermRef(arrayName: TermName) =
+            TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
+
+          getVarArgTypes(fun.tpe.widenDealias).map { tp =>
             val args = List(defn.ArrayOf(tp))
             val sym = tp.typeSymbol
-            if (primitiveClasses.contains(sym))
+            if (sym.isTypeParam || sym == defn.NothingClass)
+              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args)
+            else if (defn.isPrimitiveClass(sym))
               CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args)
             else
               CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args)

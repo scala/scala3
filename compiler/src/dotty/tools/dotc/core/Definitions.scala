@@ -433,6 +433,12 @@ class Definitions {
 
     def BoxedUnit_UNIT(implicit ctx: Context) = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
+
+  def isPrimitiveClass(sym: Symbol): Boolean = {
+    sym == defn.IntClass || sym == defn.LongClass || sym == defn.ShortClass || sym ==  defn.CharClass || sym == defn.ByteClass ||
+    sym == defn.BooleanClass || sym == defn.FloatClass || sym == defn.DoubleClass || sym == defn.UnitClass
+  }
+
   lazy val BoxedBooleanType: TypeRef = ctx.requiredClassRef("java.lang.Boolean")
   def BoxedBooleanClass(implicit ctx: Context) = BoxedBooleanType.symbol.asClass
   lazy val BoxedByteType: TypeRef = ctx.requiredClassRef("java.lang.Byte")
