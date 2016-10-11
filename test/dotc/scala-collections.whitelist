@@ -280,3 +280,8 @@
 ./scala-scala/src/library/scala/collection/generic/Subtractable.scala
 ./scala-scala/src/library/scala/collection/generic/TraversableFactory.scala
 ./scala-scala/src/library/scala/collection/generic/package.scala
+
+# For call graph instantiation of fillStackTrace on instantiation of exceptions
+./scala-scala/src/library/scala/util/control/NoStackTrace.scala
+./scala-scala/src/library/scala/util/control/ControlThrowable.scala
+./scala-scala/src/library/scala/util/control/Breaks.scala
