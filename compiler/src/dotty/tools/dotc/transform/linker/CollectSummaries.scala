@@ -360,7 +360,15 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-      curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: repeatedArgsCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
+      val fillInStackTrace = tree match {
+        case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
+          List(CallInfo(TermRef(newThrowable.tpe, newThrowable.tpe.widenDealias.classSymbol.requiredMethod("fillInStackTrace")), Nil, Nil))
+        case _ => Nil
+      }
+
+      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
+
+      curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
