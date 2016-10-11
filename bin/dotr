@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Try to autodetect real location of the script
 DOTTY_ROOT="$(readlink "$0")"              #  relative, symbolic links resolved

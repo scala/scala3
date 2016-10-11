@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script is used for running compiler standalone(outside of sbt)
 # it's based on miniboxing script and paulp's launcher script
 
