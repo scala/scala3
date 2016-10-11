@@ -43,6 +43,11 @@ object ProtoTypes {
       isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
     }
 
+    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
+      case _: OrType => true
+      case pt => pt.isRef(defn.UnitClass)
+    }
+
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
@@ -54,7 +59,7 @@ object ProtoTypes {
           case _ =>
             true
         }
-      case _: ValueTypeOrProto if !(pt isRef defn.UnitClass) =>
+      case _: ValueTypeOrProto if !disregardProto(pt) =>
         mt match {
           case mt: MethodType =>
             mt.isDependent || isCompatible(normalize(mt, pt), pt)

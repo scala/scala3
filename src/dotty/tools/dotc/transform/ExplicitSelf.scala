@@ -20,11 +20,20 @@ import Flags._
  *
  *  where `S` is the self type of `C`.
  *  See run/i789.scala for a test case why this is needed.
+ *
+ *  Also replaces idents referring to the self type with ThisTypes.
  */
 class ExplicitSelf extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName = "explicitSelf"
+
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
+    case tp: ThisType =>
+      ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
+      This(tp.cls) withPos tree.pos
+    case _ => tree
+  }
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
     case Select(thiz: This, name) if name.isTermName =>

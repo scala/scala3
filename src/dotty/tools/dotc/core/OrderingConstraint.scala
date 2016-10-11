@@ -521,6 +521,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
             case _ if e1 contains e2 => e2
             case _ => mergeError
           }
+        case tv1: TypeVar =>
+          e2 match {
+            case tv2: TypeVar if tv1.instanceOpt eq tv2.instanceOpt => e1
+            case _ => mergeError
+          }
         case _ if e1 eq e2 => e1
         case _ => mergeError
     }

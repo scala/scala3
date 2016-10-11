@@ -436,8 +436,12 @@ object Types {
           tp.cls.findMember(name, pre, excluded)
         case AndType(l, r) =>
           goAnd(l, r)
-        case OrType(l, r) =>
-          goOr(l, r)
+        case tp: OrType =>
+          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+          // supertype of `pre`.
+          go(tp.join)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, excluded)
         case ErrorType =>
@@ -556,7 +560,6 @@ object Types {
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
-      def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
 
       { val recCount = ctx.findMemberCount + 1
         ctx.findMemberCount = recCount
@@ -1229,28 +1232,6 @@ object Types {
      *  maps poly params in the current constraint set back to their type vars.
      */
     def simplified(implicit ctx: Context) = ctx.simplify(this, null)
-
-    /** Approximations of union types: We replace a union type Tn | ... | Tn
-     *  by the smallest intersection type of baseclass instances of T1,...,Tn.
-     *  Example: Given
-     *
-     *      trait C[+T]
-     *      trait D
-     *      class A extends C[A] with D
-     *      class B extends C[B] with D with E
-     *
-     *  we approximate `A | B` by `C[A | B] with D`
-     *
-     *  As a second measure we also homogenize refinements containing
-     *  type variables. For instance, if `A` is an instantiatable type variable,
-     *  then
-     *
-     *      ArrayBuffer[Int] | ArrayBuffer[A]
-     *
-     *  is approximated by instantiating `A` to `Int` and returning `ArrayBuffer[Int]`
-     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
-     */
-    def approximateUnion(implicit ctx: Context) = ctx.approximateUnion(this)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -2233,8 +2214,23 @@ object Types {
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
+
     assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
     def isAnd = false
+
+    private[this] var myJoin: Type = _
+    private[this] var myJoinPeriod: Period = Nowhere
+
+    /** Replace or type by the closest non-or type above it */
+    def join(implicit ctx: Context): Type = {
+      if (myJoinPeriod != ctx.period) {
+        myJoin = ctx.orDominator(this)
+        core.println(i"join of $this == $myJoin")
+        assert(myJoin != this)
+        myJoinPeriod = ctx.period
+      }
+      myJoin
+    }
 
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this

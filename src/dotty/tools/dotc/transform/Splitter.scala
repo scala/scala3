@@ -6,25 +6,34 @@ import ast.Trees._
 import core._
 import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotations._, Names._
 
-/** This transform makes sure every identifier and select node
- *  carries a symbol. To do this, certain qualifiers with a union type
- *  have to be "splitted" with a type test.
- *
- *  For now, only self references are treated.
+/** Distribute applications into Block and If nodes
  */
 class Splitter extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "splitter"
 
-  /** Replace self referencing idents with ThisTypes. */
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
-    case tp: ThisType =>
-      ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
-      This(tp.cls) withPos tree.pos
-    case _ => tree
+  /** Distribute arguments among splitted branches */
+  def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
+    def recur(fn: Tree): Tree = fn match {
+      case Block(stats, expr) => Block(stats, recur(expr))
+      case If(cond, thenp, elsep) => If(cond, recur(thenp), recur(elsep))
+      case _ => rebuild(fn, tree.args)(ctx) withPos tree.pos
+    }
+    recur(tree.fun)
   }
 
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
+    distribute(tree, typeApply)
+
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+    distribute(tree, apply)
+
+  private val typeApply = (fn: Tree, args: List[Tree]) => (ctx: Context) => TypeApply(fn, args)(ctx)
+  private val apply     = (fn: Tree, args: List[Tree]) => (ctx: Context) => Apply(fn, args)(ctx)
+
+/* The following is no longer necessary, since we select members on the join of an or type:
+ *
   /** If we select a name, make sure the node has a symbol.
    *  If necessary, split the qualifier with type tests.
    *  Example: Assume:
@@ -108,23 +117,5 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
       evalOnce(qual)(qual => choose(qual, candidates(qual.tpe)))
     }
   }
-
-  /** Distribute arguments among splitted branches */
-  def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
-    def recur(fn: Tree): Tree = fn match {
-      case Block(stats, expr) => Block(stats, recur(expr))
-      case If(cond, thenp, elsep) => If(cond, recur(thenp), recur(elsep))
-      case _ => rebuild(fn, tree.args)(ctx) withPos tree.pos
-    }
-    recur(tree.fun)
-  }
-
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
-    distribute(tree, typeApply)
-
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
-    distribute(tree, apply)
-
-  private val typeApply = (fn: Tree, args: List[Tree]) => (ctx: Context) => TypeApply(fn, args)(ctx)
-  private val apply     = (fn: Tree, args: List[Tree]) => (ctx: Context) => Apply(fn, args)(ctx)
+*/
 }

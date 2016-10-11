@@ -336,7 +336,8 @@ object Denotations {
                 (!sym2.isAsConcrete(sym1) ||
                  precedes(sym1.owner, sym2.owner) ||
                  accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
-                 sym1.is(Method) && !sym2.is(Method))
+                 sym1.is(Method) && !sym2.is(Method)) ||
+                 sym1.info.isErroneous
 
             /** Sym preference provided types also override */
             def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =

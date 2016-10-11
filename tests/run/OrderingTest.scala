@@ -23,7 +23,8 @@ object Test extends dotty.runtime.LegacyApp {
   testAll(false, true)
   testAll(1, 2);
   testAll(1.0, 2.0);
-  testAll(None, Some(1));
+ //  testAll(Some(1), Some(2))  // does not work in nsc or dotty
+ //  testAll(None, Some(1));     // does not work in dotty with or-types
   testAll[Iterable[Int]](List(1), List(1, 2));
   testAll[Iterable[Int]](List(1, 2), List(2));
   testAll((1, "bar"), (1, "foo"))

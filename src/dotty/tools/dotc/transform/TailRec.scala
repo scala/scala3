@@ -252,7 +252,10 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             } else targs
 
           val method = if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef)
-          val thisPassed = if(this.method.owner.isClass) method appliedTo(receiver.ensureConforms(method.tpe.widen.firstParamTypes.head)) else method
+          val thisPassed =
+            if (this.method.owner.isClass)
+              method.appliedTo(receiver.ensureConforms(method.tpe.widen.firstParamTypes.head))
+            else method
 
           val res =
             if (thisPassed.tpe.widen.isParameterless) thisPassed

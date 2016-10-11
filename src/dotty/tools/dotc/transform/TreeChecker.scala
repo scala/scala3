@@ -133,10 +133,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         implicit val ctx: Context = checkingCtx
-        ctx.echo(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
-        ctx.echo(ex.toString)
-        ctx.echo(ex.getStackTrace.take(30).deep.mkString("\n"))
-        ctx.echo("<<<")
+        println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
         throw ex
     }
   }
@@ -331,8 +328,30 @@ class TreeChecker extends Phase with SymTransformer {
       checkNotRepeated(super.typedIdent(tree, pt))
     }
 
+    /** Makes sure the symbol in the tree can be approximately reconstructed by
+     *  calling `member` on the qualifier type.
+     *  Approximately means: The two symbols might be different but one still overrides the other.
+     */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
+      val tpe = tree.typeOpt
+      val sym = tree.symbol
+      if (!tpe.isInstanceOf[WithFixedSym] && sym.exists && !sym.is(Private)) {
+        val qualTpe = tree.qualifier.typeOpt
+        val member =
+          if (sym.is(Private)) qualTpe.member(tree.name)
+          else qualTpe.nonPrivateMember(tree.name)
+        val memberSyms = member.alternatives.map(_.symbol)
+        assert(memberSyms.exists(mbr =>
+                 sym == mbr ||
+                 sym.overriddenSymbol(mbr.owner.asClass) == mbr ||
+                 mbr.overriddenSymbol(sym.owner.asClass) == sym),
+               ex"""symbols differ for $tree
+                   |was                 : $sym
+                   |alternatives by type: $memberSyms%, % of types ${memberSyms.map(_.info)}%, %
+                   |qualifier type      : ${tree.qualifier.typeOpt}
+                   |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
+      }
       checkNotRepeated(super.typedSelect(tree, pt))
     }
 

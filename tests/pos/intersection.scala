@@ -1,4 +1,3 @@
-import dotty.language.keepUnions
 object intersection {
 
   class A

@@ -16,11 +16,10 @@ object unions {
 
   val x: A | B = if (true) new A else new B
   def y: B | A = if (true) new A else new B
-  println(x.f)
-  println(x.g(2))
-  println(y.f)
-  println(y.g(1.0))
-  println(y.g(1.0f))
+  println(x.f)  // error
+  println(x.g(2)) // error
+  println(y.f) // error
+  println(y.g(1.0)) // error
 
   class C {
     private def foo = 0

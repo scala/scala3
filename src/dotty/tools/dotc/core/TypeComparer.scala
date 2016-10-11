@@ -8,7 +8,7 @@ import StdNames.{nme, tpnme}
 import collection.mutable
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
-import config.Printers.{typr, constr, subtyping}
+import config.Printers.{typr, constr, subtyping, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
@@ -324,8 +324,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case AndType(tp11, tp12) =>
       if (tp11.stripTypeVar eq tp12.stripTypeVar) isSubType(tp11, tp2)
       else thirdTry(tp1, tp2)
-    case OrType(tp11, tp12) =>
-      isSubType(tp11, tp2) && isSubType(tp12, tp2)
+    case tp1 @ OrType(tp11, tp12) =>
+      def joinOK = tp2.dealias match {
+        case tp12: HKApply =>
+          // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
+          // type parameter, we will instantiate `C` to `A` and then fail when comparing
+          // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
+          // common superclass of `A` and `B`.
+          isSubType(tp1.join, tp2)
+        case _ =>
+          false
+      }
+      joinOK || isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
       true
     case _ =>
@@ -827,8 +837,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     op1 && {
       val leftConstraint = constraint
       constraint = preConstraint
-      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint)))
+      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
+        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
+          constr.println(i"CUT - prefer $leftConstraint over $constraint")
         constraint = leftConstraint
+      }
       true
     } || op2
   }

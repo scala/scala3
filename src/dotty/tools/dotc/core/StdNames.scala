@@ -429,7 +429,6 @@ object StdNames {
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"
     val java: N                 = "java"
-    val keepUnions: N           = "keepUnions"
     val key: N                  = "key"
     val lang: N                 = "lang"
     val length: N               = "length"

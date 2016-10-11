@@ -173,21 +173,53 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   /** Approximate union type by intersection of its dominators.
-   *  See Type#approximateUnion for an explanation.
+   *  That is, replace a union type Tn | ... | Tn
+   *  by the smallest intersection type of base-class instances of T1,...,Tn.
+   *  Example: Given
+   *
+   *      trait C[+T]
+   *      trait D
+   *      class A extends C[A] with D
+   *      class B extends C[B] with D with E
+   *
+   *  we approximate `A | B` by `C[A | B] with D`
    */
-  def approximateUnion(tp: Type): Type = {
+  def orDominator(tp: Type): Type = {
+
     /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
       val cs2AsSet = new util.HashSet[ClassSymbol](100)
       cs2.foreach(cs2AsSet.addEntry)
       cs1.filter(cs2AsSet.contains)
     }
+
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
       case c :: rest =>
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
     }
+
+    def mergeRefined(tp1: Type, tp2: Type): Type = {
+      def fail = throw new AssertionError(i"Failure to join alternatives $tp1 and $tp2")
+      tp1 match {
+        case tp1 @ RefinedType(parent1, name1, rinfo1) =>
+          tp2 match {
+            case RefinedType(parent2, `name1`, rinfo2) =>
+              tp1.derivedRefinedType(
+                mergeRefined(parent1, parent2), name1, rinfo1 | rinfo2)
+            case _ => fail
+          }
+        case tp1 @ TypeRef(pre1, name1) =>
+          tp2 match {
+            case tp2 @ TypeRef(pre2, `name1`) =>
+              tp1.derivedSelect(pre1 | pre2)
+            case _ => fail
+          }
+        case _ => fail
+      }
+    }
+
     def approximateOr(tp1: Type, tp2: Type): Type = {
       def isClassRef(tp: Type): Boolean = tp match {
         case tp: TypeRef => tp.symbol.isClass
@@ -195,76 +227,68 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case _ => false
       }
 
-      /** If `tp1` and `tp2` are typebounds, try to make one fit into the other
-       *  or to make them equal, by instantiating uninstantiated type variables.
-       */
-      def homogenizedUnion(tp1: Type, tp2: Type): Type = {
-        tp1 match {
-          case tp1: TypeBounds =>
-            tp2 match {
-              case tp2: TypeBounds =>
-                def fitInto(tp1: TypeBounds, tp2: TypeBounds): Unit = {
-                  val nestedCtx = ctx.fresh.setNewTyperState
-                  if (tp2.boundsInterval.contains(tp1.boundsInterval)(nestedCtx))
-                    nestedCtx.typerState.commit()
-                }
-                fitInto(tp1, tp2)
-                fitInto(tp2, tp1)
-              case _ =>
-            }
-          case _ =>
-        }
-        tp1 | tp2
-      }
-
-      tp1 match {
-        case tp1: RefinedType =>
-          tp2 match {
-            case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-              return tp1.derivedRefinedType(
-                approximateUnion(OrType(tp1.parent, tp2.parent)),
-                tp1.refinedName,
-                homogenizedUnion(tp1.refinedInfo, tp2.refinedInfo))
-                //.ensuring { x => println(i"approx or $tp1 | $tp2 = $x\n constr = ${ctx.typerState.constraint}"); true } // DEBUG
-            case _ =>
-          }
-        case _ =>
-      }
-
       tp1 match {
         case tp1: RecType =>
           tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
-          approximateUnion(tp1.superType | tp2)
+          orDominator(tp1.superType | tp2)
         case _ =>
           tp2 match {
             case tp2: RecType =>
               tp2.rebind(approximateOr(tp1, tp2.parent))
             case tp2: TypeProxy if !isClassRef(tp2) =>
-              approximateUnion(tp1 | tp2.superType)
+              orDominator(tp1 | tp2.superType)
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses, Nil)
-              def baseTp(cls: ClassSymbol): Type =
-                if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
-                else tp.baseTypeWithArgs(cls)
+              def baseTp(cls: ClassSymbol): Type = {
+                val base =
+                  if (tp1.typeParams.nonEmpty) tp.baseTypeRef(cls)
+                  else tp.baseTypeWithArgs(cls)
+                base.mapReduceOr(identity)(mergeRefined)
+              }
               doms.map(baseTp).reduceLeft(AndType.apply)
           }
       }
     }
-    if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
-    else tp match {
+
+    tp match {
       case tp: OrType =>
-        approximateOr(tp.tp1, tp.tp2)  // Maybe refactor using liftToRec?
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
-      case tp: RefinedType =>
-        tp.derivedRefinedType(approximateUnion(tp.parent), tp.refinedName, tp.refinedInfo)
-      case tp: RecType =>
-        tp.rebind(approximateUnion(tp.parent))
+        approximateOr(tp.tp1, tp.tp2)
       case _ =>
         tp
     }
+  }
+
+  /** Given a disjunction T1 | ... | Tn of types with potentially embedded
+   *  type variables, constrain type variables further if this eliminates
+   *  some of the branches of the disjunction. Do this also for disjunctions
+   *  embedded in intersections, as parents in refinements, and in recursive types.
+   *
+   *  For instance, if `A` is an unconstrained type variable, then
+   *
+   *      ArrayBuffer[Int] | ArrayBuffer[A]
+   *
+   *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
+   *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
+   */
+  def harmonizeUnion(tp: Type): Type = tp match {
+    case tp: OrType =>
+      joinIfScala2(typeComparer.fluidly(tp.tp1 | tp.tp2))
+    case tp @ AndType(tp1, tp2) =>
+      tp derived_& (harmonizeUnion(tp1), harmonizeUnion(tp2))
+    case tp: RefinedType =>
+      tp.derivedRefinedType(harmonizeUnion(tp.parent), tp.refinedName, tp.refinedInfo)
+    case tp: RecType =>
+      tp.rebind(harmonizeUnion(tp.parent))
+    case _ =>
+      tp
+  }
+
+  /** Under -language:Scala2: Replace or-types with their joins */
+  private def joinIfScala2(tp: Type) = tp match {
+    case tp: OrType if scala2Mode => tp.join
+    case _ => tp
   }
 
   /** Not currently needed:
@@ -493,7 +517,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
     def toPrefix(sym: Symbol): String =
-      if (!sym.exists || (sym eq defn.LanguageModuleClass) || (sym eq defn.Scala2LanguageModuleClass)) ""
+      if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
       else toPrefix(sym.owner) + sym.name + "."
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = {
@@ -512,13 +536,13 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** Is auto-tupling enabled? */
   def canAutoTuple =
-    !featureEnabled(defn.Scala2LanguageModuleClass, nme.noAutoTupling)
+    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
 
   def scala2Mode =
     featureEnabled(defn.LanguageModuleClass, nme.Scala2)
 
   def dynamicsEnabled =
-    featureEnabled(defn.Scala2LanguageModuleClass, nme.dynamics)
+    featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
   def testScala2Mode(msg: String, pos: Position) = {
     if (scala2Mode) migrationWarning(msg, pos)
