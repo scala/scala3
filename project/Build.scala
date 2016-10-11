@@ -214,7 +214,7 @@ object DottyBuild extends Build {
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
-  lazy val `dotty-bridge` = project.in(file("bridge")).
+  lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(dotty).
     settings(
       overrideScalaVersionSetting,
