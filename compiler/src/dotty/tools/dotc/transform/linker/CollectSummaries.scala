@@ -932,7 +932,7 @@ class BuildCallGraph extends Phase {
             // without casts
             val dirrect =
               for (tp <- getTypesByMemberName(calleeSymbol.name)
-                   if filterTypes(tp.tp, recieverType);
+                   if filterTypes(tp.tp, recieverType.widenDealias);
                    alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
                    if alt.exists
               )
@@ -1097,13 +1097,15 @@ class BuildCallGraph extends Phase {
           if (summary.isDefined) {
 
             summary.get.accessedModules.map(x => new TypeWithContext(regularizeType(x.info), parentRefinements(x.info))).foreach(x => addReachableType(x, method))
-
+            // 296 and 298 are the same (?)
             summary.get.methodsCalled.flatMap { x =>
               val reciever = x._1
               x._2.flatMap{callSite =>
-                val nw = instantiateCallSite(method, reciever, callSite, instantiatedTypes)
-                method.outEdges(callSite) = nw.filter(x => !method.outEdges(callSite).contains(x)).toList ::: method.outEdges(callSite)
-                nw
+                val insts = instantiateCallSite(method, reciever, callSite, instantiatedTypes)
+                val nw = insts.filter(x => !method.outEdges(callSite).contains(x))
+                method.outEdges(callSite) = nw.toList ::: method.outEdges(callSite)
+                insts // infinite cycle
+                // nw // works
               }
             }
           } else {
