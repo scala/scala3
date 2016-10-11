@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Finds in dotty build file a line containing PATTERN
 # returns last "" escaped string in this line
