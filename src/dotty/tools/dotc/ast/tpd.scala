@@ -121,11 +121,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
-  def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
-    TypeTree(original.tpe, original)
-
-  def TypeTree(tp: Type, original: Tree = EmptyTree)(implicit ctx: Context): TypeTree =
-    untpd.TypeTree(original).withType(tp)
+  def TypeTree(tp: Type)(implicit ctx: Context): TypeTree =
+    untpd.TypeTree().withType(tp)
 
   def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)

@@ -1122,10 +1122,7 @@ object TreeTransforms {
         case tree: TypeTree =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeTree, info.nx.nxPrepTypeTree, tree, cur)
           if (mutatedInfo eq null) tree
-          else {
-            val original = transform(tree.original, mutatedInfo, cur)
-            goTypeTree(cpy.TypeTree(tree)(original), mutatedInfo.nx.nxTransTypeTree(cur))
-          }
+          else goTypeTree(tree, mutatedInfo.nx.nxTransTypeTree(cur))
         case tree: Alternative =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForAlternative, info.nx.nxPrepAlternative, tree, cur)
           if (mutatedInfo eq null) tree
