@@ -444,7 +444,7 @@ class TreePickler(pickler: TastyPickler) {
         // position information in the linker. We should come back to this
         // point once we know more what we would do with such information.
         pickleTree(Inliner.dropInlined(tree))
-      case TypeTree(original) =>
+      case TypeTree() =>
         pickleTpt(tree)
       case Bind(name, body) =>
         registerDef(tree.symbol)

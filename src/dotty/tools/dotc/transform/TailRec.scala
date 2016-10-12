@@ -350,7 +350,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           t // todo: could improve to handle DefDef's with a label flag calls to which are in tail position
 
         case ValDef(_, _, _) | EmptyTree | Super(_, _) | This(_) |
-             Literal(_) | TypeTree(_) | TypeDef(_, _) =>
+             Literal(_) | TypeTree() | TypeDef(_, _) =>
           tree
 
         case Return(expr, from) =>

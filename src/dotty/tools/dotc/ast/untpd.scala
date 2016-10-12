@@ -144,7 +144,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A type tree that gets its type from some other tree's symbol. Enters the
    *  type tree in the References attachment of the `from` tree as a side effect.
    */
-  abstract class DerivedTypeTree extends TypeTree(EmptyTree) {
+  abstract class DerivedTypeTree extends TypeTree {
 
     private var myWatched: Tree = EmptyTree
 
@@ -205,8 +205,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
-  def TypeTree(original: Tree): TypeTree = new TypeTree(original)
-  def TypeTree() = new TypeTree(EmptyTree)
+  def TypeTree() = new TypeTree()
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
   def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
   def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)

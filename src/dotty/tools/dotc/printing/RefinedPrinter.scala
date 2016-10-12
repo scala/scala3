@@ -355,8 +355,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else "/* inlined from " ~ toText(call) ~ "*/ " ~ blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
-      case TypeTree(orig) =>
-        if (tree.hasType) toText(tree.typeOpt) else toText(orig)
+      case TypeTree() =>
+        toText(tree.typeOpt)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ ".type"
       case AndTypeTree(l, r) =>

@@ -520,13 +520,12 @@ object Trees {
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[-T >: Untyped] private[ast] (original: Tree[T])
+  case class TypeTree[-T >: Untyped] ()
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeTree[T]
-    override def initialPos = NoPosition
-    override def isEmpty = !hasType && original.isEmpty
+    override def isEmpty = !hasType
     override def toString =
-      s"TypeTree${if (hasType) s"[$typeOpt]" else s"($original)"}"
+      s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
   /** ref.type */
@@ -960,10 +959,6 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion))
       }
-      def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
-        case tree: TypeTree if original eq tree.original => tree
-        case _ => finalize(tree, untpd.TypeTree(original))
-      }
       def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
@@ -1106,7 +1101,7 @@ object Trees {
           cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
         case Inlined(call, bindings, expansion) =>
           cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion))
-        case TypeTree(original) =>
+        case TypeTree() =>
           tree
         case SingletonTypeTree(ref) =>
           cpy.SingletonTypeTree(tree)(transform(ref))
@@ -1210,7 +1205,7 @@ object Trees {
             this(this(x, elems), elemtpt)
           case Inlined(call, bindings, expansion) =>
             this(this(x, bindings), expansion)
-          case TypeTree(original) =>
+          case TypeTree() =>
             x
           case SingletonTypeTree(ref) =>
             this(x, ref)
