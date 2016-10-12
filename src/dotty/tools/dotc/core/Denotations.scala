@@ -6,6 +6,7 @@ import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, NotDefined
 import Contexts.{Context, ContextBase}
 import Names.{Name, PreName}
 import Names.TypeName
+import StdNames._
 import Symbols.NoSymbol
 import Symbols._
 import Types._
@@ -247,6 +248,25 @@ object Denotations {
       else asSingleDenotation
     }
 
+    /** Handle merge conflict by throwing a `MergeError` exception */
+    private def mergeConflict(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+      def showType(tp: Type) = tp match {
+        case ClassInfo(_, cls, _, _, _) => cls.showLocated
+        case bounds: TypeBounds => i"type bounds $bounds"
+        case _ => tp.show
+      }
+      if (true) throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
+      else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}") // flip condition for debugging
+    }
+
+    /** Merge two lists of names. If names in corresponding positions match, keep them,
+     *  otherwise generate new synthetic names.
+     */
+    def mergeNames[N <: Name](names1: List[N], names2: List[N], syntheticName: Int => N): List[N] = {
+      for ((name1, name2, idx) <- (names1, names2, 0 until names1.length).zipped)
+        yield if (name1 == name2) name1 else syntheticName(idx)
+    }.toList
+
     /** Form a denotation by conjoining with denotation `that`.
      *
      *  NoDenotations are dropped. MultiDenotations are handled by merging
@@ -277,6 +297,50 @@ object Denotations {
      */
     def & (that: Denotation, pre: Type, safeIntersection: Boolean = false)(implicit ctx: Context): Denotation = {
 
+      /** Normally, `tp1 & tp2`. Special cases for matching methods and classes, with
+       *  the possibility of raising a merge error.
+       */
+      def infoMeet(tp1: Type, tp2: Type): Type = {
+        if (tp1 eq tp2) tp1
+        else tp1 match {
+          case tp1: TypeBounds =>
+            tp2 match {
+              case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
+              case tp2: ClassInfo if tp1 contains tp2 => tp2
+              case _ => mergeConflict(tp1, tp2)
+            }
+          case tp1: ClassInfo =>
+            tp2 match {
+              case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+              case tp2: TypeBounds if tp2 contains tp1 => tp1
+              case _ => mergeConflict(tp1, tp2)
+            }
+          case tp1 @ MethodType(names1, formals1) if isTerm =>
+            tp2 match {
+              case tp2 @ MethodType(names2, formals2) if ctx.typeComparer.matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+                tp1.isImplicit == tp2.isImplicit =>
+                tp1.derivedMethodType(
+                  mergeNames(names1, names2, nme.syntheticParamName),
+                  formals1,
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+              case _ =>
+                mergeConflict(tp1, tp2)
+            }
+          case tp1: PolyType if isTerm =>
+            tp2 match {
+              case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
+                tp1.derivedPolyType(
+                  mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
+                  tp1.paramBounds,
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+              case _: MethodicType =>
+                mergeConflict(tp1, tp2)
+            }
+          case _ =>
+            tp1 & tp2
+        }
+      }
+
       /** Try to merge denot1 and denot2 without adding a new signature. */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
@@ -289,96 +353,95 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.matches(denot2)) {
-            val info1 = denot1.info
-            val info2 = denot2.info
-            val sym1 = denot1.symbol
-            val sym2 = denot2.symbol
+          else if (denot1.matches(denot2)) mergeSingleDenot(denot1, denot2)
+          else NoDenotation
+      }
 
-            val sym2Accessible = sym2.isAccessibleFrom(pre)
+      /** Try to merge single-denotations. */
+      def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): SingleDenotation = {
+        val info1 = denot1.info
+        val info2 = denot2.info
+        val sym1 = denot1.symbol
+        val sym2 = denot2.symbol
 
-            /** Does `sym1` come before `sym2` in the linearization of `pre`? */
-            def precedes(sym1: Symbol, sym2: Symbol) = {
-              def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
-                case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
-                case Nil => true
+        val sym2Accessible = sym2.isAccessibleFrom(pre)
+
+        /** Does `sym1` come before `sym2` in the linearization of `pre`? */
+        def precedes(sym1: Symbol, sym2: Symbol) = {
+          def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
+            case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
+            case Nil => true
+          }
+          (sym1 ne sym2) &&
+            (sym1.derivesFrom(sym2) ||
+              !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
+        }
+
+        /** Similar to SymDenotation#accessBoundary, but without the special cases. */
+        def accessBoundary(sym: Symbol) =
+          if (sym.is(Private)) sym.owner
+          else sym.privateWithin.orElse(
+            if (sym.is(Protected)) sym.owner.enclosingPackageClass
+            else defn.RootClass)
+
+        /** Establish a partial order "preference" order between symbols.
+         *  Give preference to `sym1` over `sym2` if one of the following
+         *  conditions holds, in decreasing order of weight:
+         *   1. sym1 is concrete and sym2 is abstract
+         *   2. The owner of sym1 comes before the owner of sym2 in the linearization
+         *      of the type of the prefix `pre`.
+         *   3. The access boundary of sym2 is properly contained in the access
+         *      boundary of sym1. For protected access, we count the enclosing
+         *      package as access boundary.
+         *   4. sym1 a method but sym2 is not.
+         *  The aim of these criteria is to give some disambiguation on access which
+         *   - does not depend on textual order or other arbitrary choices
+         *   - minimizes raising of doubleDef errors
+         */
+        def preferSym(sym1: Symbol, sym2: Symbol) =
+          sym1.eq(sym2) ||
+            sym1.isAsConcrete(sym2) &&
+            (!sym2.isAsConcrete(sym1) ||
+              precedes(sym1.owner, sym2.owner) ||
+              accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+              sym1.is(Method) && !sym2.is(Method)) ||
+            sym1.info.isErroneous
+
+        /** Sym preference provided types also override */
+        def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
+          preferSym(sym1, sym2) && info1.overrides(info2)
+
+        def handleDoubleDef =
+          if (preferSym(sym1, sym2)) denot1
+          else if (preferSym(sym2, sym1)) denot2
+          else doubleDefError(denot1, denot2, pre)
+
+        if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
+        else {
+          val sym1Accessible = sym1.isAccessibleFrom(pre)
+          if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
+          else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
+          else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
+          else if (isDoubleDef(sym1, sym2)) handleDoubleDef
+          else {
+            val sym =
+              if (!sym1.exists) sym2
+              else if (!sym2.exists) sym1
+              else if (preferSym(sym2, sym1)) sym2
+              else sym1
+            val jointInfo =
+              try infoMeet(info1, info2)
+              catch {
+                case ex: MergeError =>
+                  if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
+                    info1 // follow Scala2 linearization -
+                  // compare with way merge is performed in SymDenotation#computeMembersNamed
+                  else
+                    throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}", ex.tp1, ex.tp2)
               }
-              (sym1 ne sym2) &&
-              (sym1.derivesFrom(sym2) ||
-                !sym2.derivesFrom(sym1) && precedesIn(pre.baseClasses))
-            }
-
-            /** Similar to SymDenotation#accessBoundary, but without the special cases. */
-            def accessBoundary(sym: Symbol) =
-              if (sym.is(Private)) sym.owner
-              else sym.privateWithin.orElse(
-                if (sym.is(Protected)) sym.owner.enclosingPackageClass
-                else defn.RootClass
-              )
-
-            /** Establish a partial order "preference" order between symbols.
-             *  Give preference to `sym1` over `sym2` if one of the following
-             *  conditions holds, in decreasing order of weight:
-             *   1. sym1 is concrete and sym2 is abstract
-             *   2. The owner of sym1 comes before the owner of sym2 in the linearization
-             *      of the type of the prefix `pre`.
-             *   3. The access boundary of sym2 is properly contained in the access
-             *      boundary of sym1. For protected access, we count the enclosing
-             *      package as access boundary.
-             *   4. sym1 a method but sym2 is not.
-             *  The aim of these criteria is to give some disambiguation on access which
-             *   - does not depend on textual order or other arbitrary choices
-             *   - minimizes raising of doubleDef errors
-             */
-            def preferSym(sym1: Symbol, sym2: Symbol) =
-              sym1.eq(sym2) ||
-                sym1.isAsConcrete(sym2) &&
-                (!sym2.isAsConcrete(sym1) ||
-                 precedes(sym1.owner, sym2.owner) ||
-                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
-                 sym1.is(Method) && !sym2.is(Method)) ||
-                 sym1.info.isErroneous
-
-            /** Sym preference provided types also override */
-            def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
-              preferSym(sym1, sym2) && info1.overrides(info2)
-
-            def handleDoubleDef =
-              if (preferSym(sym1, sym2)) denot1
-              else if (preferSym(sym2, sym1)) denot2
-              else doubleDefError(denot1, denot2, pre)
-
-            if (sym2Accessible && prefer(sym2, sym1, info2, info1)) denot2
-            else {
-              val sym1Accessible = sym1.isAccessibleFrom(pre)
-              if (sym1Accessible && prefer(sym1, sym2, info1, info2)) denot1
-              else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
-              else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
-              else if (isDoubleDef(sym1, sym2)) handleDoubleDef
-              else {
-                val sym =
-                  if (!sym1.exists) sym2
-                  else if (!sym2.exists) sym1
-                  else if (preferSym(sym2, sym1)) sym2
-                  else sym1
-                val jointInfo =
-                  try
-                    if (safeIntersection)
-                      info1 safe_& info2
-                    else
-                      info1 & info2
-                  catch {
-                    case ex: MergeError =>
-                      if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
-                        info1 // follow Scala2 linearization -
-                              // compare with way merge is performed in SymDenotation#computeMembersNamed
-                      else
-                        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}", ex.tp1, ex.tp2)
-                  }
-                new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
-              }
-            }
-          } else NoDenotation
+            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
+          }
+        }
       }
 
       if (this eq that) this
@@ -398,6 +461,46 @@ object Denotations {
      *              to determine an accessible symbol if it exists.
      */
     def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
+
+      /** Normally, `tp1 | tp2`. Special cases for matching methods and classes, with
+       *  the possibility of raising a merge error.
+       */
+      def infoJoin(tp1: Type, tp2: Type): Type = tp1 match {
+        case tp1: TypeBounds =>
+          tp2 match {
+            case tp2: TypeBounds => tp1 | tp2
+            case tp2: ClassInfo if tp1 contains tp2 => tp1
+            case _ => mergeConflict(tp1, tp2)
+          }
+        case tp1: ClassInfo =>
+          tp2 match {
+            case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+            case tp2: TypeBounds if tp2 contains tp1 => tp2
+            case _ => mergeConflict(tp1, tp2)
+          }
+        case tp1 @ MethodType(names1, formals1) =>
+          tp2 match {
+            case tp2 @ MethodType(names2, formals2)
+            if ctx.typeComparer.matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+              tp1.isImplicit == tp2.isImplicit =>
+              tp1.derivedMethodType(
+                mergeNames(names1, names2, nme.syntheticParamName),
+                formals1, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+            case _ =>
+              mergeConflict(tp1, tp2)
+          }
+        case tp1: PolyType =>
+          tp2 match {
+            case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
+              tp1.derivedPolyType(
+                mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
+                tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+            case _ =>
+              mergeConflict(tp1, tp2)
+          }
+        case _ =>
+          tp1 | tp2
+      }
 
       def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
         if (denot1.matches(denot2)) {
@@ -428,7 +531,8 @@ object Denotations {
                   }
                 lubSym(sym1.allOverriddenSymbols, NoSymbol)
               }
-            new JointRefDenotation(jointSym, info1 | info2, denot1.validFor & denot2.validFor)
+            new JointRefDenotation(
+                jointSym, infoJoin(info1, info2), denot1.validFor & denot2.validFor)
           }
         }
         else NoDenotation
@@ -1135,4 +1239,3 @@ object Denotations {
     override def getMessage() = msg
   }
 }
-

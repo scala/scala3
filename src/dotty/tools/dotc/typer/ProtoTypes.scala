@@ -316,7 +316,7 @@ object ProtoTypes {
 
     override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
       def isInstantiatable(tp: Type) = tp.widen match {
-        case tp: GenericType => tp.paramNames.length == targs.length
+        case tp: PolyType => tp.paramNames.length == targs.length
         case _ => false
       }
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
@@ -363,7 +363,7 @@ object ProtoTypes {
       yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
 
     val added =
-      if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
+      if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
     ctx.typeComparer.addToConstraint(added, tvars)

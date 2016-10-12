@@ -1061,12 +1061,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedTypeLambdaTree(tree: untpd.TypeLambdaTree)(implicit ctx: Context): Tree = track("typedTypeLambdaTree") {
-    val TypeLambdaTree(tparams, body) = tree
+  def typedPolyTypeTree(tree: untpd.PolyTypeTree)(implicit ctx: Context): Tree = track("typedPolyTypeTree") {
+    val PolyTypeTree(tparams, body) = tree
     index(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
-    assignType(cpy.TypeLambdaTree(tree)(tparams1, body1), tparams1, body1)
+    assignType(cpy.PolyTypeTree(tree)(tparams1, body1), tparams1, body1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
@@ -1469,7 +1469,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
-          case tree: untpd.TypeLambdaTree => typedTypeLambdaTree(tree)(localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.PolyTypeTree => typedPolyTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)
@@ -1921,7 +1921,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case _ =>
               adaptOverloaded(ref)
           }
-        case poly: PolyType =>
+        case poly: PolyType if !(ctx.mode is Mode.Type) =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             var typeArgs = tree match {

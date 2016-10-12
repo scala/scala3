@@ -356,8 +356,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
       defn.FunctionClass(0).typeRef
-    case tp: TypeProxy =>
-      this(tp.underlying)
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
@@ -371,11 +369,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramTypes, rt.resultType)
         case rt =>
           tp.derivedMethodType(tp.paramNames, formals, rt)
-      }
-    case tp: PolyType =>
-      this(tp.resultType) match {
-        case rt: MethodType => rt
-        case rt => MethodType(Nil, Nil, rt)
       }
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp
@@ -398,6 +391,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       tp
     case tp: WildcardType if wildcardOK =>
       tp
+    case tp: TypeProxy =>
+      this(tp.underlying)
   }
 
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
@@ -409,9 +404,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     else JavaArrayType(arrayErasure(elemtp))
   }
 
-  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s are
-   *  treated. `eraseInfo` maps them them to nullary method types, whereas `apply` maps them
-   *  to `Function0`.
+  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
+   *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
+   *  to the underlying type.
    */
   def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case ExprType(rt) =>
@@ -421,6 +416,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         // forwarders to mixin methods.
         // See doc comment for ElimByName for speculation how we could improve this.
       else MethodType(Nil, Nil, eraseResult(rt))
+    case tp: PolyType =>
+      this(tp.resultType) match {
+        case rt: MethodType => rt
+        case rt => MethodType(Nil, Nil, rt)
+      }
     case tp => this(tp)
   }
 

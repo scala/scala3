@@ -302,7 +302,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             case _ => arg
           }
           (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: TypeLambda =>
+        case tp: PolyType =>
           apply(tp.resType)
         case _ =>
           mapOver(tp)
@@ -412,7 +412,7 @@ trait Implicits { self: Typer =>
     && !to.isError
     && !ctx.isAfterTyper
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && from.isInstanceOf[ValueType]
+    && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
             (ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState)

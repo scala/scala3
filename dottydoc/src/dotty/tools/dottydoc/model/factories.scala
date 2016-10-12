@@ -43,7 +43,7 @@ object factories {
     }
 
     def expandTpe(t: Type, params: List[Reference] = Nil): Reference = t match {
-      case tl: TypeLambda =>
+      case tl: PolyType =>
         //FIXME: should be handled correctly
         // example, in `Option`:
         //

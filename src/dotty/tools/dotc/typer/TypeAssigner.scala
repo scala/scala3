@@ -455,8 +455,8 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.TypeLambdaTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
-    tree.withType(TypeLambda.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
+  def assignType(tree: untpd.PolyTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
+    tree.withType(PolyType.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

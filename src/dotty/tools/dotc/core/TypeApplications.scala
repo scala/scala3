@@ -72,7 +72,7 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ TypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
+      case tp @ PolyType(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
       case _ => None
     }
   }
@@ -159,7 +159,7 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
+  class Reducer(tycon: PolyType, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced = true
     def hasWildcardArg(p: PolyParam) =
@@ -212,7 +212,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
-      case self: TypeLambda =>
+      case self: PolyType =>
         self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
@@ -311,7 +311,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => false
-    case self: TypeLambda => true
+    case self: PolyType => true
     case self: SingletonType => false
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
@@ -339,7 +339,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
-      TypeLambda(
+      PolyType(
         tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.paramVariance))(
           tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
@@ -421,10 +421,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (hkParams.isEmpty) self
     else {
       def adaptArg(arg: Type): Type = arg match {
-        case arg @ TypeLambda(tparams, body) if
+        case arg @ PolyType(tparams, body) if
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
-          TypeLambda(tparams.map(_.paramName), hkParams.map(_.paramVariance))(
+          PolyType(tparams.map(_.paramName), hkParams.map(_.paramVariance))(
             tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
@@ -466,7 +466,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
-      case dealiased: TypeLambda =>
+      case dealiased: PolyType =>
         def tryReduce =
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
@@ -485,7 +485,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               // In this case we should always dealias since we cannot handle
               // higher-kinded applications to wildcard arguments.
               dealiased
-                .derivedTypeLambda(resType = tycon.safeDealias.appliedTo(args1))
+                .derivedPolyType(resType = tycon.safeDealias.appliedTo(args1))
                 .appliedTo(args)
             case _ =>
               val reducer = new Reducer(dealiased, args)
@@ -494,8 +494,6 @@ class TypeApplications(val self: Type) extends AnyVal {
               else HKApply(dealiased, args)
           }
         tryReduce
-      case dealiased: PolyType =>
-        dealiased.instantiate(args)
       case dealiased: AndOrType =>
         dealiased.derivedAndOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: TypeAlias =>

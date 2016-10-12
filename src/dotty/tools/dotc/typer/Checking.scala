@@ -52,7 +52,7 @@ object Checking {
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkBounds in FirstTransform
    */
-  def checkBounds(args: List[tpd.Tree], poly: GenericType)(implicit ctx: Context): Unit =
+  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** If type is a higher-kinded application with wildcard arguments,
@@ -63,7 +63,7 @@ object Checking {
   def checkWildcardHKApply(tp: Type, pos: Position)(implicit ctx: Context): Unit = tp match {
     case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
       tycon match {
-        case tycon: TypeLambda =>
+        case tycon: PolyType =>
           ctx.errorOrMigrationWarning(
             ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
             pos)

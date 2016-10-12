@@ -107,7 +107,7 @@ object CollectEntryPoints{
         else (possibles exists(x=> isJavaMainMethod(x.symbol))) || {
           possibles exists { m =>
             toDenot(m.symbol).info match {
-              case t:PolyType =>
+              case t: PolyType =>
                 fail("main methods cannot be generic.")
               case t@MethodType(paramNames, paramTypes) =>
                 if (t.resultType :: paramTypes exists (_.typeSymbol.isAbstractType))

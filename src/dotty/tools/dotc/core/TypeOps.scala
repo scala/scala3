@@ -136,7 +136,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           finally seen = saved
         }
       case _ =>
-        if (tp.isInstanceOf[MethodicType]) assert(variance != 0, tp)
         mapOver(tp)
     }
   }

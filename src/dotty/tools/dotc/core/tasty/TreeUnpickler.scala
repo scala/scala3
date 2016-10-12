@@ -270,7 +270,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               val (rawNames, paramReader) = readNamesSkipParams
               val (variances, paramNames) = rawNames
                 .map(name => (prefixToVariance(name.head), name.tail.toTypeName)).unzip
-              val result = TypeLambda(paramNames, variances)(
+              val result = PolyType(paramNames, variances)(
                 pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
                 pt => readType())
               goto(end)
@@ -290,7 +290,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               result
             case PARAMtype =>
               readTypeRef() match {
-                case binder: GenericType => PolyParam(binder, readNat())
+                case binder: PolyType => PolyParam(binder, readNat())
                 case binder: MethodType => MethodParam(binder, readNat())
               }
             case CLASSconst =>

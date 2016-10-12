@@ -111,13 +111,13 @@ trait FullParameterization {
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
-    def mapClassParams(tp: Type, pt: GenericType): Type = {
+    def mapClassParams(tp: Type, pt: PolyType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
       tp.substDealias(ctparams, classParamsRange map (PolyParam(pt, _)))
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
-    def mappedClassBounds(pt: GenericType): List[TypeBounds] =
+    def mappedClassBounds(pt: PolyType): List[TypeBounds] =
       ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 
     info match {

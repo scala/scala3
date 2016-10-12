@@ -701,9 +701,9 @@ object Parsers {
         else if (in.token == LBRACKET) {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
-          if (isIdent && in.name.toString == "->")
-            atPos(start, in.skipToken())(TypeLambdaTree(tparams, typ()))
-          else { syntaxErrorOrIncomplete(expectedMessage("`->'")); typ() }
+          if (in.token == ARROW)
+            atPos(start, in.skipToken())(PolyTypeTree(tparams, typ()))
+          else { accept(ARROW); typ() }
         }
         else infixType()
 

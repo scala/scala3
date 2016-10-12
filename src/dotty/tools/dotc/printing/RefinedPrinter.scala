@@ -20,7 +20,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private var lambdaNestingLevel: Int = 0
   private var myCtx: Context = _ctx
   override protected[this] implicit def ctx: Context = myCtx
 
@@ -368,7 +367,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
         toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
-      case TypeLambdaTree(tparams, body) =>
+      case PolyTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
           tparamsText(tparams) ~ " -> " ~ toText(body)
         }
@@ -553,7 +552,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       (sym.allOverriddenSymbols exists (_ is TypeParam))
 
   override def toText(sym: Symbol): Text = {
-    if (sym.name == nme.IMPORT) {
+    if (sym.isImport) {
       def importString(tree: untpd.Tree) = s"import ${tree.show}"
       sym.infoOrCompleter match {
         case info: Namer#Completer => return importString(info.original)

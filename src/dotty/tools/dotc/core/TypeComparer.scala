@@ -412,9 +412,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2 @ TypeLambda(tparams2, body2) =>
+    case tp2 @ PolyType(tparams2, body2) =>
       def compareHkLambda: Boolean = tp1.stripTypeVar match {
-        case tp1 @ TypeLambda(tparams1, body1) =>
+        case tp1 @ PolyType(tparams1, body1) =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -432,13 +432,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             ctx.scala2Mode ||
             tparams1.corresponds(tparams2)((tparam1, tparam2) =>
               isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
-          val saved = comparingLambdas
-          comparingLambdas = true
+          val saved = comparedPolyTypes
+          comparedPolyTypes += tp1
+          comparedPolyTypes += tp2
           try
             variancesConform(tparams1, tparams2) &&
             boundsOK &&
             isSubType(body1, body2.subst(tp2, tp1))
-          finally comparingLambdas = saved
+          finally comparedPolyTypes = saved
         case _ =>
           if (!tp1.isHK) {
             tp2 match {
@@ -478,16 +479,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           false
       }
       compareMethod
-    case tp2: PolyType =>
-      def comparePoly = tp1 match {
-        case tp1: PolyType =>
-          (tp1.signature consistentParams tp2.signature) &&
-            matchingTypeParams(tp1, tp2) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          false
-      }
-      comparePoly
     case tp2 @ ExprType(restpe2) =>
       def compareExpr = tp1 match {
         // We allow ()T to be a subtype of => T.
@@ -543,7 +534,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
             case _ => false
           }
-          (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
+          (tp1.symbol eq NothingClass) && tp2.isValueTypeOrLambda ||
           (tp1.symbol eq NullClass) && isNullable(tp2)
       }
     case tp1: SingletonType =>
@@ -660,7 +651,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = TypeLambda(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
+              tycon1b = PolyType(tparams1.map(_.paramName), tparams1.map(_.paramVariance))(
                 tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(PolyParam(tl, _))))
@@ -1032,7 +1023,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
-  private def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
+  def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
     case formal1 :: rest1 =>
       formals2 match {
         case formal2 :: rest2 =>
@@ -1050,7 +1041,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Do generic types `poly1` and `poly2` have type parameters that
    *  have the same bounds (after renaming one set to the other)?
    */
-  private def matchingTypeParams(poly1: GenericType, poly2: GenericType): Boolean =
+  def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
     (poly1.paramBounds corresponds poly2.paramBounds)((b1, b2) =>
       isSameType(b1, b2.subst(poly2, poly1)))
 
@@ -1274,7 +1265,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else if (tparams2.isEmpty)
       original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
     else
-      TypeLambda(
+      PolyType(
         paramNames = tpnme.syntheticLambdaParamNames(tparams1.length),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           (tparam1.paramVariance + tparam2.paramVariance) / 2))(
@@ -1318,38 +1309,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
     case tp1: RecType =>
       tp1.rebind(distributeAnd(tp1.parent, tp2))
-    case tp1: TypeBounds =>
-      tp2 match {
-        case tp2: TypeBounds => tp1 & tp2
-        case tp2: ClassInfo if tp1 contains tp2 => tp2
-        case _ => mergeConflict(tp1, tp2)
-      }
-    case tp1: ClassInfo =>
-      tp2 match {
-        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-        case tp2: TypeBounds if tp2 contains tp1 => tp1
-        case _ => mergeConflict(tp1, tp2)
-      }
-    case tp1 @ MethodType(names1, formals1) =>
-      tp2 match {
-        case tp2 @ MethodType(names2, formals2)
-        if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
-           tp1.isImplicit == tp2.isImplicit =>
-          tp1.derivedMethodType(
-              mergeNames(names1, names2, nme.syntheticParamName),
-              formals1, tp1.resultType & tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          mergeConflict(tp1, tp2)
-      }
-    case tp1: PolyType =>
-      tp2 match {
-        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedPolyType(
-              mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-              tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          mergeConflict(tp1, tp2)
-      }
     case ExprType(rt1) =>
       tp2 match {
         case ExprType(rt2) =>
@@ -1374,38 +1333,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  The rhs is a proper supertype of the lhs.
    */
   private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1: TypeBounds =>
-      tp2 match {
-        case tp2: TypeBounds => tp1 | tp2
-        case tp2: ClassInfo if tp1 contains tp2 => tp1
-        case _ => mergeConflict(tp1, tp2)
-      }
-    case tp1: ClassInfo =>
-      tp2 match {
-        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-        case tp2: TypeBounds if tp2 contains tp1 => tp2
-        case _ => mergeConflict(tp1, tp2)
-      }
-    case tp1 @ MethodType(names1, formals1) =>
-      tp2 match {
-        case tp2 @ MethodType(names2, formals2)
-        if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
-           tp1.isImplicit == tp2.isImplicit =>
-          tp1.derivedMethodType(
-              mergeNames(names1, names2, nme.syntheticParamName),
-              formals1, tp1.resultType | tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          mergeConflict(tp1, tp2)
-      }
-    case tp1: GenericType =>
-      tp2 match {
-        case tp2: GenericType if matchingTypeParams(tp1, tp2) =>
-          tp1.derivedGenericType(
-              mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-              tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          mergeConflict(tp1, tp2)
-      }
     case ExprType(rt1) =>
       ExprType(rt1 | tp2.widenExpr)
     case tp1: TypeVar if tp1.isInstantiated =>
@@ -1415,25 +1342,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case _ =>
       NoType
   }
-
-  /** Handle merge conflict by throwing a `MergeError` exception */
-  private def mergeConflict(tp1: Type, tp2: Type): Type = {
-    def showType(tp: Type) = tp match {
-      case ClassInfo(_, cls, _, _, _) => cls.showLocated
-      case bounds: TypeBounds => i"type bounds $bounds"
-      case _ => tp.show
-    }
-    if (true) throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
-    else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}") // flip condition for debugging
-  }
-
-  /** Merge two lists of names. If names in corresponding positions match, keep them,
-   *  otherwise generate new synthetic names.
-   */
-  private def mergeNames[N <: Name](names1: List[N], names2: List[N], syntheticName: Int => N): List[N] = {
-    for ((name1, name2, idx) <- (names1, names2, 0 until names1.length).zipped)
-    yield if (name1 == name2) name1 else syntheticName(idx)
-  }.toList
 
   /** Show type, handling type types better than the default */
   private def showType(tp: Type)(implicit ctx: Context) = tp match {

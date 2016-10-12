@@ -44,10 +44,10 @@ trait ConstraintHandling {
     try op finally alwaysFluid = saved
   }
 
-  /** We are currently comparing lambdas. Used as a flag for
+  /** We are currently comparing polytypes. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
-  protected var comparingLambdas = false
+  protected var comparedPolyTypes: Set[PolyType] = Set.empty
 
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
@@ -316,12 +316,12 @@ trait ConstraintHandling {
        *  missing.
        */
       def pruneLambdaParams(tp: Type) =
-        if (comparingLambdas && param.binder.isInstanceOf[PolyType]) {
+        if (comparedPolyTypes.nonEmpty) {
           val approx = new ApproximatingTypeMap {
             def apply(t: Type): Type = t match {
-              case t @ PolyParam(tl: TypeLambda, n) =>
+              case t @ PolyParam(pt: PolyType, n) if comparedPolyTypes contains pt =>
                 val effectiveVariance = if (fromBelow) -variance else variance
-                val bounds = tl.paramBounds(n)
+                val bounds = pt.paramBounds(n)
                 if (effectiveVariance > 0) bounds.lo
                 else if (effectiveVariance < 0) bounds.hi
                 else NoType
