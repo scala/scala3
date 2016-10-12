@@ -16,6 +16,7 @@ import config.Config
 import scala.annotation.switch
 import language.implicitConversions
 
+/** Pretty printer used by default with `.show`, generate strings very close to scala source code. */
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
@@ -64,12 +65,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
-      case tp: ThisType =>
-        if (tp.cls.isAnonymousClass) return "this"
-        if (tp.cls is ModuleClass) return fullNameString(tp.cls.sourceModule)
+      case tp: ThisType if tp.cls.isAnonymousClass =>
+        "this"
+      case tp: ThisType if tp.cls is ModuleClass =>
+        fullNameString(tp.cls.sourceModule)
       case _ =>
+        super.toTextRef(tp)
     }
-    super.toTextRef(tp)
   }
 
   override def toTextPrefix(tp: Type): Text = controlled {
@@ -113,44 +115,46 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     homogenize(tp) match {
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
-        if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-        if (defn.isFunctionClass(cls)) return toTextFunction(args)
-        if (defn.isTupleClass(cls)) return toTextTuple(args)
-        return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
+        if (tycon.isRepeatedParam) toTextLocal(args.head) ~ "*"
+        else if (defn.isFunctionClass(cls)) toTextFunction(args)
+        else if (defn.isTupleClass(cls)) toTextTuple(args)
+        else (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: TypeRef =>
         val hideType = tp.symbol is AliasPreferred
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
           tp.info match {
-            case TypeAlias(alias) => return toText(alias)
-            case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
+            case TypeAlias(alias) => toText(alias)
+            case _ if (tp.prefix.isInstanceOf[ThisType]) => nameString(tp.symbol)
+            case _ => super.toText(tp)
           }
-        }
-        else if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
-          return toText(tp.info)
+        } else if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
+          toText(tp.info)
+        else
+          super.toText(tp)
       case ExprType(result) =>
-        return "=> " ~ toText(result)
+        "=> " ~ toText(result)
       case ErasedValueType(tycon, underlying) =>
-        return "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
+        "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
-        return toTextParents(tp.parentsWithArgs) ~ "{...}"
+        toTextParents(tp.parentsWithArgs) ~ "{...}"
       case JavaArrayType(elemtp) =>
-        return toText(elemtp) ~ "[]"
+        toText(elemtp) ~ "[]"
       case tp: SelectionProto =>
-        return "?{ " ~ toText(tp.name) ~ (" " provided !tp.name.decode.last.isLetterOrDigit) ~
+        "?{ " ~ toText(tp.name) ~ (" " provided !tp.name.decode.last.isLetterOrDigit) ~
           ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
-        return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
+        toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType, _) =>
         val argsText = args match {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        return "FunProto(" ~ argsText ~ "):" ~ toText(resultType)
+        "FunProto(" ~ argsText ~ "):" ~ toText(resultType)
       case tp: IgnoredProto =>
-        return "?"
+        "?"
       case _ =>
+        super.toText(tp)
     }
-    super.toText(tp)
   }
 
   def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
@@ -527,7 +531,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]])
-      txt = txt ~ "@" ~ tree.pos.toString
+      txt = txt ~ "@" ~ tree.pos.toString(simplified = true)
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close

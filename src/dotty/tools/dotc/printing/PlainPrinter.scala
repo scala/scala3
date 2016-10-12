@@ -11,6 +11,10 @@ import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.annotation.switch
 
+/**
+ * Pretty printer with minimal formating. Similar to `.toString` but with proper indentation,
+ * position and a few more details. Accessible under `-Yplain-printer`.
+ */
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
