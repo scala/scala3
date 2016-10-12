@@ -20,6 +20,7 @@ import dotty.tools.dotc.core.{Flags, Hashable, TypeErasure}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.CollectSummaries.SubstituteByParentMap
 import dotty.tools.dotc.transform.Summaries._
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 
 import collection.{immutable, mutable}
@@ -366,7 +367,21 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
+      def initialValuesFor(tpe: Type): List[CallInfo] = {
+        tpe.widenDealias.classSymbol.mixins.flatMap {
+          _.info.decls.collect {
+            case decl if !decl.is(Flags.Method) && decl.isTerm =>
+              CallInfo(new TermRefWithFixedSym(tpe, decl.name.asTermName, decl.symbol.asTerm), Nil, Nil)
+          }
+        }
+      }
+      val initialValues = tree match {
+        case Apply(TypeApply(Select(qualifier, nme.CONSTRUCTOR), _), _) => initialValuesFor(qualifier.tpe)
+        case Apply(Select(qualifier, nme.CONSTRUCTOR), _) => initialValuesFor(qualifier.tpe)
+        case _ => Nil
+      }
+
+      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues
 
       curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }
