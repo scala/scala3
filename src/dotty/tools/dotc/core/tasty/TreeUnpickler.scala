@@ -911,7 +911,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               val expr = readTerm()
               val tpt = readTpt()
               val expr1 = expr match {
-                case SeqLiteral(elems, elemtpt) if tpt.tpe.isRef(defn.ArrayClass) =>
+                case SeqLiteral(elems, elemtpt) if tpt.tpe.isRef(defn.ArrayClass, stripRefinements = true) =>
                   JavaSeqLiteral(elems, elemtpt)
                 case expr => expr
               }

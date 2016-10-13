@@ -446,7 +446,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case RefinedType(parent, _, _) if !(parent isRef defn.ArrayClass) =>
+    case RefinedType(parent, _, _) if !(parent.isRef(defn.ArrayClass, stripRefinements = true)) =>
       eraseResult(parent)
     case _ =>
       this(tp)

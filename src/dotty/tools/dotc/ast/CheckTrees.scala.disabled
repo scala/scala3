@@ -211,7 +211,7 @@ object CheckTrees {
           if (rtp isRef defn.BooleanClass)
             check(args.isEmpty)
           else {
-            check(rtp isRef defn.OptionClass)
+            check(rtp.isRef(defn.OptionClass, stripRefinements = true))
             val normArgs = rtp.argTypesHi match {
               case optionArg :: Nil =>
                 optionArg.argTypesHi match {

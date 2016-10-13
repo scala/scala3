@@ -71,7 +71,7 @@ object Scala2Unpickler {
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp @ MethodType(paramNames, paramTypes) =>
       val lastArg = paramTypes.last
-      assert(lastArg isRef defn.ArrayClass)
+      assert(lastArg.isRef(defn.ArrayClass, stripRefinements = true))
       val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>

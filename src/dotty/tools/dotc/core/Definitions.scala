@@ -564,7 +564,7 @@ class Definitions {
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case at: RefinedType if (at isRef ArrayType.symbol) && at.argInfos.length == 1 => Some(at.argInfos.head)
+      case at: RefinedType if (at.parent.isRef(ArrayType.symbol)) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }
   }
@@ -667,7 +667,7 @@ class Definitions {
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
-    arity <= MaxTupleArity && TupleType(arity) != null && (tp isRef TupleType(arity).symbol)
+    arity <= MaxTupleArity && TupleType(arity) != null && (tp.isRef(TupleType(arity).symbol, stripRefinements = true))
   }
 
   def tupleType(elems: List[Type]) = {
@@ -679,7 +679,7 @@ class Definitions {
 
   def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
-    0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionType(arity).symbol)
+    0 <= arity && arity <= MaxFunctionArity && (tp.isRef(FunctionType(arity).symbol, stripRefinements = true))
   }
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1

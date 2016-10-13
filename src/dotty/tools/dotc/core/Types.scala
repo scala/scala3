@@ -106,20 +106,22 @@ object Types {
       case _ => false
     }
 
-    /** Is this type a (possibly refined or applied or aliased) type reference
-     *  to the given type symbol?
-     *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
-     *        It makes no sense for it to be an alias type because isRef would always
-     *        return false in that case.
+    /** Is this type a (possibly aliased) type reference to the given type symbol?
+     *
+     *  @param sym               The symbol to compare to. It must be a class symbol or abstract type.
+     *                           It makes no sense for it to be an alias type because isRef would always
+     *                           return false in that case.
+     *  @param stripRefinements  If true, go through refinements.
      */
-    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
+    def isRef(sym: Symbol, stripRefinements: Boolean = false)(implicit ctx: Context): Boolean = stripAnnots.stripTypeVar match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
-          case TypeAlias(tp) => tp.isRef(sym)
+          case TypeAlias(tp) => tp.isRef(sym, stripRefinements)
           case _ =>  this1.symbol eq sym
         }
-      case this1: RefinedOrRecType => this1.parent.isRef(sym)
-      case this1: HKApply => this1.superType.isRef(sym)
+      case this1: RefinedType if stripRefinements => this1.parent.isRef(sym, stripRefinements)
+      case this1: RecType => this1.parent.isRef(sym, stripRefinements)
+      case this1: HKApply => this1.superType.isRef(sym, stripRefinements)
       case _ => false
     }
 
@@ -3313,7 +3315,7 @@ object Types {
             case mt: MethodType if !mt.isDependent => Some(absMems.head)
             case _ => None
           }
-        else if (tp isRef defn.PartialFunctionClass)
+        else if (tp.isRef(defn.PartialFunctionClass, stripRefinements = true))
           // To maintain compatibility with 2.x, we treat PartialFunction specially,
           // pretending it is a SAM type. In the future it would be better to merge
           // Function and PartialFunction, have Function1 contain a isDefinedAt method
