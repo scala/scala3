@@ -55,9 +55,7 @@ class DeadCodeElimination extends MiniPhaseTransform {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): _root_.dotty.tools.dotc.ast.tpd.Tree = {
     val keepAsNew = tree.symbol.initial.validFor.firstPhaseId > keepAfter.period.phaseId
     if (tree.symbol.isConstructor || keepAsNew || reachableSet.contains(tree.symbol)) tree
-    else {
-      tpd.cpy.DefDef(tree)(rhs = exception)
-    }
+    else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
   //TODO: drop classes that are unreachable with all their definitions and subclasses
