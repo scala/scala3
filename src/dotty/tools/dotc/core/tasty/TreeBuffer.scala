@@ -6,7 +6,7 @@ package tasty
 import util.Util.{bestFit, dble}
 import TastyBuffer.{Addr, AddrWidth}
 import config.Printers.pickling
-import ast.tpd.Tree
+import ast.untpd.Tree
 
 class TreeBuffer extends TastyBuffer(50000) {
 
@@ -18,6 +18,8 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var numOffsets = 0
 
   private[tasty] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+
+  def registerTreeAddr(tree: Tree) = pickledTrees.put(tree, currentAddr)
 
   def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
     case null => None

@@ -4,6 +4,7 @@ package core
 package tasty
 
 import ast.Trees._
+import ast.untpd
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
@@ -299,7 +300,10 @@ class TreePickler(pickler: TastyPickler) {
     pickled
   }
 
-  def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit = pickleType(tpt.tpe) // TODO correlate with original when generating positions
+  def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit = {
+    pickledTrees.put(tpt, currentAddr)
+    pickleType(tpt.tpe) // TODO correlate with original when generating positions
+  }
 
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
@@ -313,17 +317,20 @@ class TreePickler(pickler: TastyPickler) {
       pickleParams
       tpt match {
         case tpt: TypeTree => pickleTpt(tpt)
-        case _ => pickleTree(tpt)
+        case templ: Template => pickleTree(tpt)
       }
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym)
     }
   }
 
-  def pickleParam(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
-    case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
-    case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)
+  def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
+    pickledTrees.put(tree, currentAddr)
+    tree match {
+      case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
+      case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
+      case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)
+    }
   }
 
   def pickleParams(trees: List[Tree])(implicit ctx: Context): Unit = {
@@ -500,12 +507,11 @@ class TreePickler(pickler: TastyPickler) {
         withLength {
           pickleTree(expr)
           selectors foreach {
-            case Thicket(Ident(from) :: Ident(to) :: Nil) =>
-              writeByte(RENAMED)
-              withLength { pickleName(from); pickleName(to) }
-            case Ident(name) =>
-              writeByte(IMPORTED)
-              pickleName(name)
+            case Thicket((from @ Ident(_)) :: (to @ Ident(_)) :: Nil) =>
+              pickleSelector(IMPORTED, from)
+              pickleSelector(RENAMED, to)
+            case id @ Ident(_) =>
+              pickleSelector(IMPORTED, id)
           }
         }
       case PackageDef(pid, stats) =>
@@ -516,6 +522,12 @@ class TreePickler(pickler: TastyPickler) {
     case ex: AssertionError =>
       println(i"error when pickling tree $tree")
       throw ex
+  }
+
+  def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
+    pickledTrees.put(id, currentAddr)
+    writeByte(tag)
+    pickleName(id.name)
   }
 
   def qualifiedName(sym: Symbol)(implicit ctx: Context): TastyName =
