@@ -162,7 +162,8 @@ trait ConstraintHandling {
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
    *  otherwise it is approximated by its upper bound. However, any occurrences
-   *  of the parameter in a refinement somewhere in the bound are removed.
+   *  of the parameter in a refinement somewhere in the bound are removed. Also
+   *  wildcard types in bounds are approximated by their upper or lower bounds.
    *  (Such occurrences can arise for F-bounded types).
    *  The constraint is left unchanged.
    *  @return the instantiating type
@@ -174,6 +175,9 @@ trait ConstraintHandling {
       def apply(tp: Type) = mapOver {
         tp match {
           case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
+          case tp: WildcardType =>
+            val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
+            if (fromBelow == (variance >= 0)) bounds.lo else bounds.hi
           case _ => tp
         }
       }
