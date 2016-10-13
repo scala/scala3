@@ -17,11 +17,11 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private[tasty] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+  private val treeAddr = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
 
-  def registerTreeAddr(tree: Tree) = pickledTrees.put(tree, currentAddr)
+  def registerTreeAddr(tree: Tree) = treeAddr.put(tree, currentAddr)
 
-  def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
+  def addrOfTree(tree: Tree): Option[Addr] = treeAddr.get(tree) match {
     case null => None
     case n => Some(n.asInstanceOf[Addr])
   }
@@ -149,11 +149,11 @@ class TreeBuffer extends TastyBuffer(50000) {
     wasted
   }
 
-  def adjustPickledTrees(): Unit = {
-    val it = pickledTrees.keySet.iterator
+  def adjustTreeAddrs(): Unit = {
+    val it = treeAddr.keySet.iterator
     while (it.hasNext) {
       val tree = it.next
-      pickledTrees.put(tree, adjusted(pickledTrees.get(tree).asInstanceOf[Addr]))
+      treeAddr.put(tree, adjusted(treeAddr.get(tree).asInstanceOf[Addr]))
     }
   }
 
@@ -174,7 +174,7 @@ class TreeBuffer extends TastyBuffer(50000) {
       pickling.println(s"adjusting deltas, saved = $saved")
     } while (saved > 0 && length / saved < 100)
     adjustOffsets()
-    adjustPickledTrees()
+    adjustTreeAddrs()
     val wasted = compress()
     pickling.println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
   }
