@@ -426,7 +426,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => toTextGlobal(sel)
         }
         val selectorsText: Text = selectors match {
-          case Ident(name) :: Nil => toText(name)
+          case id :: Nil => toText(id)
           case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
         }
         "import " ~ toTextLocal(expr) ~ "." ~ selectorsText
@@ -525,8 +525,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (tree.isType) txt = toText(tp)
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
-    if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]])
-      txt = txt ~ "@" ~ tree.pos.toString
+    if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]]) {
+      val pos = if (homogenizedView) tree.pos.toSynthetic else tree.pos
+      txt = txt ~ "@" ~ pos.toString
+    }
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close

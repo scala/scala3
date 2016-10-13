@@ -57,7 +57,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDEF        Length NameRef (Type | Template) Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
-                  RENAMED        Length from_NameRef to_NameRef
+                  RENAMED               to_NameRef
+
                                  // Imports are for scala.meta, they are not used in the backend
 
   TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
@@ -264,6 +265,7 @@ object TastyFormat {
   final val DOUBLEconst = 76
   final val STRINGconst = 77
   final val IMPORTED = 78
+  final val RENAMED = 79
 
   final val THIS = 96
   final val CLASSconst = 97
@@ -291,10 +293,9 @@ object TastyFormat {
   final val TYPEPARAM = 133
   final val PARAMS = 134
   final val PARAM = 136
-  final val RENAMED = 138
+
   final val APPLY = 139
   final val TYPEAPPLY = 140
-
 
   final val TYPED = 143
   final val NAMEDARG = 144

@@ -37,23 +37,27 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
       lastIndex = index
       lastPos = pos
     }
-    def traverse(x: Any, parentPos: Position): Unit = x match {
+    def traverse(x: Any): Unit = x match {
       case x: Tree @unchecked =>
-        if (x.pos.exists && x.pos.toSynthetic != parentPos.toSynthetic) {
+        if (x.pos.exists /*&& x.pos.toSynthetic != x.initialPos.toSynthetic*/) {
           addrOfTree(x) match {
-            case Some(addr) => pickleDeltas(addr.index, x.pos)
+            case Some(addr) =>
+              //println(i"pickling $x")
+              pickleDeltas(addr.index, x.pos)
             case _ =>
+              //println(i"no address for $x")
           }
         }
+        //else println(i"skipping $x")
         x match {
-          case x: MemberDef @unchecked => traverse(x.symbol.annotations, x.pos)
+          case x: MemberDef @unchecked => traverse(x.symbol.annotations)
           case _ =>
         }
-        traverse(x.productIterator, x.pos)
+        traverse(x.productIterator)
       case xs: TraversableOnce[_] =>
-        xs.foreach(traverse(_, parentPos))
+        xs.foreach(traverse)
       case _ =>
     }
-    traverse(roots, NoPosition)
+    traverse(roots)
   }
 }
