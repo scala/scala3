@@ -3386,11 +3386,11 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(tpe: Type, annot: Annotation)
+  abstract case class AnnotatedType(tpe: Type, annot: Annotation)
       extends CachedProxyType with ValueType {
     // todo: cache them? but this makes only sense if annotations and trees are also cached.
     override def underlying(implicit ctx: Context): Type = tpe
-    def derivedAnnotatedType(tpe: Type, annot: Annotation) =
+    def derivedAnnotatedType(tpe: Type, annot: Annotation)(implicit ctx: Context) =
       if ((tpe eq this.tpe) && (annot eq this.annot)) this
       else AnnotatedType(tpe, annot)
 
@@ -3401,9 +3401,13 @@ object Types {
     override def computeHash: Int = doHash(annot, tpe)
   }
 
+  class CachedAnnotatedType(tpe: Type, annot: Annotation) extends AnnotatedType(tpe, annot)
+
   object AnnotatedType {
-    def make(underlying: Type, annots: List[Annotation]) =
-      (underlying /: annots)(AnnotatedType(_, _))
+    def apply(tpe: Type, annot: Annotation)(implicit ctx: Context) =
+      unique(new CachedAnnotatedType(tpe, annot))
+    def make(underlying: Type, annots: List[Annotation])(implicit ctx: Context) =
+      (underlying /: annots)(apply(_, _))
   }
 
   // Special type objects and classes -----------------------------------------------------

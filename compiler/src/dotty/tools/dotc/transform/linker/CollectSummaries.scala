@@ -646,7 +646,7 @@ object Summaries {
 
     override def equals(obj: scala.Any): Boolean = {
       obj match {
-        case t: CallWithContext => t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&  outerTargs == obj.asInstanceOf[CallWithContext].outerTargs
+        case t: CallWithContext => t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&  this.outerTargs == t.outerTargs
         case _ => false
       }
     }
