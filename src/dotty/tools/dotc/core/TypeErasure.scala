@@ -417,7 +417,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         // See doc comment for ElimByName for speculation how we could improve this.
       else MethodType(Nil, Nil, eraseResult(rt))
     case tp: PolyType =>
-      this(tp.resultType) match {
+      eraseResult(tp.resultType) match {
         case rt: MethodType => rt
         case rt => MethodType(Nil, Nil, rt)
       }
