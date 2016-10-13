@@ -83,25 +83,16 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
 
   /** interpret all lines from a specified file */
   def interpretAllFrom(filename: String): Unit = {
-    val fileIn = try {
-      new FileReader(filename)
+    import java.nio.file.{Files, Paths}
+    import scala.collection.JavaConversions._
+    try {
+      val lines = Files.readAllLines(Paths.get(filename)).mkString("\n")
+      output.println("Loading " + filename + "...")
+      output.flush
+      interpreter.interpret(lines)
     } catch {
       case _: IOException =>
         output.println("Error opening file: " + filename)
-        return
-    }
-    val oldIn = in
-    val oldReplay = replayCommandsRev
-    try {
-      val inFile = new BufferedReader(fileIn)
-      in = new SimpleReader(inFile, output, false)
-      output.println("Loading " + filename + "...")
-      output.flush
-      repl()
-    } finally {
-      in = oldIn
-      replayCommandsRev = oldReplay
-      fileIn.close
     }
   }
 
