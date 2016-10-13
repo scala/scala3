@@ -153,6 +153,11 @@ class TreePickler(pickler: TastyPickler) {
       throw ex
   }
 
+  def pickleTypeWithPos(tpe: Type, tree: Tree)(implicit ctx: Context): Unit = {
+    registerTreeAddr(tree)
+    pickleType(tpe)
+  }
+
   private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = try { tpe match {
     case AppliedType(tycon, args) =>
       writeByte(APPLIEDtype)
@@ -300,10 +305,8 @@ class TreePickler(pickler: TastyPickler) {
     pickled
   }
 
-  def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit = {
-    pickledTrees.put(tpt, currentAddr)
-    pickleType(tpt.tpe) // TODO correlate with original when generating positions
-  }
+  def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit =
+    pickleTypeWithPos(tpt.tpe, tpt) // TODO correlate with original when generating positions
 
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
@@ -325,7 +328,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
-    pickledTrees.put(tree, currentAddr)
+    registerTreeAddr(tree)
     tree match {
       case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
       case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
@@ -344,7 +347,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleTree(tree: Tree)(implicit ctx: Context): Unit = try {
-    pickledTrees.put(tree, currentAddr)
+    registerTreeAddr(tree)
     tree match {
       case Ident(name) =>
         tree.tpe match {
@@ -493,6 +496,7 @@ class TreePickler(pickler: TastyPickler) {
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
             pickleName(tree.self.name)
+            registerTreeAddr(tree.self)
             pickleType {
               cinfo.selfInfo match {
                 case sym: Symbol => sym.info
@@ -525,7 +529,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
-    pickledTrees.put(id, currentAddr)
+    registerTreeAddr(id)
     writeByte(tag)
     pickleName(id.name)
   }
