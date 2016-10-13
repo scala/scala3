@@ -121,7 +121,7 @@ object Types {
         }
       case this1: RefinedType if stripRefinements => this1.parent.isRef(sym, stripRefinements)
       case this1: RecType => this1.parent.isRef(sym, stripRefinements)
-      case this1: HKApply => this1.superType.isRef(sym, stripRefinements)
+      case this1: HKApply => this1.superType.isRef(sym, stripRefinements) && this1.lowerBound.isRef(sym, stripRefinements)
       case _ => false
     }
 
