@@ -386,7 +386,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           for {
             (paramType, argType) <- fun.tpe.widenDealias.paramTypess.flatten.zip(args.map(_.tpe))
             if !defn.isPrimitiveClass(paramType.classSymbol)
-            decl <- paramType.decls // FIXME paramType with some type argument is equivalent to argType as such it exposes all decls of the argType
+            decl <- paramType.typeSymbol.info.decls
             if decl.isTerm && !decl.isConstructor
             if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
           } yield {
