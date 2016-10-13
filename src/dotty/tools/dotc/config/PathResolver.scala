@@ -180,6 +180,7 @@ class PathResolver(implicit ctx: Context) {
     case "extdirs"            => settings.extdirs.value
     case "classpath" | "cp"   => settings.classpath.value
     case "sourcepath"         => settings.sourcepath.value
+    case "priorityclasspath"  => settings.priorityclasspath.value
   }
 
   /** Calculated values based on any given command line options, falling back on
@@ -193,6 +194,7 @@ class PathResolver(implicit ctx: Context) {
     def javaUserClassPath   = if (useJavaClassPath) Defaults.javaUserClassPath else ""
     def scalaBootClassPath  = cmdLineOrElse("bootclasspath", Defaults.scalaBootClassPath)
     def scalaExtDirs        = cmdLineOrElse("extdirs", Defaults.scalaExtDirs)
+    def priorityClassPath   = cmdLineOrElse("prioritypath", "")
     /** Scaladoc doesn't need any bootstrapping, otherwise will create errors such as:
      * [scaladoc] ../scala-trunk/src/reflect/scala/reflect/macros/Reifiers.scala:89: error: object api is not a member of package reflect
      * [scaladoc] case class ReificationException(val pos: reflect.api.PositionApi, val msg: String) extends Throwable(msg)
@@ -220,7 +222,9 @@ class PathResolver(implicit ctx: Context) {
     import context._
 
     // Assemble the elements!
+    // priority class path takes precedence
     def basis = List[Traversable[ClassPath]](
+      classesInExpandedPath(priorityClassPath),     // 0. The priority class path (for testing).
       classesInPath(javaBootClassPath),             // 1. The Java bootstrap class path.
       contentsOfDirsInPath(javaExtDirs),            // 2. The Java extension class path.
       classesInExpandedPath(javaUserClassPath),     // 3. The Java application class path.
@@ -235,6 +239,7 @@ class PathResolver(implicit ctx: Context) {
     override def toString = """
       |object Calculated {
       |  scalaHome            = %s
+      |  priorityClassPath    = %s
       |  javaBootClassPath    = %s
       |  javaExtDirs          = %s
       |  javaUserClassPath    = %s
@@ -244,7 +249,7 @@ class PathResolver(implicit ctx: Context) {
       |  userClassPath        = %s
       |  sourcePath           = %s
       |}""".trim.stripMargin.format(
-        scalaHome,
+        scalaHome, ppcp(priorityClassPath),
         ppcp(javaBootClassPath), ppcp(javaExtDirs), ppcp(javaUserClassPath),
         useJavaClassPath,
         ppcp(scalaBootClassPath), ppcp(scalaExtDirs), ppcp(userClassPath),
