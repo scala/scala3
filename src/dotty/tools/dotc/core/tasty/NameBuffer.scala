@@ -42,11 +42,13 @@ class NameBuffer extends TastyBuffer(10000) {
 
   private def withLength(op: => Unit): Unit = {
     val lengthAddr = currentAddr
-    writeByte(0)
+    val lengthFieldLength = 2
+    for (i <- 0 until lengthFieldLength)
+      writeByte(0)
     op
-    val length = currentAddr.index - lengthAddr.index - 1
-    assert(length < 128)
-    putNat(lengthAddr, length, 1)
+    val length = currentAddr.index - lengthAddr.index - lengthFieldLength
+    assert(length < (1 << (7 * lengthFieldLength)))
+    putNat(lengthAddr, length, lengthFieldLength)
   }
 
   def writeNameRef(ref: NameRef) = writeNat(ref.index)
