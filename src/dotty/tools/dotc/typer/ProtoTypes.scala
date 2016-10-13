@@ -400,9 +400,10 @@ object ProtoTypes {
           if (mt.isDependent) tp
           else {
             val rt = normalize(mt.resultType, pt)
-            if (pt.isInstanceOf[ApplyingProto])
-              mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
-            else {
+          pt match {
+            case pt: IgnoredProto  => mt
+            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+            case _ =>
               val ft = defn.FunctionOf(mt.paramTypes, rt)
               if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
             }
