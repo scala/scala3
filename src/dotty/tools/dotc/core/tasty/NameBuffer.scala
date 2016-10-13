@@ -12,6 +12,7 @@ import TastyName._
 import TastyFormat._
 
 class NameBuffer extends TastyBuffer(10000) {
+  import NameBuffer._
 
   private val nameRefs = new mutable.LinkedHashMap[TastyName, NameRef]
 
@@ -40,13 +41,12 @@ class NameBuffer extends TastyBuffer(10000) {
       nameIndex(name)
   }
 
-  private def withLength(op: => Unit): Unit = {
+  private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr
-    writeByte(0)
+    for (i <- 0 until lengthWidth) writeByte(0)
     op
     val length = currentAddr.index - lengthAddr.index - 1
-    assert(length < 128)
-    putNat(lengthAddr, length, 1)
+    putNat(lengthAddr, length, lengthWidth)
   }
 
   def writeNameRef(ref: NameRef) = writeNat(ref.index)
@@ -64,7 +64,9 @@ class NameBuffer extends TastyBuffer(10000) {
       withLength { writeNameRef(qualified); writeNameRef(selector) }
     case Signed(original, params, result) =>
       writeByte(SIGNED)
-      withLength { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) }
+      withLength(
+          { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
+          if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
     case Expanded(prefix, original) =>
       writeByte(EXPANDED)
       withLength { writeNameRef(prefix); writeNameRef(original) }
@@ -90,4 +92,10 @@ class NameBuffer extends TastyBuffer(10000) {
       pickleName(name)
     }
   }
+}
+
+object NameBuffer {
+  private val maxIndexWidth = 3  // allows name indices up to 2^21.
+  private val payloadBitsPerByte = 7 // determined by nat encoding in TastyBuffer
+  private val maxNumInByte = (1 << payloadBitsPerByte) - 1
 }
