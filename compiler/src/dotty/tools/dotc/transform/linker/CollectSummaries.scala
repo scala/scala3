@@ -381,7 +381,27 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues
+      val javaAccessible = tree match {
+        case Apply(fun, args) if fun.symbol.is(Flags.JavaDefined) && !fun.symbol.is(Flags.Deferred) =>
+          for {
+            (paramType, argType) <- fun.tpe.widenDealias.paramTypess.flatten.zip(args.map(_.tpe))
+            decl <- paramType.decls // FIXME paramType with some type argument is equivalent to argType as such it exposes all decls of the argType
+            if decl.isTerm && !decl.isConstructor
+            if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
+          } yield {
+            val call =
+              TermRef(argType, argType.widenDealias.classSymbol.requiredMethod(decl.name.asTermName, decl.info.paramTypess.flatten))
+            val targs = call.widenDealias match {
+              case call: PolyType => call.paramBounds.map(_.hi)
+              case _ => Nil
+            }
+            CallInfo(call, targs, decl.info.paramTypess.flatten)
+          }
+
+        case _ => Nil
+      }
+
+      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
 
       curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }

@@ -310,3 +310,20 @@
 ../scala-scala/src/library/scala/Function20.scala
 ../scala-scala/src/library/scala/Function21.scala
 ../scala-scala/src/library/scala/Function22.scala
+
+../scala-scala/src/library/scala/collection/mutable/MapLike.scala
+
+# migration warnings
+#../scala-scala/src/library/scala/collection/mutable/Map.scala
+../scala-scala/src/library/scala/collection/mutable/StringBuilder.scala
+
+../scala-scala/src/library/scala/sys/Prop.scala
+../scala-scala/src/library/scala/sys/BooleanProp.scala
+# ../scala-scala/src/library/scala/sys/PropImpl.scala
+
+# cant add because it is in java
+#../scala-scala/src/library/scala/math/ScalaNumber.java
+
+../scala-scala/src/library/scala/math/BigDecimal.scala
+../scala-scala/src/library/scala/math/BigInt.scala
+../scala-scala/src/library/scala/runtime/Nothing$.scala
