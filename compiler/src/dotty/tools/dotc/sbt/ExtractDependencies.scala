@@ -200,7 +200,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
         addDependency(ref.symbol)
         usedTypeTraverser.traverse(ref.tpe)
       case t @ Template(_, parents, _, _) =>
-        t.parents.foreach(p => addInheritanceDependency(p.tpe.typeSymbol))
+        t.parents.foreach(p => addInheritanceDependency(p.tpe.classSymbol))
       case _ =>
     }
     traverseChildren(tree)
