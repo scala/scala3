@@ -11,7 +11,8 @@ pages.
 
 Index
 -----
-* [Blog](blog/)
+* [Blog](../blog/)
+* [Errors](errors/) and why they occur
 * Usage
     - [Migrating from Scala 2](usage/migrating.md)
     - [Using Dotty with sbt](usage/sbt-projects.md)
