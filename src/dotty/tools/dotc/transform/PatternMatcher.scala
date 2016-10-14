@@ -240,17 +240,21 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
 
           if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            val tmpSym = freshSym(prev.pos, prev.tpe, "o")
-            val prevValue = ref(tmpSym).select("get".toTermName).ensureApplied
+            // isDefined and get maybe overloaded
+            val getDenot = prev.tpe.member(nme.get).suchThat(_.info.isParameterless)
+            val isDefinedDenot = prev.tpe.member(nme.isDefined).suchThat(_.info.isParameterless)
 
-              Block(
-                List(ValDef(tmpSym, prev)),
-                // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
-                ifThenElseZero(
-                  ref(tmpSym).select(nme.isDefined),
-                  Block(List(ValDef(b.asTerm, prevValue)), next)
-                )
+            val tmpSym = freshSym(prev.pos, prev.tpe, "o")
+            val prevValue = ref(tmpSym).select(getDenot.symbol).ensureApplied
+
+            Block(
+              List(ValDef(tmpSym, prev)),
+              // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
+              ifThenElseZero(
+                ref(tmpSym).select(isDefinedDenot.symbol),
+                Block(List(ValDef(b.asTerm, prevValue)), next)
               )
+            )
           } else {
             assert(defn.isProductSubType(prev.tpe))
             val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
