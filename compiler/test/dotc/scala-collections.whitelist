@@ -327,3 +327,15 @@
 ../scala-scala/src/library/scala/math/BigDecimal.scala
 ../scala-scala/src/library/scala/math/BigInt.scala
 ../scala-scala/src/library/scala/runtime/Nothing$.scala
+../scala-scala/src/library/scala/runtime/Null$.scala
+
+../scala-scala/src/library/scala/collection/mutable/Cloneable.scala
+../scala-scala/src/library/scala/collection/mutable/ArrayLike.scala
+../scala-scala/src/library/scala/collection/mutable/IndexedSeqLike.scala
+../scala-scala/src/library/scala/collection/mutable/IndexedSeqOptimized.scala
+../scala-scala/src/library/scala/collection/mutable/SeqLike.scala
+../scala-scala/src/library/scala/collection/mutable/Traversable.scala
+../scala-scala/src/library/scala/collection/mutable/Iterable.scala
+../scala-scala/src/library/scala/collection/mutable/Seq.scala
+
+../scala-scala/src/library/scala/util/Either.scala
