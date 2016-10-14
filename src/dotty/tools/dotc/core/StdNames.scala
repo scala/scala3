@@ -193,6 +193,8 @@ object StdNames {
     final val Throwable: N           = "Throwable"
     final val Tuple: N               = "Tuple"
 
+    final def FunctionN(arity: Int): N = Function + arity.toString
+
     final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
     final val Enum: N                = "Enum"

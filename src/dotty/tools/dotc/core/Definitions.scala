@@ -600,18 +600,50 @@ class Definitions {
   lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxAbstractFunctionArity, 0)
   val AbstractFunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(implicit ctx: Context) = AbstractFunctionClassPerRun()(ctx)(n)
-  lazy val FunctionType = mkArityArray("scala.Function", MaxFunctionArity, 0)
-  def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => FunctionType.map(_.symbol.asClass))
+
+  private lazy val functionType = mkArityArray("scala.Function", MaxFunctionArity, 0)
+  def FunctionType(arity: Int): TypeRef = {
+    if (arity <= MaxFunctionArity) functionType(arity)
+    else SyntheticFunctionType(arity)
+  }
+  def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => functionType.map(_.symbol.asClass))
   def FunctionClass(n: Int)(implicit ctx: Context) = FunctionClassPerRun()(ctx)(n)
     lazy val Function0_applyR = FunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
 
+
+  private lazy val syntheticFunctionTypeMap = mutable.Map.empty[Int, TypeRef]
+  private def SyntheticFunctionType(arity: Int): TypeRef = {
+    assert(MaxFunctionArity < arity)
+    if (syntheticFunctionTypeMap.contains(arity)) syntheticFunctionTypeMap(arity)
+    else {
+      val cls = mkSyntheticFunction(arity)
+      syntheticCoreClasses += cls
+      val tpe = cls.typeRef
+      syntheticFunctionTypeMap.put(arity, tpe)
+      tpe
+    }
+  }
+  private def mkSyntheticFunction(i: Int): ClassSymbol = {
+    val decls = newScope
+    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.FunctionN(i), Trait, List(AnyRefType), decls)
+    def newTypeParam(name: TypeName, flags: FlagSet, bounds: TypeBounds) =
+      newSymbol(cls, name, flags | ClassTypeParamCreationFlags, bounds)
+
+    val vParamNames = (0 until i).map(j => s"i$j".toTermName).toList
+    val tParamSyms = (0 until i).map(j => newTypeParam(s"T$j".toTypeName, Contravariant, TypeBounds.empty)).toList
+    val returnTParamSym = newTypeParam("R".toTypeName, Covariant, TypeBounds.empty)
+    val applyMethod =
+      newMethod(cls, nme.apply, MethodType(vParamNames, tParamSyms.map(_.typeRef), returnTParamSym.typeRef), Deferred)
+
+    tParamSyms.foreach(decls.enter)
+    decls.enter(returnTParamSym)
+    decls.enter(applyMethod)
+    completeClass(cls)
+  }
+
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
   lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
-
-  private lazy val FunctionTypes: Set[TypeRef] = FunctionType.toSet
-  private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
-  private lazy val ProductTypes: Set[TypeRef] = ProductNType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -757,7 +789,7 @@ class Definitions {
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticCoreClasses = List(
+  private lazy val syntheticCoreClasses = mutable.ArrayBuffer[Symbol](
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
@@ -770,8 +802,10 @@ class Definitions {
     EmptyPackageVal,
     OpsPackageClass)
 
+  def isSyntheticCoreClass(sym: ClassSymbol) = syntheticCoreClasses.contains(sym)
+
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-    lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    private lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   private[this] var _isInitialized = false
   private def isInitialized = _isInitialized
