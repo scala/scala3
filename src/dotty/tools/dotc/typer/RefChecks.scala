@@ -487,7 +487,7 @@ object RefChecks {
             // abstract method, and a cursory examination of the difference reveals
             // something obvious to us, let's make it more obvious to them.
             val abstractParams = underlying.info.firstParamTypes
-            val matchingName = clazz.info.member(underlying.name).alternatives
+            val matchingName = clazz.info.nonPrivateMember(underlying.name).alternatives
             val matchingArity = matchingName filter { m =>
               !m.symbol.is(Deferred) &&
                 m.info.firstParamTypes.length == abstractParams.length
