@@ -615,13 +615,13 @@ object Types {
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTermMembers") {
       memberDenots(abstractTermNameFilter,
-          (name, buf) => buf ++= member(name).altsWith(_ is Deferred))
+          (name, buf) => buf ++= nonPrivateMember(name).altsWith(_ is Deferred))
     }
 
     /** The set of abstract type members of this type. */
     final def abstractTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTypeMembers") {
       memberDenots(abstractTypeNameFilter,
-          (name, buf) => buf += member(name).asSingleDenotation)
+          (name, buf) => buf += nonPrivateMember(name).asSingleDenotation)
     }
 
     /** The set of abstract type members of this type. */
@@ -3756,7 +3756,7 @@ object Types {
   object abstractTypeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTypeName && {
-        val mbr = pre.member(name)
+        val mbr = pre.nonPrivateMember(name)
         (mbr.symbol is Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
       }
   }
@@ -3773,7 +3773,7 @@ object Types {
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTermName && (pre member name).hasAltWith(_.symbol is Deferred)
+      name.isTermName && pre.nonPrivateMember(name).hasAltWith(_.symbol is Deferred)
   }
 
   object typeNameFilter extends NameFilter {
