@@ -240,7 +240,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
 
           if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            // isDefined and get maybe overloaded
+            // isDefined and get may be overloaded
             val getDenot = prev.tpe.member(nme.get).suchThat(_.info.isParameterless)
             val isDefinedDenot = prev.tpe.member(nme.isDefined).suchThat(_.info.isParameterless)
 
