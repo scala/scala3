@@ -343,7 +343,9 @@ trait ImplicitRunInfo { self: RunInfo =>
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
           case _ =>
-            for (part <- tp.namedPartsWith(_.isType))
+            // We exclude lower bounds to conform to SLS 7.2:
+            // "The parts of a type T are: [...] if T is an abstract type, the parts of its upper bound"
+            for (part <- tp.namedPartsWith(_.isType, excludeLowerBounds = true))
               comps ++= iscopeRefs(part)
         }
         comps

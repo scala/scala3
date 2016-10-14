@@ -577,16 +577,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def escapingRefs(block: Tree, localSyms: => List[Symbol])(implicit ctx: Context): collection.Set[NamedType] = {
-    var hoisted: Set[Symbol] = Set()
     lazy val locals = localSyms.toSet
-    def leakingTypes(tp: Type): collection.Set[NamedType] =
-      tp namedPartsWith (tp => locals.contains(tp.symbol))
-    def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
-    def classLeaks(sym: ClassSymbol): Boolean =
-      (ctx.owner is Method) || // can't hoist classes out of method bodies
-      (sym.info.parents exists typeLeaks) ||
-      (sym.info.decls.toList exists (t => typeLeaks(t.info)))
-    leakingTypes(block.tpe)
+    block.tpe namedPartsWith (tp => locals.contains(tp.symbol))
   }
 
   /** Check that expression's type can be expressed without references to locally defined
