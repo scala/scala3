@@ -482,10 +482,13 @@ trait Checking {
 
   /** Check that `tree` is a pure expression of constant type */
   def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =
-    tree.tpe.widenTermRefExpr match {
-      case tp: ConstantType if isPureExpr(tree) => // ok
-      case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
-      case _ => ctx.error(em"$what must be a constant expression or a function", tree.pos)
+    tree.tpe match {
+      case tp: TermRef if tp.symbol.is(InlineParam) => // ok
+      case tp => tp.widenTermRefExpr match {
+        case tp: ConstantType if isPureExpr(tree) => // ok
+        case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
+        case _ => ctx.error(em"$what must be a constant expression or a function", tree.pos)
+      }
     }
 
   /** Check that class does not define same symbol twice */

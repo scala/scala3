@@ -544,6 +544,9 @@ object Flags {
   /** An inline method */
   final val InlineMethod = allOf(Inline, Method)
 
+  /** An inline parameter */
+  final val InlineParam = allOf(Inline, Param)
+
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | ParamAccessor
 
