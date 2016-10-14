@@ -42,7 +42,7 @@ object TreeTransforms {
    *            the general dispatch overhead as opposed to the concrete work done in transformations. So that leaves us with
    *            0.2sec, or roughly 600M processor cycles.
    *
-   *            Now, to the amount of work that needs to be done. The codebase produces of about 250'000 trees after typechecking.
+   *            Now, to the amount of work that needs to be done. The codebase produces an average of about 250'000 trees after typechecking.
    *            Transformations are likely to make this bigger so let's assume 300K trees on average. We estimate to have about 100
    *            micro-transformations. Let's say 5 transformation groups of 20 micro-transformations each. (by comparison,
    *            scalac has in excess of 20 phases, and most phases do multiple transformations). There are then 30M visits
@@ -208,7 +208,7 @@ object TreeTransforms {
       if (cls.getDeclaredMethods.exists(_.getName == name)) cls != classOf[TreeTransform]
       else hasRedefinedMethod(cls.getSuperclass, name)
 
-    /** Create an index array `next` of size one larger than teh size of `transforms` such that
+    /** Create an index array `next` of size one larger than the size of `transforms` such that
      *  for each index i, `next(i)` is the smallest index j such that
      *
      *  i <= j
