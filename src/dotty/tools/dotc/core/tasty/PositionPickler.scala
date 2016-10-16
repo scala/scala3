@@ -13,11 +13,28 @@ import collection.mutable
 import TastyBuffer._
 import util.Positions._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]) {
+class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]) {
   val buf = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import buf._
   import ast.tpd._
+
+  private val remainingAddrs = new java.util.IdentityHashMap[Tree, Iterator[Addr]]
+
+  def nextTreeAddr(tree: Tree): Option[Addr] = remainingAddrs.get(tree) match {
+    case null =>
+      addrsOfTree(tree) match {
+        case Nil =>
+          None
+        case addr :: Nil =>
+          Some(addr)
+        case addrs =>
+          remainingAddrs.put(tree, addrs.iterator)
+          nextTreeAddr(tree)
+      }
+    case it: Iterator[_] =>
+      if (it.hasNext) Some(it.next) else None
+  }
 
   def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean) = {
     def toInt(b: Boolean) = if (b) 1 else 0
@@ -40,9 +57,9 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
     def traverse(x: Any): Unit = x match {
       case x: Tree @unchecked =>
         if (x.pos.exists /*&& x.pos.toSynthetic != x.initialPos.toSynthetic*/) {
-          addrOfTree(x) match {
+          nextTreeAddr(x) match {
             case Some(addr) =>
-              //println(i"pickling $x")
+              //println(i"pickling $x ar $addr")
               pickleDeltas(addr.index, x.pos)
             case _ =>
               //println(i"no address for $x")

@@ -17,13 +17,26 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private val treeAddr = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+  private type TreeAddrs = Any // really: Addr | List[Addr]
 
-  def registerTreeAddr(tree: Tree) = treeAddr.put(tree, currentAddr)
+  /** A map from trees to the address(es) at which a tree is pickled. There may be several
+   *  such addresses if the tree is shared. To keep the map compact, the value type is a
+   *  disjunction of a single address (which is the common case) and a list of addresses.
+   */
+  private val treeAddrs = new java.util.IdentityHashMap[Tree, TreeAddrs]
 
-  def addrOfTree(tree: Tree): Option[Addr] = treeAddr.get(tree) match {
-    case null => None
-    case n => Some(n.asInstanceOf[Addr])
+  def registerTreeAddr(tree: Tree) =
+    treeAddrs.put(tree,
+      treeAddrs.get(tree) match {
+        case null => currentAddr
+        case x: Addr => x :: currentAddr :: Nil
+        case xs: List[_] => xs :+ currentAddr
+      })
+
+  def addrsOfTree(tree: Tree): List[Addr] = treeAddrs.get(tree) match {
+    case null => Nil
+    case addr: Addr => addr :: Nil
+    case addrs: List[Addr] => addrs
   }
 
   private def offset(i: Int): Addr = Addr(offsets(i))
@@ -150,10 +163,13 @@ class TreeBuffer extends TastyBuffer(50000) {
   }
 
   def adjustTreeAddrs(): Unit = {
-    val it = treeAddr.keySet.iterator
+    val it = treeAddrs.keySet.iterator
     while (it.hasNext) {
       val tree = it.next
-      treeAddr.put(tree, adjusted(treeAddr.get(tree).asInstanceOf[Addr]))
+      treeAddrs.get(tree) match {
+        case addr: Addr => treeAddrs.put(tree, adjusted(addr))
+        case addrs: List[Addr] => treeAddrs.put(tree, addrs.map(adjusted))
+      }
     }
   }
 
