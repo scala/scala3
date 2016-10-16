@@ -162,7 +162,8 @@ trait ConstraintHandling {
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
    *  otherwise it is approximated by its upper bound. However, any occurrences
-   *  of the parameter in a refinement somewhere in the bound are removed.
+   *  of the parameter in a refinement somewhere in the bound are removed. Also
+   *  wildcard types in bounds are approximated by their upper or lower bounds.
    *  (Such occurrences can arise for F-bounded types).
    *  The constraint is left unchanged.
    *  @return the instantiating type
@@ -174,6 +175,27 @@ trait ConstraintHandling {
       def apply(tp: Type) = mapOver {
         tp match {
           case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
+          case tp: WildcardType =>
+            val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
+            // Try to instantiate the wildcard to a type that is known to conform to it.
+            // This means:
+            //  If fromBelow is true, we minimize the type overall
+            //  Hence, if variance < 0, pick the maximal safe type: bounds.lo
+            //           (i.e. the whole bounds range is over the type)
+            //         if variance > 0, pick the minimal safe type: bounds.hi
+            //           (i.e. the whole bounds range is under the type)
+            //         if variance == 0, pick bounds.lo anyway (this is arbitrary but in line with
+            //           the principle that we pick the smaller type when in doubt).
+            //  If fromBelow is false, we maximize the type overall and reverse the bounds
+            //  if variance != 0. For variance == 0, we still minimize.
+            //  In summary we pick the bound given by this table:
+            //
+            //  variance    | -1  0   1
+            //  ------------------------
+            //  from below  | lo  lo  hi
+            //  from above  | hi  lo  lo
+            //
+            if (variance == 0 || fromBelow == (variance < 0)) bounds.lo else bounds.hi
           case _ => tp
         }
       }
