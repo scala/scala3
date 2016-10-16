@@ -274,4 +274,48 @@ object messages {
 
     val explanation = ""
   }
+ 
+  case class EarlyDefinitionsNotSupported()(implicit ctx:Context) extends Message(9) {
+    val kind = "Syntax"
+   
+    val msg = "early definitions are not supported; use trait parameters instead"
+
+    val code1 =
+      """|trait Logging {
+         |  val f: File
+         |  f.open()
+         |  onExit(f.close())
+         |  def log(msg: String) = f.write(msg)
+         |}
+         |
+         |class B extends Logging {
+         |  val f = new File("log.data") // triggers a null pointer exception
+         |}
+         |
+         |class C extends {
+         |  val f = new File("log.data") // early definition gets around the null pointer exception
+         |} with Logging""".stripMargin
+
+    val code2 =
+      """|trait Logging(f: File) {
+         |  f.open()
+         |  onExit(f.close())
+         |  def log(msg: String) = f.write(msg)
+         |}
+         |
+         |class C extends Logging(new File("log.data"))""".stripMargin
+
+    val explanation =
+      hl"""Earlier versions of Scala did not support trait parameters and "early definitions" (also known as "early initializers")
+        |were used as an alternative.
+        |
+        |Example of old syntax:
+        |
+        |$code1
+        |
+        |The above code can now be written as:
+        |
+        |$code2
+        |""".stripMargin
+  }
 }
