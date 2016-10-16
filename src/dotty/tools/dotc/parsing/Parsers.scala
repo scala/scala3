@@ -2061,7 +2061,7 @@ object Parsers {
     def templateBody(): (ValDef, List[Tree]) = {
       val r = inDefScopeBraces { templateStatSeq() }
       if (in.token == WITH) {
-        syntaxError("early definitions are not supported; use trait parameters instead")
+        syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
       }
