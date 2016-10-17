@@ -19,12 +19,12 @@ for f in $FILES
 do
   echo $f
   pushd $f > /dev/null
-  rm -R out > /dev/null
+  rm -R out > /dev/null 2> /dev/null
   mkdir -p out
   cd out > /dev/null
-  dotcf ../Test.scala > compile-log.txt 2> compile-errors.txt || { echo "compilation failed"; CODE=1;  }
-  dottyr Test > run-log.txt 2> run-errors.txt || { echo "run failed"; CODE=1; }
+  dotcf ../Test.scala > compile-log.txt 2> compile-errors.txt && dottyr Test > run-log.txt 2> run-errors.txt || { echo "... failed"; CODE=1;  }
   popd > /dev/null
+  diff -y $f/out/run-log.txt $f/check.txt > $f/out/run-log-diff.txt || { echo "... diff failed"; cat $f/out/run-log-diff.txt; CODE=1; }
 done
 
 if [ $CODE -eq 0 ]
