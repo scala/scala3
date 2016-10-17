@@ -568,9 +568,10 @@ object Summaries {
        case _ => false
      }
 
+     override def toString: String = s"ClosureType($meth, $u, $implementedMethod, $outerTargs)"
    }
 
-   class PreciseType(u: Type) extends SingletonType {
+   class PreciseType(private[PreciseType] val u: Type) extends SingletonType {
 
      /** customized hash code of this type.
        * NotCached for uncached types. Cached types
@@ -584,6 +585,13 @@ object Summaries {
      }
 
      def underlying(implicit ctx: Context): Type = u
+
+     override def equals(other: scala.Any): Boolean = other match {
+       case that: PreciseType => this.u == that.u
+       case _ => false
+     }
+
+     override def toString: String = s"PreciseType($u)"
    }
 
    class ErazedType extends UncachedProxyType {
@@ -650,6 +658,8 @@ object Summaries {
         case _ => false
       }
     }
+
+    override def toString: String = s"CallWithContext($call, $targs, $argumentsPassed, $outerTargs, $parent, $callee)"
   }
 
   class TypeWithContext(val tp: Type, val outerTargs: OuterTargs) {
@@ -661,6 +671,8 @@ object Summaries {
       case t: TypeWithContext => t.tp.equals(tp) && (t.outerTargs equals outerTargs)
       case _ => false
     }
+
+    override def toString: String = s"TypeWithContext($tp, $outerTargs)"
   }
 
   case class Cast(from: Type, to: Type)(implicit ctx: Context) {
@@ -674,6 +686,8 @@ object Summaries {
 
     override def hashCode(): Int =
       from.typeSymbol.hashCode() * 31 + to.typeSymbol.hashCode()
+
+    override def toString: String = s"Cast($from, $to)"
   }
 
 
