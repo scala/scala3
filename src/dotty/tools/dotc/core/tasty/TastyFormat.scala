@@ -79,6 +79,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
+                  INLINED        Length call_Term expr_Term Stat*
                   LAMBDA         Length meth_Term target_Type
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
@@ -306,6 +307,7 @@ object TastyFormat {
   final val MATCH = 149
   final val RETURN = 150
   final val TRY = 151
+  final val INLINED = 152
   final val REPEATED = 153
   final val BIND = 154
   final val ALTERNATIVE = 155
@@ -456,6 +458,7 @@ object TastyFormat {
     case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
     case RETURN => "RETURN"
+    case INLINED => "INLINED"
     case TRY => "TRY"
     case REPEATED => "REPEATED"
     case BIND => "BIND"
