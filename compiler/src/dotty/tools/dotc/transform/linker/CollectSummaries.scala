@@ -361,6 +361,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
+      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), args)
+
       val fillInStackTrace = tree match {
         case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
           List(CallInfo(TermRef(newThrowable.tpe, newThrowable.tpe.widenDealias.classSymbol.requiredMethod("fillInStackTrace")), Nil, Nil))
@@ -396,7 +398,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
               case call: PolyType => call.paramBounds.map(_.hi)
               case _ => Nil
             }
-            CallInfo(call, targs, decl.info.paramTypess.flatten)
+            CallInfo(call, targs, decl.info.paramTypess.flatten, thisCallInfo)
           }
 
         case _ => Nil
@@ -404,7 +406,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
 
-      curMethodSummary.methodsCalled(storedReciever) = CallInfo(method, typeArguments.map(_.tpe), args) :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
+      curMethodSummary.methodsCalled(storedReciever) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -602,7 +604,8 @@ object Summaries {
 
   case class CallInfo(call: Type, // this is type of method, that includes full type of reciever, eg: TermRef(reciever, Method)
                        targs: List[Type],
-                       argumentsPassed: List[Type]
+                       argumentsPassed: List[Type],
+                       source: CallInfo = null // When source is not null this call was generated as part of a call to source
                        )(implicit ctx: Context) {
     call.widenDealias match {
       case t: PolyType => assert(t.paramNames.size == targs.size)
@@ -654,7 +657,7 @@ object Summaries {
 
     override def equals(obj: scala.Any): Boolean = {
       obj match {
-        case t: CallWithContext => t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&  this.outerTargs == t.outerTargs
+        case t: CallWithContext => t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&  this.outerTargs == t.outerTargs && this.source == t.source
         case _ => false
       }
     }
@@ -1306,7 +1309,7 @@ class BuildCallGraph extends Phase {
       }
     }
 
-    def csWTToName(x: CallWithContext, close: Boolean = true, open: Boolean = true): String = {
+    def csWTToName(x: CallInfo, close: Boolean = true, open: Boolean = true): String = {
       if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol) {
         s"${if (open) slash else ""}${typeName(x.call)}${if (x.targs.nonEmpty) "[" + x.targs.map(x => typeName(x)).mkString(",") + "]" else ""}${if (close) slash else ""}"
       } else {
@@ -1318,11 +1321,11 @@ class BuildCallGraph extends Phase {
       csWTToName(parrent, close = false) + s"${escape(inner.call.show)}${inner.hashCode()}$slash"
     }
 
-    def dummyName(x: CallWithContext) = {
+    def dummyName(x: CallInfo) = {
       csWTToName(x, close = false) + "_Dummy\""
     }
 
-    def clusterName(x: CallWithContext) = {
+    def clusterName(x: CallInfo) = {
       val r =  "\"cluster_" + csWTToName(x, open = false)
 //      if (r.contains("BufferLike.apply")) {
 //        println("doba")
@@ -1365,16 +1368,20 @@ class BuildCallGraph extends Phase {
       val line = s"""subgraph ${clusterName(caller)} {
           label = ${csWTToName(caller)}; color = ${if (outerMethod.contains(caller.call.termSymbol)) "red" else "blue"};
           ${dummyName(caller)} [shape=point style=invis];
-        ${caller.outEdges.keys.map(x => csToName(caller, x) + s" [label = $slash${callSiteLabel(x)}$slash];").mkString("\n")}
+        ${caller.outEdges.keys.map(x => csToName(caller, x) + s" [label = $slash${callSiteLabel(x)}$slash${if (x.source != null) s", color=orange" else ""}];").mkString("")}
         }
         """
       outGraph.append(line)
-      val edges = caller.outEdges.foreach { x =>
+      caller.outEdges.foreach { x =>
         val callInfo = x._1
         x._2.foreach { target =>
           val line = s"${csToName(caller, callInfo)} -> ${dummyName(target)} [ltail=${clusterName(target)}];\n"
           outGraph.append(line)
         }
+//        if (callInfo.source != null) {
+//          val line = s"${csToName(caller, callInfo)} -> ${dummyName(callInfo.source)} [dir=back, color=orange];\n"
+//          outGraph.append(line)
+//        }
       }
     }
     outGraph.append("}")
