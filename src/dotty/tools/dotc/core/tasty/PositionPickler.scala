@@ -54,9 +54,16 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
       lastIndex = index
       lastPos = pos
     }
+
+    /** True if x's position cannot be reconstructed automatically from its initialPos
+     */
+    def needsPosition(x: Positioned) =
+      x.pos.toSynthetic != x.initialPos.toSynthetic ||
+      x.isInstanceOf[WithLazyField[_]] || // initialPos is inaccurate for trees with lazy fields
+      x.isInstanceOf[Trees.PackageDef[_]] // package defs might be split into several Tasty files
     def traverse(x: Any): Unit = x match {
       case x: Tree @unchecked =>
-        if (x.pos.exists /*&& x.pos.toSynthetic != x.initialPos.toSynthetic*/) {
+        if (x.pos.exists && needsPosition(x)) {
           nextTreeAddr(x) match {
             case Some(addr) =>
               //println(i"pickling $x at $addr")
@@ -65,7 +72,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
               //println(i"no address for $x")
           }
         }
-        //else println(i"skipping $x")
+        //else if (x.pos.exists) println(i"skipping $x")
         x match {
           case x: MemberDef @unchecked => traverse(x.symbol.annotations.map(_.tree))
           case _ =>
