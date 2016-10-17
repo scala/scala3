@@ -496,7 +496,7 @@ class TreePickler(pickler: TastyPickler) {
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
             pickleName(tree.self.name)
-            registerTreeAddr(tree.self)
+            if (!tree.self.isEmpty) registerTreeAddr(tree.self.tpt)
             pickleType {
               cinfo.selfInfo match {
                 case sym: Symbol => sym.info
