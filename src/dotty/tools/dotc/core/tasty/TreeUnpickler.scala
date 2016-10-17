@@ -626,7 +626,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
      *  or else read definition.
      */
     def readIndexedDef()(implicit ctx: Context): Tree = treeAtAddr.remove(currentAddr) match {
-      case Some(tree) => skipTree(); setPos(currentAddr, tree)
+      case Some(tree) => skipTree(); tree
       case none => readNewDef()
     }
 
@@ -1022,7 +1022,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       if (ctx.mode.is(Mode.ReadPositions)) {
         posUnpicklerOpt match {
           case Some(posUnpickler) =>
-            //println(i"setPos $tree / ${tree.getClass} to ${posUnpickler.posAt(addr)}")
+            //println(i"setPos $tree / ${tree.getClass} at $addr to ${posUnpickler.posAt(addr)}")
             val pos = posUnpickler.posAt(addr)
             if (pos.exists) tree.setPosUnchecked(pos)
             tree
