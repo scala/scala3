@@ -224,6 +224,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
         case tree @ Assign(sel: Select, _) =>
           superAcc.transformAssign(super.transform(tree))
+        case Inlined(call, bindings, expansion) =>
+          // Leave only a call trace consisting of
+          //  - a reference to the top-level class from which the call was inlined,
+          //  - the call's position
+          // in the call field of an Inlined node.
+          // The trace has enough info to completely reconstruct positions.
+          // The minimization is done for two reasons:
+          //  1. To save space (calls might contain large inline arguments, which would otherwise
+          //     be duplicated
+          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
+          //     would trigger an assertion when pickling).
+          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
           val saved = parentNews
           parentNews ++= tree.parents.flatMap(newPart)
