@@ -59,7 +59,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
         if (x.pos.exists /*&& x.pos.toSynthetic != x.initialPos.toSynthetic*/) {
           nextTreeAddr(x) match {
             case Some(addr) =>
-              //println(i"pickling $x ar $addr")
+              //println(i"pickling $x at $addr")
               pickleDeltas(addr.index, x.pos)
             case _ =>
               //println(i"no address for $x")
@@ -67,7 +67,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
         }
         //else println(i"skipping $x")
         x match {
-          case x: MemberDef @unchecked => traverse(x.symbol.annotations)
+          case x: MemberDef @unchecked => traverse(x.symbol.annotations.map(_.tree))
           case _ =>
         }
         traverse(x.productIterator)
