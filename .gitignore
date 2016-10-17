@@ -13,6 +13,8 @@ project/boot/
 project/plugins/project/
 project/local-plugins.sbt
 .history
+.ensime
+.ensime_cache/
 
 # Scala-IDE specific
 .scala_dependencies
