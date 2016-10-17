@@ -905,6 +905,15 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       def readLengthTerm(): Tree = {
         val end = readEnd()
 
+        def readBlock(mkTree: (List[Tree], Tree) => Tree): Tree = {
+          val exprReader = fork
+          skipTree()
+          val localCtx = ctx.fresh.setNewScope
+          val stats = readStats(ctx.owner, end)(localCtx)
+          val expr = exprReader.readTerm()(localCtx)
+          mkTree(stats, expr)
+        }
+
         val result =
           (tag: @switch) match {
             case SUPER =>
@@ -937,12 +946,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
-              val exprReader = fork
-              skipTree()
-              val localCtx = ctx.fresh.setNewScope
-              val stats = readStats(ctx.owner, end)(localCtx)
-              val expr = exprReader.readTerm()(localCtx)
-              Block(stats, expr)
+              readBlock(Block)
+            case INLINED =>
+              val call = readTerm()
+              readBlock((defs, expr) => Inlined(call, defs.asInstanceOf[List[MemberDef]], expr))
             case IF =>
               If(readTerm(), readTerm(), readTerm())
             case LAMBDA =>

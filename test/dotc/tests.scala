@@ -28,7 +28,7 @@ class tests extends CompilerTest {
       else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
     }
 
-  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
+  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
 
   val twice = List("#runs", "2")
   val staleSymbolError: List[String] = List()
@@ -65,7 +65,7 @@ class tests extends CompilerTest {
     Directory(defaultOutputDir + "java").deleteRecursively()
   }
 
-  @Test def pickle_pickleOK = compileDir(testsDir, "pickling", "-Yprintpos" :: testPickling)
+  @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
 // This directory doesn't exist anymore
 // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
