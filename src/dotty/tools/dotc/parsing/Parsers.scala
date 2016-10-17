@@ -1898,7 +1898,7 @@ object Parsers {
             else EmptyTree
           }
           else {
-            if (!isExprIntro) syntaxError("missing return type", in.lastOffset)
+            if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
           }
