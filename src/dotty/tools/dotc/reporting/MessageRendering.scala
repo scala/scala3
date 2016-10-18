@@ -15,6 +15,12 @@ trait MessageRendering {
   def stripColor(str: String): String =
     str.replaceAll("\u001B\\[[;\\d]*m", "")
 
+  def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
+    if (pos.outer.exists) {
+       s"$prefix| This location is in code that was inlined at ${pos.outer}" ::
+       outer(pos.outer, prefix)
+    } else Nil
+
   def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], List[String], Int) = {
     var maxLen = Int.MinValue
     def render(xs: List[Int]) =
@@ -92,7 +98,7 @@ trait MessageRendering {
       val (srcBefore, srcAfter, offset) = sourceLines(pos)
       val marker = columnMarker(pos, offset)
       val err = errorMsg(pos, msg.msg, offset)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString("\n"))
+      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString("\n"))
     } else sb.append(msg.msg)
     sb.toString
   }

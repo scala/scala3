@@ -236,10 +236,12 @@ object Inliner {
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
       new Inliner(tree, bodyToInline(tree.symbol)).inlined(pt)
-    else errorTree(tree,
-      i"""Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
-                   | Maybe this is caused by a recursive inline method?
-                   | You can use -Xmax:inlines to change the limit.""")
+    else errorTree(
+      tree,
+      i"""|Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
+          |Maybe this is caused by a recursive inline method?
+          |You can use -Xmax:inlines to change the limit."""
+    )
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
