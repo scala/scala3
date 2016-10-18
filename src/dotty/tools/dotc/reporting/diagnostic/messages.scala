@@ -5,11 +5,12 @@ package diagnostic
 
 import dotc.core._
 import Contexts.Context, Decorators._, Symbols._, Names._, Types._
+import ast.untpd.{Modifiers, ModuleDef}
 import util.{SourceFile, NoSource}
 import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
-import printing.SyntaxHighlighting._
+import printing.Highlighting._
 import printing.Formatting
 
 object messages {
@@ -317,5 +318,86 @@ object messages {
         |
         |$code2
         |""".stripMargin
+  }
+
+  def implicitClassRestrictionsText(implicit ctx: Context) =
+    hl"""${NoColor("For a full list of restrictions on implicit classes visit")}
+      |  ${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}""".stripMargin
+
+  case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(10) {
+    val kind = "Syntax"
+
+    val msg = hl"""|An ${"implicit class"} may not be top-level"""
+
+    val explanation = {
+      val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
+      val exampleArgs = constr0.vparamss(0).map(_.withMods(Modifiers()).show).mkString(", ")
+      def defHasBody[T] = impl.body.exists(!_.isEmpty)
+      val exampleBody = if (defHasBody) "{\n ...\n }" else ""
+      hl"""|There may not be any method, member or object in scope with the same name as the
+           |implicit class and a case class automatically gets a companion object with the same name
+           |created by the compiler which would cause a naming conflict if it were allowed.
+           |
+           |""".stripMargin + implicitClassRestrictionsText + hl"""|
+           |
+           |To resolve the conflict declare ${cdef.name} inside of an ${"object"} then import the class
+           |from the object at the use site if needed, for example:
+           |
+           |object Implicits {
+           |  implicit class ${cdef.name}($exampleArgs)$exampleBody
+           |}
+           |
+           |// At the use site:
+           |import Implicits.${cdef.name}""".stripMargin
+    }
+  }
+
+  case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(11) {
+    val kind = "Syntax"
+
+    val msg = hl"""|A ${"case class"} may not be defined as ${"implicit"}"""
+
+    val explanation =
+      hl"""|implicit classes may not be case classes. Instead use a plain class:
+           |  example: implicit class ${cdef.name}...
+           |
+           |""".stripMargin + implicitClassRestrictionsText
+  }
+
+  case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
+    extends Message(12) {
+    val kind = "Syntax"
+
+    val msg = hl"""|${"objects"} must not have a ${"self type"}"""
+
+    val explanation = {
+      val ModuleDef(name, tmpl) = mdef
+      val ValDef(_, selfTpt, _) = tmpl.self
+      hl"""|objects must not have a ${"self type"}:
+           |
+           |Consider these alternative solutions:
+           |  - Create a trait or a class instead of an object
+           |  - Let the object extend a trait containing the self type:
+           |      example: object $name extends ${selfTpt.show}""".stripMargin
+    }
+  }
+
+  case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
+    extends Message(13) {
+    import Definitions.MaxTupleArity
+    val kind = "Syntax"
+
+    val msg = hl"""|A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
+
+    val explanation = {
+      val members = ts.map(_.showSummary).grouped(MaxTupleArity)
+      val nestedRepresentation = members.map(_.mkString(", ")).mkString(")(")
+      hl"""|This restriction will be removed in the future.
+           |Currently it is possible to use nested tuples when more than ${MaxTupleArity} are needed, for example:
+           |
+           |  ((${nestedRepresentation}))""".stripMargin
+    }
   }
 }
