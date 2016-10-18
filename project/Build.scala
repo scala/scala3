@@ -51,6 +51,15 @@ object DottyBuild extends Build {
   private val overrideScalaVersionSetting =
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true))
 
+  // set sources to src/, tests to test/ and resources to resources/
+  lazy val sourceStructure = Seq(
+    scalaSource       in Compile := baseDirectory.value / "src",
+    scalaSource       in Test    := baseDirectory.value / "test",
+    javaSource        in Compile := baseDirectory.value / "src",
+    javaSource        in Test    := baseDirectory.value / "test",
+    resourceDirectory in Compile := baseDirectory.value / "resources"
+  )
+
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
     settings(
       // Do not append Scala versions to the generated artifacts
@@ -62,17 +71,15 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
-  lazy val dotty = project.in(file(".")).
+  lazy val `dotty-compiler` = project.in(file(".")).
     dependsOn(`dotty-interfaces`).
+    dependsOn(`dotty-library`).
+    settings(sourceStructure).
     settings(
       overrideScalaVersionSetting,
 
-      // set sources to src/, tests to test/ and resources to resources/
-      scalaSource in Compile := baseDirectory.value / "src",
-      javaSource in Compile := baseDirectory.value / "src",
-      scalaSource in Test := baseDirectory.value / "test",
-      javaSource in Test := baseDirectory.value / "test",
-      resourceDirectory in Compile := baseDirectory.value / "resources",
+      // necessary evil: dottydoc currently needs to be included in the dotty
+      // project, for sbt integration
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
       unmanagedSourceDirectories in Compile += baseDirectory.value / "dottydoc" / "src",
       unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
@@ -130,7 +137,7 @@ object DottyBuild extends Build {
         val args = Def.spaceDelimited("<arg>").parsed
         val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++
             getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-        val dottyJars  = "-dottyJars " + (jars.length + 1) + " dotty.jar" + " " + jars.mkString(" ")
+        val dottyJars  = "-dottyJars " + (jars.length + 2) + " dotty.jar dotty-lib.jar" + " " + jars.mkString(" ")
         // Provide the jars required on the classpath of run tests
         runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
       },
@@ -211,17 +218,26 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
+  lazy val `dotty-library` = project.in(file("library")).
+    settings(sourceStructure).
+    settings(
+      libraryDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        "org.scala-lang" % "scala-library" % scalaVersion.value
+      )
+    )
+
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
-    dependsOn(dotty).
+    dependsOn(`dotty-compiler`).
     settings(
       overrideScalaVersionSetting,
 
       cleanSbtBridge := {
         val dottyBridgeVersion = version.value
-        val dottyVersion = (version in dotty).value
+        val dottyVersion = (version in `dotty-compiler`).value
         val classVersion = System.getProperty("java.class.version")
 
         val sbtV = sbtVersion.value
@@ -335,11 +351,11 @@ object DottyInjectedPlugin extends AutoPlugin {
     )))
 
   lazy val `dotty-bench` = project.in(file("bench")).
-    dependsOn(dotty % "compile->test").
+    dependsOn(`dotty-compiler` % "compile->test").
     settings(
       overrideScalaVersionSetting,
 
-      baseDirectory in (Test,run) := (baseDirectory in dotty).value,
+      baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
       libraryDependencies ++= Seq(
         scalaCompiler % Test,
@@ -474,7 +490,7 @@ object DottyInjectedPlugin extends AutoPlugin {
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
 
-        val compilerCp = Attributed.data((fullClasspath in (dotty, Compile)).value)
+        val compilerCp = Attributed.data((fullClasspath in (`dotty-compiler`, Compile)).value)
         val cpStr = cpToString(classpath ++ compilerCp)
 
         // List all my dependencies (recompile if any of these changes)

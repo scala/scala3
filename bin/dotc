@@ -115,12 +115,12 @@ trap onExit INT
 classpathArgs () {
   if [[ "true" == $bootstrapped ]]; then
     check_jar "dotty-bootstrapped" $DOTTY_JAR "target" 'build_jar "test:runMain dotc.build" target' &> /dev/null
-    toolchain="$DOTTY_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
+    toolchain="$DOTTY_JAR:$DOTTY_LIB_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
   else
-    toolchain="$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
+    toolchain="$SCALA_LIBRARY_JAR:$DOTTY_LIB_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
   fi
-  bcpJars="$INTERFACES_JAR:$MAIN_JAR"
-  cpJars="$INTERFACES_JAR:$MAIN_JAR:$TEST_JAR"
+  bcpJars="$INTERFACES_JAR:$MAIN_JAR:$DOTTY_LIB_JAR"
+  cpJars="$INTERFACES_JAR:$MAIN_JAR:$DOTTY_LIB_JAR:$TEST_JAR"
 
   if [[ -n "$cygwin" ]]; then
     if [[ "$OS" = "Windows_NT" ]] && cygpath -m .>/dev/null 2>/dev/null ; then
