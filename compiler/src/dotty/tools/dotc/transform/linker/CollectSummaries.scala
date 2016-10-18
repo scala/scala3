@@ -586,6 +586,8 @@ object Summaries {
        else underlying + 1
      }
 
+     override def hashCode(): Int = hash
+
      def underlying(implicit ctx: Context): Type = u
 
      override def equals(other: scala.Any): Boolean = other match {
@@ -595,6 +597,31 @@ object Summaries {
 
      override def toString: String = s"PreciseType($u)"
    }
+
+  class JavaAllocatedType(private[JavaAllocatedType] val u: Type) extends SingletonType {
+
+    /** customized hash code of this type.
+      * NotCached for uncached types. Cached types
+      * compute hash and use it as the type's hashCode.
+      */
+    def hash: Int = {
+      val underlying = u.hash
+      if (underlying == Hashable.NotCached) Hashable.NotCached
+      else if (underlying == Hashable.NotCached - 1) underlying
+      else underlying + 1
+    }
+
+    override def hashCode(): Int = hash
+
+    def underlying(implicit ctx: Context): Type = u
+
+    override def equals(other: scala.Any): Boolean = other match {
+      case that: JavaAllocatedType => this.u == that.u
+      case _ => false
+    }
+
+    override def toString: String = s"JavaAllocatedType($u)"
+  }
 
    class ErazedType extends UncachedProxyType {
      /** The type to which this proxy forwards operations. */
@@ -1145,28 +1172,27 @@ class BuildCallGraph extends Phase {
         }
 
         reachableMethods ++= {
-          val summary = collectedSummaries.get(sym)
+          collectedSummaries.get(sym) match {
+            case Some(summary) =>
+              summary.accessedModules.map(x => new TypeWithContext(regularizeType(x.info), parentRefinements(x.info))).foreach(x => addReachableType(x, method))
 
-          if (summary.isDefined) {
-
-            summary.get.accessedModules.map(x => new TypeWithContext(regularizeType(x.info), parentRefinements(x.info))).foreach(x => addReachableType(x, method))
-            // 296 and 298 are the same (?)
-            summary.get.methodsCalled.flatMap { x =>
-              val reciever = x._1
-              x._2.flatMap{callSite =>
-                val insts = instantiateCallSite(method, reciever, callSite, instantiatedTypes)
-                val nw = insts.filter(x => !method.outEdges(callSite).contains(x))
-                method.outEdges(callSite) = nw.toList ::: method.outEdges(callSite)
-                insts // infinite cycle
-                // nw // works
+              summary.methodsCalled.flatMap { x =>
+                val reciever = x._1
+                x._2.flatMap { callSite =>
+                  val nw = instantiateCallSite(method, reciever, callSite, instantiatedTypes)
+                  method.outEdges(callSite) = nw.filter(x => !method.outEdges(callSite).contains(x)).toList ::: method.outEdges(callSite)
+                  nw
+                }
               }
-            }
-          } else {
-            outerMethod += sym
-            Nil
+
+            case None =>
+              outerMethod += sym
+              addReachableType(new TypeWithContext(new JavaAllocatedType(method.call.widenDealias.finalResultType), OuterTargs.empty), method)
+
+              Nil
+
           }
         }
-
       }
 
     }
@@ -1185,6 +1211,8 @@ class BuildCallGraph extends Phase {
         val clas = x.tp match {
           case t: ClosureType =>
             t.u.classSymbol.asClass
+          case t: JavaAllocatedType =>
+            t.underlying.classSymbol.asClass
           case _ => x.tp.classSymbol.asClass
         }
         if (!clas.is(Flags.JavaDefined) && clas.is(Flags.Module)) {
