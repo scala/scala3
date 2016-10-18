@@ -14,6 +14,8 @@ import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.annotation.switch
 
+import dotty.tools.dotc.transform.Summaries.JavaAllocatedType
+
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
@@ -263,7 +265,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info) else toText(tp.repr)
+        if (homogenizedView) toText(tp.info) else tp.repr
+      case tp: JavaAllocatedType =>
+        toText(tp.underlying)
     }
   }
 
