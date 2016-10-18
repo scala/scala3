@@ -146,7 +146,7 @@ object Inliner {
               addAccessor(tree, methPart, targs, argss,
                   accessedType = methPart.tpe.widen,
                   rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss))
-           } else {
+            } else {
               // TODO: Handle references to non-public types.
               // This is quite tricky, as such types can appear anywhere, including as parts
               // of types of other things. For the moment we do nothing and complain
@@ -191,7 +191,9 @@ object Inliner {
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx: Context = inlineCtx
             val tree1 = treeExpr(ctx)
-            makeInlineable(tree1)
+            if (tree1.hasType && !tree1.tpe.isError)
+              makeInlineable(tree1)
+            else tree1
           })
         }
     }
