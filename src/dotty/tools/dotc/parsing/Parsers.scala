@@ -1476,7 +1476,19 @@ object Parsers {
       case SEALED    => Sealed
     }
 
-     /** Drop `private' modifier when followed by a qualifier.
+    private def modOfToken(tok: Int): Mod = tok match {
+      case ABSTRACT  => Mod.Abstract()
+      case FINAL     => Mod.Final()
+      case IMPLICIT  => Mod.Implicit()
+      case INLINE    => Mod.Inline()
+      case LAZY      => Mod.Lazy()
+      case OVERRIDE  => Mod.Override()
+      case PRIVATE   => Mod.Private()
+      case PROTECTED => Mod.Protected()
+      case SEALED    => Mod.Sealed()
+    }
+
+    /** Drop `private' modifier when followed by a qualifier.
      *  Contract `abstract' and `override' to ABSOVERRIDE
      */
     private def normalize(mods: Modifiers): Modifiers =
@@ -1488,10 +1500,12 @@ object Parsers {
         mods
 
     private def addModifier(mods: Modifiers): Modifiers = {
-      val flag = flagOfToken(in.token)
+      val tok = in.token
+      val flag = flagOfToken(tok)
+      val mod = atPos(in.offset) { in.nextToken(); modOfToken(tok) }
+
       if (mods is flag) syntaxError(RepeatedModifier(flag.toString))
-      val res = addFlag(mods, flag)
-      in.nextToken()
+      val res = addFlag(mods, flag).withAddedMod(mod)
       res
     }
 
@@ -1614,8 +1628,8 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == TYPE) {
-                in.nextToken()
-                mods | Param | ParamAccessor
+                val mod = atPos(in.offset) { in.nextToken(); Mod.Type() }
+                (mods | Param | ParamAccessor).withAddedMod(mod)
               } else {
                 if (mods.hasFlags) syntaxError("`type' expected")
                 mods | Param | PrivateLocal
@@ -1670,11 +1684,11 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
-                in.nextToken()
-                mods
+                val mod = atPos(in.offset) { in.nextToken(); Mod.Val() }
+                mods.withAddedMod(mod)
               } else if (in.token == VAR) {
-                in.nextToken()
-                addFlag(mods, Mutable)
+                val mod = atPos(in.offset) { in.nextToken(); Mod.Var() }
+                addFlag(mods, Mutable).withAddedMod(mod)
               } else {
                 if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
