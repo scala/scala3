@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.{Flags, Hashable, TypeErasure}
+import dotty.tools.dotc.core.{Hashable, TypeErasure}
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.CollectSummaries.SubstituteByParentMap
 import dotty.tools.dotc.transform.Summaries._
@@ -24,7 +24,6 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 
 import collection.{immutable, mutable}
-import collection.mutable.{LinkedHashMap, LinkedHashSet, TreeSet}
 import scala.annotation.tailrec
 
 class CollectSummaries extends MiniPhase { thisTransform =>
@@ -160,9 +159,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
   class Collect extends TreeTransform {
     def phase = thisTransform
 
-    var methodSumarries = List[MethodSummary]()
+    var methodSummaries = List[MethodSummary]()
     var methodSummaryStack = mutable.Stack[MethodSummary]()
-    var curMethodSummary: MethodSummary = null
+    var curMethodSummary: MethodSummary = _
 
     override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
       if (ctx.compilationUnit.isInstanceOf[TASTYCompilationUnit])
@@ -173,16 +172,11 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def prepareForDefDef(tree: tpd.DefDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
-      if(!(sym is Flags.Label)) {
+      if (!sym.is(Label)) {
         methodSummaryStack.push(curMethodSummary)
         val args = tree.vparamss.flatten.map(_.symbol) // outer param for constructors
-        curMethodSummary = new MethodSummary(sym,
-          false,
-          mutable.Map.empty,
-          Nil,
-          -1,
-          (0 to args.length).map(_ => true).toList
-        )
+        val argumentStoredToHeap = (0 to args.length).map(_ => true).toList
+        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, argumentStoredToHeap)
       }
       this
     }
@@ -190,18 +184,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def prepareForValDef(tree: tpd.ValDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
-      if (sym.exists && ((sym.is(Flags.Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
+      if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
         sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
         sym.owner.isClass)) { // fields
         // owner is a template
         methodSummaryStack.push(curMethodSummary)
-        curMethodSummary = new MethodSummary(sym,
-          false,
-          mutable.Map.empty,
-          Nil,
-          -1,
-          List(true)
-        )
+        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
       }
       this
     }
@@ -210,15 +198,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def prepareForTemplate(tree: tpd.Template)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
-      if(!(sym is Flags.Label)) {
+      if (!sym.is(Label)) {
         methodSummaryStack.push(curMethodSummary)
-        curMethodSummary = new MethodSummary(sym,
-          false,
-          mutable.Map.empty,
-          Nil,
-          -1,
-          List(true)
-        )
+        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
       }
       this
     }
@@ -226,20 +208,18 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if(!(sym is Flags.Label)) {
+      if (!sym.is(Label)) {
         assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSumarries = curMethodSummary :: methodSumarries
+        methodSummaries = curMethodSummary :: methodSummaries
         curMethodSummary = methodSummaryStack.pop()
       }
       tree
     }
 
     override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-//      if (tree.name.toString.contains("Iterable"))
-//        println("hoo")
-      if(!(tree.symbol is Flags.Label)) {
+      if (!tree.symbol.is(Label)) {
         assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSumarries = curMethodSummary :: methodSumarries
+        methodSummaries = curMethodSummary :: methodSummaries
         curMethodSummary = methodSummaryStack.pop()
       }
       tree
@@ -247,12 +227,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if(sym.exists && ((sym.is(Flags.Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
+      if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
         sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
         sym.owner.isClass)) { // fields
         assert(curMethodSummary.methodDef eq tree.symbol)
 
-        methodSumarries = curMethodSummary :: methodSumarries
+        methodSummaries = curMethodSummary :: methodSummaries
         curMethodSummary = methodSummaryStack.pop()
       }
       tree
@@ -260,7 +240,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if(sym.isClass) {
+      if (sym.isClass) {
         val isEntryPoint = CollectEntryPoints.isJavaEntryPoint(sym)
         /*summaries = ClassSummary(sym.asClass,
           methodSumarries
@@ -271,12 +251,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     def registerModule(sym: Symbol)(implicit ctx: Context): Unit = {
-      if((curMethodSummary ne null) && (sym is Flags.ModuleVal)) {
+      if ((curMethodSummary ne null) && sym.is(ModuleVal)) {
         curMethodSummary.accessedModules = sym :: curMethodSummary.accessedModules
         registerModule(sym.owner)
       }
       val res = sym.info.finalResultType.termSymbol
-      if ((curMethodSummary ne null) && (res is Flags.ModuleVal)) {
+      if ((curMethodSummary ne null) && res.is(ModuleVal)) {
         curMethodSummary.accessedModules = res :: curMethodSummary.accessedModules
         registerModule(res.owner)
       }
@@ -372,7 +352,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       def initialValuesFor(tpe: Type): List[CallInfo] = {
         tpe.widenDealias.classSymbol.mixins.flatMap {
           _.info.decls.collect {
-            case decl if !decl.is(Flags.Method) && decl.isTerm =>
+            case decl if !decl.is(Method) && decl.isTerm =>
               CallInfo(new TermRefWithFixedSym(tpe, decl.name.asTermName, decl.symbol.asTerm), Nil, Nil)
           }
         }
@@ -384,7 +364,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }
 
       val javaAccessible = tree match {
-        case Apply(fun, args) if fun.symbol.is(Flags.JavaDefined) && !fun.symbol.is(Flags.Deferred) =>
+        case Apply(fun, args) if fun.symbol.is(JavaDefined) && !fun.symbol.is(Deferred) =>
           for {
             (paramType, argType) <- fun.tpe.widenDealias.paramTypess.flatten.zip(args.map(_.tpe))
             if !defn.isPrimitiveClass(paramType.classSymbol)
@@ -404,13 +384,17 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
+      if (tree.toString.contains("Foo")) {
+        println(tree)
+      }
+
       val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
 
       curMethodSummary.methodsCalled(storedReciever) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Flags.Package)) {
+      if (!tree.symbol.is(Package)) {
         registerModule(tree.symbol)
       }
       val select = tree.tpe match {
@@ -419,12 +403,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case TermRef(prefix: ThisType, name) =>
           Some(tpd.This(prefix.cls).select(tree.symbol))
         case TermRef(NoPrefix, name) =>
-          if (tree.symbol is Flags.Method) { // todo: this kills dotty {
+          if (tree.symbol is Method) { // todo: this kills dotty {
             val widenedTp = tree.tpe.widen
-            if ((widenedTp.isInstanceOf[MethodicType]) && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType]))
-              return tree;
+            if (widenedTp.isInstanceOf[MethodicType] && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType]))
+              return tree
             registerCall(tree)
-            return tree;
+            return tree
             // Some(This(tree.symbol.topLevelClass.asClass).select(tree.symbol)) // workaround #342 todo: remove after fixed
           }
           else None
@@ -437,7 +421,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Flags.Package | Flags.Label)) {
+      if (!tree.symbol.is(Package | Label)) {
         registerModule(tree.symbol)
         registerCall(tree)
       }
@@ -451,7 +435,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Flags.Label))
+      if (!tree.symbol.is(Label))
        registerCall(tree)
       tree
     }
@@ -464,7 +448,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
 
       //println("hoho")
-      methodSums = methodSumarries
+      methodSums = methodSummaries
 
       /*
 
@@ -738,10 +722,10 @@ object Summaries {
 }
 
 class BuildCallGraph extends Phase {
-  private var reachableMethods: Set[CallWithContext] = null
-  private var reachableTypes: Set[TypeWithContext] = null
-  private var casts: Set[Cast] = null
-  private var outerMethods: Set[Symbol] = null
+  private var reachableMethods: Set[CallWithContext] = _
+  private var reachableTypes: Set[TypeWithContext] = _
+  private var casts: Set[Cast] = _
+  private var outerMethods: Set[Symbol] = _
 
   def getReachableMethods = reachableMethods
   def getReachableTypes   = reachableTypes
@@ -863,7 +847,7 @@ class BuildCallGraph extends Phase {
       addReachableType(self, null)
     }
 
-    collectedSummaries.values.foreach(x => if(isEntryPoint(x.methodDef)) pushEntryPoint(x.methodDef))
+    collectedSummaries.values.foreach(x => if (isEntryPoint(x.methodDef)) pushEntryPoint(x.methodDef))
     println(s"\t Found ${reachableMethods.size} entry points")
 
     def registerParentModules(tp: Type, from: CallWithContext): Unit = {
@@ -871,9 +855,9 @@ class BuildCallGraph extends Phase {
       while ((tp1 ne NoType) && (tp1 ne NoPrefix)) {
         if (tp1.widen ne tp1) registerParentModules(tp1.widen, from)
         if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
-        if (tp1.termSymbol.is(Flags.Module)) {
+        if (tp1.termSymbol.is(Module)) {
           // reachableTypes += regularizeType(ref(tp1.termSymbol).tpe)
-        } else if (tp1.typeSymbol.is(Flags.Module, Flags.Package)) {
+        } else if (tp1.typeSymbol.is(Module, Package)) {
           val t = regularizeType(ref(tp1.typeSymbol).tpe)
           addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
         }
@@ -982,7 +966,7 @@ class BuildCallGraph extends Phase {
 
       def addCast(from: Type, to: Type) =
         if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
-          val newCast = new Cast(from, to)
+          val newCast = Cast(from, to)
 
           for (tp <- reachableTypes.reachableItems) {
             if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
@@ -1104,7 +1088,7 @@ class BuildCallGraph extends Phase {
           new CallWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, caller, callee) :: Nil
 
           // super call in a trait
-        case t if calleeSymbol.is(Flags.SuperAccessor) =>
+        case t if calleeSymbol.is(SuperAccessor) =>
 
           // Taken from ResolveSuper.rebindSuper
           val unexpandedAccName =
@@ -1215,8 +1199,8 @@ class BuildCallGraph extends Phase {
             t.underlying.classSymbol.asClass
           case _ => x.tp.classSymbol.asClass
         }
-        if (!clas.is(Flags.JavaDefined) && clas.is(Flags.Module)) {
-          val fields = clas.classInfo.decls.filter(x => !x.is(Flags.Method) && !x.isType)
+        if (!clas.is(JavaDefined) && clas.is(Module)) {
+          val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
           val parent = new CallWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs, null, null)
           reachableMethods ++= fields.map {
             fieldSym =>
@@ -1270,8 +1254,8 @@ class BuildCallGraph extends Phase {
 
     val morphisms = reachableMethods.groupBy(x => x.callee).groupBy(x => x._2.map(_.call.termSymbol).toSet.size)
 
-    val mono = if(morphisms.contains(1)) morphisms(1) else Map.empty
-    val bi = if(morphisms.contains(2)) morphisms(2) else Map.empty
+    val mono = if (morphisms.contains(1)) morphisms(1) else Map.empty
+    val bi = if (morphisms.contains(2)) morphisms(2) else Map.empty
     val mega = morphisms - 1 - 2
 
     println(s"\t Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations")
@@ -1285,8 +1269,8 @@ class BuildCallGraph extends Phase {
     val outGraph = new StringBuffer()
     outGraph.append(s"digraph Gr${mode}_$specLimit {\n")
     outGraph.append("graph [fontsize=10 fontname=\"Verdana\" compound=true];\n")
-    outGraph.append("label = \""+reachableMethods.size + " nodes, "
-      + reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) +" edges, "+ reachableTypes.size  +" reachable types\";\n")
+    outGraph.append("label = \""+reachableMethods.size + " nodes, " +
+        reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) +" edges, "+ reachableTypes.size  +" reachable types\";\n")
 
     val slash = '"'
 
@@ -1320,7 +1304,7 @@ class BuildCallGraph extends Phase {
     }
 
     def symbolName(s: Symbol): String = {
-      if (!s.is(Flags.Method))
+      if (!s.is(Method))
         escape(s.name.show)
       else
         escape(fullNameSeparated(s)(".").show)
@@ -1370,7 +1354,7 @@ class BuildCallGraph extends Phase {
           case NoPrefix => calleeSymbol.name.toString
           case t if calleeSymbol.isPrimaryConstructor => calleeSymbol.showFullName
           case st: SuperType => s"super[${st.supertpe.classSymbol.showFullName}].${calleeSymbol.name}"
-          /* case t if calleeSymbol.is(Flags.SuperAccessor) =>
+          /* case t if calleeSymbol.is(SuperAccessor) =>
              val prev = t.classSymbol
              types.flatMap {
                x =>
