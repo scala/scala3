@@ -318,4 +318,66 @@ object messages {
         |$code2
         |""".stripMargin
   }
+
+  case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(10) {
+    val kind = "Syntax"
+
+    val msg = hl"""|An ${"implicit class"} may not be top-level"""
+
+    val explanation =
+    hl"""|implicit class are not allowed to be defined at the top-level.
+         |
+         |Declare ${cdef.name} inside of an ${"object"} or ${"package object"}
+         |then import the members of the object at the use site if needed, for example:
+         |
+         |package object Implicits {
+         |  implicit class ${cdef.name}...
+         |}
+         |
+         |import Implicits.${cdef.name}""".stripMargin
+  }
+
+  case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
+    extends Message(11) {
+    val kind = "Syntax"
+
+    val msg = hl"""|A ${"case class"} may not be defined as ${"implicit"}"""
+
+    val explanation =
+      hl"""|implicit classes may not be case classes. Instead use a plain class:
+           |
+           |implicit class ${cdef.name}...""".stripMargin
+  }
+
+  case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
+    extends Message(12) {
+    val kind = "Syntax"
+
+    val msg = hl"""|An ${"object"} must not have a ${"self type"}"""
+
+    val explanation =
+      hl"""|objects ${mdef.name} must not have a ${"self type"}:
+           |
+           |Consider these alternative solutions:
+           |  Extend the object with the desired type
+           |  Use a trait or a class instead of an object""".stripMargin
+  }
+
+  case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
+    extends Message(13) {
+    import Definitions.MaxTupleArity
+    val kind = "Syntax"
+
+    val msg = hl"""|A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
+
+    val explanation = {
+      val members = ts.map(_.showSummary).grouped(MaxTupleArity)
+      val nestedRepresentation = members.map(_.mkString(", ")).mkString(")(")
+      hl"""|This restriction will be removed in the future.
+           |Currently it is possible to use nested tuples when more than ${MaxTupleArity} are needed, for example:
+           |
+           |  ((${nestedRepresentation}))""".stripMargin
+    }
+  }
 }
