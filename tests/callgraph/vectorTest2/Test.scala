@@ -1,11 +1,18 @@
-import java.util
 
-import scala.util.control.Breaks
-import scala.util.control.ControlThrowable
-import scala.util.control.NoStackTrace
+package object foo {
+  def bar(): Int = 42
+}
+
+package foo {
+  object Foo {
+    def main(args: Array[String]): Unit = {
+      System.println(bar())
+    }
+  }
+}
 
 object Test {
   def main(args: Array[String]): Unit = {
-    scala.collection.immutable.Vector(1, 2, 3)
+    System.println(bar())
   }
 }
