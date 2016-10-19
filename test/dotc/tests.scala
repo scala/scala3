@@ -14,19 +14,26 @@ class tests extends CompilerTest {
   val defaultOutputDir = "./out/"
 
   val noCheckOptions = List(
-//        "-verbose",
-//         "-Ylog:frontend",
-//        "-Xprompt",
-//        "-explaintypes",
-//        "-Yshow-suppressed-errors",
-        "-d", defaultOutputDir,
-        "-pagewidth", "160")
+//    "-verbose",
+//    "-Ylog:frontend",
+//    "-Xprompt",
+//    "-explaintypes",
+//    "-Yshow-suppressed-errors",
+    "-d", defaultOutputDir,
+    "-pagewidth", "80"
+  )
 
-  implicit val defaultOptions = noCheckOptions ++
-    List("-Yno-deep-subtypes", "-Yno-double-bindings", "-Yforce-sbt-phases", "-color:never") ++ {
-      if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
-      else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-    }
+  implicit val defaultOptions = noCheckOptions ++ {
+    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+  } ++ List(
+    "-Yno-deep-subtypes",
+    "-Yno-double-bindings",
+    "-Yforce-sbt-phases",
+    "-color:never",
+    "-classpath",
+    "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+  )
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
 
@@ -58,6 +65,7 @@ class tests extends CompilerTest {
   val parsingDir = dotcDir + "parsing/"
   val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
+  val libDir = "./library/src/"
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
@@ -177,7 +185,31 @@ class tests extends CompilerTest {
         |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
-  @Test def dotty = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes) // note the -deep argument
+  // Not a junit test anymore since it is order dependent
+  def dottyBootedLib = compileDir(
+    libDir,
+    ".",
+    List(
+      "-deep", "-Ycheck-reentrant", "-strict", "-classpath", defaultOutputDir +
+      ":./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar" //WAT???
+    )
+  )(allowDeepSubtypes) // note the -deep argument
+
+  // Not a junit test anymore since it is order dependent
+  def dottyDependsOnBootedLib = compileDir(
+    dottyDir,
+    ".",
+    List(
+      "-deep", "-Ycheck-reentrant", "-strict", "-classpath", defaultOutputDir +
+      ":./dotty-lib.jar" +
+      ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar" +
+      // this needs to get compiled together with the compiler:
+      //":./target/scala-2.11/src_managed/main/scalajs-ir-src/"
+      // but falling back to:
+      ":/home/fixel/.ivy2/cache/org.scala-js/scalajs-ir_2.11/jars/scalajs-ir_2.11-0.6.8.jar"
+      // for the time being.
+    )
+  )(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -231,8 +263,8 @@ class tests extends CompilerTest {
   // Disabled because we get stale symbol errors on the SourceFile annotation, which is normal.
   // @Test def tasty_annotation_internal = compileDir(s"${dottyDir}annotation/", "internal", testPickling)
 
-  @Test def tasty_runtime = compileDir(s"$dottyDir", "runtime", testPickling)
-  @Test def tasty_runtime_vc = compileDir(s"${dottyDir}runtime/", "vc", testPickling)
+  @Test def tasty_runtime = compileDir(s"${libDir}dotty/", "runtime", testPickling)
+  @Test def tasty_runtime_vc = compileDir(s"${libDir}dotty/runtime/", "vc", testPickling)
 
   @Test def tasty_tools = compileDir(dottyDir, "tools", testPickling)
 

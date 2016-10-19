@@ -16,15 +16,25 @@ object build extends tests {
         }
     }
     if(deleteFolder) folder.delete()
-}
+  }
 
-  def main(args: Array[String]): Unit = {
-    println("------------  Building dotty  ------------")
+  def clearOutput() = {
     deleteFilesInFolder(new File(defaultOutputDir)) // clear previous output
     val keepFile = new File(defaultOutputDir + ".keep")
     keepFile.createNewFile()
-    dotty // build output dir
-    val p = Runtime.getRuntime.exec(Array("jar", "cf", "dotty.jar", "-C", "out", "."))
-    p.waitFor()
+  }
+
+  def main(args: Array[String]): Unit = {
+    println("----------  Building bootstrapped dotty-lib  ----------------------------------------------")
+    clearOutput()
+    dottyBootedLib
+    val p1 = Runtime.getRuntime.exec(Array("jar", "cf", "dotty-lib.jar", "-C", "out", "."))
+    p1.waitFor()
+
+    println("----------  Building bootstrapped dotty depending on dotty-lib compiled by dotty ----------")
+    clearOutput()
+    dottyDependsOnBootedLib
+    val p2 = Runtime.getRuntime.exec(Array("jar", "cf", "dotty.jar", "-C", "out", "."))
+    p2.waitFor()
   }
 }

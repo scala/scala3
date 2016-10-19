@@ -46,7 +46,23 @@ object PathResolver {
     def classPathEnv        =  envOrElse("CLASSPATH", "")
     def sourcePathEnv       =  envOrElse("SOURCEPATH", "")
 
-    def javaBootClassPath   = propOrElse("sun.boot.class.path", searchForBootClasspath)
+    def javaBootClassPath   =
+      propOrElse("sun.boot.class.path", searchForBootClasspath)
+        .split(":")
+        .filterNot { jar =>
+          // This classpath gets propagated to the compiled resources and as
+          // such needs to be purged of things that should not be on the
+          // compiled programs' classpath:
+          jar.contains("dotty-compiler") ||
+          jar.contains("dotty-library") ||
+          jar.contains("dotty-interfaces") ||
+          // let's blacklist locally compiled classes:
+          jar.contains("dotty/library/target") ||
+          jar.contains("dotty/interfaces/target") ||
+          jar.contains("dotty/target/scala-2.11")
+        }
+        .mkString(":")
+
     def javaExtDirs         = propOrEmpty("java.ext.dirs")
     def scalaHome           = propOrEmpty("scala.home")
     def scalaExtDirs        = propOrEmpty("scala.ext.dirs")
@@ -213,11 +229,11 @@ class PathResolver(implicit ctx: Context) {
      *  - Otherwise, if CLASSPATH is set, it is that
      *  - If neither of those, then "." is used.
      */
-    def userClassPath = (
+    def userClassPath = {
       if (!settings.classpath.isDefault)
         settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
-    )
+    }
 
     import context._
 

@@ -16,7 +16,9 @@ class JavaPlatform extends Platform {
   def classPath(implicit ctx: Context): ClassPath = {
     if (currentClassPath.isEmpty)
       currentClassPath = Some(new PathResolver().result)
-    currentClassPath.get
+    val cp = currentClassPath.get
+    println(cp)
+    cp
   }
 
   // The given symbol is a method with the right name and signature to be a runnable java program.
