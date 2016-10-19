@@ -1097,8 +1097,9 @@ object Parsers {
     /** Expr         ::= implicit Id `=>' Expr
      *  BlockResult  ::= implicit Id [`:' InfixType] `=>' Block
      */
-    def implicitClosure(start: Int, location: Location.Value): Tree = {
-      val mods = atPos(start) { Modifiers(Implicit) }
+    def implicitClosure(start: Int, location: Location.Value, implicitMod: Option[Mod] = None): Tree = {
+      var mods = atPos(start) { Modifiers(Implicit) }
+      if (implicitMod.nonEmpty) mods = mods.withAddedMod(implicitMod.get)
       val id = termIdent()
       val paramExpr =
         if (location == Location.InBlock && in.token == COLON)
@@ -1674,6 +1675,7 @@ object Parsers {
      */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var implicitFlag = EmptyFlags
+      var implicitMod: Mod  = null
       var firstClauseOfCaseClass = ofCaseClass
       var implicitOffset = -1 // use once
       def param(): ValDef = {
@@ -1722,6 +1724,7 @@ object Parsers {
             mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
+          if (implicitMod != null) mods = mods.withAddedMod(implicitMod)
           ValDef(name, tpt, default).withMods(addFlag(mods, implicitFlag))
         }
       }
@@ -1729,7 +1732,8 @@ object Parsers {
         if (in.token == RPAREN) Nil
         else {
           if (in.token == IMPLICIT) {
-            implicitOffset = in.skipToken()
+            implicitOffset = in.offset
+            implicitMod = atPos(in.offset) { in.nextToken(); Mod.Implicit() }
             implicitFlag = Implicit
           }
           commaSeparated(param)
@@ -1833,9 +1837,13 @@ object Parsers {
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
-        patDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
+        val mod = atPos(in.offset) { in.nextToken(); Mod.Val() }
+        val modPos = atPos(start) { mods.withAddedMod(mod) }
+        patDefOrDcl(start, modPos, in.getDocComment(start))
       case VAR =>
-        patDefOrDcl(start, posMods(start, addFlag(mods, Mutable)), in.getDocComment(start))
+        val mod = atPos(in.offset) { in.nextToken(); Mod.Var() }
+        val modPos = atPos(start) { addFlag(mods, Mutable).withAddedMod(mod) }
+        patDefOrDcl(start, modPos, in.getDocComment(start))
       case DEF =>
         defDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
       case TYPE =>
@@ -2198,8 +2206,11 @@ object Parsers {
       stats.toList
     }
 
-    def localDef(start: Int, implicitFlag: FlagSet): Tree =
-      defOrDcl(start, addFlag(defAnnotsMods(localModifierTokens), implicitFlag))
+    def localDef(start: Int, implicitFlag: FlagSet, implicitMod: Option[Mod] = None): Tree = {
+      var mods = addFlag(defAnnotsMods(localModifierTokens), implicitFlag)
+      if (implicitMod.nonEmpty) mods = mods.withAddedMod(implicitMod.get)
+      defOrDcl(start, mods)
+    }
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
      *  BlockStat    ::= Import
@@ -2219,9 +2230,10 @@ object Parsers {
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT) {
-            val start = in.skipToken()
-            if (isIdent) stats += implicitClosure(start, Location.InBlock)
-            else stats += localDef(start, ImplicitCommon)
+            val start = in.offset
+            val mod = atPos(in.offset) { in.nextToken(); Mod.Implicit() }
+            if (isIdent) stats += implicitClosure(start, Location.InBlock, Some(mod))
+            else stats += localDef(start, ImplicitCommon, Some(mod))
           } else {
             stats += localDef(in.offset, EmptyFlags)
           }
