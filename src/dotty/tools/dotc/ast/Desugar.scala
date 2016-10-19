@@ -433,11 +433,11 @@ object desugar {
       if (!mods.is(Implicit))
         Nil
       else if (ctx.owner is Package) {
-        ctx.error("implicit classes may not be toplevel", cdef.pos)
+        ctx.error(TopLevelImplicitClass(cdef), cdef.pos)
         Nil
       }
       else if (isCaseClass) {
-        ctx.error("implicit classes may not be case classes", cdef.pos)
+        ctx.error(ImplicitCaseClass(cdef), cdef.pos)
         Nil
       }
       else
@@ -497,7 +497,7 @@ object desugar {
         .withPos(mdef.pos)
       val ValDef(selfName, selfTpt, _) = tmpl.self
       val selfMods = tmpl.self.mods
-      if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", tmpl.self.pos)
+      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), tmpl.self.pos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), tmpl.self.rhs)
         .withMods(selfMods)
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
@@ -931,7 +931,7 @@ object desugar {
         val arity = ts.length
         def tupleTypeRef = defn.TupleType(arity)
         if (arity > Definitions.MaxTupleArity) {
-          ctx.error(s"tuple too long (max allowed: ${Definitions.MaxTupleArity})", tree.pos)
+          ctx.error(TupleTooLong(ts), tree.pos)
           unitLiteral
         } else if (arity == 1) ts.head
         else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
