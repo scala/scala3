@@ -188,7 +188,7 @@
 ./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
-./scala-scala/src/library/scala/collection/immutable/HashSet.scala
+#./scala-scala/src/library/scala/collection/immutable/HashSet.scala
 
 
 ./scala-scala/src/library/scala/collection/immutable/IntMap.scala
