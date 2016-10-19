@@ -11,8 +11,7 @@ DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
 # Load common functions and variables
 source $DOTTY_ROOT/bin/common
 
-# CLASS_PATH is derived from the DOTTY_ROOT and SCALA_LIBRARY_JAR
-CLASS_PATH="-Xbootclasspath/a:.:$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/classes/:.:$SCALA_LIBRARY_JAR"
+CLASS_PATH="-classpath .:$DOTTY_LIB_JAR:.:$SCALA_LIBRARY_JAR"
 
 function runMain {
     local jbin=$(which "java")

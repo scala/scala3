@@ -302,7 +302,11 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   }
 
   // override to add dotty and scala jars to classpath
-  override def extraClasspath = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
+  override def extraClasspath = {
+    val cp = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
+    println(s"extraClasspath: $cp")
+    cp
+  }
 
   // override to keep class files if failed and delete clog if ok
   override def cleanup = if (lastState.isOk) {
