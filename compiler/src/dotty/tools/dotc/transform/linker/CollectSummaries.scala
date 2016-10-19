@@ -345,7 +345,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       val fillInStackTrace = tree match {
         case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
-          List(CallInfo(TermRef(newThrowable.tpe, newThrowable.tpe.widenDealias.classSymbol.requiredMethod("fillInStackTrace")), Nil, Nil))
+          List(CallInfo(TermRef(newThrowable.tpe, newThrowable.tpe.widenDealias.classSymbol.requiredMethod("fillInStackTrace")), Nil, Nil, thisCallInfo))
         case _ => Nil
       }
 
@@ -353,7 +353,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         tpe.widenDealias.classSymbol.mixins.flatMap {
           _.info.decls.collect {
             case decl if !decl.is(Method) && decl.isTerm =>
-              CallInfo(new TermRefWithFixedSym(tpe, decl.name.asTermName, decl.symbol.asTerm), Nil, Nil)
+              CallInfo(new TermRefWithFixedSym(tpe, decl.name.asTermName, decl.symbol.asTerm), Nil, Nil, thisCallInfo)
           }
         }
       }
@@ -1380,7 +1380,7 @@ class BuildCallGraph extends Phase {
       val line = s"""subgraph ${clusterName(caller)} {
           label = ${csWTToName(caller)}; color = ${if (outerMethod.contains(caller.call.termSymbol)) "red" else "blue"};
           ${dummyName(caller)} [shape=point style=invis];
-        ${caller.outEdges.keys.map(x => csToName(caller, x) + s" [label = $slash${callSiteLabel(x)}$slash${if (x.source != null) s", color=orange" else ""}];").mkString("")}
+        ${caller.outEdges.keys.map(x => csToName(caller, x) + s" [label = $slash${callSiteLabel(x)}$slash${if (x.source == null) "" else if (x.source.call.widenDealias.classSymbol.is(JavaDefined)) ", color=orange" else ", color=blue"}];").mkString("")}
         }
         """
       outGraph.append(line)
