@@ -137,7 +137,7 @@ object DottyBuild extends Build {
         val args = Def.spaceDelimited("<arg>").parsed
         val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++
             getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-        val dottyJars  = "-dottyJars " + (jars.length + 2) + " dotty.jar dotty-lib.jar" + " " + jars.mkString(" ")
+        val dottyJars  = "-dottyJars " + (jars.length + 1) + " dotty-lib.jar" + " " + jars.mkString(" ")
         // Provide the jars required on the classpath of run tests
         runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
       },
@@ -191,7 +191,7 @@ object DottyBuild extends Build {
           path = file.getAbsolutePath
         } yield "-Xbootclasspath/p:" + path
         // dotty itself needs to be in the bootclasspath
-        val fullpath = ("-Xbootclasspath/p:" + "dotty.jar") :: ("-Xbootclasspath/a:" + bin) :: path.toList
+        val fullpath = /*("-Xbootclasspath/p:" + "dotty.jar") ::*/ ("-Xbootclasspath/a:" + bin) :: path.toList
         // System.err.println("BOOTPATH: " + fullpath)
 
         val travis_build = // propagate if this is a travis build
@@ -211,10 +211,33 @@ object DottyBuild extends Build {
       }
     ).
     settings(
-      addCommandAlias("partest",                   ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test;runPartestRunner") ++
-      addCommandAlias("partest-only",              ";test:package;package;test:runMain dotc.build;lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("partest-only-no-bootstrap", ";test:package;package;                        lockPartestFile;test:test-only dotc.tests;runPartestRunner") ++
-      addCommandAlias("dottydoc", ";dottydoc/run")
+      addCommandAlias(
+        "partest",
+        ";test:package" +
+        ";dotty-compiler/package" +
+        ";dotty-library/package" +
+        ";test:runMain dotc.build" +
+        ";lockPartestFile" +
+        ";test:test" +
+        ";runPartestRunner"
+      ) ++
+      addCommandAlias("partest-only",
+        ";test:package" +
+        ";dotty-compiler/package" +
+        ";dotty-library/package" +
+        ";test:runMain dotc.build" +
+        ";lockPartestFile" +
+        ";test:test-only dotc.tests" +
+        ";runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-only-no-bootstrap",
+        ";test:package" +
+        ";package" +
+        ";lockPartestFile" +
+        ";test:test-only dotc.tests" +
+        ";runPartestRunner"
+      )
     ).
     settings(publishing)
 

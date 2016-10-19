@@ -124,6 +124,26 @@ abstract class CompilerTest {
     compileFile(prefix, fileName, args, extension, true)
   }
 
+  def findJarFromRuntime(partialName: String): String = {
+    val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
+    urls.find(_.contains(partialName)).getOrElse {
+      throw new java.io.FileNotFoundException(
+        s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""
+      )
+    }
+  }
+
+  private def compileWithJavac(fs: Array[String], args: Array[String]): Unit = {
+    val scalaLib = findJarFromRuntime("scala-library")
+    val fullArgs = Array(
+      "javac",
+      "-classpath",
+      s".:$scalaLib"
+    ) ++ args ++ fs ++ Array("-d", defaultOutputDir)
+
+    Runtime.getRuntime.exec(fullArgs).waitFor()
+  }
+
   /** Compiles the code files in the given directory together. If args starts
     * with "-deep", all files in subdirectories (and so on) are included. */
   def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false)
@@ -134,14 +154,21 @@ abstract class CompilerTest {
         case "-deep" :: args1 => (dir.deepFiles, args1)
         case _ => (dir.files, args)
       }
-      val filePaths = files.toArray.map(_.toString).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
+      val (filePaths, javaFilePaths) = files
+        .toArray.map(_.toString)
+        .foldLeft((Array.empty[String], Array.empty[String])) { case (acc @ (fp, jfp), name) =>
+          if (name endsWith ".scala") (name +: fp, jfp)
+          else if (name endsWith ".java") (fp, name +: jfp)
+          else (fp, jfp)
+        }
       val expErrors = expectedErrors(filePaths.toList)
-      (filePaths, normArgs, expErrors)
+      (filePaths, javaFilePaths, normArgs, expErrors)
     }
     if (!generatePartestFiles || !partestableDir(prefix, dirName, args ++ defaultOptions)) {
       if (runTest)
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
-      val (filePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
+      val (filePaths, javaFilePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
+      compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
       compileArgs(filePaths ++ normArgs, expErrors)
     } else {
       val (sourceDir, flags, deep) = args match {
@@ -154,7 +181,7 @@ abstract class CompilerTest {
       if (sourceDir.exists) {
         val firstDest = Directory(DPConfig.testRoot + JFile.separator + kind + JFile.separator + dirName)
         val xerrors = if (isNegTest(prefix)) {
-          val (_, _, expErrors) = computeFilePathsAndExpErrors
+          val (_, _, _, expErrors) = computeFilePathsAndExpErrors
           expErrors.map(_.totalErrors).sum
         } else 0
         computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString)
@@ -234,6 +261,7 @@ abstract class CompilerTest {
   private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
+    //println(s"""all args: ${allArgs.mkString("\n")}""")
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
     val storeReporter = new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
       private val consoleReporter = new ConsoleReporter()
@@ -472,16 +500,16 @@ abstract class CompilerTest {
         try {
           SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
         } catch {
-          case unmappable: java.nio.charset.MalformedInputException => 
+          case unmappable: java.nio.charset.MalformedInputException =>
             copyfile(file, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
         }
       }
     }
 
-    processFileDir(sourceFile, { sf => 
+    processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
         dest.parent.jfile.mkdirs
-	      copyfile(sf, false)
+        copyfile(sf, false)
       } else {
         log(s"WARNING: ignoring $sf")
       }

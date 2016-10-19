@@ -7,6 +7,9 @@ package dotty.partest
 import scala.reflect.io.AbstractFile
 import scala.tools.partest._
 import scala.tools.partest.nest._
+import TestState.{ Pass, Fail, Crash, Uninitialized, Updated }
+import ClassPath.{ join, split }
+import FileManager.{ compareFiles, compareContents, joinPaths, withTempFile }
 import scala.util.matching.Regex
 import tools.nsc.io.{ File => NSCFile }
 import java.io.{ File, PrintStream, FileOutputStream, PrintWriter, FileWriter }
@@ -27,6 +30,10 @@ object DPConsoleRunner {
       case Nil => sys.error("Error: DPConsoleRunner needs \"-dottyJars <jarCount> <jars>*\".")
       case jarFinder(nr, jarString) :: Nil =>
         val jars = jarString.split(" ").toList
+        println("------------------------------------------------------------")
+        println("jars:")
+        jars.foreach(println)
+        println("------------------------------------------------------------")
         val count = nr.toInt
         if (jars.length < count)
           sys.error("Error: DPConsoleRunner found wrong number of dottyJars: " + jars + ", expected: " + nr)
@@ -39,7 +46,6 @@ object DPConsoleRunner {
 
 // console runner has a suite runner which creates a test runner for each test
 class DPConsoleRunner(args: String, extraJars: List[String]) extends ConsoleRunner(args) {
-
   override val suiteRunner = new DPSuiteRunner (
     testSourcePath = optSourcePath getOrElse DPConfig.testRoot,
     fileManager = new DottyFileManager(extraJars),
@@ -149,7 +155,11 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
       "-d",
       outDir.getAbsolutePath,
       "-classpath",
-      joinPaths(outDir :: extraClasspath ++ testClassPath)
+      joinPaths(outDir :: extraClasspath.filter { fp =>
+        fp.endsWith("dotty-lib.jar") ||
+        fp.endsWith("scala-library-2.11.5.jar") ||
+        fp.endsWith("scala-reflect-2.11.5.jar")
+      })
     ) ++ files.map(_.getAbsolutePath)
 
     pushTranscript(args mkString " ")
@@ -159,6 +169,59 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
       cLogFile appendAll captured.stderr
       cLogFile appendAll captured.stdout
       genFail("java compilation failed")
+    }
+  }
+
+  override def run(): TestState = {
+    if (kind == "run") {
+      // javac runner, for one, would merely append to an existing log file, so
+      // just delete it before we start
+      logFile.delete()
+      runTestCommon(execTest(outDir, logFile) && diffIsOk)
+      lastState
+    } else super.run()
+  }
+
+  // Re-implemented for running tests
+  def execTest(outDir: File, logFile: File): Boolean = {
+    val argsFile  = testFile changeExtension "javaopts"
+    val argString = file2String(argsFile)
+    if (argString != "") NestUI.verbose(
+      "Found javaopts file '%s', using options: '%s'".format(argsFile, argString)
+    )
+
+    val classpath = joinPaths {
+      val sep = sys.props("path.separator")
+      val fps = extraClasspath.filter { fp =>
+        fp.endsWith("dotty-lib.jar") ||
+        fp.endsWith("scala-library-2.11.5.jar") ||
+        fp.endsWith("scala-reflect-2.11.5.jar")
+      }
+
+      fps ++ fileManager.testClassPath
+    }
+
+    val javaOpts: List[String] = (
+      suiteRunner.javaOpts.split(' ') ++
+      extraJavaOptions ++
+      argString.split(' ')
+    ).map(_.trim).filter(_ != "").toList
+
+    val cmd: List[String] = (suiteRunner.javaCmdPath :: javaOpts) ++ (
+      "-classpath" :: join(outDir.toString, classpath) ::
+      "Test" :: "jvm" :: // default argument to Test class in super is "jvm"
+      Nil
+    )
+
+    pushTranscript((cmd mkString s" \\$EOL  ") + " > " + logFile.getName)
+    nextTestAction(runCommand(cmd, logFile)) {
+      case false =>
+        //_transcript append EOL + logFile.fileContents
+        // think this is equivalent:
+        val contents = logFile.fileContents
+        println(contents)
+        pushTranscript(contents)
+        genFail("non-zero exit code")
     }
   }
 
@@ -196,6 +259,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     if (specificFlags.isEmpty) defaultFlags
     else specificFlags
   }
+
   val defaultFlags = {
     val defaultFile = parentFile.listFiles.toList.find(_.getName == "__defaultFlags.flags")
     defaultFile.map({ file =>
@@ -206,7 +270,6 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   // override to add the check for nr of compilation errors if there's a
   // target.nerr file
   override def runNegTest() = runInContext {
-    import TestState.{ Crash, Fail }
     import scala.reflect.internal.FatalError
 
     sealed abstract class NegTestState
@@ -233,11 +296,14 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
 
     // we keep the partest semantics where only one round needs to fail
     // compilation, not all
-    val compFailingRounds = compilationRounds(testFile).map({round =>
-      val ok = round.isOk
-      setLastState(if (ok) genPass else genFail("compilation failed"))
-      (round.result, ok)
-    }).filter({ case (_, ok) => !ok })
+    val compFailingRounds =
+      compilationRounds(testFile)
+      .map { round =>
+        val ok = round.isOk
+        setLastState(if (ok) genPass else genFail("compilation failed"))
+        (round.result, ok)
+      }
+      .filter { case (_, ok) => !ok }
 
     val failureStates = compFailingRounds.map({ case (result, _) => result match {
       // or, OK, we'll let you crash the compiler with a FatalError if you supply a check file
@@ -250,21 +316,24 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
       true
     } else {
       val existsNerr = failureStates.exists({
-        case CompFailedButWrongNErr(exp, found) => nextTestActionFailing(s"wrong number of compilation errors, expected: $exp, found: $found"); true
-        case _ => false
-      })
-      if (existsNerr) {
-        false
-      } else {
-        val existsDiff = failureStates.exists({
-          case CompFailedButWrongDiff() => nextTestActionFailing(s"output differs"); true
-          case _ => false
-        })
-        if (existsDiff) {
+        case CompFailedButWrongNErr(exp, found) =>
+          nextTestActionFailing(s"wrong number of compilation errors, expected: $exp, found: $found")
+          true
+        case _ =>
           false
-        } else {
-          nextTestActionFailing("expected compilation failure")
-        }
+      })
+
+      if (existsNerr) false
+      else {
+        val existsDiff = failureStates.exists({
+          case CompFailedButWrongDiff() =>
+            nextTestActionFailing(s"output differs")
+            true
+          case _ =>
+            false
+        })
+        if (existsDiff) false
+        else nextTestActionFailing("expected compilation failure")
       }
     }
   }
@@ -297,14 +366,14 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
         }
         pushTranscript(bestDiff)
         genFail("output differs")
-      case None        => genPass()  // redundant default case
+      case None => genPass()  // redundant default case
     } getOrElse true
   }
 
   // override to add dotty and scala jars to classpath
   override def extraClasspath = {
     val cp = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
-    println(s"extraClasspath: $cp")
+    //println(s"extraClasspath: $cp")
     cp
   }
 

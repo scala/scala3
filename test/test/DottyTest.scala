@@ -22,8 +22,14 @@ class DottyTest extends ContextEscapeDetection{
     val base = new ContextBase {}
     import base.settings._
     val ctx = base.initialCtx.fresh
-    base.initialize()(ctx)
     ctx.setSetting(ctx.settings.encoding, "UTF8")
+    ctx.setSetting(
+      ctx.settings.classpath,
+      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+    )
+    // when classpath is changed in ctx, we need to re-initialize to get the
+    // correct classpath from PathResolver
+    base.initialize()(ctx)
     ctx
   }
 
@@ -31,6 +37,7 @@ class DottyTest extends ContextEscapeDetection{
   override def clearCtx() = {
     ctx = null
   }
+
   private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
     override def phases = {
       val allPhases = super.phases
