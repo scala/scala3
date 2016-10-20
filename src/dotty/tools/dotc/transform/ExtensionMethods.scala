@@ -32,6 +32,9 @@ import SymUtils._
  * in [[ElimErasedValueType]].
  * This is different from the implementation of value classes in Scala 2
  * (see SIP-15) which uses `asInstanceOf` which does not typecheck.
+ *
+ * Finally, if the constructor of a value class is private pr protected
+ * it is widened to public.
  */
 class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransformer =>
 
@@ -96,11 +99,18 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
         case _ =>
           moduleClassSym
       }
-    case ref: SymDenotation
-    if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnot) =>
-      val ref1 = ref.copySymDenotation()
-      ref1.removeAnnotation(defn.TailrecAnnot)
-      ref1
+    case ref: SymDenotation =>
+      if (isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnot)) {
+        val ref1 = ref.copySymDenotation()
+        ref1.removeAnnotation(defn.TailrecAnnot)
+        ref1
+      }
+      else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.is(AccessFlags)) {
+        val ref1 = ref.copySymDenotation()
+        ref1.resetFlag(AccessFlags)
+        ref1
+      }
+      else ref
     case _ =>
       ref
   }
