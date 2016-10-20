@@ -140,6 +140,16 @@ class Definitions {
     lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context) = Sys_errorR.symbol
 
+  /** The `scalaShadowing` package is used to safely modify classes and
+   *  objects in scala so that they can be used from dotty. They will
+   *  be visible as members of the `scala` package, replacing any objects
+   *  or classes with the same name. But their binary artifacts are
+   *  in `scalaShadowing` so they don't clash with the same-named `scala`
+   *  members at runtime.
+   */
+  lazy val ScalaShadowingPackageVal = ctx.requiredPackage("scalaShadowing")
+  lazy val ScalaShadowingPackageClass = ScalaShadowingPackageVal.moduleClass.asClass
+
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
    *  which would result in a double binding assertion failure.
@@ -781,6 +791,11 @@ class Definitions {
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      
+      // Enter all symbols from the scalaShadowing package in the scala package 
+      for (m <- ScalaShadowingPackageClass.info.decls)
+        ScalaPackageClass.enter(m)
+
       _isInitialized = true
     }
   }
