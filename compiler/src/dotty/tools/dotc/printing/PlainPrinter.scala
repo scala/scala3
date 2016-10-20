@@ -14,7 +14,7 @@ import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.annotation.switch
 
-import dotty.tools.dotc.transform.Summaries.JavaAllocatedType
+import dotty.tools.dotc.transform.linker.Summaries.JavaAllocatedType
 
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
