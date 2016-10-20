@@ -131,7 +131,7 @@ object JavaParsers {
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
       makeParam(nme.syntheticParamName(count), tpt)
     def makeParam(name: TermName, tpt: Tree): ValDef =
-      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.PrivateLocalParamAccessor))
+      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.ParamAccessor))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
       val vparams = mapWithIndex(formals)((p, i) => makeSyntheticParam(i + 1, p))
