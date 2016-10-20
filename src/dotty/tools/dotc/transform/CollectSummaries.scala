@@ -171,7 +171,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def prepareForDefDef(tree: tpd.DefDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
-      if (!sym.is(Label)) {
+      if (!sym.is(Label) && !sym.isPrimaryConstructor) {
         methodSummaryStack.push(curMethodSummary)
         val args = tree.vparamss.flatten.map(_.symbol) // outer param for constructors
         val argumentStoredToHeap = (0 to args.length).map(_ => true).toList
@@ -197,26 +197,24 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def prepareForTemplate(tree: tpd.Template)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
-      if (!sym.is(Label)) {
-        methodSummaryStack.push(curMethodSummary)
-        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
-      }
+      assert(!sym.is(Label))
+      methodSummaryStack.push(curMethodSummary)
+      curMethodSummary = MethodSummary(sym.owner.primaryConstructor, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
       this
     }
 
 
     override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if (!sym.is(Label)) {
-        assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSummaries = curMethodSummary :: methodSummaries
-        curMethodSummary = methodSummaryStack.pop()
-      }
+      assert(!sym.is(Label))
+      assert(curMethodSummary.methodDef eq tree.symbol.owner.primaryConstructor)
+      methodSummaries = curMethodSummary :: methodSummaries
+      curMethodSummary = methodSummaryStack.pop()
       tree
     }
 
     override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Label)) {
+      if (!tree.symbol.is(Label) && !tree.symbol.isPrimaryConstructor) {
         assert(curMethodSummary.methodDef eq tree.symbol)
         methodSummaries = curMethodSummary :: methodSummaries
         curMethodSummary = methodSummaryStack.pop()
@@ -226,9 +224,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
-        sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
-        sym.owner.isClass)) { // fields
+      if (sym.exists && ((sym.is(Lazy) && (sym.owner.is(Package) || sym.owner.isClass)) || // lazy vals and modules
+          sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
+          sym.owner.isClass)) { // fields
         assert(curMethodSummary.methodDef eq tree.symbol)
 
         methodSummaries = curMethodSummary :: methodSummaries
@@ -381,10 +379,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           }
 
         case _ => Nil
-      }
-
-      if (tree.toString.contains("Foo")) {
-        println(tree)
       }
 
       val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
@@ -857,7 +851,7 @@ class BuildCallGraph extends Phase {
         if (tp1.widen ne tp1) registerParentModules(tp1.widen, from)
         if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
         if (tp1.termSymbol.is(Module)) {
-          // reachableTypes += regularizeType(ref(tp1.termSymbol).tpe)
+          addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
         } else if (tp1.typeSymbol.is(Module, Package)) {
           val t = regularizeType(ref(tp1.typeSymbol).tpe)
           addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
