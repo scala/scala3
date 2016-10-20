@@ -19,14 +19,17 @@ class PositionUnpickler(reader: TastyReader) {
     var curEnd = 0
     while (!isAtEnd) {
       val header = readInt()
-      val addrDelta = header >> 2
-      val hasStart = (header & 2) != 0
-      val hasEnd = (header & 1) != 0
+      val addrDelta = header >> 3
+      val hasStart = (header & 4) != 0
+      val hasEnd = (header & 2) != 0
+      val hasPoint = (header & 1) != 0
       curIndex += addrDelta
       assert(curIndex >= 0)
       if (hasStart) curStart += readInt()
       if (hasEnd) curEnd += readInt()
-      positions(Addr(curIndex)) = Position(curStart, curEnd)
+      positions(Addr(curIndex)) = 
+        if (hasPoint) Position(curStart, curEnd, curStart + readInt())
+        else Position(curStart, curEnd)
     }
     positions
   }

@@ -24,7 +24,7 @@ abstract class Positioned extends DotClass with Product {
    *  positions in children.
    */
   protected def setPos(pos: Position): Unit = {
-    curPos = pos
+    setPosUnchecked(pos)
     if (pos.exists) setChildPositions(pos.toSynthetic)
   }
 
