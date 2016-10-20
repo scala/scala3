@@ -1,4 +1,4 @@
-package dotty.annotation.internal
+package scala.annotation.internal
 
 import scala.annotation.Annotation
 
