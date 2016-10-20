@@ -351,8 +351,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tree @ Inlined(call, bindings, body) =>
-        if (homogenizedView) toTextCore(Inliner.dropInlined(tree.asInstanceOf[tpd.Inlined]))
-        else "/* inlined from " ~ toText(call) ~ "*/ " ~ blockText(bindings :+ body)
+        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView) ~ 
+        blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
       case TypeTree() =>
@@ -526,7 +526,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]]) {
-      val pos = if (homogenizedView) tree.pos.toSynthetic else tree.pos
+      val pos = 
+        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic 
+        else tree.pos
       txt = (txt ~ "@" ~ pos.toString /*~ tree.getClass.toString*/).close
     }
     tree match {

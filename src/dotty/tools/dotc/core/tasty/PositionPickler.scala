@@ -36,9 +36,9 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
       if (it.hasNext) Some(it.next) else None
   }
 
-  def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean) = {
+  def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean, hasPoint: Boolean) = {
     def toInt(b: Boolean) = if (b) 1 else 0
-    (addrDelta << 2) | (toInt(hasStartDelta) << 1) | toInt(hasEndDelta)
+    (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
   def picklePositions(roots: List[Tree])(implicit ctx: Context) = {
@@ -48,26 +48,30 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
       val addrDelta = index - lastIndex
       val startDelta = pos.start - lastPos.start
       val endDelta = pos.end - lastPos.end
-      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0))
+      buf.writeInt(header(addrDelta, startDelta != 0, endDelta != 0, !pos.isSynthetic))
       if (startDelta != 0) buf.writeInt(startDelta)
       if (endDelta != 0) buf.writeInt(endDelta)
+      if (!pos.isSynthetic) buf.writeInt(pos.pointDelta)
       lastIndex = index
       lastPos = pos
     }
 
     /** True if x's position cannot be reconstructed automatically from its initialPos
      */
-    def needsPosition(x: Positioned) =
-      x.pos.toSynthetic != x.initialPos.toSynthetic ||
-      x.isInstanceOf[WithLazyField[_]] || // initialPos is inaccurate for trees with lazy fields
-      x.isInstanceOf[Trees.PackageDef[_]] // package defs might be split into several Tasty files
+    def alwaysNeedsPos(x: Positioned) = x match {
+      case _: WithLazyField[_]            // initialPos is inaccurate for trees with lazy field
+         | _: Trees.PackageDef[_] => true // package defs might be split into several Tasty files 
+      case _ => false
+    }
+
     def traverse(x: Any): Unit = x match {
       case x: Tree @unchecked =>
-        if (x.pos.exists && needsPosition(x)) {
+        val pos = if (x.isInstanceOf[MemberDef]) x.pos else x.pos.toSynthetic
+        if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
           nextTreeAddr(x) match {
             case Some(addr) =>
-              //println(i"pickling $x at $addr")
-              pickleDeltas(addr.index, x.pos)
+              //println(i"pickling $x with $pos at $addr")
+              pickleDeltas(addr.index, pos)
             case _ =>
               //println(i"no address for $x")
           }
