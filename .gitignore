@@ -45,3 +45,5 @@ build/
 
 # Ignore build-file
 .packages
+/.cache-main
+/.cache-tests
