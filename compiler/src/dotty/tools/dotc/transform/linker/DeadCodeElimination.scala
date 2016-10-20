@@ -36,11 +36,13 @@ class DeadCodeElimination extends MiniPhaseTransform {
   import tpd._
   def phaseName: String = "dce"
   private var reachableSet: Set[Symbol] = null
+  private var reachableClassesSet: Set[Symbol] = null
   private var keepAfter: Phase = null
   private var exception: Tree = null
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     reachableSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableMethods.map(x => x.call.termSymbol)
+    reachableClassesSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
     keepAfter = ctx.phaseOfClass(classOf[BuildCallGraph])
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
     this
@@ -58,5 +60,16 @@ class DeadCodeElimination extends MiniPhaseTransform {
     else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
+
   //TODO: drop classes that are unreachable with all their definitions and subclasses
+//  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+//    val keepAsNew = tree.symbol.initial.validFor.firstPhaseId > keepAfter.period.phaseId
+//    if (tree.symbol.isClass || keepAsNew || reachableClassesSet.contains(tree.symbol)) tree
+//    else tpd.EmptyTree
+//  }
+//
+//  override def transformApply(tree: _root_.dotty.tools.dotc.ast.tpd.Apply)(implicit ctx: Context, info: TransformerInfo): _root_.dotty.tools.dotc.ast.tpd.Tree = {
+//    if (!tree.tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
+//    else exception.ensureConforms(tree.tpe)
+//  }
 }
