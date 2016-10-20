@@ -140,6 +140,16 @@ class Definitions {
     lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context) = Sys_errorR.symbol
 
+  /** The `scalaShadowing` package is used to safely modify classes and
+   *  objects in scala so that they can be used from dotty. They will
+   *  be visible as members of the `scala` package, replacing any objects
+   *  or classes with the same name. But their binary artifacts are
+   *  in `scalaShadowing` so they don't clash with the same-named `scala`
+   *  members at runtime.
+   */
+  lazy val ScalaShadowingPackageVal = ctx.requiredPackage("scalaShadowing")
+  lazy val ScalaShadowingPackageClass = ScalaShadowingPackageVal.moduleClass.asClass
+
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
    *  which would result in a double binding assertion failure.
@@ -410,8 +420,6 @@ class Definitions {
     lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+(implicit ctx: Context) = StringAdd_plusR.symbol
 
-  lazy val PairType: TypeRef                    = ctx.requiredClassRef("dotty.Pair")
-  def PairClass(implicit ctx: Context) = PairType.symbol.asClass
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
@@ -450,17 +458,17 @@ class Definitions {
   def StaticAnnotationClass(implicit ctx: Context) = StaticAnnotationType.symbol.asClass
 
   // Annotation classes
-  lazy val AliasAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Alias")
+  lazy val AliasAnnotType = ctx.requiredClassRef("scala.annotation.internal.Alias")
   def AliasAnnot(implicit ctx: Context) = AliasAnnotType.symbol.asClass
-  lazy val AnnotationDefaultAnnotType = ctx.requiredClassRef("dotty.annotation.internal.AnnotationDefault")
+  lazy val AnnotationDefaultAnnotType = ctx.requiredClassRef("scala.annotation.internal.AnnotationDefault")
   def AnnotationDefaultAnnot(implicit ctx: Context) = AnnotationDefaultAnnotType.symbol.asClass
-  lazy val BodyAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Body")
+  lazy val BodyAnnotType = ctx.requiredClassRef("scala.annotation.internal.Body")
   def BodyAnnot(implicit ctx: Context) = BodyAnnotType.symbol.asClass
-  lazy val ChildAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Child")
+  lazy val ChildAnnotType = ctx.requiredClassRef("scala.annotation.internal.Child")
   def ChildAnnot(implicit ctx: Context) = ChildAnnotType.symbol.asClass
-  lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.CovariantBetween")
+  lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.CovariantBetween")
   def CovariantBetweenAnnot(implicit ctx: Context) = CovariantBetweenAnnotType.symbol.asClass
-  lazy val ContravariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.ContravariantBetween")
+  lazy val ContravariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween")
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
@@ -468,9 +476,9 @@ class Definitions {
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
   def InlineAnnot(implicit ctx: Context) = InlineAnnotType.symbol.asClass
-  lazy val InlineParamAnnotType = ctx.requiredClassRef("dotty.annotation.internal.InlineParam")
+  lazy val InlineParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.InlineParam")
   def InlineParamAnnot(implicit ctx: Context) = InlineParamAnnotType.symbol.asClass
-  lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("dotty.annotation.internal.InvariantBetween")
+  lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType = ctx.requiredClassRef("scala.annotation.migration")
   def MigrationAnnot(implicit ctx: Context) = MigrationAnnotType.symbol.asClass
@@ -478,9 +486,9 @@ class Definitions {
   def NativeAnnot(implicit ctx: Context) = NativeAnnotType.symbol.asClass
   lazy val RemoteAnnotType                   = ctx.requiredClassRef("scala.remote")
   def RemoteAnnot(implicit ctx: Context) = RemoteAnnotType.symbol.asClass
-  lazy val RepeatedAnnotType = ctx.requiredClassRef("dotty.annotation.internal.Repeated")
+  lazy val RepeatedAnnotType = ctx.requiredClassRef("scala.annotation.internal.Repeated")
   def RepeatedAnnot(implicit ctx: Context) = RepeatedAnnotType.symbol.asClass
-  lazy val SourceFileAnnotType = ctx.requiredClassRef("dotty.annotation.internal.SourceFile")
+  lazy val SourceFileAnnotType = ctx.requiredClassRef("scala.annotation.internal.SourceFile")
   def SourceFileAnnot(implicit ctx: Context) = SourceFileAnnotType.symbol.asClass
   lazy val ScalaSignatureAnnotType = ctx.requiredClassRef("scala.reflect.ScalaSignature")
   def ScalaSignatureAnnot(implicit ctx: Context) = ScalaSignatureAnnotType.symbol.asClass
@@ -510,7 +518,7 @@ class Definitions {
   def UncheckedStableAnnot(implicit ctx: Context) = UncheckedStableAnnotType.symbol.asClass
   lazy val UncheckedVarianceAnnotType = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedVariance")
   def UncheckedVarianceAnnot(implicit ctx: Context) = UncheckedVarianceAnnotType.symbol.asClass
-  lazy val UnsafeNonvariantAnnotType = ctx.requiredClassRef("dotty.annotation.internal.UnsafeNonvariant")
+  lazy val UnsafeNonvariantAnnotType = ctx.requiredClassRef("scala.annotation.internal.UnsafeNonvariant")
   def UnsafeNonvariantAnnot(implicit ctx: Context) = UnsafeNonvariantAnnotType.symbol.asClass
   lazy val VolatileAnnotType = ctx.requiredClassRef("scala.volatile")
   def VolatileAnnot(implicit ctx: Context) = VolatileAnnotType.symbol.asClass
@@ -781,6 +789,11 @@ class Definitions {
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      
+      // Enter all symbols from the scalaShadowing package in the scala package 
+      for (m <- ScalaShadowingPackageClass.info.decls)
+        ScalaPackageClass.enter(m)
+
       _isInitialized = true
     }
   }

@@ -1,4 +1,4 @@
-package dotty.annotation.internal
+package scala.annotation.internal
 
 import scala.annotation.Annotation
 
@@ -9,7 +9,7 @@ import scala.annotation.Annotation
  *    case class B() extends A
  *    case class C() extends A
  *
- *  Then the class symbol `A` would carry the annotations 
+ *  Then the class symbol `A` would carry the annotations
  *  `@Child[Bref] @Child[Cref]` where `Bref`, `Cref` are TypeRefs
  *  referring to the class symbols of `B` and `C`
  */

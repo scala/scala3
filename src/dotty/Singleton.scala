@@ -1,5 +1,0 @@
-package dotty
-
-class Singleton {
-
-}
