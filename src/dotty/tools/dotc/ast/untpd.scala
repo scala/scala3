@@ -95,36 +95,36 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ----- Modifiers -----------------------------------------------------
   /** Mod is intended to record syntactic information about modifiers, it's
-    * NOT a replacement of flagsets.
+    * NOT a replacement of FlagSet.
     *
     * For any query about semantic information, check `flags` instead.
     */
-  sealed trait Mod extends Positioned
+  sealed abstract class Mod(val flags: FlagSet) extends Positioned
 
   object Mod {
-    case class Private() extends Mod
+    case class Private() extends Mod(Flags.Private)
 
-    case class Protected() extends Mod
+    case class Protected() extends Mod(Flags.Protected)
 
-    case class Val() extends Mod
+    case class Val() extends Mod(Flags.EmptyFlags)
 
-    case class Var() extends Mod
+    case class Var() extends Mod(Flags.Mutable)
 
-    case class Implicit() extends Mod
+    case class Implicit(flag: FlagSet = Flags.ImplicitCommon) extends Mod(flag)
 
-    case class Final() extends Mod
+    case class Final() extends Mod(Flags.Final)
 
-    case class Sealed() extends Mod
+    case class Sealed() extends Mod(Flags.Sealed)
 
-    case class Override() extends Mod
+    case class Override() extends Mod(Flags.Override)
 
-    case class Abstract() extends Mod
+    case class Abstract() extends Mod(Flags.Abstract)
 
-    case class Lazy() extends Mod
+    case class Lazy() extends Mod(Flags.Lazy)
 
-    case class Inline() extends Mod
+    case class Inline() extends Mod(Flags.Inline)
 
-    case class Type() extends Mod
+    case class Type() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions

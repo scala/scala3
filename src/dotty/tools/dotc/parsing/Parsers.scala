@@ -1465,22 +1465,10 @@ object Parsers {
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
-    private def flagOfToken(tok: Int): FlagSet = tok match {
-      case ABSTRACT  => Abstract
-      case FINAL     => Final
-      case IMPLICIT  => ImplicitCommon
-      case INLINE    => Inline
-      case LAZY      => Lazy
-      case OVERRIDE  => Override
-      case PRIVATE   => Private
-      case PROTECTED => Protected
-      case SEALED    => Sealed
-    }
-
     private def modOfToken(tok: Int): Mod = tok match {
       case ABSTRACT  => Mod.Abstract()
       case FINAL     => Mod.Final()
-      case IMPLICIT  => Mod.Implicit()
+      case IMPLICIT  => Mod.Implicit(ImplicitCommon)
       case INLINE    => Mod.Inline()
       case LAZY      => Mod.Lazy()
       case OVERRIDE  => Mod.Override()
@@ -1502,12 +1490,10 @@ object Parsers {
 
     private def addModifier(mods: Modifiers): Modifiers = {
       val tok = in.token
-      val flag = flagOfToken(tok)
-      val mod = atPos(in.offset) { in.nextToken(); modOfToken(tok) }
+      val mod = atPos(in.skipToken()) { modOfToken(tok) }
 
-      if (mods is flag) syntaxError(RepeatedModifier(flag.toString))
-      val res = addFlag(mods, flag).withAddedMod(mod)
-      res
+      if (mods is mod.flags) syntaxError(RepeatedModifier(flag.toString))
+      addMod(mods, mod)
     }
 
     private def compatible(flags1: FlagSet, flags2: FlagSet): Boolean = (
@@ -1532,6 +1518,11 @@ object Parsers {
           mods
       }
     }
+
+    /** Always add the syntactic `mod`, but check and conditionally add semantic `mod.flags`
+     */
+    def addMod(mods: Modifiers, mod: Mod): Modifiers =
+      addFlag(mods, mod.flags).withAddedMod(mod)
 
     /** AccessQualifier ::= "[" (Id | this) "]"
      */
@@ -1629,7 +1620,7 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == TYPE) {
-                val mod = atPos(in.offset) { in.nextToken(); Mod.Type() }
+                val mod = atPos(in.skipToken()) { Mod.Type() }
                 (mods | Param | ParamAccessor).withAddedMod(mod)
               } else {
                 if (mods.hasFlags) syntaxError("`type' expected")
@@ -1674,7 +1665,6 @@ object Parsers {
      *  Param             ::=  id `:' ParamType [`=' Expr]
      */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
-      var implicitFlag = EmptyFlags
       var implicitMod: Mod  = null
       var firstClauseOfCaseClass = ofCaseClass
       var implicitOffset = -1 // use once
@@ -1686,11 +1676,11 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
-                val mod = atPos(in.offset) { in.nextToken(); Mod.Val() }
+                val mod = atPos(in.skipToken()) { Mod.Val() }
                 mods.withAddedMod(mod)
               } else if (in.token == VAR) {
-                val mod = atPos(in.offset) { in.nextToken(); Mod.Var() }
-                addFlag(mods, Mutable).withAddedMod(mod)
+                val mod = atPos(in.skipToken()) { Mod.Var() }
+                addMod(mods, mod)
               } else {
                 if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
@@ -1712,7 +1702,7 @@ object Parsers {
               if (in.token == ARROW) {
                 if (owner.isTypeName && !(mods is Local))
                   syntaxError(s"${if (mods is Mutable) "`var'" else "`val'"} parameters may not be call-by-name")
-                else if (!implicitFlag.isEmpty)
+                else if (implicitMod != null)
                   syntaxError("implicit parameters may not be call-by-name")
               }
               paramType()
@@ -1724,8 +1714,8 @@ object Parsers {
             mods = mods.withPos(mods.pos.union(Position(implicitOffset, implicitOffset)))
             implicitOffset = -1
           }
-          if (implicitMod != null) mods = mods.withAddedMod(implicitMod)
-          ValDef(name, tpt, default).withMods(addFlag(mods, implicitFlag))
+          if (implicitMod != null) mods = addMod(mods, implicitMod)
+          ValDef(name, tpt, default).withMods(mods)
         }
       }
       def paramClause(): List[ValDef] = inParens {
@@ -1733,8 +1723,7 @@ object Parsers {
         else {
           if (in.token == IMPLICIT) {
             implicitOffset = in.offset
-            implicitMod = atPos(in.offset) { in.nextToken(); Mod.Implicit() }
-            implicitFlag = Implicit
+            implicitMod = atPos(in.skipToken()) { Mod.Implicit(Implicit) }
           }
           commaSeparated(param)
         }
@@ -1744,7 +1733,7 @@ object Parsers {
         if (in.token == LPAREN)
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (implicitFlag.isEmpty) clauses() else Nil
+            if (implicitMod == null) clauses() else Nil
           }
         else Nil
       }
@@ -1837,12 +1826,12 @@ object Parsers {
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
-        val mod = atPos(in.offset) { in.nextToken(); Mod.Val() }
+        val mod = atPos(in.skipToken()) { Mod.Val() }
         val modPos = atPos(start) { mods.withAddedMod(mod) }
         patDefOrDcl(start, modPos, in.getDocComment(start))
       case VAR =>
-        val mod = atPos(in.offset) { in.nextToken(); Mod.Var() }
-        val modPos = atPos(start) { addFlag(mods, Mutable).withAddedMod(mod) }
+        val mod = atPos(in.skipToken()) { Mod.Var() }
+        val modPos = atPos(start) { addMod(mods, mod) }
         patDefOrDcl(start, modPos, in.getDocComment(start))
       case DEF =>
         defDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
@@ -2231,7 +2220,7 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT) {
             val start = in.offset
-            val mod = atPos(in.offset) { in.nextToken(); Mod.Implicit() }
+            val mod = atPos(in.skipToken()) { Mod.Implicit(ImplicitCommon) }
             if (isIdent) stats += implicitClosure(start, Location.InBlock, Some(mod))
             else stats += localDef(start, ImplicitCommon, Some(mod))
           } else {

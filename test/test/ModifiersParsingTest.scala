@@ -9,6 +9,7 @@ import dotty.tools.dotc.ast.{ Trees => d }
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.core.Contexts.ContextBase
+import dotty.tools.dotc.core.Flags
 
 object ModifiersParsingTest {
   implicit val ctx = (new ContextBase).initialCtx
@@ -136,12 +137,13 @@ class ModifiersParsingTest {
     assert(source.defParam(0).modifiers == List(Mod.Inline()))
 
     source = "def f(implicit a: Int, b: Int) = ???"
-    assert(source.defParam(0).modifiers == List(Mod.Implicit()))
-    assert(source.defParam(1).modifiers == List(Mod.Implicit()))
+    println(source.defParam(0).modifiers)
+    assert(source.defParam(0).modifiers == List(Mod.Implicit(Flags.Implicit)))
+    assert(source.defParam(1).modifiers == List(Mod.Implicit(Flags.Implicit)))
 
     source = "def f(x: Int, y: Int)(implicit a: Int, b: Int) = ???"
     assert(source.defParam(0, 0).modifiers == List())
-    assert(source.defParam(1, 0).modifiers == List(Mod.Implicit()))
+    assert(source.defParam(1, 0).modifiers == List(Mod.Implicit(Flags.Implicit)))
   }
 
   @Test def blockDef = {
