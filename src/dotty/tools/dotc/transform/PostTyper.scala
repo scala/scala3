@@ -76,13 +76,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  /** Check bounds of AppliedTypeTrees.
-   */
-  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = {
-    if (tree.isType) Checking.typeCheck(tree)
-    tree
-  }
-
   /** If the type of `tree` is a TermRefWithSignature with an underdefined
    *  signature, narrow the type by re-computing the signature (which should
    *  be fully-defined by now).
@@ -171,14 +164,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      try normalizeTree(tree) match {
+      try tree match {
         case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => paramFwd.adaptRef(fixSignature(tree))
           }
-        case tree: Select if !tree.isType =>
-          transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
+        case tree @ Select(qual, name) =>
+          if (name.isTypeName) {
+            Checking.checkRealizable(qual.tpe, qual.pos.focus)
+            super.transform(tree)
+          }
+          else 
+            transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(em"super not allowed in inline ${ctx.owner}", tree.pos)
@@ -241,7 +239,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
               tree
             }
             else {
-              Checking.typeChecker.traverse(tree.rhs)
+              //Checking.typeChecker.traverse(tree.rhs)
               cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
             }
           super.transform(tree1)
@@ -253,25 +251,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
-        case AppliedTypeTree(tycon, args) =>
-          // If `args` is a list of named arguments, return corresponding type parameters,
-          // otherwise return type parameters unchanged
-          val tparams = tycon.tpe.typeParams
-          def argNamed(tparam: TypeParamInfo) = args.find {
-            case NamedArg(name, _) => name == tparam.paramName
-            case _ => false
-          }.getOrElse(TypeTree(tparam.paramRef))
-          val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
-          val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
-          def instantiate(bound: Type, args: List[Type]) =
-            bound.LambdaAbstract(tparams).appliedTo(args)
-          Checking.checkBounds(orderedArgs, bounds, instantiate)
-
-          def checkValidIfHKApply(implicit ctx: Context): Unit =
-            Checking.checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
-          checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
+        case tree: AppliedTypeTree =>
+          Checking.checkAppliedType(tree)
           super.transform(tree)
-        
+        case SingletonTypeTree(ref) =>
+          Checking.checkRealizable(ref.tpe, ref.pos.focus)
+          super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {
