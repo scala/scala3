@@ -90,7 +90,7 @@ class BuildCallGraph extends Phase {
           val id = tparams.indexOf(member)
           // assert(id >= 0) // TODO: IS this code needed at all?
 
-          val nlist = x +(parent, t.refinedName, t.refinedInfo)
+          val nlist = x.add(parent, t.refinedName, t.refinedInfo)
           apply(nlist, t.parent)
         case _ =>
           foldOver(x, tp)
@@ -182,7 +182,7 @@ class BuildCallGraph extends Phase {
 
       val tpamsOuter = caller.call.widen match {
         case t: PolyType =>
-          (t.paramNames zip caller.targs).foldLeft(OuterTargs.empty)((x, nameType) => x.+(callerSymbol, nameType._1, nameType._2))
+          (t.paramNames zip caller.targs).foldLeft(OuterTargs.empty)((x, nameType) => x.add(callerSymbol, nameType._1, nameType._2))
         case _ =>
           OuterTargs.empty
       }
@@ -192,7 +192,7 @@ class BuildCallGraph extends Phase {
         val superTpe = callerSymbol.owner.info
         val outers = current.typeMembers.foldLeft(OuterTargs.empty) { (outerTargs: OuterTargs, x) =>
           val old = superTpe.member(x.symbol.name)
-          if (old.exists) outerTargs + (callerSymbol.owner, x.symbol.name, x.info) else outerTargs
+          if (old.exists) outerTargs.add(callerSymbol.owner, x.symbol.name, x.info) else outerTargs
         }
         outers
       } else OuterTargs.empty
@@ -296,12 +296,12 @@ class BuildCallGraph extends Phase {
         recieverType match {
           case t: PreciseType =>
             new CallWithContext(t.underlying.select(calleeSymbol.name), targs, args, outerTargs, caller, callee) :: Nil
-          case t: ClosureType if (calleeSymbol.name eq t.implementedMethod.name) =>
+          case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
             val methodSym = t.meth.meth.symbol.asTerm
             new CallWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs, caller, callee) :: Nil
           case _ =>
             // without casts
-            val dirrect =
+            val direct =
               for (tp <- getTypesByMemberName(calleeSymbol.name)
                    if filterTypes(tp.tp, recieverType.widenDealias);
                    alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
@@ -332,7 +332,7 @@ class BuildCallGraph extends Phase {
                    })
                 yield new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
 
-            dirrect ++ casted
+            direct ++ casted
         }
       }
 
@@ -384,7 +384,6 @@ class BuildCallGraph extends Phase {
           // super call in a class (know target precisely)
         case st: SuperType =>
           val thisTpe = st.thistpe
-          val superTpe = st.supertpe
           val targetClass = st.supertpe.baseClasses.find(clz =>
             clz.info.decl(calleeSymbol.name).altsWith(p => p.signature == calleeSymbol.signature).nonEmpty
           )
@@ -419,7 +418,7 @@ class BuildCallGraph extends Phase {
               } else Nil
           }
 
-        case thisType: ThisType if (!(calleeSymbol.owner.flags is PackageCreationFlags)) =>
+        case thisType: ThisType if !calleeSymbol.owner.flags.is(PackageCreationFlags) =>
           val dropUntil = thisType.tref.classSymbol
           var currentThis = caller.call.normalizedPrefix
           var currentOwner = caller.call.termSymbol.owner
@@ -576,8 +575,8 @@ class BuildCallGraph extends Phase {
     val outGraph = new StringBuffer()
     outGraph.append(s"digraph Gr${mode}_$specLimit {\n")
     outGraph.append("graph [fontsize=10 fontname=\"Verdana\" compound=true];\n")
-    outGraph.append("label = \""+reachableMethods.size + " nodes, " +
-        reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) +" edges, "+ reachableTypes.size  +" reachable types\";\n")
+    outGraph.append("label = \"" + reachableMethods.size + " nodes, " +
+        reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) + " edges, " + reachableTypes.size  + " reachable types\";\n")
 
     val slash = '"'
 
@@ -753,7 +752,7 @@ class BuildCallGraph extends Phase {
 
   }
 
-  var runOnce = true
+  private var runOnce = true
   def run(implicit ctx: Context): Unit = {
     if (runOnce /*&& ctx.settings.lto.value.nonEmpty*/) {
       val specLimit = 15
