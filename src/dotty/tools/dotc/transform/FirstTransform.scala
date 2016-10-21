@@ -28,7 +28,9 @@ import StdNames._
  *   - ensures there are companion objects for all classes except module classes
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
- *   - eliminate self tree in Template and self symbol in ClassInfo
+ *   - eliminates self tree in Template and self symbol in ClassInfo
+ *   - collapsess all type trees to trees of class TypeTree
+ *   - converts idempotent expressions with constant types
  */
 class FirstTransform extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -166,10 +168,24 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
-    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) 
+    else constToLiteral(tree)
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
-    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) 
+    else constToLiteral(tree)
+    
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
+    constToLiteral(tree)
+
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+    constToLiteral(tree)
+
+  override def transformTyped(tree: Typed)(implicit ctx: Context, info: TransformerInfo) =
+    constToLiteral(tree)
+    
+  override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo) =
+    constToLiteral(tree)
 
   // invariants: all modules have companion objects
   // all types are TypeTrees
