@@ -319,8 +319,8 @@ class TreePickler(pickler: TastyPickler) {
       pickleName(sym)
       pickleParams
       tpt match {
-        case tpt: TypeTree => pickleTpt(tpt)
         case templ: Template => pickleTree(tpt)
+        case _ if tpt.isType => pickleTpt(tpt)
       }
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym)
@@ -349,6 +349,8 @@ class TreePickler(pickler: TastyPickler) {
   def pickleTree(tree: Tree)(implicit ctx: Context): Unit = try {
     registerTreeAddr(tree)
     tree match {
+      case tree if tree.isType =>
+        pickleTpt(tree)
       case Ident(name) =>
         tree.tpe match {
           case tp: TermRef => pickleType(tp)
@@ -442,8 +444,6 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(INLINED)
         bindings.foreach(preRegister)
         withLength { pickleTree(call); pickleTree(expansion); bindings.foreach(pickleTree) }
-      case TypeTree() =>
-        pickleTpt(tree)
       case Bind(name, body) =>
         registerDef(tree.symbol)
         writeByte(BIND)
