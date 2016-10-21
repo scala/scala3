@@ -6,6 +6,7 @@ import core._
 import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
+import typer.ConstFold
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   import TreeInfo._
@@ -289,13 +290,14 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   import TreeInfo._
+  import tpd._
 
   /** The purity level of this statement.
    *  @return   pure        if statement has no side effects
    *            idempotent  if running the statement a second time has no side effects
    *            impure      otherwise
    */
-  private def statPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  private def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _)
        | Import(_, _)
@@ -319,7 +321,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  takes a different code path than all to follow; but they are idempotent
    *  because running the expression a second time gives the cached result.
    */
-  private def exprPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  private def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | This(_)
        | Super(_, _)
@@ -358,8 +360,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
 
-  def isPureExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) == Pure
-  def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
+  def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == Pure
+  def isIdempotentExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
 
   /** The purity level of this reference.
    *  @return
@@ -369,16 +371,61 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  private def refPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel =
+  private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
     if (!tree.tpe.widen.isParameterless) Pure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
     else Pure
 
-  def isPureRef(tree: tpd.Tree)(implicit ctx: Context) =
+  def isPureRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) == Pure
-  def isIdempotentRef(tree: tpd.Tree)(implicit ctx: Context) =
+  def isIdempotentRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) >= Idempotent
+
+  /** If `tree` is a constant expression, its value as a Literal, 
+   *  or `tree` itself otherwise.
+   *  
+   *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
+   *  Example
+   *
+   *    object O { final val x = 42; println("43") }
+   *    O.x
+   *
+   *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
+   *  most expressions non-constant. Maybe we can change the spec to accept this
+   *  kind of eliding behavior. Or else enforce true purity in the compiler.
+   *  The choice will be affected by what we will do with `inline` and with
+   *  Singleton type bounds (see SIP 23). Presumably
+   *
+   *     object O1 { val x: Singleton = 42; println("43") }
+   *     object O2 { inline val x = 42; println("43") }
+   *
+   *  should behave differently.
+   *
+   *     O1.x  should have the same effect as   { println("43"); 42 }
+   *
+   *  whereas
+   *
+   *     O2.x = 42
+   *
+   *  Revisit this issue once we have implemented `inline`. Then we can demand
+   *  purity of the prefix unless the selection goes to an inline val.
+   *  
+   *  Note: This method should be applied to all term tree nodes that are not literals,
+   *        that can be idempotent, and that can have constant types. So far, only nodes
+   *        of the following classes qualify:  
+   *        
+   *        Ident
+   *        Select
+   *        TypeApply
+   */
+  def constToLiteral(tree: Tree)(implicit ctx: Context): Tree = {
+    val tree1 = ConstFold(tree)
+    tree1.tpe.widenTermRefExpr match {
+      case ConstantType(value) if isIdempotentExpr(tree1) => Literal(value)
+      case _ => tree1
+    }
+  }
 
   /** Is symbol potentially a getter of a mutable variable?
    */
@@ -394,7 +441,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Is tree a reference to a mutable variable, or to a potential getter
    *  that has a setter in the same class?
    */
-  def isVariableOrGetter(tree: tpd.Tree)(implicit ctx: Context) = {
+  def isVariableOrGetter(tree: Tree)(implicit ctx: Context) = {
     def sym = tree.symbol
     def isVar    = sym is Mutable
     def isGetter =
@@ -419,8 +466,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
-  def stripCast(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-    def isCast(sel: tpd.Tree) = sel.symbol == defn.Any_asInstanceOf
+  def stripCast(tree: Tree)(implicit ctx: Context): Tree = {
+    def isCast(sel: Tree) = sel.symbol == defn.Any_asInstanceOf
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)
@@ -456,7 +503,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** If tree is a closure, its body, otherwise tree itself */
-  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+  def closureBody(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
     case _ => tree
   }
