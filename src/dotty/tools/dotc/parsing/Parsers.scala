@@ -623,7 +623,7 @@ object Parsers {
                 if (inPattern) Block(Nil, inBraces(pattern()))
                 else expr()
               else {
-                syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
+                ctx.error(InterpolatedStringError())
                 EmptyTree
               }
             })
@@ -1489,7 +1489,7 @@ object Parsers {
 
     private def addModifier(mods: Modifiers): Modifiers = {
       val flag = flagOfToken(in.token)
-      if (mods is flag) syntaxError("repeated modifier")
+      if (mods is flag) syntaxError(RepeatedModifier(flag.toString))
       val res = addFlag(mods, flag)
       in.nextToken()
       res

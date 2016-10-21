@@ -400,4 +400,51 @@ object messages {
            |  ((${nestedRepresentation}))""".stripMargin
     }
   }
+
+  case class RepeatedModifier(modifier: String)(implicit ctx:Context) extends Message(14) {
+    val kind = "Syntax"
+
+    val msg = hl"""repeated modifier $modifier"""
+
+    val code1 = hl"""private private val Origin = Point(0, 0)"""
+
+    val code2 = hl"""private final val Origin = Point(0, 0)"""
+
+    val explanation =
+      hl"""This happens when you accidentally specify the same modifier twice.
+           |
+           |Example:
+           |
+           |$code1
+           |
+           |instead of
+           |
+           |$code2
+           |
+           |""".stripMargin
+  }
+
+  case class InterpolatedStringError()(implicit ctx:Context) extends Message(15) {
+    val kind = "Syntax"
+
+    val msg = "error in interpolated string: identifier or block expected"
+
+    val code1 = "s\"$new Point(0, 0)\""
+
+    val code2 = "s\"${new Point(0, 0)}\""
+
+    val explanation =
+      hl"""
+         |This usually happens when you forget to place your expressions inside curly braces.
+         |
+         |$code1
+         |
+         |should be written as
+         |
+         |$code2
+         |
+         |""".stripMargin
+
+  }
+
 }
