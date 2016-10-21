@@ -17,15 +17,33 @@ CODE=0
 
 for f in $FILES
 do
-  echo $f
+  echo "Testing" $f
   pushd $f > /dev/null
   rm -R out > /dev/null 2> /dev/null
   mkdir -p out
   cd out > /dev/null
-  dotcf ../Test.scala > compile-log.txt 2> compile-errors.txt && dottyr Test > run-log.txt 2> run-errors.txt || { echo "... failed"; CODE=1;  }
+  dotcf ../Test.scala > compile-log.txt 2> compile-errors.txt && dottyr Test > run-log.txt 2> run-errors.txt || { CODE=1;  }
   popd > /dev/null
-  diff -y $f/out/run-log.txt $f/check.txt > $f/out/run-log-diff.txt || { echo "... diff failed"; cat $f/out/run-log-diff.txt; CODE=1; }
+
+  if [ -e "$f/out/run-log.txt" ]
+  then
+    if [ -s "$f/out/run-errors.txt" ]
+    then
+      echo "...failed run";
+      cat $f/out/run-errors.txt
+    else
+      diff -y $f/out/run-log.txt $f/check.txt > $f/out/run-log-diff.txt || { echo "... diff failed"; cat $f/out/run-log-diff.txt; CODE=1; }
+    fi
+  else
+    echo "...failed compilation";
+    cat $f/out/compile-errors.txt
+  fi
+
+
+  echo ""
 done
+
+echo "Finished testing"
 
 if [ $CODE -eq 0 ]
 then
