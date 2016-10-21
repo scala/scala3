@@ -298,7 +298,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             case _ => x.tpe
       }})
 
-      // Create calls to wappXArray for varArgs
+      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), args)
+
+      // Create calls to wrapXArray for varArgs
       val repeatedArgsCalls = tree match {
         case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
           @tailrec def refine(tp: Type): Type = tp match {
@@ -316,21 +318,23 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           def wrapArrayTermRef(arrayName: TermName) =
             TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
 
-          getVarArgTypes(fun.tpe.widenDealias).map { tp =>
+          val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
             val args = List(defn.ArrayOf(tp))
             val sym = tp.typeSymbol
             if (sym.isTypeParam || sym == defn.NothingClass)
-              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args)
+              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
             else if (defn.isPrimitiveClass(sym))
-              CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args)
+              CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args, thisCallInfo)
             else
-              CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args)
+              CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args, thisCallInfo)
           }
+
+          if (wrapArrayCall.isEmpty) wrapArrayCall
+          else CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo) :: wrapArrayCall
 
         case _ => Nil
       }
 
-      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), args)
 
       val fillInStackTrace = tree match {
         case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
