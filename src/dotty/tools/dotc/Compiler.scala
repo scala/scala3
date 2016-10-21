@@ -16,7 +16,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
 import dotty.tools.backend.sjs.GenSJSIR
-import dotty.tools.dotc.transform.linker.DeadCodeElimination
+import dotty.tools.dotc.transform.linker.{BuildCallGraph, CollectSummaries, DeadCodeElimination}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.

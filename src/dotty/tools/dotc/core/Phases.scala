@@ -13,6 +13,7 @@ import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform._
+import dotty.tools.dotc.transform.linker._
 import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
