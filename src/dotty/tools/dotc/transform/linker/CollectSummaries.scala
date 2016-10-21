@@ -1,6 +1,5 @@
 package dotty.tools.dotc.transform.linker
 
-import dotty.tools.backend.jvm.CollectEntryPoints
 import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
@@ -30,7 +29,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
   val treeTransform: TreeTransform = new Collect
 
   private var methodSums = List[MethodSummary]()
-  private var noSummaryAvailable = Set[Symbol]()
+  // private var noSummaryAvailable = Set[Symbol]()
 
    /*
   def getSummary(d: Symbol)(implicit ctx: Context): Option[MethodSummary] = {
@@ -163,7 +162,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       else this
     }
 
-
     override def prepareForDefDef(tree: tpd.DefDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       if (!sym.is(Label) && !sym.isPrimaryConstructor) {
@@ -174,7 +172,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }
       this
     }
-
 
     override def prepareForValDef(tree: tpd.ValDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
@@ -189,7 +186,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
 
-
     override def prepareForTemplate(tree: tpd.Template)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       assert(!sym.is(Label))
@@ -197,7 +193,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       curMethodSummary = MethodSummary(sym.owner.primaryConstructor, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
       this
     }
-
 
     override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
@@ -230,17 +225,19 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       tree
     }
 
+    /*
     override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
       if (sym.isClass) {
-        val isEntryPoint = CollectEntryPoints.isJavaEntryPoint(sym)
+        val isEntryPoint = dotty.tools.backend.jvm.CollectEntryPoints.isJavaEntryPoint(sym)
         /*summaries = ClassSummary(sym.asClass,
-          methodSumarries
+          methodSummaries
         ) :: summaries
-        methodSumarries = Nil*/
+        methodSummaries = Nil*/
       }
       tree
     }
+    */
 
     def registerModule(sym: Symbol)(implicit ctx: Context): Unit = {
       if ((curMethodSummary ne null) && sym.is(ModuleVal)) {
@@ -274,12 +271,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case x => (x, x, accArgs, accT, x.tpe)
       }
       val widenedTp = tree.tpe.widen
-      if ((widenedTp.isInstanceOf[MethodicType]) && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType])) return;
-      val (reciever, call, arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
+      if (widenedTp.isInstanceOf[MethodicType] && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType])) return
+      val (receiver, call, arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
 
-      val storedReciever = reciever.tpe
+      val storedReceiver = receiver.tpe
 
-      assert(storedReciever.exists)
+      assert(storedReceiver.exists)
 
       def skipBlocks(s: Tree): Tree = {
         s match {
@@ -378,7 +375,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
 
-      curMethodSummary.methodsCalled(storedReciever) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReciever, Nil)
+      curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -435,7 +432,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
 
-      //println("hoho")
       methodSums = methodSummaries
 
       /*
@@ -501,7 +497,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           // and will be compressed during bytecode generation by TreePickler.compactify
         }
 
-          val s = methodSumarries.filter(_.methodDef.topLevelClass == cls)
+          val s = methodSummaries.filter(_.methodDef.topLevelClass == cls)
 
           // println(s)
 
@@ -570,7 +566,7 @@ object CollectSummaries {
              apply(termTypeIfNeed(t))
             else t
           } else tp
-        case t: TypeRef if (t.prefix.normalizedPrefix eq NoPrefix) =>
+        case t: TypeRef if t.prefix.normalizedPrefix eq NoPrefix =>
           val tmp = apply(t.info)
           if (tmp ne t.info) termTypeIfNeed(tmp)
           else mapOver(t)
@@ -582,7 +578,5 @@ object CollectSummaries {
   }
 
   def substName = "substituted".toTypeName
-
-  private val forgetHistory = false
 
 }
