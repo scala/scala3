@@ -107,22 +107,22 @@ object Summaries {
 
   final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
     def ++(parent: (Symbol, List[Type]))(implicit ctx: Context): OuterTargs = {
-      parent._2.foldLeft(this)((x, y) => x.+(parent._1, y))
+      parent._2.foldLeft(this)((x, y) => x.add(parent._1, y))
     }
     def +(parent: (Symbol, Type))(implicit ctx: Context): OuterTargs = {
-      this.+(parent._1, parent._2)
+      this.add(parent._1, parent._2)
     }
-    def +(parent: Symbol, tp: Type)(implicit ctx: Context): OuterTargs = {
-      this.+(parent, tp.typeSymbol.name, tp)
+    def add(parent: Symbol, tp: Type)(implicit ctx: Context): OuterTargs = {
+      this.add(parent, tp.typeSymbol.name, tp)
     }
-    def +(parent: Symbol, name: Name, tp: Type): OuterTargs = {
+    def add(parent: Symbol, name: Name, tp: Type): OuterTargs = {
       val old = mp.getOrElse(parent, Map.empty)
       new OuterTargs(mp.updated(parent, old + (name -> tp)))
     }
     def nonEmpty = mp.nonEmpty
     def ++(other: OuterTargs)(implicit ctx: Context) = {
       other.mp.foldLeft(this) { (x, y) =>
-        y._2.foldLeft(x: OuterTargs)((x: OuterTargs, z: (Name, Type)) => x.+(y._1, z._1, z._2))
+        y._2.foldLeft(x: OuterTargs)((x: OuterTargs, z: (Name, Type)) => x.add(y._1, z._1, z._2))
       }
     }
     def combine(environment: OuterTargs)(implicit ctx: Context): OuterTargs = {
