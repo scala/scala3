@@ -288,7 +288,7 @@
 ../scala-scala/src/library/scala/sys/SystemProperties.scala
 
 ../scala-scala/src/library/scala/Function0.scala
-../scala-scala/src/library/scala/Function1.scala
+#../scala-scala/src/library/scala/Function1.scala
 ../scala-scala/src/library/scala/Function2.scala
 ../scala-scala/src/library/scala/Function3.scala
 ../scala-scala/src/library/scala/Function4.scala
