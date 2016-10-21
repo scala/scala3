@@ -76,8 +76,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     // TODO fill in
   }
 
-  /** Check bounds of AppliedTypeTrees and TypeApplys.
-   *  Replace type trees with TypeTree nodes.
+  /** Check bounds of AppliedTypeTrees.
    *  Replace constant expressions with Literal nodes.
    *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
    *  Example
@@ -105,18 +104,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
    *  Revisit this issue once we have implemented `inline`. Then we can demand
    *  purity of the prefix unless the selection goes to an inline val.
    */
-  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case _: TypeTree | _: TypeApply => tree
-    case _ =>
-      if (tree.isType) {
-        Checking.typeChecker.traverse(tree)
-        TypeTree(tree.tpe).withPos(tree.pos)
-      }
-      else tree.tpe.widenTermRefExpr match {
-        case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
-        case _ => tree
-      }
-  }
+  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree =
+    if (tree.isType) {
+      Checking.typeCheck(tree)
+      tree
+    } 
+    else tree.tpe.widenTermRefExpr match {
+      case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
+      case _ => tree
+    }
 
   /** If the type of `tree` is a TermRefWithSignature with an underdefined
    *  signature, narrow the type by re-computing the signature (which should
@@ -203,12 +199,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try normalizeTree(tree) match {
-        case tree: Ident =>
+        case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => paramFwd.adaptRef(fixSignature(tree))
           }
-        case tree: Select =>
+        case tree: Select if !tree.isType =>
           transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
@@ -284,6 +280,25 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
+        case AppliedTypeTree(tycon, args) =>
+          // If `args` is a list of named arguments, return corresponding type parameters,
+          // otherwise return type parameters unchanged
+          val tparams = tycon.tpe.typeParams
+          def argNamed(tparam: TypeParamInfo) = args.find {
+            case NamedArg(name, _) => name == tparam.paramName
+            case _ => false
+          }.getOrElse(TypeTree(tparam.paramRef))
+          val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
+          val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
+          def instantiate(bound: Type, args: List[Type]) =
+            bound.LambdaAbstract(tparams).appliedTo(args)
+          Checking.checkBounds(orderedArgs, bounds, instantiate)
+
+          def checkValidIfHKApply(implicit ctx: Context): Unit =
+            Checking.checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
+          checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
+          super.transform(tree)
+        
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {

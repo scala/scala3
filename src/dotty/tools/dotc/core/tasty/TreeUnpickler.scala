@@ -383,12 +383,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     def readTypeRef(): Type =
       typeAtAddr(readAddr())
 
-    def readPath()(implicit ctx: Context): Type = {
-      val tp = readType()
-      assert(tp.isInstanceOf[SingletonType])
-      tp
-    }
-
     def readTermRef()(implicit ctx: Context): TermRef =
       readType().asInstanceOf[TermRef]
 
@@ -760,7 +754,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       val parentRefs = ctx.normalizeToClassRefs(parents.map(_.tpe), cls, cls.unforcedDecls)
       val self =
         if (nextByte == SELFDEF) {
-          val selfStart = currentAddr
           readByte()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
@@ -869,7 +862,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
 
       def readPathTerm(): Tree = {
         goto(start)
-        readPath() match {
+        readType() match {
           case path: TermRef => ref(path)
           case path: ThisType => This(path.cls)
           case path: ConstantType => Literal(path.value)
@@ -948,7 +941,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             case BLOCK =>
               readBlock(Block)
             case INLINED =>
-              val call = readTerm()
+              val call = setPos(currentAddr, TypeTree(readType()))
               readBlock((defs, expr) => Inlined(call, defs.asInstanceOf[List[MemberDef]], expr))
             case IF =>
               If(readTerm(), readTerm(), readTerm())

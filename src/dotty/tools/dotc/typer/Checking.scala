@@ -79,7 +79,12 @@ object Checking {
    */
   val typeChecker = new TreeTraverser {
     def traverse(tree: Tree)(implicit ctx: Context) = {
-      tree match {
+      typeCheck(tree)
+      traverseChildren(tree)
+    }
+  }
+  
+  def typeCheck(tree: Tree)(implicit ctx: Context) = tree match {
         case AppliedTypeTree(tycon, args) =>
           // If `args` is a list of named arguments, return corresponding type parameters,
           // otherwise return type parameters unchanged
@@ -103,10 +108,7 @@ object Checking {
           checkRealizable(ref.tpe, ref.pos.focus)
         case _ =>
       }
-      traverseChildren(tree)
-    }
-  }
-
+  
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */

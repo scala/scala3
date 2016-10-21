@@ -146,7 +146,7 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }
-
+  
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
@@ -162,8 +162,14 @@ class FirstTransform extends MiniPhaseTransform with InfoTransformer with Annota
   override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => transform(tree.arg)
-    case tree => tree
+    case tree => if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
   }
+
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
 
   // invariants: all modules have companion objects
   // all types are TypeTrees

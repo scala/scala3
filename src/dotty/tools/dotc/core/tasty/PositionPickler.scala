@@ -61,6 +61,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
     def alwaysNeedsPos(x: Positioned) = x match {
       case _: WithLazyField[_]            // initialPos is inaccurate for trees with lazy field
          | _: Trees.PackageDef[_] => true // package defs might be split into several Tasty files 
+      case x: Trees.Tree[_] => x.isType   // types are unpickled as TypeTrees, so child positions are not available
       case _ => false
     }
 

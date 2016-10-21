@@ -525,11 +525,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (tree.isType) txt = toText(tp)
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
+    else if (homogenizedView && tree.isType) 
+      txt = toText(tree.typeOpt)
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]]) {
       val pos = 
         if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic 
         else tree.pos
-      txt = (txt ~ "@" ~ pos.toString /*~ tree.getClass.toString*/).close
+      val clsStr = "" // DEBUG: if (tree.isType) tree.getClass.toString else ""
+      txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
     }
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
