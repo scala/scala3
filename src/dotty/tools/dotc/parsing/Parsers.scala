@@ -1827,12 +1827,12 @@ object Parsers {
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
         val mod = atPos(in.skipToken()) { Mod.Val() }
-        val modPos = atPos(start) { mods.withAddedMod(mod) }
-        patDefOrDcl(start, modPos, in.getDocComment(start))
+        val mods1 = mods.withAddedMod(mod)
+        patDefOrDcl(start, mods1, in.getDocComment(start))
       case VAR =>
         val mod = atPos(in.skipToken()) { Mod.Var() }
-        val modPos = atPos(start) { addMod(mods, mod) }
-        patDefOrDcl(start, modPos, in.getDocComment(start))
+        val mod1 = addMod(mods, mod)
+        patDefOrDcl(start, mod1, in.getDocComment(start))
       case DEF =>
         defDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
       case TYPE =>
