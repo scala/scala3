@@ -447,4 +447,39 @@ object messages {
 
   }
 
+  case class UnboundPlaceholderParameter()(implicit ctx:Context)
+    extends Message(16) {
+    val kind = "Syntax"
+
+    val msg = hl"unbound placeholder parameter; incorrect use of `_`"
+
+    val explanation =
+      hl"""The `_` placeholder syntax was used where it could not be bound.
+        |Consider explicitly writing the variable binding.
+        |
+        |This can be done by replacing `_` with a variable (eg. `x`)
+        |and adding ${"x =>"} where applicable.
+        |
+        |Example before:
+        |
+        |${"{ _ }"}
+        |
+        |Example after:
+        |
+        |${"x => { x }"}
+        |
+        |Another common occurrence for this error is defining a val with `_`:
+        |
+        |${"val a = _"}
+        |
+        |But this val definition isn't very useful, it can never be assigned
+        |another value. And thus will always remain uninitialized.
+        |Consider replacing the ${"val"} with ${"var"}:
+        |
+        |${"var a = _"}
+        |
+        |Note that this use of `_` is not placeholder syntax,
+        |but an uninitialized var definition
+        """.stripMargin
+  }
 }

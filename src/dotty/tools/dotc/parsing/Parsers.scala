@@ -334,7 +334,7 @@ object Parsers {
       try op
       finally {
         placeholderParams match {
-          case vd :: _ => syntaxError("unbound placeholder parameter", vd.pos)
+          case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.pos)
           case _ =>
         }
         placeholderParams = savedPlaceholderParams
