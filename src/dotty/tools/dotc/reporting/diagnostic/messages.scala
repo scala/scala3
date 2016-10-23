@@ -543,5 +543,42 @@ object messages {
            |
            |""".stripMargin
   }
- 
+
+  case class ProperDefinitionNotFound()(implicit ctx: Context) extends Message(20) {
+    val kind = "Definition Not Found"
+    val msg = hl"""|Proper definition was not found in ${"@usecase"}"""
+
+    val noUsecase = "def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That"
+
+    val usecase =
+      """|/** Map from List[A] => List[B]
+        |  *
+        |  * @usecase def map[B](f: A => B): List[B]
+        |  */
+        |def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That""".stripMargin
+
+    val explanation = {
+      hl"""|${"@usecase"} are only supported for ${"def"}s. They exist because with Scala's
+           |advanced type-system, we sometimes end up with seemingly scary signatures.
+           |
+           |Let's see an example using the `map`function:
+           |
+           |${"List(1, 2, 3).map(2 * _) // res: List(2, 4, 6)"}
+           |
+           |It's very straight forward to understand and use, but has such a scary signature:
+           |
+           |$noUsecase
+           |
+           |In order to mitigate this and ease the usage of such functions we have the ${"@usecase"}
+           |annotation for docstrings. Which can be used like this:
+           |
+           |$usecase
+           |
+           |Now when creating the docs, the method signature is substituted by the
+           |${"@usecase"} with a reader-friendly version. The compiler makes sure that it is valid.
+           |
+           |Because of this, you must use ${"def"} when defining ${"@usecase"}.""".stripMargin
+    }
+  }
+
 }
