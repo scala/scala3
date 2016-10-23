@@ -20,8 +20,16 @@ class TestREPL(script: String) extends REPL {
   override lazy val config = new REPL.Config {
     override val output = new NewLinePrintWriter(out)
 
-    override def context(ctx: Context) =
-      ctx.fresh.setSetting(ctx.settings.color, "never")
+    override def context(ctx: Context) = {
+      val fresh = ctx.fresh
+      fresh.setSetting(ctx.settings.color, "never")
+      fresh.setSetting(
+        ctx.settings.classpath,
+        "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+      )
+      fresh.initialize()(fresh)
+      fresh
+    }
 
     override def input(in: Interpreter)(implicit ctx: Context) = new InteractiveReader {
       val lines = script.lines.buffered

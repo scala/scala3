@@ -133,15 +133,18 @@ abstract class CompilerTest {
     }
   }
 
-  private def compileWithJavac(fs: Array[String], args: Array[String]): Unit = {
+  private def compileWithJavac(
+    fs: Array[String],
+    args: Array[String]
+  )(implicit defaultOptions: List[String]): Boolean = {
     val scalaLib = findJarFromRuntime("scala-library")
     val fullArgs = Array(
       "javac",
       "-classpath",
       s".:$scalaLib"
-    ) ++ args ++ fs ++ Array("-d", defaultOutputDir)
+    ) ++ args ++ defaultOptions.dropWhile("-d" != _).take(2) ++ fs
 
-    Runtime.getRuntime.exec(fullArgs).waitFor()
+    Runtime.getRuntime.exec(fullArgs).waitFor() == 0
   }
 
   /** Compiles the code files in the given directory together. If args starts
@@ -169,7 +172,7 @@ abstract class CompilerTest {
         log(s"WARNING: run tests can only be run by partest, JUnit just verifies compilation: $prefix$dirName")
       val (filePaths, javaFilePaths, normArgs, expErrors) = computeFilePathsAndExpErrors
       compileWithJavac(javaFilePaths, Array.empty) // javac needs to run first on dotty-library
-      compileArgs(filePaths ++ normArgs, expErrors)
+      compileArgs(javaFilePaths ++ filePaths ++ normArgs, expErrors)
     } else {
       val (sourceDir, flags, deep) = args match {
         case "-deep" :: args1 => (flattenDir(prefix, dirName), args1 ++ defaultOptions, "deep")

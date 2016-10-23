@@ -20,7 +20,7 @@ object PathResolver {
   // security exceptions.
   import AccessControl._
 
-  def firstNonEmpty(xs: String*)            = xs find (_ != "") getOrElse ""
+  def firstNonEmpty(xs: String*) = xs find (_ != "") getOrElse ""
 
   /** Map all classpath elements to absolute paths and reconstruct the classpath.
     */
@@ -50,16 +50,12 @@ object PathResolver {
       propOrElse("sun.boot.class.path", searchForBootClasspath)
         .split(":")
         .filterNot { jar =>
-          // This classpath gets propagated to the compiled resources and as
-          // such needs to be purged of things that should not be on the
-          // compiled programs' classpath:
-          jar.contains("dotty-compiler") ||
-          jar.contains("dotty-library") ||
-          jar.contains("dotty-interfaces") ||
           // let's blacklist locally compiled classes:
-          jar.contains("dotty/library/target") ||
-          jar.contains("dotty/interfaces/target") ||
-          jar.contains("dotty/target/scala-2.11")
+          jar.contains("/dotty/library/target/classes") ||
+          jar.contains("/dotty/library/target/scala-2.11/classes") ||
+          jar.contains("/dotty/interfaces/target/classes") ||
+          jar.contains("/dotty/target/scala-2.11/classes") ||
+          jar.contains("/dotty/target/classes")
         }
         .mkString(":")
 
@@ -71,20 +67,14 @@ object PathResolver {
     def javaUserClassPath   = propOrElse("java.class.path", "")
     def useJavaClassPath    = propOrFalse("scala.usejavacp")
 
-    override def toString = """
+    override def toString = s"""
       |object Environment {
-      |  scalaHome          = %s (useJavaClassPath = %s)
-      |  javaBootClassPath  = <%d chars>
-      |  javaExtDirs        = %s
-      |  javaUserClassPath  = %s
-      |  scalaExtDirs       = %s
-      |}""".trim.stripMargin.format(
-        scalaHome, useJavaClassPath,
-        javaBootClassPath.length,
-        ppcp(javaExtDirs),
-        ppcp(javaUserClassPath),
-        ppcp(scalaExtDirs)
-      )
+      |  scalaHome          = $scalaHome (useJavaClassPath = $useJavaClassPath)
+      |  javaBootClassPath  = <${javaBootClassPath.length} chars>
+      |  javaExtDirs        = ${ppcp(javaExtDirs)}
+      |  javaUserClassPath  = ${ppcp(javaUserClassPath)}
+      |  scalaExtDirs       = ${ppcp(scalaExtDirs)}
+      |}""".trim.stripMargin
   }
 
   /** Default values based on those in Environment as interpreted according
@@ -259,7 +249,7 @@ class PathResolver(implicit ctx: Context) {
       |  javaBootClassPath    = %s
       |  javaExtDirs          = %s
       |  javaUserClassPath    = %s
-      |    useJavaClassPath   = %s
+      |  useJavaClassPath     = %s
       |  scalaBootClassPath   = %s
       |  scalaExtDirs         = %s
       |  userClassPath        = %s
@@ -276,7 +266,8 @@ class PathResolver(implicit ctx: Context) {
   def containers = Calculated.containers
 
   lazy val result: JavaClassPath = {
-    val cp = new JavaClassPath(containers.toIndexedSeq, context)
+    val (dottyJars, others) = containers.partition(_.name.contains("dotty"))
+    val cp = new JavaClassPath((dottyJars ++ others).toIndexedSeq, context)
     if (settings.Ylogcp.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
       Console.println("Defaults: " + PathResolver.Defaults)
