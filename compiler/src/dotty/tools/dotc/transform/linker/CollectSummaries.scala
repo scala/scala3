@@ -335,7 +335,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-
       val fillInStackTrace = tree match {
         case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
           val throwableClass = newThrowable.tpe.widenDealias.classSymbol
@@ -359,28 +358,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-      val javaAccessible = tree match {
-        case Apply(fun, args) if fun.symbol.is(JavaDefined) && !fun.symbol.is(Deferred) =>
-          for {
-            (paramType, argType) <- fun.tpe.widenDealias.paramTypess.flatten.zip(args.map(_.tpe))
-            if !defn.isPrimitiveClass(paramType.classSymbol)
-            decl <- paramType.typeSymbol.info.decls
-            if decl.isTerm && !decl.isConstructor
-            if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
-          } yield {
-            val call =
-              TermRef(argType, argType.widenDealias.classSymbol.requiredMethod(decl.name.asTermName, decl.info.paramTypess.flatten))
-            val targs = call.widenDealias match {
-              case call: PolyType => call.paramBounds.map(_.hi)
-              case _ => Nil
-            }
-            CallInfo(call, targs, decl.info.paramTypess.flatten, thisCallInfo)
-          }
-
-        case _ => Nil
-      }
-
-      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues ::: javaAccessible
+      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues
 
       curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
     }
