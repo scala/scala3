@@ -143,7 +143,11 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
                     newOwners = label :: Nil
                   ).transform(rhsSemiTransformed)
                 })
-                Block(List(labelDef), ref(label).appliedToArgss(vparamss0.map(_.map(x=> ref(x.symbol)))))
+                val callIntoLabel = (
+                    if (dd.tparams.isEmpty) ref(label)
+                    else ref(label).appliedToTypes(dd.tparams.map(_.tpe))
+                  ).appliedToArgss(vparamss0.map(_.map(x=> ref(x.symbol))))
+                Block(List(labelDef), callIntoLabel)
             }} else {
               if (mandatory) ctx.error(
                 "TailRec optimisation not applicable, method not tail recursive",
