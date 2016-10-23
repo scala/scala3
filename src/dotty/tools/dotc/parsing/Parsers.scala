@@ -1177,7 +1177,7 @@ object Parsers {
         case _ =>
           if (isLiteral) literal()
           else {
-            syntaxErrorOrIncomplete("illegal start of simple expression")
+            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)))
             errorTermTree
           }
       }
