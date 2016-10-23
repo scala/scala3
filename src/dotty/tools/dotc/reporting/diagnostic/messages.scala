@@ -482,4 +482,22 @@ object messages {
         |but an uninitialized var definition
         """.stripMargin
   }
+
+  case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context) extends Message(17) {
+    val kind = "Syntax"
+    val msg = "illegal start of simple expression"
+    val explanation = {
+      hl"""|An expression yields a value. In the case of the simple expression, this error
+           |commonly occurs when there's a missing parenthesis or brace. The reason being
+           |that a simple expression is one of the following:
+           |
+           |- Block
+           |- Expression in parenthesis
+           |- Identifier
+           |- Object creation
+           |- Literal
+           |
+           |which cannot start with ${Red(illegalToken)}.""".stripMargin
+    }
+  }
 }
