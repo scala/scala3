@@ -21,6 +21,10 @@ trait DottyTest {
     ctx.setSetting(ctx.settings.YkeepComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
+    ctx.setSetting(
+      ctx.settings.classpath,
+      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+    )
     base.initialize()(ctx)
     ctx
   }

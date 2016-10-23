@@ -11,6 +11,19 @@ import dotty.tools.dotc.core.Decorators._
 import org.junit.Test
 
 class ShowClassTests extends DottyTest {
+  ctx = {
+    val base = new ContextBase
+    import base.settings._
+    val ctx = base.initialCtx.fresh
+    ctx.setSetting(ctx.settings.encoding, "UTF8")
+    ctx.setSetting(
+      ctx.settings.classpath,
+      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar" +
+      ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
+    )
+    base.initialize()(ctx)
+    ctx
+  }
 
   def debug_println(msg: => Any) = {
     if (sys.props.isDefinedAt("test.ShowClassTests.verbose"))

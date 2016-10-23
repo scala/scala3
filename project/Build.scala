@@ -212,19 +212,22 @@ object DottyBuild extends Build {
     ).
     settings(
       addCommandAlias(
-        "partest",
-        ";test:package" +
+        "packageAll",
+        ";dotty-interfaces/package" +
         ";dotty-compiler/package" +
         ";dotty-library/package" +
+        ";test:package"
+      ) ++
+      addCommandAlias(
+        "partest",
+        ";packageAll" +
         ";test:runMain dotc.build" +
         ";lockPartestFile" +
         ";test:test" +
         ";runPartestRunner"
       ) ++
       addCommandAlias("partest-only",
-        ";test:package" +
-        ";dotty-compiler/package" +
-        ";dotty-library/package" +
+        ";packageAll" +
         ";test:runMain dotc.build" +
         ";lockPartestFile" +
         ";test:test-only dotc.tests" +
@@ -232,8 +235,7 @@ object DottyBuild extends Build {
       ) ++
       addCommandAlias(
         "partest-only-no-bootstrap",
-        ";test:package" +
-        ";package" +
+        ";packageAll" +
         ";lockPartestFile" +
         ";test:test-only dotc.tests" +
         ";runPartestRunner"

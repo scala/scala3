@@ -19,21 +19,24 @@ class tests extends CompilerTest {
 //    "-Xprompt",
 //    "-explaintypes",
 //    "-Yshow-suppressed-errors",
-    "-d", defaultOutputDir,
-    "-pagewidth", "80"
+    "-pagewidth", "120",
+    "-d", defaultOutputDir
   )
 
-  implicit val defaultOptions = noCheckOptions ++ {
-    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
-    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-  } ++ List(
+  val classPath = List(
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
     "-color:never",
     "-classpath",
-    "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+    "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar" +
+    ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
   )
+
+  implicit val defaultOptions = noCheckOptions ++ {
+    if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
+    else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
+  } ++ classPath
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
 
@@ -191,7 +194,9 @@ class tests extends CompilerTest {
     ".",
     List(
       "-deep", "-Ycheck-reentrant", "-strict", "-classpath", defaultOutputDir +
-      ":./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar" //WAT???
+      ":./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar" +
+      ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar" +
+      ":./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
     )
   )(allowDeepSubtypes) // note the -deep argument
 
@@ -214,7 +219,7 @@ class tests extends CompilerTest {
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
   @Test def dotc_core = compileDir(dotcDir, "core")(allowDeepSubtypes)// twice omitted to make tests run faster
-  @Test def dotc_core_nocheck = compileDir(dotcDir, "core")(noCheckOptions)
+  @Test def dotc_core_nocheck = compileDir(dotcDir, "core")(noCheckOptions ++ classPath)
 
 // This directory doesn't exist anymore
 //  @Test def dotc_core_pickling = compileDir(coreDir, "pickling")(allowDeepSubtypes)// twice omitted to make tests run faster
