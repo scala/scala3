@@ -29,13 +29,13 @@ do
   then
     if [ -s "$f/out/run-errors.txt" ]
     then
-      echo "...failed run";
+      echo "... failed run";
       cat $f/out/run-errors.txt
     else
-      diff -y $f/out/run-log.txt $f/check.txt > $f/out/run-log-diff.txt || { echo "... diff failed"; cat $f/out/run-log-diff.txt; CODE=1; }
+      diff -y $f/out/run-log.txt $f/check.txt > $f/out/run-log-diff.txt && echo "... passed" || { echo "... diff failed"; cat $f/out/run-log-diff.txt; CODE=1; }
     fi
   else
-    echo "...failed compilation";
+    echo "... failed compilation";
     cat $f/out/compile-errors.txt
   fi
 
