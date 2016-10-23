@@ -1,6 +1,6 @@
 package dotty.tools.dotc.transform.linker
 
-import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
@@ -65,132 +65,176 @@ object GraphVisualization {
     outGraph.append("label = \"" + reachableMethods.size + " nodes, " +
         reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) + " edges, " + reachableTypes.size  + " reachable types\";\n")
 
-    val slash = '"'
-
-    def escape(s: String) = s.replace("\\", "\\\\").replace("\"","\\\"")
-
-    def fullNameSeparated(symbol: Symbol)(separator: String)(implicit ctx: Context): Name = {
-      var sep = separator
-      val owner = symbol.owner
-      var name: Name = symbol.name
-      var stopAtPackage = false
-      if (sep.isEmpty) {
-        sep = "$"
-        stopAtPackage = true
-      }
-      if (symbol.isAnonymousClass || symbol.isAnonymousFunction)
-         name = name ++ symbol.id.toString
-      if (symbol == NoSymbol ||
-        owner == NoSymbol ||
-        owner.isEffectiveRoot ||
-        stopAtPackage && owner.is(PackageClass)) name
-      else {
-        var encl = owner
-        while (!encl.isClass && !encl.isPackageObject) {
-          encl = encl.owner
-          sep += "~"
-        }
-        if (owner.is(ModuleClass, butNot = Package) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
-        val fn = fullNameSeparated(encl)(separator) ++ sep ++ name
-        if (symbol.isType) fn.toTypeName else fn.toTermName
-      }
-    }
-
-    def symbolName(s: Symbol): String = {
-      if (!s.is(Method))
-        escape(s.name.show)
-      else
-        escape(fullNameSeparated(s)(".").show)
-    }
-
-    def typeName(x: Type): String = {
-      x match {
-        case ConstantType(value) => s"${escape(value.toString)}"
-        case _ =>
-          val t = x.termSymbol.orElse(x.typeSymbol)
-          if (t.exists)
-            symbolName(t)
-          else escape(x.show)
-      }
-    }
-
-    def csWTToName(x: CallInfo, close: Boolean = true, open: Boolean = true): String = {
-      if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol) {
-        s"${if (open) slash else ""}${typeName(x.call)}${if (x.targs.nonEmpty) "[" + x.targs.map(x => typeName(x)).mkString(",") + "]" else ""}${if (close) slash else ""}"
-      } else {
-        s"${if (open) slash else ""}${typeName(x.call.normalizedPrefix)}.super.${symbolName(x.call.termSymbol)}${if (x.targs.nonEmpty) "[" + x.targs.map(x => typeName(x)).mkString(",") + "]" else ""}${if (close) slash else ""}"
-      }
-    }
-
-    def csToName(parrent: CallWithContext, inner: CallInfo): String = {
-      csWTToName(parrent, close = false) + s"${escape(inner.call.show)}${inner.hashCode()}$slash"
-    }
-
-    def dummyName(x: CallInfo) = {
-      csWTToName(x, close = false) + "_Dummy\""
-    }
-
-    def clusterName(x: CallInfo) = {
-      val r =  "\"cluster_" + csWTToName(x, open = false)
-//      if (r.contains("BufferLike.apply")) {
-//        println("doba")
-//      }
-      r
-    }
-
     // add names and subraphs
     reachableMethods.foreach { caller =>
-      def callSiteLabel(x: CallInfo): String = {
-        val prefix = x.call.normalizedPrefix
-        val calleeSymbol = x.call.termSymbol
-        prefix match {
-          case NoPrefix => calleeSymbol.name.toString
-          case t if calleeSymbol.isPrimaryConstructor => calleeSymbol.showFullName
-          case st: SuperType => s"super[${st.supertpe.classSymbol.showFullName}].${calleeSymbol.name}"
-          /* case t if calleeSymbol.is(SuperAccessor) =>
-             val prev = t.classSymbol
-             types.flatMap {
-               x =>
-                 val s = x.baseClasses.dropWhile(_ != prev)
-                 if (s.nonEmpty) {
-                   val parent = s.find(x => x.info.decl(calleeSymbol.name).altsWith(x => x.signature == calleeSymbol.signature).nonEmpty)
-                   parent match {
-                     case Some(p) if p.exists =>
-                       val method = p.info.decl(calleeSymbol.name).altsWith(x => x.signature == calleeSymbol.signature)
-                       // todo: outerTargs are here defined in terms of location of the subclass. Is this correct?
-                       new CallWithContext(t.select(method.head.symbol), targs, args, outerTargs) :: Nil
-                     case _ => Nil
-                   }
-                 } else Nil
-             }     */
+      val subgraphColor = if (outerMethod.contains(caller.call.termSymbol)) "red" else "blue"
 
-          case thisType: ThisType => s"this.${calleeSymbol.name}"
-          case t =>
-            s"${typeName(t)}.${calleeSymbol.name}"
+      outGraph.append("subgraph ").append(clusterName(caller)).append(" {\n")
+      outGraph.append("  label = ").append(slash + csWTToName(caller) + slash).append(";\n")
+      outGraph.append("  color = ").append(subgraphColor).append(";\n")
+      outGraph.append("  ").append(dummyName(caller)).append(" [shape=point style=invis];\n")
+      for (call <- caller.outEdges.keys) {
+        outGraph.append("  ").append(csToName(caller, call))
+        outGraph.append(" [")
+        outGraph.append("label=").append(slash).append(callSiteLabel(call)).append(slash)
+        if (call.source != null) {
+          outGraph.append(", color=")
+          val color =
+            if (call.source.call.widenDealias.classSymbol.is(JavaDefined)) "orange"
+            else "blue"
+          outGraph.append(color)
         }
+        outGraph.append("];\n")
       }
+      outGraph.append("}\n\n")
+    }
 
-      val line = s"""subgraph ${clusterName(caller)} {
-          label = ${csWTToName(caller)}; color = ${if (outerMethod.contains(caller.call.termSymbol)) "red" else "blue"};
-          ${dummyName(caller)} [shape=point style=invis];
-        ${caller.outEdges.keys.map(x => csToName(caller, x) + s" [label = $slash${callSiteLabel(x)}$slash${if (x.source == null) "" else if (x.source.call.widenDealias.classSymbol.is(JavaDefined)) ", color=orange" else ", color=blue"}];").mkString("")}
-        }
-        """
-      outGraph.append(line)
+    // Add edges
+    reachableMethods.foreach { caller =>
       caller.outEdges.foreach { x =>
         val callInfo = x._1
         x._2.foreach { target =>
-          val line = s"${csToName(caller, callInfo)} -> ${dummyName(target)} [ltail=${clusterName(target)}];\n"
-          outGraph.append(line)
+          val from = csToName(caller, callInfo)
+          val to = dummyName(target)
+          outGraph.append(from).append(" -> ").append(to)
+          outGraph.append(" [")
+          outGraph.append("ltail=").append(clusterName(target))
+          outGraph.append("];\n")
         }
-//        if (callInfo.source != null) {
-//          val line = s"${csToName(caller, callInfo)} -> ${dummyName(callInfo.source)} [dir=back, color=orange];\n"
-//          outGraph.append(line)
-//        }
+        outGraph.append("\n")
       }
     }
     outGraph.append("}")
     outGraph.toString
   }
 
+
+
+  private def callSiteLabel(x: CallInfo)(implicit ctx: Context): String = {
+    val prefix = x.call.normalizedPrefix
+    val calleeSymbol = x.call.termSymbol
+    val prefixString = prefix match {
+      case NoPrefix => calleeSymbol.name.toString
+      case t if calleeSymbol.isPrimaryConstructor => calleeSymbol.showFullName
+      case st: SuperType => s"super[${st.supertpe.classSymbol.showFullName}].${calleeSymbol.name}"
+      /* case t if calleeSymbol.is(SuperAccessor) =>
+         val prev = t.classSymbol
+         types.flatMap {
+           x =>
+             val s = x.baseClasses.dropWhile(_ != prev)
+             if (s.nonEmpty) {
+               val parent = s.find(x => x.info.decl(calleeSymbol.name).altsWith(x => x.signature == calleeSymbol.signature).nonEmpty)
+               parent match {
+                 case Some(p) if p.exists =>
+                   val method = p.info.decl(calleeSymbol.name).altsWith(x => x.signature == calleeSymbol.signature)
+                   // todo: outerTargs are here defined in terms of location of the subclass. Is this correct?
+                   new CallWithContext(t.select(method.head.symbol), targs, args, outerTargs) :: Nil
+                 case _ => Nil
+               }
+             } else Nil
+         }     */
+
+      case thisType: ThisType =>
+        "this." + calleeSymbol.name
+      case t =>
+        typeName(t) + '.' + calleeSymbol.name
+    }
+
+    val targsString = typeArgumentsString(x.targs)
+    val vargsString = argumentsString(x.argumentsPassed)
+
+    prefixString + targsString + vargsString
+  }
+
+  private val slash = '"'
+
+  private def escape(s: String) = s.replace("\\", "\\\\").replace("\"","\\\"")
+
+  private def fullNameSeparated(symbol: Symbol)(separator: String)(implicit ctx: Context): Name = {
+    var sep = separator
+    val owner = symbol.owner
+    var name: Name = symbol.name
+    var stopAtPackage = false
+    if (sep.isEmpty) {
+      sep = "$"
+      stopAtPackage = true
+    }
+    if (symbol.isAnonymousClass || symbol.isAnonymousFunction)
+      name = name ++ symbol.id.toString
+    if (symbol == NoSymbol ||
+      owner == NoSymbol ||
+      owner.isEffectiveRoot ||
+      stopAtPackage && owner.is(PackageClass)) name
+    else {
+      var encl = owner
+      while (!encl.isClass && !encl.isPackageObject) {
+        encl = encl.owner
+        sep += "~"
+      }
+      if (owner.is(ModuleClass, butNot = Package) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
+      val fn = fullNameSeparated(encl)(separator) ++ sep ++ name
+      if (symbol.isType) fn.toTypeName else fn.toTermName
+    }
+  }
+
+  private def symbolName(sym: Symbol)(implicit ctx: Context): String = {
+    if (!sym.is(Method)) escape(sym.name.show)
+    else escape(fullNameSeparated(sym)(".").show)
+  }
+
+  private def typeName(x: Type)(implicit ctx: Context): String = {
+    x match {
+      case ConstantType(value) => escape(value.toString)
+      case _ =>
+        val t = x.termSymbol.orElse(x.typeSymbol)
+        if (t.exists)
+          symbolName(t)
+        else escape(x.show)
+    }
+  }
+
+  private def csWTToName(x: CallInfo)(implicit ctx: Context): String = {
+    val targs = typeArgumentsString(x.targs)
+    val vargs = typeParameterString(x.call.widenDealias.paramTypess)
+    val resultType = typeName(x.call.widenDealias.finalResultType)
+    if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol) {
+      val callTypeName = typeName(x.call)
+      callTypeName + targs + vargs + ": " + resultType
+    } else {
+      val callTypeName = typeName(x.call.normalizedPrefix)
+      val symName = symbolName(x.call.termSymbol)
+      callTypeName + ".super." + symName + targs + vargs + ": " + resultType
+    }
+  }
+
+  private def csToName(parent: CallWithContext, inner: CallInfo)(implicit ctx: Context): String = {
+    slash + csWTToName(parent) + escape(inner.call.show) + inner.hashCode() + slash
+  }
+
+  private def dummyName(x: CallInfo)(implicit ctx: Context): String = {
+    slash + csWTToName(x) + "_Dummy" + slash
+  }
+
+  private def clusterName(x: CallInfo)(implicit ctx: Context): String = {
+    slash + "cluster_" + csWTToName(x) + slash
+  }
+
+  private def argumentsString(args: List[Type])(implicit ctx: Context): String = {
+    if (args.isEmpty) ""
+    else args.map {
+      case t @ ConstantType(const) => typeName(t.widenDealias) + "(" + const.value + ")"
+      case t => typeName(t.widenDealias)
+    }.mkString("(", ",", ")")
+  }
+
+  private def typeArgumentsString(targs: List[Type])(implicit ctx: Context): String = {
+    if (targs.isEmpty) ""
+    else targs.map(t => typeName(t.widenDealias)).mkString("[", ",", "]")
+  }
+
+  private def typeParameterString(paramTypess: List[List[Type]])(implicit ctx: Context): String = {
+    paramTypess.iterator.map { paramTypes =>
+      paramTypes.map(x => typeName(x)).mkString("(", ",", ")")
+    }.mkString("")
+  }
 }
