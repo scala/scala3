@@ -465,27 +465,58 @@ class BuildCallGraph extends Phase {
             method.call.termSymbol
         }
 
-        reachableMethods ++= {
-          collectedSummaries.get(sym) match {
-            case Some(summary) =>
-              summary.accessedModules.map(x => new TypeWithContext(regularizeType(x.info), parentRefinements(x.info))).foreach(x => addReachableType(x, method))
 
-              summary.methodsCalled.flatMap { x =>
-                val reciever = x._1
-                x._2.flatMap { callSite =>
-                  val nw = instantiateCallSite(method, reciever, callSite, instantiatedTypes)
-                  method.outEdges(callSite) = nw.filter(x => !method.outEdges(callSite).contains(x)).toList ::: method.outEdges(callSite)
-                  nw
+        def processCallSite(callSite: CallInfo, receiver: Type): Unit = {
+          val nw = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
+          method.outEdges(callSite) = nw.filter(x => !method.outEdges(callSite).contains(x)).toList ::: method.outEdges(callSite)
+          reachableMethods ++= nw
+        }
+
+        def processCallSites(callSites: List[CallInfo], receiver: Type): Unit =
+          callSites.foreach(callSite => processCallSite(callSite, receiver))
+
+        def processCallsFromJava(): Unit = {
+          for {
+            (paramType, argType) <- method.call.widenDealias.paramTypess.flatten.zip(method.argumentsPassed)
+            if !defn.isPrimitiveClass(paramType.classSymbol)
+            decl <- paramType.decls
+            if decl.isTerm && !decl.isConstructor
+            if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
+          } yield {
+            val termName = decl.name.asTermName
+            val paramTypes = decl.info.paramTypess.flatten
+            def targs(tpe: TermRef) = tpe.widenDealias match {
+              case call: PolyType => call.paramBounds.map(_.hi)
+              case _ => Nil
+            }
+            argType match {
+              case argType: PreciseType =>
+                val sym = argType.underlying.classSymbol.requiredMethod(termName, paramTypes)
+                if (sym.owner != defn.AnyClass && !sym.owner.is(JavaDefined)) {
+                  val call = new TermRefWithFixedSym(argType, termName, sym)
+                  processCallSite(CallInfo(call, targs(call), paramTypes), argType)
                 }
-              }
-
-            case None =>
-              outerMethod += sym
-              addReachableType(new TypeWithContext(new JavaAllocatedType(method.call.widenDealias.finalResultType), OuterTargs.empty), method)
-
-              Nil
-
+              case _ =>
+                val sym = argType.widenDealias.classSymbol.requiredMethod(termName, paramTypes)
+                val call = TermRef(argType, sym)
+                processCallSite(CallInfo(call, targs(call), paramTypes), argType)
+            }
           }
+        }
+
+        collectedSummaries.get(sym) match {
+          case Some(summary) =>
+            summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(regularizeType(x.info), parentRefinements(x.info)), method))
+            summary.methodsCalled.foreach(x => processCallSites(x._2, x._1))
+
+          case None =>
+            outerMethod += sym
+
+            // Add return type to reachable types
+            addReachableType(new TypeWithContext(new JavaAllocatedType(method.call.widenDealias.finalResultType), OuterTargs.empty), method)
+
+            // Add all possible calls from java to object passed as parameters.
+            processCallsFromJava()
         }
       }
 
