@@ -321,12 +321,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
             val args = List(defn.ArrayOf(tp))
             val sym = tp.typeSymbol
-            if (sym.isTypeParam || sym == defn.NothingClass)
-              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
-            else if (defn.isPrimitiveClass(sym))
+            if (defn.isPrimitiveClass(sym))
               CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args, thisCallInfo)
-            else
+            else if (sym == defn.ObjectClass)
               CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args, thisCallInfo)
+            else
+              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
           }
 
           if (wrapArrayCall.isEmpty) wrapArrayCall
