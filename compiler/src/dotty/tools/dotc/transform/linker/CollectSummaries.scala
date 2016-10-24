@@ -185,7 +185,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       this
     }
 
-
     override def prepareForTemplate(tree: tpd.Template)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       assert(!sym.is(Label))
@@ -214,13 +213,18 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val sym = tree.symbol
-      if (sym.exists && ((sym.is(Lazy) && (sym.owner.is(Package) || sym.owner.isClass)) || // lazy vals and modules
-          sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
-          sym.owner.isClass)) { // fields
-        assert(curMethodSummary.methodDef eq tree.symbol)
+      if (sym.exists) {
+        val ownerIsClass = sym.owner.isClass
+        val isLazyValOrModule = sym.is(Lazy) && (ownerIsClass || sym.owner.is(Package))
+        val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
+        if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
+          assert(curMethodSummary.methodDef eq tree.symbol)
 
-        methodSummaries = curMethodSummary :: methodSummaries
-        curMethodSummary = methodSummaryStack.pop()
+          methodSummaries = curMethodSummary :: methodSummaries
+          curMethodSummary = methodSummaryStack.pop()
+        }
+        if (!isLazyValOrModule && (isBockInsideConstructor || ownerIsClass))
+          registerCall(tree)
       }
       tree
     }
