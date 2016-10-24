@@ -221,10 +221,7 @@ object GraphVisualization {
 
   private def argumentsString(args: List[Type])(implicit ctx: Context): String = {
     if (args.isEmpty) ""
-    else args.map {
-      case t @ ConstantType(const) => typeName(t.widenDealias) + "(" + const.value + ")"
-      case t => typeName(t.widenDealias)
-    }.mkString("(", ",", ")")
+    else args.map(typeName).mkString("(", ",", ")")
   }
 
   private def typeArgumentsString(targs: List[Type])(implicit ctx: Context): String = {
