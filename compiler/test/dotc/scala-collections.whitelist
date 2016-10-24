@@ -85,6 +85,7 @@
 ../scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
 ../scala-scala/src/library/scala/collection/mutable/BufferLike.scala
 ../scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
+../scala-scala/src/library/scala/collection/mutable/Buffer.scala
 
 ../scala-scala/src/library/scala/collection/immutable/Stack.scala
 ../scala-scala/src/library/scala/collection/immutable/StringLike.scala
@@ -288,7 +289,8 @@
 ../scala-scala/src/library/scala/sys/SystemProperties.scala
 
 ../scala-scala/src/library/scala/Function0.scala
-#../scala-scala/src/library/scala/Function1.scala
+# Remove @specialized from Function1 type arguments, FIXME @specialized causing cyclic reference involving constructor specialized
+../scala-scala/src/library/scala/Function1.scala
 ../scala-scala/src/library/scala/Function2.scala
 ../scala-scala/src/library/scala/Function3.scala
 ../scala-scala/src/library/scala/Function4.scala
