@@ -275,10 +275,10 @@ object messages {
 
     val explanation = ""
   }
- 
+
   case class EarlyDefinitionsNotSupported()(implicit ctx:Context) extends Message(9) {
     val kind = "Syntax"
-   
+
     val msg = "early definitions are not supported; use trait parameters instead"
 
     val code1 =
@@ -500,4 +500,16 @@ object messages {
            |which cannot start with ${Red(illegalToken)}.""".stripMargin
     }
   }
+
+  case class MissingReturnType()(implicit ctx:Context) extends Message(18) {
+    val kind = "Syntax"
+    val msg = "missing return type"
+    val explanation =
+      hl"""An abstract declaration must have a return type. For example:
+        |
+        |trait Shape {
+        |  def area: Double // abstract declaration returning a ${"Double"}
+        |}""".stripMargin
+  }
+
 }
