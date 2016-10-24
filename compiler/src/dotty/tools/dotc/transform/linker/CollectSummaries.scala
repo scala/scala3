@@ -260,8 +260,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         s
       }
 
-      def receiverArgumentsAndSymbol(t: Tree, accArgs: List[List[Tree]] = Nil, accT: List[Tree] = Nil):
-      (Tree, Tree, List[List[Tree]], List[Tree], Type) = t match {
+      @tailrec def receiverArgumentsAndSymbol(t: Tree, accArgs: List[List[Tree]] = Nil, accT: List[Tree] = Nil):
+          (Tree, Tree, List[List[Tree]], List[Tree], Type) = t match {
         case Block(stats, expr) => receiverArgumentsAndSymbol(expr, accArgs, accT)
         case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiverArgumentsAndSymbol(fun, accArgs, targs)
         case Apply(fn, args) if fn.symbol == t.symbol => receiverArgumentsAndSymbol(fn, args :: accArgs, accT)
@@ -278,27 +278,29 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       assert(storedReceiver.exists)
 
-      def skipBlocks(s: Tree): Tree = {
+      @tailrec def skipBlocks(s: Tree): Tree = {
         s match {
           case s: Block => skipBlocks(s.expr)
           case _ => s
         }
       }
 
-      val args: List[Type] = arguments.flatten.map(x =>  skipBlocks(x) match {
+      @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
         case exp: Closure =>
-          val SAMType(e) =  exp.tpe
+          val SAMType(e) = exp.tpe
           new ClosureType(exp, x.tpe, e.symbol, null.asInstanceOf[OuterTargs])
-        case Select(New(tp),_) => new PreciseType(tp.tpe)
+        case Select(New(tp), _) => new PreciseType(tp.tpe)
         case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
         case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
+        case Typed(expr, _) => argType(expr)
         case _ =>
           x.tpe match {
             case _ if x.isInstanceOf[NamedArg] => ref(symbolOf(x.asInstanceOf[NamedArg].arg)).tpe
             case _ => x.tpe
-      }})
+          }
+      }
 
-      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), args)
+      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), arguments.flatten.map(argType))
 
       // Create calls to wrapXArray for varArgs
       val repeatedArgsCalls = tree match {
