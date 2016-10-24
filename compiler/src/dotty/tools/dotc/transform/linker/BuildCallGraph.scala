@@ -472,9 +472,6 @@ class BuildCallGraph extends Phase {
           reachableMethods ++= nw
         }
 
-        def processCallSites(callSites: List[CallInfo], receiver: Type): Unit =
-          callSites.foreach(callSite => processCallSite(callSite, receiver))
-
         def processCallsFromJava(): Unit = {
           for {
             (paramType, argType) <- method.call.widenDealias.paramTypess.flatten.zip(method.argumentsPassed)
@@ -507,7 +504,9 @@ class BuildCallGraph extends Phase {
         collectedSummaries.get(sym) match {
           case Some(summary) =>
             summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(regularizeType(x.info), parentRefinements(x.info)), method))
-            summary.methodsCalled.foreach(x => processCallSites(x._2, x._1))
+            summary.methodsCalled.foreach {
+              case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, receiver))
+            }
 
           case None =>
             outerMethod += sym
