@@ -1,7 +1,7 @@
 
 object Test {
   def main(args: Array[String]): Unit = {
-    foo("abc")
+    foo(new Foo)
   }
 
   def foo(s: Object) = {
