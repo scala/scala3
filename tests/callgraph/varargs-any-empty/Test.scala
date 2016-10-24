@@ -5,6 +5,6 @@ object Test {
   }
 
   def foo(ns: Any*): Unit = {
-    println(42)
+    System.out.println(42)
   }
 }
