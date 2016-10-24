@@ -1492,7 +1492,7 @@ object Parsers {
       val tok = in.token
       val mod = atPos(in.skipToken()) { modOfToken(tok) }
 
-      if (mods is mod.flags) syntaxError(RepeatedModifier(flag.toString))
+      if (mods is mod.flags) syntaxError(RepeatedModifier(mod.flags.toString))
       addMod(mods, mod)
     }
 
