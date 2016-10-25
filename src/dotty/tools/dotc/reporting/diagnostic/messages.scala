@@ -4,12 +4,13 @@ package reporting
 package diagnostic
 
 import dotc.core._
-import Contexts.Context, Decorators._, Symbols._, Names._, Types._
+import Contexts.Context, Decorators._, Symbols._, Names._, NameOps._, Types._
 import ast.untpd.{Modifiers, ModuleDef}
 import util.{SourceFile, NoSource}
 import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
+import dotty.tools.dotc.ast.tpd
 import printing.Highlighting._
 import printing.Formatting
 
@@ -604,5 +605,77 @@ object messages {
            |And the usage could be as such:
            |${"func(bool => // do something...)"}
            |""".stripMargin
+  }
+  case class WrongNumberOfArgs(fntpe: Type, argKind: String, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
+    extends Message(22) {
+    val kind = "Syntax"
+    val expectedCount = expectedArgs.length
+    val actualCount = actual.length
+    val msgPrefix = if (actualCount > expectedCount) "Too many" else "Not enough"
+
+    //TODO add def simpleParamName to TypeParamInfo
+    val expectedArgString = fntpe.widen.typeParams.map(_.paramName.unexpandedName.show).mkString("[", ", ", "]")
+
+    val actualArgString = actual.map(_.show).mkString("[", ", ", "]")
+
+    val prettyName = fntpe.termSymbol match {
+      case NoSymbol => fntpe.show
+      case symbol   => symbol.showFullName
+    }
+
+    val msg =
+      hl"""|${NoColor(msgPrefix)} ${argKind} arguments for $prettyName$expectedArgString
+           |expected: $expectedArgString
+           |actual:   $actualArgString""".stripMargin
+
+    val explanation = {
+      val tooManyTypeParams =
+        """|val tuple2: (Int, String) = (1, "one")
+           |val list: List[(Int, String)] = List(tuple2)""".stripMargin
+
+      if (actualCount > expectedCount)
+        hl"""|You have supplied too many type parameters
+             |
+             |For example List takes a single type parameter (List[A])
+             |If you need to hold more types in a list then you need to combine them
+             |into another data type that can contain the number of types you need,
+             |In this example one solution would be to use a Tuple:
+             |
+             |${tooManyTypeParams}""".stripMargin
+      else
+        hl"""|You have not supplied enough type parameters
+             |If you specify one type parameter then you need to specify every type parameter.""".stripMargin
+    }
+  }
+
+  case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
+    extends Message(23) {
+    val kind = "Syntax"
+
+    val msg = hl"""|Variables are not allowed in alternative patterns"""
+
+    val explanation = {
+      val varInAlternative =
+        """|def g(pair: (Int,Int)): Int = pair match {
+           |  case (1, n) | (n, 1) => n
+           |  case _ => 0
+           |}""".stripMargin
+
+      val fixedVarInAlternative =
+        """|def g(pair: (Int,Int)): Int = pair match {
+           |  case (1, n) => n
+           |  case (n, 1) => n
+           |  case _ => 0
+           |}""".stripMargin
+
+      hl"""|Variables are not allowed within alternate pattern matches.
+           |You can workaround this issue by adding additional cases for each alternative.
+           |For example, the illegal function:
+           |
+           |$varInAlternative
+           |could be implemented by moving each alternative into a separate case:
+           |
+           |$fixedVarInAlternative""".stripMargin
+    }
   }
 }

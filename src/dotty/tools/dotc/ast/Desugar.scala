@@ -1051,7 +1051,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
-          ctx.error("illegal variable in pattern alternative", vble.pos)
+          ctx.error(IllegalVariableInPatternAlternative(), vble.pos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>
