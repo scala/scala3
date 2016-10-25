@@ -9,6 +9,7 @@ import util.Positions._
 import util.CommentParsing._
 import util.Property.Key
 import parsing.Parsers.Parser
+import reporting.diagnostic.messages.ProperDefinitionNotFound
 
 object Comments {
   val ContextDoc = new Key[ContextDocstrings]
@@ -125,7 +126,7 @@ object Comments {
               val newName = (tree.name.show + "$" + codePos + "$doc").toTermName
               untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
             case _ =>
-              ctx.error("proper definition was not found in `@usecase`", codePos)
+              ctx.error(ProperDefinitionNotFound(), codePos)
               tree
           }
         }
