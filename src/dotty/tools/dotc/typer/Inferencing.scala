@@ -223,7 +223,6 @@ object Inferencing {
       constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
       val vs = variances(tp, qualifies)
-      var changed = false
       val hasUnreportedErrors = ctx.typerState.reporter match {
         case r: StoreReporter if r.hasErrors => true
         case _ => false
@@ -253,17 +252,13 @@ object Inferencing {
           if (v != 0) {
             typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
             tvar.instantiate(fromBelow = v == 1)
-            changed = true
           }
         }
-      if (changed) // instantiations might have uncovered new typevars to interpolate
-        interpolateUndetVars(tree, ownedBy)
-      else
-        for (tvar <- constraint.uninstVars)
-          if (!(vs contains tvar) && qualifies(tvar)) {
-            typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show}")
-            tvar.instantiate(fromBelow = true)
-          }
+      for (tvar <- constraint.uninstVars)
+        if (!(vs contains tvar) && qualifies(tvar)) {
+          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
+          tvar.instantiate(fromBelow = true)
+        }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
   }
@@ -306,12 +301,16 @@ object Inferencing {
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
   private def variances(tp: Type, include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
-    val accu = new TypeAccumulator[VarianceMap] {
+    val constraint = ctx.typerState.constraint
+
+    object accu extends TypeAccumulator[VarianceMap] {
+      def setVariance(v: Int) = variance = v
       def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
-        case t: TypeVar if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
+        case t: TypeVar
+        if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
           val v = vmap(t)
           if (v == null) vmap.updated(t, variance)
-          else if (v == variance) vmap
+          else if (v == variance || v == 0) vmap
           else vmap.updated(t, 0)
         case _ =>
           foldOver(vmap, t)
@@ -319,7 +318,37 @@ object Inferencing {
       override def applyToPrefix(vmap: VarianceMap, t: NamedType) =
         apply(vmap, t.prefix)
     }
-    accu(SimpleMap.Empty, tp)
+
+    /** Include in `vmap` type variables occurring in the constraints of type variables
+     *  already in `vmap`. Specifically:
+     *   - if `tvar` is covariant in `vmap`, include all variables in its lower bound
+     *     (because they influence the minimal solution of `tvar`),
+     *   - if `tvar` is contravariant in `vmap`, include all variables in its upper bound
+     *     at flipped variances (because they influence the maximal solution of `tvar`),
+     *   - if `tvar` is nonvariant in `vmap`, include all variables in its upper and lower
+     *     bounds as non-variant.
+     *  Do this in a fixpoint iteration until `vmap` stabilizes.
+     */
+    def propagate(vmap: VarianceMap): VarianceMap = {
+      var vmap1 = vmap
+      def traverse(tp: Type) = { vmap1 = accu(vmap1, tp) }
+      vmap.foreachBinding { (tvar, v) =>
+        val param = tvar.origin
+        val e = constraint.entry(param)
+        accu.setVariance(v)
+        if (v >= 0) {
+          traverse(e.bounds.lo)
+          constraint.lower(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
+        }
+        if (v <= 0) {
+          traverse(e.bounds.hi)
+          constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
+        }
+      }
+      if (vmap1 eq vmap) vmap else propagate(vmap1)
+    }
+
+    propagate(accu(SimpleMap.Empty, tp))
   }
 }
 
