@@ -354,7 +354,7 @@ object ExplicitOuter {
     def paramDefs(constr: Symbol): List[ValDef] =
       if (constr.isConstructor && hasOuterParam(constr.owner.asClass)) {
         val MethodType(outerName :: _, outerType :: _) = constr.info
-        val outerSym = ctx.newSymbol(constr, outerName, Param, outerType)
+        val outerSym = ctx.newSymbol(constr, outerName, Param | Synthetic, outerType)
         ValDef(outerSym) :: Nil
       }
       else Nil
