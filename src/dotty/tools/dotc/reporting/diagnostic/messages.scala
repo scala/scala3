@@ -640,4 +640,30 @@ object messages {
              |  If you specify one type parameter then you need to specify every type parameter.""".stripMargin
     }
   }
+
+  case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
+    extends Message(19) {
+    val kind = "Syntax"
+
+    val msg = hl"""|Variables are not allowed in alternative patterns"""
+
+    val explanation = {
+      hl"""|Variables are not allowed within alternate pattern matches.
+           |You can workaround this issue by adding additional cases for each alternative.
+           |For example, the illegal function:
+           |    def g(pair: (Int,Int)): Int = pair match {
+           |      case (1, n) | (n, 1) => n
+           |      case _ => 0
+           |    }
+           |
+           |  could be implemented by moving each alternative into a separate case:
+           |    def g(pair: (Int,Int)): Int = pair match {
+           |      case (1, n) => n
+           |      case (n, 1) => n
+           |      case _ => 0
+           |    }
+           |
+           |""".stripMargin
+    }
+  }
 }
