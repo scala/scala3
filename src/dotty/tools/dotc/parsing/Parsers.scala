@@ -1326,7 +1326,7 @@ object Parsers {
       if (in.token == YIELD) { in.nextToken(); ForYield(enums, expr()) }
       else if (in.token == DO) { in.nextToken(); ForDo(enums, expr()) }
       else {
-        if (!wrappedEnums) syntaxErrorOrIncomplete("`yield' or `do' expected")
+        if (!wrappedEnums) syntaxErrorOrIncomplete(YieldOrDoExpectedInForComprehension())
         ForDo(enums, expr())
       }
     }
