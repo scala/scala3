@@ -10,6 +10,7 @@ import util.{SourceFile, NoSource}
 import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
+import dotty.tools.dotc.ast.tpd
 import printing.Highlighting._
 import printing.Formatting
 
@@ -604,5 +605,39 @@ object messages {
            |And the usage could be as such:
            |${"func(bool => // do something...)"}
            |""".stripMargin
+  }
+  case class WrongNumberOfArgs(fntpe: Type, argKind: String, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
+    extends Message(18) {
+    val kind = "Syntax"
+    val expectedCount = expectedArgs.length
+    val actualCount = actual.length
+    val msgPrefix = if (actualCount > expectedCount) "Too many" else "Not enough"
+
+    val expectedArgString = (fntpe.widen match {
+      case pt: MethodOrPoly => pt //ensure we return a type that will have useful typeParms
+      case _ => fntpe
+    }).typeParams.map(_.paramName.show.split("\\$").last).mkString("[", ", ", "]")
+
+    val actualArgString = actual.map(_.show.split("\\.").last).mkString("[", ", ", "]")
+
+    val msg =
+      hl"""|$msgPrefix ${argKind} arguments for $fntpe
+           |expected: $expectedArgString
+           |actual:   $actualArgString""".stripMargin
+
+    val explanation = {
+      if (actualCount > expectedCount)
+        hl"""|You have supplied too many type parameters
+             |
+             |For example List takes a single type parameter (List[A])
+             |  If you need to hold more types in a list then you need to combine them
+             |  into another data type that can contain the number of types you need,
+             |  In this example one solution would be to use a Tuple:
+             |  val tuple2: Tuple2[Int, String = (1, "one)
+             |    List[(Int, String)] = List(tuple2)""".stripMargin
+      else
+        hl"""|You have not supplied enough type parameters
+             |  If you specify one type parameter then you need to specify every type parameter.""".stripMargin
+    }
   }
 }

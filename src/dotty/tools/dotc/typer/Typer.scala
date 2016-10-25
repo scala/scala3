@@ -1035,7 +1035,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (hasNamedArg(args)) typedNamedArgs(args)
         else {
           if (args.length != tparams.length) {
-            wrongNumberOfArgs(tpt1.tpe, "type ", tparams.length, tree.pos)
+            wrongNumberOfArgs(tpt1.tpe, "type", tparams, args, tree.pos)
             args = args.take(tparams.length)
           }
           def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
