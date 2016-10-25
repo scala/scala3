@@ -581,4 +581,28 @@ object messages {
     }
   }
 
+
+  case class ByNameParameterNotSupported()(implicit ctx: Context) extends Message(21) {
+    val kind = "Syntax"
+
+    val msg = "By-name parameter type not allowed here."
+
+    val explanation =
+      hl"""|By-name parameters act like functions that are only evaluated when referenced,
+           |allowing for lazy evaluation of a parameter.
+           |
+           |An example of using a by-name parameter would look like:
+           |${"def func(f: => Boolean) = f // 'f' is evaluated when referenced within the function"}
+           |
+           |An example of the syntax of passing an actual function as a parameter:
+           |${"def func(f: (Boolean => Boolean)) = f(true)"}
+           |
+           |or:
+           |
+           |${"def func(f: Boolean => Boolean) = f(true)"}
+           |
+           |And the usage could be as such:
+           |${"func(bool => // do something...)"}
+           |""".stripMargin
+  }
 }
