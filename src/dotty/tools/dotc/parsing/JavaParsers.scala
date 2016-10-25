@@ -21,6 +21,7 @@ import Symbols._
 import ast.Trees._
 import Decorators._
 import StdNames._
+import dotty.tools.dotc.reporting.diagnostic.messages.IdentifierExpected
 import dotty.tools.dotc.util.SourceFile
 import util.Positions._
 import annotation.switch
@@ -230,7 +231,7 @@ object JavaParsers {
         case AppliedTypeTree(_, _) | Select(_, _) =>
           tree
         case _ =>
-          syntaxError("identifier expected", tree.pos)
+          syntaxError(IdentifierExpected(tree.show), tree.pos)
           errorTypeTree
       }
     }

@@ -316,7 +316,7 @@ object Parsers {
       case id @ Select(qual, name) =>
         cpy.Select(id)(qual, name.toTypeName)
       case _ =>
-        syntaxError("identifier expected", tree.pos)
+        syntaxError(IdentifierExpected(tree.show), tree.pos)
         tree
     }
 

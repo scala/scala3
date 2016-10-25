@@ -691,4 +691,28 @@ object messages {
                            |${s"trait A[${mods.flags} type $identifier]"}
                            |""".stripMargin
   }
+
+  case class IdentifierExpected(identifier: String)(implicit ctx: Context) extends Message(25) {
+    val kind = "Syntax"
+
+    val msg = "identifier expected"
+
+    val wrongIdentifier = s"def foo: $identifier = {...}"
+
+    val validIdentifier = s"def foo = {...}"
+
+    val explanation = {
+      hl"""|A valid identifier expected, but `$identifier` found.
+           |Let the compiler infer the type for you.
+           |For example, instead of:
+           |
+           |$wrongIdentifier
+           |
+           |Write your code like:
+           |
+           |$validIdentifier
+           |
+           |""".stripMargin
+    }
+  }
 }
