@@ -187,6 +187,15 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       this
     }
 
+    override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      if (!tree.symbol.is(Label) && !tree.symbol.isPrimaryConstructor) {
+        assert(curMethodSummary.methodDef eq tree.symbol)
+        methodSummaries = curMethodSummary :: methodSummaries
+        curMethodSummary = methodSummaryStack.pop()
+      }
+      tree
+    }
+
     override def prepareForValDef(tree: tpd.ValDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
@@ -197,6 +206,23 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
       }
       this
+    }
+
+    override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      val sym = tree.symbol
+      if (sym.exists) {
+        val ownerIsClass = sym.owner.isClass
+        val isLazyValOrModule = sym.is(Lazy) && (ownerIsClass || sym.owner.is(Package))
+        val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
+        if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
+          assert(curMethodSummary.methodDef eq tree.symbol)
+          methodSummaries = curMethodSummary :: methodSummaries
+          curMethodSummary = methodSummaryStack.pop()
+        }
+        if (!isLazyValOrModule && (isBockInsideConstructor || ownerIsClass))
+          registerCall(tree)
+      }
+      tree
     }
 
     override def prepareForTemplate(tree: tpd.Template)(implicit ctx: Context): TreeTransform = {
@@ -213,33 +239,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       assert(curMethodSummary.methodDef eq tree.symbol.owner.primaryConstructor)
       methodSummaries = curMethodSummary :: methodSummaries
       curMethodSummary = methodSummaryStack.pop()
-      tree
-    }
-
-    override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Label) && !tree.symbol.isPrimaryConstructor) {
-        assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSummaries = curMethodSummary :: methodSummaries
-        curMethodSummary = methodSummaryStack.pop()
-      }
-      tree
-    }
-
-    override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      val sym = tree.symbol
-      if (sym.exists) {
-        val ownerIsClass = sym.owner.isClass
-        val isLazyValOrModule = sym.is(Lazy) && (ownerIsClass || sym.owner.is(Package))
-        val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
-        if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
-          assert(curMethodSummary.methodDef eq tree.symbol)
-
-          methodSummaries = curMethodSummary :: methodSummaries
-          curMethodSummary = methodSummaryStack.pop()
-        }
-        if (!isLazyValOrModule && (isBockInsideConstructor || ownerIsClass))
-          registerCall(tree)
-      }
       tree
     }
 
