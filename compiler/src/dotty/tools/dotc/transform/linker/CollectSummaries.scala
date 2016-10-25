@@ -170,14 +170,28 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         val argumentStoredToHeap = (0 to args.length).map(_ => true).toList
         curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, argumentStoredToHeap)
       }
+      if (sym.isPrimaryConstructor) {
+        sym.owner.mixins.foreach { mixin =>
+          val decl = mixin.primaryConstructor
+          val initRef = ref(NamedType(sym.owner.typeRef, decl.name, decl.denot))
+          val initTree = decl.info match {
+            case tp: PolyType =>
+              if (tp.resType.paramTypess.iterator.flatten.isEmpty)
+                registerCall(Apply(TypeApply(initRef, tp.paramRefs.map(TypeTree(_))), Nil)) // TODO get precise type params
+            case tp =>
+              if (tp.paramTypess.iterator.flatten.isEmpty)
+                registerCall(Apply(initRef, Nil))
+          }
+        }
+      }
       this
     }
 
     override def prepareForValDef(tree: tpd.ValDef)(implicit ctx: Context): TreeTransform = {
       val sym = tree.symbol
       if (sym.exists && ((sym.is(Lazy) &&  (sym.owner.is(Package) || sym.owner.isClass)) ||  //lazy vals and modules
-        sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
-        sym.owner.isClass)) { // fields
+          sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX) || // blocks inside constructor
+          sym.owner.isClass)) { // fields
         // owner is a template
         methodSummaryStack.push(curMethodSummary)
         curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
@@ -350,21 +364,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case _ => Nil
       }
 
-      def initialValuesFor(tpe: Type): List[CallInfo] = {
-        tpe.widenDealias.classSymbol.mixins.flatMap {
-          _.info.decls.collect {
-            case decl if !decl.is(Method) && decl.isTerm =>
-              CallInfo(new TermRefWithFixedSym(tpe, decl.name.asTermName, decl.symbol.asTerm), Nil, Nil, thisCallInfo)
-          }
-        }
-      }
-      val initialValues = tree match {
-        case Apply(TypeApply(Select(qualifier, nme.CONSTRUCTOR), _), _) => initialValuesFor(qualifier.tpe)
-        case Apply(Select(qualifier, nme.CONSTRUCTOR), _) => initialValuesFor(qualifier.tpe)
-        case _ => Nil
-      }
-
-      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace ::: initialValues
+      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
 
       curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
     }
