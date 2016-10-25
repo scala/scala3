@@ -7,7 +7,7 @@ import scala.io.Source
 import scala.sys.process.{Process, ProcessLogger}
 import java.io.{File => JFile, FileNotFoundException}
 
-class TestDotc {
+class TestScripts {
   private val lineSep = util.Properties.lineSeparator
   private def doUnlessWindows(op: => Unit) =
     if (!System.getProperty("os.name").toLowerCase.contains("windows"))
@@ -28,11 +28,13 @@ class TestDotc {
     }
 
     try {
-      for (jar <- Source.fromFile(".packages").getLines())
+      for (jar <- Source.fromFile("../.packages").getLines())
         delete(jar)
 
-      delete(".packages")
-      delete("src/dotty/tools/dotc/Dummy.scala")
+      delete("../.packages")
+      delete("./src/dotty/tools/dotc/Dummy.scala")
+      delete("HelloWorld.class")
+      delete("HelloWorld$.class")
     } catch {
       case _: FileNotFoundException => ()
     }
@@ -45,7 +47,7 @@ class TestDotc {
    *  execute it using dotr
    */
   @Test def buildAndRunHelloWorld = doUnlessWindows {
-    val (retDotc, dotcOutput) = executeScript("bin/dotc tests/pos/HelloWorld.scala")
+    val (retDotc, dotcOutput) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
 
     // Check correct output of building and running dotc
     assert(
@@ -53,7 +55,7 @@ class TestDotc {
       s"bin/dotc script did not run properly. Output:$lineSep$dotcOutput"
     )
 
-    val (retDotr, dotrOutput) = executeScript("bin/dotr HelloWorld")
+    val (retDotr, dotrOutput) = executeScript("./bin/dotr HelloWorld")
     assert(
       retDotr == 0 && dotrOutput == "hello world",
       s"Running hello world exited with status: $retDotr and output: $dotrOutput"
@@ -64,13 +66,13 @@ class TestDotc {
    *  rebuild dotty if needed
    */
   @Test def rebuildIfNecessary = doUnlessWindows {
-    val (retFirstBuild, _) = executeScript("bin/dotc tests/pos/HelloWorld.scala")
+    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(retFirstBuild == 0, "building dotc failed")
 
-    // Create a new file
-    new JFile("src/dotty/tools/dotc/Dummy.scala").createNewFile()
+    // Create a new file to force rebuild
+    new JFile("./src/dotty/tools/dotc/Dummy.scala").createNewFile()
 
-    val (retSecondBuild, output) = executeScript("bin/dotc tests/pos/HelloWorld.scala")
+    val (retSecondBuild, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(
       retSecondBuild == 0 && output.contains("rebuilding"),
       s"Rebuilding the tool should result in jar files being rebuilt. Status: $retSecondBuild, output:$lineSep$output")
@@ -78,10 +80,10 @@ class TestDotc {
 
   /** if no changes to dotty, dotc script should be fast */
   @Test def beFastOnNoChanges = doUnlessWindows {
-    val (retFirstBuild, _) = executeScript("bin/dotc tests/pos/HelloWorld.scala")
+    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(retFirstBuild == 0, "building dotc failed")
 
-    val (ret, output) = executeScript("bin/dotc tests/pos/HelloWorld.scala")
+    val (ret, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(
       ret == 0 && !output.contains("rebuilding"),
       s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
