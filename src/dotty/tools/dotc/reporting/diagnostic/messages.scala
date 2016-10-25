@@ -512,4 +512,36 @@ object messages {
         |}""".stripMargin
   }
 
+  case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context) extends Message(19) {
+    val kind = "Syntax"
+    val msg = hl"${"yield"} or ${"do"} expected"
+
+    val explanation =
+      hl"""When the enumerators in a for comprehension are not placed in parentheses or
+           |braces, a ${"do"} or ${"yield"} statement is required after the enumerators section
+           |of the comprehension.
+           |
+           |You can save some keystrokes by omitting the parentheses and writing
+           |
+           |${"val numbers = for i <- 1 to 3 yield i"}
+           |
+           |  instead of
+           |
+           |${"val numbers = for (i <- 1 to 3) yield i"}
+           |
+           |but the ${"yield"} keyword is still required.
+           |
+           |For comprehensions that simply perform a side effect without yielding anything
+           |can also be written without parentheses but a ${"do"} keyword has to be included.
+           |For example,
+           |
+           |${"for (i <- 1 to 3) println(i)"}
+           |
+           |  can be written as
+           |
+           |${"for i <- 1 to 3 do println(i) // notice the 'do' keyword"}
+           |
+           |""".stripMargin
+  }
+ 
 }
