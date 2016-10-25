@@ -356,7 +356,7 @@ class BuildCallGraph extends Phase {
           assert(callee.call.termSymbol.owner.is(Method) || callee.call.termSymbol.owner.isLocalDummy)
           new CallWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
 
-        case t if calleeSymbol.isPrimaryConstructor =>
+        case t if calleeSymbol.isConstructor =>
 
           val constructedType = callee.call.widen.appliedTo(targs).widen.resultType
           val fixNoPrefix = if (constructedType.normalizedPrefix eq NoPrefix) {
@@ -383,7 +383,14 @@ class BuildCallGraph extends Phase {
           val tpe =  regularizeType(propagateTargs(fixNoPrefix, isConstructor = true))
           addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs), caller)
 
-          new CallWithContext(propagateTargs(receiver).select(calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
+          val call = {
+            if (callerSymbol.isConstructor && callerSymbol.owner == calleeSymbol.owner)
+              new TermRefWithFixedSym(calleeSymbol.owner.typeRef, calleeSymbol.name, calleeSymbol)
+            else
+              propagateTargs(receiver).select(calleeSymbol)
+          }
+
+          new CallWithContext(call, targs, args, outerTargs, caller, callee) :: Nil
 
           // super call in a class (know target precisely)
         case st: SuperType =>
