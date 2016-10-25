@@ -216,32 +216,43 @@ object DottyBuild extends Build {
         ";dotty-interfaces/package" +
         ";dotty-compiler/package" +
         ";dotty-library/package" +
-        ";test:package"
+        ";dotty-compiler/test:package"
       ) ++
       addCommandAlias(
         "partest",
         ";packageAll" +
         ";test:runMain dotc.build" +
         ";lockPartestFile" +
-        ";test:test" +
-        ";runPartestRunner"
+        ";dotty-compiler/test:test" +
+        ";runPartestRunner" +
+        ";bin/test" // script tests need to run after the unit tests
       ) ++
-      addCommandAlias("partest-only",
+      addCommandAlias(
+        "partest-only",
         ";packageAll" +
         ";test:runMain dotc.build" +
         ";lockPartestFile" +
-        ";test:test-only dotc.tests" +
+        ";dotty-compiler/test:test-only dotc.tests" +
         ";runPartestRunner"
       ) ++
       addCommandAlias(
         "partest-only-no-bootstrap",
         ";packageAll" +
         ";lockPartestFile" +
-        ";test:test-only dotc.tests" +
+        ";dotty-compiler/test:test-only dotc.tests" +
         ";runPartestRunner"
       )
     ).
     settings(publishing)
+
+  /* Contains unit tests for the scripts */
+  lazy val bin = project.in(file("bin")).
+    settings(sourceStructure).
+    settings(
+      parallelExecution in Test := false,
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.11" % "test"
+    )
 
   lazy val `dotty-library` = project.in(file("library")).
     settings(sourceStructure).
