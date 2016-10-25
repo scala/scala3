@@ -3,6 +3,7 @@
 *.log
 *.swp
 *~
+tags
 
 # sbt specific
 dist/*
