@@ -223,7 +223,6 @@ object Inferencing {
       constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
       val vs = variances(tp, qualifies)
-      var changed = false
       val hasUnreportedErrors = ctx.typerState.reporter match {
         case r: StoreReporter if r.hasErrors => true
         case _ => false
@@ -253,17 +252,13 @@ object Inferencing {
           if (v != 0) {
             typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
             tvar.instantiate(fromBelow = v == 1)
-            changed = true
           }
         }
-      if (changed) // instantiations might have uncovered new typevars to interpolate
-        interpolateUndetVars(tree, ownedBy)
-      else
-        for (tvar <- constraint.uninstVars)
-          if (!(vs contains tvar) && qualifies(tvar)) {
-            typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
-            tvar.instantiate(fromBelow = true)
-          }
+      for (tvar <- constraint.uninstVars)
+        if (!(vs contains tvar) && qualifies(tvar)) {
+          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
+          tvar.instantiate(fromBelow = true)
+        }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
   }
