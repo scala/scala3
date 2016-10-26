@@ -135,9 +135,13 @@ object DottyBuild extends Build {
         // command line arguments get passed to the last task in an aliased
         // sequence (see partest alias below), so this works.
         val args = Def.spaceDelimited("<arg>").parsed
-        val jars = Seq((packageBin in Compile).value.getAbsolutePath) ++
-            getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-        val dottyJars  = "-dottyJars " + (jars.length + 1) + " dotty-lib.jar" + " " + jars.mkString(" ")
+        val jars = List(
+          (packageBin in Compile).value.getAbsolutePath,
+          (packageBin in (`dotty-library`, Compile)).value.getAbsolutePath,
+          (packageBin in (`dotty-interfaces`, Compile)).value.getAbsolutePath
+        ) ++ getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
+        val dottyJars  =
+          s"""-dottyJars ${jars.length + 2} dotty.jar dotty-lib.jar ${jars.mkString(" ")}"""
         // Provide the jars required on the classpath of run tests
         runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
       },
@@ -147,32 +151,33 @@ object DottyBuild extends Build {
        * of scalajs-ir built with a different Scala compiler, we add its
        * sources instead of depending on the binaries.
        */
-      ivyConfigurations += config("sourcedeps").hide,
-      libraryDependencies +=
-        "org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps",
-      sourceGenerators in Compile += Def.task {
-        val s = streams.value
-        val cacheDir = s.cacheDirectory
-        val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
+      //TODO: disabling until moved to separate project
+      //ivyConfigurations += config("sourcedeps").hide,
+      //libraryDependencies +=
+      //  "org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps",
+      //sourceGenerators in Compile += Def.task {
+      //  val s = streams.value
+      //  val cacheDir = s.cacheDirectory
+      //  val trgDir = (sourceManaged in Compile).value / "scalajs-ir-src"
 
-        val report = updateClassifiers.value
-        val scalaJSIRSourcesJar = report.select(
-            configuration = Set("sourcedeps"),
-            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
-            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
-          sys.error(s"Could not fetch scalajs-ir sources")
-        }
+      //  val report = updateClassifiers.value
+      //  val scalaJSIRSourcesJar = report.select(
+      //      configuration = Set("sourcedeps"),
+      //      module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+      //      artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+      //    sys.error(s"Could not fetch scalajs-ir sources")
+      //  }
 
-        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
-            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
-          if (trgDir.exists)
-            IO.delete(trgDir)
-          IO.createDirectory(trgDir)
-          IO.unzip(scalaJSIRSourcesJar, trgDir)
-          (trgDir ** "*.scala").get.toSet
-        } (Set(scalaJSIRSourcesJar)).toSeq
-      }.taskValue,
+      //  FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+      //      FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+      //    s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+      //    if (trgDir.exists)
+      //      IO.delete(trgDir)
+      //    IO.createDirectory(trgDir)
+      //    IO.unzip(scalaJSIRSourcesJar, trgDir)
+      //    (trgDir ** "*.scala").get.toSet
+      //  } (Set(scalaJSIRSourcesJar)).toSeq
+      //}.taskValue,
 
       // Adjust classpath for running dotty
       mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
@@ -185,29 +190,34 @@ object DottyBuild extends Build {
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
-        // put the Scala {library, reflect} in the classpath
+        // put needed dependencies on classpath:
         val path = for {
           file <- attList.map(_.data)
           path = file.getAbsolutePath
+          // FIXME: when we snip the cord, this should go bye-bye
+          if path.contains("scala-library") ||
+            // FIXME: currently needed for tests referencing scalac internals
+            path.contains("scala-reflect") ||
+            // FIXME: currently needed for tests referencing scalac internals
+            path.contains("scala-compile") ||
+            // FIXME: should go away when xml literal parsing is removed
+            path.contains("scala-xml") ||
+            // needed for the xsbti interface
+            path.contains("sbt-interface")
         } yield "-Xbootclasspath/p:" + path
-        // dotty itself needs to be in the bootclasspath
-        val fullpath = /*("-Xbootclasspath/p:" + "dotty.jar") ::*/ ("-Xbootclasspath/a:" + bin) :: path.toList
-        // System.err.println("BOOTPATH: " + fullpath)
 
         val travis_build = // propagate if this is a travis build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
             List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
-          else
-            List()
+          else List()
 
         val tuning =
           if (sys.props.isDefinedAt("Oshort"))
             // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
-          else
-            List()
+          else List()
 
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: fullpath
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
       }
     ).
     settings(

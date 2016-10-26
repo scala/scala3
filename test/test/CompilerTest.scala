@@ -442,8 +442,14 @@ abstract class CompilerTest {
       nr: Int = 0, oldOutput: String = defaultOutputDir): Unit = {
 
     val partestOutput = dest.jfile.getParentFile + JFile.separator + dest.stripExtension + "-" + kind + ".obj"
-    val flags = oldFlags.map(f => if (f == oldOutput) partestOutput else f) ++
-      List(s"-classpath $partestOutput") // Required for separate compilation tests
+
+    val altOutput =
+      source.getParentFile.getAbsolutePath.map(x => if (x == JFile.separatorChar) '_' else x)
+
+    val (beforeCp, remaining) = oldFlags
+      .map(f => if (f == oldOutput) partestOutput else f)
+      .span(_ != "-classpath")
+    val flags = beforeCp ++ List("-classpath", (partestOutput :: remaining.drop(1)).mkString(":"))
 
     val difference = getExisting(dest).isDifferent(source, flags, nerr)
     difference match {
@@ -451,8 +457,12 @@ abstract class CompilerTest {
       case ExistsSame => // nothing else to do
       case ExistsDifferent =>
         val nextDest = dest.parent / (dest match {
-          case d: Directory => Directory(replaceVersion(d.name, nr))
-          case f => SFile(replaceVersion(f.stripExtension, nr)).addExtension(f.extension)
+          case d: Directory =>
+            val newVersion = replaceVersion(d.name, nr).getOrElse(altOutput)
+            Directory(newVersion)
+          case f =>
+            val newVersion = replaceVersion(f.stripExtension, nr).getOrElse(altOutput)
+            SFile(newVersion).addExtension(f.extension)
         })
         computeDestAndCopyFiles(source, nextDest, kind, flags, nerr, nr + 1, partestOutput)
     }
@@ -555,13 +565,12 @@ abstract class CompilerTest {
   import scala.util.matching.Regex
   val nrFinder = """(.*_v)(\d+)""".r
   /** Changes the version number suffix in the name (without extension). */
-  private def replaceVersion(name: String, nr: Int): String = {
+  private def replaceVersion(name: String, nr: Int): Option[String] = {
     val nrString = nr.toString
     name match {
-      case nrFinder(prefix, `nrString`) => prefix + (nr + 1)
-      case _ =>
-        assert(nr == 0, "DPCompilerTest couldn't create new version of files, match error")
-        name + "_v1"
+      case nrFinder(prefix, `nrString`) => Some(prefix + (nr + 1))
+      case _ if nr != 0 => None
+      case _ => Some(name + "_v1")
     }
   }
 

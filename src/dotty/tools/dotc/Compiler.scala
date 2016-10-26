@@ -17,7 +17,6 @@ import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
-import dotty.tools.backend.sjs.GenSJSIR
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -98,7 +97,6 @@ class Compiler {
            new DropInlined,         // Drop Inlined nodes, since backend has no use for them
            new MoveStatics,         // Move static methods to companion classes
            new LabelDefs),          // Converts calls to labels to jumps
-      List(new GenSJSIR),           // Generate .js code
       List(new GenBCode)            // Generate JVM bytecode
     )
 
@@ -117,20 +115,7 @@ class Compiler {
    */
   def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
-    val actualPhases = if (ctx.settings.scalajs.value) {
-      // Remove phases that Scala.js does not want
-      phases.mapConserve(_.filter {
-        case _: FunctionalInterfaces => false
-        case _ => true
-      }).filter(_.nonEmpty)
-    } else {
-      // Remove Scala.js-related phases
-      phases.mapConserve(_.filter {
-        case _: GenSJSIR => false
-        case _ => true
-      }).filter(_.nonEmpty)
-    }
-    ctx.setPhasePlan(actualPhases)
+    ctx.setPhasePlan(phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(nextRunId, FirstPhaseId))

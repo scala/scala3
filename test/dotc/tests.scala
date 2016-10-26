@@ -3,6 +3,7 @@ package dotc
 import test._
 import org.junit.{Before, Test}
 
+import java.io.{ File => JFile }
 import scala.reflect.io.Directory
 import scala.io.Source
 
@@ -23,20 +24,34 @@ class tests extends CompilerTest {
     "-d", defaultOutputDir
   )
 
-  val classPath = List(
+  val checkOptions = List(
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
-    "-color:never",
-    "-classpath",
-    "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar" +
-    ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
+    "-color:never"
   )
+
+  val classPath = {
+    val paths = List(
+      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar",
+      "./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar",
+      "./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
+    ).map { p =>
+      val file = new JFile(p)
+      assert(
+        file.exists,
+        s"""File "$p" couldn't be found. Run `packageAll` from build tool before testing"""
+      )
+      file.getAbsolutePath
+    }.mkString(":")
+
+    List("-classpath", paths)
+  }
 
   implicit val defaultOptions = noCheckOptions ++ {
     if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-  } ++ classPath
+  } ++ checkOptions ++ classPath
 
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler", "-Yprintpos")
 
@@ -189,32 +204,10 @@ class tests extends CompilerTest {
   @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
   // Not a junit test anymore since it is order dependent
-  def dottyBootedLib = compileDir(
-    libDir,
-    ".",
-    List(
-      "-deep", "-Ycheck-reentrant", "-strict", "-classpath", defaultOutputDir +
-      ":./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar" +
-      ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar" +
-      ":./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
-    )
-  )(allowDeepSubtypes) // note the -deep argument
+  def dottyBootedLib = compileDir(libDir, ".")(allowDeepSubtypes) // note the -deep argument
 
   // Not a junit test anymore since it is order dependent
-  def dottyDependsOnBootedLib = compileDir(
-    dottyDir,
-    ".",
-    List(
-      "-deep", "-Ycheck-reentrant", "-strict", "-classpath", defaultOutputDir +
-      ":./dotty-lib.jar" +
-      ":./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar" +
-      // this needs to get compiled together with the compiler:
-      //":./target/scala-2.11/src_managed/main/scalajs-ir-src/"
-      // but falling back to:
-      ":/home/fixel/.ivy2/cache/org.scala-js/scalajs-ir_2.11/jars/scalajs-ir_2.11-0.6.8.jar"
-      // for the time being.
-    )
-  )(allowDeepSubtypes) // note the -deep argument
+  @Test def dottyDependsOnBootedLib = compileDir(dottyDir, ".")(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -279,7 +272,7 @@ class tests extends CompilerTest {
     "scalaPrimitives.scala"
   ) map (s"${backendDir}jvm/" + _), testPickling)
 
-  @Test def tasty_backend_sjs = compileDir(s"${backendDir}", "sjs", testPickling)
+  //@Test def tasty_backend_sjs = compileDir(s"${backendDir}", "sjs", testPickling)
 
   @Test def tasty_dotc = compileDir(toolsDir, "dotc", testPickling)
   @Test def tasty_dotc_ast = compileDir(dotcDir, "ast", testPickling)

@@ -30,10 +30,6 @@ object DPConsoleRunner {
       case Nil => sys.error("Error: DPConsoleRunner needs \"-dottyJars <jarCount> <jars>*\".")
       case jarFinder(nr, jarString) :: Nil =>
         val jars = jarString.split(" ").toList
-        println("------------------------------------------------------------")
-        println("jars:")
-        jars.foreach(println)
-        println("------------------------------------------------------------")
         val count = nr.toInt
         if (jars.length < count)
           sys.error("Error: DPConsoleRunner found wrong number of dottyJars: " + jars + ", expected: " + nr)
@@ -155,11 +151,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
       "-d",
       outDir.getAbsolutePath,
       "-classpath",
-      joinPaths(outDir :: extraClasspath.filter { fp =>
-        fp.endsWith("dotty-lib.jar") ||
-        fp.endsWith("scala-library-2.11.5.jar") ||
-        fp.endsWith("scala-reflect-2.11.5.jar")
-      })
+      joinPaths(outDir :: extraClasspath ++ testClassPath)
     ) ++ files.map(_.getAbsolutePath)
 
     pushTranscript(args mkString " ")
@@ -172,58 +164,35 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     }
   }
 
-  override def run(): TestState = {
-    if (kind == "run") {
-      // javac runner, for one, would merely append to an existing log file, so
-      // just delete it before we start
-      logFile.delete()
-      runTestCommon(execTest(outDir, logFile) && diffIsOk)
-      lastState
-    } else super.run()
-  }
-
-  // Re-implemented for running tests
-  def execTest(outDir: File, logFile: File): Boolean = {
-    val argsFile  = testFile changeExtension "javaopts"
-    val argString = file2String(argsFile)
-    if (argString != "") NestUI.verbose(
-      "Found javaopts file '%s', using options: '%s'".format(argsFile, argString)
-    )
-
-    val classpath = joinPaths {
-      val sep = sys.props("path.separator")
-      val fps = extraClasspath.filter { fp =>
-        fp.endsWith("dotty-lib.jar") ||
-        fp.endsWith("scala-library-2.11.5.jar") ||
-        fp.endsWith("scala-reflect-2.11.5.jar")
+  // Overriden in order to recursively get all sources that should be handed to
+  // the compiler. Otherwise only sources in the top dir is compiled - works
+  // because the compiler is on the classpath.
+  override def sources(file: File): List[File] =
+    if (file.isDirectory)
+      file.listFiles.toList.flatMap { f =>
+        if (f.isDirectory) sources(f)
+        else if (f.isJavaOrScala) List(f)
+        else Nil
       }
+    else List(file)
 
-      fps ++ fileManager.testClassPath
-    }
-
-    val javaOpts: List[String] = (
-      suiteRunner.javaOpts.split(' ') ++
-      extraJavaOptions ++
-      argString.split(' ')
-    ).map(_.trim).filter(_ != "").toList
-
-    val cmd: List[String] = (suiteRunner.javaCmdPath :: javaOpts) ++ (
-      "-classpath" :: join(outDir.toString, classpath) ::
-      "Test" :: "jvm" :: // default argument to Test class in super is "jvm"
-      Nil
-    )
-
-    pushTranscript((cmd mkString s" \\$EOL  ") + " > " + logFile.getName)
-    nextTestAction(runCommand(cmd, logFile)) {
-      case false =>
-        //_transcript append EOL + logFile.fileContents
-        // think this is equivalent:
-        val contents = logFile.fileContents
-        println(contents)
-        pushTranscript(contents)
-        genFail("non-zero exit code")
-    }
-  }
+  // Enable me to "fix" the depth issue - remove once completed
+  //override def compilationRounds(file: File): List[CompileRound] = {
+  //  val srcs = sources(file) match {
+  //    case Nil =>
+  //      System.err.println {
+  //        s"""|================================================================================
+  //            |Warning! You attempted to compile sources from:
+  //            |  $file
+  //            |but partest was unable to find any sources - uncomment DPConsoleRunner#sources
+  //            |================================================================================""".stripMargin
+  //      }
+  //      List(new File("./examples/hello.scala")) // "just compile some crap" - Guillaume
+  //    case xs =>
+  //    xs
+  //  }
+  //  (groupedFiles(srcs) map mixedCompileGroup).flatten
+  //}
 
   // FIXME: This is copy-pasted from nest.Runner where it is private
   // Remove this once https://github.com/scala/scala-partest/pull/61 is merged
@@ -371,16 +340,17 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   }
 
   // override to add dotty and scala jars to classpath
-  override def extraClasspath = {
-    val cp = suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
-    //println(s"extraClasspath: $cp")
-    cp
-  }
+  override def extraClasspath =
+    suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
 
   // override to keep class files if failed and delete clog if ok
-  override def cleanup = if (lastState.isOk) {
+  override def cleanup = if (lastState.isOk) try {
     logFile.delete
     cLogFile.delete
     Directory(outDir).deleteRecursively
+  } catch {
+    case t: Throwable =>
+      println("whhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat")
+      throw t
   }
 }
