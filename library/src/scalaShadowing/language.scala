@@ -25,18 +25,18 @@ package scalaShadowing
  *   - [[higherKinds         `higherKinds`]]         enables writing higher-kinded types
  *   - [[existentials        `existentials`]]        enables writing existential types
  *   - [[experimental        `experimental`]]        contains newer features that have not yet been tested in production
- *   
+ *
  *  and, for dotty:
- *  
+ *
  *   - [[Scala2              `Scala2`]               backwards compatibility mode for Scala2
- *   - [[noAtoTupling        `noAutoTupling`]]       disable auto-tupling   
+ *   - [[noAtoTupling        `noAutoTupling`]]       disable auto-tupling
  *
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
  *  @groupprio experimental 10
- *  
+ *
  *  Dotty-specific features come at the end.
- *  
+ *
  *  Note: Due to the more restricted language import mechanism in dotty (only
  *  imports count, implicits are disregarded) we don't need the constructions
  *  of the inherited language features. A simple object for each feature is
@@ -189,10 +189,10 @@ object language {
      */
     @volatile implicit lazy val macros: macros = languageFeature.experimental.macros
   }
-  
+
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
   object Scala2
-  
+
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
 }

@@ -46,18 +46,7 @@ object PathResolver {
     def classPathEnv        =  envOrElse("CLASSPATH", "")
     def sourcePathEnv       =  envOrElse("SOURCEPATH", "")
 
-    def javaBootClassPath   =
-      propOrElse("sun.boot.class.path", searchForBootClasspath)
-        .split(":")
-        .filterNot { jar =>
-          // let's blacklist locally compiled classes:
-          jar.contains("/dotty/library/target/classes") ||
-          jar.contains("/dotty/library/target/scala-2.11/classes") ||
-          jar.contains("/dotty/interfaces/target/classes") ||
-          jar.contains("/dotty/target/scala-2.11/classes") ||
-          jar.contains("/dotty/target/classes")
-        }
-        .mkString(":")
+    def javaBootClassPath   = propOrElse("sun.boot.class.path", searchForBootClasspath)
 
     def javaExtDirs         = propOrEmpty("java.ext.dirs")
     def scalaHome           = propOrEmpty("scala.home")
@@ -266,8 +255,15 @@ class PathResolver(implicit ctx: Context) {
   def containers = Calculated.containers
 
   lazy val result: JavaClassPath = {
-    val (dottyJars, others) = containers.partition(_.name.contains("dotty"))
-    val cp = new JavaClassPath((dottyJars ++ others).toIndexedSeq, context)
+    // Prioritize `dotty.jar` and `dotty-lib.jar` to shadow others
+    val (dottyJars, others) =
+      containers.partition(x => x.name.contains("dotty-lib.jar") || x.name.contains("dotty.jar"))
+    // Then any jars with `dotty` in the name - putting them before scala-library
+    val (dottyCp, remaining) =
+      others.partition(_.name.contains("dotty-"))
+
+    val cp = new JavaClassPath((dottyJars ++ dottyCp ++ remaining).toIndexedSeq, context)
+
     if (settings.Ylogcp.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
       Console.println("Defaults: " + PathResolver.Defaults)

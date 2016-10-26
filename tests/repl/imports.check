@@ -16,13 +16,13 @@ scala> buf += xs
 scala> buf ++= xs
 res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foo
--- Error: <console> ----------------------------------------------------------------------------------------------------
+-- Error: <console> ------------------------------------------------------------
 8 |import util.foo
   |            ^^^
   |            foo is not a member of util
 scala> import util.foo.bar
--- [E008] Member Not Found Error: <console> ----------------------------------------------------------------------------
+-- [E008] Member Not Found Error: <console> ------------------------------------
 8 |import util.foo.bar
   |       ^^^^^^^^
-  |       value `foo` is not a member of util.type - did you mean `util.Left`?
+  |      value `foo` is not a member of util.type - did you mean `util.Left`?
 scala> :quit

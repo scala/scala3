@@ -27,7 +27,7 @@ import reporting._
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
-import config.{Settings, ScalaSettings, Platform, JavaPlatform, SJSPlatform}
+import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import util.Property.Key
@@ -550,8 +550,7 @@ object Contexts {
     }
 
     protected def newPlatform(implicit ctx: Context): Platform =
-      if (settings.scalajs.value) new SJSPlatform
-      else new JavaPlatform
+      new JavaPlatform
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
