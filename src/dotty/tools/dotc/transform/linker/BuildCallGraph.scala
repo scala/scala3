@@ -521,7 +521,7 @@ class BuildCallGraph extends Phase {
 
       processCallSites(reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet)
 
-      println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.map(_.tp.show))
+      println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.take(10).map(_.tp.show).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
       val newReachableTypes = reachableTypes.newItems
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
@@ -541,7 +541,7 @@ class BuildCallGraph extends Phase {
         }
       }
 
-      println(s"\t Found ${reachableMethods.size} new call sites: " + reachableMethods.newItems.map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }))
+      println(s"\t Found ${reachableMethods.size} new call sites: " + reachableMethods.newItems.take(10).map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
 
     }
 
