@@ -34,11 +34,13 @@ import scala.reflect.internal.util.Collections
 
 class DeadCodeElimination extends MiniPhaseTransform {
   import tpd._
+
   def phaseName: String = "dce"
-  private var reachableSet: Set[Symbol] = null
-  private var reachableClassesSet: Set[Symbol] = null
-  private var keepAfter: Phase = null
-  private var exception: Tree = null
+
+  private var reachableSet: Set[Symbol] = _
+  private var reachableClassesSet: Set[Symbol] = _
+  private var keepAfter: Phase = _
+  private var exception: Tree = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     reachableSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableMethods.map(x => x.call.termSymbol)
