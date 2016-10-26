@@ -4,33 +4,11 @@ package linker
 
 import scala.language.postfixOps
 
-import TreeTransforms._
-import core.Denotations._
-import core.SymDenotations._
-import core.Contexts._
-import core.Symbols._
-import core.Types._
-import core.Constants._
-import core.StdNames._
-import dotty.tools.dotc.ast.{untpd, TreeTypeMap, tpd}
-import dotty.tools.dotc.core
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
-import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.{TypeApplications, Flags}
-import dotty.tools.dotc.typer.Applications
-import dotty.tools.dotc.util.Positions
-import typer.ErrorReporting._
-import ast.Trees._
-import Applications._
-import TypeApplications._
-import SymUtils._, core.NameOps._
-import core.Mode
-
-import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags
-
-import scala.reflect.internal.util.Collections
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.TreeTransforms._
 
 class DeadCodeElimination extends MiniPhaseTransform {
   import tpd._
@@ -40,18 +18,18 @@ class DeadCodeElimination extends MiniPhaseTransform {
   private var reachableSet: Set[Symbol] = _
   private var reachableClassesSet: Set[Symbol] = _
   private var classOfs: Set[Symbol] = _
-  private var keepAfter: Phase = _
+  private var keepAfter: BuildCallGraph = _
   private var exception: Tree = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    reachableSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableMethods.map(x => x.call.termSymbol)
-    reachableClassesSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
-    classOfs = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getClassOfs
-    keepAfter = ctx.phaseOfClass(classOf[BuildCallGraph])
+    keepAfter = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
+    val callGraph = keepAfter.getCallGraph
+    reachableSet = callGraph.reachableMethods.map(x => x.call.termSymbol)
+    reachableClassesSet = callGraph.reachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
+    classOfs = callGraph.classOfs
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
     this
   }
-
 
   override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     reachableSet = null
