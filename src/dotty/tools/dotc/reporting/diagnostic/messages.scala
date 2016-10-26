@@ -677,5 +677,18 @@ object messages {
            |
            |$fixedVarInAlternative""".stripMargin
     }
+  }  
+    
+  case class TypeParamsTypeExpected(mods: Modifiers, identifier: TermName)(implicit ctx: Context) extends Message(24) {
+    val kind = "Syntax"
+    
+    val msg = hl"""Expected ${"type"} keyword for type parameter $identifier"""
+
+    val explanation = hl"""|This happens when you add modifiers like ${"private"} or ${"protected"}
+                           |to your type parameter definition without adding the ${"type"} keyword.
+                           |
+                           |Add ${"type"} to your code, e.g.:
+                           |${s"trait A[${mods.flags} type $identifier]"}
+                           |""".stripMargin
   }
 }

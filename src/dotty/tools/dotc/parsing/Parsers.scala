@@ -1623,7 +1623,7 @@ object Parsers {
                 val mod = atPos(in.skipToken()) { Mod.Type() }
                 (mods | Param | ParamAccessor).withAddedMod(mod)
               } else {
-                if (mods.hasFlags) syntaxError("`type' expected")
+                if (mods.hasFlags) syntaxError(TypeParamsTypeExpected(mods, ident()))
                 mods | Param | PrivateLocal
               }
             }
