@@ -11,10 +11,11 @@ import dotty.tools.dotc.transform.linker.Summaries._
 
 object GraphVisualization {
 
-  def outputGraph(mode: Int, specLimit: Int)(reachableMethods: Set[CallWithContext],
-                  reachableTypes: Set[TypeWithContext],
-                  casts: Set[Cast],
-                  outerMethod: Set[Symbol])(implicit ctx: Context): String = {
+  def outputGraph(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+    val reachableMethods = callGraph.reachableMethods
+    val reachableTypes = callGraph.reachableTypes
+    val outerMethod = callGraph.outerMethods
+
     val classesWithReachableMethods = reachableMethods.map( _.call.termSymbol.maybeOwner.info.widen.classSymbol)
     val reachableClasses = classesWithReachableMethods ++ reachableTypes.flatMap(x => x.tp.classSymbols).flatMap(_.baseClasses)
     val reachableDefs = reachableMethods.map(_.call.termSymbol)
