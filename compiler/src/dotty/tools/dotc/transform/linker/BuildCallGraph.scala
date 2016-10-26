@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.ResolveSuper
@@ -126,9 +125,6 @@ class BuildCallGraph extends Phase {
       }
     }
 
-    def regularizeType(t: Type): Type =
-      t
-
     def pushEntryPoint(s: Symbol) = {
       val tpe = ref(s).tpe
       val targs = tpe.widen match {
@@ -137,7 +133,7 @@ class BuildCallGraph extends Phase {
       }
       val call = new CallWithContext(tpe, (0 until targs).map(x => new ErazedType()).toList, ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil, OuterTargs.empty, null, null)
       reachableMethods += call
-      val t = regularizeType(ref(s.owner).tpe)
+      val t = ref(s.owner).tpe
       val self = new TypeWithContext(t, parentRefinements(t))
       addReachableType(self, null)
     }
@@ -159,7 +155,7 @@ class BuildCallGraph extends Phase {
         if (tp1.termSymbol.is(Module)) {
           addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
         } else if (tp1.typeSymbol.is(Module, Package)) {
-          val t = regularizeType(ref(tp1.typeSymbol).tpe)
+          val t = ref(tp1.typeSymbol).tpe
           addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
         }
         tp1 = tp1.normalizedPrefix
@@ -246,7 +242,7 @@ class BuildCallGraph extends Phase {
       // if arg of callee is a param of caller, propagate arg fro caller to callee
       val args = callee.argumentsPassed.map {
         case x if x.isRepeatedParam =>
-          val t = regularizeType(propagateTargs(x.translateParameterized(defn.RepeatedParamClass, ctx.requiredClass("scala.collection.mutable.WrappedArray"))))
+          val t = propagateTargs(x.translateParameterized(defn.RepeatedParamClass, ctx.requiredClass("scala.collection.mutable.WrappedArray")))
           addReachableType(new TypeWithContext(t, parentRefinements(t)), caller)
           t
         case x if mode < AnalyseArgs =>
@@ -254,7 +250,7 @@ class BuildCallGraph extends Phase {
         case x: PreciseType =>
           x
         case x: ClosureType =>
-          val utpe =  regularizeType(propagateTargs(x.underlying, isConstructor = true))
+          val utpe =  propagateTargs(x.underlying, isConstructor = true)
           val outer = parentRefinements(utpe) ++ outerTargs
           val closureT = new ClosureType(x.meth, utpe, x.implementedMethod, outer)
           addReachableType(new TypeWithContext(closureT, outer), caller)
@@ -370,7 +366,7 @@ class BuildCallGraph extends Phase {
             }
           } else constructedType
 
-          val tpe =  regularizeType(propagateTargs(fixNoPrefix, isConstructor = true))
+          val tpe =  propagateTargs(fixNoPrefix, isConstructor = true)
           addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs), caller)
 
           val call = {
@@ -503,7 +499,7 @@ class BuildCallGraph extends Phase {
 
         collectedSummaries.get(sym) match {
           case Some(summary) =>
-            summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(regularizeType(x.info), parentRefinements(x.info)), method))
+            summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
             summary.methodsCalled.foreach {
               case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, receiver))
             }
