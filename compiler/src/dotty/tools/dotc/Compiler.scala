@@ -129,7 +129,7 @@ class Compiler {
     val start = bootstrap.fresh
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
-      .setMode(Mode.ImplicitsEnabled)
+      .addMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
       .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start
