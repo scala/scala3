@@ -241,10 +241,6 @@ class BuildCallGraph extends Phase {
       }
       // if arg of callee is a param of caller, propagate arg fro caller to callee
       val args = callee.argumentsPassed.map {
-        case x if x.isRepeatedParam =>
-          val t = propagateTargs(x.translateParameterized(defn.RepeatedParamClass, ctx.requiredClass("scala.collection.mutable.WrappedArray")))
-          addReachableType(new TypeWithContext(t, parentRefinements(t)), caller)
-          t
         case x if mode < AnalyseArgs =>
           ref(Summaries.simplifiedClassOf(x)).tpe
         case x: PreciseType =>
