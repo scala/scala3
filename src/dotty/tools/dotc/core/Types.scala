@@ -1278,7 +1278,7 @@ object Types {
     final def hash = {
       if (myHash == HashUnknown) {
         myHash = computeHash
-        if (myHash == HashUnknown) myHash = HashUnknownAlt
+        assert(myHash != HashUnknown)
       }
       myHash
     }
@@ -1293,7 +1293,7 @@ object Types {
     final def hash = {
       if (myHash == HashUnknown) {
         myHash = computeHash
-        if (myHash == HashUnknown) myHash = HashUnknownAlt
+        assert(myHash != HashUnknown)
       }
       myHash
     }

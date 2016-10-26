@@ -31,9 +31,9 @@ trait Hashable {
   protected def hashSeed: Int = getClass.hashCode
 
   protected final def finishHash(hashCode: Int, arity: Int): Int =
-    avoidNotCached(hashing.finalizeHash(hashCode, arity))
+    avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
-  final def identityHash = avoidNotCached(System.identityHashCode(this))
+  final def identityHash = avoidSpecialHashes(System.identityHashCode(this))
 
   protected def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = tp.hash
@@ -94,7 +94,10 @@ trait Hashable {
 
   protected final def addDelta(elemHash: Int, delta: Int) =
     if (elemHash == NotCached) NotCached
-    else avoidNotCached(elemHash + delta)
+    else avoidSpecialHashes(elemHash + delta)
 
-  private def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
+  private def avoidSpecialHashes(h: Int) =
+    if (h == NotCached) NotCachedAlt
+    else if (h == HashUnknown) HashUnknownAlt
+    else h
 }
