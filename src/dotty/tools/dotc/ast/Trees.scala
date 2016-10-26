@@ -60,15 +60,19 @@ object Trees {
                                         with Cloneable {
 
     if (Stats.enabled) ntrees += 1
+    
+    private def nxId = {
+      nextId += 1
+      //assert(nextId != 199, this)
+      nextId      
+    }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
      *  tracking presentation compiler interactions
      */
-    val uniqueId = {
-      nextId += 1
-      //assert(nextId != 214, this)
-      nextId
-    }
+    private var myUniqueId: Int = nxId
+    
+    def uniqueId = myUniqueId
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
@@ -188,6 +192,12 @@ object Trees {
 
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    
+    override def clone: Tree[T] = {
+      val tree = super.clone.asInstanceOf[Tree[T]]
+      tree.myUniqueId = nxId
+      tree
+    }
   }
 
   class UnAssignedTypeException[T >: Untyped](tree: Tree[T]) extends RuntimeException {
