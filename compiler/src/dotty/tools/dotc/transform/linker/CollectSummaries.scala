@@ -288,84 +288,85 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         case x => (x, x, accArgs, accT, x.tpe)
       }
       val widenedTp = tree.tpe.widen
-      if (widenedTp.isInstanceOf[MethodicType] && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType])) return
-      val (receiver, _/*call*/, arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
+      if (!widenedTp.isInstanceOf[MethodicType] || (tree.symbol.exists && !tree.symbol.info.isInstanceOf[MethodicType])) {
+        val (receiver, _ /*call*/ , arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
 
-      val storedReceiver = receiver.tpe
+        val storedReceiver = receiver.tpe
 
-      assert(storedReceiver.exists)
+        assert(storedReceiver.exists)
 
-      @tailrec def skipBlocks(s: Tree): Tree = {
-        s match {
-          case s: Block => skipBlocks(s.expr)
-          case _ => s
+        @tailrec def skipBlocks(s: Tree): Tree = {
+          s match {
+            case s: Block => skipBlocks(s.expr)
+            case _ => s
+          }
         }
+
+        @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
+          case exp: Closure =>
+            val SAMType(e) = exp.tpe
+            new ClosureType(exp, x.tpe, e.symbol, null.asInstanceOf[OuterTargs])
+          case Select(New(tp), _) => new PreciseType(tp.tpe)
+          case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
+          case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
+          case Typed(expr, _) => argType(expr)
+          case _ =>
+            x.tpe match {
+              case _ if x.isInstanceOf[NamedArg] => ref(symbolOf(x.asInstanceOf[NamedArg].arg)).tpe
+              case _ => x.tpe
+            }
+        }
+
+        val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), arguments.flatten.map(argType))
+
+        // Create calls to wrapXArray for varArgs
+        val repeatedArgsCalls = tree match {
+          case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
+            @tailrec def refine(tp: Type): Type = tp match {
+              case tp: TypeAlias => refine(tp.alias.dealias)
+              case tp: RefinedType => refine(tp.refinedInfo)
+              case _ => tp
+            }
+            @tailrec def getVarArgTypes(tp: Type, acc: List[Type] = Nil): List[Type] = tp match {
+              case tp: PolyType => getVarArgTypes(tp.resultType, acc)
+              case tp@MethodType(_, paramTypes) if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam =>
+                getVarArgTypes(tp.resultType, refine(paramTypes.last) :: acc)
+              case _ => acc
+            }
+
+            def wrapArrayTermRef(arrayName: TermName) =
+              TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
+
+            val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
+              val args = List(defn.ArrayOf(tp))
+              val sym = tp.typeSymbol
+              if (defn.isPrimitiveClass(sym))
+                CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args, thisCallInfo)
+              else if (sym == defn.ObjectClass)
+                CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args, thisCallInfo)
+              else
+                CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
+            }
+
+            if (wrapArrayCall.isEmpty) wrapArrayCall
+            else CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo) :: wrapArrayCall
+
+          case _ => Nil
+        }
+
+        val fillInStackTrace = tree match {
+          case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
+            val throwableClass = newThrowable.tpe.widenDealias.classSymbol
+            val fillInStackTrace = throwableClass.requiredMethod("fillInStackTrace")
+            if (fillInStackTrace.is(JavaDefined) || throwableClass != fillInStackTrace.owner) Nil
+            else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, thisCallInfo))
+          case _ => Nil
+        }
+
+        val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
+
+        curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
       }
-
-      @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
-        case exp: Closure =>
-          val SAMType(e) = exp.tpe
-          new ClosureType(exp, x.tpe, e.symbol, null.asInstanceOf[OuterTargs])
-        case Select(New(tp), _) => new PreciseType(tp.tpe)
-        case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
-        case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
-        case Typed(expr, _) => argType(expr)
-        case _ =>
-          x.tpe match {
-            case _ if x.isInstanceOf[NamedArg] => ref(symbolOf(x.asInstanceOf[NamedArg].arg)).tpe
-            case _ => x.tpe
-          }
-      }
-
-      val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), arguments.flatten.map(argType))
-
-      // Create calls to wrapXArray for varArgs
-      val repeatedArgsCalls = tree match {
-        case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
-          @tailrec def refine(tp: Type): Type = tp match {
-            case tp: TypeAlias   => refine(tp.alias.dealias)
-            case tp: RefinedType => refine(tp.refinedInfo)
-            case _               => tp
-          }
-          @tailrec def getVarArgTypes(tp: Type, acc: List[Type] = Nil): List[Type] = tp match {
-            case tp: PolyType => getVarArgTypes(tp.resultType, acc)
-            case tp @ MethodType(_, paramTypes) if paramTypes.nonEmpty && paramTypes.last.isRepeatedParam =>
-              getVarArgTypes(tp.resultType, refine(paramTypes.last) :: acc)
-            case _ => acc
-          }
-
-          def wrapArrayTermRef(arrayName: TermName) =
-            TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
-
-          val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
-            val args = List(defn.ArrayOf(tp))
-            val sym = tp.typeSymbol
-            if (defn.isPrimitiveClass(sym))
-              CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args, thisCallInfo)
-            else if (sym == defn.ObjectClass)
-              CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args, thisCallInfo)
-            else
-              CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
-          }
-
-          if (wrapArrayCall.isEmpty) wrapArrayCall
-          else CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo) :: wrapArrayCall
-
-        case _ => Nil
-      }
-
-      val fillInStackTrace = tree match {
-        case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
-          val throwableClass = newThrowable.tpe.widenDealias.classSymbol
-          val fillInStackTrace = throwableClass.requiredMethod("fillInStackTrace")
-          if (fillInStackTrace.is(JavaDefined) || throwableClass != fillInStackTrace.owner) Nil
-          else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, thisCallInfo))
-        case _ => Nil
-      }
-
-      val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
-
-      curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
     }
 
     override def transformIdent(tree: tpd.Ident)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
