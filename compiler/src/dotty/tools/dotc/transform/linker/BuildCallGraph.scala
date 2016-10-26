@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.NameOps._
@@ -28,53 +27,14 @@ object BuildCallGraph {
 class BuildCallGraph extends Phase {
   import BuildCallGraph._
 
-  private var reachableMethods: Set[CallWithContext] = _
-  private var reachableTypes: Set[TypeWithContext] = _
-  private var casts: Set[Cast] = _
-  private var classOfs: Set[Symbol] = _
-  private var outerMethods: Set[Symbol] = _
+  private var callGraph: CallGraph = _
 
-  def getReachableMethods = reachableMethods
-  def getReachableTypes = reachableTypes
-  def getReachableCasts = casts
-  def getClassOfs = classOfs
-  def getOuterMethods = outerMethods
+  def getCallGraph: CallGraph = callGraph
 
   import tpd._
   def phaseName: String = "callGraph"
   def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
     (s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)
-  }
-
-  private class WorkList[A] {
-    val reachableItems = mutable.Set[A]()
-    private var newReachableItems = immutable.Set[A]()
-
-    def +=(elem: A): Unit = {
-      // No new elements are accepted if they've already been reachable before
-      if (!reachableItems(elem)) {
-        newReachableItems += elem
-        reachableItems += elem
-      }
-    }
-
-    /**
-     * Add new items to the worklist. It also adds the items to the reachable set.
-     */
-    def ++=(xs: TraversableOnce[A]): this.type = { xs.seq foreach +=; this }
-
-    /** Clear the new items */
-    def clear(): Unit = {
-      newReachableItems = immutable.Set[A]()
-    }
-
-    /** Do we have new items to process? */
-    def nonEmpty: Boolean = newReachableItems.nonEmpty
-
-    /** How many new items do we have? */
-    def size: Int = newReachableItems.size
-
-    def newItems: Set[A] = newReachableItems
   }
 
   def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs =
@@ -99,27 +59,27 @@ class BuildCallGraph extends Phase {
     * @param specLimit how many specializations symbol can have max
     * @return (reachableMethods, reachableTypes, casts, outerMethod)
     */
-  def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): (Set[CallWithContext], Set[TypeWithContext], Set[Cast], Set[Symbol], Set[Symbol]) = {
+  private def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): CallGraph = {
     val startTime = java.lang.System.currentTimeMillis()
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.map(x => (x.methodDef, x)).toMap
     val reachableMethods = new WorkList[CallWithContext]()
     val reachableTypes = new WorkList[TypeWithContext]()
     val casts = new WorkList[Cast]()
     val classOfs = new WorkList[Symbol]()
-    val outerMethod = mutable.Set[Symbol]()
+    val outerMethods = mutable.Set[Symbol]()
     val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
 
     def getTypesByMemberName(x: Name): Set[TypeWithContext] = {
       val ret1 = typesByMemberNameCache.get(x)
       if (ret1 eq null) {
         // not yet computed
-        val upd = reachableTypes.reachableItems.filter(tp => tp.tp.member(x).exists).toSet
+        val upd = reachableTypes.reachableItems.filter(tp => tp.tp.member(x).exists)
         typesByMemberNameCache.put(x, upd)
         upd
       } else ret1
     }
     def addReachableType(x: TypeWithContext, from: CallWithContext): Unit = {
-      if (!reachableTypes.reachableItems.contains(x)) {
+      if (!reachableTypes.contains(x)) {
         reachableTypes += x
         val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
         for (name <- namesInType) {
@@ -507,7 +467,7 @@ class BuildCallGraph extends Phase {
             }
 
           case None =>
-            outerMethod += sym
+            outerMethods += sym
 
             // Add return type to reachable types
             addReachableType(new TypeWithContext(new JavaAllocatedType(method.call.widenDealias.finalResultType), OuterTargs.empty), method)
@@ -526,7 +486,7 @@ class BuildCallGraph extends Phase {
       casts.clear()
       classOfs.clear()
 
-      processCallSites(reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet)
+      processCallSites(reachableMethods.reachableItems, reachableTypes.reachableItems)
 
       println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.take(10).map(_.tp.show).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
       println(s"\t Found ${classOfs.size} new classOfs: " + classOfs.newItems.take(10).map(_.show).mkString("Set(", ", ", if (classOfs.size <= 10) ")" else ", ...)"))
@@ -555,17 +515,15 @@ class BuildCallGraph extends Phase {
 
     val endTime = java.lang.System.currentTimeMillis()
     println("++++++++++ finished in " + (endTime - startTime)/1000.0  +" seconds. ++++++++++ ")
-    (reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet, casts.reachableItems.toSet, classOfs.reachableItems.toSet, outerMethod.toSet)
+
+    CallGraph(reachableMethods.reachableItems, reachableTypes.reachableItems, casts.reachableItems, classOfs.reachableItems, outerMethods.toSet)
   }
 
-  def sendSpecializationRequests(reachableMethods: Set[CallWithContext],
-                                  reachableTypes: Set[TypeWithContext],
-                                  casts: Set[Cast],
-                                  outerMethod: Set[Symbol])(implicit ctx: Context): Unit = {
+  def sendSpecializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
 //   ctx.outerSpecPhase match {
 //      case specPhase: OuterSpecializer =>
 //
-//        reachableMethods.foreach { mc =>
+//        callGraph.reachableMethods.foreach { mc =>
 //          val methodSym = mc.call.termSymbol
 //          val outerTargs = methodSym.info.widen match {
 //            case PolyType(names) =>
@@ -576,7 +534,7 @@ class BuildCallGraph extends Phase {
 //          if (outerTargs.mp.nonEmpty && !methodSym.isPrimaryConstructor)
 //            specPhase.registerSpecializationRequest(methodSym)(outerTargs)
 //        }
-//        reachableTypes.foreach { tpc =>
+//        callGraph.reachableTypes.foreach { tpc =>
 //          val parentOverrides = tpc.tp.typeMembers(ctx).foldLeft(OuterTargs.empty)((outerTargs, denot) =>
 //            denot.symbol.allOverriddenSymbols.foldLeft(outerTargs)((outerTargs, sym) =>
 //              outerTargs.+(sym.owner, denot.symbol.name, denot.info)))
@@ -615,10 +573,12 @@ class BuildCallGraph extends Phase {
       //val g2 = buildCallGraph(AnalyseTypes, specLimit)
 
       println(s"\n\t\t\tType & Arg flow analisys")
-      val cg = buildCallGraph(AnalyseArgs, specLimit)
-      reachableMethods = cg._1; reachableTypes = cg._2; casts = cg._3; classOfs = cg._4; outerMethods = cg._5
-      val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(reachableMethods, reachableTypes, casts, outerMethods)
-      sendSpecializationRequests(reachableMethods, reachableTypes, casts, outerMethods)
+      val callGraph = buildCallGraph(AnalyseArgs, specLimit)
+      this.callGraph = callGraph
+
+      val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(callGraph)
+
+      sendSpecializationRequests(callGraph)
 
       def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
         val p = new java.io.PrintWriter(f)
@@ -631,7 +591,7 @@ class BuildCallGraph extends Phase {
      // printToFile(new java.io.File("out2.dot")) { out =>
      //   out.println(g2)
      // }
-      printToFile(new java.io.File("out3.dot")) { out =>
+      printToFile(new java.io.File("CallGraph.dot")) { out =>
         out.println(g3)
       }
 
