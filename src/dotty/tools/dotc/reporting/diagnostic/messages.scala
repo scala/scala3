@@ -715,4 +715,21 @@ object messages {
            |""".stripMargin
     }
   }
+
+  case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context) extends Message(26) {
+    val kind = "Syntax"
+    val msg = "auxiliary constructor needs non-implicit parameter list"
+    val explanation =
+      hl"""Only the primary constructor is allowed an ${"implicit"} parameter list;
+        |auxiliary constructors need a non-implicit parameter list. When a primary
+        |constructor has an implicit argslist, auxiliary constructors that call the
+        |primary constructor must specify the implicit value.
+        |
+        |To resolve this issue check for:
+        | - forgotten parenthesis on ${"this"} (${"def this() = // ..."})
+        | - auxiliary constructors specify the implicit value
+        |""".stripMargin
+  }
+
+
 }
