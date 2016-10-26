@@ -45,14 +45,14 @@ class BuildCallGraph extends Phase {
     (s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)
   }
 
-  class Worklist[A] {
+  private class WorkList[A] {
     val reachableItems = mutable.Set[A]()
-    var newItems = immutable.Set[A]()
+    private var newReachableItems = immutable.Set[A]()
 
-    def +=(elem: A) = {
+    def +=(elem: A): Unit = {
       // No new elements are accepted if they've already been reachable before
       if (!reachableItems(elem)) {
-        newItems += elem
+        newReachableItems += elem
         reachableItems += elem
       }
     }
@@ -62,26 +62,18 @@ class BuildCallGraph extends Phase {
      */
     def ++=(xs: TraversableOnce[A]): this.type = { xs.seq foreach +=; this }
 
-    /**
-     * Clear the new items
-     */
-    def clear = {
-      newItems = immutable.Set[A]()
+    /** Clear the new items */
+    def clear(): Unit = {
+      newReachableItems = immutable.Set[A]()
     }
 
-    /**
-     * Do we have new items to process?
-     */
-    def nonEmpty = {
-      newItems.nonEmpty
-    }
+    /** Do we have new items to process? */
+    def nonEmpty: Boolean = newReachableItems.nonEmpty
 
-    /**
-     * How many new items do we have?
-     */
-    def size = {
-      newItems.size
-    }
+    /** How many new items do we have? */
+    def size: Int = newReachableItems.size
+
+    def newItems: Set[A] = newReachableItems
   }
 
   def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs =
@@ -90,12 +82,12 @@ class BuildCallGraph extends Phase {
         case t: RefinedType =>
           val member = t.parent.member(t.refinedName).symbol
           val parent = member.owner
-          val tparams = parent.info.typeParams
-          val id = tparams.indexOf(member)
+          // val tparams = parent.info.typeParams
+          // val id = tparams.indexOf(member)
           // assert(id >= 0) // TODO: IS this code needed at all?
 
-          val nlist = x.add(parent, t.refinedName, t.refinedInfo)
-          apply(nlist, t.parent)
+          val nList = x.add(parent, t.refinedName, t.refinedInfo)
+          apply(nList, t.parent)
         case _ =>
           foldOver(x, tp)
       }
@@ -109,9 +101,9 @@ class BuildCallGraph extends Phase {
   def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): (Set[CallWithContext], Set[TypeWithContext], Set[Cast], Set[Symbol]) = {
     val startTime = java.lang.System.currentTimeMillis()
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.map(x => (x.methodDef, x)).toMap
-    val reachableMethods = new Worklist[CallWithContext]()
-    val reachableTypes = new Worklist[TypeWithContext]()
-    val casts = new Worklist[Cast]()
+    val reachableMethods = new WorkList[CallWithContext]()
+    val reachableTypes = new WorkList[TypeWithContext]()
+    val casts = new WorkList[Cast]()
     val outerMethod = mutable.Set[Symbol]()
     val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
 
@@ -133,8 +125,6 @@ class BuildCallGraph extends Phase {
         }
       }
     }
-    // val callSites = new Worklist[CallInfo]()
-
 
     def regularizeType(t: Type): Type =
       t
@@ -296,8 +286,8 @@ class BuildCallGraph extends Phase {
           tp1w.derivesFrom(tp2c)
         }
       }
-      def dispatchCalls(recieverType: Type): Traversable[CallWithContext] = {
-        recieverType match {
+      def dispatchCalls(receiverType: Type): Traversable[CallWithContext] = {
+        receiverType match {
           case t: PreciseType =>
             new CallWithContext(t.underlying.select(calleeSymbol.name), targs, args, outerTargs, caller, callee) :: Nil
           case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
@@ -307,7 +297,7 @@ class BuildCallGraph extends Phase {
             // without casts
             val direct =
               for (tp <- getTypesByMemberName(calleeSymbol.name)
-                   if filterTypes(tp.tp, recieverType.widenDealias);
+                   if filterTypes(tp.tp, receiverType.widenDealias);
                    alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
                    if alt.exists
               )
@@ -317,8 +307,8 @@ class BuildCallGraph extends Phase {
             else
               for (tp <- getTypesByMemberName(calleeSymbol.name);
                    cast <- tp.castsCache
-                   if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, recieverType) && {
-                     val receiverBases = recieverType.classSymbols
+                   if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, receiverType) && {
+                     val receiverBases = receiverType.classSymbols
                      val targetBases = cast.to.classSymbols
                      receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
                      //cast.to.classSymbol != defn.NothingClass
@@ -328,7 +318,7 @@ class BuildCallGraph extends Phase {
                      // this additionaly introduces a cast of result type and argument types
 
                      val uncastedSig = tp.tp.select(alt.symbol).widen.appliedTo(targs).widen
-                     val castedSig = recieverType.select(calleeSymbol).widen.appliedTo(targs).widen
+                     val castedSig = receiverType.select(calleeSymbol).widen.appliedTo(targs).widen
                      (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
                      addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
@@ -533,13 +523,13 @@ class BuildCallGraph extends Phase {
 
 
     while(reachableMethods.nonEmpty || reachableTypes.nonEmpty || casts.nonEmpty) {
-      reachableTypes.clear
-      casts.clear
-      reachableMethods.clear
+      reachableTypes.clear()
+      casts.clear()
+      reachableMethods.clear()
 
       processCallSites(reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet)
 
-      println(s"\t Found ${reachableTypes.size} new instantiated types")
+      println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.map(_.tp.show))
       val newReachableTypes = reachableTypes.newItems
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
@@ -559,7 +549,7 @@ class BuildCallGraph extends Phase {
         }
       }
 
-      println(s"\t Found ${reachableMethods.size} new call sites: ${reachableMethods.newItems.toString().take(60)}")
+      println(s"\t Found ${reachableMethods.size} new call sites: " + reachableMethods.newItems.map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }))
 
     }
 

@@ -174,7 +174,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         sym.owner.mixins.foreach { mixin =>
           val decl = mixin.primaryConstructor
           val initRef = ref(NamedType(sym.owner.typeRef, decl.name, decl.denot))
-          val initTree = decl.info match {
+          decl.info match {
             case tp: PolyType =>
               if (tp.resType.paramTypess.iterator.flatten.isEmpty)
                 registerCall(Apply(TypeApply(initRef, tp.paramRefs.map(TypeTree(_))), Nil)) // TODO get precise type params
@@ -289,7 +289,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }
       val widenedTp = tree.tpe.widen
       if (widenedTp.isInstanceOf[MethodicType] && (!tree.symbol.exists || tree.symbol.info.isInstanceOf[MethodicType])) return
-      val (receiver, call, arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
+      val (receiver, _/*call*/, arguments, typeArguments, method) = receiverArgumentsAndSymbol(tree)
 
       val storedReceiver = receiver.tpe
 
@@ -516,14 +516,14 @@ object CollectSummaries {
               t.typeRef
             case _ =>
               assert(false)
-              ???
+              null
           }
         } else t
       }
       tp match {
         case tp: RefinedType => mapOver(tp) // otherwise we will loose refinement
         case tp: TypeAlias => mapOver(tp) // map underlying
-        case tp if tp.typeSymbol.exists && substitution.nonEmpty =>
+        case _ if tp.typeSymbol.exists && substitution.nonEmpty =>
           var typ = tp
           /*val id = tp.typeSymbol.owner.info match {
             case t: PolyType =>
