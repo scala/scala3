@@ -64,9 +64,6 @@ object DottyBuild extends Build {
   lazy val dotty = project.in(file(".")).
     dependsOn(`dotty-interfaces`).
     settings(
-      // Disable scaladoc generation, makes publishLocal much faster
-      publishArtifact in packageDoc := false,
-
       overrideScalaVersionSetting,
 
       // set sources to src/, tests to test/ and resources to resources/
