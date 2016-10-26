@@ -39,12 +39,14 @@ class DeadCodeElimination extends MiniPhaseTransform {
 
   private var reachableSet: Set[Symbol] = _
   private var reachableClassesSet: Set[Symbol] = _
+  private var classOfs: Set[Symbol] = _
   private var keepAfter: Phase = _
   private var exception: Tree = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     reachableSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableMethods.map(x => x.call.termSymbol)
     reachableClassesSet = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getReachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
+    classOfs = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph].getClassOfs
     keepAfter = ctx.phaseOfClass(classOf[BuildCallGraph])
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
     this
@@ -56,22 +58,24 @@ class DeadCodeElimination extends MiniPhaseTransform {
     tree
   }
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): _root_.dotty.tools.dotc.ast.tpd.Tree = {
-    val keepAsNew = tree.symbol.initial.validFor.firstPhaseId > keepAfter.period.phaseId
-    if (tree.symbol.isConstructor || keepAsNew || reachableSet.contains(tree.symbol)) tree
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val sym = tree.symbol
+    val keepAsNew = sym.initial.validFor.firstPhaseId > keepAfter.period.phaseId
+    if (sym.isConstructor || keepAsNew || reachableSet.contains(sym)) tree
     else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val sym = tree.symbol
+    val keepAsNew = sym.initial.validFor.firstPhaseId > keepAfter.period.phaseId
+    if (keepAsNew || reachableClassesSet(sym) || classOfs(sym)) tree
+    else tpd.EmptyTree
+  }
 
-  //TODO: drop classes that are unreachable with all their definitions and subclasses
-//  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-//    val keepAsNew = tree.symbol.initial.validFor.firstPhaseId > keepAfter.period.phaseId
-//    if (tree.symbol.isClass || keepAsNew || reachableClassesSet.contains(tree.symbol)) tree
-//    else tpd.EmptyTree
-//  }
-//
-//  override def transformApply(tree: _root_.dotty.tools.dotc.ast.tpd.Apply)(implicit ctx: Context, info: TransformerInfo): _root_.dotty.tools.dotc.ast.tpd.Tree = {
-//    if (!tree.tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
-//    else exception.ensureConforms(tree.tpe)
+  // TODO
+//  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
+//    val tpe = tree.tpe
+//    if (!tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
+//    else exception.ensureConforms(tpe)
 //  }
 }
