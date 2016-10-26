@@ -31,12 +31,14 @@ class BuildCallGraph extends Phase {
   private var reachableMethods: Set[CallWithContext] = _
   private var reachableTypes: Set[TypeWithContext] = _
   private var casts: Set[Cast] = _
+  private var classOfs: Set[Symbol] = _
   private var outerMethods: Set[Symbol] = _
 
   def getReachableMethods = reachableMethods
-  def getReachableTypes   = reachableTypes
-  def getReachableCasts   = casts
-  def getOuterMethods     = outerMethods
+  def getReachableTypes = reachableTypes
+  def getReachableCasts = casts
+  def getClassOfs = classOfs
+  def getOuterMethods = outerMethods
 
   import tpd._
   def phaseName: String = "callGraph"
@@ -97,12 +99,13 @@ class BuildCallGraph extends Phase {
     * @param specLimit how many specializations symbol can have max
     * @return (reachableMethods, reachableTypes, casts, outerMethod)
     */
-  def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): (Set[CallWithContext], Set[TypeWithContext], Set[Cast], Set[Symbol]) = {
+  def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): (Set[CallWithContext], Set[TypeWithContext], Set[Cast], Set[Symbol], Set[Symbol]) = {
     val startTime = java.lang.System.currentTimeMillis()
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.map(x => (x.methodDef, x)).toMap
     val reachableMethods = new WorkList[CallWithContext]()
     val reachableTypes = new WorkList[TypeWithContext]()
     val casts = new WorkList[Cast]()
+    val classOfs = new WorkList[Symbol]()
     val outerMethod = mutable.Set[Symbol]()
     val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
 
@@ -323,6 +326,9 @@ class BuildCallGraph extends Phase {
       }
 
       receiver match {
+        case _ if calleeSymbol == defn.Predef_classOf =>
+          classOfs += callee.targs.head.classSymbol
+          Nil
         case _ if calleeSymbol == ctx.definitions.throwMethod =>
           Nil
         case _ if calleeSymbol == ctx.definitions.Any_asInstanceOf =>
@@ -514,14 +520,16 @@ class BuildCallGraph extends Phase {
     }
 
 
-    while(reachableMethods.nonEmpty || reachableTypes.nonEmpty || casts.nonEmpty) {
+    while (reachableMethods.nonEmpty || reachableTypes.nonEmpty || casts.nonEmpty) {
+      reachableMethods.clear()
       reachableTypes.clear()
       casts.clear()
-      reachableMethods.clear()
+      classOfs.clear()
 
       processCallSites(reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet)
 
       println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.take(10).map(_.tp.show).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
+      println(s"\t Found ${classOfs.size} new classOfs: " + classOfs.newItems.take(10).map(_.show).mkString("Set(", ", ", if (classOfs.size <= 10) ")" else ", ...)"))
       val newReachableTypes = reachableTypes.newItems
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
@@ -547,7 +555,7 @@ class BuildCallGraph extends Phase {
 
     val endTime = java.lang.System.currentTimeMillis()
     println("++++++++++ finished in " + (endTime - startTime)/1000.0  +" seconds. ++++++++++ ")
-    (reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet, casts.reachableItems.toSet, outerMethod.toSet)
+    (reachableMethods.reachableItems.toSet, reachableTypes.reachableItems.toSet, casts.reachableItems.toSet, classOfs.reachableItems.toSet, outerMethod.toSet)
   }
 
   def sendSpecializationRequests(reachableMethods: Set[CallWithContext],
@@ -608,7 +616,7 @@ class BuildCallGraph extends Phase {
 
       println(s"\n\t\t\tType & Arg flow analisys")
       val cg = buildCallGraph(AnalyseArgs, specLimit)
-      reachableMethods = cg._1; reachableTypes = cg._2; casts = cg._3; outerMethods = cg._4
+      reachableMethods = cg._1; reachableTypes = cg._2; casts = cg._3; classOfs = cg._4; outerMethods = cg._5
       val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(reachableMethods, reachableTypes, casts, outerMethods)
       sendSpecializationRequests(reachableMethods, reachableTypes, casts, outerMethods)
 
