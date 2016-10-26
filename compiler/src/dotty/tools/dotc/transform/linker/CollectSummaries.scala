@@ -295,11 +295,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
         assert(storedReceiver.exists)
 
-        @tailrec def skipBlocks(s: Tree): Tree = {
-          s match {
-            case s: Block => skipBlocks(s.expr)
-            case _ => s
-          }
+        def wrapArrayTermRef(wrapArrayMethodName: TermName) =
+          TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(wrapArrayMethodName))
+
+        @tailrec def skipBlocks(s: Tree): Tree = s match {
+          case s: Block => skipBlocks(s.expr)
+          case _ => s
         }
 
         @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
@@ -309,6 +310,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case Select(New(tp), _) => new PreciseType(tp.tpe)
           case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
           case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
+          case Typed(expr: SeqLiteral, tpt) if x.tpe.isRepeatedParam =>
+            wrapArrayTermRef(defn.wrapArrayMethodName(expr.elemtpt.tpe)).widenDealias.finalResultType
           case Typed(expr, _) => argType(expr)
           case _ =>
             x.tpe match {
@@ -334,18 +337,11 @@ class CollectSummaries extends MiniPhase { thisTransform =>
               case _ => acc
             }
 
-            def wrapArrayTermRef(arrayName: TermName) =
-              TermRef(defn.ScalaPredefModuleRef, defn.ScalaPredefModule.requiredMethod(arrayName))
-
             val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
+              val wrapArrayName = defn.wrapArrayMethodName(tp)
+              val targs = if (wrapArrayName == nme.wrapRefArray || wrapArrayName == nme.genericWrapArray) List(tp) else Nil
               val args = List(defn.ArrayOf(tp))
-              val sym = tp.typeSymbol
-              if (defn.isPrimitiveClass(sym))
-                CallInfo(wrapArrayTermRef(nme.wrapXArray(sym.name)), Nil, args, thisCallInfo)
-              else if (sym == defn.ObjectClass)
-                CallInfo(wrapArrayTermRef(nme.wrapRefArray), List(tp), args, thisCallInfo)
-              else
-                CallInfo(wrapArrayTermRef(nme.genericWrapArray), List(tp), args, thisCallInfo)
+              CallInfo(wrapArrayTermRef(wrapArrayName), targs, args, thisCallInfo)
             }
 
             if (wrapArrayCall.isEmpty) wrapArrayCall
