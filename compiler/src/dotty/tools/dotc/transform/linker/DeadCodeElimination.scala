@@ -18,11 +18,13 @@ class DeadCodeElimination extends MiniPhaseTransform {
   private var callGraph: CallGraph = _
   private var buildCallGraphPhase: BuildCallGraph = _
   private var exception: Tree = _
+  private var exportAnnotation: ClassSymbol = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     buildCallGraphPhase = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
     callGraph = buildCallGraphPhase.getCallGraph
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
+    exportAnnotation = defn.ExportAnnot
     this
   }
 
@@ -34,7 +36,10 @@ class DeadCodeElimination extends MiniPhaseTransform {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
     if (keepAsNew(sym) || sym.isConstructor || callGraph.isReachableMethod(sym)) tree
-    else tpd.cpy.DefDef(tree)(rhs = exception)
+    else {
+      assert(!sym.hasAnnotation(exportAnnotation))
+      tpd.cpy.DefDef(tree)(rhs = exception)
+    }
   }
 
 //  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
