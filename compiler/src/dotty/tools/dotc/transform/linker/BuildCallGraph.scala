@@ -73,7 +73,7 @@ class BuildCallGraph extends Phase {
       val ret1 = typesByMemberNameCache.get(x)
       if (ret1 eq null) {
         // not yet computed
-        val upd = reachableTypes.reachableItems.filter(tp => tp.tp.member(x).exists)
+        val upd = reachableTypes.items.filter(tp => tp.tp.member(x).exists)
         typesByMemberNameCache.put(x, upd)
         upd
       } else ret1
@@ -108,7 +108,7 @@ class BuildCallGraph extends Phase {
         // pushEntryPoint(x.methodDef.owner.asClass.sourceModule)
       }
     }
-    println(s"\t Found ${reachableMethods.size} entry points")
+    println(s"\t Found ${reachableMethods.newItems.size} entry points")
 
     def registerParentModules(tp: Type, from: CallWithContext): Unit = {
       var tp1 = tp
@@ -224,7 +224,7 @@ class BuildCallGraph extends Phase {
         if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
           val newCast = Cast(from, to)
 
-          for (tp <- reachableTypes.reachableItems) {
+          for (tp <- reachableTypes.items) {
             if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
               casts += newCast
               tp.castsCache += newCast
@@ -480,17 +480,18 @@ class BuildCallGraph extends Phase {
     }
 
 
-    while (reachableMethods.nonEmpty || reachableTypes.nonEmpty || casts.nonEmpty) {
-      reachableMethods.clear()
-      reachableTypes.clear()
-      casts.clear()
-      classOfs.clear()
+    while (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
+      reachableMethods.clearNewItems()
+      reachableTypes.clearNewItems()
+      casts.clearNewItems()
+      classOfs.clearNewItems()
 
-      processCallSites(reachableMethods.reachableItems, reachableTypes.reachableItems)
+      processCallSites(reachableMethods.items, reachableTypes.items)
 
-      println(s"\t Found ${reachableTypes.size} new instantiated types: " + reachableTypes.newItems.take(10).map(_.tp.show).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
-      println(s"\t Found ${classOfs.size} new classOfs: " + classOfs.newItems.take(10).map(_.show).mkString("Set(", ", ", if (classOfs.size <= 10) ")" else ", ...)"))
       val newReachableTypes = reachableTypes.newItems
+      println(s"\t Found ${newReachableTypes.size} new instantiated types: " + newReachableTypes.take(10).map(_.tp.show).mkString("Set(", ", ", if (newReachableTypes.size <= 10) ")" else ", ...)"))
+      val newClassOfs = classOfs.newItems
+      println(s"\t Found ${newClassOfs.size} new classOfs: " + newClassOfs.take(10).map(_.show).mkString("Set(", ", ", if (newClassOfs.size <= 10) ")" else ", ...)"))
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
           case t: ClosureType =>
@@ -509,14 +510,15 @@ class BuildCallGraph extends Phase {
         }
       }
 
-      println(s"\t Found ${reachableMethods.size} new call sites: " + reachableMethods.newItems.take(10).map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }).mkString("Set(", ", ", if (reachableTypes.size <= 10) ")" else ", ...)"))
+      val newReachableMethods = reachableMethods.newItems
+      println(s"\t Found ${newReachableMethods.size} new call sites: " + newReachableMethods.take(10).map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }).mkString("Set(", ", ", if (newReachableMethods.size <= 10) ")" else ", ...)"))
 
     }
 
     val endTime = java.lang.System.currentTimeMillis()
     println("++++++++++ finished in " + (endTime - startTime)/1000.0  +" seconds. ++++++++++ ")
 
-    CallGraph(reachableMethods.reachableItems, reachableTypes.reachableItems, casts.reachableItems, classOfs.reachableItems, outerMethods.toSet)
+    CallGraph(reachableMethods.items, reachableTypes.items, casts.items, classOfs.items, outerMethods.toSet)
   }
 
   def sendSpecializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
