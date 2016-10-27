@@ -1,10 +1,11 @@
+import scala.annotation.tailrec
 
 object Test {
   def main(args: Array[String]): Unit = {
-    var b = true
-    while (b) {
-      b = false
+    var i = 0
+    while (i < 5) {
+      System.out.println(i)
+      i += 1
     }
-    System.out.println(42)
   }
 }
