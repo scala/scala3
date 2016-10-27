@@ -569,6 +569,8 @@ class Definitions {
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
+  lazy val ExportAnnotType = ctx.requiredClassRef("scala.export")
+  def ExportAnnot(implicit ctx: Context) = ExportAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")

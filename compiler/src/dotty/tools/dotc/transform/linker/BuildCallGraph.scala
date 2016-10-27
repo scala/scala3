@@ -34,7 +34,8 @@ class BuildCallGraph extends Phase {
   import tpd._
   def phaseName: String = "callGraph"
   def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
-    (s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)
+    ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)) || // Java main method
+    (s.is(Method) && s.hasAnnotation(defn.ExportAnnot)) // Explicit entry point
   }
 
   def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs =
