@@ -15,38 +15,31 @@ class DeadCodeElimination extends MiniPhaseTransform {
 
   def phaseName: String = "dce"
 
-  private var reachableSet: Set[Symbol] = _
-  private var reachableClassesSet: Set[Symbol] = _
-  private var classOfs: Set[Symbol] = _
-  private var keepAfter: BuildCallGraph = _
+  private var callGraph: CallGraph = _
+  private var buildCallGraphPhase: BuildCallGraph = _
   private var exception: Tree = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    keepAfter = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
-    val callGraph = keepAfter.getCallGraph
-    reachableSet = callGraph.reachableMethods.map(x => x.call.termSymbol)
-    reachableClassesSet = callGraph.reachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)
-    classOfs = callGraph.classOfs
+    buildCallGraphPhase = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
+    callGraph = buildCallGraphPhase.getCallGraph
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
     this
   }
 
   override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-    reachableSet = null
+    callGraph = null
     tree
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    val keepAsNew = sym.initial.validFor.firstPhaseId > keepAfter.period.phaseId
-    if (sym.isConstructor || keepAsNew || reachableSet.contains(sym)) tree
+    if (keepAsNew(sym) || sym.isConstructor || callGraph.isReachableMethod(sym)) tree
     else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    val keepAsNew = sym.initial.validFor.firstPhaseId > keepAfter.period.phaseId
-    if (keepAsNew || reachableClassesSet(sym) || classOfs(sym)) tree
+    if (keepAsNew(sym) || callGraph.isReachableClass(sym) || callGraph.isReachableClassOf(sym)) tree
     else tpd.EmptyTree
   }
 
@@ -56,4 +49,7 @@ class DeadCodeElimination extends MiniPhaseTransform {
 //    if (!tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
 //    else exception.ensureConforms(tpe)
 //  }
+
+  private def keepAsNew(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.initial.validFor.firstPhaseId > buildCallGraphPhase.period.phaseId
 }
