@@ -1079,7 +1079,8 @@ object Parsers {
             if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument", uscoreStart)
             Typed(t, atPos(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           } else {
-            syntaxErrorOrIncomplete("`*' expected"); t
+            syntaxErrorOrIncomplete(IncorrectRepeatedParameterSyntax())
+            t
           }
         case AT if location != Location.InPattern =>
           (t /: annotations())(Annotated)
