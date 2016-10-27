@@ -1,10 +1,10 @@
 
 object Test {
   def main(args: Array[String]): Unit = {
-    var b = true
+    var i = 0
     do {
-      b = false
-    } while (b)
-    System.out.println(42)
+      System.out.println(i)
+      i += 1
+    } while (i < 5)
   }
 }

@@ -3,10 +3,10 @@ package transform
 package linker
 
 import scala.language.postfixOps
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.TreeTransforms._
 
@@ -35,7 +35,7 @@ class DeadCodeElimination extends MiniPhaseTransform {
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    if (keepAsNew(sym) || sym.isConstructor || callGraph.isReachableMethod(sym)) tree
+    if (sym.is(Label) || keepAsNew(sym) || sym.isConstructor || callGraph.isReachableMethod(sym)) tree
     else {
       assert(!sym.hasAnnotation(exportAnnotation))
       tpd.cpy.DefDef(tree)(rhs = exception)
