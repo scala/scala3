@@ -2,7 +2,7 @@ package dotty.tools.dotc.transform.linker
 
 import scala.collection.{immutable, mutable}
 
-final class WorkList[A] {
+class WorkList[A] {
   private val currentReachableItems = mutable.Set[A]()
   private val newReachableItems = mutable.Set[A]()
 
