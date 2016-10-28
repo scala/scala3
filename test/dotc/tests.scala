@@ -249,7 +249,7 @@ class tests extends CompilerTest {
       dotcDir + "config/PathResolver.scala"
     ), List(/* "-Ylog:frontend", */ "-Xprompt") ++ staleSymbolError ++ twice)
 
-  val javaDir = "./tests/pos/java-interop/"
+  val javaDir = "./tests/pos-java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 
