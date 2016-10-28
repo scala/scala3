@@ -1,3 +1,5 @@
+package zoo
+
 object Test {
 trait FoodStuff
 trait Meat extends FoodStuff {
