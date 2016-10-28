@@ -207,7 +207,7 @@ class tests extends CompilerTest {
   def dottyBootedLib = compileDir(libDir, ".")(allowDeepSubtypes) // note the -deep argument
 
   // Not a junit test anymore since it is order dependent
-  @Test def dottyDependsOnBootedLib = compileDir(dottyDir, ".")(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".")(allowDeepSubtypes) // note the -deep argument
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
