@@ -13,7 +13,7 @@ object DottyBuild extends Build {
   val baseVersion = "0.1"
   val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 
-  val jenkinsMemLimit = List("-Xmx1300m")
+  val jenkinsMemLimit = List("-Xmx1500m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
 
