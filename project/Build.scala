@@ -26,6 +26,8 @@ object DottyBuild extends Build {
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
+  lazy val packageAll = taskKey[Unit]("Package everything needed to run tests")
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
@@ -115,6 +117,14 @@ object DottyBuild extends Build {
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
+
+      packageAll := {
+        val p1 = (packageBin in (`dotty-interfaces`, Compile)).value
+        val p2 = (packageBin in Compile).value
+        val p3 = (packageBin in (`dotty-library`, Compile)).value
+        val p4 = (packageBin in Test).value
+      },
+
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
       testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
@@ -189,7 +199,8 @@ object DottyBuild extends Build {
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+      // packageAll should always be run before tests
+      javaOptions <++= (dependencyClasspath in Runtime, packageAll) map { (attList, _) =>
         // put needed dependencies on classpath:
         val path = for {
           file <- attList.map(_.data)
@@ -221,13 +232,6 @@ object DottyBuild extends Build {
       }
     ).
     settings(
-      addCommandAlias(
-        "packageAll",
-        ";dotty-interfaces/package" +
-        ";dotty-compiler/package" +
-        ";dotty-library/package" +
-        ";dotty-compiler/test:package"
-      ) ++
       addCommandAlias(
         "partest",
         ";packageAll" +
