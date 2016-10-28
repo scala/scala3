@@ -198,6 +198,9 @@ object DottyBuild extends Build {
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
+      // FIXME: Do something more sensible, like using the Scala bootclasspath
+      run <<= (run in Compile).partialInput(" -usejavacp"),
+
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       // packageAll should always be run before tests
       javaOptions <++= (dependencyClasspath in Runtime, packageAll) map { (attList, _) =>
