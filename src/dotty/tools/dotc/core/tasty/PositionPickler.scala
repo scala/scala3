@@ -79,7 +79,8 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
         }
         //else if (x.pos.exists) println(i"skipping $x")
         x match {
-          case x: MemberDef @unchecked => traverse(x.symbol.annotations.map(_.tree))
+          case x: MemberDef @unchecked => 
+            for (ann <- x.symbol.annotations) traverse(ann.tree)
           case _ =>
         }
         traverse(x.productIterator)
