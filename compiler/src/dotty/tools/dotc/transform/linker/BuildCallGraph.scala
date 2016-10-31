@@ -249,6 +249,8 @@ class BuildCallGraph extends Phase {
           case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
             val methodSym = t.meth.meth.symbol.asTerm
             new CallWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs, caller, callee) :: Nil
+          case AndType(tp1, tp2) =>
+            dispatchCalls(tp1).toSet.intersect(dispatchCalls(tp2).toSet)
           case _ =>
             // without casts
             val direct =
@@ -387,10 +389,12 @@ class BuildCallGraph extends Phase {
             currentOwner = currentOwner.owner.enclosingClass
           }
           if (currentThis.derivesFrom(thisType.cls)) {
-            val fullThisType = AndType.apply(currentThis, thisType.tref)
-            if (calleeSymbol.is(Private))
+            if (calleeSymbol.is(Private)) {
               new CallWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
-            else dispatchCalls(propagateTargs(fullThisType))
+            } else {
+              val fullThisType = AndType.apply(currentThis, thisType.tref)
+              dispatchCalls(propagateTargs(fullThisType))
+            }
           } else {
             dispatchCalls(propagateTargs(receiver.widenDealias))
           }
