@@ -11,9 +11,9 @@ pages.
 
 Index
 -----
-* [Blog](blog/)
 * Usage
     - [Migrating from Scala 2](usage/migrating.md)
+    - [Using Dotty with cbt](usage/cbt-projects.md)
     - [Using Dotty with sbt](usage/sbt-projects.md)
 * Contributing
     - [Getting Started](contributing/getting-started.md) details on how to run
