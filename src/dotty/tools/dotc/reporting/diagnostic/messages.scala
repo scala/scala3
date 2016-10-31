@@ -677,8 +677,8 @@ object messages {
            |
            |$fixedVarInAlternative""".stripMargin
     }
-  }  
-    
+  }
+
   case class TypeParamsTypeExpected(mods: Modifiers, identifier: TermName)(implicit ctx: Context) extends Message(24) {
     val kind = "Syntax"
     
@@ -731,5 +731,21 @@ object messages {
         |""".stripMargin
   }
 
-
+  case class NotALegalFormalParameter(expected: String)(implicit ctx: Context) extends Message(27) {
+    val kind = "Syntax"
+    val msg = s"Not a legal $expected"
+    val explanation = {
+      hl"""|This happens when you have an invalid function parameters.
+           |
+           |For example:
+           |
+           |${"Map(1 => 123)"}
+           |
+           |should be
+           |
+           |${"Map(1 -> 123)"}
+           |
+           |""".stripMargin
+    }
+  }
 }
