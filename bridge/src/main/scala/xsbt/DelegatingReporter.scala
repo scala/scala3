@@ -9,12 +9,13 @@ import reporting._
 import reporting.diagnostic.MessageContainer
 import reporting.diagnostic.messages
 import core.Contexts._
-
 import xsbti.{Maybe, Position}
 
 final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
   with UniqueMessagePositions
-  with HideNonSensicalMessages {
+  with HideNonSensicalMessages
+  with MessageRendering {
+  import MessageContainer._
 
   override def printSummary(implicit ctx: Context): Unit = delegate.printSummary()
 
@@ -25,36 +26,23 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
         case _: messages.Warning => xsbti.Severity.Warn
         case _                   => xsbti.Severity.Info
       }
-    val pos =
-      if (cont.pos.exists) Some(cont.pos)
-      else None
-
-    val file =
-      if (cont.pos.source.file.exists) Option(cont.pos.source.file.file)
-      else None
-
-    val offset0 = pos.map(_.point)
 
     val position = new Position {
-      def line: Maybe[Integer] = maybe(pos.map(_.line))
-      def lineContent: String = pos.map(_.lineContent).getOrElse("")
-      def offset: Maybe[Integer] = maybeInt(offset0)
-      def pointer: Maybe[Integer] = offset
-      def pointerSpace: Maybe[String] = maybe(offset0.map(" " * _))
-      def sourceFile: Maybe[java.io.File] = maybe(file)
-      def sourcePath: Maybe[String] = maybe(file.map(_.getPath))
+      def line: Maybe[Integer] = Maybe.nothing()
+      def lineContent: String = ""
+      def offset: Maybe[Integer] = Maybe.nothing()
+      def pointer: Maybe[Integer] = Maybe.nothing()
+      def pointerSpace: Maybe[String] = Maybe.nothing()
+      def sourceFile: Maybe[java.io.File] = Maybe.nothing()
+      def sourcePath: Maybe[String] = Maybe.nothing()
     }
 
-    delegate.log(position, cont.message, severity)
-  }
+    val sb = new StringBuilder()
+    sb.append(messageAndPos(cont.contained, cont.pos, diagnosticLevel(cont)))
+    if (ctx.shouldExplain(cont) && cont.contained.explanation.nonEmpty) {
+      sb.append(explanation(cont.contained))
+    }
 
-  private[this] def maybe[T](opt: Option[T]): Maybe[T] = opt match {
-    case None => Maybe.nothing[T]
-    case Some(s) => Maybe.just[T](s)
-  }
-  import java.lang.{ Integer => I }
-  private[this] def maybeInt(opt: Option[Int]): Maybe[I] = opt match {
-    case None => Maybe.nothing[I]
-    case Some(s) => Maybe.just[I](s)
+    delegate.log(position, sb.toString(), severity)
   }
 }
