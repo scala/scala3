@@ -266,18 +266,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               registerSym(start, sym)
               TypeRef.withFixedSym(NoPrefix, sym.name, sym)
-            case LAMBDAtype =>
+            case POLYtype =>
               val (rawNames, paramReader) = readNamesSkipParams
               val (variances, paramNames) = rawNames
                 .map(name => (prefixToVariance(name.head), name.tail.toTypeName)).unzip
               val result = PolyType(paramNames, variances)(
-                pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
-                pt => readType())
-              goto(end)
-              result
-            case POLYtype =>
-              val (names, paramReader) = readNamesSkipParams
-              val result = PolyType(names.map(_.toTypeName))(
                 pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
                 pt => readType())
               goto(end)
