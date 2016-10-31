@@ -139,12 +139,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
-                  LAMBDAtype     Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
-                  POLYtype       Length result_Type NamesTypes      // needed for refinements
+                  POLYtype       Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
-  NamesTypes    = ParamType*
+  NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
   Modifier      = PRIVATE
@@ -325,9 +324,8 @@ object TastyFormat {
   final val ORtype = 172
   final val METHODtype = 174
   final val POLYtype = 175
-  final val LAMBDAtype = 176
-  final val PARAMtype = 177
-  final val ANNOTATION = 178
+  final val PARAMtype = 176
+  final val ANNOTATION = 177
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -489,7 +487,7 @@ object TastyFormat {
     case PROTECTEDqualified => "PROTECTEDqualified"
   }
 
-  /** @return If non-negative, the number of leading references of a length/trees entry.
+  /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
    *          If negative, minus the number of leading non-reference trees.
    */
   def numRefs(tag: Int) = tag match {
