@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, NotDefinedHereDenotation }
+import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
 import Names.{Name, PreName}
 import Names.TypeName
@@ -131,16 +131,9 @@ object Denotations {
      */
     def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): Denotation
 
-    /** The variant of this denotation that's current in the given context, or
-     *  `NotDefinedHereDenotation` if this denotation does not exist at current phase, but
-     *  is defined elsewhere in this run.
-     */
-    def currentIfExists(implicit ctx: Context): Denotation
-
     /** The variant of this denotation that's current in the given context.
-     *  If no such denotation exists: If Mode.FutureDefs is set, the
-     *  denotation with each alternative at its first point of definition,
-     *  otherwise a `NotDefinedHere` exception is thrown.
+     *  If no such denotation exists, returns the denotation with each alternative 
+     *  at its first point of definition.
      */
     def current(implicit ctx: Context): Denotation
 
@@ -569,8 +562,6 @@ object Denotations {
     final def signature(implicit ctx: Context) = Signature.OverloadedSignature
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
-    def currentIfExists(implicit ctx: Context): Denotation =
-      derivedMultiDenotation(denot1.currentIfExists, denot2.currentIfExists)
     def current(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
@@ -765,7 +756,7 @@ object Denotations {
      *  is brought forward to be valid in the new runId. Otherwise
      *  the symbol is stale, which constitutes an internal error.
      */
-    def currentIfExists(implicit ctx: Context): SingleDenotation = {
+    def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
       if (valid.code <= 0) {
@@ -839,23 +830,13 @@ object Denotations {
             // performance: Test setup: Compile everything in dotc and immediate subdirectories
             // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
             cnt += 1
-            if (cnt > MaxPossiblePhaseId) return NotDefinedHereDenotation
+            if (cnt > MaxPossiblePhaseId)
+              return current(ctx.withPhase(coveredInterval.firstPhaseId))
           }
           cur
         }
       }
     }
-
-    def current(implicit ctx: Context): SingleDenotation = {
-      val d = currentIfExists
-      if (d ne NotDefinedHereDenotation) d else currentNoDefinedHere
-    }
-
-    private def currentNoDefinedHere(implicit ctx: Context): SingleDenotation =
-      if (ctx.mode is Mode.FutureDefsOK)
-        current(ctx.withPhase(coveredInterval.firstPhaseId))
-      else
-        throw new NotDefinedHere(demandOutsideDefinedMsg)
 
     private def demandOutsideDefinedMsg(implicit ctx: Context): String =
       s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
@@ -1231,11 +1212,6 @@ object Denotations {
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
     util.Stats.record("stale symbol")
-    override def getMessage() = msg
-  }
-
-  class NotDefinedHere(msg: => String) extends Exception {
-    util.Stats.record("not defined here")
     override def getMessage() = msg
   }
 }

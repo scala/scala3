@@ -645,21 +645,10 @@ object SymDenotations {
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) = {
-        def test(implicit ctx: Context) =
-          ctx.owner.isContainedIn(boundary) &&
-            (!(this is JavaDefined) || // disregard package nesting for Java
-               ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
-        try test
-        catch {
-          // It might be we are in a definition whose symbol is not defined at the
-          // period where the test is made. Retry with FutureDefsOK. The reason
-          // for not doing this outright is speed. We would like to avoid
-          // creating a new context object each time we call accessWithin.
-          // Note that the exception should be thrown only infrequently.
-          case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
-        }
-      }
+      def accessWithin(boundary: Symbol) =
+        ctx.owner.isContainedIn(boundary) &&
+          (!(this is JavaDefined) || // disregard package nesting for Java
+             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -1872,7 +1861,6 @@ object SymDenotations {
   }
 
   @sharable val NoDenotation = new NoDenotation
-  @sharable val NotDefinedHereDenotation = new NoDenotation
 
   // ---- Completion --------------------------------------------------------
 

@@ -647,21 +647,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def rawowner: Symbol = {
       originalOwner
     }
-    def originalOwner: Symbol = {
+    def originalOwner: Symbol =
       // used to populate the EnclosingMethod attribute.
       // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-      try {
-        if (sym.exists) {
-          val original = toDenot(sym).initial
-          val validity = original.validFor
-          val shiftedContext = ctx.withPhase(validity.phaseId)
-          val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
-          r
-        } else NoSymbol
-      } catch {
-        case e: NotDefinedHere => NoSymbol // todo: do we have a method to tests this?
-      }
-    }
+      if (sym.exists) {
+        val original = toDenot(sym).initial
+        val validity = original.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
+        r
+      } else NoSymbol
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
