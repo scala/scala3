@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 
 class DeadCodeElimination extends MiniPhaseTransform {
@@ -35,8 +36,13 @@ class DeadCodeElimination extends MiniPhaseTransform {
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    if (sym.is(Label) || keepAsNew(sym) || sym.isConstructor || callGraph.isReachableMethod(sym)) tree
-    else {
+    def isPotentiallyReachable = {
+      sym.is(Label) || sym.isConstructor || keepAsNew(sym) || callGraph.isReachableMethod(sym) ||
+        (sym.isSetter && callGraph.isReachableMethod(sym.getter))
+    }
+    if (isPotentiallyReachable) {
+      tree
+    } else {
       assert(!sym.hasAnnotation(exportAnnotation))
       tpd.cpy.DefDef(tree)(rhs = exception)
     }
