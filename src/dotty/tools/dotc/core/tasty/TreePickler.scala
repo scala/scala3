@@ -49,6 +49,10 @@ class TreePickler(pickler: TastyPickler) {
       case None =>
     }
   }
+  
+  def rhs(tdef: TypeDef)(implicit ctx: Context) = 
+    if (tdef.symbol.isClass) tdef.rhs
+    else TypeTree(tdef.symbol.info).withPos(tdef.rhs.pos)
 
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
   private def pickleName(name: TastyName): Unit = writeNat(nameIndex(name).index)
@@ -332,7 +336,7 @@ class TreePickler(pickler: TastyPickler) {
     tree match {
       case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
       case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
-      case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)
+      case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, rhs(tree))
     }
   }
 
@@ -474,7 +478,7 @@ class TreePickler(pickler: TastyPickler) {
         }
         pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
       case tree: TypeDef =>
-        pickleDef(TYPEDEF, tree.symbol, tree.rhs)
+        pickleDef(TYPEDEF, tree.symbol, rhs(tree))
       case tree: Template =>
         registerDef(tree.symbol)
         writeByte(TEMPLATE)

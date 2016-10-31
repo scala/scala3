@@ -223,26 +223,23 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: TypeDef =>
           transformMemberDef(tree)
           val sym = tree.symbol
-          val tree1 =
-            if (sym.isClass) {
-              if (sym.owner.is(Package) &&
-                  ctx.compilationUnit.source.exists &&
-                  sym != defn.SourceFileAnnot)
-                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+          if (sym.isClass) {
+            // Add SourceFile annotation to top-level classes
+            if (sym.owner.is(Package) &&
+              ctx.compilationUnit.source.exists &&
+              sym != defn.SourceFileAnnot)
+              sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
 
-              if (!sym.isAnonymousClass) // ignore anonymous class
-                for (parent <- sym.asClass.classInfo.classParents) {
-                  val pclazz = parent.classSymbol
-                  if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
-                }
+            // Add Child annotation to sealed parents unless current class is anonymous
+            if (!sym.isAnonymousClass) // ignore anonymous class
+              for (parent <- sym.asClass.classInfo.classParents) {
+                val pclazz = parent.classSymbol
+                if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
+              }
 
-              tree
-            }
-            else {
-              //Checking.typeChecker.traverse(tree.rhs)
-              cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
-            }
-          super.transform(tree1)
+            tree
+          }
+          super.transform(tree)
         case tree: MemberDef =>
           transformMemberDef(tree)
           super.transform(tree)
