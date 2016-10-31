@@ -1,5 +1,5 @@
 title: Dotty Documentation
-baseurl: "/"
+baseurl: ""
 theme: minima
 gems:
     - jekyll-toc
