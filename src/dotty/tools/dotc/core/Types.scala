@@ -1441,10 +1441,7 @@ object Types {
             }
           case d =>
             if (d.validFor.runId != ctx.period.runId) loadDenot
-            else {
-              val newd = d.currentIfExists
-              if (newd ne NotDefinedHereDenotation) newd else loadDenot
-            }
+            else d.current
         }
         if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
         else if (d.exists) {

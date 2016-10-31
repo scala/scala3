@@ -604,9 +604,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           // all potentially stored subpat binders
           val potentiallyStoredBinders = stored.unzip._1.toSet
           // compute intersection of all symbols in the tree `in` and all potentially stored subpat binders
-          def computeBinders(implicit ctx: Context) = new DeepFolder[Unit]((x: Unit, t:Tree) =>
+          new DeepFolder[Unit]((x: Unit, t: Tree) =>
             if (potentiallyStoredBinders(t.symbol)) usedBinders += t.symbol).apply((), in)
-          computeBinders(ctx.addMode(Mode.FutureDefsOK)) // trigged a NotDefinedHere on $outer when compiler dotc/printing
 
           if (usedBinders.isEmpty) in
           else {

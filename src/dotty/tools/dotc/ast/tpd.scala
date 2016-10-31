@@ -295,7 +295,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // ------ Making references ------------------------------------------------------
 
   def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = {
-    def test(implicit ctx: Context) = tp.prefix match {
+    val typeIsElidable = tp.prefix match {
       case NoPrefix =>
         true
       case pre: ThisType =>
@@ -309,10 +309,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         false
     }
-    try test || tp.symbol.is(JavaStatic) || tp.symbol.hasAnnotation(defn.ScalaStaticAnnot)
-    catch { // See remark in SymDenotations#accessWithin
-      case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
-    }
+    typeIsElidable || 
+    tp.symbol.is(JavaStatic) || 
+    tp.symbol.hasAnnotation(defn.ScalaStaticAnnot)
   }
 
   def needsSelect(tp: Type)(implicit ctx: Context) = tp match {
@@ -605,7 +604,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           loop(from.owner, from :: froms, to :: tos)
         else {
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos)(ctx.addMode(Mode.FutureDefsOK)).apply(tree)
+          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
         }
       }
       loop(from, Nil, to :: Nil)
@@ -631,7 +630,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             traverseChildren(tree)
         }
       }
-      traverser.traverse(tree)(ctx.addMode(Mode.FutureDefsOK))
+      traverser.traverse(tree)
       tree
     }
 

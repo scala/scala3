@@ -107,7 +107,7 @@ object TypeErasure {
 
   /** The current context with a phase no later than erasure */
   private def erasureCtx(implicit ctx: Context) =
-    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase).addMode(Mode.FutureDefsOK) else ctx
+    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *
