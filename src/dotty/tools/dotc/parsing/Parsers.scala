@@ -1742,8 +1742,8 @@ object Parsers {
       if (owner == nme.CONSTRUCTOR && (result.isEmpty || (result.head take 1 exists (_.mods is Implicit)))) {
         in.token match {
           case LBRACKET   => syntaxError("no type parameters allowed here")
-          case EOF        => incompleteInputError("auxiliary constructor needs non-implicit parameter list")
-          case _          => syntaxError("auxiliary constructor needs non-implicit parameter list", start)
+          case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
+          case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), start)
         }
       }
       result
