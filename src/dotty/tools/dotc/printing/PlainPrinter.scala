@@ -55,6 +55,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp.info)
         case tp: LazyRef =>
           homogenize(tp.ref)
+        case HKApply(tycon, args) =>
+          tycon.dealias.appliedTo(args)
         case _ =>
           tp
       }
