@@ -1,6 +1,6 @@
 package dotc
 
-import test._
+import dotty.tools.dotc.CompilerTest
 import org.junit.{Before, Test}
 
 import java.io.{ File => JFile }
