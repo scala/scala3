@@ -1,8 +1,8 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package ast
 
 import org.junit.Test
-import test.DottyTest
 import core.Names._
 import core.Types._
 import core.Symbols._

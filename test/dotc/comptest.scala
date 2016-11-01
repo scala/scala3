@@ -1,6 +1,6 @@
 package dotc
 
-import test._
+import dotty.tools.dotc.CompilerTest
 
 object comptest extends CompilerTest {
 
