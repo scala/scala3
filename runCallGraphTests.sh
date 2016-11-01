@@ -22,11 +22,6 @@ function compile() {
   jv_srcs=`findJavaSources`
   jv_aux_srcs=`findAuxJavaSources`
 
-  # if there are java sources but no java compilation command, issue a warning
-  if ([ -n "$jv_srcs" ] || [ -n "$jv_aux_srcs" ]) && [ -z "$jv_cmp_cmd" ]; then
-    echo "warning: java sources were found ($jv_srcs) but the java compilation command was no specified (use option -j)" 1>&2
-  fi
-
   # if there are java sources and a java compilation command is given
   if [ -n "$jv_srcs" ] && [ -n "$jv_cmp_cmd" ]; then
     ( dot_compile "$sc_srcs $jv_srcs" && $jv_cmp_cmd $jv_srcs ) > compile-log.txt 2> compile-errors.txt || return 1
@@ -35,20 +30,14 @@ function compile() {
   fi
 
   # if there are auxiliary java sources and a java compilation command is given
-  if [ -n "$jv_aux_srcs" ] && [ -n "$jv_cmp_cmd" ]; then
-    $jv_cmp_cmd $jv_aux_srcs > compile-log.txt 2> compile-errors.txt || return 1
+  if [ -n "$jv_aux_srcs" ]; then
+    javac $jv_aux_srcs -d ./ > compile-log.txt 2> compile-errors.txt || return 1
   fi
 }
 
 function run() {
   dottyr Test > run-log.txt 2> run-errors.txt
 }
-
-if [ $# -ge 2 ] && [ $1 == "-j" ]; then
-  jv_cmp_cmd="$2"; shift; shift
-else
-  jv_cmp_cmd=""
-fi
 
 if [ $# -eq 0 ]; then
   test_dirs=tests/callgraph/*
