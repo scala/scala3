@@ -29,7 +29,7 @@ extends interfaces.SourcePosition {
     source.lineContent(source.lineToOffset(lineNumber))
 
   def beforeAndAfterPoint: (List[Int], List[Int]) =
-    lineOffsets.partition(_ < point)
+    lineOffsets.partition(_ <= point)
 
   /** The column of the position, starting at 0 */
   def column: Int = source.column(point)
