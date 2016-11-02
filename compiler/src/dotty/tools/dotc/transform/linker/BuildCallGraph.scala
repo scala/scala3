@@ -245,7 +245,14 @@ class BuildCallGraph extends Phase {
       def dispatchCalls(receiverType: Type): Traversable[CallWithContext] = {
         receiverType match {
           case t: PreciseType =>
-            new CallWithContext(t.underlying.select(calleeSymbol.name), targs, args, outerTargs, caller, callee) :: Nil
+            def preciseSelectCall = {
+              val selectByName = t.underlying.select(calleeSymbol.name)
+              val call = selectByName.asInstanceOf[TermRef].denot.suchThat(x =>
+                  x == calleeSymbol || x.overriddenSymbol(calleeSymbol.owner.asClass) == calleeSymbol).symbol
+              assert(call.exists)
+              t.underlying.select(call)
+            }
+            new CallWithContext(preciseSelectCall, targs, args, outerTargs, caller, callee) :: Nil
           case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
             val methodSym = t.meth.meth.symbol.asTerm
             new CallWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs, caller, callee) :: Nil
