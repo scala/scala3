@@ -179,7 +179,7 @@ object Decorators {
 
     /** Formatter that adds syntax highlighting to all interpolated values */
     def hl(args: Any*)(implicit ctx: Context): String =
-      new SyntaxFormatter(sc).assemble(args)
+      new SyntaxFormatter(sc).assemble(args).stripMargin
   }
 }
 

@@ -5,12 +5,10 @@ package diagnostic
 
 import dotc.core._
 import Contexts.Context, Decorators._, Symbols._, Names._, NameOps._, Types._
-import ast.untpd.{Modifiers, ModuleDef}
 import util.{SourceFile, NoSource}
 import util.{SourcePosition, NoSourcePosition}
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
-import dotty.tools.dotc.ast.tpd
 import printing.Highlighting._
 import printing.Formatting
 
@@ -79,8 +77,15 @@ object messages {
     *  EmptyCatchBlock(tree).warning(pos) // res: Warning
     *  ```
     */
-  import dotc.ast.Trees._
-  import dotc.ast.untpd
+  import ast.Trees._
+  import ast.untpd
+  import ast.tpd
+
+  /** Helper methods for messages */
+  def implicitClassRestrictionsText(implicit ctx: Context) =
+    hl"""|${NoColor("For a full list of restrictions on implicit classes visit")}
+         |${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}"""
+
 
   // Syntax Errors ---------------------------------------------------------- //
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: Int)(implicit ctx: Context)
@@ -115,7 +120,7 @@ object messages {
            |$code2
            |
            |It is recommended to use the ${"NonFatal"} extractor to catch all exceptions as it
-           |correctly handles transfer functions like ${"return"}.""".stripMargin
+           |correctly handles transfer functions like ${"return"}."""
     }
   }
 
@@ -124,7 +129,7 @@ object messages {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
-           |adding a case like - `${"case e: Exception =>"}` to the block""".stripMargin
+           |adding a case like - `${"case e: Exception =>"}` to the block"""
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
@@ -132,7 +137,7 @@ object messages {
     val kind = "Syntax"
     val msg =
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
-           |its body in a block; no exceptions are handled.""".stripMargin
+           |its body in a block; no exceptions are handled."""
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
@@ -143,7 +148,7 @@ object messages {
     val explanation =
       hl"""|Dotty introduces intersection types - `&' types. These replace the
            |use of the ${"with"} keyword. There are a few differences in
-           |semantics between intersection types and using `${"with"}'.""".stripMargin
+           |semantics between intersection types and using `${"with"}'."""
   }
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
@@ -155,7 +160,7 @@ object messages {
     val explanation =
       hl"""|${cdef.name} must have at least one parameter list, if you would rather
            |have a singleton representation of ${cdef.name}, use a "${"case object"}".
-           |Or, add an explicit `()' as a parameter list to ${cdef.name}.""".stripMargin
+           |Or, add an explicit `()' as a parameter list to ${cdef.name}."""
   }
 
 
@@ -183,7 +188,7 @@ object messages {
            |
            |$caseDef
            |
-           |`${bind.name}` is not unique. Rename one of the bound variables!""".stripMargin
+           |`${bind.name}` is not unique. Rename one of the bound variables!"""
     }
   }
 
@@ -194,7 +199,7 @@ object messages {
 
     val explanation = {
       hl"""|An identifier for `$treeKind$name` is missing. This means that something
-           |has either been misspelt or you're forgetting an import""".stripMargin
+           |has either been misspelt or you're forgetting an import"""
     }
   }
 
@@ -277,70 +282,69 @@ object messages {
     val explanation = ""
   }
 
-  case class EarlyDefinitionsNotSupported()(implicit ctx:Context) extends Message(9) {
+  case class EarlyDefinitionsNotSupported()(implicit ctx:Context)
+  extends Message(9) {
     val kind = "Syntax"
-
     val msg = "early definitions are not supported; use trait parameters instead"
 
-    val code1 =
-      """|trait Logging {
-         |  val f: File
-         |  f.open()
-         |  onExit(f.close())
-         |  def log(msg: String) = f.write(msg)
-         |}
-         |
-         |class B extends Logging {
-         |  val f = new File("log.data") // triggers a null pointer exception
-         |}
-         |
-         |class C extends {
-         |  val f = new File("log.data") // early definition gets around the null pointer exception
-         |} with Logging""".stripMargin
+    val explanation = {
+      val code1 =
+        """|trait Logging {
+           |  val f: File
+           |  f.open()
+           |  onExit(f.close())
+           |  def log(msg: String) = f.write(msg)
+           |}
+           |
+           |class B extends Logging {
+           |  val f = new File("log.data") // triggers a NullPointerException
+           |}
+           |
+           |// early definition gets around the NullPointerException
+           |class C extends {
+           |  val f = new File("log.data")
+           |} with Logging""".stripMargin
 
-    val code2 =
-      """|trait Logging(f: File) {
-         |  f.open()
-         |  onExit(f.close())
-         |  def log(msg: String) = f.write(msg)
-         |}
-         |
-         |class C extends Logging(new File("log.data"))""".stripMargin
+      val code2 =
+        """|trait Logging(f: File) {
+           |  f.open()
+           |  onExit(f.close())
+           |  def log(msg: String) = f.write(msg)
+           |}
+           |
+           |class C extends Logging(new File("log.data"))""".stripMargin
 
-    val explanation =
-      hl"""Earlier versions of Scala did not support trait parameters and "early definitions" (also known as "early initializers")
-        |were used as an alternative.
-        |
-        |Example of old syntax:
-        |
-        |$code1
-        |
-        |The above code can now be written as:
-        |
-        |$code2
-        |""".stripMargin
+      hl"""|Earlier versions of Scala did not support trait parameters and "early
+           |definitions" (also known as "early initializers") were used as an alternative.
+           |
+           |Example of old syntax:
+           |
+           |$code1
+           |
+           |The above code can now be written as:
+           |
+           |$code2
+           |"""
+    }
   }
 
-  def implicitClassRestrictionsText(implicit ctx: Context) =
-    hl"""${NoColor("For a full list of restrictions on implicit classes visit")}
-      |  ${Blue("http://docs.scala-lang.org/overviews/core/implicit-classes.html")}""".stripMargin
-
   case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
-    extends Message(10) {
+  extends Message(10) {
     val kind = "Syntax"
-
-    val msg = hl"""|An ${"implicit class"} may not be top-level"""
+    val msg = hl"""An ${"implicit class"} may not be top-level"""
 
     val explanation = {
       val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
-      val exampleArgs = constr0.vparamss(0).map(_.withMods(Modifiers()).show).mkString(", ")
+      val exampleArgs =
+        constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
       def defHasBody[T] = impl.body.exists(!_.isEmpty)
       val exampleBody = if (defHasBody) "{\n ...\n }" else ""
-      hl"""|There may not be any method, member or object in scope with the same name as the
-           |implicit class and a case class automatically gets a companion object with the same name
-           |created by the compiler which would cause a naming conflict if it were allowed.
+      hl"""|There may not be any method, member or object in scope with the same name as
+           |the implicit class and a case class automatically gets a companion object with
+           |the same name created by the compiler which would cause a naming conflict if it
+           |were allowed.
            |
-           |""".stripMargin + implicitClassRestrictionsText + hl"""|
+           |""" + implicitClassRestrictionsText + hl"""|
            |
            |To resolve the conflict declare ${cdef.name} inside of an ${"object"} then import the class
            |from the object at the use site if needed, for example:
@@ -350,68 +354,65 @@ object messages {
            |}
            |
            |// At the use site:
-           |import Implicits.${cdef.name}""".stripMargin
+           |import Implicits.${cdef.name}"""
     }
   }
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
-    extends Message(11) {
+  extends Message(11) {
     val kind = "Syntax"
-
-    val msg = hl"""|A ${"case class"} may not be defined as ${"implicit"}"""
+    val msg = hl"""A ${"case class"} may not be defined as ${"implicit"}"""
 
     val explanation =
       hl"""|implicit classes may not be case classes. Instead use a plain class:
-           |  example: implicit class ${cdef.name}...
            |
-           |""".stripMargin + implicitClassRestrictionsText
+           |implicit class ${cdef.name}...
+           |
+           |""" + implicitClassRestrictionsText
   }
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
-    extends Message(12) {
+  extends Message(12) {
     val kind = "Syntax"
-
-    val msg = hl"""|${"objects"} must not have a ${"self type"}"""
+    val msg = hl"""${"object"}s must not have a self ${"type"}"""
 
     val explanation = {
-      val ModuleDef(name, tmpl) = mdef
+      val untpd.ModuleDef(name, tmpl) = mdef
       val ValDef(_, selfTpt, _) = tmpl.self
-      hl"""|objects must not have a ${"self type"}:
+      hl"""|${"object"}s must not have a self ${"type"}:
            |
            |Consider these alternative solutions:
            |  - Create a trait or a class instead of an object
            |  - Let the object extend a trait containing the self type:
-           |      example: object $name extends ${selfTpt.show}""".stripMargin
+           |
+           |    object $name extends ${selfTpt.show}"""
     }
   }
 
   case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
-    extends Message(13) {
+  extends Message(13) {
     import Definitions.MaxTupleArity
     val kind = "Syntax"
-
-    val msg = hl"""|A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
+    val msg = hl"""A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
 
     val explanation = {
       val members = ts.map(_.showSummary).grouped(MaxTupleArity)
       val nestedRepresentation = members.map(_.mkString(", ")).mkString(")(")
       hl"""|This restriction will be removed in the future.
-           |Currently it is possible to use nested tuples when more than ${MaxTupleArity} are needed, for example:
+           |Currently it is possible to use nested tuples when more than $MaxTupleArity are needed, for example:
            |
-           |  ((${nestedRepresentation}))""".stripMargin
+           |((${nestedRepresentation}))"""
     }
   }
 
-  case class RepeatedModifier(modifier: String)(implicit ctx:Context) extends Message(14) {
+  case class RepeatedModifier(modifier: String)(implicit ctx:Context)
+  extends Message(14) {
     val kind = "Syntax"
-
     val msg = hl"""repeated modifier $modifier"""
 
-    val code1 = hl"""private private val Origin = Point(0, 0)"""
-
-    val code2 = hl"""private final val Origin = Point(0, 0)"""
-
-    val explanation =
+    val explanation = {
+      val code1 = hl"""private private val Origin = Point(0, 0)"""
+      val code2 = hl"""private final val Origin = Point(0, 0)"""
       hl"""This happens when you accidentally specify the same modifier twice.
            |
            |Example:
@@ -422,69 +423,63 @@ object messages {
            |
            |$code2
            |
-           |""".stripMargin
+           |"""
+    }
   }
 
-  case class InterpolatedStringError()(implicit ctx:Context) extends Message(15) {
+  case class InterpolatedStringError()(implicit ctx:Context)
+  extends Message(15) {
     val kind = "Syntax"
-
     val msg = "error in interpolated string: identifier or block expected"
-
-    val code1 = "s\"$new Point(0, 0)\""
-
-    val code2 = "s\"${new Point(0, 0)}\""
-
-    val explanation =
-      hl"""
-         |This usually happens when you forget to place your expressions inside curly braces.
-         |
-         |$code1
-         |
-         |should be written as
-         |
-         |$code2
-         |
-         |""".stripMargin
-
+    val explanation = {
+      val code1 = "s\"$new Point(0, 0)\""
+      val code2 = "s\"${new Point(0, 0)}\""
+      hl"""|This usually happens when you forget to place your expressions inside curly braces.
+           |
+           |$code1
+           |
+           |should be written as
+           |
+           |$code2
+           |"""
+    }
   }
 
   case class UnboundPlaceholderParameter()(implicit ctx:Context)
-    extends Message(16) {
+  extends Message(16) {
     val kind = "Syntax"
-
-    val msg = hl"unbound placeholder parameter; incorrect use of `_`"
-
+    val msg = "unbound placeholder parameter; incorrect use of `_`"
     val explanation =
-      hl"""The `_` placeholder syntax was used where it could not be bound.
-        |Consider explicitly writing the variable binding.
-        |
-        |This can be done by replacing `_` with a variable (eg. `x`)
-        |and adding ${"x =>"} where applicable.
-        |
-        |Example before:
-        |
-        |${"{ _ }"}
-        |
-        |Example after:
-        |
-        |${"x => { x }"}
-        |
-        |Another common occurrence for this error is defining a val with `_`:
-        |
-        |${"val a = _"}
-        |
-        |But this val definition isn't very useful, it can never be assigned
-        |another value. And thus will always remain uninitialized.
-        |Consider replacing the ${"val"} with ${"var"}:
-        |
-        |${"var a = _"}
-        |
-        |Note that this use of `_` is not placeholder syntax,
-        |but an uninitialized var definition
-        """.stripMargin
+      hl"""|The `_` placeholder syntax was used where it could not be bound.
+           |Consider explicitly writing the variable binding.
+           |
+           |This can be done by replacing `_` with a variable (eg. `x`)
+           |and adding ${"x =>"} where applicable.
+           |
+           |Example before:
+           |
+           |${"{ _ }"}
+           |
+           |Example after:
+           |
+           |${"x => { x }"}
+           |
+           |Another common occurrence for this error is defining a val with `_`:
+           |
+           |${"val a = _"}
+           |
+           |But this val definition isn't very useful, it can never be assigned
+           |another value. And thus will always remain uninitialized.
+           |Consider replacing the ${"val"} with ${"var"}:
+           |
+           |${"var a = _"}
+           |
+           |Note that this use of `_` is not placeholder syntax,
+           |but an uninitialized var definition"""
   }
 
-  case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context) extends Message(17) {
+  case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
+  extends Message(17) {
     val kind = "Syntax"
     val msg = "illegal start of simple expression"
     val explanation = {
@@ -498,7 +493,7 @@ object messages {
            |- Object creation
            |- Literal
            |
-           |which cannot start with ${Red(illegalToken)}.""".stripMargin
+           |which cannot start with ${Red(illegalToken)}."""
     }
   }
 
@@ -506,21 +501,22 @@ object messages {
     val kind = "Syntax"
     val msg = "missing return type"
     val explanation =
-      hl"""An abstract declaration must have a return type. For example:
-        |
-        |trait Shape {
-        |  def area: Double // abstract declaration returning a ${"Double"}
-        |}""".stripMargin
+      hl"""|An abstract declaration must have a return type. For example:
+           |
+           |trait Shape {
+           |  def area: Double // abstract declaration returning a ${"Double"}
+           |}"""
   }
 
-  case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context) extends Message(19) {
+  case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
+  extends Message(19) {
     val kind = "Syntax"
     val msg = hl"${"yield"} or ${"do"} expected"
 
     val explanation =
-      hl"""When the enumerators in a for comprehension are not placed in parentheses or
-           |braces, a ${"do"} or ${"yield"} statement is required after the enumerators section
-           |of the comprehension.
+      hl"""|When the enumerators in a for comprehension are not placed in parentheses or
+           |braces, a ${"do"} or ${"yield"} statement is required after the enumerators
+           |section of the comprehension.
            |
            |You can save some keystrokes by omitting the parentheses and writing
            |
@@ -533,59 +529,61 @@ object messages {
            |but the ${"yield"} keyword is still required.
            |
            |For comprehensions that simply perform a side effect without yielding anything
-           |can also be written without parentheses but a ${"do"} keyword has to be included.
-           |For example,
+           |can also be written without parentheses but a ${"do"} keyword has to be
+           |included. For example,
            |
            |${"for (i <- 1 to 3) println(i)"}
            |
-           |  can be written as
+           |can be written as
            |
            |${"for i <- 1 to 3 do println(i) // notice the 'do' keyword"}
            |
-           |""".stripMargin
+           |"""
   }
 
-  case class ProperDefinitionNotFound()(implicit ctx: Context) extends Message(20) {
+  case class ProperDefinitionNotFound()(implicit ctx: Context)
+  extends Message(20) {
     val kind = "Definition Not Found"
-    val msg = hl"""|Proper definition was not found in ${"@usecase"}"""
-
-    val noUsecase = "def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That"
-
-    val usecase =
-      """|/** Map from List[A] => List[B]
-        |  *
-        |  * @usecase def map[B](f: A => B): List[B]
-        |  */
-        |def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That""".stripMargin
+    val msg = hl"""Proper definition was not found in ${"@usecase"}"""
 
     val explanation = {
-      hl"""|${"@usecase"} are only supported for ${"def"}s. They exist because with Scala's
+      val noUsecase =
+        "def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That"
+
+      val usecase =
+        """|/** Map from List[A] => List[B]
+           |  *
+           |  * @usecase def map[B](f: A => B): List[B]
+           |  */
+           |def map[B, That](f: A => B)(implicit bf: CanBuildFrom[List[A], B, That]): That
+           |""".stripMargin
+
+      hl"""|Usecases are only supported for ${"def"}s. They exist because with Scala's
            |advanced type-system, we sometimes end up with seemingly scary signatures.
-           |
-           |Let's see an example using the `map`function:
+           |The usage of these methods, however, needs not be - for instance the `map`
+           |function
            |
            |${"List(1, 2, 3).map(2 * _) // res: List(2, 4, 6)"}
            |
-           |It's very straight forward to understand and use, but has such a scary signature:
+           |is easy to understand and use - but has a rather bulky signature:
            |
            |$noUsecase
            |
-           |In order to mitigate this and ease the usage of such functions we have the ${"@usecase"}
+           |to mitigate this and ease the usage of such functions we have the ${"@usecase"}
            |annotation for docstrings. Which can be used like this:
            |
            |$usecase
            |
-           |Now when creating the docs, the method signature is substituted by the
-           |${"@usecase"} with a reader-friendly version. The compiler makes sure that it is valid.
-           |
-           |Because of this, you must use ${"def"} when defining ${"@usecase"}.""".stripMargin
+           |When creating the docs, the signature of the method is substituted by the
+           |usecase and the compiler makes sure that it is valid. Because of this, you're
+           |only allowed to use ${"def"}s when defining usecases."""
     }
   }
 
 
-  case class ByNameParameterNotSupported()(implicit ctx: Context) extends Message(21) {
+  case class ByNameParameterNotSupported()(implicit ctx: Context)
+  extends Message(21) {
     val kind = "Syntax"
-
     val msg = "By-name parameter type not allowed here."
 
     val explanation =
@@ -604,21 +602,26 @@ object messages {
            |
            |And the usage could be as such:
            |${"func(bool => // do something...)"}
-           |""".stripMargin
+           |"""
   }
+
   case class WrongNumberOfArgs(fntpe: Type, argKind: String, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
-    extends Message(22) {
+  extends Message(22) {
     val kind = "Syntax"
-    val expectedCount = expectedArgs.length
-    val actualCount = actual.length
-    val msgPrefix = if (actualCount > expectedCount) "Too many" else "Not enough"
+
+    private val expectedCount = expectedArgs.length
+    private val actualCount = actual.length
+    private val msgPrefix = if (actualCount > expectedCount) "Too many" else "Not enough"
 
     //TODO add def simpleParamName to TypeParamInfo
-    val expectedArgString = fntpe.widen.typeParams.map(_.paramName.unexpandedName.show).mkString("[", ", ", "]")
+    private val expectedArgString = fntpe
+      .widen.typeParams
+      .map(_.paramName.unexpandedName.show)
+      .mkString("[", ", ", "]")
 
-    val actualArgString = actual.map(_.show).mkString("[", ", ", "]")
+    private val actualArgString = actual.map(_.show).mkString("[", ", ", "]")
 
-    val prettyName = fntpe.termSymbol match {
+    private val prettyName = fntpe.termSymbol match {
       case NoSymbol => fntpe.show
       case symbol   => symbol.showFullName
     }
@@ -641,19 +644,17 @@ object messages {
              |into another data type that can contain the number of types you need,
              |In this example one solution would be to use a Tuple:
              |
-             |${tooManyTypeParams}""".stripMargin
+             |${tooManyTypeParams}"""
       else
         hl"""|You have not supplied enough type parameters
-             |If you specify one type parameter then you need to specify every type parameter.""".stripMargin
+             |If you specify one type parameter then you need to specify every type parameter."""
     }
   }
 
   case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
-    extends Message(23) {
+  extends Message(23) {
     val kind = "Syntax"
-
-    val msg = hl"""|Variables are not allowed in alternative patterns"""
-
+    val msg = "Variables are not allowed in alternative patterns"
     val explanation = {
       val varInAlternative =
         """|def g(pair: (Int,Int)): Int = pair match {
@@ -668,43 +669,40 @@ object messages {
            |  case _ => 0
            |}""".stripMargin
 
-      hl"""|Variables are not allowed within alternate pattern matches.
-           |You can workaround this issue by adding additional cases for each alternative.
-           |For example, the illegal function:
+      hl"""|Variables are not allowed within alternate pattern matches. You can workaround
+           |this issue by adding additional cases for each alternative. For example, the
+           |illegal function:
            |
            |$varInAlternative
            |could be implemented by moving each alternative into a separate case:
            |
-           |$fixedVarInAlternative""".stripMargin
+           |$fixedVarInAlternative"""
     }
-  }  
-    
-  case class TypeParamsTypeExpected(mods: Modifiers, identifier: TermName)(implicit ctx: Context) extends Message(24) {
-    val kind = "Syntax"
-    
-    val msg = hl"""Expected ${"type"} keyword for type parameter $identifier"""
-
-    val explanation = hl"""|This happens when you add modifiers like ${"private"} or ${"protected"}
-                           |to your type parameter definition without adding the ${"type"} keyword.
-                           |
-                           |Add ${"type"} to your code, e.g.:
-                           |${s"trait A[${mods.flags} type $identifier]"}
-                           |""".stripMargin
   }
 
-  case class IdentifierExpected(identifier: String)(implicit ctx: Context) extends Message(25) {
+  case class TypeParamsTypeExpected(mods: untpd.Modifiers, identifier: TermName)(implicit ctx: Context)
+  extends Message(24) {
     val kind = "Syntax"
+    val msg = hl"""Expected ${"type"} keyword for type parameter $identifier"""
+    val explanation =
+      hl"""|This happens when you add modifiers like ${"private"} or ${"protected"}
+           |to your type parameter definition without adding the ${"type"} keyword.
+           |
+           |Add ${"type"} to your code, e.g.:
+           |${s"trait A[${mods.flags} type $identifier]"}
+           |"""
+  }
 
+  case class IdentifierExpected(identifier: String)(implicit ctx: Context)
+  extends Message(25) {
+    val kind = "Syntax"
     val msg = "identifier expected"
-
-    val wrongIdentifier = s"def foo: $identifier = {...}"
-
-    val validIdentifier = s"def foo = {...}"
-
     val explanation = {
-      hl"""|A valid identifier expected, but `$identifier` found.
-           |Let the compiler infer the type for you.
-           |For example, instead of:
+      val wrongIdentifier = s"def foo: $identifier = {...}"
+      val validIdentifier = s"def foo = {...}"
+      hl"""|An identifier expected, but `$identifier` found. This could be because
+           |`$identifier` is not a valid identifier. As a workaround, the compiler could
+           |infer the type for you. For example, instead of:
            |
            |$wrongIdentifier
            |
@@ -712,24 +710,23 @@ object messages {
            |
            |$validIdentifier
            |
-           |""".stripMargin
+           |"""
     }
   }
 
-  case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context) extends Message(26) {
+  case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context)
+  extends Message(26) {
     val kind = "Syntax"
     val msg = "auxiliary constructor needs non-implicit parameter list"
     val explanation =
-      hl"""Only the primary constructor is allowed an ${"implicit"} parameter list;
-        |auxiliary constructors need a non-implicit parameter list. When a primary
-        |constructor has an implicit argslist, auxiliary constructors that call the
-        |primary constructor must specify the implicit value.
-        |
-        |To resolve this issue check for:
-        | - forgotten parenthesis on ${"this"} (${"def this() = // ..."})
-        | - auxiliary constructors specify the implicit value
-        |""".stripMargin
+      hl"""|Only the primary constructor is allowed an ${"implicit"} parameter list;
+           |auxiliary constructors need non-implicit parameter lists. When a primary
+           |constructor has an implicit argslist, auxiliary constructors that call the
+           |primary constructor must specify the implicit value.
+           |
+           |To resolve this issue check for:
+           | - forgotten parenthesis on ${"this"} (${"def this() = { ... }"})
+           | - auxiliary constructors specify the implicit value
+           |"""
   }
-
-
 }
