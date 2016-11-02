@@ -6,7 +6,7 @@ import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
 import org.scalameter.{Context, History, currentContext, persistence}
 import org.scalameter.reporting.RegressionReporter.Tester
-import test.CompilerTest
+import dotty.tools.dotc.CompilerTest
 
 import scala.io.Source
 
@@ -46,13 +46,14 @@ object BenchTests extends OnlineRegressionReport {
   implicit val defaultOptions = List("-d", outputDir)
   val scala2mode = List("-language:Scala2")
 
-  val dottyDir  = "./src/dotty/"
+  val dottyDir  = "../compiler/src/dotty/"
 
-  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+  val stdlibFiles = Source.fromFile("../compiler/test/dotc/scala-collections.whitelist", "UTF8").getLines()
     .map(_.trim) // allow identation
     .filter(!_.startsWith("#")) // allow comment lines prefixed by #
     .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
     .filter(_.nonEmpty)
+    .map("." + _)
     .toList
 
   def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)

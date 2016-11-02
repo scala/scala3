@@ -23,7 +23,7 @@ object DPConfig {
    */
   val runJVMOpts = s"-Xms64M -Xmx1024M ${PartestDefaults.javaOpts}"
 
-  val testRoot = (Path(".") / Path("tests") / Path("partest-generated")).toString
+  val testRoot = (Path("..") / Path("tests") / Path("partest-generated")).toString
   val genLog = Path(testRoot) / Path("gen.log")
 
   lazy val testDirs = {

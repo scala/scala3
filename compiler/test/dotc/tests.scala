@@ -12,7 +12,7 @@ class tests extends CompilerTest {
 
   def isRunByJenkins: Boolean = sys.props.isDefinedAt("dotty.jenkins.build")
 
-  val defaultOutputDir = "./out/"
+  val defaultOutputDir = "../out/"
 
   val noCheckOptions = List(
 //    "-verbose",
@@ -33,9 +33,9 @@ class tests extends CompilerTest {
 
   val classPath = {
     val paths = List(
-      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar",
+      "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar",
       "./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar",
-      "./interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
+      "../interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
     ).map { p =>
       val file = new JFile(p)
       assert(
@@ -65,7 +65,7 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
-  val testsDir      = "./tests/"
+  val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val posScala2Dir  = testsDir + "pos-scala2/"
@@ -83,7 +83,7 @@ class tests extends CompilerTest {
   val parsingDir = dotcDir + "parsing/"
   val dottyReplDir   = dotcDir + "repl/"
   val typerDir  = dotcDir + "typer/"
-  val libDir = "./library/src/"
+  val libDir = "../library/src/"
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
@@ -190,18 +190,19 @@ class tests extends CompilerTest {
    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
    .filter(_.nonEmpty)
+   .map("." + _) // files are contained one dir up
    .toList
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
-      """tests/pos/B.scala
-        |./scala-scala/src/library/scala/collection/immutable/Seq.scala
-        |./scala-scala/src/library/scala/collection/parallel/ParSeq.scala
-        |./scala-scala/src/library/scala/package.scala
-        |./scala-scala/src/library/scala/collection/GenSeqLike.scala
-        |./scala-scala/src/library/scala/collection/SeqLike.scala
-        |./scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
-  @Test def compileIndexedSeq = compileLine("./scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
+      """../tests/pos/B.scala
+        |../scala-scala/src/library/scala/collection/immutable/Seq.scala
+        |../scala-scala/src/library/scala/collection/parallel/ParSeq.scala
+        |../scala-scala/src/library/scala/package.scala
+        |../scala-scala/src/library/scala/collection/GenSeqLike.scala
+        |../scala-scala/src/library/scala/collection/SeqLike.scala
+        |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
+  @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
   // Not a junit test anymore since it is order dependent
   def dottyBootedLib = compileDir(libDir, ".")(allowDeepSubtypes) // note the -deep argument

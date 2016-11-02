@@ -25,7 +25,7 @@ class TestREPL(script: String) extends REPL {
       fresh.setSetting(ctx.settings.color, "never")
       fresh.setSetting(
         ctx.settings.classpath,
-        "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+        "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
       )
       fresh.initialize()(fresh)
       fresh
