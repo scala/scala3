@@ -62,6 +62,40 @@ object DottyBuild extends Build {
     resourceDirectory in Compile := baseDirectory.value / "resources"
   )
 
+  /** Projects -------------------------------------------------------------- */
+  lazy val dotty = project.in(file(".")).
+    dependsOn(`dotty-compiler`).
+    dependsOn(`dotty-library`).
+    dependsOn(`dotty-interfaces`).
+    settings(
+      addCommandAlias(
+        "partest",
+        ";packageAll" +
+        ";dotty-compiler/test:runMain dotc.build" +
+        ";lockPartestFile" +
+        ";dotty-compiler/test:test" +
+        ";runPartestRunner" +
+        ";bin/test" // script tests need to run after the unit tests
+      ) ++
+      addCommandAlias(
+        "partest-only",
+        ";packageAll" +
+        ";dotty-compiler/test:runMain dotc.build" +
+        ";lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.tests" +
+        ";runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-only-no-bootstrap",
+        ";packageAll" +
+        ";lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.tests" +
+        ";runPartestRunner"
+      )
+    ).
+    settings(publishing)
+
+
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
     settings(
       // Do not append Scala versions to the generated artifacts
@@ -73,7 +107,7 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
-  lazy val `dotty-compiler` = project.in(file(".")).
+  lazy val `dotty-compiler` = project.in(file("compiler")).
     dependsOn(`dotty-interfaces`).
     dependsOn(`dotty-library`).
     settings(sourceStructure).
@@ -236,32 +270,6 @@ object DottyBuild extends Build {
 
         ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
       }
-    ).
-    settings(
-      addCommandAlias(
-        "partest",
-        ";packageAll" +
-        ";test:runMain dotc.build" +
-        ";lockPartestFile" +
-        ";dotty-compiler/test:test" +
-        ";runPartestRunner" +
-        ";bin/test" // script tests need to run after the unit tests
-      ) ++
-      addCommandAlias(
-        "partest-only",
-        ";packageAll" +
-        ";test:runMain dotc.build" +
-        ";lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.tests" +
-        ";runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-only-no-bootstrap",
-        ";packageAll" +
-        ";lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.tests" +
-        ";runPartestRunner"
-      )
     ).
     settings(publishing)
 

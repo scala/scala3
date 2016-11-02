@@ -25,7 +25,7 @@ class DottyTest extends ContextEscapeDetection{
     ctx.setSetting(ctx.settings.encoding, "UTF8")
     ctx.setSetting(
       ctx.settings.classpath,
-      "./library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+      "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
     )
     // when classpath is changed in ctx, we need to re-initialize to get the
     // correct classpath from PathResolver

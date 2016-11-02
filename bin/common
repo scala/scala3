@@ -86,7 +86,7 @@ function build_all {
     printf "done\n"
 
     printf "Building dotty-compiler..."
-    MAIN_JAR=$(build_jar dotty-compiler/package "target/scala-$SCALA_BINARY_VERSION")
+    MAIN_JAR=$(build_jar dotty-compiler/package "compiler/target/scala-$SCALA_BINARY_VERSION")
     printf "done\n"
 
     printf "Building dotty library..."
@@ -94,7 +94,7 @@ function build_all {
     printf "done\n"
 
     printf "Building tests..."
-    TEST_JAR=$(build_jar test:package "target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
+    TEST_JAR=$(build_jar test:package "compiler/target/scala-$SCALA_BINARY_VERSION" '/dotty.*-tests\.jar/p')
     printf "done\n"
 
     update_packages
@@ -130,10 +130,10 @@ function check_jar {
     fi
 }
 
-check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty"            $MAIN_JAR       "src"        'MAIN_JAR=$(build_jar dotty-compiler/package target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-library"    $DOTTY_LIB_JAR  "library"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-tests"      $TEST_JAR       "test"       'TEST_JAR=$(build_jar test:package target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
+check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces/src" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
+check_jar "dotty"            $MAIN_JAR       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-library"    $DOTTY_LIB_JAR  "library/src"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-tests"      $TEST_JAR       "compiler/test"  'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]; then

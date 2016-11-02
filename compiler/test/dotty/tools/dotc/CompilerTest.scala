@@ -63,7 +63,7 @@ abstract class CompilerTest {
     if (pid == null)
       false
     else
-      new JFile("." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
+      new JFile(".." + JFile.separator + "tests" + JFile.separator + "locks" + JFile.separator + s"partest-$pid.lock").exists
   }
 
   // Delete generated files from previous run and create new log

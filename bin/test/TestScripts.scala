@@ -28,13 +28,13 @@ class TestScripts {
     }
 
     try {
-      for (jar <- Source.fromFile("../.packages").getLines())
+      for (jar <- Source.fromFile("./.packages").getLines())
         delete(jar)
 
-      delete("../.packages")
-      delete("./src/dotty/tools/dotc/Dummy.scala")
-      delete("HelloWorld.class")
-      delete("HelloWorld$.class")
+      delete("./.packages")
+      delete("./compiler/src/dotty/tools/dotc/Dummy.scala")
+      delete("./HelloWorld.class")
+      delete("./HelloWorld$.class")
     } catch {
       case _: FileNotFoundException => ()
     }
@@ -66,11 +66,11 @@ class TestScripts {
    *  rebuild dotty if needed
    */
   @Test def rebuildIfNecessary = doUnlessWindows {
-    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
-    assert(retFirstBuild == 0, "building dotc failed")
+    val (retFirstBuild, out1) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    assert(retFirstBuild == 0, s"building dotc failed: $out1")
 
     // Create a new file to force rebuild
-    new JFile("./src/dotty/tools/dotc/Dummy.scala").createNewFile()
+    new JFile("./compiler/src/dotty/tools/dotc/Dummy.scala").createNewFile()
 
     val (retSecondBuild, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(
