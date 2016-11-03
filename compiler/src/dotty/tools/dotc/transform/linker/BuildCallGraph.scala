@@ -95,7 +95,7 @@ class BuildCallGraph extends Phase {
         case t: PolyType => t.paramNames.size
         case _ => 0
       }
-      val call = new CallWithContext(tpe, (0 until targs).map(x => new ErazedType()).toList, ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil, OuterTargs.empty, null, null)
+      val call = new CallWithContext(tpe, (0 until targs).map(x => new ErazedType()).toList, ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil, OuterTargs.empty, null, null, isEntryPoint = true)
       reachableMethods += call
       val t = ref(s.owner).tpe
       val self = new TypeWithContext(t, parentRefinements(t))
@@ -592,6 +592,8 @@ class BuildCallGraph extends Phase {
 
       println(GraphVisualization.outputDiagnostic(AnalyseArgs, specLimit)(callGraph))
 
+      val viz = GraphVisualization.outputGraphViz(AnalyseArgs, specLimit)(callGraph)
+
       val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(callGraph)
 
       sendSpecializationRequests(callGraph)
@@ -609,6 +611,9 @@ class BuildCallGraph extends Phase {
      // }
       printToFile(new java.io.File("CallGraph.dot")) { out =>
         out.println(g3)
+      }
+      printToFile(new java.io.File("callgraph.html")) { out =>
+        out.println(viz)
       }
 
     }
