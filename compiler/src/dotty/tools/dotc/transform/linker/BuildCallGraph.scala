@@ -590,6 +590,8 @@ class BuildCallGraph extends Phase {
       val callGraph = buildCallGraph(AnalyseArgs, specLimit)
       this.callGraph = callGraph
 
+      println(GraphVisualization.outputDiagnostic(AnalyseArgs, specLimit)(callGraph))
+
       val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(callGraph)
 
       sendSpecializationRequests(callGraph)
