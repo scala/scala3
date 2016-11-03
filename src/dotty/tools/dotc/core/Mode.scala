@@ -93,4 +93,9 @@ object Mode {
   val ReadPositions = newMode(16, "ReadPositions")
 
   val PatternOrType = Pattern | Type
+  
+  /** We are elaborating the fully qualified name of a package clause.
+   *  In this case, identifiers should never be imported.
+   */
+  val InPackageClauseName = newMode(17, "InPackageClauseName")
 }
