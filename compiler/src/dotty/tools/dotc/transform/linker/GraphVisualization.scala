@@ -11,7 +11,9 @@ import dotty.tools.dotc.transform.linker.Summaries._
 
 object GraphVisualization {
 
-  def outputGraph(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+  def outputDiagnostic(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+    val output = new StringBuffer()
+
     val reachableMethods = callGraph.reachableMethods
     val reachableTypes = callGraph.reachableTypes
     val outerMethod = callGraph.outerMethods
@@ -40,7 +42,7 @@ object GraphVisualization {
         val methodSpecializationsCount =
           if (meth.info.widenDealias.isInstanceOf[PolyType]) specLimit
           else 1
-        println(s"specializing $clas $meth for $clazSpecializationsCount * $methodSpecializationsCount")
+        output.append(s"specializing $clas $meth for $clazSpecializationsCount * $methodSpecializationsCount")
         (0 until clazSpecializationsCount*methodSpecializationsCount).map(x => (meth, ConstantType(Constant(x)):: Nil)).toList
 
       }
@@ -52,13 +54,21 @@ object GraphVisualization {
     val bi = if (morphisms.contains(2)) morphisms(2) else Map.empty
     val mega = morphisms - 1 - 2
 
-    println(s"\t Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations")
-    println(s"\t mono: ${mono.size}, bi: ${bi.size}, mega: ${mega.map(_._2.size).sum}")
-    println(s"\t Found ${outerMethod.size} not defined calls: ${outerMethod.map(_.showFullName)}")
-    println(s"\t Reachable classes: ${classesWithReachableMethods.mkString(", ")}")
-    println(s"\t Reachable methods: ${reachableDefs.mkString(", ")}")
-    println(s"\t Reachable specs: ${reachableSpecs.mkString(", ")}")
-    println(s"\t Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}")
+    output.append(s"\t Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations")
+    output.append(s"\t mono: ${mono.size}, bi: ${bi.size}, mega: ${mega.map(_._2.size).sum}")
+    output.append(s"\t Found ${outerMethod.size} not defined calls: ${outerMethod.map(_.showFullName)}")
+    output.append(s"\t Reachable classes: ${classesWithReachableMethods.mkString(", ")}")
+    output.append(s"\t Reachable methods: ${reachableDefs.mkString(", ")}")
+    output.append(s"\t Reachable specs: ${reachableSpecs.mkString(", ")}")
+    output.append(s"\t Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}")
+
+    output.toString
+  }
+
+  def outputGraph(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+    val reachableMethods = callGraph.reachableMethods
+    val reachableTypes = callGraph.reachableTypes
+    val outerMethod = callGraph.outerMethods
 
     val outGraph = new StringBuffer()
     outGraph.append(s"digraph Gr${mode}_$specLimit {\n")
