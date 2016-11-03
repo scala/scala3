@@ -34,6 +34,10 @@ object DottyBuild extends Build {
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
+  // Used to compile files similar to ./bin/dotc script
+  lazy val dotc =
+    inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
@@ -74,6 +78,7 @@ object DottyBuild extends Build {
     dependsOn(`dotty-library`).
     dependsOn(`dotty-interfaces`).
     settings(
+      addCommandAlias("dotc", "dotty-compiler/dotc") ++
       addCommandAlias("repl", "dotty-compiler/repl") ++
       addCommandAlias(
         "partest",
@@ -176,6 +181,22 @@ object DottyBuild extends Build {
         )
       }.evaluated,
 
+      // Set run baseDir to be root of project, makes dotc saner
+      baseDirectory in run := baseDirectory.value / "..",
+      dotc := Def.inputTaskDyn {
+        val dottyLib = packageAll.value("dotty-library")
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+        val fullArgs = args.span(_ != "-classpath") match {
+          case (beforeCp, Nil) => beforeCp ++ ("-classpath" :: dottyLib :: Nil)
+          case (beforeCp, rest) => beforeCp ++ rest
+        }
+
+        (runMain in Compile).toTask(
+          s" dotty.tools.dotc.Main " + fullArgs.mkString(" ")
+        )
+      }.evaluated,
+
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit, "-a", "-v",
@@ -243,17 +264,13 @@ object DottyBuild extends Build {
       //  } (Set(scalaJSIRSourcesJar)).toSeq
       //}.taskValue,
 
-      // Adjust classpath for running dotty
-      mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
+      // Spawn new JVM in run and test
       fork in run := true,
       fork in Test := true,
       parallelExecution in Test := false,
 
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
-
-      // FIXME: Do something more sensible, like using the Scala bootclasspath
-      run <<= (run in Compile).partialInput(" -usejavacp"),
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       // packageAll should always be run before tests
