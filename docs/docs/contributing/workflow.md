@@ -5,17 +5,27 @@ title: "Workflow"
 
 This document details common workflow patterns when working with Dotty.
 
+## Cloning and building ##
+
+```bash
+# Start by cloning the repository:
+git clone https://github.com/lampepfl/dotty.git
+cd dotty
+# Clone dotty-compatible stdlib. Needed for running the test suite.
+git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala
+```
+
 ## Compiling files with dotc ##
 
 From sbt:
 
-```bash
-> run <OPTIONS> <FILE>
+```none
+> dotc <OPTIONS> <FILE>
 ```
 
 From terminal:
 
-```bash
+```none
 $ ./bin/dotc <OPTIONS> <FILE>
 ```
 
@@ -37,7 +47,7 @@ Additional logging information can be obtained by changes some `noPrinter` to
 
 ## Running tests ##
 
-```bash
+```none
 $ sbt
 > partest --show-diff --verbose
 ```
@@ -45,21 +55,21 @@ $ sbt
 ## Running single tests ##
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 
-```bash
+```none
 > partest-only-no-bootstrap --show-diff --verbose tests/partest-generated/x/y.scala
 ```
 
-Currently this will re-run some tests and do some preprocessing because of the
-way partest has been set up.
+Currently this will re-run some unit tests and do some preprocessing because of
+the way partest has been set up.
 
 ## Inspecting Trees with Type Stealer ##
 
 There is no power mode for the REPL yet, but you can inspect types with the
 type stealer:
 
-```bash
-$ ./bin/dotr
-scala> import test.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
+```none
+> repl
+scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
 ```
 
 Now, you can define types and access their representation. For example:
