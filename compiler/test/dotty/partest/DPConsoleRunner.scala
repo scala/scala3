@@ -187,7 +187,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   //            |but partest was unable to find any sources - uncomment DPConsoleRunner#sources
   //            |================================================================================""".stripMargin
   //      }
-  //      List(new File("./examples/hello.scala")) // "just compile some crap" - Guillaume
+  //      List(new File("./tests/pos/HelloWorld.scala")) // "just compile some crap" - Guillaume
   //    case xs =>
   //    xs
   //  }
