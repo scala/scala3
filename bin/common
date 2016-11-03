@@ -124,6 +124,7 @@ function check_jar {
     local new_files="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
     if [ ! -z "$new_files" ]; then
         printf "New files detected in $1, rebuilding..."
+        rm $2
         eval "$4"
         printf "done\n"
         update_packages
