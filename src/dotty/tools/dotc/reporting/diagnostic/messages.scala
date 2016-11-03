@@ -754,4 +754,11 @@ object messages {
            |${"square(ints: _*)          // res1: List[Int] = List(4, 9, 16)"}
            |""".stripMargin
   }
+
+  case class NoClassOrObjectAfterCase()(implicit ctx: Context)
+  extends Message(28) {
+    val kind = "Syntax"
+    val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
+    val explanation = ""
+  }
 }

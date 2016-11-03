@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition }
+import util.{SourceFile, SourcePosition}
 import Tokens._
 import Scanners._
 import MarkupParsers._
@@ -2119,7 +2119,7 @@ object Parsers {
           stats += tmplDef(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           if (in.token == CASE)
-            syntaxErrorOrIncomplete("only `case class` or `case object` allowed")
+            syntaxErrorOrIncomplete(NoClassOrObjectAfterCase())
           else
             syntaxErrorOrIncomplete("expected class or object definition")
           if (mustStartStat) // do parse all definitions even if they are probably local (i.e. a "}" has been forgotten)
