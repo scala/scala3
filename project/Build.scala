@@ -134,9 +134,9 @@ object DottyBuild extends Build {
       // necessary evil: dottydoc currently needs to be included in the dotty
       // project, for sbt integration
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
-      unmanagedSourceDirectories in Compile += baseDirectory.value / "dottydoc" / "src",
+      unmanagedSourceDirectories in Compile += baseDirectory.value / "doc-tool" / "src",
       unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
-      unmanagedSourceDirectories in Test += baseDirectory.value / "dottydoc" / "test",
+      unmanagedSourceDirectories in Test += baseDirectory.value / "doc-tool" / "test",
 
       // set system in/out for repl
       connectInput in run := true,
