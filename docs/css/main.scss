@@ -207,7 +207,7 @@ ul.post-list {
     }
 }
 
-pre, code {
+pre, code, code.hljs {
     padding: 0;
     border: 0;
     border-radius: 3px;
@@ -219,6 +219,11 @@ pre, code {
 code {
     padding-left: 0.1em;
     padding-right: 0.1em;
+}
+
+pre {
+    padding: 0.5em;
+    background-color: $grey !important;
 }
 
 body {
