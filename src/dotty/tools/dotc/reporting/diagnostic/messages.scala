@@ -761,4 +761,11 @@ object messages {
     val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
     val explanation = ""
   }
+
+  case class ClassOrObjectExpected()(implicit ctx: Context)
+  extends Message(29) {
+    val kind = "Syntax"
+    val msg = hl"Expected ${"class"} or ${"object"} definition."
+    val explanation = ""
+  }
 }
