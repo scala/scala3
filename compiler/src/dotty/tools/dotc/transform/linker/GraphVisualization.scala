@@ -8,6 +8,9 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.linker.BuildCallGraph._
 import dotty.tools.dotc.transform.linker.Summaries._
+import strawman.collections.CollectionStrawMan4.ListBuffer
+
+import scala.collection.mutable
 
 object GraphVisualization {
 
@@ -119,6 +122,42 @@ object GraphVisualization {
     outGraph.toString
   }
 
+  def outputGraphViz(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+    val reachableMethods = callGraph.reachableMethods
+    val reachableTypes = callGraph.reachableTypes
+    val outerMethod = callGraph.outerMethods
+
+    // add names and subraphs
+    val nodes = mutable.Map.empty[String, String]
+    val edges = List.newBuilder[String]
+
+    val red = "'rgb(255,150,150)'"
+    val blue = "'rgb(150,150,255)'"
+    val green = "'rgb(150,255,150)'"
+
+    reachableMethods.foreach { caller =>
+
+      val color =
+        if (outerMethod.contains(caller.call.termSymbol)) red
+        else blue
+
+      val callerId = s"'call-site-${caller.call.uniqId}'"
+      nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color, shape: 'box' }"
+
+      if (caller.callee != null) {
+        val calleeId = s"'call-site-${caller.parent.call.uniqId}'"
+        edges += s"{ from: $calleeId, to: $callerId, title: '${callSiteLabel(caller.callee)}' }"
+      }
+
+      if (caller.isEntryPoint) {
+        val entryId = s"'entry-${caller.call.uniqId}'"
+        nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
+        edges += s"{ from: $entryId, to: $callerId }"
+      }
+    }
+
+    visHTML(nodes.values, edges.result())
+  }
 
 
   private def callSiteLabel(x: CallInfo)(implicit ctx: Context): String = {
@@ -218,6 +257,16 @@ object GraphVisualization {
     }
   }
 
+  private def csWTToShortName(x: CallInfo)(implicit ctx: Context): String = {
+    if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol.name) {
+      val callTypeName = typeName(x.call)
+      callTypeName
+    } else {
+      val callTypeName = typeName(x.call.normalizedPrefix)
+      symbolName(x.call.termSymbol)
+    }
+  }
+
   private def csToName(parent: CallWithContext, inner: CallInfo)(implicit ctx: Context): String = {
     slash + csWTToName(parent) + escape(inner.call.show) + inner.hashCode() + slash
   }
@@ -244,5 +293,83 @@ object GraphVisualization {
     paramTypess.iterator.map { paramTypes =>
       paramTypes.map(x => typeName(x)).mkString("(", ",", ")")
     }.mkString("")
+  }
+
+
+  private def visHTML(nodes: Iterable[String], edges: Iterable[String]): String = {
+    s"""
+      |<!doctype html>
+      |<html>
+      |<head>
+      |  <title>Callgraph</title>
+      |
+      |  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js"></script>
+      |  <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css" rel="stylesheet" type="text/css">
+      |  <style type="text/css">
+      |    #mynetwork {
+      |      width: 1080px;
+      |      height: 720px;
+      |      border: 1px solid lightgray;
+      |    }
+      |    p {
+      |      max-width:1000px;
+      |    }
+      |  </style>
+      |</head>
+      |
+      |<body>
+      |<div id="wrapper">
+      |  <div id="mynetwork"></div>
+      |  <div id="loadingBar">
+      |    <div class="outerBorder">
+      |      <div id="text">0%</div>
+      |      <div id="border">
+      |        <div id="bar"></div>
+      |      </div>
+      |    </div>
+      |  </div>
+      |</div>
+      |
+      |
+      |<script type="text/javascript">
+      |  var container = document.getElementById('mynetwork');
+      |  var options = {
+      |    layout: {
+      |      improvedLayout: false
+      |    },
+      |    edges: {
+      |      smooth: true,
+      |      arrows: { to: true }
+      |    },
+      |    interaction: {
+      |      hover: true
+      |    }
+      |  };
+      |  var data = {
+      |    nodes: new vis.DataSet(${nodes.mkString("[\n      ", ",\n      ", "    ]")}),
+      |    edges: new vis.DataSet(${edges.mkString("[\n      ", ",\n      ", "    ]")})
+      |  };
+      |  var network = new vis.Network(container, data, options);
+      |   network.on("stabilizationProgress", function(params) {
+      |      var maxWidth = 496;
+      |      var minWidth = 20;
+      |      var widthFactor = params.iterations/params.total;
+      |      var width = Math.max(minWidth,maxWidth * widthFactor);
+      |
+      |      document.getElementById('bar').style.width = width + 'px';
+      |      document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+      |  });
+      |  network.once("stabilizationIterationsDone", function() {
+      |      document.getElementById('text').innerHTML = '100%';
+      |      document.getElementById('bar').style.width = '496px';
+      |      document.getElementById('loadingBar').style.opacity = 0;
+      |      // really clean the dom element
+      |      setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+      |  });
+      |</script>
+      |
+      |</body>
+      |</html>
+    """.stripMargin
   }
 }
