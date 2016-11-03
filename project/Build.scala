@@ -38,6 +38,10 @@ object DottyBuild extends Build {
   lazy val dotc =
     inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
+  // Used to run binaries similar to ./bin/dotr script
+  lazy val dotr =
+    inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := "2.11.5",
@@ -78,6 +82,7 @@ object DottyBuild extends Build {
     dependsOn(`dotty-library`).
     dependsOn(`dotty-interfaces`).
     settings(
+      addCommandAlias("dotr", "dotty-compiler/dotr") ++
       addCommandAlias("dotc", "dotty-compiler/dotc") ++
       addCommandAlias("repl", "dotty-compiler/repl") ++
       addCommandAlias(
@@ -173,6 +178,9 @@ object DottyBuild extends Build {
         ) map { case (k, v) => (k, v.getAbsolutePath) }
       },
 
+      // Set run baseDir to be root of project, makes dotc saner
+      baseDirectory in run := baseDirectory.value / "..",
+
       repl := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
         val dottyLib = packageAll.value("dotty-library")
@@ -181,8 +189,27 @@ object DottyBuild extends Build {
         )
       }.evaluated,
 
-      // Set run baseDir to be root of project, makes dotc saner
-      baseDirectory in run := baseDirectory.value / "..",
+      // Override run to be able to run compiled classfiles
+      dotr := {
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        val java: String = Process("which" :: "java" :: Nil) !!
+        val scalaLib = (dependencyClasspath in Runtime, packageAll)
+          .map { (attList, _) =>
+            attList
+              .map(_.data.getAbsolutePath)
+              .find(_.contains("scala-library"))
+              .toList.mkString(":")
+          }.value
+
+        if (java == "")
+          println("Couldn't find java executable on path, please install java to a default location")
+        else if (scalaLib == "") {
+          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
+        } else {
+          val dottyLib = packageAll.value("dotty-library")
+          s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""" !
+        }
+      },
       dotc := Def.inputTaskDyn {
         val dottyLib = packageAll.value("dotty-library")
         val args: Seq[String] = spaceDelimited("<arg>").parsed
