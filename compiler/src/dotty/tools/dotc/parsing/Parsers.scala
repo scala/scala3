@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{SourceFile, SourcePosition}
+import util.{ SourceFile, SourcePosition }
 import Tokens._
 import Scanners._
 import MarkupParsers._
