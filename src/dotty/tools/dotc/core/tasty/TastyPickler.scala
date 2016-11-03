@@ -57,9 +57,11 @@ class TastyPickler {
   /**
    * Addresses in TASTY file of trees, stored by pickling.
    * Note that trees are checked for reference equality,
-   * so one can reliably use this function only directly after `pickler`
+   * so one can reliably use this function only directly after `pickler`.
+   * Note that a tree can have several addresses, if it is shared,
+   * i.e. accessible from different paths. Any such sharing is undone by pickling.
    */
-  var addrOfTree: tpd.Tree => Option[Addr] = (_ => None)
+  var addrsOfTree: tpd.Tree => List[Addr] = (_ => Nil)
 
   /**
    * Addresses in TASTY file of symbols, stored by pickling.

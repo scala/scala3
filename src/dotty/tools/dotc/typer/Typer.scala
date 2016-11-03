@@ -953,28 +953,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
-    if (tree.original.isEmpty)
-      tree match {
-        case tree: untpd.DerivedTypeTree =>
-          tree.ensureCompletions
-          try
-            TypeTree(tree.derivedType(tree.attachment(untpd.OriginalSymbol))) withPos tree.pos
-            // btw, no need to remove the attachment. The typed
-            // tree is different from the untyped one, so the
-            // untyped tree is no longer accessed after all
-            // accesses with typedTypeTree are done.
-          catch {
-            case ex: NoSuchElementException =>
-              println(s"missing OriginalSymbol for ${ctx.owner.ownersIterator.toList}")
-              throw ex
-          }
-        case _ =>
-          assert(isFullyDefined(pt, ForceDegree.none))
-          tree.withType(pt)
-      }
-    else {
-      val original1 = typed(tree.original)
-      cpy.TypeTree(tree)(original1).withType(original1.tpe)
+    tree match {
+      case tree: untpd.DerivedTypeTree =>
+        tree.ensureCompletions
+        try
+          TypeTree(tree.derivedType(tree.attachment(untpd.OriginalSymbol))) withPos tree.pos
+        // btw, no need to remove the attachment. The typed
+        // tree is different from the untyped one, so the
+        // untyped tree is no longer accessed after all
+        // accesses with typedTypeTree are done.
+        catch {
+          case ex: NoSuchElementException =>
+            println(s"missing OriginalSymbol for ${ctx.owner.ownersIterator.toList}")
+            throw ex
+        }
+      case _ =>
+        assert(isFullyDefined(pt, ForceDegree.none))
+        tree.withType(pt)
     }
   }
 

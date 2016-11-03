@@ -55,58 +55,45 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
-  /** If type is a higher-kinded application with wildcard arguments,
-   *  check that it or one of its supertypes can be reduced to a normal application.
-   *  Unreducible applications correspond to general existentials, and we
-   *  cannot handle those.
+  /** Check applied type trees for well-formedness. This means 
+   *   - all arguments are within their corresponding bounds 
+   *   - if type is a higher-kinded application with wildcard arguments,
+   *     check that it or one of its supertypes can be reduced to a normal application.
+   *     Unreducible applications correspond to general existentials, and we
+   *     cannot handle those.
    */
-  def checkWildcardHKApply(tp: Type, pos: Position)(implicit ctx: Context): Unit = tp match {
-    case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
-      tycon match {
-        case tycon: PolyType =>
-          ctx.errorOrMigrationWarning(
-            ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
-            pos)
-        case _ =>
-          checkWildcardHKApply(tp.superType, pos)
-      }
-    case _ =>
+  def checkAppliedType(tree: AppliedTypeTree)(implicit ctx: Context) = {
+    val AppliedTypeTree(tycon, args) = tree
+    // If `args` is a list of named arguments, return corresponding type parameters,
+    // otherwise return type parameters unchanged
+    val tparams = tycon.tpe.typeParams
+    def argNamed(tparam: TypeParamInfo) = args.find {
+      case NamedArg(name, _) => name == tparam.paramName
+      case _ => false
+    }.getOrElse(TypeTree(tparam.paramRef))
+    val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
+    val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
+    def instantiate(bound: Type, args: List[Type]) =
+      bound.LambdaAbstract(tparams).appliedTo(args)
+    checkBounds(orderedArgs, bounds, instantiate)
+
+    def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {
+      case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
+        tycon match {
+          case tycon: PolyType =>
+            ctx.errorOrMigrationWarning(
+              ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
+              pos)
+          case _ =>
+            checkWildcardHKApply(tp.superType, pos)
+        }
+      case _ =>
+    }    
+    def checkValidIfHKApply(implicit ctx: Context): Unit =
+      checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
+    checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
-
-  /** Traverse type tree, performing the following checks:
-   *  1. All arguments of applied type trees must conform to their bounds.
-   *  2. Prefixes of type selections and singleton types must be realizable.
-   */
-  val typeChecker = new TreeTraverser {
-    def traverse(tree: Tree)(implicit ctx: Context) = {
-      tree match {
-        case AppliedTypeTree(tycon, args) =>
-          // If `args` is a list of named arguments, return corresponding type parameters,
-          // otherwise return type parameters unchanged
-          val tparams = tycon.tpe.typeParams
-          def argNamed(tparam: TypeParamInfo) = args.find {
-            case NamedArg(name, _) => name == tparam.paramName
-            case _ => false
-          }.getOrElse(TypeTree(tparam.paramRef))
-          val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
-          val bounds = tparams.map(_.paramBoundsAsSeenFrom(tycon.tpe))
-          def instantiate(bound: Type, args: List[Type]) =
-            bound.LambdaAbstract(tparams).appliedTo(args)
-          checkBounds(orderedArgs, bounds, instantiate)
-
-          def checkValidIfHKApply(implicit ctx: Context): Unit =
-            checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
-          checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
-        case Select(qual, name) if name.isTypeName =>
-          checkRealizable(qual.tpe, qual.pos.focus)
-        case SingletonTypeTree(ref) =>
-          checkRealizable(ref.tpe, ref.pos.focus)
-        case _ =>
-      }
-      traverseChildren(tree)
-    }
-  }
-
+  
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */

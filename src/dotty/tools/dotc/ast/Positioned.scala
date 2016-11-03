@@ -24,7 +24,7 @@ abstract class Positioned extends DotClass with Product {
    *  positions in children.
    */
   protected def setPos(pos: Position): Unit = {
-    curPos = pos
+    setPosUnchecked(pos)
     if (pos.exists) setChildPositions(pos.toSynthetic)
   }
 
@@ -107,7 +107,7 @@ abstract class Positioned extends DotClass with Product {
 
   /** The initial, synthetic position. This is usually the union of all positioned children's positions.
    */
-  protected def initialPos: Position = {
+  def initialPos: Position = {
     var n = productArity
     var pos = NoPosition
     while (n > 0) {
@@ -139,7 +139,7 @@ abstract class Positioned extends DotClass with Product {
       (this.pos contains that.pos) && {
         var n = productArity
         var found = false
-        while (n > 0 && !found) {
+        while (!found && n > 0) {
           n -= 1
           found = isParent(productElement(n))
         }

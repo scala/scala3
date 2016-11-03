@@ -60,15 +60,19 @@ object Trees {
                                         with Cloneable {
 
     if (Stats.enabled) ntrees += 1
+    
+    private def nxId = {
+      nextId += 1
+      //assert(nextId != 199, this)
+      nextId      
+    }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
      *  tracking presentation compiler interactions
      */
-    val uniqueId = {
-      nextId += 1
-      //assert(nextId != 214, this)
-      nextId
-    }
+    private var myUniqueId: Int = nxId
+    
+    def uniqueId = myUniqueId
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
@@ -188,6 +192,12 @@ object Trees {
 
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    
+    override def clone: Tree[T] = {
+      val tree = super.clone.asInstanceOf[Tree[T]]
+      tree.myUniqueId = nxId
+      tree
+    }
   }
 
   class UnAssignedTypeException[T >: Untyped](tree: Tree[T]) extends RuntimeException {
@@ -502,7 +512,9 @@ object Trees {
 
   /** A tree representing inlined code.
    *
-   *  @param  call      The original call that was inlined
+   *  @param  call      Info about the original call that was inlined
+   *                    Until PostTyper, this is the full call, afterwards only
+   *                    a reference to the toplevel class from which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
    *
@@ -520,13 +532,12 @@ object Trees {
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[-T >: Untyped] private[ast] (original: Tree[T])
+  case class TypeTree[-T >: Untyped] ()
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeTree[T]
-    override def initialPos = NoPosition
-    override def isEmpty = !hasType && original.isEmpty
+    override def isEmpty = !hasType
     override def toString =
-      s"TypeTree${if (hasType) s"[$typeOpt]" else s"($original)"}"
+      s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
   /** ref.type */
@@ -960,10 +971,6 @@ object Trees {
         case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion))
       }
-      def TypeTree(tree: Tree)(original: Tree): TypeTree = tree match {
-        case tree: TypeTree if original eq tree.original => tree
-        case _ => finalize(tree, untpd.TypeTree(original))
-      }
       def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
@@ -1106,7 +1113,7 @@ object Trees {
           cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
         case Inlined(call, bindings, expansion) =>
           cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion))
-        case TypeTree(original) =>
+        case TypeTree() =>
           tree
         case SingletonTypeTree(ref) =>
           cpy.SingletonTypeTree(tree)(transform(ref))
@@ -1210,7 +1217,7 @@ object Trees {
             this(this(x, elems), elemtpt)
           case Inlined(call, bindings, expansion) =>
             this(this(x, bindings), expansion)
-          case TypeTree(original) =>
+          case TypeTree() =>
             x
           case SingletonTypeTree(ref) =>
             this(x, ref)

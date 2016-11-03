@@ -57,7 +57,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDEF        Length NameRef (Type | Template) Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
-                  RENAMED        Length from_NameRef to_NameRef
+                  RENAMED               to_NameRef
+
                                  // Imports are for scala.meta, they are not used in the backend
 
   TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
@@ -78,6 +79,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
+                  INLINED        Length call_Term expr_Term Stat*
                   LAMBDA         Length meth_Term target_Type
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
@@ -137,12 +139,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
-                  LAMBDAtype     Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
-                  POLYtype       Length result_Type NamesTypes      // needed for refinements
+                  POLYtype       Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
-  NamesTypes    = ParamType*
+  NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
   Modifier      = PRIVATE
@@ -264,6 +265,7 @@ object TastyFormat {
   final val DOUBLEconst = 76
   final val STRINGconst = 77
   final val IMPORTED = 78
+  final val RENAMED = 79
 
   final val THIS = 96
   final val CLASSconst = 97
@@ -291,10 +293,9 @@ object TastyFormat {
   final val TYPEPARAM = 133
   final val PARAMS = 134
   final val PARAM = 136
-  final val RENAMED = 138
+
   final val APPLY = 139
   final val TYPEAPPLY = 140
-
 
   final val TYPED = 143
   final val NAMEDARG = 144
@@ -305,6 +306,7 @@ object TastyFormat {
   final val MATCH = 149
   final val RETURN = 150
   final val TRY = 151
+  final val INLINED = 152
   final val REPEATED = 153
   final val BIND = 154
   final val ALTERNATIVE = 155
@@ -322,9 +324,8 @@ object TastyFormat {
   final val ORtype = 172
   final val METHODtype = 174
   final val POLYtype = 175
-  final val LAMBDAtype = 176
-  final val PARAMtype = 177
-  final val ANNOTATION = 178
+  final val PARAMtype = 176
+  final val ANNOTATION = 177
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -455,6 +456,7 @@ object TastyFormat {
     case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
     case RETURN => "RETURN"
+    case INLINED => "INLINED"
     case TRY => "TRY"
     case REPEATED => "REPEATED"
     case BIND => "BIND"
@@ -485,7 +487,7 @@ object TastyFormat {
     case PROTECTEDqualified => "PROTECTEDqualified"
   }
 
-  /** @return If non-negative, the number of leading references of a length/trees entry.
+  /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
    *          If negative, minus the number of leading non-reference trees.
    */
   def numRefs(tag: Int) = tag match {

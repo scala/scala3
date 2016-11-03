@@ -244,8 +244,9 @@ object Inliner {
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     val reposition = new TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree =
-        tree.withPos(inlined.call.pos)
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+        super.transform(tree).withPos(inlined.call.pos)
+      }
     }
     tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }

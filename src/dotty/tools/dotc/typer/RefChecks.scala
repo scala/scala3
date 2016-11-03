@@ -851,15 +851,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
         tree
     }
 
-    override def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo) = {
-      if (!tree.original.isEmpty)
-        tree.tpe.foreachPart {
-          case tp: NamedType => checkUndesiredProperties(tp.symbol, tree.pos)
-          case _ =>
-        }
-      tree
-    }
-
     override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
       checkUndesiredProperties(tree.symbol, tree.pos)
       currentLevel.enterReference(tree.symbol, tree.pos)

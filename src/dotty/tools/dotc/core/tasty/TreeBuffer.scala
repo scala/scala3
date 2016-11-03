@@ -6,7 +6,7 @@ package tasty
 import util.Util.{bestFit, dble}
 import TastyBuffer.{Addr, AddrWidth}
 import config.Printers.pickling
-import ast.tpd.Tree
+import ast.untpd.Tree
 
 class TreeBuffer extends TastyBuffer(50000) {
 
@@ -17,11 +17,26 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private[tasty] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+  private type TreeAddrs = Any // really: Addr | List[Addr]
 
-  def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
-    case null => None
-    case n => Some(n.asInstanceOf[Addr])
+  /** A map from trees to the address(es) at which a tree is pickled. There may be several
+   *  such addresses if the tree is shared. To keep the map compact, the value type is a
+   *  disjunction of a single address (which is the common case) and a list of addresses.
+   */
+  private val treeAddrs = new java.util.IdentityHashMap[Tree, TreeAddrs]
+
+  def registerTreeAddr(tree: Tree) =
+    treeAddrs.put(tree,
+      treeAddrs.get(tree) match {
+        case null => currentAddr
+        case x: Addr => x :: currentAddr :: Nil
+        case xs: List[_] => xs :+ currentAddr
+      })
+
+  def addrsOfTree(tree: Tree): List[Addr] = treeAddrs.get(tree) match {
+    case null => Nil
+    case addr: Addr => addr :: Nil
+    case addrs: List[Addr] => addrs
   }
 
   private def offset(i: Int): Addr = Addr(offsets(i))
@@ -147,11 +162,14 @@ class TreeBuffer extends TastyBuffer(50000) {
     wasted
   }
 
-  def adjustPickledTrees(): Unit = {
-    val it = pickledTrees.keySet.iterator
+  def adjustTreeAddrs(): Unit = {
+    val it = treeAddrs.keySet.iterator
     while (it.hasNext) {
       val tree = it.next
-      pickledTrees.put(tree, adjusted(pickledTrees.get(tree).asInstanceOf[Addr]))
+      treeAddrs.get(tree) match {
+        case addr: Addr => treeAddrs.put(tree, adjusted(addr))
+        case addrs: List[Addr] => treeAddrs.put(tree, addrs.map(adjusted))
+      }
     }
   }
 
@@ -172,7 +190,7 @@ class TreeBuffer extends TastyBuffer(50000) {
       pickling.println(s"adjusting deltas, saved = $saved")
     } while (saved > 0 && length / saved < 100)
     adjustOffsets()
-    adjustPickledTrees()
+    adjustTreeAddrs()
     val wasted = compress()
     pickling.println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
   }

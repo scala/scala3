@@ -41,6 +41,9 @@ import Symbols._, TypeUtils._
  *
  *  (10) Adds Child annotations to all sealed classes
  *
+ *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
+ *       class from which code was inlined.
+ *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -71,48 +74,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
   private def checkValidJavaAnnotation(annot: Tree)(implicit ctx: Context): Unit = {
     // TODO fill in
-  }
-
-  /** Check bounds of AppliedTypeTrees and TypeApplys.
-   *  Replace type trees with TypeTree nodes.
-   *  Replace constant expressions with Literal nodes.
-   *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
-   *  Example
-   *
-   *    object O { final val x = 42; println("43") }
-   *    O.x
-   *
-   *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
-   *  most expressions non-constant. Maybe we can change the spec to accept this
-   *  kind of eliding behavior. Or else enforce true purity in the compiler.
-   *  The choice will be affected by what we will do with `inline` and with
-   *  Singleton type bounds (see SIP 23). Presumably
-   *
-   *     object O1 { val x: Singleton = 42; println("43") }
-   *     object O2 { inline val x = 42; println("43") }
-   *
-   *  should behave differently.
-   *
-   *     O1.x  should have the same effect as   { println("43"); 42 }
-   *
-   *  whereas
-   *
-   *     O2.x = 42
-   *
-   *  Revisit this issue once we have implemented `inline`. Then we can demand
-   *  purity of the prefix unless the selection goes to an inline val.
-   */
-  private def normalizeTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case _: TypeTree | _: TypeApply => tree
-    case _ =>
-      if (tree.isType) {
-        Checking.typeChecker.traverse(tree)
-        TypeTree(tree.tpe).withPos(tree.pos)
-      }
-      else tree.tpe.widenTermRefExpr match {
-        case ConstantType(value) if isIdempotentExpr(tree) => Literal(value)
-        case _ => tree
-      }
   }
 
   /** If the type of `tree` is a TermRefWithSignature with an underdefined
@@ -159,7 +120,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
           transformSelect(cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name), targs)
         case _ =>
-          superAcc.transformSelect(super.transform(tree), targs)
+          val tree1 = super.transform(tree)
+          constToLiteral(tree1) match {
+            case _: Literal => tree1
+            case _ => superAcc.transformSelect(tree1, targs)
+          }
       }
     }
 
@@ -199,14 +164,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      try normalizeTree(tree) match {
-        case tree: Ident =>
+      try tree match {
+        case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => paramFwd.adaptRef(fixSignature(tree))
           }
-        case tree: Select =>
-          transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
+        case tree @ Select(qual, name) =>
+          if (name.isTypeName) {
+            Checking.checkRealizable(qual.tpe, qual.pos.focus)
+            super.transform(tree)
+          }
+          else 
+            transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
             ctx.error(em"super not allowed in inline ${ctx.owner}", tree.pos)
@@ -224,6 +194,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           }
         case tree @ Assign(sel: Select, _) =>
           superAcc.transformAssign(super.transform(tree))
+        case Inlined(call, bindings, expansion) =>
+          // Leave only a call trace consisting of
+          //  - a reference to the top-level class from which the call was inlined,
+          //  - the call's position
+          // in the call field of an Inlined node.
+          // The trace has enough info to completely reconstruct positions.
+          // The minimization is done for two reasons:
+          //  1. To save space (calls might contain large inline arguments, which would otherwise
+          //     be duplicated
+          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
+          //     would trigger an assertion when pickling).
+          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
           val saved = parentNews
           parentNews ++= tree.parents.flatMap(newPart)
@@ -240,26 +223,23 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: TypeDef =>
           transformMemberDef(tree)
           val sym = tree.symbol
-          val tree1 =
-            if (sym.isClass) {
-              if (sym.owner.is(Package) &&
-                  ctx.compilationUnit.source.exists &&
-                  sym != defn.SourceFileAnnot)
-                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+          if (sym.isClass) {
+            // Add SourceFile annotation to top-level classes
+            if (sym.owner.is(Package) &&
+              ctx.compilationUnit.source.exists &&
+              sym != defn.SourceFileAnnot)
+              sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
 
-              if (!sym.isAnonymousClass) // ignore anonymous class
-                for (parent <- sym.asClass.classInfo.classParents) {
-                  val pclazz = parent.classSymbol
-                  if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
-                }
+            // Add Child annotation to sealed parents unless current class is anonymous
+            if (!sym.isAnonymousClass) // ignore anonymous class
+              for (parent <- sym.asClass.classInfo.classParents) {
+                val pclazz = parent.classSymbol
+                if (pclazz.is(Sealed)) pclazz.addAnnotation(Annotation.makeChild(sym))
+              }
 
-              tree
-            }
-            else {
-              Checking.typeChecker.traverse(tree.rhs)
-              cpy.TypeDef(tree)(rhs = TypeTree(tree.symbol.info))
-            }
-          super.transform(tree1)
+            tree
+          }
+          super.transform(tree)
         case tree: MemberDef =>
           transformMemberDef(tree)
           super.transform(tree)
@@ -268,6 +248,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
+        case tree: AppliedTypeTree =>
+          Checking.checkAppliedType(tree)
+          super.transform(tree)
+        case SingletonTypeTree(ref) =>
+          Checking.checkRealizable(ref.tpe, ref.pos.focus)
+          super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
             tree.tpe match {

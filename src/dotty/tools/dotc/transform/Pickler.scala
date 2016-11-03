@@ -46,10 +46,10 @@ class Pickler extends Phase {
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
       treePkl.compactify()
-      pickler.addrOfTree = treePkl.buf.addrOfTree
+      pickler.addrsOfTree = treePkl.buf.addrsOfTree
       pickler.addrOfSym = treePkl.addrOfSym
       if (tree.pos.exists)
-        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+        new PositionPickler(pickler, treePkl.buf.addrsOfTree).picklePositions(tree :: Nil)
 
       def rawBytes = // not needed right now, but useful to print raw format.
         pickler.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {
@@ -66,7 +66,10 @@ class Pickler extends Phase {
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val result = super.runOn(units)
     if (ctx.settings.YtestPickler.value)
-      testUnpickler(units)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))
+      testUnpickler(units)(
+          ctx.fresh
+            .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
+            .addMode(Mode.ReadPositions))
     result
   }
 
@@ -81,7 +84,7 @@ class Pickler extends Phase {
       }
     pickling.println("************* entered toplevel ***********")
     for ((cls, unpickler) <- unpicklers) {
-      val unpickled = unpickler.body(ctx.addMode(Mode.ReadPositions))
+      val unpickled = unpickler.body
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
     }
   }

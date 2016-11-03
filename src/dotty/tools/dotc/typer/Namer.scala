@@ -927,7 +927,7 @@ class Namer { typer: Typer =>
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
         WildcardType
-      case TypeTree(untpd.EmptyTree) =>
+      case TypeTree() =>
         inferredType
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
