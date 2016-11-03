@@ -1,5 +1,6 @@
 import sbt.Keys._
 import sbt._
+import complete.DefaultParsers._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
 import scala.reflect.io.Path
@@ -26,7 +27,12 @@ object DottyBuild extends Build {
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
-  lazy val packageAll = taskKey[Unit]("Package everything needed to run tests")
+  // Packages all subprojects to their jars
+  lazy val packageAll =
+    taskKey[Map[String, String]]("Package everything needed to run tests")
+
+  // Spawns a repl with the correct classpath
+  lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
@@ -68,6 +74,7 @@ object DottyBuild extends Build {
     dependsOn(`dotty-library`).
     dependsOn(`dotty-interfaces`).
     settings(
+      addCommandAlias("repl", "dotty-compiler/repl") ++
       addCommandAlias(
         "partest",
         ";packageAll" +
@@ -151,13 +158,23 @@ object DottyBuild extends Build {
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
-
+      // packageAll packages all and then returns a map with the abs location
       packageAll := {
-        val p1 = (packageBin in (`dotty-interfaces`, Compile)).value
-        val p2 = (packageBin in Compile).value
-        val p3 = (packageBin in (`dotty-library`, Compile)).value
-        val p4 = (packageBin in Test).value
+        Map(
+          "dotty-interfaces" -> (packageBin in (`dotty-interfaces`, Compile)).value,
+          "dotty-compiler" -> (packageBin in Compile).value,
+          "dotty-library" -> (packageBin in (`dotty-library`, Compile)).value,
+          "dotty-compiler-test" -> (packageBin in Test).value
+        ) map { case (k, v) => (k, v.getAbsolutePath) }
       },
+
+      repl := Def.inputTaskDyn {
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        val dottyLib = packageAll.value("dotty-library")
+        (runMain in Compile).toTask(
+          s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
+        )
+      }.evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
