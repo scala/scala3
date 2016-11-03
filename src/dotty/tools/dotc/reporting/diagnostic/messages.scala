@@ -580,7 +580,6 @@ object messages {
     }
   }
 
-
   case class ByNameParameterNotSupported()(implicit ctx: Context)
   extends Message(21) {
     val kind = "Syntax"
@@ -728,5 +727,31 @@ object messages {
            | - forgotten parenthesis on ${"this"} (${"def this() = { ... }"})
            | - auxiliary constructors specify the implicit value
            |"""
+  }
+
+  case class IncorrectRepeatedParameterSyntax()(implicit ctx: Context) extends Message(27) {
+    val kind = "Syntax"
+    val msg = "'*' expected"
+    val explanation =
+      hl"""|Expected * in '_*' operator.
+           |
+           |The '_*' operator can be used to supply a sequence-based argument
+           |to a method with a variable-length or repeated parameter. It is used
+           |to expand the sequence to a variable number of arguments, such that:
+           |func(args: _*) would expand to func(arg1, arg2 ... argN).
+           |
+           |Below is an example of how a method with a variable-length
+           |parameter can be declared and used.
+           |
+           |Squares the arguments of a variable-length parameter:
+           |${"def square(args: Int*) = args.map(a => a * a)"}
+           |
+           |Usage:
+           |${"square(1, 2, 3) // res0: List[Int] = List(1, 4, 9)"}
+           |
+           |Secondary Usage with '_*':
+           |${"val ints = List(2, 3, 4)  // ints: List[Int] = List(2, 3, 4)"}
+           |${"square(ints: _*)          // res1: List[Int] = List(4, 9, 16)"}
+           |""".stripMargin
   }
 }
