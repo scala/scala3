@@ -7,8 +7,6 @@ import org.junit.Test
 
 import core.Contexts._
 
-import test.DottyTest
-
 import diagnostic.{ Message, MessageContainer, ExtendMessage }
 
 class TestMessageLaziness extends DottyTest {

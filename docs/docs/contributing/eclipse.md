@@ -27,7 +27,7 @@ You may need to redo these steps when the build changes.
 If you have `CLASSPATH` defined:
 
 4. Update your classpath to contain any new required external libraries to run
-   `./bin/dotc`, `./bin/doti` outside of Eclipse.
+   `./bin/dotc`, `./bin/dotr` outside of Eclipse.
 
 5. Open the `Run Configurations` tab, and edit the `tests` configuration so
    that it contains a `CLASSPATH` variable which reflects the current
@@ -44,4 +44,4 @@ Running the compiler Main class from Eclipse
    - Add the Scala library (`Advanced...` > `Add library...` > `Scala library`)
    - Add the Dotty classfiles (`Add projects...` > `[x] dotty`)
 4. `Run Configurations > Main$ > Arguments` and add
-   `${project_loc}/examples/hello.scala`
+   `${project_loc}/tests/pos/HelloWorld.scala`
