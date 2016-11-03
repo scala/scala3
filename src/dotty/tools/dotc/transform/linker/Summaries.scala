@@ -3,6 +3,7 @@ package dotty.tools.dotc.transform.linker
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.{Hashable, TypeErasure}
@@ -139,7 +140,7 @@ object Summaries {
   private var nextCallId = 0
 
   class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-                        val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context) extends CallInfo(call, targs, argumentsPassed) {
+                        val parent: CallWithContext, val callee: CallInfo, val isEntryPoint: Boolean = false)(implicit ctx: Context) extends CallInfo(call, targs, argumentsPassed) {
 
     val id = { nextCallId += 1; nextCallId }
 
