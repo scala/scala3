@@ -2527,6 +2527,11 @@ object Types {
       case _: MethodType => true
       case _ => false
     }
+    
+    /** Is this polytype a higher-kinded type lambda as opposed to a polymorphic?
+     *  method type? Only type lambdas get created with variances, that's how we can tell.
+     */
+    def isTypeLambda: Boolean = variances.nonEmpty
 
     /** PolyParam references to all type parameters of this type */
     lazy val paramRefs: List[PolyParam] = paramNames.indices.toList.map(PolyParam(this, _))
@@ -2914,9 +2919,15 @@ object Types {
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
       val inst = ctx.typeComparer.instanceType(origin, fromBelow)
       if (ctx.typerState.isGlobalCommittable)
-        assert(!inst.isInstanceOf[PolyParam], i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
-          // If this fails, you might want to turn on Config.debugCheckConstraintsClosed
-          // to help find the root of the problem.
+        inst match {
+          case inst: PolyParam =>
+            assert(inst.binder.isTypeLambda, i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
+              // If this fails, you might want to turn on Config.debugCheckConstraintsClosed
+              // to help find the root of the problem.
+              // Note: Parameters of type lambdas are excluded from the assertion because
+              // they might arise from ill-kinded code. See #1652
+          case _ =>
+        }
       instantiateWith(inst)
     }
 
