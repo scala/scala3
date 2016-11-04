@@ -2,11 +2,10 @@ package dotty.tools
 package dotc
 package reporting
 
-import util.SourcePosition
 import core.Contexts._
 import java.io.{ BufferedReader, PrintWriter }
 import diagnostic.{ Message, MessageContainer }
-import diagnostic.messages._
+import diagnostic.messages.{ Error, Warning, ConditionalWarning }
 
 /**
   * This class implements a Reporter that displays messages on a text console
@@ -25,36 +24,29 @@ class ConsoleReporter(
   def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): Boolean = {
-    printMessage(messageAndPos(msg, pos, diagnosticLevel))
-    true
-  }
-
-  def printExplanation(m: Message)(implicit ctx: Context): Unit = {
-    printMessage(explanation(m))
-  }
-
-  override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
+  def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
     val didPrint = m match {
       case m: Error =>
-        val didPrint = printMessageAndPos(m.contained, m.pos, diagnosticLevel(m))
+        printMessage(messageAndPos(m.contained, m.pos, diagnosticLevel(m)))
         if (ctx.settings.prompt.value) displayPrompt()
-        didPrint
+        true
       case m: ConditionalWarning if !m.enablingOption.value =>
         false
       case m =>
-        printMessageAndPos(m.contained, m.pos, diagnosticLevel(m))
+        printMessage(messageAndPos(m.contained, m.pos, diagnosticLevel(m)))
+        true
     }
 
     if (didPrint && ctx.shouldExplain(m))
-      printExplanation(m.contained)
+      printMessage(explanation(m.contained))
     else if (didPrint && m.contained.explanation.nonEmpty)
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 
-  def displayPrompt(): Unit = {
-    writer.print("\na)bort, s)tack, r)esume: ")
-    writer.flush()
+  /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
+  def displayPrompt()(implicit ctx: Context): Unit = {
+    printMessage("\na)bort, s)tack, r)esume: ")
+    flush()
     if (reader != null) {
       val response = reader.read().asInstanceOf[Char].toLower
       if (response == 'a' || response == 's') {
@@ -62,11 +54,10 @@ class ConsoleReporter(
         if (response == 'a')
           sys.exit(1)
       }
-      writer.print("\n")
-      writer.flush()
+      print("\n")
+      flush()
     }
   }
 
   override def flush()(implicit ctx: Context): Unit = { writer.flush() }
 }
-
