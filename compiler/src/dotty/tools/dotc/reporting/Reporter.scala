@@ -286,11 +286,16 @@ abstract class Reporter extends interfaces.ReporterResult {
   }
 
   /** Should this diagnostic not be reported at all? */
-  def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean = ctx.mode.is(Mode.Printing)
+  def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
+    ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
   def hasPending: Boolean = false
 
+  /** If this reporter buffers messages, remove and return all buffered messages. */
+  def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil
+
   /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
-  def flush()(implicit ctx: Context): Unit = {}
+  def flush()(implicit ctx: Context): Unit =
+    removeBufferedMessages.foreach(ctx.reporter.report)
 }

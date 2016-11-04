@@ -24,6 +24,7 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import reporting.diagnostic.MessageContainer
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
@@ -212,6 +213,8 @@ object Implicits {
   /** A "no matching implicit found" failure */
   case object NoImplicitMatches extends SearchFailure
 
+  case object DivergingImplicit extends SearchFailure
+
   /** A search failure that can show information about the cause */
   abstract class ExplainedSearchFailure extends SearchFailure {
     protected def pt: Type
@@ -233,9 +236,35 @@ object Implicits {
       "\n " + explanation
   }
 
-  class NonMatchingImplicit(ref: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
-    def explanation(implicit ctx: Context): String =
-      em"${err.refStr(ref)} does not $qualify"
+  class NonMatchingImplicit(ref: TermRef,
+                            val pt: Type,
+                            val argument: tpd.Tree,
+                            trail: List[MessageContainer]) extends ExplainedSearchFailure {
+    private val separator = "\n**** because ****\n"
+
+    /** Replace repeated parts beginning with `separator` by ... */
+    private def elideRepeated(str: String): String = {
+      val startIdx = str.indexOfSlice(separator)
+      val nextIdx = str.indexOfSlice(separator, startIdx + separator.length)
+      if (nextIdx < 0) str
+      else {
+        val prefix = str.take(startIdx)
+        val first = str.slice(startIdx, nextIdx)
+        var rest = str.drop(nextIdx)
+        if (rest.startsWith(first)) {
+          rest = rest.drop(first.length)
+          val dots = "\n\n     ...\n"
+          if (!rest.startsWith(dots)) rest = dots ++ rest
+        }
+        prefix ++ first ++ rest
+      }
+    }
+    
+    def explanation(implicit ctx: Context): String = {
+      val headMsg = em"${err.refStr(ref)} does not $qualify"
+      val trailMsg = trail.map(mc => i"$separator  ${mc.message}").mkString
+      elideRepeated(headMsg ++ trailMsg)
+    }
   }
 
   class ShadowedImplicit(ref: TermRef, shadowing: Type, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
@@ -587,7 +616,7 @@ trait Implicits { self: Typer =>
     val wildProto = implicitProto(pt, wildApprox(_))
 
     /** Search failures; overridden in ExplainedImplicitSearch */
-    protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
+    protected def nonMatchingImplicit(ref: TermRef, trail: List[MessageContainer]): SearchFailure = NoImplicitMatches
     protected def divergingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
     protected def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure = NoImplicitMatches
     protected def failedSearch: SearchFailure = NoImplicitMatches
@@ -628,7 +657,7 @@ trait Implicits { self: Typer =>
             { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
         }
         if (ctx.reporter.hasErrors)
-          nonMatchingImplicit(ref)
+          nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
                  !shadowing.tpe.isError && !refMatches(shadowing)) {
           implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
@@ -637,7 +666,7 @@ trait Implicits { self: Typer =>
         else generated1 match {
           case TypeApply(fn, targs @ (arg1 :: arg2 :: Nil))
           if fn.symbol == defn.Predef_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
-            nonMatchingImplicit(ref)
+            nonMatchingImplicit(ref, Nil)
           case _ =>
             SearchSuccess(generated1, ref, ctx.typerState)
         }
@@ -743,8 +772,8 @@ trait Implicits { self: Typer =>
       fail
     }
     def failures = myFailures.toList
-    override def nonMatchingImplicit(ref: TermRef) =
-      record(new NonMatchingImplicit(ref, pt, argument))
+    override def nonMatchingImplicit(ref: TermRef, trail: List[MessageContainer]) =
+      record(new NonMatchingImplicit(ref, pt, argument, trail))
     override def divergingImplicit(ref: TermRef) =
       record(new DivergingImplicit(ref, pt, argument))
     override def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure =

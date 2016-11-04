@@ -36,11 +36,9 @@ class StoreReporter(outer: Reporter) extends Reporter {
     }
   }
 
-  override def flush()(implicit ctx: Context) =
-    if (infos != null) {
-      infos.foreach(ctx.reporter.report(_))
-      infos = null
-    }
+  override def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] =
+    if (infos != null) try infos.toList finally infos = null
+    else Nil
 
   override def errorsReported = hasErrors || outer.errorsReported
 }
