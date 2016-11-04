@@ -122,14 +122,14 @@ object GraphVisualization {
     outGraph.toString
   }
 
-  def outputGraphViz(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
+  def outputGraphVis(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
     val reachableMethods = callGraph.reachableMethods
     val reachableTypes = callGraph.reachableTypes
     val outerMethod = callGraph.outerMethods
 
     // add names and subraphs
     val nodes = mutable.Map.empty[String, String]
-    val edges = List.newBuilder[String]
+    val edges = mutable.Map.empty[String, List[String]]
 
     val red = "'rgb(255,150,150)'"
     val blue = "'rgb(150,150,255)'"
@@ -141,22 +141,33 @@ object GraphVisualization {
         if (outerMethod.contains(caller.call.termSymbol)) red
         else blue
 
-      val callerId = s"'call-site-${caller.call.uniqId}'"
-      nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color, shape: 'box' }"
-
-      if (caller.callee != null) {
-        val calleeId = s"'call-site-${caller.parent.call.uniqId}'"
-        edges += s"{ from: $calleeId, to: $callerId, title: '${callSiteLabel(caller.callee)}' }"
+      def mkId(callWithContext: CallWithContext): String = {
+        callWithContext.call.uniqId.toString
       }
 
+      val callerId = s"'${mkId(caller)}'"
+      nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color }"
+
       if (caller.isEntryPoint) {
-        val entryId = s"'entry-${caller.call.uniqId}'"
+        val entryId = s"'entry-${mkId(caller)}'"
         nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
-        edges += s"{ from: $entryId, to: $callerId }"
+        edges(entryId) = s"{ from: $entryId, to: $callerId }" :: edges.getOrElse(entryId, Nil)
+      } else if (caller.callee == null) {
+        val entryId = s"'entry-${mkId(caller)}'"
+        nodes(entryId) = s"{ id: $entryId, hidden: true }"
+        edges(entryId) = s"{ from: $entryId, to: $callerId, hidden: true }" :: edges.getOrElse(entryId, Nil)
+      }
+
+      caller.outEdges.iterator.foreach {
+        case (call, callees) =>
+          callees.foreach { callee =>
+            val calleeId = s"'${mkId(callee)}'"
+            edges(callerId) = s"{ from: $callerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(callerId, Nil)
+          }
       }
     }
 
-    visHTML(nodes.values, edges.result())
+    visHTML(nodes.toMap, edges.toMap)
   }
 
 
@@ -296,7 +307,9 @@ object GraphVisualization {
   }
 
 
-  private def visHTML(nodes: Iterable[String], edges: Iterable[String]): String = {
+  private def visHTML(nodes: Map[String, String], edges: Map[String, List[String]]): String = {
+    val nodesJSON = nodes.iterator.map{ case (key, v) => key + ": " + v}.mkString("{\n      ", ",\n      ", "\n    }")
+    val edgesJSON = edges.iterator.map{ case (key, ns) => key + ": " + ns.mkString("[", ",", "]")}.mkString("{\n      ", ",\n      ", "\n    }")
     s"""
       |<!doctype html>
       |<html>
@@ -335,7 +348,7 @@ object GraphVisualization {
       |  var container = document.getElementById('mynetwork');
       |  var options = {
       |    layout: {
-      |      improvedLayout: false
+      |      improvedLayout: true
       |    },
       |    edges: {
       |      smooth: true,
@@ -345,10 +358,45 @@ object GraphVisualization {
       |      hover: true
       |    }
       |  };
+      |
+      |  var nodesMap = $nodesJSON
+      |  var edgesMap = $edgesJSON
+      |
       |  var data = {
-      |    nodes: new vis.DataSet(${nodes.mkString("[\n      ", ",\n      ", "    ]")}),
-      |    edges: new vis.DataSet(${edges.mkString("[\n      ", ",\n      ", "    ]")})
+      |    nodes: new vis.DataSet([]),
+      |    edges: new vis.DataSet([])
       |  };
+      |
+      |  var addNext = function (id) {
+      |    var edgs = edgesMap[id];
+      |    if (!id.startsWith('entry') && nodesMap[id]['shape'] != 'box') {
+      |      nodesMap[id].shape = 'box';
+      |      data.nodes.update(nodesMap[id]);
+      |    }
+      |    for (e in edgs) {
+      |      var nodeId = edgs[e].to
+      |      var node = nodesMap[nodeId];
+      |      if (!node.added) {
+      |        if (!edgesMap[nodeId]) {
+      |          node.shape = 'box';
+      |        } else {
+      |          var edges2 = edgesMap[nodeId];
+      |          for (i in edges2)
+      |            data.edges.add(edges2[i]);
+      |        }
+      |        data.nodes.add(node);
+      |        node.added = true;
+      |      }
+      |    }
+      |  };
+      |  for (i in nodesMap) {
+      |    if (i.startsWith('entry')) {
+      |      data.nodes.add(nodesMap[i]);
+      |      data.edges.add(edgesMap[i]);
+      |      addNext(i);
+      |    }
+      |  }
+      |
       |  var network = new vis.Network(container, data, options);
       |   network.on("stabilizationProgress", function(params) {
       |      var maxWidth = 496;
@@ -365,6 +413,11 @@ object GraphVisualization {
       |      document.getElementById('loadingBar').style.opacity = 0;
       |      // really clean the dom element
       |      setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+      |  });
+      |  network.on("doubleClick", function (params) {
+      |      params.event = "[original event]";
+      |      if (params.nodes && params.nodes.length > 0)
+      |        addNext(params.nodes[0]);
       |  });
       |</script>
       |
