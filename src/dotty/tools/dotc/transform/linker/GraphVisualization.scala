@@ -152,11 +152,11 @@ object GraphVisualization {
         val entryId = s"'entry-${mkId(caller)}'"
         nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
         edges(entryId) = s"{ from: $entryId, to: $callerId }" :: edges.getOrElse(entryId, Nil)
-      } else if (caller.callee == null) {
+      } /* else if (caller.callee == null) {
         val entryId = s"'entry-${mkId(caller)}'"
         nodes(entryId) = s"{ id: $entryId, hidden: true }"
         edges(entryId) = s"{ from: $entryId, to: $callerId, hidden: true }" :: edges.getOrElse(entryId, Nil)
-      }
+      } */
 
       caller.outEdges.iterator.foreach {
         case (call, callees) =>
@@ -367,10 +367,21 @@ object GraphVisualization {
       |    edges: new vis.DataSet([])
       |  };
       |
-      |  var addNext = function (id) {
+      |  var doubleClickOnNode = function (id) {
       |    var edgs = edgesMap[id];
-      |    if (!id.startsWith('entry') && nodesMap[id]['shape'] != 'box') {
-      |      nodesMap[id].shape = 'box';
+      |    var node = nodesMap[id];
+      |    if (!id.startsWith('entry') && !node.isLeaf) {
+      |      if (node.shape != 'box') {
+      |        node.shape = 'box';
+      |        var edges1 = edgesMap[id];
+      |        for (i in edges1)
+      |          data.edges.add(edges1[i]);
+      |      } else {
+      |        node.shape = undefined;
+      |        var edges1 = edgesMap[id];
+      |        for (i in edges1)
+      |          data.edges.remove(edges1[i]);
+      |      }
       |      data.nodes.update(nodesMap[id]);
       |    }
       |    for (e in edgs) {
@@ -379,10 +390,8 @@ object GraphVisualization {
       |      if (!node.added) {
       |        if (!edgesMap[nodeId]) {
       |          node.shape = 'box';
-      |        } else {
-      |          var edges2 = edgesMap[nodeId];
-      |          for (i in edges2)
-      |            data.edges.add(edges2[i]);
+      |          node.shapeProperties = { borderDashes: [10,5] };
+      |          node.isLeaf = true;
       |        }
       |        data.nodes.add(node);
       |        node.added = true;
@@ -393,7 +402,7 @@ object GraphVisualization {
       |    if (i.startsWith('entry')) {
       |      data.nodes.add(nodesMap[i]);
       |      data.edges.add(edgesMap[i]);
-      |      addNext(i);
+      |      doubleClickOnNode(i);
       |    }
       |  }
       |
@@ -417,7 +426,7 @@ object GraphVisualization {
       |  network.on("doubleClick", function (params) {
       |      params.event = "[original event]";
       |      if (params.nodes && params.nodes.length > 0)
-      |        addNext(params.nodes[0]);
+      |        doubleClickOnNode(params.nodes[0]);
       |  });
       |</script>
       |
