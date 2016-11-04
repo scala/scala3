@@ -2528,6 +2528,9 @@ object Types {
       case _ => false
     }
     
+    /** Is this polytype a higher-kinded type lambda as opposed to a polymorphic?
+     *  method type? Only type lambdas get created with variances, that's how we can tell.
+     */
     def isTypeLambda: Boolean = variances.nonEmpty
 
     /** PolyParam references to all type parameters of this type */
