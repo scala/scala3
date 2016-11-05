@@ -591,7 +591,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case ErrorType => tree.withType(ErrorType)
+        case ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(ErrorType)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           tryEither {
