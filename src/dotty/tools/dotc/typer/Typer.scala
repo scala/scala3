@@ -95,6 +95,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
     val refctx = ctx
     val name = tree.name
+    val noImports = ctx.mode.is(Mode.InPackageClauseName)
 
     /** Method is necessary because error messages need to bind to
      *  to typedIdent's context which is lost in nested calls to findRef
@@ -240,7 +241,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       /** Would import of kind `prec` be not shadowed by a nested higher-precedence definition? */
       def isPossibleImport(prec: Int)(implicit ctx: Context) =
-        prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope)
+        !noImports && 
+        (prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
       @tailrec def loop(implicit ctx: Context): Type = {
         if (ctx.scope == null) previous
@@ -1330,7 +1332,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {
-    val pid1 = typedExpr(tree.pid, AnySelectionProto)
+    val pid1 = typedExpr(tree.pid, AnySelectionProto)(ctx.addMode(Mode.InPackageClauseName))
     val pkg = pid1.symbol
     val packageContext =
       if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
