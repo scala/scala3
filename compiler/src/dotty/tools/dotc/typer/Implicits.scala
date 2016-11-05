@@ -259,7 +259,7 @@ object Implicits {
         prefix ++ first ++ rest
       }
     }
-    
+
     def explanation(implicit ctx: Context): String = {
       val headMsg = em"${err.refStr(ref)} does not $qualify"
       val trailMsg = trail.map(mc => i"$separator  ${mc.message}").mkString
@@ -302,9 +302,10 @@ trait ImplicitRunInfo { self: RunInfo =>
    *                      a type variable, we need the current context, the current
    *                      runinfo context does not do.
    */
-  def implicitScope(tp: Type, liftingCtx: Context): OfTypeImplicits = {
+  def implicitScope(rootTp: Type, liftingCtx: Context): OfTypeImplicits = {
 
     val seen: mutable.Set[Type] = mutable.Set()
+    val incomplete: mutable.Set[Type] = mutable.Set()
 
     /** Replace every typeref that does not refer to a class by a conjunction of class types
      *  that has the same implicit scope as the original typeref. The motivation for applying
@@ -338,16 +339,23 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
     }
 
-    def iscopeRefs(tp: Type): TermRefSet =
-      if (seen contains tp) EmptyTermRefSet
-      else {
-        seen += tp
-        iscope(tp).companionRefs
-      }
-
     // todo: compute implicits directly, without going via companionRefs?
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
       ctx.traceIndented(i"collectCompanions($tp)", implicits) {
+
+        def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
+          case Some(is) =>
+            is.companionRefs
+          case None =>
+            if (seen contains t) {
+              incomplete += tp  // all references to rootTo will be accounted for in `seen` so we return `EmptySet`.
+              EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
+            } else {
+              seen += t
+              iscope(t).companionRefs
+            }
+        }
+
         val comps = new TermRefSet
         tp match {
           case tp: NamedType =>
@@ -385,7 +393,8 @@ trait ImplicitRunInfo { self: RunInfo =>
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
-      def computeIScope(cacheResult: Boolean) = {
+      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached
+      def computeIScope() = {
         val savedEphemeral = ctx.typerState.ephemeral
         ctx.typerState.ephemeral = false
         try {
@@ -396,33 +405,23 @@ trait ImplicitRunInfo { self: RunInfo =>
             else
               collectCompanions(tp)
           val result = new OfTypeImplicits(tp, refs)(ctx)
-          if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
-          else if (cacheResult) implicitScopeCache(tp) = result
+          if (ctx.typerState.ephemeral)
+            record("ephemeral cache miss: implicitScope")
+          else if (canCache &&
+                   ((tp eq rootTp) ||                  // first type traversed is always cached
+                    !incomplete.contains(tp) &&        // other types are cached if they are not incomplete
+                    result.companionRefs.forall(       // and all their companion refs are cached
+                      implicitScopeCache.contains)))
+            implicitScopeCache(tp) = result
           result
         }
         finally ctx.typerState.ephemeral |= savedEphemeral
       }
-
-      if (tp.hash == NotCached || !Config.cacheImplicitScopes)
-        computeIScope(cacheResult = false)
-      else implicitScopeCache get tp match {
-        case Some(is) => is
-        case None =>
-          // Implicit scopes are tricky to cache because of loops. For example
-          // in `tests/pos/implicit-scope-loop.scala`, the scope of B contains
-          // the scope of A which contains the scope of B. We break the loop
-          // by returning EmptyTermRefSet in `collectCompanions` for types
-          // that we have already seen, but this means that we cannot cache
-          // the computed scope of A, it is incomplete.
-          // Keeping track of exactly where these loops happen would require a
-          // lot of book-keeping, instead we choose to be conservative and only
-          // cache scopes before any type has been seen. This is unfortunate
-          // because loops are very common for types in scala.collection.
-          computeIScope(cacheResult = seen.isEmpty)
-      }
+      if (canCache) implicitScopeCache.getOrElse(tp, computeIScope())
+      else computeIScope()
     }
 
-    iscope(tp)
+    iscope(rootTp)
   }
 
   /** A map that counts the number of times an implicit ref was picked */
