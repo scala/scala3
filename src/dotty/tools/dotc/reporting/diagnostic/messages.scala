@@ -184,7 +184,7 @@ object messages {
 
       val caseDef = s"case $pat$guard => $body"
 
-      hl"""|For each ${"case"} bound variable names  have to be unique. In:
+      hl"""|For each ${"case"} bound variable names have to be unique. In:
            |
            |$caseDef
            |
