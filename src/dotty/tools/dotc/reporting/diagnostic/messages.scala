@@ -194,12 +194,14 @@ object messages {
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
   extends Message(6) {
-    val kind = "Missing Identifier"
+    val kind = "Unbound Identifier"
     val msg = em"not found: $treeKind$name"
 
     val explanation = {
-      hl"""|An identifier for `$treeKind$name` is missing. This means that something
-           |has either been misspelt or you're forgetting an import"""
+      hl"""|The identifier for `$treeKind$name` is not bound, that is,
+           |no declaration for this identifier can be found.
+           |That can happen for instance if $name or its declaration has either been
+           |misspelt, or if you're forgetting an import"""
     }
   }
 
