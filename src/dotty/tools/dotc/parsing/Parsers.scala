@@ -599,7 +599,7 @@ object Parsers {
           case FALSE                  => false
           case NULL                   => null
           case _                      =>
-            syntaxErrorOrIncomplete("illegal literal")
+            syntaxErrorOrIncomplete(IllegalLiteral())
             null
         })
       }
