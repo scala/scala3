@@ -356,6 +356,15 @@ object GraphVisualization {
       |    },
       |    interaction: {
       |      hover: true
+      |    },
+      |    physics: {
+      |      enabled: true,
+      |      solver: 'repulsion',
+      |      maxVelocity: 10,
+      |      minVelocity: 1,
+      |      repulsion: {
+      |        nodeDistance: 400
+      |      }
       |    }
       |  };
       |
