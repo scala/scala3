@@ -755,15 +755,29 @@ object messages {
            |""".stripMargin
   }
 
+  case class IllegalLiteral()(implicit ctx: Context) extends Message(28) {
+    val kind = "Syntax"
+    val msg = "illegal literal"
+    val explanation =
+      hl"""|Available literals can be divided into the several groups:
+           | - Integer literals: 0, 21, 0xFFFFFFFF, -42L
+           | - Floating Point Literals: 0.0, 1e30f, 3.14159f, 1.0e-100, .1
+           | - Boolean Literals: true, false
+           | - Character Literals: 'a', '\u0041', '\n'
+           | - String Literals: "Hello, World!"
+           | - null
+           |"""
+  }
+
   case class NoClassOrObjectAfterCase()(implicit ctx: Context)
-  extends Message(28) {
+  extends Message(29) {
     val kind = "Syntax"
     val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
     val explanation = ""
   }
 
   case class ClassOrObjectExpected()(implicit ctx: Context)
-  extends Message(29) {
+  extends Message(30) {
     val kind = "Syntax"
     val msg = hl"Expected ${"class"} or ${"object"} definition."
     val explanation = ""
