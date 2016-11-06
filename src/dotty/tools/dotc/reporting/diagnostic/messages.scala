@@ -759,7 +759,7 @@ object messages {
     val kind = "Syntax"
     val msg = "illegal literal"
     val explanation =
-      hl"""|Available literals can be divided into the several groups:
+      hl"""|Available literals can be divided into several groups:
            | - Integer literals: 0, 21, 0xFFFFFFFF, -42L
            | - Floating Point Literals: 0.0, 1e30f, 3.14159f, 1.0e-100, .1
            | - Boolean Literals: true, false
