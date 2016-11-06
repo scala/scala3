@@ -241,7 +241,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
       /** Would import of kind `prec` be not shadowed by a nested higher-precedence definition? */
       def isPossibleImport(prec: Int)(implicit ctx: Context) =
-        !noImports && 
+        !noImports &&
         (prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
       @tailrec def loop(implicit ctx: Context): Type = {
@@ -446,6 +446,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ =>
         }
         checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true)
+
+        tpt1 match {
+          case AppliedTypeTree(_, targs) =>
+            for (targ @ TypeBoundsTree(_, _) <- targs)
+              ctx.error("type argument must be fully defined", targ.pos)
+          case _ =>
+        }
+
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
