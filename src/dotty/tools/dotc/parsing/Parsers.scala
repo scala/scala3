@@ -2119,9 +2119,9 @@ object Parsers {
           stats += tmplDef(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           if (in.token == CASE)
-            syntaxErrorOrIncomplete("only `case class` or `case object` allowed")
+            syntaxErrorOrIncomplete(NoClassOrObjectAfterCase())
           else
-            syntaxErrorOrIncomplete("expected class or object definition")
+            syntaxErrorOrIncomplete(ClassOrObjectExpected())
           if (mustStartStat) // do parse all definitions even if they are probably local (i.e. a "}" has been forgotten)
             defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         }
