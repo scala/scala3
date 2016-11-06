@@ -72,8 +72,7 @@ object RefChecks {
     }
   }
 
-  /** Check that final and sealed restrictions on class parents
-   *  and that self type of this class conforms to self types of parents.
+  /** Check that self type of this class conforms to self types of parents.
    *  and required classes.
    */
   private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
@@ -83,14 +82,8 @@ object RefChecks {
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
           ctx.error(ex"$category: self type ${cinfo.selfType} of $cls does not conform to self type $otherSelf of $relation ${other.classSymbol}", cls.pos)
       }
-      for (parent <- cinfo.classParents) {
-        val pclazz = parent.classSymbol
-        if (pclazz.is(Final))
-          ctx.error(em"cannot extend final $pclazz", cls.pos)
-        if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-          ctx.error(em"cannot extend sealed $pclazz in different compilation unit", cls.pos)
+      for (parent <- cinfo.classParents)
         checkSelfConforms(parent, "illegal inheritance", "parent")
-      }
       for (reqd <- cinfo.givenSelfType.classSymbols)
         checkSelfConforms(reqd.typeRef, "missing requirement", "required")
     case _ =>
