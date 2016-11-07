@@ -15,8 +15,6 @@ object Test {
     class C(val a: Int) extends AnyVal // error: value class may not be a local class
     new C(1)
   }
-  class B1(val b: Int) extends B(b) // error: cannot extend final class B
-//  class D extends B( { class E(val a: Int) extends AnyVal; new E(1) } )
 }
 
 
