@@ -1,10 +1,8 @@
 ---
 layout: default
-title: "cbt"
+title: "Using Dotty with cbt"
 ---
 
-Using Dotty with cbt
-====================
 cbt comes with built-in dotty support. Follow the
 [cbt tutorial](https://github.com/cvogt/cbt/), then simply extend `Dotty` in the Build class.
 

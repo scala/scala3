@@ -1,9 +1,8 @@
 ---
 layout: default
+title: "Building Dotty with Intellij IDEA"
 ---
 
-Building Dotty with Intellij IDEA
-=================================
 Dotty compiler support is available in the [Scala plugin nightly] starting
 from 2.2.39. You need to install [IDEA 2016.1] to try it.
 

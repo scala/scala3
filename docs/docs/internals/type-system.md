@@ -1,9 +1,8 @@
 ---
 layout: default
+title: "Type System"
 ---
 
-Type System
-===========
 The types are defined in [dotty/tools/dotc/core/Types.scala][1]
 
 ## Class diagram ##

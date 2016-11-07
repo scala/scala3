@@ -1,10 +1,8 @@
 ---
-title: Contexts
 layout: default
+title: "Contexts"
 ---
 
-Contexts
-========
 The `Context` contains the state of the compiler, for example
   * `settings`
   * `freshNames` (`FreshNameCreator`)

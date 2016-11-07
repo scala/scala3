@@ -1,10 +1,8 @@
 ---
 layout: default
-title: "sbt"
+title: "Using Dotty with sbt"
 ---
 
-Using Dotty with sbt
-====================
 It is now possible to use Dotty with sbt thanks to the dotty-bridge project.
 There are two alternatives in how to create an sbt project that uses dotty:
 
