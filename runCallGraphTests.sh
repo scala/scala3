@@ -29,9 +29,9 @@ function compile() {
 
   # if there are java sources and a java compilation command is given
   if [ -n "$jv_srcs" ] && [ -n "$jv_cmp_cmd" ]; then
-    ( $sc_cmp_cmd "$sc_srcs $jv_srcs" && $jv_cmp_cmd $jv_srcs ) > compile-log.txt 2> compile-errors.txt || return 1
+    ( dot_compile "$sc_srcs $jv_srcs" && $jv_cmp_cmd $jv_srcs ) > compile-log.txt 2> compile-errors.txt || return 1
   else
-    $sc_cmp_cmd "$sc_srcs" > compile-log.txt 2> compile-errors.txt || return 1
+    dot_compile "$sc_srcs" > compile-log.txt 2> compile-errors.txt || return 1
   fi
 
   # if there are auxiliary java sources and a java compilation command is given
@@ -50,14 +50,6 @@ else
   jv_cmp_cmd=""
 fi
 
-if [ $# -lt 2 ]; then
-  echo "Usage: `basename $0` [-j javaCompileCmd] scalaCompileCmd runCmd [test1 test2 ...]" 1>&2
-  exit 1
-else
-  sc_cmp_cmd="$1"; shift
-  run_cmd="$1"; shift
-fi
-
 if [ $# -eq 0 ]; then
   test_dirs=tests/callgraph/*
 else
@@ -72,6 +64,10 @@ for test_dir in $test_dirs; do
   pushd $test_dir > /dev/null
   rm -R out > /dev/null 2> /dev/null
   mkdir -p out
+  if [ -e "env" ]
+  then
+    source ./env
+  fi
   cd out > /dev/null
   compile "$test_dir/out/" && run || { echo "... failed"; code=1; }
   popd > /dev/null
