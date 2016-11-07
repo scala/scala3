@@ -26,6 +26,7 @@
             </div>
         </div>
     </body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.4.0/mark.min.js"></script>
     <script src="{{ site.baseurl }}/js/highlight.pack.js"></script>
     <script language="javascript">
         hljs.initHighlightingOnLoad();
@@ -34,6 +35,27 @@
             var thisHREF = document.links[i].href;
             if (thisHREF.indexOf(window.location.hostname) > -1) thisHREF = thisHREF.replace(".md",".html")
             document.links[i].setAttribute('href', thisHREF);
+        }
+
+        function getQueryVariable(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split('&');
+
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split('=');
+
+                if (pair[0] === variable) {
+                    return decodeURIComponent(pair[1].replace(/\+/g, '%20'));
+                }
+            }
+        }
+
+
+        var highlight = getQueryVariable("highlight");
+        if (highlight) {
+            var context = document.querySelector("#content");
+            var instance = new Mark(context);
+            instance.mark(highlight);
         }
     </script>
 </html>

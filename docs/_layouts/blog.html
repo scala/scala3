@@ -2,12 +2,11 @@
 layout: default
 ---
 
-<h1 class="title">{{ page.title }}</h1>
 <h2 class="subtitle">{{ page.subTitle }}</h2>
 
 <div class="author-container {% if page.authorImg != null %} spaced {% endif %}">
     {% if page.authorImg != null %}
-    <img src="{{ site.baseurl }}/{{ page.authorImg }}"/>
+    <img src="{{ site.baseurl }}{{ page.authorImg }}"/>
     {% endif %}
     <div class="author-info">
         <div>{{ page.author }}</div>
