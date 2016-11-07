@@ -570,13 +570,12 @@ class Namer { typer: Typer =>
           denot.addAnnotation(ann)
           if (cls == defn.InlineAnnot && denot.is(Method, butNot = Accessor))
             denot.setFlag(Inline)
-          if (denot.isInlineMethod) addInlineInfo(denot, original)
         }
       case _ =>
     }
 
-    private def addInlineInfo(denot: SymDenotation, original: untpd.Tree) = original match {
-      case original: untpd.DefDef =>
+    private def addInlineInfo(denot: SymDenotation) = original match {
+      case original: untpd.DefDef if denot.isInlineMethod =>
         Inliner.registerInlineInfo(
             denot,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
@@ -589,6 +588,7 @@ class Namer { typer: Typer =>
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
       addAnnotations(denot)
+      addInlineInfo(denot)
       denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
     }
