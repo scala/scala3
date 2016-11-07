@@ -16,6 +16,9 @@
             </a>
             <div id="content">
                 <h1>{{ page.title }}</h1>
+                <div class="edit-docs">
+                    <a href="{{site.repository_url}}/edit/master/docs/{{page.path}}">[edit on github]</a>
+                </div>
                 {{ content }}
             </div>
             <div id="toc">

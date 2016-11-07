@@ -70,6 +70,7 @@ div#container {
     }
 
     div#content {
+        position: relative;
         margin-top: $distance-top;
         width: $content-width - $toc-width;
         float: right;
@@ -148,6 +149,12 @@ div#container {
             }
         }
     }
+}
+
+div.edit-docs {
+    position: absolute;
+    top: 8px;
+    right: 0;
 }
 
 h1#search {
