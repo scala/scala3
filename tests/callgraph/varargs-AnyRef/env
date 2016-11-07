@@ -1,0 +1,3 @@
+function dot_compile() {
+  dotcf $@
+};
