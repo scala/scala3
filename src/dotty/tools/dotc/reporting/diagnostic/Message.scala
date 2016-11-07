@@ -20,7 +20,8 @@ object Message {
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
   * into a `MessageContainer` which contains the log level and can later be
-  * consumed by a subclass of `Reporter`.
+  * consumed by a subclass of `Reporter`. However, the error position is only
+  * part of `MessageContainer`, not `Message`.
   *
   * NOTE: you should not be persisting messages. Most messages take an implicit
   * `Context` and these contexts weigh in at about 4mb per instance, as such
