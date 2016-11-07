@@ -1,10 +1,7 @@
 ---
 layout: default
-title: Eclipse
+title: "Building Dotty with Eclipse"
 ---
-
-Building Dotty with Eclipse
-===========================
 
 Build setup
 -----------

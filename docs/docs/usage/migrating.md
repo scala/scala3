@@ -3,9 +3,6 @@ layout: default
 title: "Migrating to Dotty"
 ---
 
-Migrating to Dotty
-==================
-
 ### Minor tweaks ###
  * `sym.linkedClassOfClass` => `sym.linkedClass`
  * `definitions` => `ctx.definitions`

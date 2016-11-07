@@ -1,10 +1,8 @@
 ---
 layout: default
-title: "Docs"
+title: "Dotty Documentation"
 ---
 
-Dotty Documentation
-===================
 The Dotty compiler is currently somewhat lacking in documentation - PRs
 welcome! But, we've attempted to gather the most essential knowledge in these
 pages.

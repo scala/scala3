@@ -3,9 +3,6 @@ layout: default
 title: "Getting Started"
 ---
 
-Getting Started
-===============
-
 Talks on Dotty
 --------------
 - [Scala's Road Ahead](https://www.youtube.com/watch?v=GHzWqJKFCk4) by Martin Odersky [\[slides\]](http://www.slideshare.net/Odersky/scala-days-nyc-2016)

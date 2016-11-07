@@ -3,8 +3,6 @@ layout: default
 title: "Backend Internals"
 ---
 
-Backend Internals
-=================
 The code for the backend is split up by functionality and assembled in the
 objet `GenBCode`.
 
