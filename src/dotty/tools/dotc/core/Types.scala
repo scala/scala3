@@ -73,6 +73,8 @@ object Types {
    *                       +- NoPrefix
    *                       +- ErrorType
    *                       +- WildcardType
+   *
+   *  Note: please keep in sync with copy in `docs/docs/internals/type-system.md`.
    */
   abstract class Type extends DotClass with Hashable with printing.Showable {
 
