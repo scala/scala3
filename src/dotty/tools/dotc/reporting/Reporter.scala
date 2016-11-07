@@ -167,6 +167,22 @@ trait Reporting { this: Context =>
         throw ex
     }
   }
+
+  /** Implements a fold that applies the function `f` to the result of `op` if
+    * there are no new errors in the reporter
+    *
+    * @param op operation checked for errors
+    * @param f  function applied to result of op
+    * @return   either the result of `op` if it had errors or the result of `f`
+    *           applied to it
+    */
+  def withNoError[A, B >: A](op: => A)(f: A => B): B = {
+    val before = reporter.errorCount
+    val op0 = op
+
+    if (reporter.errorCount > before) op0
+    else f(op0)
+  }
 }
 
 /**

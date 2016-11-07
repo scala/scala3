@@ -190,10 +190,7 @@ object Inliner {
           val inlineCtx = ctx
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx: Context = inlineCtx
-            val tree1 = treeExpr(ctx)
-            if (tree1.hasType && !tree1.tpe.isError)
-              makeInlineable(tree1)
-            else tree1
+            ctx.withNoError(treeExpr(ctx))(makeInlineable)
           })
         }
     }
