@@ -31,7 +31,7 @@ abstract class Message(val errorId: Int) { self =>
     * > expected: String
     * > found:    Int
     *
-    * This message wil be placed underneath the position given by the enclosing
+    * This message will be placed underneath the position given by the enclosing
     * `MessageContainer`
     */
   def msg: String
