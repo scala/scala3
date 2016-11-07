@@ -689,7 +689,7 @@ object RefChecks {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  private def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
+  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: ValDef if !stat.symbol.is(ParamAccessor) =>
         ctx.error(s"value class may not define non-parameter field", stat.pos)
@@ -836,7 +836,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
-      checkDerivedValueClass(cls, tree.body)
       tree
     } catch {
       case ex: MergeError =>

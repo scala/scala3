@@ -1269,6 +1269,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)
     }
+
+
+    // check value class constraints
+    RefChecks.checkDerivedValueClass(cls, body1)
+
     cdef1
 
     // todo later: check that
