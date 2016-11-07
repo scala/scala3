@@ -1,10 +1,8 @@
 ---
 layout: default
-title: "Scalac vs Dotty"
+title: "Differences between Scalac and Dotty"
 ---
 
-Differences between Scalac and Dotty
-====================================
 Overview explanation how symbols, named types and denotations hang together:
 [Denotations.scala:22]
 

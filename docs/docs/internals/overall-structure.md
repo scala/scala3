@@ -1,10 +1,8 @@
 ---
 layout: default
-title: "Project Structure"
+title: "Dotty Overall Structure"
 ---
 
-Dotc Overall Structure
-======================
 The compiler code is found in package [dotty.tools]. It spans the
 following three sub-packages:
 

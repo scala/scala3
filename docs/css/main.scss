@@ -15,8 +15,8 @@ $base-line-height: 1.5;
 
 $spacing-unit:     30px;
 
-$text-color:       #111;
-$background-color: #fdfdfd;
+$text-color:       #efefef;
+$background-color: #002B36;
 $brand-color:      #2a7ae2;
 
 
@@ -24,6 +24,8 @@ $blue:          #3498db;
 $blue-light:    rgba(52, 152, 219, 0.12);
 $grey:          #f8f8f8;
 $red:           #de332e;
+
+$link-color: $blue;
 
 // content area
 $distance-top:     80px;
@@ -49,6 +51,14 @@ html {
     box-sizing: inherit;
 }
 
+*:focus {
+    outline: none;
+}
+
+a, a:focus, a:hover, a:visited {
+    color: $link-color;
+}
+
 div#container {
     position: relative;
     max-width: $content-width;
@@ -60,6 +70,7 @@ div#container {
     }
 
     div#content {
+        position: relative;
         margin-top: $distance-top;
         width: $content-width - $toc-width;
         float: right;
@@ -80,10 +91,25 @@ div#container {
         padding-right: 20px;
         width: $toc-width;
 
+        form#search-form {
+            input#search-box {
+                width: 100%;
+                border: 0;
+                height: 24px;
+                font-size: 14px;
+                padding-left: 4px;
+            }
+
+            input#search-button {
+                margin-top: 3px;
+            }
+        }
+
         > div {
             position: fixed;
             top: $distance-top;
             bottom: auto;
+            max-width: $toc-width;
 
             a > div#scala-logo {
                 width: 64px;
@@ -125,6 +151,27 @@ div#container {
     }
 }
 
+div.edit-docs {
+    position: absolute;
+    top: 8px;
+    right: 0;
+}
+
+h1#search {
+    margin-top: 50px;
+}
+
+form#search-bar {
+    width: 100%;
+    > input {
+        width: 100%;
+        border: 0;
+        height: 24px;
+        font-size: 14px;
+        padding-left: 4px;
+    }
+}
+
 div.author-container {
     height: 50px;
     margin-bottom: 15px;
@@ -135,7 +182,7 @@ div.author-container {
     }
 
     > div.author-info {
-        color: rgba(0,0,0,0.45);
+        color: rgba(255,255,255,0.45);
         float: left;
     }
 }
@@ -155,7 +202,7 @@ ul.post-list {
 
     > li {
         div.date {
-            color: rgba(0,0,0,0.45);
+            color: rgba(255,255,255,0.55);
         }
     }
 }
@@ -165,12 +212,18 @@ pre, code {
     border: 0;
     border-radius: 3px;
     background-color: $grey;
+    color: $background-color;
     font-family: $code-font-family;
+}
+
+code {
+    padding-left: 0.1em;
+    padding-right: 0.1em;
 }
 
 body {
     font: 400 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #111;
+    color: $text-color;
 }
 
 @include media-query(1166px) {

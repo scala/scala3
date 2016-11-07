@@ -4,6 +4,9 @@
             {% include scala-logo.html %}
         </div>
     </a>
+    <form id="search-form" action="/search.html" method="get">
+        <input placeholder="Search" type="text" id="search-box" name="query">
+    </form>
     <ul id="categories">
         <li><ul><li><a href="{{ site.baseurl }}/blog">Blog</a></li></ul></li>
         <li><ul><li><a href="{{ site.baseurl }}/docs">Dotty Docs</a></li></ul></li>

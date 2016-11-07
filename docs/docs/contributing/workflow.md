@@ -3,8 +3,6 @@ layout: default
 title: "Workflow"
 ---
 
-Workflow
-========
 This document details common workflow patterns when working with Dotty.
 
 ## Compiling files with dotc ##
