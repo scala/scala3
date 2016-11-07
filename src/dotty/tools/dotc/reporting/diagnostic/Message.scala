@@ -18,7 +18,8 @@ object Message {
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
   * into a `MessageContainer` which contains the log level and can later be
-  * consumed by a subclass of `Reporter`.
+  * consumed by a subclass of `Reporter`. However, the error position is only
+  * part of `MessageContainer`, not `Message`.
   *
   * @param errorId a unique number identifying the message, this will later be
   *                used to reference documentation online
