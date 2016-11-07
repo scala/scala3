@@ -521,7 +521,6 @@ class Namer { typer: Typer =>
     mergeCompanionDefs()
     val ctxWithStats = (ctx /: stats) ((ctx, stat) => indexExpanded(stat)(ctx))
     createCompanionLinks(ctxWithStats)
-    //stats foreach enterAnnotations
     ctxWithStats
   }
 
