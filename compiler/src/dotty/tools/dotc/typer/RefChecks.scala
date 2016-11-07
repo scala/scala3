@@ -18,7 +18,7 @@ import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
 import typer.ErrorReporting._
 import DenotTransformers._
-import ValueClasses.isDerivedValueClass
+import ValueClasses.{isDerivedValueClass, isCyclic}
 
 object RefChecks {
   import tpd._
@@ -707,12 +707,15 @@ object RefChecks {
         ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
       if (!clazz.isStatic)
         ctx.error(s"value class may not be a ${if (clazz.owner.isTerm) "local class" else "member of another class"}", clazz.pos)
+      if (isCyclic(clazz.asClass))
+        ctx.error("value class cannot wrap itself", clazz.pos)
       else {
-        val clParamAccessors = clazz.asClass.paramAccessors.filter(sym => sym.isTerm && !sym.is(Method))
+        val clParamAccessors = clazz.asClass.paramAccessors.filter(_.isTerm)
         clParamAccessors match {
           case List(param) =>
             if (param.is(Mutable))
               ctx.error("value class parameter must not be a var", param.pos)
+
           case _ =>
             ctx.error("value class needs to have exactly one val parameter", clazz.pos)
         }

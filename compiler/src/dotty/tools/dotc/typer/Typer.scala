@@ -1270,7 +1270,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           cls, isRequired, cdef.pos)
     }
 
-
     // check value class constraints
     RefChecks.checkDerivedValueClass(cls, body1)
 
