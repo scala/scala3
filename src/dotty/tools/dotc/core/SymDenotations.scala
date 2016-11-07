@@ -751,10 +751,7 @@ object SymDenotations {
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlineMethod(implicit ctx: Context): Boolean =
-      is(Method, butNot = Accessor) &&
-      !isCompleting &&   // don't force method type; recursive inlines are ignored anyway.
-      hasAnnotation(defn.InlineAnnot)
+    def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor) 
 
     // ------ access to related symbols ---------------------------------
 

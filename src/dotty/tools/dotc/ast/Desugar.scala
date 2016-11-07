@@ -615,8 +615,7 @@ object desugar {
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
     var mods = synthetic
-    if (inlineable)
-      mods = mods.withAddedAnnotation(New(ref(defn.InlineAnnotType), Nil).withPos(body.pos))
+    if (inlineable) mods |= Inline
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
