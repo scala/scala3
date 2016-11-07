@@ -151,7 +151,7 @@ object Parsers {
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
     /** The offset of the last time when a statement on a new line was definitely
-     *  encountered in the current scope or an outer scope\
+     *  encountered in the current scope or an outer scope.
      */
     private var lastStatOffset = -1
 
@@ -505,7 +505,7 @@ object Parsers {
       if (t1 ne t) t1 else dotSelectors(selector(t), finish)
     }
 
-    /** Dotelectors ::= { `.' ident()
+    /** DotSelectors ::= { `.' ident()
      *
      *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
      *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
@@ -521,7 +521,7 @@ object Parsers {
      *              |  [Ident `.'] this
      *
      *  @param thisOK   If true, [Ident `.'] this is acceptable as the path.
-     *                  If false, another selection is required aftre the `this`.
+     *                  If false, another selection is required after the `this`.
      *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
      *                  If the alternative does not apply, its tree argument is returned unchanged.
      */
