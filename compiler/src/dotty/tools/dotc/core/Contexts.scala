@@ -422,9 +422,11 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
-    override def toString =
+    override def toString = {
+      def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
-      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}") mkString "\n")
+      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
+    }
   }
 
   /** A condensed context provides only a small memory footprint over
