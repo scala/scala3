@@ -95,14 +95,22 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
   /** The root import symbol hidden by this symbol, or NoSymbol if no such symbol is hidden.
    *  Note: this computation needs to work even for un-initialized import infos, and
    *  is not allowed to force initialization.
+   *
+   *  TODO: Once we have fully bootstrapped, I would prefer if we expressed
+   *  unimport with an `override` modifier, and generalized it to all imports.
+   *  I believe this would be more transparent than the curren set of conditions. E.g.
+   *
+   *      override import Predef.{any2stringAdd => _, StringAdd => _, _} // disables String +
+   *      override import java.lang.{}                                   // disables all imports
    */
-  lazy val hiddenRoot: Symbol = {
-    val sym = site.termSymbol
-    def hasMaskingSelector = selectors exists {
+  lazy val unimported: Symbol = {
+    lazy val sym = site.termSymbol
+    val hasMaskingSelector = selectors exists {
       case Thicket(_ :: Ident(nme.WILDCARD) :: Nil) => true
       case _ => false
     }
-    if ((defn.RootImportTypes exists (_.symbol == sym)) && hasMaskingSelector) sym else NoSymbol
+    if (hasMaskingSelector && defn.RootImportTypes.exists(_.symbol == sym)) sym
+    else NoSymbol
   }
 
   override def toString = {
