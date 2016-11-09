@@ -13,15 +13,14 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
-
-import dotty.tools.dotc.transform.linker.Summaries.OuterTargs
+import dotty.tools.dotc.transform.linker.summaries.{CallInfo, MethodSummary, OuterTargs}
+import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 class CollectSummaries extends MiniPhase { thisTransform =>
   import tpd._
-  import Summaries._
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "summaries"
@@ -306,7 +305,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
           case exp: Closure =>
             val SAMType(e) = exp.tpe
-            new ClosureType(exp, x.tpe, e.symbol, null.asInstanceOf[OuterTargs])
+            new ClosureType(exp, x.tpe, e.symbol, OuterTargs.empty)
           case Select(New(tp), _) => new PreciseType(tp.tpe)
           case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
           case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
