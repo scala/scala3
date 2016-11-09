@@ -1,13 +1,3 @@
-./tests/patmat/t9351.scala:8: warning: match may not be exhaustive.
-It would fail on the following input: _: A
-    a match {
-      ^
-./tests/patmat/t9351.scala:17: warning: match may not be exhaustive.
-It would fail on the following input: (_, _), (_, None), (_, Some(_))
-    (a, o) match {
-           ^
-./tests/patmat/t9351.scala:28: warning: match may not be exhaustive.
-It would fail on the following input: (_, _)
-    (a, b) match {
-           ^
-three warnings found
+8: Pattern Match Exhaustivity: _: A
+17: Pattern Match Exhaustivity: (_, _), (_, None), (_, Some(_))
+28: Pattern Match Exhaustivity: (_, _)

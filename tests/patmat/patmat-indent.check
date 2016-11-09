@@ -1,13 +1,3 @@
-./tests/patmat/patmat-indent.scala:9: warning: match may not be exhaustive.
-It would fail on the following input: Nil
-  def foo1a[T](l: List[T]) = l match {
-                               ^
-./tests/patmat/patmat-indent.scala:23: warning: match may not be exhaustive.
-It would fail on the following input: _: Boolean
-  def foo2(b: Boolean) = b match {
-                           ^
-./tests/patmat/patmat-indent.scala:27: warning: match may not be exhaustive.
-It would fail on the following input: _: Int
-  def foo3(x: Int) = x match {
-                       ^
-three warnings found
+9: Pattern Match Exhaustivity: Nil
+23: Pattern Match Exhaustivity: _: Boolean
+27: Pattern Match Exhaustivity: _: Int

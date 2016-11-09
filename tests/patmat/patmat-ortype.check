@@ -1,13 +1,3 @@
-./tests/patmat/patmat-ortype.scala:8: warning: match may not be exhaustive.
-It would fail on the following input: _: String
-  def foo2a(x: Int | Double | String) = x match { // _: String not matched
-                                          ^
-./tests/patmat/patmat-ortype.scala:18: warning: match may not be exhaustive.
-It would fail on the following input: Some(_: String), None
-  def foo3(x: Option[Int | Double | String]) = x match { // warning: None, Some(_: String) not matched
-                                                 ^
-./tests/patmat/patmat-ortype.scala:36: warning: match may not be exhaustive.
-It would fail on the following input: Some(_: String)
-  def foo5b(x: Option[Int | Double | String]) = x match { // warning: Some(_: String) not matched
-                                                  ^
-three warnings found
+8: Pattern Match Exhaustivity: _: String
+18: Pattern Match Exhaustivity: Some(_: String), None
+36: Pattern Match Exhaustivity: Some(_: String)

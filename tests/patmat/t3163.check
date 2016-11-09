@@ -1,5 +1,1 @@
-./tests/patmat/t3163.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: _: AnyVal
-  def foo(x : AnyVal) = x match {case b : Boolean => "It's a bool"}
-                          ^
-one warning found
+2: Pattern Match Exhaustivity: _: AnyVal

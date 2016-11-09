@@ -768,4 +768,23 @@ object messages {
            | - null
            |"""
   }
+
+  case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
+  extends Message(29) {
+    val kind = "Pattern Match Exhaustivity"
+    val msg =
+      hl"""|match may not be exhaustive.
+           |
+           |It would fail on: $uncovered"""
+
+
+    val explanation = ""
+  }
+
+  case class MatchCaseUnreachable()(implicit ctx: Context)
+  extends Message(30) {
+    val kind = s"""Match ${hl"case"} Unreachable"""
+    val msg = "unreachable code"
+    val explanation = ""
+  }
 }

@@ -1,5 +1,1 @@
-./tests/patmat/virtpatmat_apply.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: List(_)
-  List(1, 2, 3) match {
-                ^
-one warning found
+2: Pattern Match Exhaustivity: List(_)
