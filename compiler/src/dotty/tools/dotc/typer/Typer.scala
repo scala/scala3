@@ -188,32 +188,42 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
-      def namedImportRef(site: Type, selectors: List[untpd.Tree])(implicit ctx: Context): Type = {
-        def checkUnambiguous(found: Type) = {
-          val other = namedImportRef(site, selectors.tail)
-          if (other.exists && found.exists && (found != other))
-            error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
-                  tree.pos)
-          found
-        }
+      def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
         val Name = name.toTermName.decode
-        selectors match {
+        def recur(selectors: List[untpd.Tree]): Type = selectors match {
           case selector :: rest =>
+            def checkUnambiguous(found: Type) = {
+              val other = recur(selectors.tail)
+              if (other.exists && found.exists && (found != other))
+                error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
+                      tree.pos)
+              found
+            }
+
+            def selection(name: Name) =
+              if (imp.sym.isCompleting) {
+                ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
+                NoType
+              }
+              else {
+                // Pass refctx so that any errors are reported in the context of the
+                // reference instead of the
+                checkUnambiguous(selectionType(imp.site, name, tree.pos)(refctx))
+              }
+
             selector match {
               case Thicket(fromId :: Ident(Name) :: _) =>
                 val Ident(from) = fromId
-                val selName = if (name.isTypeName) from.toTypeName else from
-                // Pass refctx so that any errors are reported in the context of the
-                // reference instead of the context of the import.
-                checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
+                selection(if (name.isTypeName) from.toTypeName else from)
               case Ident(Name) =>
-                checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
+                selection(name)
               case _ =>
-                namedImportRef(site, rest)
+                recur(rest)
             }
           case nil =>
             NoType
         }
+        recur(imp.selectors)
       }
 
       /** The type representing a wildcard import with enclosing name when imported
@@ -281,17 +291,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             val curImport = ctx.importInfo
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
-              val namedImp = namedImportRef(curImport.site, curImport.selectors)
+            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
+              val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
-              else if (isPossibleImport(wildImport)) {
+              else if (isPossibleImport(wildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
                 else loop(outer)
-              }
-              else loop(outer)
+              } else loop(outer)
             }
             else loop(outer)
           }
@@ -310,7 +319,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (isVarPattern(tree) && name.isTermName)
         return typed(desugar.patternVar(tree), pt)
     }
-
 
     val rawType = {
       val saved1 = importedFromRoot
