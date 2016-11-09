@@ -102,7 +102,7 @@ class tests extends CompilerTest {
     Directory(defaultOutputDir + "java").deleteRecursively()
   }
 
-  @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
+  @Test def pickle_pickleOK = compileFiles(testsDir + "pickling/", testPickling)
 // This directory doesn't exist anymore
 // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
