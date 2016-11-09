@@ -260,9 +260,14 @@ class BuildCallGraph extends Phase {
             dispatchCalls(tp1).toSet.intersect(dispatchCalls(tp2).toSet)
           case _ =>
             // without casts
+            val receiverTypeWiden = receiverType.widenDealias match {
+              case t: TypeRefWithFixedSym if t.classSymbol.owner.is(Method) =>
+                new TypeRefWithFixedSym(t.classSymbol.owner.owner.typeRef, t.name, t.fixedSym)
+              case t => t
+            }
             val direct =
               for (tp <- getTypesByMemberName(calleeSymbol.name)
-                   if filterTypes(tp.tp, receiverType.widenDealias);
+                   if filterTypes(tp.tp, receiverTypeWiden);
                    alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
                    if alt.exists
               )
@@ -320,12 +325,14 @@ class BuildCallGraph extends Phase {
           val fixNoPrefix = if (constructedType.normalizedPrefix eq NoPrefix) {
             var currentPrefix = caller.call.normalizedPrefix
             while (!currentPrefix.classSymbol.exists) {
-              currentPrefix = currentPrefix.normalizedPrefix
-              currentPrefix = currentPrefix match {
-                case t: ThisType =>
-                  t.tref
-
-                case _ => currentPrefix
+              if (currentPrefix.termSymbol.is(Module)) {
+                currentPrefix = currentPrefix.widenDealias
+              } else {
+                currentPrefix = currentPrefix.normalizedPrefix
+                currentPrefix = currentPrefix match {
+                  case t: ThisType => t.tref
+                  case _ => currentPrefix
+                }
               }
             }
             constructedType match {
