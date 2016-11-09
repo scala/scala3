@@ -12,9 +12,9 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.ResolveSuper
-
-import dotty.tools.dotc.transform.linker.Summaries._
 import dotty.tools.dotc.transform.linker.CollectSummaries.SubstituteByParentMap
+import dotty.tools.dotc.transform.linker.summaries._
+import dotty.tools.dotc.transform.linker.types.{ClosureType, ErazedType, JavaAllocatedType, PreciseType}
 
 import collection.{immutable, mutable}
 
@@ -206,7 +206,9 @@ class BuildCallGraph extends Phase {
       // if arg of callee is a param of caller, propagate arg fro caller to callee
       val args = callee.argumentsPassed.map {
         case x if mode < AnalyseArgs =>
-          ref(Summaries.simplifiedClassOf(x)).tpe
+          val s = x.widenDealias.finalResultType.classSymbol.orElse(TypeErasure.erasure(x.widenDealias.finalResultType).classSymbol)
+          assert(s.exists)
+          ref(s).tpe
         case x: PreciseType =>
           x
         case x: ClosureType =>
@@ -597,7 +599,7 @@ class BuildCallGraph extends Phase {
       val callGraph = buildCallGraph(AnalyseArgs, specLimit)
       this.callGraph = callGraph
 
-      println(GraphVisualization.outputDiagnostic(AnalyseArgs, specLimit)(callGraph))
+//      println(GraphVisualization.outputDiagnostic(AnalyseArgs, specLimit)(callGraph))
 
       val viz = GraphVisualization.outputGraphVis(AnalyseArgs, specLimit)(callGraph)
 
