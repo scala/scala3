@@ -3,21 +3,23 @@ package transform
 
 import TreeTransforms._
 import core._
-import Contexts._, Definitions._, Decorators._
+import DenotTransformers._, Contexts._, Definitions._, Decorators._
+import SymDenotations._
 
 /** Checks if the user is trying to illegally override synthetic classes,
   * primitives or their boxed equivalent
   */
-class CheckIllegalOverrides extends MiniPhaseTransform {
+class CheckRedefs extends MiniPhaseTransform with SymTransformer {
   import ast.tpd._
 
-  override def phaseName = "checkPhantom"
+  override def phaseName = "checkRedefs"
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
+  def transformSym(sym: SymDenotation)(implicit ctx: Context) = {
     val defn = ctx.definitions
-    val tpe = tree.tpe
-    val fullName = tree.symbol.showFullName
+    val fullName = sym.symbol.showFullName
 
+    // Since symbols cannot be compared with `==` since they rely on hashes for
+    // uniqueness, we compare the full names instead
     val syntheticClasses = defn.syntheticCoreClasses.map(_.showFullName)
     val primitives = defn.ScalaValueClasses().map(_.showFullName)
     val boxedPrimitives = defn.ScalaBoxedClasses().map(_.showFullName)
@@ -33,9 +35,9 @@ class CheckIllegalOverrides extends MiniPhaseTransform {
         None
 
     illegalOverride.foreach { overriden =>
-      ctx.error(i"Cannot define symbol overriding $overriden class `$tpe`", tree.pos)
+      ctx.error(i"Cannot define symbol overriding $overriden `${sym.fullName}`", sym.symbol.pos)
     }
 
-    tree
+    sym
   }
 }
