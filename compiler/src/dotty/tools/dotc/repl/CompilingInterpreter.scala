@@ -6,7 +6,7 @@ import java.io.{
   File, PrintWriter, PrintStream, StringWriter, Writer, OutputStream,
   ByteArrayOutputStream => ByteOutputStream
 }
-import java.lang.{Class, ClassLoader}
+import java.lang.{Class, ClassLoader, Thread, System, StringBuffer}
 import java.net.{URL, URLClassLoader}
 
 import scala.collection.immutable.ListSet

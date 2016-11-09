@@ -9,7 +9,6 @@ import dotty.tools.dotc.core.Symbols.NoSymbol
 import scala.annotation.tailrec
 import dotty.tools.dotc.core._
 import Symbols._
-import scala.Some
 import dotty.tools.dotc.transform.TreeTransforms.{NXTransformations, TransformerInfo, TreeTransform, TreeTransformer}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
