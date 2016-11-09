@@ -8,6 +8,7 @@ import org.scalameter.reporting.RegressionReporter.Tester
 import dotty.tools.dotc.CompilerTest
 
 import scala.io.Source
+import scala.reflect.io.Directory
 
 // decorator of persitor to expose info for debugging
 class DecoratorPersistor(p: Persistor) extends SerializationPersistor {
@@ -45,7 +46,8 @@ object BenchTests extends OnlineRegressionReport {
   implicit val defaultOptions = List("-d", outputDir)
   val scala2mode = List("-language:Scala2")
 
-  val dottyDir  = "../compiler/src/dotty/"
+  val dottyDir = "../compiler/src/dotty/"
+  val testDir  = "./bench/tests/"
 
   val stdlibFiles = Source.fromFile("../compiler/test/dotc/scala-collections.whitelist", "UTF8").getLines()
     .map(_.trim) // allow identation
@@ -74,11 +76,24 @@ object BenchTests extends OnlineRegressionReport {
   def setup =
     performance of "dotty" in {
       measure.method("stdlib") in {
-        using(Gen.unit("test")) curve "stdlib" in { r => stdLib }
+        // maybe scalac curve later
+        using(Gen.unit("test")) curve "dotty" in { r => stdLib }
       }
 
       measure.method("dotty-src") in {
-        using(Gen.unit("test")) curve "dotty-src" in { r => dotty }
+        using(Gen.unit("test")) curve "dotty" in { r => dotty }
+      }
+
+      val dir = Directory(testDir)
+      val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala"))
+
+      for (name <- fileNames) {
+        measure.method(name) in {
+          // maybe scalac curve later
+          using(Gen.unit("test")) curve "dotty" in { r =>
+            compiler.compileFile(testDir, name, extension = "")
+          }
+        }
       }
     }
 
