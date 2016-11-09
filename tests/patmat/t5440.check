@@ -1,5 +1,1 @@
-./tests/patmat/t5440.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: (Nil, List(_)), (List(_), Nil)
-  def merge(list1: List[Long], list2: List[Long]): Boolean = (list1, list2) match {
-                                                                            ^
-one warning found
+2: Pattern Match Exhaustivity: (Nil, List(_)), (List(_), Nil)

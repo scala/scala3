@@ -12,6 +12,7 @@ import core.Symbols._
 import core.StdNames._
 import core.NameOps._
 import core.Constants._
+import reporting.diagnostic.messages._
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -586,13 +587,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val patternSpace = cases.map(x => project(x.pat)).reduce((a, b) => Or(List(a, b)))
     val uncovered = simplify(minus(Typ(selTyp, true), patternSpace))
 
-    if (uncovered != Empty) {
-      ctx.warning(
-        "match may not be exhaustive.\n" +
-        s"It would fail on the following input: " +
-        show(uncovered), _match.pos
-      )
-    }
+    if (uncovered != Empty)
+      ctx.warning(PatternMatchExhaustivity(show(uncovered)), _match.pos)
   }
 
   def checkRedundancy(_match: Match): Unit = {
@@ -612,7 +608,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       val curr = project(cases(i).pat)
 
       if (isSubspace(curr, prevs)) {
-        ctx.warning("unreachable code", cases(i).body.pos)
+        ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
       }
     }
   }

@@ -1,9 +1,2 @@
-./tests/patmat/t8700a/Bar.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: B
-  def bar1(foo: Foo) = foo match {
-                           ^
-./tests/patmat/t8700a/Bar.scala:6: warning: match may not be exhaustive.
-It would fail on the following input: B
-  def bar2(foo: Baz) = foo match {
-                           ^
-two warnings found
+2: Pattern Match Exhaustivity: B
+6: Pattern Match Exhaustivity: B

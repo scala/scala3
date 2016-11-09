@@ -1,17 +1,4 @@
-./tests/patmat/t7020.scala:3: warning: match may not be exhaustive.
-It would fail on the following input: List(_, _)
-  List(5) match {
-          ^
-./tests/patmat/t7020.scala:10: warning: match may not be exhaustive.
-It would fail on the following input: List(_, _)
-  List(5) match {
-          ^
-./tests/patmat/t7020.scala:17: warning: match may not be exhaustive.
-It would fail on the following input: List(_, _)
-  List(5) match {
-          ^
-./tests/patmat/t7020.scala:24: warning: match may not be exhaustive.
-It would fail on the following input: List(_, _)
-  List(5) match {
-          ^
-four warnings found
+3: Pattern Match Exhaustivity: List(_, _)
+10: Pattern Match Exhaustivity: List(_, _)
+17: Pattern Match Exhaustivity: List(_, _)
+24: Pattern Match Exhaustivity: List(_, _)

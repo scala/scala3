@@ -1,5 +1,1 @@
-./tests/patmat/t3098/b.scala:3: warning: match may not be exhaustive.
-It would fail on the following input: _: C
-  def f = (null: T) match {
-                    ^
-one warning found
+3: Pattern Match Exhaustivity: _: C

@@ -1,5 +1,1 @@
-./tests/patmat/t9398.scala:11: warning: match may not be exhaustive.
-It would fail on the following input: CC(_, B2)
-    case CC(_, B) => ()
-    ^
-one warning found
+11: Pattern Match Exhaustivity: CC(_, B2)
