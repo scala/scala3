@@ -1,13 +1,3 @@
-./tests/patmat/t7285.scala:15: warning: match may not be exhaustive.
-It would fail on the following input: (Up, Down)
-      (d1, d2) match {
-               ^
-./tests/patmat/t7285.scala:33: warning: match may not be exhaustive.
-It would fail on the following input: Down
-      (d1) match {
-           ^
-./tests/patmat/t7285.scala:51: warning: match may not be exhaustive.
-It would fail on the following input: (Base.Up, Base.Down)
-    (d1, d2) match {
-             ^
-three warnings found
+15: Pattern Match Exhaustivity: (Up, Down)
+33: Pattern Match Exhaustivity: Down
+51: Pattern Match Exhaustivity: (Base.Up, Base.Down)

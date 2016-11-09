@@ -769,15 +769,34 @@ object messages {
            |"""
   }
 
-  case class NoClassOrObjectAfterCase()(implicit ctx: Context)
+  case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
   extends Message(29) {
+    val kind = "Pattern Match Exhaustivity"
+    val msg =
+      hl"""|match may not be exhaustive.
+           |
+           |It would fail on: $uncovered"""
+
+
+    val explanation = ""
+  }
+
+  case class MatchCaseUnreachable()(implicit ctx: Context)
+  extends Message(30) {
+    val kind = s"""Match ${hl"case"} Unreachable"""
+    val msg = "unreachable code"
+    val explanation = ""
+  }
+
+  case class NoClassOrObjectAfterCase()(implicit ctx: Context)
+  extends Message(31) {
     val kind = "Syntax"
     val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
     val explanation = ""
   }
 
   case class ClassOrObjectExpected()(implicit ctx: Context)
-  extends Message(30) {
+  extends Message(32) {
     val kind = "Syntax"
     val msg = hl"Expected ${"class"} or ${"object"} definition."
     val explanation = ""

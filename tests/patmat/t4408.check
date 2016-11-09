@@ -1,5 +1,1 @@
-./tests/patmat/t4408.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: List(_, _, _)
-  def printList(in: List[String]): Unit = in match {
-                                             ^
-one warning found
+2: Pattern Match Exhaustivity: List(_, _, _)

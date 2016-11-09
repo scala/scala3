@@ -1,5 +1,1 @@
-./tests/patmat/t8430.scala:15: warning: match may not be exhaustive.
-It would fail on the following input: LetF, LetC, LetP, LetL(UnitLit), LetL(BooleanLit), LetL(IntLit)
-  def transform(tree: Tree) : Any = tree match {
-                                         ^
-one warning found
+15: Pattern Match Exhaustivity: LetF, LetC, LetP, LetL(UnitLit), LetL(BooleanLit), LetL(IntLit)

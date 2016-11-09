@@ -1,13 +1,3 @@
-./tests/patmat/t8178.scala:6: warning: match may not be exhaustive.
-It would fail on the following input: FailsChild2(_)
-    f match {
-      ^
-./tests/patmat/t8178.scala:14: warning: match may not be exhaustive.
-It would fail on the following input: VarArgs1(_)
-    f match {
-      ^
-./tests/patmat/t8178.scala:27: warning: match may not be exhaustive.
-It would fail on the following input: SeqArgs2(_)
-    f match {
-      ^
-three warnings found
+6: Pattern Match Exhaustivity: FailsChild2(_)
+14: Pattern Match Exhaustivity: VarArgs1(_)
+27: Pattern Match Exhaustivity: SeqArgs2(_)
