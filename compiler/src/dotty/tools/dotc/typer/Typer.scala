@@ -74,7 +74,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
    *  We should check that this has no performance degradation, however.
    */
-  private var importedFromRoot: Set[Symbol] = Set()
+  private var unimported: Set[Symbol] = Set()
 
   /** Temporary data item for single call to typed ident:
    *  This symbol would be found under Scala2 mode, but is not
@@ -101,15 +101,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  to typedIdent's context which is lost in nested calls to findRef
      */
     def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
-
-    /** Is this import a root import that has been shadowed by an explicit
-     *  import in the same program?
-     */
-    def isDisabled(imp: ImportInfo, site: Type): Boolean = {
-      if (imp.isRootImport && (importedFromRoot contains site.termSymbol)) return true
-      if (imp.hiddenRoot.exists) importedFromRoot += imp.hiddenRoot
-      false
-    }
 
     /** Does this identifier appear as a constructor of a pattern? */
     def isPatternConstr =
@@ -201,7 +192,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             }
 
             def selection(name: Name) =
-              if (imp.sym.isCompleting) {
+              if (unimported.contains(imp.site.termSymbol))
+                NoType
+              else if (imp.sym.isCompleting) {
                 ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
                 NoType
               }
@@ -232,7 +225,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
         if (imp.isWildcardImport) {
           val pre = imp.site
-          if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName) && name != nme.CONSTRUCTOR) {
+          if (!unimported.contains(pre.termSymbol) &&
+              !imp.excluded.contains(name.toTermName) &&
+              name != nme.CONSTRUCTOR) {
             val denot = pre.member(name).accessibleFrom(pre)(refctx)
             if (reallyExists(denot)) return pre.select(name, denot)
           }
@@ -289,6 +284,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (result.exists) result
           else {  // find import
             val curImport = ctx.importInfo
+            def updateUnimported() =
+              if (curImport.unimported.exists) unimported += curImport.unimported
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
@@ -299,8 +296,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
-                else loop(outer)
-              } else loop(outer)
+                else {
+                  updateUnimported()
+                  loop(outer)
+                }
+              }
+              else {
+                updateUnimported()
+                loop(outer)
+              }
             }
             else loop(outer)
           }
@@ -321,9 +325,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
 
     val rawType = {
-      val saved1 = importedFromRoot
+      val saved1 = unimported
       val saved2 = foundUnderScala2
-      importedFromRoot = Set.empty
+      unimported = Set.empty
       foundUnderScala2 = NoType
       try {
         var found = findRef(NoType, BindingPrec.nothingBound, NoContext)
@@ -337,7 +341,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         found
       }
       finally {
-      	importedFromRoot = saved1
+      	unimported = saved1
       	foundUnderScala2 = saved2
       }
     }
