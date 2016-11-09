@@ -135,7 +135,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
   }
 
-  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with NoChecking {
 
     val nowDefinedSyms = new mutable.HashSet[Symbol]
     val everDefinedSyms = new mutable.HashMap[Symbol, Tree]
