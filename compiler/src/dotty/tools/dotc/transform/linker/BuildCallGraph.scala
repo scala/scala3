@@ -401,7 +401,8 @@ class BuildCallGraph extends Phase {
           var currentThis = caller.call.normalizedPrefix
           var currentOwner = caller.call.termSymbol.owner
           while ((currentOwner ne dropUntil) && (currentThis ne NoType)) {
-            currentThis = currentThis.normalizedPrefix
+            if (!currentOwner.is(Method))
+              currentThis = currentThis.normalizedPrefix
             currentOwner = currentOwner.owner.enclosingClass
           }
           if (currentThis.derivesFrom(thisType.cls)) {
