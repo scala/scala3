@@ -336,15 +336,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
               case _ => acc
             }
 
-            val wrapArrayCall = getVarArgTypes(fun.tpe.widenDealias).map { tp =>
+            getVarArgTypes(fun.tpe.widenDealias).map { tp =>
               val wrapArrayName = defn.wrapArrayMethodName(tp)
               val targs = if (wrapArrayName == nme.wrapRefArray || wrapArrayName == nme.genericWrapArray) List(tp) else Nil
               val args = List(defn.ArrayOf(tp))
               CallInfo(wrapArrayTermRef(wrapArrayName), targs, args, thisCallInfo)
             }
-
-            if (wrapArrayCall.isEmpty) wrapArrayCall
-            else CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo) :: wrapArrayCall
 
           case _ => Nil
         }
@@ -358,7 +355,15 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case _ => Nil
         }
 
-        val languageDefinedCalls = repeatedArgsCalls ::: fillInStackTrace
+        lazy val tpePrefix = tree.tpe.normalizedPrefix
+        val loadPredefModule = if (repeatedArgsCalls.nonEmpty || tpePrefix == defn.ScalaPredefModuleRef ||
+            tpePrefix.termSymbol.moduleClass == defn.ScalaPackageClass) {
+          List(CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo))
+        } else {
+          Nil
+        }
+
+        val languageDefinedCalls = loadPredefModule ::: fillInStackTrace ::: repeatedArgsCalls
 
         curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
       }
