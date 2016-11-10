@@ -25,18 +25,15 @@ object BuildCallGraph {
 }
 
 class BuildCallGraph extends Phase {
+  import tpd._
   import BuildCallGraph._
 
   private var callGraph: CallGraph = _
 
-  def getCallGraph: CallGraph = callGraph
 
-  import tpd._
   def phaseName: String = "callGraph"
-  def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
-    ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)) || // Java main method
-    (s.is(Method) && s.hasAnnotation(defn.ExportAnnot)) // Explicit entry point
-  }
+
+  def getCallGraph: CallGraph = callGraph
 
   def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs =
     new TypeAccumulator[OuterTargs]() {
@@ -105,8 +102,8 @@ class BuildCallGraph extends Phase {
     collectedSummaries.values.foreach { x =>
       if (isEntryPoint(x.methodDef)) {
         pushEntryPoint(x.methodDef)
-        // FIXME: add the lazy val as an entry point for the initialization module containing the entry point.
-        // pushEntryPoint(x.methodDef.owner.asClass.sourceModule)
+//        if (x.methodDef.owner.is(Module))
+//          pushEntryPoint(x.methodDef.owner.sourceModule)
       }
     }
     println(s"\t Found ${reachableMethods.newItems.size} entry points")
@@ -628,5 +625,10 @@ class BuildCallGraph extends Phase {
 
     }
     runOnce = false
+  }
+
+  private def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
+    ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)) || // Java main method
+      (s.is(Method) && s.hasAnnotation(defn.ExportAnnot)) // Explicit entry point
   }
 }
