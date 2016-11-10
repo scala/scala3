@@ -31,7 +31,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   override def flush()(implicit ctx: Context) =
     if (infos != null) {
-      infos foreach ctx.reporter.report
+      infos.foreach(ctx.reporter.report(_))
       infos = null
     }
 
