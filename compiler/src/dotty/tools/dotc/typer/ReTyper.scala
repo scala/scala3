@@ -72,6 +72,7 @@ class ReTyper extends Typer {
   override def localTyper(sym: Symbol) = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
+  override def annotate(trees: List[untpd.Tree])(implicit ctx: Context) = ()
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
     fallBack(tree, ctx.typerState)

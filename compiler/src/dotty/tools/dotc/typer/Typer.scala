@@ -192,12 +192,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             }
 
             def selection(name: Name) =
-              if (unimported.contains(imp.site.termSymbol))
-                NoType
-              else if (imp.sym.isCompleting) {
+              if (imp.sym.isCompleting) {
                 ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
                 NoType
               }
+              else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
+                NoType
               else {
                 // Pass refctx so that any errors are reported in the context of the
                 // reference instead of the
@@ -588,7 +588,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
-    (index(stats), typedStats(stats, ctx.owner))
+    (indexAndAnnotate(stats), typedStats(stats, ctx.owner))
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
@@ -1070,7 +1070,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedPolyTypeTree(tree: untpd.PolyTypeTree)(implicit ctx: Context): Tree = track("typedPolyTypeTree") {
     val PolyTypeTree(tparams, body) = tree
-    index(tparams)
+    indexAndAnnotate(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
     assignType(cpy.PolyTypeTree(tree)(tparams1, body1), tparams1, body1)
