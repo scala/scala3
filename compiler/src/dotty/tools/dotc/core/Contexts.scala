@@ -422,6 +422,13 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
+    final def withProperty[T](key: Key[T], value: Option[T]): Context =
+      if (property(key) == value) this
+      else value match {
+        case Some(v) => fresh.setProperty(key, v)
+        case None => fresh.dropProperty(key)
+      }
+
     override def toString = {
       def iinfo(implicit ctx: Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       "Context(\n" +
@@ -469,6 +476,9 @@ object Contexts {
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
+
+    def dropProperty(key: Key[_]): this.type =
+      setMoreProperties(moreProperties - key)
 
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
     def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
