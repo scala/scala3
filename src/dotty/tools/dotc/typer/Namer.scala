@@ -568,25 +568,14 @@ class Namer { typer: Typer =>
           val cls = typedAheadAnnotation(annotTree)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           denot.addAnnotation(ann)
-          if (cls == defn.InlineAnnot) {
-            hasInlineAnnot = true
-            addInlineInfo(denot, original)
-          }
-        }
-        if (!hasInlineAnnot && denot.is(InlineMethod)) {
-          // create a @inline annotation. Currently, the inlining trigger
-          // is really the annotation, not the flag. This is done so that
-          // we can still compile inline methods from Scala2x. Once we stop
-          // being compatible with Scala2 we should revise the logic to
-          // be based on the flag. Then creating a separate annotation becomes unnecessary.
-          denot.addAnnotation(Annotation(defn.InlineAnnot))
-          addInlineInfo(denot, original)
+          if (cls == defn.InlineAnnot && denot.is(Method, butNot = Accessor))
+            denot.setFlag(Inline)
         }
       case _ =>
     }
 
-    private def addInlineInfo(denot: SymDenotation, original: untpd.Tree) = original match {
-      case original: untpd.DefDef =>
+    private def addInlineInfo(denot: SymDenotation) = original match {
+      case original: untpd.DefDef if denot.isInlineMethod =>
         Inliner.registerInlineInfo(
             denot,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
@@ -599,6 +588,7 @@ class Namer { typer: Typer =>
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
       addAnnotations(denot)
+      addInlineInfo(denot)
       denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
     }

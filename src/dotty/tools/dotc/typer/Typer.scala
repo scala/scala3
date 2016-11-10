@@ -1142,7 +1142,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrParamAccessor))
-      checkInlineConformant(rhs1, "right-hand side of inline value")
+      checkInlineConformant(rhs1, em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     vdef1
   }
@@ -1176,8 +1176,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
     // Overwrite inline body to make sure it is not evaluated twice
-    if (sym.hasAnnotation(defn.InlineAnnot))
-      Inliner.registerInlineInfo(sym, _ => rhs1)
+    if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
 
     if (sym.isAnonymousFunction) {
       // If we define an anonymous function, make sure the return type does not
