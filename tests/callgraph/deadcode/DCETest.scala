@@ -1,16 +1,15 @@
 
-object Main {
+object DCETest {
 
   def foo() = 2
   def bar() = foo
   
-  @DoNotDCE
-  def testEntry: Unit = {
-    DCEUtils.shouldDCE(bar())
+  @DoNotDCE def dceTest: Unit = {
+    Test.shouldDCE(bar())
     foo()
   }
   
   def main(args: Array[String]): Unit = {
-    foo
+    foo()
   }
 }
