@@ -1,4 +1,4 @@
-package dotty.tools.dotc.transform.linker
+package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
@@ -6,9 +6,8 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.linker.BuildCallGraph._
+import dotty.tools.dotc.transform.linker.callgraph.CallGraphBuilder._
 import dotty.tools.dotc.transform.linker.summaries.{CallInfo, CallWithContext}
-import strawman.collections.CollectionStrawMan4.ListBuffer
 
 import scala.collection.mutable
 
