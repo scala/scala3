@@ -306,8 +306,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         false
     }
-    typeIsElidable || 
-    tp.symbol.is(JavaStatic) || 
+    typeIsElidable ||
+    tp.symbol.is(JavaStatic) ||
     tp.symbol.hasAnnotation(defn.ScalaStaticAnnot)
   }
 
@@ -343,6 +343,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
     case tp: TermRef => ref(tp)
     case tp: ThisType => This(tp.cls)
+    case tp: SkolemType => singleton(tp.narrow)
     case SuperType(qual, _) => singleton(qual)
     case ConstantType(value) => Literal(value)
   }
