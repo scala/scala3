@@ -1076,7 +1076,7 @@ object Parsers {
           val uscoreStart = in.skipToken()
           if (isIdent(nme.raw.STAR)) {
             in.nextToken()
-            if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument", uscoreStart)
+            if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), uscoreStart)
             Typed(t, atPos(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
           } else {
             syntaxErrorOrIncomplete(IncorrectRepeatedParameterSyntax())
@@ -1424,7 +1424,7 @@ object Parsers {
         // `x: _*' is parsed in `ascription'
         if (isIdent(nme.raw.STAR)) {
           in.nextToken()
-          if (in.token != RPAREN) syntaxError("`_*' can be used only for last argument", wildIndent.pos)
+          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIndent.pos)
           atPos(wildIndent.pos) { Ident(tpnme.WILDCARD_STAR) }
         } else wildIndent
       case LPAREN =>

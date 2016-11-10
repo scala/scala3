@@ -284,7 +284,7 @@ object messages {
     val explanation = ""
   }
 
-  case class EarlyDefinitionsNotSupported()(implicit ctx: Context)
+  case class EarlyDefinitionsNotSupported()(implicit ctx:Context)
   extends Message(9) {
     val kind = "Syntax"
     val msg = "early definitions are not supported; use trait parameters instead"
@@ -790,15 +790,38 @@ object messages {
     val explanation = ""
   }
 
+  case class SeqWildcardPatternPos()(implicit ctx: Context) extends Message(31) {
+    val kind = "Syntax"
+    val msg = "`_*' can be used only for last argument"
+    val explanation = {
+      val code =
+        """def sumOfTheFirstTwo(list: List[Int]): Int = list match {
+          |  case List(first, second, x:_*) => first + second
+          |  case _ => 0
+          |}"""
+      hl"""|Sequence wildcard pattern is expected at the end of an argument list.
+           |This pattern matches any remaining elements in a sequence.
+           |Consider the following example:
+           |
+           |$code
+           |
+           |Calling:
+           |
+           |${"sumOfTheFirstTwo(List(1, 2, 10))"}
+           |
+           |would give 3 as a result"""
+    }
+  }
+
   case class NoClassOrObjectAfterCase()(implicit ctx: Context)
-  extends Message(31) {
+  extends Message(32) {
     val kind = "Syntax"
     val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
     val explanation = ""
   }
 
   case class ClassOrObjectExpected()(implicit ctx: Context)
-  extends Message(32) {
+  extends Message(33) {
     val kind = "Syntax"
     val msg = hl"Expected ${"class"} or ${"object"} definition."
     val explanation = ""
