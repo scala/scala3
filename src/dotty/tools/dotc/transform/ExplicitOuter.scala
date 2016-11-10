@@ -226,14 +226,18 @@ object ExplicitOuter {
       case ref: TermRef =>
         if (ref.prefix ne NoPrefix)
           !ref.symbol.isStatic && isOuterRef(ref.prefix)
-        else if (ref.symbol is Hoistable)
-          // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
-          // an outer path then.
-          isOuterSym(ref.symbol.owner.enclosingClass)
-        else
-          // ref.symbol will get a proxy in immediately enclosing class. If this properly
-          // contains the current class, it needs an outer path.
-          ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
+        else (
+          (ref.symbol is Hoistable) &&
+            // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
+            // an outer path then.
+            isOuterSym(ref.symbol.owner.enclosingClass)
+          ||
+            // If not hoistable, ref.symbol will get a proxy in immediately enclosing class. If this properly
+            // contains the current class, it needs an outer path.
+            // If the symbol is hoistable, it might have free variables for which the same
+            // reasoning applies. See pos/i1664.scala
+            ctx.owner.enclosingClass.owner.enclosingClass.isContainedIn(ref.symbol.owner)
+          )
       case _ => false
     }
     def hasOuterPrefix(tp: Type) = tp match {
