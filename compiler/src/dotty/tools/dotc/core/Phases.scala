@@ -26,7 +26,10 @@ trait Phases {
 
   def phasesStack: List[Phase] =
     if ((this eq NoContext) || !phase.exists) Nil
-    else phase :: outersIterator.dropWhile(_.phase == phase).next.phasesStack
+    else {
+      val rest = outersIterator.dropWhile(_.phase == phase)
+      phase :: (if (rest.hasNext) rest.next.phasesStack else Nil)
+    }
 
   /** Execute `op` at given phase */
   def atPhase[T](phase: Phase)(op: Context => T): T =
