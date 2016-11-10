@@ -1,0 +1,4 @@
+function dot_compile() {
+  # this tests requires a precompiled standard library
+  dotc $@
+};
