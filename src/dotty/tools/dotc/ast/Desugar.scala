@@ -250,7 +250,8 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
+    val className = checkNotReservedName(cdef).asTypeName
+    val impl @ Template(constr0, parents, self, _) = cdef.rhs
     val mods = cdef.mods
     val companionMods = mods.withFlags((mods.flags & AccessFlags).toCommonFlags)
 
@@ -384,7 +385,7 @@ object desugar {
     def companionDefs(parentTpt: Tree, defs: List[Tree]) =
       moduleDef(
         ModuleDef(
-          name.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
+          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
       .withPos(cdef.pos).toList
 
@@ -443,7 +444,7 @@ object desugar {
       else
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
-        DefDef(name.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
+        DefDef(className.toTermName, constrTparams, constrVparamss, classTypeRef, creatorExpr)
           .withMods(companionMods | Synthetic | Implicit)
           .withPos(cdef.pos) :: Nil
 
@@ -460,6 +461,7 @@ object desugar {
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss.flatten.map(_.withMods(originalVparams.next.mods | caseAccessor))
       cpy.TypeDef(cdef)(
+        name = className,
         rhs = cpy.Template(impl)(constr, parents1, self1,
           tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths),
         tparams = Nil)
@@ -485,20 +487,21 @@ object desugar {
    *    <module> final class name$ extends parents { self: name.type => body }
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
-    val ModuleDef(name, tmpl) = mdef
+    val moduleName = checkNotReservedName(mdef).asTermName
+    val tmpl = mdef.impl
     val mods = mdef.mods
     if (mods is Package)
-      PackageDef(Ident(name), cpy.ModuleDef(mdef)(nme.PACKAGE, tmpl).withMods(mods &~ Package) :: Nil)
+      PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, tmpl).withMods(mods &~ Package) :: Nil)
     else {
-      val clsName = name.moduleClassName
+      val clsName = moduleName.moduleClassName
       val clsRef = Ident(clsName)
-      val modul = ValDef(name, clsRef, New(clsRef, Nil))
+      val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods | ModuleCreationFlags | mods.flags & AccessFlags)
         .withPos(mdef.pos)
       val ValDef(selfName, selfTpt, _) = tmpl.self
       val selfMods = tmpl.self.mods
       if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), tmpl.self.pos)
-      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), tmpl.self.rhs)
+      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), tmpl.self.rhs)
         .withMods(selfMods)
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
@@ -506,6 +509,19 @@ object desugar {
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls).withPos(mdef.pos))
     }
+  }
+
+  /** The name of `mdef`, after checking that it does not redefine a Scala core class.
+   *  If it does redefine, issue an error and return a mangled name instead of the original one.
+   */
+  def checkNotReservedName(mdef: MemberDef)(implicit ctx: Context): Name = {
+    val name = mdef.name
+    if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
+      def kind = if (name.isTypeName) "class" else "object"
+      ctx.error(em"illegal redefinition of standard $kind $name", mdef.pos)
+      name.errorName
+    }
+    else name
   }
 
   /**     val p1, ..., pN: T = E

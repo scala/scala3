@@ -186,6 +186,8 @@ object NameOps {
 
     def implClassName: N = likeTyped(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
+    def errorName: N = likeTyped(name ++ nme.ERROR)
+
     def freshened(implicit ctx: Context): N =
       likeTyped(
         if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
