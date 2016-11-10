@@ -27,7 +27,7 @@ import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
-import util.SourcePosition
+import util.{SourcePosition, Property}
 import collection.mutable
 import annotation.tailrec
 import Implicits._
@@ -57,6 +57,8 @@ object Typer {
   def assertPositioned(tree: untpd.Tree)(implicit ctx: Context) =
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
+
+  private val ExprOwner = new Property.Key[Symbol]
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
@@ -1133,7 +1135,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.ensureCompleted)
-    val annotCtx = ctx.outersIterator.dropWhile(_.owner == sym).next
+    lazy val annotCtx = {
+      val c = ctx.outersIterator.dropWhile(_.owner == sym).next
+      c.property(ExprOwner) match {
+        case Some(exprOwner) if c.owner.isClass => c.exprContext(mdef, exprOwner)
+        case None => c
+      }
+    }
     // necessary in order to mark the typed ahead annotations as definitely typed:
     untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }
@@ -1552,7 +1560,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case nil =>
         buf.toList
     }
-    traverse(stats)
+    val localCtx = {
+      val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
+      ctx.withProperty(ExprOwner, exprOwnerOpt)
+    }
+    traverse(stats)(localCtx)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
