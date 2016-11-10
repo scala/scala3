@@ -50,6 +50,7 @@ class Compiler {
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
       List(new RefChecks,           // Various checks mostly related to abstract members and overriding
            new CheckStatic,         // Check restrictions that apply to @static members
+           new CheckRedefs,         // Check redefinitions of primitives and synthetic classes
            new ElimRepeated,        // Rewrite vararg parameters and arguments
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
