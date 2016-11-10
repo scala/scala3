@@ -8,6 +8,9 @@ case class CallInfo(call: Type, // this is type of method, that includes full ty
                     argumentsPassed: List[Type],
                     source: CallInfo = null // When source is not null this call was generated as part of a call to source
                    )(implicit ctx: Context) {
+
+  assert(call.termSymbol.isTerm)
+
   call.widenDealias match {
     case t: PolyType => assert(t.paramNames.size == targs.size)
     case _ =>
