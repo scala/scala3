@@ -789,4 +789,27 @@ object messages {
     val msg = "unreachable code"
     val explanation = ""
   }
+
+  case class SeqWildcardPatternPos()(implicit ctx: Context) extends Message(31) {
+    val kind = "Syntax"
+    val msg = "`_*' can be used only for last argument"
+    val explanation = {
+      val code =
+        """def sumOfTheFirstTwo(list: List[Int]): Int = list match {
+          |  case List(first, second, x:_*) => first + second
+          |  case _ => 0
+          |}"""
+      hl"""|Sequence wildcard pattern is expected at the end of an argument list.
+           |This pattern matches any remaining elements in a sequence.
+           |Consider the following example:
+           |
+           |$code
+           |
+           |Calling:
+           |
+           |${"sumOfTheFirstTwo(List(1, 2, 10))"}
+           |
+           |would give 3 as a result"""
+    }
+  }
 }
