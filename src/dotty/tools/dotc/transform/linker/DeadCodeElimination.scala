@@ -28,7 +28,7 @@ class DeadCodeElimination extends MiniPhaseTransform {
     callGraph = buildCallGraphPhase.getCallGraph
     exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
     exportAnnotation = defn.ExportAnnot
-    doNotDCEAnnotation = ctx.requiredClassRef("scala.DoNotDCE").symbol.asClass
+    doNotDCEAnnotation = ctx.requiredClassRef("scala.annotation.internal.DoNotDCE").symbol.asClass
     this
   }
 

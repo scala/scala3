@@ -1,8 +1,10 @@
-import java.io.File;
-import java.io.FileFilter;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
+import java.io.File
+import java.io.FileFilter
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
+import java.lang.reflect.Type
+
+import scala.annotation.internal.DoNotDCE;
 
 object Test {
 	def main(args: Array[String]): Unit = {

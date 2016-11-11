@@ -1,3 +1,4 @@
+import scala.annotation.internal.DoNotDCE
 
 object DCETest {
   @DoNotDCE def dceTest: Unit = {
