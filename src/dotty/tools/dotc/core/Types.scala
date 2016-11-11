@@ -2623,7 +2623,7 @@ object Types {
       Some((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
-      apply(tpnme.syntheticLambdaParamNames(n), List.fill(n)(0))(
+      apply(tpnme.syntheticTypeParamNames(n), List.fill(n)(0))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
