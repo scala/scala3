@@ -431,7 +431,18 @@ trait TypeAssigner {
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
     tree.withType(left.tpe | right.tpe)
 
-  // RefinedTypeTree is missing, handled specially in Typer and Unpickler.
+  /** Assign type of RefinedType. 
+   *  Refinements are typed as if they were members of refinement class `refineCls`.
+   */
+  def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context) = {
+    def addRefinement(parent: Type, refinement: Tree): Type = {
+      val rsym = refinement.symbol
+      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
+      RefinedType(parent, rsym.name, rinfo)
+    }
+    val refined = (parent.tpe /: refinements)(addRefinement)
+    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
+  }
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams

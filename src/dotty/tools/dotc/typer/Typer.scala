@@ -1008,23 +1008,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
     val refinements1 = impl.body
-    val seen = mutable.Set[Symbol]()
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
-    def addRefinement(parent: Type, refinement: Tree): Type = {
+    val seen = mutable.Set[Symbol]()
+    for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
       if (rsym.is(Method) && rsym.allOverriddenSymbols.isEmpty)
-        ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
-      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rinfo)
-      // todo later: check that refinement is within bounds
+        ctx.error(i"refinement $rsym without matching type in parent $tpt1", refinement.pos)
     }
-    val refined = (tpt1.tpe /: refinements1)(addRefinement)
-    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1).withType(
-      RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
-    typr.println(i"typed refinement: ${res.tpe}")
-    res
+    assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
