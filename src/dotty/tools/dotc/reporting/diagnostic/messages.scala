@@ -184,7 +184,7 @@ object messages {
 
       val caseDef = s"case $pat$guard => $body"
 
-      hl"""|For each ${"case"} bound variable names  have to be unique. In:
+      hl"""|For each ${"case"} bound variable names have to be unique. In:
            |
            |$caseDef
            |
@@ -194,12 +194,14 @@ object messages {
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
   extends Message(6) {
-    val kind = "Missing Identifier"
+    val kind = "Unbound Identifier"
     val msg = em"not found: $treeKind$name"
 
     val explanation = {
-      hl"""|An identifier for `$treeKind$name` is missing. This means that something
-           |has either been misspelt or you're forgetting an import"""
+      hl"""|The identifier for `$treeKind$name` is not bound, that is,
+           |no declaration for this identifier can be found.
+           |That can happen for instance if $name or its declaration has either been
+           |misspelt, or if you're forgetting an import"""
     }
   }
 
