@@ -39,11 +39,13 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   def pushEntryPoint(s: Symbol): Unit = {
     val tpe = ref(s).tpe
-    val targs = tpe.widen match {
+    val targsSize = tpe.widen match {
       case t: PolyType => t.paramNames.size
       case _ => 0
     }
-    val call = new CallWithContext(tpe, (0 until targs).map(x => new ErazedType()).toList, ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil, OuterTargs.empty, null, null, isEntryPoint = true)
+    val targs = (0 until targsSize).map(x => new ErazedType()).toList
+    val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
+    val call = new CallWithContext(tpe, targs, args, OuterTargs.empty, null, null, isEntryPoint = true)
     reachableMethods += call
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
