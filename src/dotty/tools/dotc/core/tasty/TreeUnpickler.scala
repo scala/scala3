@@ -696,7 +696,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             TypeDef(readTemplate(localCtx))
           } else {
             val rhs = readTpt()
-            sym.info = rhs.tpe
+            sym.info = rhs.tpe match {
+              case _: TypeBounds | _: ClassInfo => rhs.tpe
+              case _ => TypeAlias(rhs.tpe, sym.variance)
+            }
             TypeDef(rhs)
           }
         case PARAM =>

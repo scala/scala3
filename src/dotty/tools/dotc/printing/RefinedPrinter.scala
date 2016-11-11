@@ -351,7 +351,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tree @ Inlined(call, bindings, body) =>
-        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView) ~ 
+        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView) ~
         blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
@@ -402,24 +402,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         }
       case tree @ TypeDef(name, rhs) =>
-        def typeDefText(rhsText: Text) =
+        def typeDefText(tparamsText: => Text, rhsText: => Text) =
           dclTextOr {
             modText(tree.mods, "type") ~~ (varianceText(tree.mods) ~ nameIdText(tree)) ~
             withEnclosingDef(tree) {
-              val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
-              tparamsText(tree.tparams) ~ rhsText1
+              if (tree.hasType) toText(tree.symbol.info) // TODO: always print RHS, once we pickle/unpickle type trees
+              else tparamsText ~ rhsText
             }
           }
-        rhs match {
+        def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
           case impl: Template =>
             modText(tree.mods, if ((tree).mods is Trait) "trait" else "class") ~~
             nameIdText(tree) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~
             (if (tree.hasType && ctx.settings.verbose.value) i"[decls = ${tree.symbol.info.decls}]" else "")
           case rhs: TypeBoundsTree =>
-            typeDefText(toText(rhs))
-          case _ =>
-            typeDefText(optText(rhs)(" = " ~ _))
+            typeDefText(tparamsTxt, toText(rhs))
+          case PolyTypeTree(tparams, body) =>
+            recur(body, tparamsText(tparams))
+          case rhs =>
+            typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
+        recur(rhs, "")
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
           case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
@@ -525,11 +528,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (tree.isType) txt = toText(tp)
       else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
     }
-    else if (homogenizedView && tree.isType) 
+    else if (homogenizedView && tree.isType)
       txt = toText(tree.typeOpt)
     if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]]) {
-      val pos = 
-        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic 
+      val pos =
+        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic
         else tree.pos
       val clsStr = "" // DEBUG: if (tree.isType) tree.getClass.toString else ""
       txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
