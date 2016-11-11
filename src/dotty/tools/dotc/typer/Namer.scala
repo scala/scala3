@@ -293,7 +293,7 @@ class Namer { typer: Typer =>
         val inSuperCall1 = if (tree.mods is ParamOrAccessor) EmptyFlags else inSuperCall
           // suppress inSuperCall for constructor parameters
         val higherKinded = tree match {
-          case tree: TypeDef if tree.tparams.nonEmpty && isDeferred => HigherKinded
+          case TypeDef(_, PolyTypeTree(_, _)) if isDeferred => HigherKinded
           case _ => EmptyFlags
         }
 
@@ -605,8 +605,12 @@ class Namer { typer: Typer =>
         nestedCtx = localContext(sym).setNewScope
         myTypeParams = {
           implicit val ctx: Context = nestedCtx
-          completeParams(original.tparams)
-          original.tparams.map(symbolOfTree(_).asType)
+          val tparams = original.rhs match {
+            case PolyTypeTree(tparams, _) => tparams
+            case _ => Nil
+          }
+          completeParams(tparams)
+          tparams.map(symbolOfTree(_).asType)
         }
       }
       myTypeParams
@@ -1005,7 +1009,11 @@ class Namer { typer: Typer =>
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
 
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val rhsBodyType = typedAheadType(tdef.rhs).tpe
+    val rhs = tdef.rhs match {
+      case PolyTypeTree(_, body) => body
+      case rhs => rhs
+    }
+    val rhsBodyType = typedAheadType(rhs).tpe
     val rhsType = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
     val unsafeInfo = rhsType match {
       case bounds: TypeBounds => bounds

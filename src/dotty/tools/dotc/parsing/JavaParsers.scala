@@ -417,7 +417,7 @@ object JavaParsers {
       atPos(in.offset) {
         val name = identForType()
         val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else EmptyTree
-        TypeDef(name, Nil, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
+        TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
       }
 
     def bound(): Tree =
@@ -625,8 +625,7 @@ object JavaParsers {
           val template = cdef.rhs.asInstanceOf[Template]
           cpy.TypeDef(cdef)(cdef.name,
             cpy.Template(template)(template.constr, template.parents, template.self,
-              importCompanionObject(cdef) :: template.body),
-            cdef.tparams).withMods(cdef.mods)
+              importCompanionObject(cdef) :: template.body)).withMods(cdef.mods)
         }
 
       List(makeCompanionObject(cdefNew, statics), cdefNew)
@@ -715,7 +714,7 @@ object JavaParsers {
       val (statics, body) = typeBody(INTERFACE, name, tparams)
       val iface = atPos(start, nameOffset) {
         TypeDef(
-          name, tparams,
+          name,
           makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
       }
       addCompanionObject(statics, iface)
@@ -830,7 +829,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)),
         List(Literal(Constant(null)),Literal(Constant(0))))
       val enum = atPos(start, nameOffset) {
-        TypeDef(name, List(),
+        TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.Enum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enum)

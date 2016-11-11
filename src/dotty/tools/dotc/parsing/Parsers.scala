@@ -1646,7 +1646,7 @@ object Parsers {
           val bounds =
             if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()
-          TypeDef(name, hkparams, bounds).withMods(mods)
+          TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
       commaSeparated(typeParam)
@@ -1956,9 +1956,9 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, tparams, typ()).withMods(mods).setComment(docstring)
+            TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(docstring)
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(name, tparams, typeBounds()).withMods(mods).setComment(docstring)
+            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(docstring)
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree

@@ -234,7 +234,7 @@ object desugar {
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
-      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam), tparams = Nil)
+      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
     }
@@ -461,8 +461,7 @@ object desugar {
       val vparamAccessors = derivedVparamss.flatten.map(_.withMods(originalVparams.next.mods | caseAccessor))
       cpy.TypeDef(cdef)(
         rhs = cpy.Template(impl)(constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths),
-        tparams = Nil)
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths))
     }
 
     // install the watch on classTycon
