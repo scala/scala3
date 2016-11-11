@@ -40,29 +40,15 @@ object Scala2Unpickler {
   /** Temporary type for classinfos, will be decomposed on completion of the class */
   case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
 
-  /** Convert temp poly type to some native Dotty idiom.
-   *  @param denot  The denotation that gets the converted type as info.
-   *  If `denot` is not an abstract type, this simply returns an equivalent `PolyType`.
-   *  If `denot` is an abstract type, it converts a
-   *
-   *      TempPolyType(List(v_1 T_1, ..., v_n T_n), lo .. hi)
-   *
-   *  to a type lambda using `parameterizeWith/LambdaAbstract`.
-   */
-  def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
-    case TempPolyType(tparams, restpe) =>
-      if (denot.isType) {
-        assert(!denot.isClass)
-        restpe.LambdaAbstract(tparams)
-      }
-      else
-        PolyType.fromSymbols(tparams, restpe)
+  /** Convert temp poly type to poly type and leave other types alone. */
+  def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
+    case TempPolyType(tparams, restpe) => restpe.LambdaAbstract(tparams)
     case tp => tp
   }
 
   def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context) = {
     assert(denot.isConstructor)
-    denot.info = PolyType.fromSymbols(denot.owner.typeParams, denot.info)
+    denot.info = denot.info.LambdaAbstract(denot.owner.typeParams)
   }
 
   /** Convert array parameters denoting a repeated parameter of a Java method
@@ -549,7 +535,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, selfInfo)
           case denot =>
-            val tp1 = depoly(tp, denot)
+            val tp1 = translateTempPoly(tp)
             denot.info =
               if (tag == ALIASsym) TypeAlias(tp1)
               else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)

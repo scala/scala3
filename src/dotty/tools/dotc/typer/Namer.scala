@@ -113,7 +113,7 @@ trait NamerContextOps { this: Context =>
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
         make.fromSymbols(params, resultType)
       }
-    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
+    if (typeParams.nonEmpty) monotpe.LambdaAbstract(typeParams)
     else if (valueParamss.isEmpty) ExprType(monotpe)
     else monotpe
   }

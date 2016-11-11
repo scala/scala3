@@ -431,7 +431,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
     tree.withType(left.tpe | right.tpe)
 
-  /** Assign type of RefinedType. 
+  /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
    */
   def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context) = {
@@ -467,7 +467,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.PolyTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
-    tree.withType(PolyType.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
+    tree.withType(body.tpe.LambdaAbstract(tparamDefs.map(_.symbol)))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

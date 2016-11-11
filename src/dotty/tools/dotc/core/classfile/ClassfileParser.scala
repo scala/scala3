@@ -217,7 +217,7 @@ class ClassfileParser(
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) stripOuterParamFromConstructor()
         setPrivateWithin(denot, jflags)
-        denot.info = depoly(parseAttributes(sym, denot.info), denot)
+        denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
 
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)

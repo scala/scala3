@@ -2524,7 +2524,7 @@ object Types {
       case _: MethodType => true
       case _ => false
     }
-    
+
     /** Is this polytype a higher-kinded type lambda as opposed to a polymorphic?
      *  method type? Only type lambdas get created with variances, that's how we can tell.
      */
@@ -2618,12 +2618,6 @@ object Types {
       val vs = if (variances.isEmpty) paramNames.map(alwaysZero) else variances
       unique(new PolyType(paramNames, vs)(paramBoundsExp, resultTypeExp))
     }
-
-    def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context): Type =
-      if (tparams.isEmpty) resultType
-      else apply(tparams map (_.name.asTypeName), tparams.map(_.variance))(
-          pt => tparams.map(tparam => pt.lifted(tparams, tparam.info).bounds),
-          pt => pt.lifted(tparams, resultType))
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
