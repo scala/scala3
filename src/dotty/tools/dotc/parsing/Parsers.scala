@@ -1436,7 +1436,7 @@ object Parsers {
       case _ =>
         if (isLiteral) literal()
         else {
-          syntaxErrorOrIncomplete("illegal start of simple pattern")
+          syntaxErrorOrIncomplete(IllegalStartOfSimplePattern())
           errorTermTree
         }
     }
