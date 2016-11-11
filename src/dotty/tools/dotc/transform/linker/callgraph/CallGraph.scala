@@ -1,4 +1,4 @@
-package dotty.tools.dotc.transform.linker
+package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.Symbol

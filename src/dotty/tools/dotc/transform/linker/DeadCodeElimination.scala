@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
+import dotty.tools.dotc.transform.linker.callgraph.CallGraph
 
 class DeadCodeElimination extends MiniPhaseTransform {
   import tpd._
