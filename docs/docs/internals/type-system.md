@@ -13,6 +13,8 @@ A type which inherits `TypeProxy` is a proxy for another type accessible using
 the `underlying` method, other types are called _ground_ types and inherit
 `CachedGroundType` or `UncachedGroundType`.
 
+Here's a diagram, copied from [dotty/tools/dotc/core/Types.scala][1]:
+
 ```
 Type -+- ProxyType --+- NamedType ----+--- TypeRef
       |              |                 \
@@ -22,19 +24,22 @@ Type -+- ProxyType --+- NamedType ----+--- TypeRef
       |              |                +--- SuperType
       |              |                +--- ConstantType
       |              |                +--- MethodParam
-      |              |                +--- RefinedThis
+      |              |                +----RecThis
+      |              |                +--- SkolemType
       |              +- PolyParam
-      |              +- RefinedType
+      |              +- RefinedOrRecType -+-- RefinedType
+      |              |                   -+-- RecType
+      |              +- HKApply
       |              +- TypeBounds
       |              +- ExprType
       |              +- AnnotatedType
       |              +- TypeVar
+      |              +- PolyType
       |
       +- GroundType -+- AndType
                      +- OrType
                      +- MethodType -----+- ImplicitMethodType
                      |                  +- JavaMethodType
-                     +- PolyType
                      +- ClassInfo
                      |
                      +- NoType
