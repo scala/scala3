@@ -77,10 +77,15 @@ object DottyBuild extends Build {
   )
 
   /** Projects -------------------------------------------------------------- */
+  // The root project:
+  // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
+  // - publishes its own empty artifact "dotty" that depends on "dotty-library" and "dotty-compiler",
+  //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
+    // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-sbt-bridge`, `scala-library`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
-    dependsOn(`dotty-interfaces`).
     settings(
       addCommandAlias("dotr", "dotty-compiler/dotr") ++
       addCommandAlias("dotc", "dotty-compiler/dotc") ++
@@ -341,6 +346,7 @@ object DottyBuild extends Build {
   lazy val bin = project.in(file("bin")).
     settings(sourceStructure).
     settings(
+      publishArtifact := false,
       parallelExecution in Test := false,
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
