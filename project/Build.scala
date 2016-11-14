@@ -179,8 +179,10 @@ object DottyBuild extends Build {
         ) map { case (k, v) => (k, v.getAbsolutePath) }
       },
 
-      // Set run baseDir to be root of project, makes dotc saner
-      baseDirectory in run := baseDirectory.value / "..",
+      // For convenience, change the baseDirectory when running the compiler
+      baseDirectory in (Compile, run) := baseDirectory.value / "..",
+      // .. but not when running partest
+      baseDirectory in (Test, run) := baseDirectory.value,
 
       repl := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
