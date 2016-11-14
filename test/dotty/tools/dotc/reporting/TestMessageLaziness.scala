@@ -16,9 +16,9 @@ class TestMessageLaziness extends DottyTest {
 
   class NonchalantReporter(implicit ctx: Context) extends Reporter
   with UniqueMessagePositions with HideNonSensicalMessages {
-    def doReport(d: MessageContainer)(implicit ctx: Context) = ???
+    def doReport(m: MessageContainer)(implicit ctx: Context) = ???
 
-    override def report(d: => MessageContainer)(implicit ctx: Context) = ()
+    override def report(m: MessageContainer)(implicit ctx: Context) = ()
   }
 
   case class LazyError() extends Message(1000) {
