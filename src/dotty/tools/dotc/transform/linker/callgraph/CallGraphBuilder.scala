@@ -342,7 +342,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         // TODO: only for paper
         Nil
       case NoPrefix =>  // inner method
-        assert(callee.call.termSymbol.owner.is(Method) || callee.call.termSymbol.owner.isLocalDummy)
+        assert(calleeSymbol.is(ParamAccessor) || calleeSymbol.owner.is(Method) || calleeSymbol.owner.isLocalDummy)
         new CallWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
 
       case t if calleeSymbol.isConstructor =>
