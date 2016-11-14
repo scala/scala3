@@ -790,7 +790,8 @@ object messages {
     val explanation = ""
   }
 
-  case class SeqWildcardPatternPos()(implicit ctx: Context) extends Message(31) {
+  case class SeqWildcardPatternPos()(implicit ctx: Context)
+  extends Message(31) {
     val kind = "Syntax"
     val msg = "`_*' can be used only for last argument"
     val explanation = {
@@ -892,15 +893,22 @@ object messages {
     }
   }
 
-  case class NoClassOrObjectAfterCase()(implicit ctx: Context)
+  case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
   extends Message(33) {
+    val kind = "Duplicate Type"
+    val msg = hl"trying to define package with same name as `$existing`"
+    val explanation = ""
+  }
+
+  case class NoClassOrObjectAfterCase()(implicit ctx: Context)
+  extends Message(34) {
     val kind = "Syntax"
     val msg = hl"Only ${"class"} or ${"object"} are allowed after ${"case"}."
     val explanation = ""
   }
 
   case class ClassOrObjectExpected()(implicit ctx: Context)
-  extends Message(34) {
+  extends Message(35) {
     val kind = "Syntax"
     val msg = hl"Expected ${"class"} or ${"object"} definition."
     val explanation = ""
