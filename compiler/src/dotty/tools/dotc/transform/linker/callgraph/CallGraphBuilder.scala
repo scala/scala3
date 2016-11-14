@@ -65,9 +65,9 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
       processCallSites(reachableMethods.items, reachableTypes.items)
 
       val newReachableTypes = reachableTypes.newItems
-      println(s"\t Found ${newReachableTypes.size} new instantiated types: " + newReachableTypes.take(10).map(_.tp.show).mkString("Set(", ", ", if (newReachableTypes.size <= 10) ")" else ", ...)"))
+      println(s"\t Found ${newReachableTypes.size} new instantiated types")
       val newClassOfs = classOfs.newItems
-      println(s"\t Found ${newClassOfs.size} new classOfs: " + newClassOfs.take(10).map(_.show).mkString("Set(", ", ", if (newClassOfs.size <= 10) ")" else ", ...)"))
+      println(s"\t Found ${newClassOfs.size} new classOfs ")
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
           case t: ClosureType =>
@@ -87,7 +87,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
       }
 
       val newReachableMethods = reachableMethods.newItems
-      println(s"\t Found ${newReachableMethods.size} new call sites: " + newReachableMethods.take(10).map(x => { val sym = x.call.termSymbol; (sym.owner, sym) }).mkString("Set(", ", ", if (newReachableMethods.size <= 10) ")" else ", ...)"))
+      println(s"\t Found ${newReachableMethods.size} new call sites")
 
     }
   }
