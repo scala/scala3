@@ -6,6 +6,7 @@ import scala.reflect.io.Path
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import sbt.Package.ManifestAttributes
 
 object DottyBuild extends Build {
 
@@ -171,6 +172,9 @@ object DottyBuild extends Build {
       fork in run := true,
       fork in Test := true,
       parallelExecution in Test := false,
+
+      // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
+      packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
