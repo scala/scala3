@@ -85,6 +85,7 @@ object DottyBuild extends Build {
       addCommandAlias("dotr", "dotty-compiler/dotr") ++
       addCommandAlias("dotc", "dotty-compiler/dotc") ++
       addCommandAlias("repl", "dotty-compiler/repl") ++
+      addCommandAlias("packageAll", "dotty-compiler/packageAll") ++
       addCommandAlias(
         "partest",
         ";packageAll" +
