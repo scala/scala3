@@ -790,7 +790,8 @@ object messages {
     val explanation = ""
   }
 
-  case class SeqWildcardPatternPos()(implicit ctx: Context) extends Message(31) {
+  case class SeqWildcardPatternPos()(implicit ctx: Context)
+  extends Message(31) {
     val kind = "Syntax"
     val msg = "`_*' can be used only for last argument"
     val explanation = {
@@ -890,5 +891,12 @@ object messages {
            |  ${"def unapplySeq[A](x: List[A]): Some[List[A]]"}
            |"""
     }
+  }
+
+  case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
+  extends Message(33) {
+    val kind = "Duplicate Type"
+    val msg = hl"trying to define package with same name as `$existing`"
+    val explanation = ""
   }
 }

@@ -21,6 +21,7 @@ import Inferencing._
 import transform.ValueClasses._
 import TypeApplications._
 import language.implicitConversions
+import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
 
@@ -264,7 +265,7 @@ class Namer { typer: Typer =>
       def preExisting = ctx.effectiveScope.lookup(name)
       if (ctx.owner is PackageClass)
         if (preExisting.isDefinedInCurrentRun)
-          errorName(s"${preExisting.showLocated} is compiled twice")
+          errorName(s"${preExisting.showLocated} has already been compiled\nonce during this run")
         else name
       else
         if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists)
@@ -343,8 +344,18 @@ class Namer { typer: Typer =>
       case Select(qual: RefTree, _) => createPackageSymbol(qual).moduleClass
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
+
     if ((existing is Package) && (pkgOwner eq existing.owner)) existing
-    else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+    else {
+      // If the name exists as type we should unlink the existing name from the
+      // scope, issue an error and continue, as usual:
+      val existingTpe = pkgOwner.info.decls.lookup(pid.name.toTypeName)
+      if (existingTpe != NoSymbol) {
+        ctx.error(PkgDuplicateSymbol(existingTpe), pid.pos)
+        pkgOwner.info.decls.openForMutations.unlink(existingTpe)
+      }
+      ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+    }
   }
 
   /** Expand tree and store in `expandedTree` */
