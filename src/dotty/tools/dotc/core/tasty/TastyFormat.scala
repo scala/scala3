@@ -71,7 +71,7 @@ Standard-Section: "ASTs" TopLevelStat*
 
   Term          = Path
                   Application
-                  IDENT                 NameRef Type     // used when ident’s type is not a TermRef
+                  IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term
                   NEW                   cls_Type
                   SUPER          Length this_Term mixinTrait_Type?
@@ -89,6 +89,17 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
+                  IDENTtpt              NameRef Type     // used when type ident's type is not a TypeRef
+                  SELECTtpt             NameRef qual_Term
+                  SINGLETONtpt          Path
+                  REFINDtpt      Length underlying_Term refinement_Stat*
+                  APPLIEDtpt     Length tycon_Term arg_Term*
+                  POLYtpt        Length TypeParam* body_Term
+                  TYPEBOUNDStpt  Length low_Term high_Term
+                  ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
+                  ANDtpt         Length left_Term right_Term
+                  ORtpt          Length left_Term right_Term
+                  BYNAMEtpt             underlying_Term
                   EMPTYTREE
                   SHARED                term_ASTRef
   Application   = APPLY          Length fn_Term arg_Term*
@@ -133,7 +144,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
                   TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
-                  ANNOTATED      Length underlying_Type fullAnnotation_Term
+                  ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
                   BIND           Length boundName_NameRef bounds_Type
@@ -271,19 +282,23 @@ object TastyFormat {
   final val CLASSconst = 97
   final val ENUMconst = 98
   final val BYNAMEtype = 99
-  final val NEW = 100
-  final val IMPLICITarg = 101
-  final val PRIVATEqualified = 102
-  final val PROTECTEDqualified = 103
-  final val RECtype = 104
+  final val BYNAMEtpt = 100
+  final val NEW = 101
+  final val IMPLICITarg = 102
+  final val PRIVATEqualified = 103
+  final val PROTECTEDqualified = 104
+  final val RECtype = 105
+  final val SINGLETONtpt = 106
 
   final val IDENT = 112
-  final val SELECT = 113
-  final val TERMREFsymbol = 114
-  final val TERMREF = 115
-  final val TYPEREFsymbol = 116
-  final val TYPEREF = 117
-  final val SELFDEF = 118
+  final val IDENTtpt = 113
+  final val SELECT = 114
+  final val SELECTtpt = 115
+  final val TERMREFsymbol = 116
+  final val TERMREF = 117
+  final val TYPEREFsymbol = 118
+  final val TYPEREF = 119
+  final val SELFDEF = 120
 
   final val PACKAGE = 128
   final val VALDEF = 129
@@ -293,39 +308,44 @@ object TastyFormat {
   final val TYPEPARAM = 133
   final val PARAMS = 134
   final val PARAM = 136
-
-  final val APPLY = 139
-  final val TYPEAPPLY = 140
-
-  final val TYPED = 143
-  final val NAMEDARG = 144
-  final val ASSIGN = 145
-  final val BLOCK = 146
-  final val IF = 147
-  final val LAMBDA = 148
-  final val MATCH = 149
-  final val RETURN = 150
-  final val TRY = 151
-  final val INLINED = 152
-  final val REPEATED = 153
-  final val BIND = 154
-  final val ALTERNATIVE = 155
-  final val UNAPPLY = 156
-  final val ANNOTATED = 157
-  final val CASEDEF = 158
-  final val TEMPLATE = 160
-  final val SUPER = 163
-  final val SUPERtype = 166
-  final val REFINEDtype = 167
-  final val APPLIEDtype = 168
-  final val TYPEBOUNDS = 169
-  final val TYPEALIAS = 170
-  final val ANDtype = 171
-  final val ORtype = 172
-  final val METHODtype = 174
-  final val POLYtype = 175
-  final val PARAMtype = 176
-  final val ANNOTATION = 177
+  final val APPLY = 137
+  final val TYPEAPPLY = 138
+  final val TYPED = 139
+  final val NAMEDARG = 140
+  final val ASSIGN = 141
+  final val BLOCK = 142
+  final val IF = 143
+  final val LAMBDA = 144
+  final val MATCH = 145
+  final val RETURN = 146
+  final val TRY = 147
+  final val INLINED = 148
+  final val REPEATED = 149
+  final val BIND = 150
+  final val ALTERNATIVE = 151
+  final val UNAPPLY = 152
+  final val ANNOTATEDtype = 153
+  final val ANNOTATEDtpt = 154
+  final val CASEDEF = 155
+  final val TEMPLATE = 156
+  final val SUPER = 157
+  final val SUPERtype = 158
+  final val REFINEDtype = 159
+  final val REFINEDtpt = 160
+  final val APPLIEDtype = 161
+  final val APPLIEDtpt = 162
+  final val TYPEBOUNDS = 163
+  final val TYPEBOUNDStpt = 164
+  final val TYPEALIAS = 165
+  final val ANDtype = 166
+  final val ANDtpt = 167
+  final val ORtype = 168
+  final val ORtpt = 169
+  final val METHODtype = 170
+  final val POLYtype = 171
+  final val POLYtpt = 172
+  final val PARAMtype = 173
+  final val ANNOTATION = 174
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -367,7 +387,22 @@ object TastyFormat {
        | PRIVATEqualified
        | PROTECTEDqualified => true
     case _ => false
-   }
+  }
+
+  def isTypeTreeTag(tag: Int) = tag match {
+    case IDENTtpt
+       | SELECTtpt
+       | SINGLETONtpt
+       | REFINEDtpt
+       | APPLIEDtpt
+       | POLYtpt
+       | TYPEBOUNDStpt
+       | ANNOTATEDtpt
+       | ANDtpt
+       | ORtpt
+       | BYNAMEtpt => true
+    case _ => false
+  }
 
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
@@ -429,7 +464,9 @@ object TastyFormat {
     case RECtype => "RECtype"
 
     case IDENT => "IDENT"
+    case IDENTtpt => "IDENTtpt"
     case SELECT => "SELECT"
+    case SELECTtpt => "SELECTtpt"
     case TERMREFsymbol => "TERMREFsymbol"
     case TERMREF => "TERMREF"
     case TYPEREFsymbol => "TYPEREFsymbol"
@@ -462,7 +499,8 @@ object TastyFormat {
     case BIND => "BIND"
     case ALTERNATIVE => "ALTERNATIVE"
     case UNAPPLY => "UNAPPLY"
-    case ANNOTATED => "ANNOTATED"
+    case ANNOTATEDtype => "ANNOTATEDtype"
+    case ANNOTATEDtpt => "ANNOTATEDtpt"
     case CASEDEF => "CASEDEF"
     case IMPLICITarg => "IMPLICITarg"
     case TEMPLATE => "TEMPLATE"
@@ -471,15 +509,23 @@ object TastyFormat {
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
+    case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case REFINEDtype => "REFINEDtype"
+    case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
+    case APPLIEDtpt => "APPLIEDtpt"
     case TYPEBOUNDS => "TYPEBOUNDS"
+    case TYPEBOUNDStpt => "TYPEBOUNDStpt"
     case TYPEALIAS => "TYPEALIAS"
     case ANDtype => "ANDtype"
+    case ANDtpt => "ANDtpt"
     case ORtype => "ORtype"
+    case ORtpt => "ORtpt"
     case BYNAMEtype => "BYNAMEtype"
+    case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
+    case POLYtpt => "POLYtpt"
     case METHODtype => "METHODtype"
     case PARAMtype => "PARAMtype"
     case ANNOTATION => "ANNOTATION"

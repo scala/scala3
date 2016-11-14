@@ -61,7 +61,7 @@ class TastyPickler {
    * Note that a tree can have several addresses, if it is shared,
    * i.e. accessible from different paths. Any such sharing is undone by pickling.
    */
-  var addrsOfTree: tpd.Tree => List[Addr] = (_ => Nil)
+  var addrOfTree: tpd.Tree => Option[Addr] = (_ => None)
 
   /**
    * Addresses in TASTY file of symbols, stored by pickling.
