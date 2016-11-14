@@ -34,14 +34,15 @@ object Annotations {
     def tree(implicit ctx: Context): Tree = t
   }
 
-  abstract case class LazyAnnotation(sym: Symbol) extends Annotation {
+  abstract class LazyAnnotation extends Annotation {
+    override def symbol(implicit ctx: Context): Symbol
+    def complete(implicit ctx: Context): Tree
+
     private var myTree: Tree = null
     def tree(implicit ctx: Context) = {
       if (myTree == null) myTree = complete(ctx)
       myTree
     }
-    def complete(implicit ctx: Context): Tree
-    override def symbol(implicit ctx: Context): Symbol = sym
   }
 
   /** An annotation indicating the body of a right-hand side,
@@ -108,8 +109,19 @@ object Annotations {
       apply(resolveConstructor(atp, args))
     }
 
+    /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
-      new LazyAnnotation(sym) {
+      new LazyAnnotation {
+        override def symbol(implicit ctx: Context): Symbol = sym
+        def complete(implicit ctx: Context) = treeFn(ctx)
+      }
+
+    /** Create an annotation where the symbol and the tree are computed lazily. */
+    def deferredSymAndTree(sym: => Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
+      new LazyAnnotation {
+        lazy val symf = sym
+
+        override def symbol(implicit ctx: Context): Symbol = symf
         def complete(implicit ctx: Context) = treeFn(ctx)
       }
 

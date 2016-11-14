@@ -552,9 +552,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           case ANNOTATION =>
             readByte()
             val end = readEnd()
-            val sym = readType().typeSymbol
+            val tp = readType()
             val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-            annots += Annotation.deferred(sym, _ => lazyAnnotTree.complete)
+            annots += Annotation.deferredSymAndTree(tp.typeSymbol, _ => lazyAnnotTree.complete)
           case _ =>
             assert(false, s"illegal modifier tag at $currentAddr")
         }
@@ -1100,12 +1100,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr}")
       op(reader)(ctx.addMode(Mode.AllowDependentFunctions).withPhaseNoLater(ctx.picklerPhase))
-    }
-  }
-
-  class LazyAnnotationReader(sym: Symbol, reader: TreeReader) extends LazyAnnotation(sym) {
-    def complete(implicit ctx: Context) = {
-      reader.readTerm()(ctx.withPhaseNoLater(ctx.picklerPhase))
     }
   }
 
