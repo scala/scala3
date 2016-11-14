@@ -231,9 +231,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def trimPrefix(text: Text) =
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
-  protected def selectionString(tp: NamedType) =
-    if (tp.currentSymbol.exists) nameString(tp.symbol)
-    else nameString(tp.name)
+  protected def selectionString(tp: NamedType) = {
+    val sym = if (homogenizedView) tp.symbol else tp.currentSymbol
+    if (sym.exists) nameString(sym) else nameString(tp.name)
+  }
 
   /** The string representation of this type used as a prefix */
   protected def toTextRef(tp: SingletonType): Text = controlled {

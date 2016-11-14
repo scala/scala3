@@ -46,10 +46,10 @@ class Pickler extends Phase {
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
       treePkl.compactify()
-      pickler.addrsOfTree = treePkl.buf.addrsOfTree
+      pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
       if (tree.pos.exists)
-        new PositionPickler(pickler, treePkl.buf.addrsOfTree).picklePositions(tree :: Nil)
+        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
       def rawBytes = // not needed right now, but useful to print raw format.
         pickler.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {

@@ -633,9 +633,9 @@ class Definitions {
     name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
   }
 
-  def isBottomClass(cls: Symbol) = 
+  def isBottomClass(cls: Symbol) =
     cls == NothingClass || cls == NullClass
-  def isBottomType(tp: Type) = 
+  def isBottomType(tp: Type) =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
@@ -785,8 +785,8 @@ class Definitions {
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-      
-      // Enter all symbols from the scalaShadowing package in the scala package 
+
+      // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
 

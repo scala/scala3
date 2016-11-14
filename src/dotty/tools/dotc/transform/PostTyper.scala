@@ -175,7 +175,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
             super.transform(tree)
           }
-          else 
+          else
             transformSelect(paramFwd.adaptRef(fixSignature(tree)), Nil)
         case tree: Super =>
           if (ctx.owner.enclosingMethod.isInlineMethod)
