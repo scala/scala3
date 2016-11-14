@@ -90,25 +90,25 @@ object DottyBuild extends Build {
         "partest",
         ";packageAll" +
         ";dotty-compiler/test:runMain dotc.build" +
-        ";lockPartestFile" +
+        ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test" +
-        ";runPartestRunner" +
+        ";dotty-compiler/runPartestRunner" +
         ";bin/test" // script tests need to run after the unit tests
       ) ++
       addCommandAlias(
         "partest-only",
         ";packageAll" +
         ";dotty-compiler/test:runMain dotc.build" +
-        ";lockPartestFile" +
+        ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test-only dotc.tests" +
-        ";runPartestRunner"
+        ";dotty-compiler/runPartestRunner"
       ) ++
       addCommandAlias(
         "partest-only-no-bootstrap",
         ";packageAll" +
-        ";lockPartestFile" +
+        ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test-only dotc.tests" +
-        ";runPartestRunner"
+        ";dotty-compiler/runPartestRunner"
       )
     ).
     settings(publishing)
