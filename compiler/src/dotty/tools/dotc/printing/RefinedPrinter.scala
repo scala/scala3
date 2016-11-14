@@ -288,7 +288,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val selfName = if (self.name == nme.WILDCARD) "this" else self.name.toString
         (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
       } provided !self.isEmpty
-      val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: impl.body, "\n") ~ "}"
+
+      val body = if (ctx.settings.YtestPickler.value) {
+        // Pickling/unpickling reorders the body members, so we need to homogenize
+        val (params, rest) = impl.body partition {
+          case stat: TypeDef => stat.symbol.is(Param)
+          case stat: ValOrDefDef =>
+            stat.symbol.is(ParamAccessor) && !stat.symbol.isSetter
+          case _ => false
+        }
+        params ::: rest
+      } else impl.body
+
+      val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+
       prefix ~ (" extends" provided !ofNew) ~~ parentsText ~~ bodyText
     }
 
