@@ -73,7 +73,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
           case t: ClosureType =>
             t.u.classSymbol.asClass
           case t: JavaAllocatedType =>
-            t.underlying.classSymbol.asClass
+            t.underlying.widenDealias.classSymbol.asClass
           case _ => x.tp.classSymbol.asClass
         }
         if (!clas.is(JavaDefined) && clas.is(Module)) {
@@ -476,7 +476,8 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
           outerMethods += sym
 
           // Add return type to reachable types
-          addReachableType(new TypeWithContext(new JavaAllocatedType(method.call.widenDealias.finalResultType), OuterTargs.empty), method)
+          val javaAllocatedType = new JavaAllocatedType(method.call.widenDealias.finalResultType)
+          addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
 
           // Add all possible calls from java to object passed as parameters.
           processCallsFromJava(instantiatedTypes, method)
