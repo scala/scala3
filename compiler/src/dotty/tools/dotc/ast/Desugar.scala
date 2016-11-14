@@ -179,7 +179,7 @@ object desugar {
           DefDef(
             name = meth.name.defaultGetterName(n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
-            vparamss = takeUpTo(normalizedVparamss, n),
+            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
           ).withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))

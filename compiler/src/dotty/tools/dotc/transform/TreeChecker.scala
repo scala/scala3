@@ -397,6 +397,14 @@ class TreeChecker extends Phase with SymTransformer {
       withDefinedSyms(ddef.tparams) {
         withDefinedSymss(ddef.vparamss) {
           if (!sym.isClassConstructor && !(sym.name eq Names.STATIC_CONSTRUCTOR)) assert(isValidJVMMethodName(sym.name), s"${sym.fullName} name is invalid on jvm")
+
+          ddef.vparamss.foreach(_.foreach { vparam =>
+            assert(vparam.symbol.is(Param),
+              s"Parameter ${vparam.symbol} of ${sym.fullName} does not have flag `Param` set")
+            assert(!vparam.symbol.is(AccessFlags),
+              s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${vparam.symbol.flags & AccessFlags}")
+          })
+
           val tpdTree = super.typedDefDef(ddef, sym)
           assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
           tpdTree
