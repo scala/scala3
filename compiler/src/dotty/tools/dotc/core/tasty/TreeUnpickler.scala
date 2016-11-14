@@ -347,6 +347,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           ConstantType(Constant(null))
         case CLASSconst =>
           ConstantType(Constant(readType()))
+        case ENUMconst =>
+          ConstantType(Constant(readTermRef().termSymbol))
         case BYNAMEtype =>
           ExprType(readType())
       }
