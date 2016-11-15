@@ -164,10 +164,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
+        def typeColon(resultType: Type): Text = resultType match {
+          case _: TypeRef => ": "
+          case _ => "" // eg. methods with implicit parameters go here in first pass
+        }
         changePrec(GlobalPrec) {
           (if (tp.isImplicit) "(implicit " else "(") ~
             Text((tp.paramNames, tp.paramTypes).zipped map paramText, ", ") ~
-          ")" ~ toText(tp.resultType)
+          ")" ~ typeColon(tp.resultType) ~ toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
