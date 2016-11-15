@@ -66,8 +66,7 @@ class InterpreterLoop(compiler: Compiler, config: REPL.Config)(implicit ctx: Con
     output.flush()
   }
 
-  val gitHash = ManifestInfo.attributes.getOrElse("Git-Hash", "unknown")
-  val version = s".next (pre-alpha, git-hash: $gitHash)"
+  val version = ".next (pre-alpha)"
 
   /** The main read-eval-print loop for the interpreter.  It calls
    *  `command()` for each line of input.
