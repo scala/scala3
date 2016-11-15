@@ -135,10 +135,13 @@ class TreeChecker extends Phase with SymTransformer {
     }
   }
 
-  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with NoChecking {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
 
     val nowDefinedSyms = new mutable.HashSet[Symbol]
     val everDefinedSyms = new mutable.HashMap[Symbol, Tree]
+
+    // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
+    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
 
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
       case tree: DefTree =>
