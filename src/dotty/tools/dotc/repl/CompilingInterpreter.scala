@@ -685,7 +685,12 @@ class CompilingInterpreter(
         val varType = string2code(req.typeOf(varName))
         val fullPath = req.fullPath(varName)
 
-        s""" + "$prettyName: $varType = " + {
+        val varOrVal = statement match {
+          case v: ValDef if v.mods is Flags.Mutable => "var"
+          case _ => "val"
+        }
+
+        s""" + "$varOrVal $prettyName: $varType = " + {
            |  if ($fullPath.asInstanceOf[AnyRef] != null) {
            |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") +
            |      $fullPath.toString() + "\\n"
@@ -736,7 +741,7 @@ class CompilingInterpreter(
 
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
         if (!defDef.mods.is(Flags.AccessFlags))
-          code.print("+\"" + string2code(defDef.name.toString) + ": " +
+          code.print("+\"def " + string2code(defDef.name.toString) +
             string2code(req.typeOf(defDef.name)) + "\\n\"")
       }
     }
