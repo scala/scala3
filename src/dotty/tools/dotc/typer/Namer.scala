@@ -656,6 +656,8 @@ class Namer { typer: Typer =>
        * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
        * (2) If may not derive from itself
        * (3) Overriding type parameters must be correctly forwarded. (@see checkTypeParamOverride)
+       * (4) The class is not final
+       * (5) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree, paramAccessors: List[Symbol]): Type = {
         val ptype = parentType(parent)(ctx.superCallContext)
@@ -674,7 +676,14 @@ class Namer { typer: Typer =>
           }
           else if (!paramAccessors.forall(checkTypeParamOverride(pt, _)))
             defn.ObjectType
-          else pt
+          else {
+            val pclazz = pt.typeSymbol
+            if (pclazz.is(Final))
+              ctx.error(em"cannot extend final $pclazz", cls.pos)
+            if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
+              ctx.error(em"cannot extend sealed $pclazz in different compilation unit", cls.pos)
+            pt
+          }
         }
       }
 
