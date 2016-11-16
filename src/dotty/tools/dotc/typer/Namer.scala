@@ -347,14 +347,13 @@ class Namer { typer: Typer =>
 
     if ((existing is Package) && (pkgOwner eq existing.owner)) existing
     else {
-      // If the name exists as type we should unlink the existing name from the
-      // scope, issue an error and continue, as usual:
+      /** If there's already an existing type, then the package is a dup of this type */
       val existingTpe = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingTpe != NoSymbol) {
         ctx.error(PkgDuplicateSymbol(existingTpe), pid.pos)
-        pkgOwner.info.decls.openForMutations.unlink(existingTpe)
+        ctx.newCompletePackageSymbol(pkgOwner, (pid.name.asTermName.show + "$$package").toTermName).entered
       }
-      ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+      else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
     }
   }
 
@@ -388,9 +387,10 @@ class Namer { typer: Typer =>
     localCtx
   }
 
-   /** For all class definitions `stat` in `xstats`: If the companion class if not also defined
-   *  in `xstats`, invalidate it by setting its info to NoType.
-   */
+  /** For all class definitions `stat` in `xstats`: If the companion class if
+    * not also defined in `xstats`, invalidate it by setting its info to
+    * NoType.
+    */
   def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(implicit ctx: Context): Unit = {
     val definedNames = xstats collect { case stat: NameTree => stat.name }
     def invalidate(name: TypeName) =

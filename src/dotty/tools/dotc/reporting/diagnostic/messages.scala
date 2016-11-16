@@ -895,7 +895,7 @@ object messages {
 
   case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
   extends Message(33) {
-    val kind = "Duplicate Type"
+    val kind = "Duplicate Symbol"
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
   }
