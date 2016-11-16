@@ -2149,7 +2149,8 @@ object Parsers {
               self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
             case _ =>
               val ValDef(name, tpt, _) = convertToParam(first, expected = "self type clause")
-              self = makeSelfDef(name, tpt).withPos(first.pos)
+              if (name != nme.ERROR)
+                self = makeSelfDef(name, tpt).withPos(first.pos)
           }
           in.nextToken()
         } else {
