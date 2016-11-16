@@ -633,9 +633,9 @@ class Definitions {
     name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
   }
 
-  def isBottomClass(cls: Symbol) = 
+  def isBottomClass(cls: Symbol) =
     cls == NothingClass || cls == NullClass
-  def isBottomType(tp: Type) = 
+  def isBottomType(tp: Type) =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
@@ -761,7 +761,7 @@ class Definitions {
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  lazy val syntheticCoreClasses = List(
+  lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
@@ -770,12 +770,16 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
-    EqualsPatternClass,
+    EqualsPatternClass)
+
+  lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(
     EmptyPackageVal,
     OpsPackageClass)
 
-    /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-    lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+  /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
+  lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+
+  lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
   private[this] var _isInitialized = false
   private def isInitialized = _isInitialized
@@ -785,8 +789,8 @@ class Definitions {
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-      
-      // Enter all symbols from the scalaShadowing package in the scala package 
+
+      // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
 
