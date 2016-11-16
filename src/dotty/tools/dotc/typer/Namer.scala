@@ -351,7 +351,7 @@ class Namer { typer: Typer =>
       val existingTpe = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingTpe != NoSymbol) {
         ctx.error(PkgDuplicateSymbol(existingTpe), pid.pos)
-        ctx.newCompletePackageSymbol(pkgOwner, (pid.name.asTermName.show + "$$package").toTermName).entered
+        ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$termDup").toTermName).entered
       }
       else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
     }
