@@ -812,4 +812,83 @@ object messages {
            |would give 3 as a result"""
     }
   }
+
+  case class IllegalStartOfSimplePattern()(implicit ctx: Context) extends Message(32) {
+    val kind = "Syntax"
+    val msg = "illegal start of simple pattern"
+    val explanation = {
+      val sipCode =
+        """def f(x: Int, y: Int) = x match {
+          |  case `y` => ...
+          |}
+        """
+      val constructorPatternsCode =
+        """case class Person(name: String, age: Int)
+          |
+          |def test(p: Person) = p match {
+          |  case Person(name, age) => ...
+          |}
+        """
+      val tupplePatternsCode =
+        """def swap(tuple: (String, Int)): (Int, String) = tuple match {
+          |  case (text, number) => (number, text)
+          |}
+        """
+      val patternSequencesCode =
+        """def getSecondValue(list: List[Int]): Int = list match {
+          |  case List(_, second, x:_*) => second
+          |  case _ => 0
+          |}"""
+      hl"""|Simple patterns can be divided into several groups:
+           |- Variable Patterns: ${"case x => ..."}.
+           |  It matches any value, and binds the variable name to that value.
+           |  A special case is the wild-card pattern _ which is treated as if it was a fresh
+           |  variable on each occurrence.
+           |
+           |- Typed Patterns: ${"case x: Int => ..."} or ${"case _: Int => ..."}.
+           |  This pattern matches any value matched by the specified type; it binds the variable
+           |  name to that value.
+           |
+           |- Literal Patterns: ${"case 123 => ..."} or ${"case 'A' => ..."}.
+           |  This type of pattern matches any value that is equal to the specified literal.
+           |
+           |- Stable Identifier Patterns:
+           |
+           |  $sipCode
+           |
+           |  the match succeeds only if the x argument and the y argument of f are equal.
+           |
+           |- Constructor Patterns:
+           |
+           |  $constructorPatternsCode
+           |
+           |  The pattern binds all object's fields to the variable names (name and age, in this
+           |  case).
+           |
+           |- Tuple Patterns:
+           |
+           |  $tupplePatternsCode
+           |
+           |  Calling:
+           |
+           |  ${"""swap(("Luftballons", 99)"""}
+           |
+           |  would give ${"""(99, "Luftballons")"""} as a result.
+           |
+           |- Pattern Sequences:
+           |
+           |  $patternSequencesCode
+           |
+           |  Calling:
+           |
+           |  ${"getSecondValue(List(1, 10, 2))"}
+           |
+           |  would give 10 as a result.
+           |  This pattern is possible because a companion object for the List class has a method
+           |  with the following signature:
+           |
+           |  ${"def unapplySeq[A](x: List[A]): Some[List[A]]"}
+           |"""
+    }
+  }
 }
