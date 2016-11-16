@@ -348,10 +348,10 @@ class Namer { typer: Typer =>
     if ((existing is Package) && (pkgOwner eq existing.owner)) existing
     else {
       /** If there's already an existing type, then the package is a dup of this type */
-      val existingTpe = pkgOwner.info.decls.lookup(pid.name.toTypeName)
-      if (existingTpe != NoSymbol) {
-        ctx.error(PkgDuplicateSymbol(existingTpe), pid.pos)
-        ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$termDup").toTermName).entered
+      val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
+      if (existingType.exists) {
+        ctx.error(PkgDuplicateSymbol(existingType), pid.pos)
+        ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
       else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
     }
