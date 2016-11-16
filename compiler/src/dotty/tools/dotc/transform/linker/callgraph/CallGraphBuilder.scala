@@ -291,36 +291,41 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
               new TypeRefWithFixedSym(t.classSymbol.owner.owner.typeRef, t.name, t.fixedSym)
             case t => t
           }
-          val direct =
-            for (tp <- getTypesByMemberName(calleeSymbol.name)
-                 if filterTypes(tp.tp, receiverTypeWiden);
-                 alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
-                 if alt.exists
-            )
-              yield new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+          val direct = {
+            for {
+              tp <- getTypesByMemberName(calleeSymbol.name)
+              if filterTypes(tp.tp, receiverTypeWiden)
+              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
+              if alt.exists
+            } yield {
+              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+            }
+          }
 
-          val casted = if (mode < AnalyseTypes) Nil
-          else
-            for (tp <- getTypesByMemberName(calleeSymbol.name);
-                 cast <- tp.castsCache
-                 if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, receiverType) && {
-                   val receiverBases = receiverType.classSymbols
-                   val targetBases = cast.to.classSymbols
-                   receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
-                   //cast.to.classSymbol != defn.NothingClass
-                 };
-                 alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
-                 if alt.exists && {
-                   // this additionaly introduces a cast of result type and argument types
+          val casted = if (mode < AnalyseTypes) {
+            Nil
+          } else {
+            def filterCast(cast: Cast) = {
+              val receiverBases = receiverType.classSymbols
+              val targetBases = cast.to.classSymbols
+              receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
+            }
+            for {
+              tp <- getTypesByMemberName(calleeSymbol.name)
+              cast <- tp.castsCache
+              if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, receiverType) && filterCast(cast)
+              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
+              if alt.exists
+            } yield {
+              // this additionaly introduces a cast of result type and argument types
+              val uncastedSig = tp.tp.select(alt.symbol).widen.appliedTo(targs).widen
+              val castedSig = receiverType.select(calleeSymbol).widen.appliedTo(targs).widen
+              (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
+              addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
-                   val uncastedSig = tp.tp.select(alt.symbol).widen.appliedTo(targs).widen
-                   val castedSig = receiverType.select(calleeSymbol).widen.appliedTo(targs).widen
-                   (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
-                   addCast(uncastedSig.finalResultType, castedSig.finalResultType)
-
-                   true
-                 })
-              yield new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+            }
+          }
 
           direct ++ casted
       }
