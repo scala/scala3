@@ -132,7 +132,7 @@ function check_jar {
 }
 
 check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces/src" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty"            $MAIN_JAR       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-compiler"   $MAIN_JAR       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
 check_jar "dotty-library"    $DOTTY_LIB_JAR  "library/src"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
 check_jar "dotty-tests"      $TEST_JAR       "compiler/test"  'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
 
