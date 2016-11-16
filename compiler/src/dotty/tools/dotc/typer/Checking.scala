@@ -355,7 +355,7 @@ object Checking {
       var errors: Errors = Nil
 
       def accessBoundary(sym: Symbol): Symbol =
-        if (sym.is(Private)) sym.owner
+        if (sym.is(Private) || !sym.owner.isClass) sym.owner
         else if (sym.privateWithin.exists) sym.privateWithin
         else if (sym.is(Package)) sym
         else accessBoundary(sym.owner)
