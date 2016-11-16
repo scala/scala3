@@ -820,6 +820,7 @@ object Types {
      *  base type by applying one or more `underlying` dereferences.
      */
     final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
+      case tp: ConstantType => tp
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
