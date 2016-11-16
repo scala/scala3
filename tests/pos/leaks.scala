@@ -15,3 +15,13 @@ class Outer2 {
     def foo: Outer2.x.type = Outer2.x // OK
   }
 }
+
+class Outer3 {
+  private val x: Int = 1
+
+  def meth: Unit = {
+    class Inner {
+      def foo: x.type = x // OK
+    }
+  }
+}
