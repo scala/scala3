@@ -353,17 +353,31 @@ object Checking {
     class NotPrivate extends TypeMap {
       type Errors = List[(String, Position)]
       var errors: Errors = Nil
+
       def accessBoundary(sym: Symbol): Symbol =
         if (sym.is(Private)) sym.owner
         else if (sym.privateWithin.exists) sym.privateWithin
         else if (sym.is(Package)) sym
         else accessBoundary(sym.owner)
+
+      val symBoundary = accessBoundary(sym)
+
+      /** Is `other` leaked outside its access boundary ?
+       *  @pre  The signature of `sym` refers to `other`
+       */
+      def isLeaked(other: Symbol) =
+        other.is(Private) && {
+          val otherBoundary = other.owner
+          val otherLinkedBoundary = otherBoundary.linkedClass
+          !(symBoundary.isContainedIn(otherBoundary) ||
+            otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
+        }
+
       def apply(tp: Type): Type = tp match {
         case tp: NamedType =>
           val prevErrors = errors
           var tp1 =
-            if (tp.symbol.is(Private) &&
-                !accessBoundary(sym).isContainedIn(tp.symbol.owner)) {
+            if (isLeaked(tp.symbol)) {
               errors = (em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}",
                         sym.pos) :: errors
               tp
