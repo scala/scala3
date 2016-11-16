@@ -126,9 +126,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  case x :: xs in class List would return the :: method).
      */
     def qualifies(denot: Denotation): Boolean =
-      reallyExists(denot) && !(
-         pt.isInstanceOf[UnapplySelectionProto] &&
-         (denot.symbol is (Method, butNot = Accessor)))
+      reallyExists(denot) &&
+        !(name.isTypeName && denot.symbol.is(Package)) &&
+        !(pt.isInstanceOf[UnapplySelectionProto] &&
+          (denot.symbol is (Method, butNot = Accessor)))
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
