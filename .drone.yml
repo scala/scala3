@@ -1,0 +1,12 @@
+pipeline:
+  test:
+    image: felixmulder/dotty:0.2
+    commands:
+      - ln -s /var/cache/drone/scala-scala scala-scala
+      - sbt -mem 4096 -ivy /var/cache/drone/ivy2 "${TEST}"
+
+matrix:
+  TEST:
+    - test
+    - partest-only-no-bootstrap --show-diff --verbose
+    - partest-only --show-diff --verbose
