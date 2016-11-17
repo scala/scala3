@@ -1341,14 +1341,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {
     val pid1 = typedExpr(tree.pid, AnySelectionProto)(ctx.addMode(Mode.InPackageClauseName))
     val pkg = pid1.symbol
-    val packageContext =
-      if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
-      else {
-        ctx.error(em"$pkg is already defined, cannot be a package", tree.pos)
-        ctx
-      }
-    val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
-    cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
+
+    // Package will not exist if a duplicate type has already been entered, see
+    // `tests/neg/1708.scala`, else branch's error message should be supressed
+    if (pkg.exists) {
+      val packageContext =
+        if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+        else {
+          ctx.error(em"$pkg is already defined, cannot be a package", tree.pos)
+          ctx
+        }
+      val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
+      cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
+    } else errorTree(tree, i"package ${tree.pid.name} does not exist")
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {

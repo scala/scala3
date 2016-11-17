@@ -21,6 +21,7 @@ import Inferencing._
 import transform.ValueClasses._
 import TypeApplications._
 import language.implicitConversions
+import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
 
@@ -264,7 +265,7 @@ class Namer { typer: Typer =>
       def preExisting = ctx.effectiveScope.lookup(name)
       if (ctx.owner is PackageClass)
         if (preExisting.isDefinedInCurrentRun)
-          errorName(s"${preExisting.showLocated} is compiled twice")
+          errorName(s"${preExisting.showLocated} has already been compiled\nonce during this run")
         else name
       else
         if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists)
@@ -343,8 +344,17 @@ class Namer { typer: Typer =>
       case Select(qual: RefTree, _) => createPackageSymbol(qual).moduleClass
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
+
     if ((existing is Package) && (pkgOwner eq existing.owner)) existing
-    else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+    else {
+      /** If there's already an existing type, then the package is a dup of this type */
+      val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
+      if (existingType.exists) {
+        ctx.error(PkgDuplicateSymbol(existingType), pid.pos)
+        ctx.newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
+      }
+      else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+    }
   }
 
   /** Expand tree and store in `expandedTree` */
@@ -377,9 +387,10 @@ class Namer { typer: Typer =>
     localCtx
   }
 
-   /** For all class definitions `stat` in `xstats`: If the companion class if not also defined
-   *  in `xstats`, invalidate it by setting its info to NoType.
-   */
+  /** For all class definitions `stat` in `xstats`: If the companion class if
+    * not also defined in `xstats`, invalidate it by setting its info to
+    * NoType.
+    */
   def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(implicit ctx: Context): Unit = {
     val definedNames = xstats collect { case stat: NameTree => stat.name }
     def invalidate(name: TypeName) =
