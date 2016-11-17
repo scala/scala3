@@ -29,6 +29,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   private val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.map(x => (x.methodDef, x)).toMap
 
+  private val entryPoints = mutable.HashMap.empty[CallWithContext, Int]
   private val reachableTypes = new WorkList[TypeWithContext]()
   private val reachableMethods = new WorkList[CallWithContext]()
   private val outerMethods = mutable.Set[Symbol]()
@@ -37,7 +38,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
 
-  def pushEntryPoint(s: Symbol): Unit = {
+  def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
     val tpe = ref(s).tpe
     val targsSize = tpe.widen match {
       case t: PolyType => t.paramNames.size
@@ -45,7 +46,8 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
     }
     val targs = (0 until targsSize).map(x => new ErazedType()).toList
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
-    val call = new CallWithContext(tpe, targs, args, OuterTargs.empty, null, null, isEntryPoint = true)
+    val call = new CallWithContext(tpe, targs, args, OuterTargs.empty, null, null)
+    entryPoints(call) = entryPointId
     reachableMethods += call
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
@@ -94,7 +96,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph =
-    CallGraph(reachableMethods.items, reachableTypes.items, casts.items, classOfs.items, outerMethods.toSet)
+    CallGraph(entryPoints.toMap, reachableMethods.items, reachableTypes.items, casts.items, classOfs.items, outerMethods.toSet)
 
   private def addReachableType(x: TypeWithContext, from: CallWithContext): Unit = {
     if (!reachableTypes.contains(x)) {

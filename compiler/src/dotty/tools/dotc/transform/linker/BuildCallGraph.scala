@@ -28,12 +28,18 @@ class BuildCallGraph extends Phase {
 
     val callGraphBuilder = new CallGraphBuilder(mode)
 
+    var entryPointId = 0
     ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.foreach { x =>
       if (isEntryPoint(x.methodDef)) {
-        callGraphBuilder.pushEntryPoint(x.methodDef)
-//        if (x.methodDef.owner.is(Module))
-//          pushEntryPoint(x.methodDef.owner.sourceModule)
-        // registerParentModules(receiver, caller)
+        entryPointId += 1
+        callGraphBuilder.pushEntryPoint(x.methodDef, entryPointId)
+        x.methodDef.owner.ownersIterator.foreach { owner =>
+          if (owner.is(Module) && !owner.isEmptyPackage) {
+            val sourceModule = owner.sourceModule
+            if (sourceModule.owner.exists && !sourceModule.owner.isEmptyPackage) // FIXME this condition should be removed
+                callGraphBuilder.pushEntryPoint(sourceModule, entryPointId)
+          }
+        }
       }
     }
 
