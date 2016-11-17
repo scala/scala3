@@ -518,9 +518,12 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
           if (sym.owner != defn.AnyClass && !sym.owner.is(JavaDefined))
             addCall(new TermRefWithFixedSym(argType, termName, sym))
         case _ =>
-          val sym = argType.widenDealias.classSymbol.requiredMethod(termName, paramTypes)
-          if (!(sym.owner.is(JavaDefined) && (sym.is(Final) || sym.owner.is(Final))))
-            addCall(TermRef(argType, sym))
+          val argTypeWiden = argType.widenDealias
+          if (argTypeWiden.member(termName).exists) {
+            val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
+            if (!(sym.owner.is(JavaDefined) && (sym.is(Final) || sym.owner.is(Final))))
+              addCall(TermRef(argType, sym))
+          }
       }
     }
   }
