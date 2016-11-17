@@ -17,10 +17,7 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  /** A map from trees to the address(es) at which a tree is pickled. There may be several
-   *  such addresses if the tree is shared. To keep the map compact, the value type is a
-   *  disjunction of a single address (which is the common case) and a list of addresses.
-   */
+  /** A map from trees to the address at which a tree is pickled. */
   private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
 
   def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
