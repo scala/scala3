@@ -574,7 +574,7 @@ object Symbols {
     /** Copy a symbol, overriding selective fields */
     def copy(
         owner: Symbol = sym.owner,
-        name: N = sym.name,
+        name: N = (sym.name: N), // Dotty deviation: type ascription to avoid leaking private sym (only happens in unpickling), won't be needed once #1723 is fixed
         flags: FlagSet = sym.flags,
         info: Type = sym.info,
         privateWithin: Symbol = sym.privateWithin,
