@@ -14,6 +14,7 @@ import scala.annotation.{tailrec, switch}
 import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
+import typer.Checking
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -732,6 +733,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         // no longer necessary.
       goto(end)
       setPos(start, tree)
+
+      // This is also done in PostTyper but needs to be redone here
+      if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) {
+        sym.info = Checking.checkNoPrivateLeaks(sym, tree.pos)
+      }
+      tree
     }
 
     private def readTemplate(implicit ctx: Context): Template = {
