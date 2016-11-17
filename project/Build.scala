@@ -346,7 +346,7 @@ object DottyBuild extends Build {
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
           else List()
 
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
+        "-XX:+PrintGCDetails" :: ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
       }
     ).
     settings(publishing)
