@@ -99,7 +99,7 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: Message, offset: Int = in.offset): Unit =
+    def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         syntaxError(msg, Position(offset))
         lastErrorOffset = in.offset
@@ -108,7 +108,7 @@ object Parsers {
     /** Unconditionally issue an error at given position, without
       *  updating lastErrorOffset.
       */
-    def syntaxError(msg: Message, pos: Position): Unit =
+    def syntaxError(msg: => Message, pos: Position): Unit =
       ctx.error(msg, source atPos pos)
 
   }
@@ -215,23 +215,23 @@ object Parsers {
       }
     }
 
-    def warning(msg: Message, sourcePos: SourcePosition) =
+    def warning(msg: => Message, sourcePos: SourcePosition) =
       ctx.warning(msg, sourcePos)
 
-    def warning(msg: Message, offset: Int = in.offset) =
+    def warning(msg: => Message, offset: Int = in.offset) =
       ctx.warning(msg, source atPos Position(offset))
 
-    def deprecationWarning(msg: Message, offset: Int = in.offset) =
+    def deprecationWarning(msg: => Message, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
 
     /** Issue an error at current offset taht input is incomplete */
-    def incompleteInputError(msg: Message) =
+    def incompleteInputError(msg: => Message) =
       ctx.incompleteInputError(msg, source atPos Position(in.offset))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
-    def syntaxErrorOrIncomplete(msg: Message) =
+   def syntaxErrorOrIncomplete(msg: => Message) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
         syntaxError(msg)

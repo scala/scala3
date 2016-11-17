@@ -284,7 +284,7 @@ object messages {
     val explanation = ""
   }
 
-  case class EarlyDefinitionsNotSupported()(implicit ctx:Context)
+  case class EarlyDefinitionsNotSupported()(implicit ctx: Context)
   extends Message(9) {
     val kind = "Syntax"
     val msg = "early definitions are not supported; use trait parameters instead"

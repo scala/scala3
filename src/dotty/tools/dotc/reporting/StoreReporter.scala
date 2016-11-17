@@ -8,9 +8,16 @@ import config.Printers.typr
 import diagnostic.MessageContainer
 import diagnostic.messages._
 
-/**
- * This class implements a Reporter that stores all messages
- */
+/** This class implements a Reporter that stores all messages
+  *
+  * Beware that this reporter can leak memory, and force messages in two
+  * scenarios:
+  *
+  * - During debugging `config.Printers.typr` is set from `noPrinter` to `new
+  *   Printer`, which forces the message
+  * - The reporter is not flushed and the message containers capture a
+  *   `Context` (about 4MB)
+  */
 class StoreReporter(outer: Reporter) extends Reporter {
 
   private var infos: mutable.ListBuffer[MessageContainer] = null
@@ -31,7 +38,7 @@ class StoreReporter(outer: Reporter) extends Reporter {
 
   override def flush()(implicit ctx: Context) =
     if (infos != null) {
-      infos foreach ctx.reporter.report
+      infos.foreach(ctx.reporter.report(_))
       infos = null
     }
 

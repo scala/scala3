@@ -38,16 +38,16 @@ trait Reporting { this: Context =>
     reporter.report(new Info(msg, pos))
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.deprecationWarning(pos))
+    reporter.report(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.migrationWarning(pos))
+    reporter.report(new MigrationWarning(msg, pos))
 
   def uncheckedWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.uncheckedWarning(pos))
+    reporter.report(new UncheckedWarning(msg, pos))
 
   def featureWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.featureWarning(pos))
+    reporter.report(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String, isScala2Feature: Boolean,
       featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
@@ -73,23 +73,27 @@ trait Reporting { this: Context =>
   }
 
   def warning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.warning(pos))
+    reporter.report(new Warning(msg, pos))
 
   def strictWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.strict.value) error(msg, pos)
-    else warning(msg.mapMsg(_ + "\n(This would be an error under strict mode)"), pos)
+    else reporter.report {
+      new ExtendMessage(() => msg)(_ + "\n(This would be an error under strict mode)").warning(pos)
+    }
 
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(msg.error(pos))
+    reporter.report(new Error(msg, pos))
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
 
   def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    error(msg.mapMsg(m => s"Implementation restriction: $m"), pos)
+    reporter.report {
+      new ExtendMessage(() => msg)(m => s"Implementation restriction: $m").error(pos)
+    }
 
-  def incompleteInputError(msg: Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
-    reporter.incomplete(msg.error(pos))(ctx)
+  def incompleteInputError(msg: => Message, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
+    reporter.incomplete(new Error(msg, pos))(ctx)
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
@@ -192,7 +196,7 @@ trait Reporting { this: Context =>
 abstract class Reporter extends interfaces.ReporterResult {
 
   /** Report a diagnostic */
-  def doReport(d: MessageContainer)(implicit ctx: Context): Unit
+  def doReport(m: MessageContainer)(implicit ctx: Context): Unit
 
   /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
@@ -236,22 +240,22 @@ abstract class Reporter extends interfaces.ReporterResult {
     override def default(key: String) = 0
   }
 
-  def report(d: MessageContainer)(implicit ctx: Context): Unit =
-    if (!isHidden(d)) {
-      doReport(d)(ctx.addMode(Mode.Printing))
-      d match {
-        case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
-        case d: Warning => warningCount += 1
-        case d: Error =>
-          errors = d :: errors
+  def report(m: MessageContainer)(implicit ctx: Context): Unit =
+    if (!isHidden(m)) {
+      doReport(m)(ctx.addMode(Mode.Printing))
+      m match {
+        case m: ConditionalWarning if !m.enablingOption.value => unreportedWarnings(m.enablingOption.name) += 1
+        case m: Warning => warningCount += 1
+        case m: Error =>
+          errors = m :: errors
           errorCount += 1
-        case d: Info => // nothing to do here
+        case m: Info => // nothing to do here
         // match error if d is something else
       }
     }
 
-  def incomplete(d: MessageContainer)(implicit ctx: Context): Unit =
-    incompleteHandler(d)(ctx)
+  def incomplete(m: MessageContainer)(implicit ctx: Context): Unit =
+    incompleteHandler(m)(ctx)
 
   /** Summary of warnings and errors */
   def summary: String = {
