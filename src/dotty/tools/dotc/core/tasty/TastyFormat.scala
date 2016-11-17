@@ -89,10 +89,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
-                  IDENTtpt              NameRef Type     // used when type ident's type is not a TypeRef
+                  IDENTtpt              NameRef Type      // used for all type idents
                   SELECTtpt             NameRef qual_Term
                   SINGLETONtpt          Path
-                  REFINDtpt      Length underlying_Term refinement_Stat*
+                  REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
                   POLYtpt        Length TypeParam* body_Term
                   TYPEBOUNDStpt  Length low_Term high_Term
