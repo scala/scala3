@@ -127,8 +127,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      */
     def qualifies(denot: Denotation): Boolean =
       reallyExists(denot) && !(
-         pt.isInstanceOf[UnapplySelectionProto] &&
-         (denot.symbol is (Method, butNot = Accessor)))
+        pt.isInstanceOf[UnapplySelectionProto] &&
+          (denot.symbol is (Method, butNot = Accessor)))
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
