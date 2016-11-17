@@ -2,7 +2,7 @@ package dotty.tools.dotc.transform.linker.types
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Hashable
-import dotty.tools.dotc.core.Types.{SingletonType, Type}
+import dotty.tools.dotc.core.Types.{PolyType, SingletonType, Type}
 
 class JavaAllocatedType(private val u: Type) extends SingletonType {
 

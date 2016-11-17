@@ -5,8 +5,8 @@ import dotty.tools.dotc.core.Types.{PolyType, Type}
 
 case class Cast(from: Type, to: Type)(implicit ctx: Context) {
 
-  assert(!from.widenDealias.isInstanceOf[PolyType])
-  assert(!to.widenDealias.isInstanceOf[PolyType])
+  assert(!from.widenDealias.isInstanceOf[PolyType], from.widenDealias)
+  assert(!to.widenDealias.isInstanceOf[PolyType], to.widenDealias)
 
   override def equals(other: Any): Boolean = {
     other match {
