@@ -10,7 +10,7 @@ object CallWithContext {
 }
 
 class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-    val parent: CallWithContext, val callee: CallInfo, val isEntryPoint: Boolean = false)(implicit ctx: Context)
+    val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context)
     extends CallInfo(call, targs, argumentsPassed) {
 
   import CallWithContext._
