@@ -134,6 +134,13 @@ object GraphVisualization {
     val blue = "'rgb(150,150,255)'"
     val green = "'rgb(150,255,150)'"
 
+    def entryPointStingId(id: Int) = s"'entry-$id'"
+
+    callGraph.entryPoints.values.toSet[Int].foreach { entryPointId =>
+      val entryId = entryPointStingId(entryPointId)
+      nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
+    }
+
     reachableMethods.foreach { caller =>
 
       val color =
@@ -147,15 +154,12 @@ object GraphVisualization {
       val callerId = s"'${mkId(caller)}'"
       nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color }"
 
-      if (caller.isEntryPoint) {
-        val entryId = s"'entry-${mkId(caller)}'"
-        nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
-        edges(entryId) = s"{ from: $entryId, to: $callerId }" :: edges.getOrElse(entryId, Nil)
-      } /* else if (caller.callee == null) {
-        val entryId = s"'entry-${mkId(caller)}'"
-        nodes(entryId) = s"{ id: $entryId, hidden: true }"
-        edges(entryId) = s"{ from: $entryId, to: $callerId, hidden: true }" :: edges.getOrElse(entryId, Nil)
-      } */
+      callGraph.entryPoints.get(caller) match {
+        case Some(entryPointId) =>
+          val entryId = entryPointStingId(entryPointId)
+          edges(entryId) = s"{ from: $entryId, to: $callerId }" :: edges.getOrElse(entryId, Nil)
+        case None =>
+      }
 
       caller.outEdges.iterator.foreach {
         case (call, callees) =>
