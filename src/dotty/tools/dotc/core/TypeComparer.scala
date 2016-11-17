@@ -527,7 +527,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           isSubType(hi1, tp2) || compareGADT
         case _ =>
-          def isNullable(tp: Type): Boolean = tp.dealias match {
+          def isNullable(tp: Type): Boolean = tp.widenDealias match {
             case tp: TypeRef => tp.symbol.isNullableClass
             case tp: RefinedOrRecType => isNullable(tp.parent)
             case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
