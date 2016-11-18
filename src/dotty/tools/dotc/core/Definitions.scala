@@ -194,6 +194,13 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+
+    // The companion object doesn't really exist, `NoType` is the general
+    // technique to do that. Here we need to set it before completing
+    // attempt to load Object's classfile, which causes issue #1648.
+    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
+    companion.info = NoType // to indicate that it does not really exist
+
     completeClass(cls)
   }
   def ObjectType = ObjectClass.typeRef
