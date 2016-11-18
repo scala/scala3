@@ -5,17 +5,9 @@ import dotty.tools.dotc.core.Types.Type
 
 import scala.collection.mutable
 
-object CallWithContext {
-  private[CallWithContext] var nextCallId = 0
-}
-
 class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
     val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context)
     extends CallInfo(call, targs, argumentsPassed) {
-
-  import CallWithContext._
-
-  val id = { nextCallId += 1; nextCallId }
 
   val outEdges = mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil)
 

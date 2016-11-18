@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types.{SingletonType, Type}
 import dotty.tools.dotc.transform.linker.summaries.OuterTargs
 
 class ClosureType(val meth: tpd.Closure, val u: Type, val implementedMethod: Symbol, val outerTargs: OuterTargs)(implicit ctx: Context) extends SingletonType {
-  assert(outerTargs != null)
+  assert(outerTargs.mp != null)
 
   /** The type to which this proxy forwards operations. */
   def underlying(implicit ctx: Context): Type = u
