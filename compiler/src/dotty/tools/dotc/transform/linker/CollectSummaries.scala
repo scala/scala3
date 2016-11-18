@@ -146,6 +146,11 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
   }  */
 
+  override def run(implicit ctx: Context): Unit = {
+    if (CollectSummaries.isPhaseRequired)
+      super.run
+  }
+
   def methodSummaries = methodSums
 
   class Collect extends TreeTransform {
@@ -504,6 +509,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 }
 
 object CollectSummaries {
+
+  def isPhaseRequired(implicit ctx: Context): Boolean = BuildCallGraph.isPhaseRequired
 
   class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends DeepTypeMap()(ctx) {
     def apply(tp: Type): Type = {

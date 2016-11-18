@@ -8,6 +8,16 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, CallGraphBuilder, GraphVisualization}
 
+object BuildCallGraph {
+  def isPhaseRequired(implicit ctx: Context): Boolean =
+    DeadCodeElimination.isPhaseRequired || ctx.settings.Lvis.value
+
+  def listPhase(implicit ctx: Context): List[Phase] = {
+    if (isPhaseRequired) List(new BuildCallGraph)
+    else Nil
+  }
+}
+
 class BuildCallGraph extends Phase {
 
   import CallGraphBuilder._
@@ -51,7 +61,7 @@ class BuildCallGraph extends Phase {
     callGraphBuilder.result()
   }
 
-  private def sendSpecializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
+//  private def sendSpecializationRequests(callGraph: CallGraph)(implicit ctx: Context): Unit = {
 //   ctx.outerSpecPhase match {
 //      case specPhase: OuterSpecializer =>
 //
@@ -91,47 +101,35 @@ class BuildCallGraph extends Phase {
 //      case _ =>
 //       ctx.warning("No specializer phase found")
 //    }
-
-  }
+//  }
 
   private var runOnce = true
   def run(implicit ctx: Context): Unit = {
-    if (runOnce /*&& ctx.settings.lto.value.nonEmpty*/) {
+    if (runOnce && BuildCallGraph.isPhaseRequired) {
       val specLimit = 15
-      //println(s"\n\t\t\tOriginal analisys")
-      //val g1 = buildCallGraph(AnalyseOrig, specLimit)
-
-      //println(s"\n\t\t\tType flow analisys")
-      //val g2 = buildCallGraph(AnalyseTypes, specLimit)
 
       println(s"\n\t\t\tType & Arg flow analisys")
+
       val callGraph = buildCallGraph(AnalyseArgs, specLimit)
       this.callGraph = callGraph
 
-//      println(GraphVisualization.outputDiagnostic(AnalyseArgs, specLimit)(callGraph))
+//      sendSpecializationRequests(callGraph)
 
-      val viz = GraphVisualization.outputGraphVis(AnalyseArgs, specLimit)(callGraph)
+      if (ctx.settings.Lvis.value) {
+        def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
+          val p = new java.io.PrintWriter(f)
+          try {
+            op(p)
+          } finally {
+            p.close()
+          }
+        }
 
-      val g3 = GraphVisualization.outputGraph(AnalyseArgs, specLimit)(callGraph)
+        val viz = GraphVisualization.outputGraphVis(AnalyseArgs, specLimit)(callGraph)
 
-      sendSpecializationRequests(callGraph)
-
-      def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
-        val p = new java.io.PrintWriter(f)
-        try { op(p) } finally { p.close() }
-      }
-
-      //printToFile(new java.io.File("out1.dot")) { out =>
-      //  out.println(g1)
-      //}
-     // printToFile(new java.io.File("out2.dot")) { out =>
-     //   out.println(g2)
-     // }
-      printToFile(new java.io.File("CallGraph.dot")) { out =>
-        out.println(g3)
-      }
-      printToFile(new java.io.File("callgraph.html")) { out =>
-        out.println(viz)
+        printToFile(new java.io.File("CallGraph.html")) { out =>
+          out.println(viz)
+        }
       }
 
     }
