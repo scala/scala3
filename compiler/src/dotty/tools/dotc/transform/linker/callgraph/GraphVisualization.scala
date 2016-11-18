@@ -76,7 +76,7 @@ object GraphVisualization {
     outGraph.append(s"digraph Gr${mode}_$specLimit {\n")
     outGraph.append("graph [fontsize=10 fontname=\"Verdana\" compound=true];\n")
     outGraph.append("label = \"" + reachableMethods.size + " nodes, " +
-        reachableMethods.foldLeft(0)(_ + _.outEdges.values.foldLeft(0)(_ + _.size)) + " edges, " + reachableTypes.size  + " reachable types\";\n")
+        reachableMethods.foldLeft(0)(_ + _.edgeCount) + " edges, " + reachableTypes.size  + " reachable types\";\n")
 
     // add names and subraphs
     reachableMethods.foreach { caller =>
@@ -86,7 +86,7 @@ object GraphVisualization {
       outGraph.append("  label = ").append(slash + csWTToName(caller) + slash).append(";\n")
       outGraph.append("  color = ").append(subgraphColor).append(";\n")
       outGraph.append("  ").append(dummyName(caller)).append(" [shape=point style=invis];\n")
-      for (call <- caller.outEdges.keys) {
+      for ((call, _) <- caller.outEdgesIterator) {
         outGraph.append("  ").append(csToName(caller, call))
         outGraph.append(" [")
         outGraph.append("label=").append(slash).append(callSiteLabel(call)).append(slash)
@@ -104,9 +104,8 @@ object GraphVisualization {
 
     // Add edges
     reachableMethods.foreach { caller =>
-      caller.outEdges.foreach { x =>
-        val callInfo = x._1
-        x._2.foreach { target =>
+      for ((callInfo, edges) <- caller.outEdgesIterator)
+        edges.foreach { target =>
           val from = csToName(caller, callInfo)
           val to = dummyName(target)
           outGraph.append(from).append(" -> ").append(to)
@@ -115,7 +114,6 @@ object GraphVisualization {
           outGraph.append("];\n")
         }
         outGraph.append("\n")
-      }
     }
     outGraph.append("}")
     outGraph.toString
@@ -161,12 +159,11 @@ object GraphVisualization {
         case None =>
       }
 
-      caller.outEdges.iterator.foreach {
-        case (call, callees) =>
-          callees.foreach { callee =>
-            val calleeId = s"'${mkId(callee)}'"
-            edges(callerId) = s"{ from: $callerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(callerId, Nil)
-          }
+      for ((call, callees)  <- caller.outEdgesIterator) {
+        callees.foreach { callee =>
+          val calleeId = s"'${mkId(callee)}'"
+          edges(callerId) = s"{ from: $callerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(callerId, Nil)
+        }
       }
     }
 

@@ -530,8 +530,8 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   private def processCallSite(callSite: CallInfo, instantiatedTypes: immutable.Set[TypeWithContext], method: CallWithContext, receiver: Type): Unit = {
     val nw = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
-    method.outEdges(callSite) = nw.filter(x => !method.outEdges(callSite).contains(x)).toList ::: method.outEdges(callSite)
     reachableMethods ++= nw
+    method.addOutEdges(callSite, nw)
   }
 
 }

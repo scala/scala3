@@ -13,7 +13,7 @@ import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.CallGraph
 
 object DeadCodeElimination {
-  def isPhaseRequired(implicit ctx: Context): Boolean = ctx.settings.Ldce.value
+  def isPhaseRequired(implicit ctx: Context): Boolean = ctx.settings.linkDCE.value
 }
 
 class DeadCodeElimination extends MiniPhaseTransform {

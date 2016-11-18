@@ -41,8 +41,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
 
-  val Ldce = BooleanSetting("-link-dce", "Enable dead code elimination.")
-  val Lvis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
+  val linkDCE = BooleanSetting("-link-dce", "Enable dead code elimination.")
+  val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
 
   /** -X "Advanced" settings
    */
