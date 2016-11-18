@@ -82,6 +82,7 @@ class tests extends CompilerTest {
   val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
+  val linkDir       = testsDir + "link/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
 
@@ -196,7 +197,21 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
-  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+  // Test callgraph DCE
+  @Test def link_dce_all = runFiles(linkDir + "dce/", List("-link-dce"))
+  @Test def link_dce_vis_all = runFiles(linkDir + "dce/", List("-link-dce", "-link-vis"))
+
+  // Test callgraph DCE on code that uses stdlib (not DCEed)
+  @Test def link_dce2_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce"))
+  @Test def link_dce2_vis_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce", "-link-vis"))
+
+  // Test callgraph DCE on code that use DCEed stdlib
+  @Test def link_stdlib_dce_all =
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce"), extraFiles = stdlibFiles.map("../../" + _))
+  @Test def link_stdlib_dce_vis_all =
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis"), extraFiles = stdlibFiles.map("../../" + _))
+
+  private val stdlibFiles: List[String] = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
    .map(_.trim) // allow identation
    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line

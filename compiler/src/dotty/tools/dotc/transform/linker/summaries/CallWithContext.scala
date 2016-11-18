@@ -9,6 +9,7 @@ class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type]
     val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context)
     extends CallInfo(call, targs, argumentsPassed) {
 
+  val outEdges = mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil)
   private val outEdgesOpt =
     if (trackOutEdges) Some(mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil))
     else None
