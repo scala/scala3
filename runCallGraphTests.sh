@@ -24,9 +24,9 @@ function compile() {
 
   # if there are java sources and a java compilation command is given
   if [ -n "$jv_srcs" ] && [ -n "$jv_cmp_cmd" ]; then
-    ( dot_compile "$sc_srcs $jv_srcs" && $jv_cmp_cmd $jv_srcs ) > compile-log.txt 2> compile-errors.txt || return 1
+    ( dot_compile -link-dce -link-vis "$sc_srcs $jv_srcs" && $jv_cmp_cmd $jv_srcs ) > compile-log.txt 2> compile-errors.txt || return 1
   else
-    dot_compile "$sc_srcs" > compile-log.txt 2> compile-errors.txt || return 1
+    dot_compile -link-dce -link-vis "$sc_srcs" > compile-log.txt 2> compile-errors.txt || return 1
   fi
 
   # if there are auxiliary java sources and a java compilation command is given
