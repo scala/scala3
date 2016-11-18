@@ -84,6 +84,7 @@ class tests extends CompilerTest {
   val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
+  val linkDir       = testsDir + "link/"
   val newDir        = testsDir + "new/"
   val javaDir       = testsDir + "pos-java-interop/"
 
@@ -200,6 +201,30 @@ class tests extends CompilerTest {
   @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
 
   @Test def run_all = runFiles(runDir)
+
+  // Test callgraph DCE
+  @Test def link_dce_all = runFiles(linkDir + "dce/", List("-link-dce"))
+  @Test def link_dce_vis_all = runFiles(linkDir + "dce/", List("-link-dce", "-link-vis"))
+
+  // Test callgraph DCE on code that uses stdlib (not DCEed)
+  @Test def link_dce2_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce"))
+  @Test def link_dce2_vis_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce", "-link-vis"))
+
+  // Test callgraph DCE on code that use DCEed stdlib
+  @Test def link_stdlib_dce_all =
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce"), extraFiles = stdlibFiles.map("../../" + _))
+  @Test def link_stdlib_dce_vis_all =
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis"), extraFiles = stdlibFiles.map("../../" + _))
+
+  def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
+    .map(_.trim) // allow identation
+    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+    .filter(_.nonEmpty)
+    .toList
+
+  private def stdlibWhitelistFile = "./test/dotc/scala-collections.whitelist"
+  private def stdlibBlackFile = "./test/dotc/scala-collections.blacklist"
 
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
 

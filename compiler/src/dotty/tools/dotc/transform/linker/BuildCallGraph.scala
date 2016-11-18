@@ -56,7 +56,7 @@ class BuildCallGraph extends Phase {
     callGraphBuilder.build()
 
     val endTime = java.lang.System.currentTimeMillis()
-    println("++++++++++ finished in " + (endTime - startTime)/1000.0  +" seconds. ++++++++++ ")
+    ctx.log("++++++++++ finished in " + (endTime - startTime)/1000.0  +" seconds. ++++++++++ ")
 
     callGraphBuilder.result()
   }
@@ -108,7 +108,7 @@ class BuildCallGraph extends Phase {
     if (runOnce && BuildCallGraph.isPhaseRequired) {
       val specLimit = 15
 
-      println(s"\n\t\t\tType & Arg flow analisys")
+      ctx.log(s"\n\t\t\tType & Arg flow analisys")
 
       val callGraph = buildCallGraph(AnalyseArgs, specLimit)
       this.callGraph = callGraph
