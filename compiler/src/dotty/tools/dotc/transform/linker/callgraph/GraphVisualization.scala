@@ -269,7 +269,7 @@ object GraphVisualization {
   }
 
   private def csWTToShortName(x: CallInfo)(implicit ctx: Context): String = {
-    if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol.name) {
+    if (x.call.termSymbol.owner.name == x.call.normalizedPrefix.classSymbol.name) {
       val callTypeName = typeName(x.call)
       callTypeName
     } else {

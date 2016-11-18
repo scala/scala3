@@ -202,9 +202,9 @@ abstract class CompilerTest {
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
   def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false,
-                   compileSubDirs: Boolean = true)(implicit defaultOptions: List[String]): Unit = {
+                   compileSubDirs: Boolean = true, extraFiles: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
-    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
+    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java")) ++ extraFiles
     for (name <- fileNames) {
       if (verbose) log(s"testing $path$name")
       compileFile(path, name, args, "", runTest)
@@ -215,9 +215,9 @@ abstract class CompilerTest {
         compileDir(path, subdir.jfile.getName, args, runTest)
       }
   }
-  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true)
+  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, extraFiles: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit =
-    compileFiles(path, args, verbose, true)
+    compileFiles(path, args, verbose, true, extraFiles = extraFiles)
 
   /** Compiles the given list of code files. */
   def compileList(testName: String, files: List[String], args: List[String] = Nil)

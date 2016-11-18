@@ -56,7 +56,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   /** Builds the call graph based on the current reachable items, mainly entry points. */
   def build(): Unit = {
-    println(s"\t Building call graph with ${reachableMethods.newItems.size} entry points")
+    ctx.log(s"\t Building call graph with ${reachableMethods.newItems.size} entry points")
 
     while (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
       reachableMethods.clearNewItems()
@@ -67,9 +67,9 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
       processCallSites(reachableMethods.items, reachableTypes.items)
 
       val newReachableTypes = reachableTypes.newItems
-      println(s"\t Found ${newReachableTypes.size} new instantiated types")
+      ctx.log(s"\t Found ${newReachableTypes.size} new instantiated types")
       val newClassOfs = classOfs.newItems
-      println(s"\t Found ${newClassOfs.size} new classOfs ")
+      ctx.log(s"\t Found ${newClassOfs.size} new classOfs ")
       newReachableTypes.foreach { x =>
         val clas = x.tp match {
           case t: ClosureType =>
@@ -89,7 +89,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
       }
 
       val newReachableMethods = reachableMethods.newItems
-      println(s"\t Found ${newReachableMethods.size} new call sites")
+      ctx.log(s"\t Found ${newReachableMethods.size} new call sites")
 
     }
   }
