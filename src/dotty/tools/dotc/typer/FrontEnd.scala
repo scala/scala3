@@ -49,8 +49,8 @@ class FrontEnd extends Phase {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
     typr.println("typed: " + unit.source)
-    record("retainedUntypedTrees", unit.untpdTree.treeSize)
-    record("retainedTypedTrees", unit.tpdTree.treeSize)
+    record("retained untyped trees", unit.untpdTree.treeSize)
+    record("retained typed trees after typer", unit.tpdTree.treeSize)
   }
 
   private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
@@ -72,7 +72,7 @@ class FrontEnd extends Phase {
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
-    record("totalTrees", ast.Trees.ntrees)
+    record("total trees after typer", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
 
