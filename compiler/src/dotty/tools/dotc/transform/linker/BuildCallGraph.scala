@@ -10,7 +10,7 @@ import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, CallGraphBuilder,
 
 object BuildCallGraph {
   def isPhaseRequired(implicit ctx: Context): Boolean =
-    DeadCodeElimination.isPhaseRequired || ctx.settings.Lvis.value
+    DeadCodeElimination.isPhaseRequired || ctx.settings.linkVis.value
 
   def listPhase(implicit ctx: Context): List[Phase] = {
     if (isPhaseRequired) List(new BuildCallGraph)
@@ -115,7 +115,7 @@ class BuildCallGraph extends Phase {
 
 //      sendSpecializationRequests(callGraph)
 
-      if (ctx.settings.Lvis.value) {
+      if (ctx.settings.linkVis.value) {
         def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
           val p = new java.io.PrintWriter(f)
           try {
