@@ -64,8 +64,10 @@ class FrontEnd extends Phase {
     unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
-    val unitContexts = for (unit <- units) yield
+    val unitContexts = for (unit <- units) yield {
+      ctx.inform(s"compiling ${unit.source}")
       ctx.fresh.setCompilationUnit(unit).setFreshNames(new FreshNameCreator.Default)
+    }
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
