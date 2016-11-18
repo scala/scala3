@@ -25,7 +25,9 @@ class Pickler extends Phase {
     s.close
   }
 
+  // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
+  private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
@@ -40,9 +42,11 @@ class Pickler extends Phase {
 
     for { cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
           tree <- sliceTopLevel(unit.tpdTree, cls) } {
-      if (ctx.settings.YtestPickler.value) beforePickling(cls) = tree.show
       val pickler = new TastyPickler()
-      unit.picklers += (cls -> pickler)
+      if (ctx.settings.YtestPickler.value) {
+        beforePickling(cls) = tree.show
+        picklers(cls) = pickler
+      }
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
       treePkl.compactify()
@@ -51,8 +55,12 @@ class Pickler extends Phase {
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
+      // other pickle sections go here.
+      val pickled = pickler.assembleParts()
+      unit.pickled += (cls -> pickled)
+
       def rawBytes = // not needed right now, but useful to print raw format.
-        pickler.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {
+        pickled.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
@@ -66,18 +74,18 @@ class Pickler extends Phase {
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val result = super.runOn(units)
     if (ctx.settings.YtestPickler.value)
-      testUnpickler(units)(
+      testUnpickler(
           ctx.fresh
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .addMode(Mode.ReadPositions))
     result
   }
 
-  private def testUnpickler(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
+  private def testUnpickler(implicit ctx: Context): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
-      for (unit <- units; (cls, pickler) <- unit.picklers) yield {
+      for ((cls, pickler) <- picklers) yield {
         val unpickler = new DottyUnpickler(pickler.assembleParts())
         unpickler.enter(roots = Set())
         cls -> unpickler

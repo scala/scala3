@@ -203,8 +203,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val plainC = pcb.cnode
 
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
-          for (pickler <- ctx.compilationUnit.picklers.get(claszSymbol.asClass)) {
-            val binary = pickler.assembleParts()
+          for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
             val dataAttr = new CustomAttr(nme.TASTYATTR.toString, binary)
             (if (mirrorC ne null) mirrorC else plainC).visitAttribute(dataAttr)
           }
