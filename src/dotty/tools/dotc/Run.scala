@@ -82,6 +82,9 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         ctx.informTime(s"$phase ", start)
       }
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
+    for (unit <- units)
+      Stats.record("retained typed trees at end", unit.tpdTree.treeSize)
+    Stats.record("total trees at end", ast.Trees.ntrees)
   }
 
   private sealed trait PrintedTree
