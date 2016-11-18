@@ -46,6 +46,7 @@ class tests extends CompilerTest {
   val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
+  val linkDir       = testsDir + "link/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
 
@@ -158,6 +159,8 @@ class tests extends CompilerTest {
   @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
 
   @Test def run_all = runFiles(runDir)
+
+  @Test def link_all = runFiles(linkDir, List("-link-dce"))
 
   val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
    .map(_.trim) // allow identation
