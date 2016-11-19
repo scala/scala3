@@ -87,11 +87,7 @@ object DottyBuild extends Build {
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
-      addCommandAlias("dotr", "dotty-compiler/dotr") ++
-      addCommandAlias("dotc", "dotty-compiler/dotc") ++
-      addCommandAlias("repl", "dotty-compiler/repl") ++
       addCommandAlias("run", "dotty-compiler/run") ++
-      addCommandAlias("packageAll", "dotty-compiler/packageAll") ++
       addCommandAlias(
         "partest",
         ";packageAll" +
