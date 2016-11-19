@@ -88,6 +88,45 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
     """.stripMargin
   }
 
+  /** Tests which are compiled with one or more of the flags in this list will be run
+   *  one by one, without any other test running at the same time.
+   *  This is necessary because some test flags require a lot of memory when running
+   *  the compiler and may exhaust the available memory when run in parallel with other tests.
+   */
+  def sequentialFlags = List("-Ytest-pickler")
+
+  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[TestState] = {
+    val (sequentialTests, parallelTests) =
+      kindFiles partition { kindFile =>
+        val flags = kindFile.changeExtension("flags").fileContents
+        sequentialFlags.exists(seqFlag => flags.contains(seqFlag))
+      }
+
+    val seqResults =
+      if (!sequentialTests.isEmpty) {
+        val savedThreads = sys.props("partest.threads")
+        sys.props("partest.threads") = "1"
+
+        NestUI.echo(s"## we will run ${sequentialTests.length} tests sequentially")
+        val res = super.runTestsForFiles(sequentialTests, kind)
+
+        if (savedThreads != null)
+          sys.props("partest.threads") = savedThreads
+        else
+          sys.props.remove("partest.threads")
+
+        res
+      } else Array[TestState]()
+
+    val parResults =
+      if (!parallelTests.isEmpty) {
+        NestUI.echo(s"## we will run ${parallelTests.length} tests in parallel using ${PartestDefaults.numThreads} threads")
+        super.runTestsForFiles(parallelTests, kind)
+      } else Array[TestState]()
+
+    seqResults ++ parResults
+  }
+
   // override for DPTestRunner and redirecting compilation output to test.clog
   override def runTest(testFile: File): TestState = {
     val runner = new DPTestRunner(testFile, this)
