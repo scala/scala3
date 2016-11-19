@@ -12,7 +12,6 @@ import config.Printers.{typr, default}
 import util.Stats._
 import scala.util.control.NonFatal
 import ast.Trees._
-import util.FreshNameCreator
 
 class FrontEnd extends Phase {
 
@@ -66,7 +65,7 @@ class FrontEnd extends Phase {
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = for (unit <- units) yield {
       ctx.inform(s"compiling ${unit.source}")
-      ctx.fresh.setCompilationUnit(unit).setFreshNames(new FreshNameCreator.Default)
+      ctx.fresh.setCompilationUnit(unit)
     }
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
