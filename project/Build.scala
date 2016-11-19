@@ -90,6 +90,7 @@ object DottyBuild extends Build {
       addCommandAlias("dotr", "dotty-compiler/dotr") ++
       addCommandAlias("dotc", "dotty-compiler/dotc") ++
       addCommandAlias("repl", "dotty-compiler/repl") ++
+      addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias("packageAll", "dotty-compiler/packageAll") ++
       addCommandAlias(
         "partest",
@@ -218,7 +219,7 @@ object DottyBuild extends Build {
           s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""" !
         }
       },
-      dotc := Def.inputTaskDyn {
+      run := Def.inputTaskDyn {
         val dottyLib = packageAll.value("dotty-library")
         val args: Seq[String] = spaceDelimited("<arg>").parsed
 
@@ -231,6 +232,7 @@ object DottyBuild extends Build {
           s" dotty.tools.dotc.Main " + fullArgs.mkString(" ")
         )
       }.evaluated,
+      dotc := run.evaluated,
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
