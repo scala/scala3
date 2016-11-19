@@ -69,12 +69,13 @@ object DottyBuild extends Build {
 
   // set sources to src/, tests to test/ and resources to resources/
   lazy val sourceStructure = Seq(
-    scalaSource       in Compile := baseDirectory.value / "src",
-    scalaSource       in Test    := baseDirectory.value / "test",
-    javaSource        in Compile := baseDirectory.value / "src",
-    javaSource        in Test    := baseDirectory.value / "test",
-    resourceDirectory in Compile := baseDirectory.value / "resources"
+    scalaSource       in Compile    := baseDirectory.value / "src",
+    scalaSource       in Test       := baseDirectory.value / "test",
+    javaSource        in Compile    := baseDirectory.value / "src",
+    javaSource        in Test       := baseDirectory.value / "test",
+    resourceDirectory in Compile    := baseDirectory.value / "resources"
   )
+
 
   /** Projects -------------------------------------------------------------- */
   // The root project:
@@ -117,6 +118,7 @@ object DottyBuild extends Build {
 
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
+    settings(sourceStructure).
     settings(
       // Do not append Scala versions to the generated artifacts
       crossPaths := false,
@@ -364,6 +366,7 @@ object DottyBuild extends Build {
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).
     dependsOn(`dotty-compiler`).
+    settings(sourceStructure).
     settings(
       overrideScalaVersionSetting,
 
@@ -409,6 +412,7 @@ object DottyBuild extends Build {
     ).
     settings(ScriptedPlugin.scriptedSettings: _*).
     settings(
+      ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
@@ -450,6 +454,7 @@ object DottyInjectedPlugin extends AutoPlugin {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(ScalaJSPlugin).
+    settings(sourceStructure).
     settings(
       overrideScalaVersionSetting,
 
@@ -484,6 +489,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
   lazy val `dotty-bench` = project.in(file("bench")).
     dependsOn(`dotty-compiler` % "compile->test").
+    settings(sourceStructure).
     settings(
       overrideScalaVersionSetting,
 
