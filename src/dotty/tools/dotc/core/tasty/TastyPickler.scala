@@ -55,7 +55,7 @@ class TastyPickler {
   }
 
   /** The address in the TASTY file of a given tree, or None if unknown.
-   *  Note that trees are looked up by for reference equality,
+   *  Note that trees are looked up by reference equality,
    *  so one can reliably use this function only directly after `pickler`.
    */
   var addrOfTree: tpd.Tree => Option[Addr] = (_ => None)
