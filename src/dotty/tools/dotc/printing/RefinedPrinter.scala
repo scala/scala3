@@ -149,7 +149,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return toText(elemtp) ~ "[]"
       case tp: AnnotatedType if homogenizedView =>
         // Positions of annotations in types are not serialized
-        // (they don;t need to because we keep the original type tree with
+        // (they don't need to because we keep the original type tree with
         //  the original annotation anyway. Therefore, there will always be
         //  one version of the annotation tree that has the correct positions).
         withoutPos(super.toText(tp))
