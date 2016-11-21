@@ -1026,7 +1026,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             case APPLIEDtpt =>
               AppliedTypeTree(readTpt(), until(end)(readTpt()))
             case ANDtpt =>
-              AndTypeTree(readTpt(), readTpt())
+              val tpt1 = readTpt()
+              val tpt2 = readTpt()
+              // FIXME: We need to do this instead of "AndType(tpt1, tpt2)" to avoid self-type cyclic reference in tasty_tools
+              untpd.AndTypeTree(tpt1, tpt2).withType(AndType(tpt1.tpe, tpt2.tpe))
             case ORtpt =>
               OrTypeTree(readTpt(), readTpt())
             case ANNOTATEDtpt =>
@@ -1046,7 +1049,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       }
 
       val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
-      tree.overwriteType(tree.tpe.simplified)
+      if (!tree.isInstanceOf[TypTree]) // FIXME: Necessary to avoid self-type cyclic reference in tasty_tools
+        tree.overwriteType(tree.tpe.simplified)
       setPos(start, tree)
     }
 
