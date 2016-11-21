@@ -290,8 +290,20 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramProxy = new mutable.HashMap[Type, Type]
 
-  /** A map from (direct and outer) this references in `rhs` to references of their proxies */
-  private val thisProxy = new mutable.HashMap[Type, TermRef]
+  /** A map from the classes of (direct and outer) this references in `rhs`
+   *  to references of their proxies.
+   *  Note that we can't index by the ThisType itself since there are several
+   *  possible forms to express what is logicaly the same ThisType. E.g.
+   *
+   *     ThisType(TypeRef(ThisType(p), cls))
+   *
+   *  vs
+   *
+   *     ThisType(TypeRef(TermRef(ThisType(<root>), p), cls))
+   *
+   *  These are different (wrt ==) types but represent logically the same key
+   */
+  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
   val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
@@ -349,13 +361,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType
     if !ctx.owner.isContainedIn(tpe.cls) && !tpe.cls.is(Package) &&
-       !thisProxy.contains(tpe) =>
+       !thisProxy.contains(tpe.cls) =>
       if (tpe.cls.isStaticOwner)
-        thisProxy(tpe) = tpe.cls.sourceModule.termRef
+        thisProxy(tpe.cls) = tpe.cls.sourceModule.termRef
       else {
         val proxyName = s"${tpe.cls.name}_this".toTermName
         val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
-        thisProxy(tpe) = newSym(proxyName, EmptyFlags, proxyType).termRef
+        thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
         registerType(meth.owner.thisType) // make sure we have a base from which to outer-select
       }
     case tpe: NamedType
@@ -408,7 +420,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     // and parameters to type references of their arguments or proxies.
     val typeMap = new TypeMap {
       def apply(t: Type) = t match {
-        case t: ThisType => thisProxy.getOrElse(t, t)
+        case t: ThisType => thisProxy.getOrElse(t.cls, t)
         case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
         case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
         case t => mapOver(t)
@@ -420,9 +432,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     def treeMap(tree: Tree) = {
       tree match {
       case _: This =>
-        thisProxy.get(tree.tpe) match {
-          case Some(t) => ref(t).withPos(tree.pos)
-          case None => tree
+        tree.tpe match {
+          case thistpe: ThisType =>
+            thisProxy.get(thistpe.cls) match {
+              case Some(t) => ref(t).withPos(tree.pos)
+              case None => tree
+            }
+          case _ => tree
         }
       case _: Ident =>
         paramProxy.get(tree.tpe) match {
