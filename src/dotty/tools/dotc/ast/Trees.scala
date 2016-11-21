@@ -159,7 +159,7 @@ object Trees {
     /** Does this tree define a new symbol that is not defined elsewhere? */
     def isDef: Boolean = false
 
-    /** Is this tree either the empty tree or the empty ValDef? */
+    /** Is this tree either the empty tree or the empty ValDef or an empty type ident? */
     def isEmpty: Boolean = false
 
     /** Convert tree to a list. Gives a singleton list, except
@@ -353,7 +353,7 @@ object Trees {
   }
 
   /** qual.this */
-  case class This[-T >: Untyped] private[ast] (qual: TypeName)
+  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
     // Denotation of a This tree is always the underlying class; needs correction for modules.
@@ -368,7 +368,7 @@ object Trees {
   }
 
   /** C.super[mix], where qual = C.this */
-  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: TypeName)
+  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Super[T]
     def forwardTo = qual
@@ -890,12 +890,12 @@ object Trees {
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name))
       }
-      def This(tree: Tree)(qual: TypeName): This = tree match {
-        case tree: This if qual == tree.qual => tree
+      def This(tree: Tree)(qual: untpd.Ident): This = tree match {
+        case tree: This if qual eq tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
       }
-      def Super(tree: Tree)(qual: Tree, mix: TypeName): Super = tree match {
-        case tree: Super if (qual eq tree.qual) && (mix == tree.mix) => tree
+      def Super(tree: Tree)(qual: Tree, mix: untpd.Ident): Super = tree match {
+        case tree: Super if (qual eq tree.qual) && (mix eq tree.mix) => tree
         case _ => finalize(tree, untpd.Super(qual, mix))
       }
       def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = tree match {

@@ -80,6 +80,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
 
+  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY) with WithoutTypeOrPos[Untyped] {
+    override def isEmpty = true
+  }
+
   /** A block arising from a right-associative infix operation, where, e.g.
    *
    *     a +: b
@@ -225,8 +229,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def BackquotedIdent(name: Name): BackquotedIdent = new BackquotedIdent(name)
   def Select(qualifier: Tree, name: Name): Select = new Select(qualifier, name)
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature): Select = new SelectWithSig(qualifier, name, sig)
-  def This(qual: TypeName): This = new This(qual)
-  def Super(qual: Tree, mix: TypeName): Super = new Super(qual, mix)
+  def This(qual: Ident): This = new This(qual)
+  def Super(qual: Tree, mix: Ident): Super = new Super(qual, mix)
   def Apply(fun: Tree, args: List[Tree]): Apply = new Apply(fun, args)
   def TypeApply(fun: Tree, args: List[Tree]): TypeApply = new TypeApply(fun, args)
   def Literal(const: Constant): Literal = new Literal(const)

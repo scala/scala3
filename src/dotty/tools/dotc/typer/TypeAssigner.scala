@@ -282,7 +282,7 @@ trait TypeAssigner {
     }
 
   def assignType(tree: untpd.This)(implicit ctx: Context) = {
-    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+    val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(cls.thisType)
   }
 
@@ -291,7 +291,7 @@ trait TypeAssigner {
     val qtype @ ThisType(_) = qual.tpe
     val cls = qtype.cls
 
-    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
+    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
       case p :: Nil =>
         p
       case Nil =>

@@ -106,7 +106,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         ctx.error(s"super not allowed here: use this.${sel.name.decode} instead", sel.pos)
       else if (sym is Deferred) {
         val member = sym.overridingSymbol(clazz)
-        if (mix != tpnme.EMPTY ||
+        if (!mix.name.isEmpty ||
             !member.exists ||
             !((member is AbsOverride) && member.isIncompleteIn(clazz)))
           ctx.error(
@@ -114,7 +114,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
               sel.pos)
         else ctx.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
       }
-      else if (mix == tpnme.EMPTY && !(sym.owner is Trait))
+      else if (mix.name.isEmpty && !(sym.owner is Trait))
         // SI-4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
         for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
           val overriding = sym.overridingSymbol(intermediateClass)
@@ -124,7 +124,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
                 sel.pos)
 
         }
-      if (name.isTermName && mix == tpnme.EMPTY &&
+      if (name.isTermName && mix.name.isEmpty &&
           ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
         superAccessorCall(sel)(ctx.withPhase(thisTransformer.next))
       else sel
