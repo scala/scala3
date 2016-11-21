@@ -100,8 +100,7 @@ object DottyBuild extends Build {
         ";dotty-compiler/test:runMain dotc.build" +
         ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test" +
-        ";dotty-compiler/runPartestRunner" +
-        ";dotty-bin-tests/test" // script tests need to run after the unit tests
+        ";dotty-compiler/runPartestRunner"
       ) ++
       addCommandAlias(
         "partest-only",
