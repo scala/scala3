@@ -973,7 +973,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object This extends ThisDeconstructor {
-    def get = field.qual
+    def get = field.qual.name
     def apply(s: Symbol): This = tpd.This(s.asClass)
   }
 
@@ -1020,7 +1020,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
   object Super extends SuperDeconstructor {
     def _1: Tree = field.qual
-    def _2: Name = field.mix
+    def _2: Name = field.mix.name
   }
   object ArrayValue extends ArrayValueDeconstructor {
     def _1: Type = field.tpe match {

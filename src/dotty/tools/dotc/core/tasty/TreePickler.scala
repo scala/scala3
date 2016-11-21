@@ -360,8 +360,13 @@ class TreePickler(pickler: TastyPickler) {
               pickleName(name)
               pickleType(tree.tpe)
           }
-        case This(_) =>
-          pickleType(tree.tpe)
+        case This(qual) =>
+          if (qual.isEmpty) pickleType(tree.tpe)
+          else {
+            writeByte(QUALTHIS)
+            val ThisType(tref) = tree.tpe
+            pickleTree(qual.withType(tref))
+          }
         case Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
           val realName = tree.tpe match {
@@ -396,8 +401,8 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleTree(qual);
             if (!mix.isEmpty) {
-              val SuperType(_, mixinType) = tree.tpe
-              pickleType(mixinType)
+              val SuperType(_, mixinType: TypeRef) = tree.tpe
+              pickleTree(mix.withType(mixinType))
             }
           }
         case New(tpt) =>

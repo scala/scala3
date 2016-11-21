@@ -340,7 +340,7 @@ object desugar {
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
-          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
         def isRepeated(tree: Tree): Boolean = tree match {
           case PostfixOp(_, nme.raw.STAR) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)

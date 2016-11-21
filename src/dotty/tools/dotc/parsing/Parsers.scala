@@ -527,27 +527,28 @@ object Parsers {
      */
     def path(thisOK: Boolean, finish: Tree => Tree = id): Tree = {
       val start = in.offset
-      def handleThis(name: TypeName) = {
+      def handleThis(qual: Ident) = {
         in.nextToken()
-        val t = atPos(start) { This(name) }
+        val t = atPos(start) { This(qual) }
         if (!thisOK && in.token != DOT) syntaxError("`.' expected")
         dotSelectors(t, finish)
       }
-      def handleSuper(name: TypeName) = {
+      def handleSuper(qual: Ident) = {
         in.nextToken()
         val mix = mixinQualifierOpt()
-        val t = atPos(start) { Super(This(name), mix) }
+        val t = atPos(start) { Super(This(qual), mix) }
         accept(DOT)
         dotSelectors(selector(t), finish)
       }
-      if (in.token == THIS) handleThis(tpnme.EMPTY)
-      else if (in.token == SUPER) handleSuper(tpnme.EMPTY)
+      if (in.token == THIS) handleThis(EmptyTypeIdent)
+      else if (in.token == SUPER) handleSuper(EmptyTypeIdent)
       else {
         val t = termIdent()
         if (in.token == DOT) {
+          def qual = cpy.Ident(t)(t.name.toTypeName)
           in.nextToken()
-          if (in.token == THIS) handleThis(t.name.toTypeName)
-          else if (in.token == SUPER) handleSuper(t.name.toTypeName)
+          if (in.token == THIS) handleThis(qual)
+          else if (in.token == SUPER) handleSuper(qual)
           else selectors(t, finish)
         }
         else t
@@ -556,9 +557,9 @@ object Parsers {
 
     /** MixinQualifier ::= `[' Id `]'
     */
-    def mixinQualifierOpt(): TypeName =
-      if (in.token == LBRACKET) inBrackets(ident().toTypeName)
-      else tpnme.EMPTY
+    def mixinQualifierOpt(): Ident =
+      if (in.token == LBRACKET) inBrackets(atPos(in.offset) { typeIdent() })
+      else EmptyTypeIdent
 
     /** StableId ::= Id
      *            |  Path `.' Id
@@ -617,7 +618,7 @@ object Parsers {
                 termIdent()
               else if (in.token == THIS) {
                 in.nextToken()
-                This(tpnme.EMPTY)
+                This(EmptyTypeIdent)
               }
               else if (in.token == LBRACE)
                 if (inPattern) Block(Nil, inBraces(pattern()))
@@ -2145,7 +2146,7 @@ object Parsers {
         val first = expr1()
         if (in.token == ARROW) {
           first match {
-            case Typed(tree @ This(tpnme.EMPTY), tpt) =>
+            case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
             case _ =>
               val ValDef(name, tpt, _) = convertToParam(first, expected = "self type clause")

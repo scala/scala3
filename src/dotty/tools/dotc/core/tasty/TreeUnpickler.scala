@@ -885,6 +885,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         untpd.Select(qual, unshadowed).withType(tpf(qual.tpe.widenIfUnstable))
       }
 
+      def readQualId(): (untpd.Ident, TypeRef) = {
+        val qual = readTerm().asInstanceOf[untpd.Ident]
+         (untpd.Ident(qual.name).withPos(qual.pos), qual.tpe.asInstanceOf[TypeRef])
+      }
+
       def readSimpleTerm(): Tree = tag match {
         case SHARED =>
           forkAt(readAddr()).readTerm()
@@ -902,6 +907,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         case SELECTtpt =>
           val name = readName().toTypeName
           completeSelect(name, TypeRef(_, name))
+        case QUALTHIS =>
+          val (qual, tref) = readQualId()
+          untpd.This(qual).withType(ThisType.raw(tref))
         case NEW =>
           New(readTpt())
         case SINGLETONtpt =>
@@ -933,9 +941,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           (tag: @switch) match {
             case SUPER =>
               val qual = readTerm()
-              val mixClass = ifBefore(end)(readType().typeSymbol, NoSymbol)
-              val mixName = if (mixClass.exists) mixClass.name.asTypeName else tpnme.EMPTY
-              tpd.Super(qual, mixName, ctx.mode.is(Mode.InSuperCall), mixClass)
+              val (mixId, mixTpe) = ifBefore(end)(readQualId(), (untpd.EmptyTypeIdent, NoType))
+              tpd.Super(qual, mixId, ctx.mode.is(Mode.InSuperCall), mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
               val isJava = fn.symbol.is(JavaDefined)

@@ -127,7 +127,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match {
       case tp: TypeType =>
         toTextRHS(tp)
-      case tp: TermRef if !tp.denotationIsCurrent || tp.symbol.is(Module) || tp.symbol.name.isImportName =>
+      case tp: TermRef
+      if !tp.denotationIsCurrent && !homogenizedView || // always print underyling when testing picklers
+         tp.symbol.is(Module) ||
+         tp.symbol.name.isImportName =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"

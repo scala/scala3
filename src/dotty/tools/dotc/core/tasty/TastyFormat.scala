@@ -73,8 +73,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   Application
                   IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term
+                  QUALTHIS              typeIdent_Tree
                   NEW                   cls_Type
-                  SUPER          Length this_Term mixinTrait_Type?
+                  SUPER          Length this_Term mixinTypeIdent_Tree?
                   TYPED          Length expr_Term ascription_Type
                   NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
@@ -279,16 +280,17 @@ object TastyFormat {
   final val RENAMED = 79
 
   final val THIS = 96
-  final val CLASSconst = 97
-  final val ENUMconst = 98
-  final val BYNAMEtype = 99
-  final val BYNAMEtpt = 100
-  final val NEW = 101
-  final val IMPLICITarg = 102
-  final val PRIVATEqualified = 103
-  final val PROTECTEDqualified = 104
-  final val RECtype = 105
-  final val SINGLETONtpt = 106
+  final val QUALTHIS = 97
+  final val CLASSconst = 98
+  final val ENUMconst = 99
+  final val BYNAMEtype = 100
+  final val BYNAMEtpt = 101
+  final val NEW = 102
+  final val IMPLICITarg = 103
+  final val PRIVATEqualified = 104
+  final val PROTECTEDqualified = 105
+  final val RECtype = 106
+  final val SINGLETONtpt = 107
 
   final val IDENT = 112
   final val IDENTtpt = 113
@@ -506,6 +508,7 @@ object TastyFormat {
     case TEMPLATE => "TEMPLATE"
     case SELFDEF => "SELFDEF"
     case THIS => "THIS"
+    case QUALTHIS => "QUALTHIS"
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"

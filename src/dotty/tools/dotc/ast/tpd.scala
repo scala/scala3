@@ -31,10 +31,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Select(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    untpd.This(cls.name).withType(cls.thisType)
+    untpd.This(untpd.Ident(cls.name)).withType(cls.thisType)
 
-  def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
+  def Super(qual: Tree, mix: untpd.Ident, inConstrCall: Boolean, mixinClass: Symbol)(implicit ctx: Context): Super =
     ta.assignType(untpd.Super(qual, mix), qual, inConstrCall, mixinClass)
+
+  def Super(qual: Tree, mixName: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
+    Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), inConstrCall, mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
     ta.assignType(untpd.Apply(fn, args), fn, args)
