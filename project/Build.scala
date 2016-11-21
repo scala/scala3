@@ -57,7 +57,12 @@ object DottyBuild extends Build {
       homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
 
       // scalac options
-      scalacOptions in Global ++= Seq("-feature", "-deprecation", "-encoding", "UTF8", "-language:existentials,higherKinds,implicitConversions"),
+      scalacOptions in Global ++= Seq(
+        "-feature",
+        "-deprecation",
+        "-encoding", "UTF8",
+        "-language:existentials,higherKinds,implicitConversions"
+      ),
 
       javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     )
@@ -96,7 +101,7 @@ object DottyBuild extends Build {
         ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test" +
         ";dotty-compiler/runPartestRunner" +
-        ";bin/test" // script tests need to run after the unit tests
+        ";dotty-bin-tests/test" // script tests need to run after the unit tests
       ) ++
       addCommandAlias(
         "partest-only",
@@ -343,7 +348,7 @@ object DottyBuild extends Build {
     settings(publishing)
 
   /* Contains unit tests for the scripts */
-  lazy val bin = project.in(file("bin")).
+  lazy val `dotty-bin-tests` = project.in(file("bin")).
     settings(sourceStructure).
     settings(
       publishArtifact := false,
