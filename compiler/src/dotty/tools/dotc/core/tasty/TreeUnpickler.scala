@@ -881,7 +881,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         readType() match {
           case path: TypeRef => TypeTree(path)
           case path: TermRef => ref(path)
-          case path: ThisType => This(path.cls)
+          case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
         }
       }
