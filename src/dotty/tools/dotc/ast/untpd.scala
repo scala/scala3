@@ -80,8 +80,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
 
-  class PolyTypeDef(name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
-    extends TypeDef(name, rhs)
+  @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY) with WithoutTypeOrPos[Untyped] {
+    override def isEmpty = true
+  }
 
   /** A block arising from a right-associative infix operation, where, e.g.
    *
@@ -228,8 +229,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def BackquotedIdent(name: Name): BackquotedIdent = new BackquotedIdent(name)
   def Select(qualifier: Tree, name: Name): Select = new Select(qualifier, name)
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature): Select = new SelectWithSig(qualifier, name, sig)
-  def This(qual: TypeName): This = new This(qual)
-  def Super(qual: Tree, mix: TypeName): Super = new Super(qual, mix)
+  def This(qual: Ident): This = new This(qual)
+  def Super(qual: Tree, mix: Ident): Super = new Super(qual, mix)
   def Apply(fun: Tree, args: List[Tree]): Apply = new Apply(fun, args)
   def TypeApply(fun: Tree, args: List[Tree]): TypeApply = new TypeApply(fun, args)
   def Literal(const: Constant): Literal = new Literal(const)
@@ -310,9 +311,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
-  def TypeDef(name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
-    if (tparams.isEmpty) TypeDef(name, rhs) else new PolyTypeDef(name, tparams, rhs)
-
   def unitLiteral = Literal(Constant(()))
 
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
@@ -347,6 +345,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
+
+  def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context) =
+    if (tparams.isEmpty) tpt else PolyTypeTree(tparams, tpt)
 
   /** A reference to given definition. If definition is a repeated
    *  parameter, the reference will be a repeated argument.
@@ -391,10 +392,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: ParsedTry
         if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
       case _ => untpd.ParsedTry(expr, handler, finalizer).withPos(tree.pos)
-    }
-    def PolyTypeDef(tree: Tree)(name: TypeName, tparams: List[TypeDef], rhs: Tree) = tree match {
-      case tree: PolyTypeDef if (name eq tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
-      case _ => new PolyTypeDef(name, tparams, rhs).withPos(tree.pos)
     }
     def SymbolLit(tree: Tree)(str: String) = tree match {
       case tree: SymbolLit if str == tree.str => tree
@@ -506,8 +503,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
-      case tree: PolyTypeDef =>
-        cpy.PolyTypeDef(tree)(tree.name, transformSub(tree.tparams), transform(tree.rhs))
       case _ =>
         super.transform(tree)
     }
@@ -553,8 +548,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
-      case tree: PolyTypeDef =>
-        this(this(x, tree.tparams), tree.rhs)
       case TypedSplice(tree) =>
         this(x, tree)
       case _ =>
@@ -565,11 +558,5 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** Fold `f` over all tree nodes, in depth-first, prefix order */
   class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
     def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
-  }
-
-  override def rename(tree: NameTree, newName: Name)(implicit ctx: Context): tree.ThisTree[Untyped] = tree match {
-    case t: PolyTypeDef =>
-      cpy.PolyTypeDef(t)(newName.asTypeName, t.tparams, t.rhs).asInstanceOf[tree.ThisTree[Untyped]]
-    case _ => super.rename(tree, newName)
   }
 }

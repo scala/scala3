@@ -282,7 +282,7 @@ trait TypeAssigner {
     }
 
   def assignType(tree: untpd.This)(implicit ctx: Context) = {
-    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+    val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(cls.thisType)
   }
 
@@ -291,7 +291,7 @@ trait TypeAssigner {
     val qtype @ ThisType(_) = qual.tpe
     val cls = qtype.cls
 
-    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
+    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix.name) match {
       case p :: Nil =>
         p
       case Nil =>
@@ -431,7 +431,18 @@ trait TypeAssigner {
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
     tree.withType(left.tpe | right.tpe)
 
-  // RefinedTypeTree is missing, handled specially in Typer and Unpickler.
+  /** Assign type of RefinedType.
+   *  Refinements are typed as if they were members of refinement class `refineCls`.
+   */
+  def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context) = {
+    def addRefinement(parent: Type, refinement: Tree): Type = {
+      val rsym = refinement.symbol
+      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
+      RefinedType(parent, rsym.name, rinfo)
+    }
+    val refined = (parent.tpe /: refinements)(addRefinement)
+    tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
+  }
 
   def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(implicit ctx: Context) = {
     val tparams = tycon.tpe.typeParams
@@ -456,7 +467,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.PolyTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
-    tree.withType(PolyType.fromSymbols(tparamDefs.map(_.symbol), body.tpe))
+    tree.withType(body.tpe.LambdaAbstract(tparamDefs.map(_.symbol)))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

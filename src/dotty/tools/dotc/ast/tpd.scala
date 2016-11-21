@@ -31,10 +31,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Select(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    untpd.This(cls.name).withType(cls.thisType)
+    untpd.This(untpd.Ident(cls.name)).withType(cls.thisType)
 
-  def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
+  def Super(qual: Tree, mix: untpd.Ident, inConstrCall: Boolean, mixinClass: Symbol)(implicit ctx: Context): Super =
     ta.assignType(untpd.Super(qual, mix), qual, inConstrCall, mixinClass)
+
+  def Super(qual: Tree, mixName: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
+    Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), inConstrCall, mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
     ta.assignType(untpd.Apply(fn, args), fn, args)
@@ -133,13 +136,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def OrTypeTree(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree =
     ta.assignType(untpd.OrTypeTree(left, right), left, right)
 
-  // RefinedTypeTree is missing, handled specially in Typer and Unpickler.
+  def RefinedTypeTree(parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context): Tree =
+    ta.assignType(untpd.RefinedTypeTree(parent, refinements), parent, refinements, refineCls)
 
   def AppliedTypeTree(tycon: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree =
     ta.assignType(untpd.AppliedTypeTree(tycon, args), tycon, args)
 
   def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree =
     ta.assignType(untpd.ByNameTypeTree(result), result)
+
+  def PolyTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): PolyTypeTree =
+    ta.assignType(untpd.PolyTypeTree(tparams, body), tparams, body)
 
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)

@@ -340,10 +340,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
     def expand(tp: Type) =
       PolyType(
-        tpnme.syntheticLambdaParamNames(tparams.length), tparams.map(_.paramVariance))(
+        tparams.map(_.paramName), tparams.map(_.paramVariance))(
           tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
           tl => tl.lifted(tparams, tp))
-    self match {
+    if (tparams.isEmpty) self
+    else self match {
       case self: TypeAlias =>
         self.derivedTypeAlias(expand(self.alias))
       case self @ TypeBounds(lo, hi) =>

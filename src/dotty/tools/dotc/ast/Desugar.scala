@@ -234,7 +234,7 @@ object desugar {
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
-      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam), tparams = Nil)
+      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
     }
@@ -341,7 +341,7 @@ object desugar {
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
-          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
         def isRepeated(tree: Tree): Boolean = tree match {
           case PostfixOp(_, nme.raw.STAR) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)
@@ -463,8 +463,7 @@ object desugar {
       cpy.TypeDef(cdef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths),
-        tparams = Nil)
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths))
     }
 
     // install the watch on classTycon

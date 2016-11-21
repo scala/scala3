@@ -735,14 +735,10 @@ object StdNames {
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
-    def syntheticTypeParamName(i: Int): TypeName = "T" + i
-    def syntheticLambdaParamName(i: Int): TypeName = "X" + i
+    def syntheticTypeParamName(i: Int): TypeName = "X" + i
 
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
-
-    def syntheticLambdaParamNames(num: Int): List[TypeName] =
-      (0 until num).map(syntheticLambdaParamName)(breakOut)
 
     final val Conforms = encode("<:<")
 

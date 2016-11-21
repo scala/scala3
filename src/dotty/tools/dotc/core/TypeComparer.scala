@@ -1267,7 +1267,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
     else
       PolyType(
-        paramNames = tpnme.syntheticLambdaParamNames(tparams1.length),
+        paramNames = tpnme.syntheticTypeParamNames(tparams1.length),
         variances = (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           (tparam1.paramVariance + tparam2.paramVariance) / 2))(
         paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>

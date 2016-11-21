@@ -1008,23 +1008,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
     val refinements1 = impl.body
-    val seen = mutable.Set[Symbol]()
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
-    def addRefinement(parent: Type, refinement: Tree): Type = {
+    val seen = mutable.Set[Symbol]()
+    for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
       if (rsym.is(Method) && rsym.allOverriddenSymbols.isEmpty)
-        ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
-      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rinfo)
-      // todo later: check that refinement is within bounds
+        ctx.error(i"refinement $rsym without matching type in parent $tpt1", refinement.pos)
     }
-    val refined = (tpt1.tpe /: refinements1)(addRefinement)
-    val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1).withType(
-      RecType.closeOver(rt => refined.substThis(refineCls, RecThis(rt))))
-    typr.println(i"typed refinement: ${res.tpe}")
-    res
+    assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
@@ -1192,7 +1185,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
-    assignType(cpy.TypeDef(tdef)(name, typedType(rhs), Nil), sym)
+    val rhs1 = tdef.rhs match {
+      case rhs @ PolyTypeTree(tparams, body) =>
+        val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
+        val body1 = typedType(body)
+        assignType(cpy.PolyTypeTree(rhs)(tparams1, body1), tparams1, body1)
+      case rhs =>
+        typedType(rhs)
+    }
+    assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
@@ -1257,7 +1258,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
     if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper) checkRealizableBounds(cls.typeRef, cdef.namePos)
-    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
+    val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
     if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
       val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
       ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,

@@ -21,6 +21,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private var enclosingDef: untpd.Tree = untpd.EmptyTree
   private var myCtx: Context = _ctx
+  private var printPos = ctx.settings.Yprintpos.value
   override protected[this] implicit def ctx: Context = myCtx
 
   def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
@@ -33,6 +34,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       myCtx = savedCtx
       enclosingDef = savedDef
     }
+  }
+
+  def inPattern(op: => Text): Text = {
+    val savedCtx = myCtx
+    myCtx = ctx.addMode(Mode.Pattern)
+    try op finally myCtx = savedCtx
+  }
+
+  def withoutPos(op: => Text): Text = {
+    val savedPrintPos = printPos
+    printPos = false
+    try op finally printPos = savedPrintPos
   }
 
   private def enclDefIsClass = enclosingDef match {
@@ -134,6 +147,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return toTextParents(tp.parentsWithArgs) ~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
+      case tp: AnnotatedType if homogenizedView =>
+        // Positions of annotations in types are not serialized
+        // (they don't need to because we keep the original type tree with
+        //  the original annotation anyway. Therefore, there will always be
+        //  one version of the annotation tree that has the correct positions).
+        withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~ (" " provided !tp.name.decode.last.isLetterOrDigit) ~
           ": " ~ toText(tp.memberProto) ~ " }"
@@ -249,7 +268,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def nameIdText(tree: untpd.NameTree): Text =
-      toText(tree.name) ~ idText(tree)
+      if (tree.hasType && tree.symbol.exists) nameString(tree.symbol)
+      else toText(tree.name) ~ idText(tree)
 
     def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
       val Template(constr @ DefDef(_, tparams, vparamss, _, _), parents, self, _) = impl
@@ -284,7 +304,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case tp: NamedType if name != nme.WILDCARD =>
             val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
             toTextPrefix(pre) ~ selectionString(tp)
-          case _ => toText(name)
+          case _ =>
+            toText(name)
         }
       case tree @ Select(qual, name) =>
         if (qual.isType) toTextLocal(qual) ~ "#" ~ toText(name)
@@ -337,7 +358,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (sel.isEmpty) blockText(cases)
         else changePrec(GlobalPrec) { toText(sel) ~ " match " ~ blockText(cases) }
       case CaseDef(pat, guard, body) =>
-        "case " ~ toText(pat) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
+        "case " ~ inPattern(toText(pat)) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
       case Return(expr, from) =>
         changePrec(GlobalPrec) { "return" ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>
@@ -351,7 +372,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tree @ Inlined(call, bindings, body) =>
-        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView) ~ 
+        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView) ~
         blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
@@ -402,24 +423,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         }
       case tree @ TypeDef(name, rhs) =>
-        def typeDefText(rhsText: Text) =
+        def typeDefText(tparamsText: => Text, rhsText: => Text) =
           dclTextOr {
             modText(tree.mods, "type") ~~ (varianceText(tree.mods) ~ nameIdText(tree)) ~
             withEnclosingDef(tree) {
-              val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
-              tparamsText(tree.tparams) ~ rhsText1
+              if (tree.hasType) toText(tree.symbol.info) // TODO: always print RHS, once we pickle/unpickle type trees
+              else tparamsText ~ rhsText
             }
           }
-        rhs match {
+        def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
           case impl: Template =>
             modText(tree.mods, if ((tree).mods is Trait) "trait" else "class") ~~
             nameIdText(tree) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~
             (if (tree.hasType && ctx.settings.verbose.value) i"[decls = ${tree.symbol.info.decls}]" else "")
           case rhs: TypeBoundsTree =>
-            typeDefText(toText(rhs))
-          case _ =>
-            typeDefText(optText(rhs)(" = " ~ _))
+            typeDefText(tparamsTxt, toText(rhs))
+          case PolyTypeTree(tparams, body) =>
+            recur(body, tparamsText(tparams))
+          case rhs =>
+            typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
+        recur(rhs, "")
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
           case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
@@ -516,22 +540,40 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         tree.fallbackToText(this)
     }
+
     var txt = toTextCore(tree)
+
+    def suppressTypes =
+      tree.isType || tree.isDef || // don't print types of types or defs
+      homogenizedView && ctx.mode.is(Mode.Pattern)
+        // When comparing pickled info, disregard types of patterns.
+        // The reason is that GADT matching can rewrite types of pattern trees
+        // without changing the trees themselves. (see Typer.typedCase.indexPatterns.transform).
+        // But then pickling and unpickling the original trees will yield trees
+        // with the original types before they are rewritten, which causes a discrepancy.
+
+    def suppressPositions = tree match {
+      case _: WithoutTypeOrPos[_] | _: TypeTree => true // TypeTrees never have an interesting position
+      case _ => false
+    }
+
     if (ctx.settings.printtypes.value && tree.hasType) {
-      val tp = tree.typeOpt match {
+      // add type to term nodes; replace type nodes with their types unless -Yprintpos is also set.
+      def tp = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
         case tp => tp
       }
-      if (tree.isType) txt = toText(tp)
-      else if (!tree.isDef) txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
+      if (!suppressTypes)
+        txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
+      else if (tree.isType && !homogenizedView)
+        txt = toText(tp)
     }
-    else if (homogenizedView && tree.isType) 
-      txt = toText(tree.typeOpt)
-    if (ctx.settings.Yprintpos.value && !tree.isInstanceOf[WithoutTypeOrPos[_]]) {
-      val pos = 
-        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic 
+    if (printPos && !suppressPositions) {
+      // add positions
+      val pos =
+        if (homogenizedView && !tree.isInstanceOf[MemberDef]) tree.pos.toSynthetic
         else tree.pos
-      val clsStr = "" // DEBUG: if (tree.isType) tree.getClass.toString else ""
+      val clsStr = ""//if (tree.isType) tree.getClass.toString else ""
       txt = (txt ~ "@" ~ pos.toString ~ clsStr).close
     }
     tree match {

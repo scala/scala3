@@ -60,18 +60,18 @@ object Trees {
                                         with Cloneable {
 
     if (Stats.enabled) ntrees += 1
-    
+
     private def nxId = {
       nextId += 1
       //assert(nextId != 199, this)
-      nextId      
+      nextId
     }
 
     /** A unique identifier for this tree. Used for debugging, and potentially
      *  tracking presentation compiler interactions
      */
     private var myUniqueId: Int = nxId
-    
+
     def uniqueId = myUniqueId
 
     /** The type  constructor at the root of the tree */
@@ -159,7 +159,7 @@ object Trees {
     /** Does this tree define a new symbol that is not defined elsewhere? */
     def isDef: Boolean = false
 
-    /** Is this tree either the empty tree or the empty ValDef? */
+    /** Is this tree either the empty tree or the empty ValDef or an empty type ident? */
     def isEmpty: Boolean = false
 
     /** Convert tree to a list. Gives a singleton list, except
@@ -192,7 +192,7 @@ object Trees {
 
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
-    
+
     override def clone: Tree[T] = {
       val tree = super.clone.asInstanceOf[Tree[T]]
       tree.myUniqueId = nxId
@@ -353,7 +353,7 @@ object Trees {
   }
 
   /** qual.this */
-  case class This[-T >: Untyped] private[ast] (qual: TypeName)
+  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
     // Denotation of a This tree is always the underlying class; needs correction for modules.
@@ -368,7 +368,7 @@ object Trees {
   }
 
   /** C.super[mix], where qual = C.this */
-  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: TypeName)
+  case class Super[-T >: Untyped] private[ast] (qual: Tree[T], mix: untpd.Ident)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = Super[T]
     def forwardTo = qual
@@ -653,12 +653,6 @@ object Trees {
 
     /** Is this a definition of a class? */
     def isClassDef = rhs.isInstanceOf[Template[_]]
-
-    /** If this a non-class type definition, its type parameters.
-     *  Can be different from Nil only for PolyTypeDefs, which are always
-     *  untyped and get eliminated during desugaring.
-     */
-    def tparams: List[untpd.TypeDef] = Nil
   }
 
   /** extends parents { self => body } */
@@ -896,12 +890,12 @@ object Trees {
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name))
       }
-      def This(tree: Tree)(qual: TypeName): This = tree match {
-        case tree: This if qual == tree.qual => tree
+      def This(tree: Tree)(qual: untpd.Ident): This = tree match {
+        case tree: This if qual eq tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
       }
-      def Super(tree: Tree)(qual: Tree, mix: TypeName): Super = tree match {
-        case tree: Super if (qual eq tree.qual) && (mix == tree.mix) => tree
+      def Super(tree: Tree)(qual: Tree, mix: untpd.Ident): Super = tree match {
+        case tree: Super if (qual eq tree.qual) && (mix eq tree.mix) => tree
         case _ => finalize(tree, untpd.Super(qual, mix))
       }
       def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = tree match {
@@ -1023,9 +1017,9 @@ object Trees {
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
-      def TypeDef(tree: Tree)(name: TypeName, rhs: Tree, tparams: List[untpd.TypeDef]): TypeDef = tree match {
-        case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
-        case _ => finalize(tree, untpd.TypeDef(name, tparams, rhs))
+      def TypeDef(tree: Tree)(name: TypeName, rhs: Tree): TypeDef = tree match {
+        case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
+        case _ => finalize(tree, untpd.TypeDef(name, rhs))
       }
       def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = tree match {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
@@ -1064,8 +1058,8 @@ object Trees {
         ValDef(tree: Tree)(name, tpt, rhs)
       def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
-      def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs, tparams: List[untpd.TypeDef] = tree.tparams): TypeDef =
-        TypeDef(tree: Tree)(name, rhs, tparams)
+      def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs): TypeDef =
+        TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, self, body)
     }
@@ -1146,7 +1140,7 @@ object Trees {
         case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
           cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
         case tree @ TypeDef(name, rhs) =>
-          cpy.TypeDef(tree)(name, transform(rhs), tree.tparams)
+          cpy.TypeDef(tree)(name, transform(rhs))
         case tree @ Template(constr, parents, self, _) =>
           cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(tree.body))
         case Import(expr, selectors) =>
@@ -1294,7 +1288,6 @@ object Trees {
         case tree: Bind => cpy.Bind(tree)(newName, tree.body)
         case tree: ValDef => cpy.ValDef(tree)(name = newName.asTermName)
         case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
-        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(newName.asTypeName, tree.tparams, tree.rhs).withMods(tree.rawMods)
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
       }
     }.asInstanceOf[tree.ThisTree[T]]

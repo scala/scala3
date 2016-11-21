@@ -17,26 +17,17 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private type TreeAddrs = Any // really: Addr | List[Addr]
+  /** A map from trees to the address at which a tree is pickled. */
+  private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
 
-  /** A map from trees to the address(es) at which a tree is pickled. There may be several
-   *  such addresses if the tree is shared. To keep the map compact, the value type is a
-   *  disjunction of a single address (which is the common case) and a list of addresses.
-   */
-  private val treeAddrs = new java.util.IdentityHashMap[Tree, TreeAddrs]
+  def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
+    case null => treeAddrs.put(tree, currentAddr); currentAddr
+    case addr: Addr => addr
+  }
 
-  def registerTreeAddr(tree: Tree) =
-    treeAddrs.put(tree,
-      treeAddrs.get(tree) match {
-        case null => currentAddr
-        case x: Addr => x :: currentAddr :: Nil
-        case xs: List[_] => xs :+ currentAddr
-      })
-
-  def addrsOfTree(tree: Tree): List[Addr] = treeAddrs.get(tree) match {
-    case null => Nil
-    case addr: Addr => addr :: Nil
-    case addrs: List[Addr] => addrs
+  def addrOfTree(tree: Tree): Option[Addr] = treeAddrs.get(tree) match {
+    case null => None
+    case addr: Addr => Some(addr)
   }
 
   private def offset(i: Int): Addr = Addr(offsets(i))

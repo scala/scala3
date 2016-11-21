@@ -977,7 +977,7 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val rhs = transform(tree.rhs, mutatedInfo, cur)(localContext(tree.symbol))
-            goTypeDef(cpy.TypeDef(tree)(tree.name, rhs, tree.tparams), mutatedInfo.nx.nxTransTypeDef(cur))
+            goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), mutatedInfo.nx.nxTransTypeDef(cur))
           }
         case _ =>
           tree

@@ -272,7 +272,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case mdef: ValOrDefDef =>
       mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
     case mdef: TypeDef =>
-      mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
+      def isBounds(rhs: Tree): Boolean = rhs match {
+        case _: TypeBoundsTree => true
+        case PolyTypeTree(_, body) => isBounds(body)
+        case _ => false
+      }
+      mdef.rhs.isEmpty || isBounds(mdef.rhs)
     case _ => false
   }
 
@@ -382,9 +387,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isIdempotentRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) >= Idempotent
 
-  /** If `tree` is a constant expression, its value as a Literal, 
+  /** If `tree` is a constant expression, its value as a Literal,
    *  or `tree` itself otherwise.
-   *  
+   *
    *  Note: Demanding idempotency instead of purity in literalize is strictly speaking too loose.
    *  Example
    *
@@ -410,11 +415,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *  Revisit this issue once we have implemented `inline`. Then we can demand
    *  purity of the prefix unless the selection goes to an inline val.
-   *  
+   *
    *  Note: This method should be applied to all term tree nodes that are not literals,
    *        that can be idempotent, and that can have constant types. So far, only nodes
-   *        of the following classes qualify:  
-   *        
+   *        of the following classes qualify:
+   *
    *        Ident
    *        Select
    *        TypeApply

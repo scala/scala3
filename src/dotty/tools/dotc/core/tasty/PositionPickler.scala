@@ -13,28 +13,13 @@ import collection.mutable
 import TastyBuffer._
 import util.Positions._
 
-class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]) {
+class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]) {
   val buf = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import buf._
   import ast.tpd._
 
   private val remainingAddrs = new java.util.IdentityHashMap[Tree, Iterator[Addr]]
-
-  def nextTreeAddr(tree: Tree): Option[Addr] = remainingAddrs.get(tree) match {
-    case null =>
-      addrsOfTree(tree) match {
-        case Nil =>
-          None
-        case addr :: Nil =>
-          Some(addr)
-        case addrs =>
-          remainingAddrs.put(tree, addrs.iterator)
-          nextTreeAddr(tree)
-      }
-    case it: Iterator[_] =>
-      if (it.hasNext) Some(it.next) else None
-  }
 
   def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean, hasPoint: Boolean) = {
     def toInt(b: Boolean) = if (b) 1 else 0
@@ -60,8 +45,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
      */
     def alwaysNeedsPos(x: Positioned) = x match {
       case _: WithLazyField[_]            // initialPos is inaccurate for trees with lazy field
-         | _: Trees.PackageDef[_] => true // package defs might be split into several Tasty files 
-      case x: Trees.Tree[_] => x.isType   // types are unpickled as TypeTrees, so child positions are not available
+         | _: Trees.PackageDef[_] => true // package defs might be split into several Tasty files
       case _ => false
     }
 
@@ -69,7 +53,7 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
       case x: Tree @unchecked =>
         val pos = if (x.isInstanceOf[MemberDef]) x.pos else x.pos.toSynthetic
         if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
-          nextTreeAddr(x) match {
+          addrOfTree(x) match {
             case Some(addr) =>
               //println(i"pickling $x with $pos at $addr")
               pickleDeltas(addr.index, pos)
@@ -79,13 +63,15 @@ class PositionPickler(pickler: TastyPickler, addrsOfTree: tpd.Tree => List[Addr]
         }
         //else if (x.pos.exists) println(i"skipping $x")
         x match {
-          case x: MemberDef @unchecked => 
+          case x: MemberDef @unchecked =>
             for (ann <- x.symbol.annotations) traverse(ann.tree)
           case _ =>
         }
         traverse(x.productIterator)
       case xs: TraversableOnce[_] =>
         xs.foreach(traverse)
+      case x: Annotation =>
+        traverse(x.tree)
       case _ =>
     }
     traverse(roots)
