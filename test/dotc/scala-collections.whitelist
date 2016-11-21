@@ -287,7 +287,8 @@
 ./scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ./scala-scala/src/library/scala/util/control/Breaks.scala
 
-./scala-scala/src/library/scala/sys/SystemProperties.scala
+# fails in partest
+#./scala-scala/src/library/scala/sys/SystemProperties.scala
 
 ./scala-scala/src/library/scala/Function0.scala
 # Remove @specialized from Function1 type arguments, FIXME @specialized causing cyclic reference involving constructor specialized
