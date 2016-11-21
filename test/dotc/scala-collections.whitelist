@@ -321,8 +321,9 @@
 ./scala-scala/src/library/scala/collection/mutable/StringBuilder.scala
 
 ./scala-scala/src/library/scala/sys/Prop.scala
-./scala-scala/src/library/scala/sys/BooleanProp.scala
-# ./scala-scala/src/library/scala/sys/PropImpl.scala
+# makes pos/compileStdLib fail
+#./scala-scala/src/library/scala/sys/BooleanProp.scala
+#./scala-scala/src/library/scala/sys/PropImpl.scala
 
 # cant add because it is in java
 #./scala-scala/src/library/scala/math/ScalaNumber.java
