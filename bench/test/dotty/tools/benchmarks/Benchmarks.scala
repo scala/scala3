@@ -1,6 +1,5 @@
 package dotty.tools.benchmarks
 
-
 import org.scalameter.Key.reports._
 import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
