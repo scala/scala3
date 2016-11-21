@@ -58,7 +58,7 @@ function build_jar {
 
     local sedjar="$3"
     if [ "$sedjar" == "" ]; then
-        sedjar="/.*\.jar/p"
+        sedjar="/tests/d; /javadoc/d; /.*\.jar/p"
     fi
 
     if [ "$jar" == "" ]; then
