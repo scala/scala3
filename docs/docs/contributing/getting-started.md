@@ -19,21 +19,48 @@ Requirements
 Make sure that you are using Java 8 or later, the output of `java -version`
 should contain `1.8`.
 
-Compiling and running code
---------------------------
+Compiling and Running
+---------------------
+Start by cloning the repository:
+
+```none
+$ git clone https://github.com/lampepfl/dotty.git
+$ cd dotty
+```
+
+Dotty provides a standard sbt build: compiling, running and starting a repl can
+all be done from within sbt using
+
+```none
+$ sbt
+> dotc tests/pos/HelloWorld.scala
+> dotr HelloWorld
+hello world
+```
+
+there is also a bash script that can be used in the same way:
+
 ```bash
-git clone https://github.com/lampepfl/dotty.git
-cd dotty
-# Clone dotty-compatible stdlib. Needed for running the test suite.
-git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala
 # Compile code using Dotty
 ./bin/dotc tests/pos/HelloWorld.scala
 # Run it with the proper classpath
 ./bin/dotr HelloWorld
 ```
 
+
 Starting a REPL
 ---------------
-```bash
-./bin/dotr
+```none
+$ sbt
+> repl
+Welcome to Scala.next (pre-alpha)  (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_101).
+Type in expressions to have them evaluated.
+Type :help for more information.
+scala>
+```
+
+or via bash:
+
+```none
+$ ./bin/dotr
 ```

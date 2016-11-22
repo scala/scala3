@@ -11,8 +11,8 @@ Index
 -----
 * Usage
     - [Migrating from Scala 2](usage/migrating.md)
-    - [Using Dotty with cbt](usage/cbt-projects.md)
-    - [Using Dotty with sbt](usage/sbt-projects.md)
+    - [Dotty projects with cbt](usage/cbt-projects.md)
+    - [Dotty projects with sbt](usage/sbt-projects.md)
 * Contributing
     - [Getting Started](contributing/getting-started.md) details on how to run
       tests, use the cli scripts
