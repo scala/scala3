@@ -10,3 +10,4 @@ matrix:
     - test
     - partest-only-no-bootstrap --show-diff --verbose
     - partest-only --show-diff --verbose
+    - scripted
