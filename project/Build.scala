@@ -84,13 +84,19 @@ object DottyBuild extends Build {
 
 
   /** Projects -------------------------------------------------------------- */
+
+  // Needed because the dotty project aggregates dotty-sbt-bridge but dotty-sbt-bridge
+  // currently refers to dotty in its scripted task and "aggregate" does not take by-name
+  // parameters: https://github.com/sbt/sbt/issues/2200
+  lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
+
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
   // - publishes its own empty artifact "dotty" that depends on "dotty-library" and "dotty-compiler",
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-sbt-bridge`, `scala-library`).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef, `scala-library`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -428,9 +434,10 @@ object DottyBuild extends Build {
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
       ScriptedPlugin.scriptedBufferLog := false,
       ScriptedPlugin.scripted := {
-        val x1 = (publishLocal in `dotty-compiler`).value
-        val x2 = (publishLocal in `dotty-library`).value
-        val x3 = (publishLocal in `dotty-interfaces`).value
+        val x1 = (publishLocal in `dotty-interfaces`).value
+        val x2 = (publishLocal in `dotty-compiler`).value
+        val x3 = (publishLocal in `dotty-library`).value
+        val x4 = (publishLocal in dotty).value // Needed because sbt currently hardcodes the dotty artifact
         ScriptedPlugin.scriptedTask.evaluated
       }
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
