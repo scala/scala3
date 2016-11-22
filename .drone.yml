@@ -1,6 +1,7 @@
 pipeline:
   test:
-    image: felixmulder/dotty:0.2
+    image: felixmulder/dotty:0.1
+    pull: true
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
       - sbt -Ddotty.drone.mem=4096m -ivy /var/cache/drone/ivy2 "${TEST}"
@@ -10,4 +11,3 @@ matrix:
     - test
     - partest-only-no-bootstrap --show-diff --verbose
     - partest-only --show-diff --verbose
-    - scripted
