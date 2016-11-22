@@ -346,7 +346,7 @@ object DottyBuild extends Build {
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
           else List()
 
-        "-XX:+PrintGCDetails" :: ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
       }
     ).
     settings(publishing)
@@ -423,7 +423,13 @@ object DottyBuild extends Build {
     settings(
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
-      ScriptedPlugin.scriptedBufferLog := false
+      ScriptedPlugin.scriptedBufferLog := false,
+      ScriptedPlugin.scripted := {
+        val x1 = (publishLocal in `dotty-compiler`).value
+        val x2 = (publishLocal in `dotty-library`).value
+        val x3 = (publishLocal in `dotty-interfaces`).value
+        ScriptedPlugin.scriptedTask.evaluated
+      }
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
       // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
       /*,
