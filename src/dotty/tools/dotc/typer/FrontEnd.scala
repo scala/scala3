@@ -12,7 +12,6 @@ import config.Printers.{typr, default}
 import util.Stats._
 import scala.util.control.NonFatal
 import ast.Trees._
-import util.FreshNameCreator
 
 class FrontEnd extends Phase {
 
@@ -49,8 +48,8 @@ class FrontEnd extends Phase {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
     typr.println("typed: " + unit.source)
-    record("retainedUntypedTrees", unit.untpdTree.treeSize)
-    record("retainedTypedTrees", unit.tpdTree.treeSize)
+    record("retained untyped trees", unit.untpdTree.treeSize)
+    record("retained typed trees after typer", unit.tpdTree.treeSize)
   }
 
   private def firstTopLevelDef(trees: List[tpd.Tree])(implicit ctx: Context): Symbol = trees match {
@@ -64,13 +63,15 @@ class FrontEnd extends Phase {
     unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
-    val unitContexts = for (unit <- units) yield
-      ctx.fresh.setCompilationUnit(unit).setFreshNames(new FreshNameCreator.Default)
+    val unitContexts = for (unit <- units) yield {
+      ctx.inform(s"compiling ${unit.source}")
+      ctx.fresh.setCompilationUnit(unit)
+    }
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
-    record("totalTrees", ast.Trees.ntrees)
+    record("total trees after typer", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
 

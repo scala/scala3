@@ -105,7 +105,7 @@ object SymDenotations {
     ownerIfExists: Symbol,
     final val name: Name,
     initFlags: FlagSet,
-    final val initInfo: Type,
+    initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
     //assert(symbol.id != 4940, name)
@@ -232,7 +232,7 @@ object SymDenotations {
           case _ =>
         }
         */
-      if (Config.checkNoSkolemsInInfo) assertNoSkolems(initInfo)
+      if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
     }
 
@@ -751,7 +751,7 @@ object SymDenotations {
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor) 
+    def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
 
     // ------ access to related symbols ---------------------------------
 

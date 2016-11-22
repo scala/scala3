@@ -477,11 +477,9 @@ object ProtoTypes {
     def apply(tp: Type) = wildApprox(tp, this)
   }
 
-  @sharable private lazy val dummyTree = untpd.Literal(Constant(null))
-
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    def apply(tp: Type): Tree = dummyTree withTypeUnchecked tp
+    def apply(tp: Type): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
