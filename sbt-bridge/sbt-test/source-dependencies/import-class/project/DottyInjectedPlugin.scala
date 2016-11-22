@@ -12,6 +12,6 @@ object DottyInjectedPlugin extends AutoPlugin {
     scalaBinaryVersion  := "2.11",
     autoScalaLibrary := false,
     libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
+    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
   )
 }
