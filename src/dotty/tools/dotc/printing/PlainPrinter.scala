@@ -260,6 +260,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
         if (homogenizedView) toText(tp.info) else tp.repr
+      case tp: SingletonType =>
+        toText(tp.underlying)
     }
   }
 

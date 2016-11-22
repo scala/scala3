@@ -13,6 +13,7 @@ import config.Printers.config
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform._
+import dotty.tools.dotc.transform.linker._
 import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
@@ -243,6 +244,7 @@ object Phases {
     private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
     private val gettersCache = new PhaseCache(classOf[Getters])
     private val genBCodeCache = new PhaseCache(classOf[GenBCode])
+    private val summariesCache = new PhaseCache(classOf[CollectSummaries])
 
     def typerPhase = typerCache.phase
     def picklerPhase = picklerCache.phase
@@ -257,6 +259,7 @@ object Phases {
     def explicitOuterPhase = explicitOuterCache.phase
     def gettersPhase = gettersCache.phase
     def genBCodePhase = genBCodeCache.phase
+    def summariesPhase = summariesCache.phase
 
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }

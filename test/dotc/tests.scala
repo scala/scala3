@@ -46,6 +46,7 @@ class tests extends CompilerTest {
   val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
+  val linkDir       = testsDir + "link/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
 
@@ -157,9 +158,20 @@ class tests extends CompilerTest {
   @Test def neg_noimports = compileFile(negCustomArgs, "noimports", List("-Yno-imports"))
   @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
 
-  @Test def run_all = runFiles(runDir)
+//  @Test def run_all = runFiles(runDir)
 
-  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
+  @Test def link_dce_all = {
+    val linkDCEFlags = List(
+        List("-link-dce"),
+        List("-link-dce", "-link-vis")
+    )
+    for (flags <- linkDCEFlags) {
+      runFiles(linkDir + "dce/", flags)
+      runFiles(linkDir + "stdlib-dce/", "-language:Scala2" :: flags, extraFiles = stdlibFiles.map("/../../../" + _))
+    }
+  }
+
+  private val stdlibFiles: List[String] = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
    .map(_.trim) // allow identation
    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line

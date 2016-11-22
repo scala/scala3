@@ -360,6 +360,12 @@ class Definitions {
 
     def BoxedUnit_UNIT(implicit ctx: Context) = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
+
+  def isPrimitiveClass(sym: Symbol): Boolean = {
+    sym == defn.IntClass || sym == defn.LongClass || sym == defn.ShortClass || sym ==  defn.CharClass || sym == defn.ByteClass ||
+    sym == defn.BooleanClass || sym == defn.FloatClass || sym == defn.DoubleClass || sym == defn.UnitClass
+  }
+
   lazy val BoxedBooleanType: TypeRef = ctx.requiredClassRef("java.lang.Boolean")
   def BoxedBooleanClass(implicit ctx: Context) = BoxedBooleanType.symbol.asClass
   lazy val BoxedByteType: TypeRef = ctx.requiredClassRef("java.lang.Byte")
@@ -479,6 +485,8 @@ class Definitions {
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
+  lazy val ExportAnnotType = ctx.requiredClassRef("scala.export")
+  def ExportAnnot(implicit ctx: Context) = ExportAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")

@@ -1683,15 +1683,18 @@ object SymDenotations {
         else tp match {
           case tp: TypeRef =>
             val subcls = tp.symbol
-            if (subcls eq symbol)
-              tp
-            else subcls.denot match {
+            val a1 = subcls.denot match {
               case cdenot: ClassDenotation =>
-                if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
+                if ((cdenot.superClassBits contains symbol.superId) || ctx.isAfterTyper) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
                 baseTypeRefOf(tp.superType)
             }
+
+            if (subcls eq symbol)
+              tp
+            else a1
+
           case tp: TypeProxy =>
             baseTypeRefOf(tp.superType)
           case AndType(tp1, tp2) =>

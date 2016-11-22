@@ -7,17 +7,17 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
-import reporting.{Reporter, ConsoleReporter}
+import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
+import reporting.{ConsoleReporter, Reporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
-
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
 import dotty.tools.backend.sjs.GenSJSIR
+import dotty.tools.dotc.transform.linker.{BuildCallGraph, CollectSummaries, DeadCodeElimination}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -47,6 +47,8 @@ class Compiler {
       List(new PostTyper),          // Additional checks and cleanups after type checking
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
+      List(new CollectSummaries),   // Collects method summaries for the call graph construction
+      List(new BuildCallGraph),     // Builds the call graph
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
       List(new RefChecks,           // Various checks mostly related to abstract members and overriding
@@ -74,7 +76,7 @@ class Compiler {
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-      List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
+      List(new ElimErasedValueType, // Expand erased value types to their underlying implementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
            new Mixin,               // Expand trait fields and trait initializers
            new LazyVals,            // Expand lazy vals
@@ -84,14 +86,15 @@ class Compiler {
            new CapturedVars,        // Represent vars captured by closures as heap objects
            new Constructors,        // Collect initialization code in primary constructors
                                        // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-           new FunctionalInterfaces, // Rewrites closures to implement @specialized types of Functions.
+           new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
            new GetClass),           // Rewrites getClass calls on primitive types.
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
-      List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
+      List(new DeadCodeElimination, // Replaces dead code by a `throw new DeadCodeEliminated`
+           new ExpandPrivate,       // Widen private definitions accessed from nested classes
            new SelectStatic,        // get rid of selects that would be compiled into GetStatic
            new CollectEntryPoints,  // Find classes with main methods
            new CollectSuperCalls,   // Find classes that are called with super

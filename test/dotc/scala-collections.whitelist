@@ -83,9 +83,10 @@
 ./scala-scala/src/library/scala/collection/immutable/Seq.scala
 ./scala-scala/src/library/scala/collection/mutable/IndexedSeq.scala
 ./scala-scala/src/library/scala/collection/mutable/ListBuffer.scala
-./scala-scala/src/library/scala/collection/mutable/BufferLike.scala
 
 ./scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
+./scala-scala/src/library/scala/collection/mutable/BufferLike.scala
+./scala-scala/src/library/scala/collection/mutable/Buffer.scala
 
 ./scala-scala/src/library/scala/collection/immutable/Stack.scala
 ./scala-scala/src/library/scala/collection/immutable/StringLike.scala
@@ -188,7 +189,7 @@
 ./scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 ./scala-scala/src/library/scala/collection/immutable/HashMap.scala
-./scala-scala/src/library/scala/collection/immutable/HashSet.scala
+#./scala-scala/src/library/scala/collection/immutable/HashSet.scala
 
 
 ./scala-scala/src/library/scala/collection/immutable/IntMap.scala
@@ -280,3 +281,70 @@
 ./scala-scala/src/library/scala/collection/generic/Subtractable.scala
 ./scala-scala/src/library/scala/collection/generic/TraversableFactory.scala
 ./scala-scala/src/library/scala/collection/generic/package.scala
+
+# For call graph instantiation of fillStackTrace on instantiation of exceptions
+./scala-scala/src/library/scala/util/control/NoStackTrace.scala
+./scala-scala/src/library/scala/util/control/ControlThrowable.scala
+./scala-scala/src/library/scala/util/control/Breaks.scala
+
+# fails in partest
+#./scala-scala/src/library/scala/sys/SystemProperties.scala
+
+./scala-scala/src/library/scala/Function0.scala
+# Remove @specialized from Function1 type arguments, FIXME @specialized causing cyclic reference involving constructor specialized
+./scala-scala/src/library/scala/Function1.scala
+./scala-scala/src/library/scala/Function2.scala
+./scala-scala/src/library/scala/Function3.scala
+./scala-scala/src/library/scala/Function4.scala
+./scala-scala/src/library/scala/Function5.scala
+./scala-scala/src/library/scala/Function6.scala
+./scala-scala/src/library/scala/Function7.scala
+./scala-scala/src/library/scala/Function8.scala
+./scala-scala/src/library/scala/Function9.scala
+./scala-scala/src/library/scala/Function10.scala
+./scala-scala/src/library/scala/Function11.scala
+./scala-scala/src/library/scala/Function12.scala
+./scala-scala/src/library/scala/Function13.scala
+./scala-scala/src/library/scala/Function14.scala
+./scala-scala/src/library/scala/Function15.scala
+./scala-scala/src/library/scala/Function16.scala
+./scala-scala/src/library/scala/Function17.scala
+./scala-scala/src/library/scala/Function18.scala
+./scala-scala/src/library/scala/Function19.scala
+./scala-scala/src/library/scala/Function20.scala
+./scala-scala/src/library/scala/Function21.scala
+./scala-scala/src/library/scala/Function22.scala
+
+./scala-scala/src/library/scala/collection/mutable/MapLike.scala
+
+# migration warnings
+#./scala-scala/src/library/scala/collection/mutable/Map.scala
+./scala-scala/src/library/scala/collection/mutable/StringBuilder.scala
+
+./scala-scala/src/library/scala/sys/Prop.scala
+# makes pos/compileStdLib fail
+#./scala-scala/src/library/scala/sys/BooleanProp.scala
+#./scala-scala/src/library/scala/sys/PropImpl.scala
+
+# cant add because it is in java
+#./scala-scala/src/library/scala/math/ScalaNumber.java
+
+./scala-scala/src/library/scala/math/BigDecimal.scala
+./scala-scala/src/library/scala/math/BigInt.scala
+./scala-scala/src/library/scala/runtime/Nothing$.scala
+./scala-scala/src/library/scala/runtime/Null$.scala
+
+./scala-scala/src/library/scala/collection/mutable/Cloneable.scala
+./scala-scala/src/library/scala/collection/mutable/ArrayLike.scala
+./scala-scala/src/library/scala/collection/mutable/IndexedSeqLike.scala
+./scala-scala/src/library/scala/collection/mutable/IndexedSeqOptimized.scala
+./scala-scala/src/library/scala/collection/mutable/SeqLike.scala
+./scala-scala/src/library/scala/collection/mutable/Traversable.scala
+./scala-scala/src/library/scala/collection/mutable/Iterable.scala
+./scala-scala/src/library/scala/collection/mutable/Seq.scala
+./scala-scala/src/library/scala/collection/mutable/ArrayBuffer.scala
+./scala-scala/src/library/scala/collection/mutable/ResizableArray.scala
+
+./scala-scala/src/library/scala/util/Either.scala
+
+./scala-scala/src/library/scala/collection/script/Scriptable.scala
