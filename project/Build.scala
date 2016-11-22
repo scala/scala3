@@ -17,6 +17,7 @@ object DottyBuild extends Build {
   val jenkinsMemLimit = List("-Xmx1500m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
+  val DRONE_MEM = "dotty.drone.mem"
 
   val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd"
 
@@ -335,9 +336,11 @@ object DottyBuild extends Build {
             path.contains("sbt-interface")
         } yield "-Xbootclasspath/p:" + path
 
-        val travis_build = // propagate if this is a travis build
+        val ci_build = // propagate if this is a ci build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
             List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
+          else if (sys.props.isDefinedAt(DRONE_MEM))
+            List("-Xmx" + sys.props(DRONE_MEM))
           else List()
 
         val tuning =
@@ -346,7 +349,7 @@ object DottyBuild extends Build {
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
           else List()
 
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
     ).
     settings(publishing)
@@ -530,12 +533,14 @@ object DottyInjectedPlugin extends AutoPlugin {
         val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
         // System.err.println("BOOTPATH: " + fullpath)
 
-        val travis_build = // propagate if this is a travis build
+        val ci_build = // propagate if this is a ci build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
             List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}")
+          else if (sys.props.isDefinedAt(DRONE_MEM))
+            List("-Xmx" + sys.props(DRONE_MEM))
           else
             List()
-        val res = agentOptions ::: travis_build ::: fullpath
+        val res = agentOptions ::: ci_build ::: fullpath
         println("Running with javaOptions: " + res)
         res
       }

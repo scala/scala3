@@ -3,7 +3,7 @@ pipeline:
     image: felixmulder/dotty:0.2
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
-      - sbt -mem 4096 -ivy /var/cache/drone/ivy2 "${TEST}"
+      - sbt -Ddotty.drone.mem=4096m -ivy /var/cache/drone/ivy2 "${TEST}"
 
 matrix:
   TEST:
