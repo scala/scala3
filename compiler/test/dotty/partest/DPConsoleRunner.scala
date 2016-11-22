@@ -105,9 +105,9 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
     val seqResults =
       if (!sequentialTests.isEmpty) {
         val savedThreads = sys.props("partest.threads")
-        sys.props("partest.threads") = "1"
+        sys.props("partest.threads") = "2"
 
-        NestUI.echo(s"## we will run ${sequentialTests.length} tests sequentially")
+        NestUI.echo(s"## we will run ${sequentialTests.length} tests using ${PartestDefaults.numThreads} thread(s)")
         val res = super.runTestsForFiles(sequentialTests, kind)
 
         if (savedThreads != null)
@@ -120,7 +120,7 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
 
     val parResults =
       if (!parallelTests.isEmpty) {
-        NestUI.echo(s"## we will run ${parallelTests.length} tests in parallel using ${PartestDefaults.numThreads} threads")
+        NestUI.echo(s"## we will run ${parallelTests.length} tests in parallel using ${PartestDefaults.numThreads} thread(s)")
         super.runTestsForFiles(parallelTests, kind)
       } else Array[TestState]()
 
