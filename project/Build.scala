@@ -140,6 +140,11 @@ object DottyBuild extends Build {
     settings(
       overrideScalaVersionSetting,
 
+      // Disable scaladoc generation, it's way too slow and we'll replace it
+      // by dottydoc anyway. We still publish an empty -javadoc.jar to make
+      // sonatype happy.
+      sources in (Compile, doc) := Seq(),
+
       // necessary evil: dottydoc currently needs to be included in the dotty
       // project, for sbt integration
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
