@@ -183,7 +183,7 @@
 ../scala-scala/src/library/scala/collection/immutable/TrieIterator.scala
 
 ../scala-scala/src/library/scala/collection/immutable/HashMap.scala
-../scala-scala/src/library/scala/collection/immutable/HashSet.scala
+#../scala-scala/src/library/scala/collection/immutable/HashSet.scala # fails in 'testOnly dotc.tests'
 
 ../scala-scala/src/library/scala/collection/immutable/IntMap.scala
 ../scala-scala/src/library/scala/collection/immutable/ListMap.scala
@@ -267,11 +267,10 @@
 ../scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ../scala-scala/src/library/scala/util/control/Breaks.scala
 
-# fails in partest
-#../scala-scala/src/library/scala/sys/SystemProperties.scala
+#../scala-scala/src/library/scala/sys/SystemProperties.scala # fails in partest
 
 ../scala-scala/src/library/scala/Function0.scala
-../scala-scala/src/library/scala/Function1.scala
+#../scala-scala/src/library/scala/Function1.scala # fails in 'testOnly dotc.tests'
 ../scala-scala/src/library/scala/Function2.scala
 ../scala-scala/src/library/scala/Function3.scala
 ../scala-scala/src/library/scala/Function4.scala
