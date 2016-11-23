@@ -264,13 +264,14 @@ abstract class CompilerTest {
   private def compileArgs(args: Array[String], expectedErrorsPerFile: List[ErrorsInFile])
       (implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
+    val verbose = allArgs.contains("-verbose")
     //println(s"""all args: ${allArgs.mkString("\n")}""")
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
     val storeReporter = new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
       private val consoleReporter = new ConsoleReporter()
       private val innerStoreReporter = new StoreReporter(consoleReporter)
       def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
-        if (m.level == ERROR) {
+        if (m.level == ERROR || verbose) {
           innerStoreReporter.flush()
           consoleReporter.doReport(m)
         }
