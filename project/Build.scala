@@ -17,6 +17,7 @@ object DottyBuild extends Build {
   val jenkinsMemLimit = List("-Xmx1500m")
 
   val JENKINS_BUILD = "dotty.jenkins.build"
+  val DRONE_MEM = "dotty.drone.mem"
 
   val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd"
 
@@ -83,13 +84,19 @@ object DottyBuild extends Build {
 
 
   /** Projects -------------------------------------------------------------- */
+
+  // Needed because the dotty project aggregates dotty-sbt-bridge but dotty-sbt-bridge
+  // currently refers to dotty in its scripted task and "aggregate" does not take by-name
+  // parameters: https://github.com/sbt/sbt/issues/2200
+  lazy val dottySbtBridgeRef = LocalProject("dotty-sbt-bridge")
+
   // The root project:
   // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
   // - publishes its own empty artifact "dotty" that depends on "dotty-library" and "dotty-compiler",
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-sbt-bridge`, `scala-library`).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef, `scala-library`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -335,9 +342,11 @@ object DottyBuild extends Build {
             path.contains("sbt-interface")
         } yield "-Xbootclasspath/p:" + path
 
-        val travis_build = // propagate if this is a travis build
+        val ci_build = // propagate if this is a ci build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
             List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}") ::: jenkinsMemLimit
+          else if (sys.props.isDefinedAt(DRONE_MEM))
+            List("-Xmx" + sys.props(DRONE_MEM))
           else List()
 
         val tuning =
@@ -346,7 +355,7 @@ object DottyBuild extends Build {
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
           else List()
 
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: travis_build ::: path.toList
+        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
     ).
     settings(publishing)
@@ -380,7 +389,7 @@ object DottyBuild extends Build {
       overrideScalaVersionSetting,
 
       cleanSbtBridge := {
-        val dottyBridgeVersion = version.value
+        val dottySbtBridgeVersion = version.value
         val dottyVersion = (version in `dotty-compiler`).value
         val classVersion = System.getProperty("java.class.version")
 
@@ -392,8 +401,8 @@ object DottyBuild extends Build {
         val org = organization.value
         val artifact = moduleName.value
 
-        IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
-        IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottyBridgeVersion-bin_${dottyVersion}__$classVersion")
+        IO.delete(file(home) / ".ivy2" / "cache" / sbtOrg / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
+        IO.delete(file(home) / ".sbt"  / "boot" / s"scala-$sbtScalaVersion" / sbtOrg / "sbt" / sbtV / s"$org-$artifact-$dottySbtBridgeVersion-bin_${dottyVersion}__$classVersion")
       },
       publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
       description := "sbt compiler bridge for Dotty",
@@ -423,7 +432,14 @@ object DottyBuild extends Build {
     settings(
       ScriptedPlugin.sbtTestDirectory := baseDirectory.value / "sbt-test",
       ScriptedPlugin.scriptedLaunchOpts := Seq("-Xmx1024m"),
-      ScriptedPlugin.scriptedBufferLog := false
+      ScriptedPlugin.scriptedBufferLog := false,
+      ScriptedPlugin.scripted := {
+        val x1 = (publishLocal in `dotty-interfaces`).value
+        val x2 = (publishLocal in `dotty-compiler`).value
+        val x3 = (publishLocal in `dotty-library`).value
+        val x4 = (publishLocal in dotty).value // Needed because sbt currently hardcodes the dotty artifact
+        ScriptedPlugin.scriptedTask.evaluated
+      }
       // TODO: Use this instead of manually copying DottyInjectedPlugin.scala
       // everywhere once https://github.com/sbt/sbt/issues/2601 gets fixed.
       /*,
@@ -443,7 +459,7 @@ object DottyInjectedPlugin extends AutoPlugin {
     scalaBinaryVersion  := "2.11",
     autoScalaLibrary := false,
     libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
+    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
   )
 }
 """)
@@ -524,12 +540,14 @@ object DottyInjectedPlugin extends AutoPlugin {
         val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
         // System.err.println("BOOTPATH: " + fullpath)
 
-        val travis_build = // propagate if this is a travis build
+        val ci_build = // propagate if this is a ci build
           if (sys.props.isDefinedAt(JENKINS_BUILD))
             List(s"-D$JENKINS_BUILD=${sys.props(JENKINS_BUILD)}")
+          else if (sys.props.isDefinedAt(DRONE_MEM))
+            List("-Xmx" + sys.props(DRONE_MEM))
           else
             List()
-        val res = agentOptions ::: travis_build ::: fullpath
+        val res = agentOptions ::: ci_build ::: fullpath
         println("Running with javaOptions: " + res)
         res
       }
