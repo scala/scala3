@@ -21,15 +21,7 @@ class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
       List("../tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
-    val dottyInterfaces =
-      new java.io.File(Jars.dottyInterfaces).getPath
-    val dottyLibrary =
-      new java.io.File(Jars.dottyLib).getPath
-
-    val args =
-      sources ++
-      List("-d", "../out/") ++
-      List("-classpath", dottyInterfaces + ":" + dottyLibrary)
+    val args = sources ++ List("-d", "../out/", "-usejavacp")
 
     val mainClass = Class.forName("dotty.tools.dotc.Main")
     val process = mainClass.getMethod("process",
