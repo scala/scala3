@@ -114,9 +114,16 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
     val seqResults =
       if (!limitResourceTests.isEmpty) {
         val savedThreads = sys.props("partest.threads")
-        sys.props("partest.threads") = limitedThreads
+        sys.props("partest.threads") = {
+          assert(
+            savedThreads == null || limitedThreads.toInt <= savedThreads.toInt,
+            """|Should not use more threads than the default, when the point
+               |is to limit the amount of resources""".stripMargin
+          )
+          limitedThreads
+        }
 
-        NestUI.echo(s"## we will run ${limitResourceTests.length} tests using ${PartestDefaults.numThreads} thread(s)")
+        NestUI.echo(s"## we will run ${limitResourceTests.length} tests using ${PartestDefaults.numThreads} thread(s) in parallel")
         val res = super.runTestsForFiles(limitResourceTests, kind)
 
         if (savedThreads != null)
@@ -392,13 +399,9 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
 
   // override to keep class files if failed and delete clog if ok
-  override def cleanup = if (lastState.isOk) try {
+  override def cleanup = if (lastState.isOk) {
     logFile.delete
     cLogFile.delete
     Directory(outDir).deleteRecursively
-  } catch {
-    case t: Throwable =>
-      println("whhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat")
-      throw t
   }
 }
