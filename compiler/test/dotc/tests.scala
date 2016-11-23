@@ -353,12 +353,12 @@ class tests extends CompilerTest {
     println(f)
     println(System.getProperty("java.class.path"))
 
-
     val opt = List("-priorityclasspath", defaultOutputDir, "-Ylog-classpath")
     // first compile dotty
     compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes)
 
-
+    compileDir(libDir, "dotty", "-deep" :: opt)
+    compileDir(libDir, "scala", "-deep" :: opt)
     compileDir(dottyDir, "tools", opt)
     compileDir(toolsDir, "dotc", opt)
     compileDir(dotcDir, "ast", opt)
