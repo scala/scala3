@@ -149,7 +149,7 @@ abstract class CompilerTest {
 
   /** Compiles the code files in the given directory together. If args starts
     * with "-deep", all files in subdirectories (and so on) are included. */
-  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false)
+  def compileDir(prefix: String, dirName: String, args: List[String] = Nil, runTest: Boolean = false, stdlibFiles: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit = {
     def computeFilePathsAndExpErrors = {
       val dir = Directory(prefix + dirName)
@@ -157,8 +157,7 @@ abstract class CompilerTest {
         case "-deep" :: args1 => (dir.deepFiles, args1)
         case _ => (dir.files, args)
       }
-      val (filePaths, javaFilePaths) = files
-        .toArray.map(_.toString)
+      val (filePaths, javaFilePaths) = (files.map(_.toString) ++ stdlibFiles)
         .foldLeft((Array.empty[String], Array.empty[String])) { case (acc @ (fp, jfp), name) =>
           if (name endsWith ".scala") (name +: fp, jfp)
           else if (name endsWith ".java") (fp, name +: jfp)
@@ -202,9 +201,9 @@ abstract class CompilerTest {
   /** Compiles each source in the directory path separately by calling
     * compileFile resp. compileDir. */
   def compileFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, runTest: Boolean = false,
-                   compileSubDirs: Boolean = true, extraFiles: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
+                   compileSubDirs: Boolean = true, stdlibFiles: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
-    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java")) ++ extraFiles
+    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       if (verbose) log(s"testing $path$name")
       compileFile(path, name, args, "", runTest)
@@ -212,12 +211,12 @@ abstract class CompilerTest {
     if (compileSubDirs)
       for (subdir <- dir.dirs) {
         if (verbose) log(s"testing $subdir")
-        compileDir(path, subdir.jfile.getName, args, runTest)
+        compileDir(path, subdir.jfile.getName, args, runTest, stdlibFiles)
       }
   }
-  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, extraFiles: List[String] = Nil)
+  def runFiles(path: String, args: List[String] = Nil, verbose: Boolean = true, stdlibFiles: List[String] = Nil)
       (implicit defaultOptions: List[String]): Unit =
-    compileFiles(path, args, verbose, true, extraFiles = extraFiles)
+    compileFiles(path, args, verbose, true, stdlibFiles = stdlibFiles)
 
   /** Compiles the given list of code files. */
   def compileList(testName: String, files: List[String], args: List[String] = Nil)

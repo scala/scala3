@@ -212,9 +212,9 @@ class tests extends CompilerTest {
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_stdlib_dce_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce"), extraFiles = stdlibFiles.map("../../" + _))
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce"), stdlibFiles = stdlibFiles)
   @Test def link_stdlib_dce_vis_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis"), extraFiles = stdlibFiles.map("../../" + _))
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis"), stdlibFiles = stdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
