@@ -1830,7 +1830,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ctx.typeComparer.GADTused = false
         if (ctx.mode is Mode.Pattern) {
           tree match {
-            case _: RefTree | _: Literal if !isVarPattern(tree) =>
+            case _: RefTree | _: Literal
+            if !isVarPattern(tree) &&
+               !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
               checkCanEqual(pt, wtp, tree.pos)(ctx.retractMode(Mode.Pattern))
             case _ =>
           }
