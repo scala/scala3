@@ -47,10 +47,10 @@ class tests extends CompilerTest {
             | - DOTTY_INTERFACES
             | - DOTTY_EXTRAS
             |
-            |Where these all contain locations, except extras which is a comma
+            |Where these all contain locations, except extras which is a colon
             |separated list of jars.
             |
-            |When compiling with eclipse, you need the sbt-interfaces jar, but
+            |When compiling with eclipse, you need the sbt-interfaces jar, put
             |it in extras."""
       )
       file.getAbsolutePath
@@ -349,10 +349,6 @@ class tests extends CompilerTest {
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 
   @Test def tasty_bootstrap = {
-    val f = new JFile(getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
-    println(f)
-    println(System.getProperty("java.class.path"))
-
     val opt = List("-priorityclasspath", defaultOutputDir, "-Ylog-classpath")
     // first compile dotty
     compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes)
