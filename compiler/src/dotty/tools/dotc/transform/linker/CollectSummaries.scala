@@ -3,6 +3,7 @@ package dotty.tools.dotc.transform.linker
 import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -15,6 +16,7 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.summaries.{CallInfo, MethodSummary, OuterTargs}
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
+import dotty.tools.dotc.typer.Applications._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -418,12 +420,76 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (!tree.symbol.is(Label))
-       registerCall(tree)
+        registerCall(tree)
       tree
     }
 
     override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       registerCall(tree)
+      tree
+    }
+
+    def registerUnApply(selector: tpd.Tree, tree: tpd.UnApply)(implicit ctx: Context, info: TransformerInfo): Unit = {
+      def registerNestedUnapply(nestedSelector: Tree, nestedPattern: Tree): Unit = nestedPattern match {
+        case nestedUnapply: UnApply => registerUnApply(nestedSelector, nestedUnapply)
+        case _ =>
+      }
+
+      def registerNestedUnapplyFromProduct(product: Tree, patterns: List[Tree]): Unit =
+        for ((nestedPat, idx) <- patterns.zipWithIndex) {
+          val nestedSel = product.select(nme.selectorName(idx))
+          registerCall(nestedSel) // register call to Product._x
+          registerNestedUnapply(nestedSel, nestedPat)
+        }
+
+      def registerNestedUnapplyFromSeq(seq: Tree, patterns: List[Tree]): Unit = {
+        registerCall(seq.select(nme.lengthCompare).appliedTo(Literal(Constant(patterns.size))))
+
+        if (patterns.size >= 1) {
+          val headSel  = seq.select(nme.head)
+          val tailSels = for (i <- 1 until patterns.size) yield seq.select(nme.apply).appliedTo(Literal(Constant(i)))
+          val nestedSels = Seq(headSel) ++ tailSels
+
+          for ((nestedSel, nestedPat) <- nestedSels zip patterns) {
+            registerCall(nestedSel)
+            registerNestedUnapply(nestedSel, nestedPat)
+          }
+        }
+      }
+
+      val unapplyCall = Apply(tree.fun, List(selector))
+      registerCall(unapplyCall)
+
+      val unapplyResultType = unapplyCall.tpe
+      val hasIsDefined = extractorMemberType(unapplyResultType, nme.isDefined) isRef defn.BooleanClass
+      val hasGet = extractorMemberType(unapplyResultType, nme.get).exists
+
+      if (hasIsDefined && hasGet) { // if result of unapply is an Option
+        val getCall = unapplyCall.select(nme.get)
+
+        // register Option.isDefined and Option.get calls
+        registerCall(unapplyCall.select(nme.isDefined))
+        registerCall(getCall)
+
+        if (tree.fun.symbol.name == nme.unapplySeq)                 // result of unapplySeq is Option[Seq[T]]
+          registerNestedUnapplyFromSeq(getCall, tree.patterns)
+        else if (tree.patterns.size == 1)                           // result of unapply is Option[T]
+          registerNestedUnapply(getCall, tree.patterns.head)
+        else                                                        // result of unapply is Option[(T1, ..., Tn)]
+          registerNestedUnapplyFromProduct(getCall, tree.patterns)
+
+      } else if (defn.isProductSubType(unapplyResultType)) {
+        // if result of unapply is a Product
+        registerNestedUnapplyFromProduct(unapplyCall, tree.patterns)
+      }
+    }
+
+    override def transformMatch(tree: tpd.Match)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      tree.cases foreach { case CaseDef(pat, _, _) => pat match {
+        case unapply: tpd.UnApply => registerUnApply(tree.selector, unapply)
+        case _ =>
+      }}
+
       tree
     }
 
