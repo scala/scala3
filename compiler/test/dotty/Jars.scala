@@ -15,7 +15,9 @@ object Jars {
   }
 
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
-    .map(_.split(",").toList).getOrElse(Nil)
+    .map(_.split(":").toList).getOrElse(Nil)
+
+  val dottyReplDeps: List[String] = dottyLib :: dottyExtras
 
   val dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
