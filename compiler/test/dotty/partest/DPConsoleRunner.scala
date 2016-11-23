@@ -88,27 +88,36 @@ extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPat
     """.stripMargin
   }
 
-  /** Tests which are compiled with one or more of the flags in this list will be run
-   *  one by one, without any other test running at the same time.
-   *  This is necessary because some test flags require a lot of memory when running
-   *  the compiler and may exhaust the available memory when run in parallel with other tests.
-   */
-  def sequentialFlags = List("-Ytest-pickler")
+  /** Some tests require a limitation of resources, tests which are compiled
+    * with one or more of the flags in this list will be run with
+    * `limitedThreads`. This is necessary because some test flags require a lot
+    * of memory when running the compiler and may exhaust the available memory
+    * when run in parallel with too many other tests.
+    *
+    * This number could be increased on the CI, but might fail locally if
+    * scaled too extreme - override with:
+    *
+    * ```
+    * -Ddotty.tests.limitedThreads=X
+    * ```
+    */
+  def limitResourceFlags = List("-Ytest-pickler")
+  private val limitedThreads = sys.props.get("dotty.tests.limitedThreads").getOrElse("2")
 
   override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[TestState] = {
-    val (sequentialTests, parallelTests) =
+    val (limitResourceTests, parallelTests) =
       kindFiles partition { kindFile =>
         val flags = kindFile.changeExtension("flags").fileContents
-        sequentialFlags.exists(seqFlag => flags.contains(seqFlag))
+        limitResourceFlags.exists(seqFlag => flags.contains(seqFlag))
       }
 
     val seqResults =
-      if (!sequentialTests.isEmpty) {
+      if (!limitResourceTests.isEmpty) {
         val savedThreads = sys.props("partest.threads")
-        sys.props("partest.threads") = "2"
+        sys.props("partest.threads") = limitedThreads
 
-        NestUI.echo(s"## we will run ${sequentialTests.length} tests using ${PartestDefaults.numThreads} thread(s)")
-        val res = super.runTestsForFiles(sequentialTests, kind)
+        NestUI.echo(s"## we will run ${limitResourceTests.length} tests using ${PartestDefaults.numThreads} thread(s)")
+        val res = super.runTestsForFiles(limitResourceTests, kind)
 
         if (savedThreads != null)
           sys.props("partest.threads") = savedThreads
