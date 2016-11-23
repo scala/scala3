@@ -1,4 +1,5 @@
-package dotty.tools
+package dotty
+package tools
 
 import dotc.core._
 import dotc.core.Contexts._
@@ -18,8 +19,7 @@ class ShowClassTests extends DottyTest {
     ctx.setSetting(ctx.settings.encoding, "UTF8")
     ctx.setSetting(
       ctx.settings.classpath,
-      "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar" +
-      ":../interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
+      Jars.dottyLib + ":" + Jars.dottyInterfaces
     )
     base.initialize()(ctx)
     ctx

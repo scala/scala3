@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty
+package tools.dotc
 
 import org.junit.Test
 import org.junit.Assert._
@@ -21,9 +22,9 @@ class InterfaceEntryPointTest {
     val sources =
       List("../tests/pos/HelloWorld.scala").map(p => new java.io.File(p).getPath())
     val dottyInterfaces =
-      new java.io.File("../interfaces/dotty-interfaces-0.1-SNAPSHOT.jar").getPath
+      new java.io.File(Jars.dottyInterfaces).getPath
     val dottyLibrary =
-      new java.io.File("../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar").getPath
+      new java.io.File(Jars.dottyLib).getPath
 
     val args =
       sources ++

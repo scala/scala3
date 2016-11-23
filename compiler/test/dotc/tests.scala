@@ -1,5 +1,6 @@
 package dotc
 
+import dotty.Jars
 import dotty.tools.dotc.CompilerTest
 import org.junit.{Before, Test}
 
@@ -32,18 +33,28 @@ class tests extends CompilerTest {
   )
 
   val classPath = {
-    val paths = List(
-      "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar",
-      "./target/scala-2.11/dotty-compiler_2.11-0.1-SNAPSHOT.jar",
-      "../interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar"
-    ).map { p =>
+    val paths = Jars.dottyTestDeps map { p =>
       val file = new JFile(p)
       assert(
         file.exists,
-        s"""File "$p" couldn't be found. Run `packageAll` from build tool before testing"""
+        s"""|File "$p" couldn't be found. Run `packageAll` from build tool before
+            |testing.
+            |
+            |If running without sbt, test paths need to be setup environment variables:
+            |
+            | - DOTTY_LIBRARY
+            | - DOTTY_COMPILER
+            | - DOTTY_INTERFACES
+            | - DOTTY_EXTRAS
+            |
+            |Where these all contain locations, except extras which is a comma
+            |separated list of jars.
+            |
+            |When compiling with eclipse, you need the sbt-interfaces jar, but
+            |it in extras."""
       )
       file.getAbsolutePath
-    }.mkString(":")
+    } mkString (":")
 
     List("-classpath", paths)
   }
@@ -338,9 +349,15 @@ class tests extends CompilerTest {
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 
   @Test def tasty_bootstrap = {
+    val f = new JFile(getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
+    println(f)
+    println(System.getProperty("java.class.path"))
+
+
     val opt = List("-priorityclasspath", defaultOutputDir, "-Ylog-classpath")
     // first compile dotty
     compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes)
+
 
     compileDir(dottyDir, "tools", opt)
     compileDir(toolsDir, "dotc", opt)
