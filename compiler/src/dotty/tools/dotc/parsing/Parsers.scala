@@ -83,6 +83,15 @@ object Parsers {
     def atPos[T <: Positioned](start: Offset)(t: T): T =
       atPos(start, start)(t)
 
+    def startOffset(t: Positioned): Int =
+      if (t.pos.exists) t.pos.start else in.offset
+
+    def pointOffset(t: Positioned): Int =
+      if (t.pos.exists) t.pos.point else in.offset
+
+    def endOffset(t: Positioned): Int =
+      if (t.pos.exists) t.pos.end else in.lastOffset
+
     def nameStart: Offset =
       if (in.token == BACKQUOTED_IDENT) in.offset + 1 else in.offset
 
@@ -448,7 +457,7 @@ object Parsers {
           val topInfo = opStack.head
           opStack = opStack.tail
           val od = reduceStack(base, topInfo.operand, 0, true)
-          return atPos(od.pos.start, topInfo.offset) {
+          return atPos(startOffset(od), topInfo.offset) {
             PostfixOp(od, topInfo.operator)
           }
         }
@@ -492,7 +501,7 @@ object Parsers {
 
     /** Accept identifier acting as a selector on given tree `t`. */
     def selector(t: Tree): Tree =
-      atPos(t.pos.start, in.offset) { Select(t, ident()) }
+      atPos(startOffset(t), in.offset) { Select(t, ident()) }
 
     /** Selectors ::= ident { `.' ident()
      *
@@ -728,7 +737,7 @@ object Parsers {
 
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) refinedTypeRest(atPos(t.pos.start) { RefinedTypeTree(t, refinement()) })
+      if (in.token == LBRACE) refinedTypeRest(atPos(startOffset(t)) { RefinedTypeTree(t, refinement()) })
       else t
     }
 
@@ -749,7 +758,7 @@ object Parsers {
     def annotType(): Tree = annotTypeRest(simpleType())
 
     def annotTypeRest(t: Tree): Tree =
-      if (in.token == AT) annotTypeRest(atPos(t.pos.start) { Annotated(t, annot()) })
+      if (in.token == AT) annotTypeRest(atPos(startOffset(t)) { Annotated(t, annot()) })
       else t
 
     /** SimpleType       ::=  SimpleType TypeArgs
@@ -780,19 +789,19 @@ object Parsers {
     val handleSingletonType: Tree => Tree = t =>
       if (in.token == TYPE) {
         in.nextToken()
-        atPos(t.pos.start) { SingletonTypeTree(t) }
+        atPos(startOffset(t)) { SingletonTypeTree(t) }
       } else t
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
-      case LBRACKET => simpleTypeRest(atPos(t.pos.start) { AppliedTypeTree(t, typeArgs(namedOK = true)) })
+      case LBRACKET => simpleTypeRest(atPos(startOffset(t)) { AppliedTypeTree(t, typeArgs(namedOK = true)) })
       case _ => t
     }
 
     private def typeProjection(t: Tree): Tree = {
       accept(HASH)
       val id = typeIdent()
-      atPos(t.pos.start, id.pos.start) { Select(t, id.name) }
+      atPos(startOffset(t), startOffset(id)) { Select(t, id.name) }
     }
 
     /** NamedTypeArg      ::=  id `=' Type
@@ -846,7 +855,7 @@ object Parsers {
       val t = toplevelTyp()
       if (isIdent(nme.raw.STAR)) {
         in.nextToken()
-        atPos(t.pos.start) { PostfixOp(t, nme.raw.STAR) }
+        atPos(startOffset(t)) { PostfixOp(t, nme.raw.STAR) }
       } else t
     }
 
@@ -971,7 +980,7 @@ object Parsers {
       val t = expr1(location)
       if (in.token == ARROW) {
         placeholderParams = saved
-        closureRest(t.pos.start, location, convertToParams(t))
+        closureRest(startOffset(t), location, convertToParams(t))
       }
       else if (isWildcard(t)) {
         placeholderParams = placeholderParams ::: saved
@@ -1025,7 +1034,7 @@ object Parsers {
               assert(handlerStart != -1)
               syntaxError(
                 new EmptyCatchBlock(body),
-                Position(handlerStart, handler.pos.end)
+                Position(handlerStart, endOffset(handler))
               )
             case _ =>
           }
@@ -1035,7 +1044,7 @@ object Parsers {
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
-                source atPos Position(tryOffset, body.pos.end)
+                source atPos Position(tryOffset, endOffset(body))
               )
               EmptyTree
             }
@@ -1057,21 +1066,21 @@ object Parsers {
       case EQUALS =>
          t match {
            case Ident(_) | Select(_, _) | Apply(_, _) =>
-             atPos(t.pos.start, in.skipToken()) { Assign(t, expr()) }
+             atPos(startOffset(t), in.skipToken()) { Assign(t, expr()) }
            case _ =>
              t
          }
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        atPos(t.pos.start, in.skipToken()) {
+        atPos(startOffset(t), in.skipToken()) {
           inBraces(Match(t, caseClauses()))
         }
       case _ =>
         t
     }
 
-    def ascription(t: Tree, location: Location.Value) = atPos(t.pos.start, in.skipToken()) {
+    def ascription(t: Tree, location: Location.Value) = atPos(startOffset(t), in.skipToken()) {
       in.token match {
         case USCORE =>
           val uscoreStart = in.skipToken()
@@ -1105,7 +1114,7 @@ object Parsers {
       val id = termIdent()
       val paramExpr =
         if (location == Location.InBlock && in.token == COLON)
-          atPos(id.pos.start, in.skipToken()) { Typed(id, infixType()) }
+          atPos(startOffset(id), in.skipToken()) { Typed(id, infixType()) }
         else
           id
       closureRest(start, location, convertToParam(paramExpr, mods) :: Nil)
@@ -1194,13 +1203,13 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selector(t), canApply = true)
         case LBRACKET =>
-          val tapp = atPos(t.pos.start, in.offset) { TypeApply(t, typeArgs(namedOK = true)) }
+          val tapp = atPos(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE if canApply =>
-          val app = atPos(t.pos.start, in.offset) { Apply(t, argumentExprs()) }
+          val app = atPos(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
         case USCORE =>
-          atPos(t.pos.start, in.skipToken()) { PostfixOp(t, nme.WILDCARD) }
+          atPos(startOffset(t), in.skipToken()) { PostfixOp(t, nme.WILDCARD) }
         case _ =>
           t
       }
@@ -1284,7 +1293,7 @@ object Parsers {
       if (in.token == IF) guard()
       else {
         val pat = pattern1()
-        if (in.token == EQUALS) atPos(pat.pos.start, in.skipToken()) { GenAlias(pat, expr()) }
+        if (in.token == EQUALS) atPos(startOffset(pat), in.skipToken()) { GenAlias(pat, expr()) }
         else generatorRest(pat)
       }
 
@@ -1293,7 +1302,7 @@ object Parsers {
     def generator(): Tree = generatorRest(pattern1())
 
     def generatorRest(pat: Tree) =
-      atPos(pat.pos.start, accept(LARROW)) { GenFrom(pat, expr()) }
+      atPos(startOffset(pat), accept(LARROW)) { GenFrom(pat, expr()) }
 
     /** ForExpr  ::= `for' (`(' Enumerators `)' | `{' Enumerators `}')
      *                {nl} [`yield'] Expr
@@ -1357,7 +1366,7 @@ object Parsers {
     val pattern = () => {
       val pat = pattern1()
       if (isIdent(nme.raw.BAR))
-        atPos(pat.pos.start) { Alternative(pat :: patternAlts()) }
+        atPos(startOffset(pat)) { Alternative(pat :: patternAlts()) }
       else pat
     }
 
@@ -1383,15 +1392,15 @@ object Parsers {
         // compatibility for Scala2 `x @ _*` syntax
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
-            migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", p.pos.start)
-            atPos(p.pos.start, offset) { Typed(p, pt) }
+            migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", startOffset(p))
+            atPos(startOffset(p), offset) { Typed(p, pt) }
           case p =>
-            atPos(p.pos.start, offset) { Bind(name, p) }
+            atPos(startOffset(p), offset) { Bind(name, p) }
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
-        migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", p.pos.start)
-        atPos(p.pos.start) { Typed(Ident(nme.WILDCARD), p) }
+        migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", startOffset(p))
+        atPos(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
     }
@@ -1415,7 +1424,7 @@ object Parsers {
     val simplePattern = () => in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS =>
         path(thisOK = true) match {
-          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(id.pos.start)
+          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
         }
       case USCORE =>
@@ -1445,9 +1454,9 @@ object Parsers {
     def simplePatternRest(t: Tree): Tree = {
       var p = t
       if (in.token == LBRACKET)
-        p = atPos(t.pos.start, in.offset) { TypeApply(p, typeArgs()) }
+        p = atPos(startOffset(t), in.offset) { TypeApply(p, typeArgs()) }
       if (in.token == LPAREN)
-        p = atPos(t.pos.start, in.offset) { Apply(p, argumentPatterns()) }
+        p = atPos(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
       p
     }
 
@@ -1573,7 +1582,8 @@ object Parsers {
         case Select(qual, name) => cpy.Select(tree)(adjustStart(start)(qual), name)
         case _ => tree
       }
-      if (start < tree1.pos.start) tree1.withPos(tree1.pos.withStart(start))
+      if (tree1.pos.exists && start < tree1.pos.start)
+        tree1.withPos(tree1.pos.withStart(start))
       else tree1
     }
 
@@ -1771,7 +1781,7 @@ object Parsers {
       case imp: Import =>
         imp
       case sel @ Select(qual, name) =>
-        val selector = atPos(sel.pos.point) { Ident(name) }
+        val selector = atPos(pointOffset(sel)) { Ident(name) }
         cpy.Import(sel)(qual, selector :: Nil)
       case t =>
         accept(DOT)
@@ -1804,7 +1814,7 @@ object Parsers {
     def importSelector(): Tree = {
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
-        atPos(from.pos.start, in.skipToken()) {
+        atPos(startOffset(from), in.skipToken()) {
           Thicket(from, termIdentOrWildcard())
         }
       else from
@@ -2085,7 +2095,7 @@ object Parsers {
 
     /** Create a tree representing a packaging */
     def makePackaging(start: Int, pkg: Tree, stats: List[Tree]): PackageDef = pkg match {
-      case x: RefTree => atPos(start, pkg.pos.point)(PackageDef(x, stats))
+      case x: RefTree => atPos(start, pointOffset(pkg))(PackageDef(x, stats))
     }
 
     /** Packaging ::= package QualId [nl] `{' TopStatSeq `}'
