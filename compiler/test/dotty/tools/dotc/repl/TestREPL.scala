@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty
+package tools.dotc
 package repl
 
 import core.Contexts.Context
@@ -23,10 +24,7 @@ class TestREPL(script: String) extends REPL {
     override def context(ctx: Context) = {
       val fresh = ctx.fresh
       fresh.setSetting(ctx.settings.color, "never")
-      fresh.setSetting(
-        ctx.settings.classpath,
-        "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
-      )
+      fresh.setSetting(ctx.settings.classpath, Jars.dottyReplDeps.mkString(":"))
       fresh.initialize()(fresh)
       fresh
     }

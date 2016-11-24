@@ -120,15 +120,20 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
       else false
 
-    /** A symbol qualifies if it really exists. In addition,
-     *  if we are in a constructor of a pattern, we ignore all definitions
+    /** A symbol qualifies if it really exists and is not a package class.
+     *  In addition, if we are in a constructor of a pattern, we ignore all definitions
      *  which are methods and not accessors (note: if we don't do that
      *  case x :: xs in class List would return the :: method).
+     *
+     *  Package classes are part of their parent's scope, because otherwise
+     *  we could not reload them via `_.member`. On the other hand, accessing a
+     *  package as a type from source is always an error.
      */
     def qualifies(denot: Denotation): Boolean =
-      reallyExists(denot) && !(
-        pt.isInstanceOf[UnapplySelectionProto] &&
-          (denot.symbol is (Method, butNot = Accessor)))
+      reallyExists(denot) &&
+        !(pt.isInstanceOf[UnapplySelectionProto] &&
+          (denot.symbol is (Method, butNot = Accessor))) &&
+        !(denot.symbol is PackageClass)
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
