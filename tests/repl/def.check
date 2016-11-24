@@ -1,0 +1,9 @@
+scala> def foo = 5
+def foo: Int
+scala> def bar: String = "1"
+def bar: String
+scala> def baz() = 2
+def baz(): Int
+scala> def qux(): Int = 2
+def qux(): Int
+scala> :quit
