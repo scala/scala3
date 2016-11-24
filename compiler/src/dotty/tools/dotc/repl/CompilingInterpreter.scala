@@ -740,9 +740,28 @@ class CompilingInterpreter(
       override def defNames = boundNames
 
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
-        if (!defDef.mods.is(Flags.AccessFlags))
-          code.print("+\"def " + string2code(defDef.name.toString) +
-            string2code(req.typeOf(defDef.name)) + "\\n\"")
+        /** TODO: This is the result of the state of the REPL - this would be
+          * entirely unnecessary with a better structure where we could just
+          * use the type printer
+          *
+          * @see `def findTypes` for an explanation of what should be done
+          */
+        if (!defDef.mods.is(Flags.AccessFlags)) {
+          val tpt = defDef.tpt match {
+            // ascribed TypeExpr e.g: `def foo: Int = 5`
+            case Ident(tpt) if defDef.vparamss.isEmpty =>
+              ": " + tpt.show
+            // inferred TypeExpr e.g: `def foo = 5`
+            case tpt if defDef.vparamss.isEmpty =>
+              ": " + req.typeOf(defDef.name)
+            // Inferred or ascribed MethodType with parameter list
+            case _ =>
+              req.typeOf(defDef.name)
+          }
+          code.print {
+            "+\"def " + string2code(defDef.name.toString) + tpt + "\\n\""
+          }
+        }
       }
     }
 
