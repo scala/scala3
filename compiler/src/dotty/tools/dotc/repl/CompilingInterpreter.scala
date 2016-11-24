@@ -443,7 +443,10 @@ class CompilingInterpreter(
             }
 
           // the types are all =>T; remove the =>
-          val cleanedType = rawType.widenExpr
+          val cleanedType = rawType.widenExpr match {
+            case tp: MethodType => tp.resultType
+            case tp => tp
+          }
 
           map + (name ->
             ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
@@ -747,19 +750,21 @@ class CompilingInterpreter(
           * @see `def findTypes` for an explanation of what should be done
           */
         if (!defDef.mods.is(Flags.AccessFlags)) {
+          // Take the DefDef and remove the `rhs` and ascribed type `tpt`
+          val copy = ast.untpd.cpy.DefDef(defDef)(
+            rhs = EmptyTree,
+            tpt = TypeTree
+          )
+
           val tpt = defDef.tpt match {
             // ascribed TypeExpr e.g: `def foo: Int = 5`
             case Ident(tpt) if defDef.vparamss.isEmpty =>
               ": " + tpt.show
-            // inferred TypeExpr e.g: `def foo = 5`
-            case tpt if defDef.vparamss.isEmpty =>
+            case tpt =>
               ": " + req.typeOf(defDef.name)
-            // Inferred or ascribed MethodType with parameter list
-            case _ =>
-              req.typeOf(defDef.name)
           }
           code.print {
-            "+\"def " + string2code(defDef.name.toString) + tpt + "\\n\""
+            "+\"" + string2code(copy.show) + tpt + "\\n\""
           }
         }
       }
