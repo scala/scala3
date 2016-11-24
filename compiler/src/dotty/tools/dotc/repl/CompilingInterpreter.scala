@@ -443,7 +443,10 @@ class CompilingInterpreter(
             }
 
           // the types are all =>T; remove the =>
-          val cleanedType = rawType.widenExpr
+          val cleanedType = rawType.widenExpr match {
+            case tp: MethodType => tp.resultType
+            case tp => tp
+          }
 
           map + (name ->
             ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
@@ -685,7 +688,12 @@ class CompilingInterpreter(
         val varType = string2code(req.typeOf(varName))
         val fullPath = req.fullPath(varName)
 
-        s""" + "$prettyName: $varType = " + {
+        val varOrVal = statement match {
+          case v: ValDef if v.mods is Flags.Mutable => "var"
+          case _ => "val"
+        }
+
+        s""" + "$varOrVal $prettyName: $varType = " + {
            |  if ($fullPath.asInstanceOf[AnyRef] != null) {
            |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") +
            |      $fullPath.toString() + "\\n"
@@ -735,9 +743,30 @@ class CompilingInterpreter(
       override def defNames = boundNames
 
       override def resultExtractionCode(req: Request, code: PrintWriter): Unit = {
-        if (!defDef.mods.is(Flags.AccessFlags))
-          code.print("+\"" + string2code(defDef.name.toString) + ": " +
-            string2code(req.typeOf(defDef.name)) + "\\n\"")
+        /** TODO: This is the result of the state of the REPL - this would be
+          * entirely unnecessary with a better structure where we could just
+          * use the type printer
+          *
+          * @see `def findTypes` for an explanation of what should be done
+          */
+        if (!defDef.mods.is(Flags.AccessFlags)) {
+          // Take the DefDef and remove the `rhs` and ascribed type `tpt`
+          val copy = ast.untpd.cpy.DefDef(defDef)(
+            rhs = EmptyTree,
+            tpt = TypeTree
+          )
+
+          val tpt = defDef.tpt match {
+            // ascribed TypeExpr e.g: `def foo: Int = 5`
+            case Ident(tpt) if defDef.vparamss.isEmpty =>
+              ": " + tpt.show
+            case tpt =>
+              ": " + req.typeOf(defDef.name)
+          }
+          code.print {
+            "+\"" + string2code(copy.show) + tpt + "\\n\""
+          }
+        }
       }
     }
 
