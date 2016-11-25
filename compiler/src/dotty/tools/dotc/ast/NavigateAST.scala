@@ -4,7 +4,7 @@ package ast
 import core.Contexts.Context
 import core.Decorators._
 import util.Positions._
-import Trees.{MemberDef, DefTree}
+import Trees.{MemberDef, DefTree, WithLazyField}
 
 /** Utility functions to go from typed to untyped ASTs */
 object NavigateAST {
@@ -75,8 +75,17 @@ object NavigateAST {
       path
     }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
-      if (p.pos contains pos) childPath(p.productIterator, p :: path)
-      else path
+      if (p.pos contains pos) {
+        // FIXME: We shouldn't be manually forcing trees here, we should replace
+        // our usage of `productIterator` by something in `Positioned` that takes
+        // care of low-level details like this for us.
+        p match {
+          case p: WithLazyField[_] =>
+            p.forceIfLazy
+          case _ =>
+        }
+        childPath(p.productIterator, p :: path)
+      } else path
     singlePath(from, Nil)
   }
 }
