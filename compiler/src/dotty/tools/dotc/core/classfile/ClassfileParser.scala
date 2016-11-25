@@ -827,7 +827,12 @@ class ClassfileParser(
         def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
           if (static)
             if (sym == classRoot.symbol) staticScope.lookup(name)
-            else sym.companionModule.info.member(name).symbol
+            else {
+              var module = sym.companionModule
+              if (module == NoSymbol && sym.isAbsent)
+                module = sym.scalacLinkedClass
+              module.info.member(name).symbol
+            }
           else
             if (sym == classRoot.symbol) instanceScope.lookup(name)
             else sym.info.member(name).symbol
