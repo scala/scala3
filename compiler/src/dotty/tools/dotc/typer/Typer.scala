@@ -588,7 +588,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       else pt.notApplied
     val expr1 = typedExpr(tree.expr, ept)(exprCtx)
     ensureNoLocalRefs(
-        assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1))
+        assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1).filter(_.isTerm))
   }
 
   def escapingRefs(block: Tree, localSyms: => List[Symbol])(implicit ctx: Context): collection.Set[NamedType] = {
