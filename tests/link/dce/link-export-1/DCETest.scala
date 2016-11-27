@@ -1,6 +1,8 @@
 
 object DCETest {
   @scala.annotation.internal.DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
+
     val x = new Foo
     Test.shouldDCE(x.bar())
     x.foo()
