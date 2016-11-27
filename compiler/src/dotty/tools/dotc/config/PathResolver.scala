@@ -255,14 +255,7 @@ class PathResolver(implicit ctx: Context) {
   def containers = Calculated.containers
 
   lazy val result: JavaClassPath = {
-    // Prioritize `dotty.jar` and `dotty-lib.jar` to shadow others
-    val (dottyJars, others) =
-      containers.partition(x => x.name.contains("dotty-lib.jar") || x.name.contains("dotty.jar"))
-    // Then any jars with `dotty` in the name - putting them before scala-library
-    val (dottyCp, remaining) =
-      others.partition(_.name.contains("dotty-"))
-
-    val cp = new JavaClassPath((dottyJars ++ dottyCp ++ remaining).toIndexedSeq, context)
+    val cp = new JavaClassPath(containers.toIndexedSeq, context)
 
     if (settings.Ylogcp.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
