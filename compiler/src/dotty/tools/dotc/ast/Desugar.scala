@@ -1079,6 +1079,8 @@ object desugar {
         collect(tree)
       case Tuple(trees) =>
         trees foreach collect
+      case Thicket(trees) =>
+        trees foreach collect
       case _ =>
     }
     collect(tree)
