@@ -2,6 +2,7 @@ import scala.annotation.internal.DoNotDCE
 
 object DCETest {
   @DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
     Foo.bar()
     Foo.foo()
   }

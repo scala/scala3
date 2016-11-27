@@ -6,6 +6,8 @@ object DCETest {
   def bar() = foo
   
   @DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
+
     Test.shouldDCE(bar())
     foo()
   }

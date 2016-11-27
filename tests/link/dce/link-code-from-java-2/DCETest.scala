@@ -4,6 +4,8 @@ import scala.annotation.internal.DoNotDCE
 
 object DCETest {
   @DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
+
     val a = new A
     Test.shouldDCE(a.f1)
     a.hashCode()
@@ -47,7 +49,6 @@ abstract class B extends java.util.Observer {
   override def equals(obj: scala.Any): Boolean = super.equals(obj)
   override def toString: String = super.toString
   override def update(o: Observable, arg: scala.Any): Unit = ()
-
 }
 
 trait C extends java.util.Observer  {

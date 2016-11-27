@@ -2,6 +2,8 @@ import scala.annotation.internal.DoNotDCE
 
 object DCETest {
   @DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
+
     val a = new A
     Test.shouldDCE(a.f1)
     a.hashCode()
@@ -22,9 +24,9 @@ object DCETest {
   }
 
   @scala.export def entryPoint(): Unit = {
-    System.out.print(new A)
-    System.out.print(new B {})
-    System.out.print(new C {})
+    System.out.println(new A)
+    System.out.println(new B {})
+    System.out.println(new C {})
   }
 }
 

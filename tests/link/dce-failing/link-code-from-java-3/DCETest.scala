@@ -4,26 +4,28 @@ import scala.annotation.internal.DoNotDCE
 
 object DCETest {
   @DoNotDCE def dceTest: Unit = {
+    System.out.println("dceTest")
+
     val a = new A[AA]
     a.hasNext
     a.next()
     val aa = new AA
     Test.shouldDCE(aa.f)
-    a.toString
+    aa.toString
 
     val b = new B[BB] {}
     b.hasNext
     b.next()
     val bb = new BB
     Test.shouldDCE(bb.f)
-    b.toString
+    bb.toString
 
     val c = new C[CC] {}
     c.hasNext
     c.next()
     val cc = new CC
     Test.shouldDCE(cc.f)
-    c.toString
+    cc.toString
   }
 
   @scala.export def entryPoint(): Unit = {

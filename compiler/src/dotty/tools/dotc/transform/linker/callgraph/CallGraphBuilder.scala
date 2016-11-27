@@ -494,10 +494,13 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
   }
 
   private def processCallsFromJava(instantiatedTypes: immutable.Set[TypeWithContext], method: CallWithContext): Unit = {
+    def allNonJavaDecls(argType: Type) = {
+      (argType.decls ++ argType.parents.filter(!_.symbol.is(JavaDefined)).flatMap(_.decls)).toSet
+    }
     for {
       (paramType, argType) <- method.call.widenDealias.paramTypess.flatten.zip(method.argumentsPassed)
       if !defn.isPrimitiveClass(paramType.classSymbol)
-      decl <- paramType.decls
+      decl <- allNonJavaDecls(argType)
       if decl.isTerm && !decl.isConstructor
       if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
     } yield {
@@ -512,16 +515,21 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         processCallSite(CallInfo(call, targs, paramTypes), instantiatedTypes, method, argType)
       }
 
+      val definedInJavaClass: Boolean = {
+        def isDefinedInJavaClass(sym: Symbol) =
+          sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
+        isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
+      }
+
       argType match {
         case argType: PreciseType =>
-          val sym = argType.underlying.classSymbol.requiredMethod(termName, paramTypes)
-          if (sym.owner != defn.AnyClass && !sym.owner.is(JavaDefined))
-            addCall(new TermRefWithFixedSym(argType, termName, sym))
+          if (definedInJavaClass)
+            addCall(new TermRefWithFixedSym(argType, termName, decl.asTerm))
         case _ =>
           val argTypeWiden = argType.widenDealias
           if (argTypeWiden.member(termName).exists) {
             val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
-            if (!(sym.owner.is(JavaDefined) && (sym.is(Final) || sym.owner.is(Final))))
+            if (!definedInJavaClass || !(sym.is(Final) || sym.owner.is(Final)))
               addCall(TermRef(argType, sym))
           }
       }
