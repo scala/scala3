@@ -300,11 +300,11 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     // Don't get confused, the neg test passes when compilation fails for at
     // least one round (optionally checking the number of compiler errors and
     // compiler console output)
-    case class CompFailed() extends NegTestState
+    case object CompFailed extends NegTestState
     // the neg test fails when all rounds return either of these:
     case class CompFailedButWrongNErr(expected: String, found: String) extends NegTestState
-    case class CompFailedButWrongDiff() extends NegTestState
-    case class CompSucceeded() extends NegTestState
+    case object CompFailedButWrongDiff extends NegTestState
+    case object CompSucceeded extends NegTestState
 
     def nerrIsOk(reason: String) = {
       val nerrFinder = """compilation failed with (\d+) errors""".r
@@ -350,7 +350,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
       if (existsNerr) false
       else {
         val existsDiff = failureStates.exists({
-          case CompFailedButWrongDiff() =>
+          case CompFailedButWrongDiff =>
             nextTestActionFailing(s"output differs")
             true
           case _ =>
