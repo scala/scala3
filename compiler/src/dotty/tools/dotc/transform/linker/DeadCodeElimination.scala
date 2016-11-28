@@ -25,16 +25,20 @@ class DeadCodeElimination extends MiniPhaseTransform {
   private var callGraph: CallGraph = _
   private var buildCallGraphPhase: BuildCallGraph = _
   private var exception: Tree = _
-  private var exportAnnotation: ClassSymbol = _
+  private var entryPointAnnotation: ClassSymbol = _
   private var doNotDCEAnnotation: ClassSymbol = _
+  private var assertReachable: ClassSymbol = _
+  private var assertNotReachable: ClassSymbol = _
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     if (DeadCodeElimination.isPhaseRequired) {
       buildCallGraphPhase = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
       callGraph = buildCallGraphPhase.getCallGraph
       exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
-      exportAnnotation = defn.ExportAnnot
-      doNotDCEAnnotation = ctx.requiredClassRef("scala.annotation.internal.DoNotDCE").symbol.asClass
+      entryPointAnnotation = defn.EntryPointAnnot
+      doNotDCEAnnotation = ctx.requiredClassRef("scala.annotation.internal.link.DoNotDeadCodeEliminate").symbol.asClass
+      assertReachable = ctx.requiredClassRef("scala.annotation.internal.link.AssertReachable").symbol.asClass
+      assertNotReachable = ctx.requiredClassRef("scala.annotation.internal.link.AssertNotReachable").symbol.asClass
       doTransform = true
     } else {
       doTransform = false
@@ -48,25 +52,28 @@ class DeadCodeElimination extends MiniPhaseTransform {
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    if (doTransform) {
+    if (!doTransform) {
+      tree
+    } else {
       val sym = tree.symbol
-      lazy val hasDoNotDCEAnnot = sym.hasAnnotation(doNotDCEAnnotation)
+      val isReachableThroughCallGraph = callGraph.isReachableMethod(sym)
+
+      if (isReachableThroughCallGraph && sym.hasAnnotation(assertNotReachable))
+        ctx.error("@internal.link.AssertNotReachable annotation was used on a reachable member", tree.pos)
+      else if (!isReachableThroughCallGraph && sym.hasAnnotation(assertReachable))
+        ctx.error("@internal.link.AssertReachable annotation was used on a non reachable member", tree.pos)
+
       def isPotentiallyReachable = {
-        sym.is(Label) || sym.isConstructor || keepAsNew(sym) || callGraph.isReachableMethod(sym) ||
+        isReachableThroughCallGraph || sym.is(Label) || sym.isConstructor || keepAsNew(sym) ||
           (sym.isSetter && callGraph.isReachableMethod(sym.getter))
       }
-      if (isPotentiallyReachable) {
-        if (hasDoNotDCEAnnot)
-          ctx.error("@DoNotDCE annotation was used on a reachable method", tree.pos)
-        tree
-      } else if (hasDoNotDCEAnnot) {
+
+      if (isPotentiallyReachable || sym.hasAnnotation(doNotDCEAnnotation)) {
         tree
       } else {
-        assert(!sym.hasAnnotation(exportAnnotation))
+        assert(!sym.hasAnnotation(entryPointAnnotation))
         tpd.cpy.DefDef(tree)(rhs = exception)
       }
-    } else {
-      tree
     }
   }
 

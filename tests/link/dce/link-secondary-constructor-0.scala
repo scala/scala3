@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -8,6 +9,6 @@ object Test {
 class Foo(n: Int) {
   def this() = this(42)
 
-  def foo() = System.out.println(n)
+  @internal.link.AssertReachable def foo() = System.out.println(n)
   foo()
 }

@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -10,12 +11,12 @@ class Bar extends Baz[Int]
 
 class Baz[A] {
 
-  def foo1(x: A): Unit = {
-    def innerFoo(x: A): Unit = foo2(x)
+  @internal.link.AssertReachable def foo1(x: A): Unit = {
+    @internal.link.AssertReachable def innerFoo(x: A): Unit = foo2(x)
     innerFoo(x)
   }
 
-  def foo2(elem: A): Unit = {
+  @internal.link.AssertReachable def foo2(elem: A): Unit = {
     System.out.println(elem.toString)
   }
 

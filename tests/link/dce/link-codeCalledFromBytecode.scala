@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -7,5 +8,6 @@ object Test {
 }
 
 class Foo {
+  @internal.link.AssertReachable
   override def toString: String = "Foo.toString"
 }

@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -12,5 +13,6 @@ object Test {
 class BreakControl extends NoStackTrace
 
 trait NoStackTrace extends Throwable {
+  @internal.link.AssertReachable
   override def fillInStackTrace(): Throwable = this
 }

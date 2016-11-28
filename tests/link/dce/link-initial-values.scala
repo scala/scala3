@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -6,8 +7,7 @@ object Test {
 }
 
 
-class Bar extends Foo {
-}
+class Bar extends Foo
 
 trait Foo {
   val foo: Int = {

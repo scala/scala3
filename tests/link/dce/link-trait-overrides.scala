@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -12,5 +13,6 @@ trait Bar extends Baz {
 }
 
 trait Baz {
+  @internal.link.AssertNotReachable
   def foo = System.out.println(5)
 }
