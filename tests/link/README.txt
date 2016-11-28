@@ -2,7 +2,8 @@ Tests are in 3 folders dce, stdlib-dce and dce-failing.
 
 dce: tests are compiled with -lik-dce (with and without -link-vis) without the standard library.
 
-stdlib-dce: tests are compiled with -lik-dce (with and without -link-vis) with or without the standard library.
+stdlib-dce: tests are compiled with -lik-dce (with and without -link-vis) with or without the standard library. It is important
+            to only use directories for tests as this configuration is required to add the stdlib files correctly.
 
 dce-failing: tests that fail in dce and stdlib-dce. If the test has 'stdlib' as a prefix then it should go into stdlib-dce
 

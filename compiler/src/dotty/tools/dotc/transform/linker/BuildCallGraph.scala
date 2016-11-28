@@ -138,6 +138,6 @@ class BuildCallGraph extends Phase {
 
   private def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
     ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)) || // Java main method
-      (s.is(Method) && s.hasAnnotation(defn.ExportAnnot)) // Explicit entry point
+      (s.is(Method) && s.hasAnnotation(defn.EntryPointAnnot)) // Explicit entry point
   }
 }

@@ -1,3 +1,4 @@
+import scala.annotation.internal
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -11,6 +12,8 @@ object Test {
 
 class Foo {
   var bar = 1
+
+  @internal.link.AssertReachable
   def baz(): Unit = {
     bar = 42
   }
