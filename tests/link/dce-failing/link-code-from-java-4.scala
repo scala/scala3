@@ -49,7 +49,7 @@ object Test {
     aa.toString
   }
 
-  @EntryPoint def entryPoint(): Unit = {
+  @scala.EntryPoint def entryPoint(): Unit = {
     System.out.print(new Coll[AA])
   }
 }
