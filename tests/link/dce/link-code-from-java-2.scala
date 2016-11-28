@@ -52,7 +52,7 @@ object Test {
     c.update(new Observable, null)
   }
 
-  @EntryPoint def entryPoint(): Unit = {
+  @scala.EntryPoint def entryPoint(): Unit = {
     System.out.print(new A)
     System.out.print(new B {})
     System.out.print(new C {})

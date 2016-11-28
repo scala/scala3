@@ -52,7 +52,7 @@ object Test {
     cc.toString
   }
 
-  @EntryPoint def entryPoint(): Unit = {
+  @scala.EntryPoint def entryPoint(): Unit = {
     System.out.print(new A[AA])
     System.out.print(new B[BB] {})
     System.out.print(new C[CC] {})
