@@ -497,43 +497,55 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
     def allNonJavaDecls(argType: Type) = {
       (argType.decls ++ argType.parents.filter(!_.symbol.is(JavaDefined)).flatMap(_.decls)).toSet
     }
-    for {
-      (paramType, argType) <- method.call.widenDealias.paramTypess.flatten.zip(method.argumentsPassed)
-      if !defn.isPrimitiveClass(paramType.classSymbol)
-      decl <- allNonJavaDecls(argType)
-      if decl.isTerm && !decl.isConstructor
-      if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
-    } yield {
-      val termName = decl.name.asTermName
-      val paramTypes = decl.info.paramTypess.flatten
 
-      def addCall(call: TermRef): Unit = {
-        val targs = call.widenDealias match {
-          case call: PolyType => call.paramBounds.map(_.hi)
-          case _ => Nil
-        }
-        processCallSite(CallInfo(call, targs, paramTypes), instantiatedTypes, method, argType)
-      }
+    val addedTypes = mutable.HashSet.empty[Type]
 
-      val definedInJavaClass: Boolean = {
-        def isDefinedInJavaClass(sym: Symbol) =
-          sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
-        isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
-      }
+    def addAllPotentialCallsFor(argType: Type): Unit = {
+      if (!defn.isPrimitiveClass(argType.classSymbol) && !addedTypes.contains(argType)) {
+        addedTypes.add(argType)
+        for {
+          decl <- allNonJavaDecls(argType)
+          if decl.isTerm && !decl.isConstructor
+          if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
+        } {
+          val termName = decl.name.asTermName
+          val paramTypes = decl.info.paramTypess.flatten
 
-      argType match {
-        case argType: PreciseType =>
-          if (definedInJavaClass)
-            addCall(new TermRefWithFixedSym(argType, termName, decl.asTerm))
-        case _ =>
-          val argTypeWiden = argType.widenDealias
-          if (argTypeWiden.member(termName).exists) {
-            val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
-            if (!definedInJavaClass || !(sym.is(Final) || sym.owner.is(Final)))
-              addCall(TermRef(argType, sym))
+          def addCall(call: TermRef): Unit = {
+            val targs = call.widenDealias match {
+              case call: PolyType => call.paramBounds.map(_.hi)
+              case _ => Nil
+            }
+            processCallSite(CallInfo(call, targs, paramTypes), instantiatedTypes, method, argType)
+            // TODO add transitively reachable calls from java (fix link-code-from-java-3.scala)
+            // val resultType = call.widenDealias.finalResultType.widenDealias
+            // addAllPotentialCallsFor(resultType)
           }
+
+          val definedInJavaClass: Boolean = {
+            def isDefinedInJavaClass(sym: Symbol) =
+              sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
+
+            isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
+          }
+
+          argType match {
+            case argType: PreciseType =>
+              if (definedInJavaClass)
+                addCall(new TermRefWithFixedSym(argType, termName, decl.asTerm))
+            case _ =>
+              val argTypeWiden = argType.widenDealias
+              if (argTypeWiden.member(termName).exists) {
+                val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
+                if (!definedInJavaClass || !sym.isEffectivelyFinal)
+                  addCall(TermRef(argType, sym))
+              }
+          }
+        }
       }
     }
+
+    method.argumentsPassed.foreach(addAllPotentialCallsFor)
   }
 
   private def processCallSite(callSite: CallInfo, instantiatedTypes: immutable.Set[TypeWithContext], method: CallWithContext, receiver: Type): Unit = {
