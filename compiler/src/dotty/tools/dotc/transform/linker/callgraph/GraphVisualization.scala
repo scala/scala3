@@ -63,7 +63,7 @@ object GraphVisualization {
     ctx.log(s"\t Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}")
   }
 
-  @deprecated("replaced with outputGraphVis")
+  @deprecated("replaced with outputGraphVis", "0")
   def outputGraph(mode: Int, specLimit: Int)(callGraph: CallGraph)(implicit ctx: Context): String = {
     val reachableMethods = callGraph.reachableMethods
     val reachableTypes = callGraph.reachableTypes
@@ -142,11 +142,9 @@ object GraphVisualization {
         if (outerMethod.contains(caller.call.termSymbol)) red
         else blue
 
-      def mkId(callWithContext: CallWithContext): String = {
-        callWithContext.call.uniqId.toString
-      }
+      def mkId(callInfo: CallInfo): String = callInfo.call.uniqId.toString
 
-      val callerId = s"'${mkId(caller)}'"
+      val callerId = "'" + mkId(caller) + "'"
       nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color }"
 
       callGraph.entryPoints.get(caller) match {
@@ -158,8 +156,11 @@ object GraphVisualization {
 
       for ((call, callees)  <- caller.outEdgesIterator) {
         callees.foreach { callee =>
-          val calleeId = s"'${mkId(callee)}'"
-          edges(callerId) = s"{ from: $callerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(callerId, Nil)
+          val actualCallerId =
+            if (callee.callee != null && callee.callee.source != null) "'" + mkId(callee.callee.source) + "'"
+            else callerId
+          val calleeId = "'" + mkId(callee) + "'"
+          edges(actualCallerId) = s"{ from: $actualCallerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(actualCallerId, Nil)
         }
       }
     }
