@@ -3,16 +3,14 @@ import scala.annotation.internal
 object Test {
   def main(args: Array[String]): Unit = {
     try {
-      throw new BreakControl
+      throw new ThrowableFoo
     } catch {
-      case _: BreakControl => System.out.println(42)
+      case _: ThrowableFoo => System.out.println(42)
     }
   }
 }
 
-class BreakControl extends NoStackTrace
-
-trait NoStackTrace extends Throwable {
+class ThrowableFoo extends Throwable {
   @internal.link.AssertReachable
   override def fillInStackTrace(): Throwable = this
 }
