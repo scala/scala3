@@ -202,10 +202,13 @@ object GraphVisualization {
     val targsString = typeArgumentsString(x.targs)
     val vargsString = argumentsString(x.argumentsPassed)
 
-    prefixString + targsString + vargsString
+    htmlFormattedStringLabel(prefixString + targsString + vargsString)
   }
 
   private val slash = '"'
+
+  private def htmlFormattedStringLabel(str: String): String =
+    str.replace("\n", "<br>")
 
   private def escape(s: String) = s.replace("\\", "\\\\").replace("\"","\\\"")
 
@@ -258,11 +261,11 @@ object GraphVisualization {
     val resultType = typeName(x.call.widenDealias.finalResultType)
     if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol) {
       val callTypeName = typeName(x.call)
-      callTypeName + targs + vargs + ": " + resultType
+      htmlFormattedStringLabel(callTypeName + targs + vargs + ": " + resultType)
     } else {
       val callTypeName = typeName(x.call.normalizedPrefix)
       val symName = symbolName(x.call.termSymbol)
-      callTypeName + ".super." + symName + targs + vargs + ": " + resultType
+      htmlFormattedStringLabel(callTypeName + ".super." + symName + targs + vargs + ": " + resultType)
     }
   }
 
