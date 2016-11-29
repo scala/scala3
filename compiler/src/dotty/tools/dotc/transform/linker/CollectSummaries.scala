@@ -176,30 +176,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         val argumentStoredToHeap = (0 to args.length).map(_ => true).toList
         curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, argumentStoredToHeap)
       }
-
-      // FIXME: Workaround failure in `testOnly dotc.tests`
-      def isBlacklisted(owner: Symbol): Boolean = {
-        val fullName = owner.fullName.toString
-        fullName.startsWith("scala.collection") || fullName == "scala.Proxy" || fullName == "scala.math.Ordered" ||
-        fullName == "scala.runtime.OrderedProxy" || fullName.startsWith("scala.math.Ordering$.")
-      }
-
-      if (sym.isPrimaryConstructor) {
-        sym.owner.mixins.foreach { mixin =>
-          val decl = mixin.primaryConstructor
-          if (!isBlacklisted(decl.owner)) {
-            val initRef = ref(NamedType(sym.owner.typeRef, decl.name, decl.denot)) // FIXME NamedType fails on decls in blackList
-            decl.info match {
-              case tp: PolyType =>
-                if (tp.resType.paramTypess.iterator.flatten.isEmpty)
-                  registerCall(Apply(TypeApply(initRef, tp.paramRefs.map(TypeTree(_))), Nil)) // TODO get precise type params
-              case tp =>
-                if (tp.paramTypess.iterator.flatten.isEmpty)
-                  registerCall(Apply(initRef, Nil))
-            }
-          }
-        }
-      }
       this
     }
 
@@ -381,7 +357,25 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           Nil
         }
 
-        val languageDefinedCalls = loadPredefModule ::: fillInStackTrace ::: repeatedArgsCalls
+        val sym = tree.symbol
+        val mixinConstructors: List[CallInfo] = {
+          if (!sym.isPrimaryConstructor) {
+            Nil
+          } else {
+            sym.owner.mixins.distinct.map { mixin =>
+              val decl = mixin.primaryConstructor
+
+              decl.info match {
+                case tp: PolyType =>
+                  CallInfo(decl.termRef, tp.paramRefs, tp.resType.paramTypess.iterator.flatten.toList, thisCallInfo) // TODO get precise type params
+                case tp =>
+                  CallInfo(decl.termRef, Nil, tp.paramTypess.iterator.flatten.toList, thisCallInfo)
+              }
+            }
+          }
+        }
+
+        val languageDefinedCalls = loadPredefModule ::: fillInStackTrace ::: mixinConstructors ::: repeatedArgsCalls
 
         curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
       }
