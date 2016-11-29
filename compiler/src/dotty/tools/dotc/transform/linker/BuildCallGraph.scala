@@ -110,14 +110,17 @@ class BuildCallGraph extends Phase {
   private var runOnce = true
   def run(implicit ctx: Context): Unit = {
     if (runOnce && BuildCallGraph.isPhaseRequired) {
+      val mode = AnalyseArgs
       val specLimit = 15
 
       ctx.log(s"\n\t\t\tType & Arg flow analisys")
 
-      val callGraph = buildCallGraph(AnalyseArgs, specLimit)
+      val callGraph = buildCallGraph(mode, specLimit)
       this.callGraph = callGraph
 
 //      sendSpecializationRequests(callGraph)
+
+      GraphVisualization.outputDiagnostic(mode, specLimit)(callGraph)
 
       if (ctx.settings.linkVis.value) {
         def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
@@ -129,9 +132,9 @@ class BuildCallGraph extends Phase {
           }
         }
 
-        val viz = GraphVisualization.outputGraphVis(AnalyseArgs, specLimit)(callGraph)
+        val viz = GraphVisualization.outputGraphVis(mode, specLimit)(callGraph)
 
-        printToFile(new java.io.File("CallGraph.html")) { out =>
+        printToFile(new java.io.File(ctx.settings.d.value + "/CallGraph.html")) { out =>
           out.println(viz)
         }
       }
