@@ -6,6 +6,8 @@ import dotty.tools.dotc.core.Types.{PolyType, SingletonType, Type}
 
 class JavaAllocatedType(private val u: Type) extends SingletonType {
 
+  assert(!u.isInstanceOf[JavaAllocatedType])
+
   /** customized hash code of this type.
     * NotCached for uncached types. Cached types
     * compute hash and use it as the type's hashCode.
