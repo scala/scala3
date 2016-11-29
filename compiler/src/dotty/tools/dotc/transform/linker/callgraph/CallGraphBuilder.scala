@@ -487,9 +487,10 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
           assert(!returnType.widenDealias.isInstanceOf[PolyType], returnType.widenDealias)
           val javaAllocatedType = returnType match {
             case returnType: JavaAllocatedType => returnType
-            case _ => new JavaAllocatedType(returnType)
+            case returnType: HKApply => new JavaAllocatedType(returnType.tycon.appliedTo(method.targs))
+            case returnType => new JavaAllocatedType(returnType)
           }
-          addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
+          addReachableType(new TypeWithContext(javaAllocatedType, method.outerTargs), method)
 
           // Add all possible calls from java to object passed as parameters.
           processCallsFromJava(instantiatedTypes, method)
@@ -538,12 +539,13 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
               if (definedInJavaClass)
                 addCall(new TermRefWithFixedSym(argType, termName, decl.asTerm))
             case _ =>
-              val argTypeWiden = argType.widenDealias
-              if (argTypeWiden.member(termName).exists) {
-                val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
-                if (!definedInJavaClass || !sym.isEffectivelyFinal)
-                  addCall(TermRef(argType, sym))
-              }
+              // FIXME
+//              val argTypeWiden = argType.widenDealias
+//              if (argTypeWiden.member(termName).exists) {
+//                val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
+//                if (!definedInJavaClass || !sym.isEffectivelyFinal)
+//                  addCall(TermRef(argType, sym))
+//              }
           }
         }
       }
