@@ -45,32 +45,29 @@ class Definitions {
     ctx.newSymbol(owner, name, flags | Permanent, info)
 
   private def newClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
-    ctx.newClassSymbol(owner, name, flags | Permanent, infoFn).entered
+    ctx.newClassSymbol(owner, name, flags | Permanent, infoFn)
 
-  private def newCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
+  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
     ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
 
-  private def newTopClassSymbol(name: TypeName, flags: FlagSet, parents: List[TypeRef]) =
-    completeClass(newCompleteClassSymbol(ScalaPackageClass, name, flags, parents))
-
-  private def newTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
+  private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
 
-  private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    newTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
+  private def enterTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
+    enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
-  private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
-    newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
+  private def enterSyntheticTypeParam(cls: ClassSymbol, paramFlags: FlagSet, scope: MutableScope, suffix: String = "T0") =
+    enterTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
 
   // NOTE: Ideally we would write `parentConstrs: => Type*` but SIP-24 is only
   // implemented in Dotty and not in Scala 2.
   // See <http://docs.scala-lang.org/sips/pending/repeated-byname.html>.
-  private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
+  private def enterSpecialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: => Seq[Type]): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        val typeParam = newSyntheticTypeParam(cls, paramDecls, paramFlags)
+        val typeParam = enterSyntheticTypeParam(cls, paramFlags, paramDecls)
         def instantiate(tpe: Type) =
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
           else tpe
@@ -83,27 +80,30 @@ class Definitions {
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
-    newSymbol(cls, name.encode, flags | Method, info).entered.asTerm
+    newSymbol(cls, name.encode, flags | Method, info).asTerm
 
-  private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
+  private def enterMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
+    newMethod(cls, name, info, flags).entered
+
+  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
     val sym = newSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
     ScalaPackageClass.currentPackageDecls.enter(sym)
     sym
   }
 
-  private def newPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
+  private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
     val tparamBounds = tparamNames map (_ => TypeBounds.empty)
     val ptype = PolyType(tparamNames)(_ => tparamBounds, resultTypeFn)
-    newMethod(cls, name, ptype, flags)
+    enterMethod(cls, name, ptype, flags)
   }
 
-  private def newT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
-    newPolyMethod(cls, name, 1, resultTypeFn, flags)
+  private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
+    enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def newT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
-    newPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
+  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
+    enterPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {
     val arr = new Array[TypeRef](arity + 1)
@@ -172,20 +172,20 @@ class Definitions {
    *       def getClass: java.lang.Class[T] = ???
    *     }
    */
-  lazy val AnyClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
+  lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
   def AnyType = AnyClass.typeRef
-  lazy val AnyValClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
+  lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
   def AnyValType = AnyValClass.typeRef
 
-    lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
-    lazy val Any_!=       = newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
-    lazy val Any_equals   = newMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    lazy val Any_hashCode = newMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
-    lazy val Any_toString = newMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
-    lazy val Any_##       = newMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
-    lazy val Any_getClass = newMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef.appliedTo(TypeBounds.empty)), Final)
-    lazy val Any_isInstanceOf = newT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
-    lazy val Any_asInstanceOf = newT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, PolyParam(_, 0), Final)
+    lazy val Any_==       = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
+    lazy val Any_!=       = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
+    lazy val Any_equals   = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
+    lazy val Any_hashCode = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
+    lazy val Any_toString = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
+    lazy val Any_##       = enterMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
+    lazy val Any_getClass = enterMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef.appliedTo(TypeBounds.empty)), Final)
+    lazy val Any_isInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
+    lazy val Any_asInstanceOf = enterT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, PolyParam(_, 0), Final)
 
     def AnyMethods = List(Any_==, Any_!=, Any_equals, Any_hashCode,
       Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_asInstanceOf)
@@ -205,37 +205,37 @@ class Definitions {
   }
   def ObjectType = ObjectClass.typeRef
 
-  lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
+  lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType = AnyRefAlias.typeRef
 
-    lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
-    lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
-    lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
+    lazy val Object_eq = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
+    lazy val Object_ne = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
+    lazy val Object_synchronized = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
-    lazy val Object_clone = newMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
-    lazy val Object_finalize = newMethod(ObjectClass, nme.finalize_, MethodType(Nil, UnitType), Protected)
-    lazy val Object_notify = newMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType))
-    lazy val Object_notifyAll = newMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType))
-    lazy val Object_wait = newMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType))
-    lazy val Object_waitL = newMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType))
-    lazy val Object_waitLI = newMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType))
+    lazy val Object_clone = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
+    lazy val Object_finalize = enterMethod(ObjectClass, nme.finalize_, MethodType(Nil, UnitType), Protected)
+    lazy val Object_notify = enterMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType))
+    lazy val Object_notifyAll = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType))
+    lazy val Object_wait = enterMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType))
+    lazy val Object_waitL = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType))
+    lazy val Object_waitLI = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType))
 
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
   /** Dummy method needed by elimByName */
-  lazy val dummyApply = newPolyMethod(
+  lazy val dummyApply = enterPolyMethod(
       OpsPackageClass, nme.dummyApply, 1,
       pt => MethodType(List(FunctionOf(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
 
   /** Method representing a throw */
-  lazy val throwMethod = newMethod(OpsPackageClass, nme.THROWkw,
+  lazy val throwMethod = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
 
-  lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
+  lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   def NothingType = NothingClass.typeRef
-  lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
+  lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
   def NullType = NullClass.typeRef
 
@@ -281,7 +281,7 @@ class Definitions {
   lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
-    newCompleteClassSymbol(
+    enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyClass.typeRef), EmptyScope)
 
@@ -387,17 +387,17 @@ class Definitions {
   lazy val BoxedDoubleModule  = ctx.requiredModule("java.lang.Double")
   lazy val BoxedUnitModule    = ctx.requiredModule("java.lang.Void")
 
-  lazy val ByNameParamClass2x = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
-  lazy val EqualsPatternClass = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
+  lazy val ByNameParamClass2x = enterSpecialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
+  lazy val EqualsPatternClass = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
-  lazy val RepeatedParamClass = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
+  lazy val RepeatedParamClass = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
   // fundamental classes
   lazy val StringClass                = ctx.requiredClass("java.lang.String")
   def StringType: Type                = StringClass.typeRef
   lazy val StringModule               = StringClass.linkedClass
 
-    lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
+    lazy val String_+ = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
       case List(pt) => (pt isRef AnyClass) || (pt isRef ObjectClass)
       case _ => false
