@@ -203,18 +203,18 @@ class tests extends CompilerTest {
   @Test def run_all = runFiles(runDir)
 
   // Test callgraph DCE
-  @Test def link_dce_all = runFiles(linkDir + "dce/", List("-link-dce"))
-  @Test def link_dce_vis_all = runFiles(linkDir + "dce/", List("-link-dce", "-link-vis"))
+  @Test def link_dce_all = runFiles(linkDir + "dce/", List( "-link-dce", "-Ylog:callGraph"))
+  @Test def link_dce_vis_all = runFiles(linkDir + "dce/", List("-link-dce", "-link-vis",  "-Ylog:callGraph"))
 
   // Test callgraph DCE on code that uses stdlib (not DCEed)
-  @Test def link_dce2_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce"))
-  @Test def link_dce2_vis_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce", "-link-vis"))
+  @Test def link_dce2_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce",  "-Ylog:callGraph"))
+  @Test def link_dce2_vis_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce", "-link-vis",  "-Ylog:callGraph"))
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_stdlib_dce_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce"), stdlibFiles = stdlibFiles)
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
   @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_stdlib_dce_vis_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis"), stdlibFiles = stdlibFiles)
+    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
