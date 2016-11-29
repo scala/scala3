@@ -377,7 +377,8 @@ object DottyBuild extends Build {
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "org.scala-lang" % "scala-library" % scalaVersion.value
       )
-    )
+    ).
+    settings(publishing)
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
