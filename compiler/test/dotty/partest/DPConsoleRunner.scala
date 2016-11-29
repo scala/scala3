@@ -202,7 +202,7 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
     import FileManager.joinPaths
     // compile using command-line javac compiler
     val args = Seq(
-      javacCmdPath,
+      suiteRunner.javacCmdPath, // FIXME: Dotty deviation just writing "javacCmdPath" doesn't work
       "-d",
       outDir.getAbsolutePath,
       "-classpath",
@@ -398,8 +398,13 @@ class DPTestRunner(testFile: File, suiteRunner: DPSuiteRunner) extends nest.Runn
   override def extraClasspath =
     suiteRunner.fileManager.asInstanceOf[DottyFileManager].extraJarList ::: super.extraClasspath
 
+
+  // FIXME: Dotty deviation: error if return type is omitted:
+  //   overriding method cleanup in class Runner of type ()Unit;
+  //    method cleanup of type => Boolean | Unit has incompatible type
+
   // override to keep class files if failed and delete clog if ok
-  override def cleanup = if (lastState.isOk) {
+  override def cleanup: Unit = if (lastState.isOk) {
     logFile.delete
     cLogFile.delete
     Directory(outDir).deleteRecursively
