@@ -342,8 +342,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         val fillInStackTrace = tree match {
           case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
             val throwableClass = newThrowable.tpe.widenDealias.classSymbol
-            val fillInStackTrace = throwableClass.requiredMethod("fillInStackTrace")
-            if (fillInStackTrace.is(JavaDefined) || throwableClass != fillInStackTrace.owner) Nil
+            val fillInStackTrace = throwableClass.requiredMethod(nme.fillInStackTrace)
+            if (fillInStackTrace.is(JavaDefined)) Nil
             else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, thisCallInfo))
           case _ => Nil
         }

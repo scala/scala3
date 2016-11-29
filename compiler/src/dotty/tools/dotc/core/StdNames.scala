@@ -402,6 +402,7 @@ object StdNames {
     val ex: N                   = "ex"
     val experimental: N         = "experimental"
     val f: N                    = "f"
+    val fillInStackTrace : N    = "fillInStackTrace"
     val false_ : N              = "false"
     val filter: N               = "filter"
     val finalize_ : N           = "finalize"
