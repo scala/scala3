@@ -229,6 +229,12 @@ object NameOps {
       }
     }
 
+    def functionArity: Int =
+      if (name.startsWith(tpnme.Function))
+        try name.drop(tpnme.Function.length).toString.toInt
+        catch { case ex: NumberFormatException => -1 }
+      else -1
+
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {
       case nme.apply => nme.array_apply

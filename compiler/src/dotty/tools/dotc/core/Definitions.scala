@@ -767,6 +767,23 @@ class Definitions {
 
   // ----- Initialization ---------------------------------------------------
 
+  /** Give the scala package a scope where a FunctionN trait is automatically
+   *  added when someone looks for it.
+   */
+  private def makeScalaSpecial()(implicit ctx: Context) = {
+    val oldInfo = ScalaPackageClass.classInfo
+    val oldDecls = oldInfo.decls
+    val newDecls = new MutableScope(oldDecls) {
+      override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+        val res = super.lookupEntry(name)
+        if (res == null && name.functionArity > 0)
+          newScopeEntry(newFunctionNTrait(name.functionArity))
+        else res
+      }
+    }
+    ScalaPackageClass.info = oldInfo.derivedClassInfo(decls = newDecls)
+  }
+
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticScalaClasses = List(
     AnyClass,
@@ -794,6 +811,8 @@ class Definitions {
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!_isInitialized) {
+      makeScalaSpecial()
+
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
