@@ -482,13 +482,15 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         case None =>
           outerMethods += sym
 
+          def substituteOuterTargs = new SubstituteByParentMap(method.outerTargs)
+
           // Add return type to reachable types
           val returnType = method.call.widenDealias.finalResultType
           assert(!returnType.widenDealias.isInstanceOf[PolyType], returnType.widenDealias)
           val javaAllocatedType = returnType match {
             case returnType: JavaAllocatedType => returnType
-            case returnType: HKApply => new JavaAllocatedType(returnType.tycon.appliedTo(method.targs))
-            case returnType => new JavaAllocatedType(returnType)
+            case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
+            case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
           }
           addReachableType(new TypeWithContext(javaAllocatedType, method.outerTargs), method)
 
