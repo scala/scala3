@@ -457,6 +457,9 @@ class Definitions {
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
   def AbstractPartialFunctionClass(implicit ctx: Context) = AbstractPartialFunctionType.symbol.asClass
+  lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
+  def FunctionXXLClass(implicit ctx: Context) = FunctionXXLType.symbol.asClass
+
   lazy val SymbolType: TypeRef                  = ctx.requiredClassRef("scala.Symbol")
   def SymbolClass(implicit ctx: Context) = SymbolType.symbol.asClass
   lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
@@ -645,6 +648,9 @@ class Definitions {
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
+  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
+
   def FunctionClass(n: Int)(implicit ctx: Context) =
     if (n < MaxImplementedFunctionArity) FunctionClassPerRun()(ctx)(n)
     else ctx.requiredClass("scala.Function" + n.toString)
@@ -652,10 +658,7 @@ class Definitions {
     lazy val Function0_applyR = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
 
-  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
-
-  def FunctionType(n: Int): TypeRef =
+  def FunctionType(n: Int)(implicit ctx: Context): TypeRef =
     if (n < MaxImplementedFunctionArity) ImplementedFunctionType(n)
     else FunctionClass(n).typeRef
 
@@ -680,6 +683,8 @@ class Definitions {
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
+  def isUnimplementedFunctionClass(cls: Symbol) =
+    isFunctionClass(cls) && cls.name.functionArity >= MaxImplementedFunctionArity
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
   def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)

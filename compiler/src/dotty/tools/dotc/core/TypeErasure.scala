@@ -7,6 +7,7 @@ import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
+import Definitions.MaxImplementedFunctionArity
 
 /** Erased types are:
  *
@@ -38,7 +39,10 @@ object TypeErasure {
     case _: ErasedValueType =>
       true
     case tp: TypeRef =>
-      tp.symbol.isClass && tp.symbol != defn.AnyClass && tp.symbol != defn.ArrayClass
+      val sym = tp.symbol
+      sym.isClass &&
+      sym != defn.AnyClass && sym != defn.ArrayClass &&
+      !defn.isUnimplementedFunctionClass(sym)
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -176,8 +180,13 @@ object TypeErasure {
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
-      case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
-        MethodType(Nil, defn.BoxedUnitType)
+      case einfo: MethodType =>
+        if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
+          MethodType(Nil, defn.BoxedUnitType)
+        else if (sym.isAnonymousFunction && einfo.paramTypes.length > MaxImplementedFunctionArity)
+          MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+        else
+          einfo
       case einfo =>
         einfo
     }
@@ -317,6 +326,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For a term ref p.x, the type <noprefix> # x.
    *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
+   *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
@@ -345,6 +355,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       if (!sym.isClass) this(tp.info)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
+      else if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent
