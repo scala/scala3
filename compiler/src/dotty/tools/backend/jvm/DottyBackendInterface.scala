@@ -206,17 +206,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
-  def isRuntimeVisible(annot: Annotation): Boolean = {
-    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr) match {
-      case Some(retentionAnnot) =>
-        retentionAnnot.tree.find(_.symbol == AnnotationRetentionRuntimeAttr).isDefined
-      case _ =>
-        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
-        // annotation is emitted with visibility `RUNTIME`
-        // dotty bug: #389
-        true
+  def isRuntimeVisible(annot: Annotation): Boolean =
+    if (toDenot(annot.atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+      retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
+    else {
+      // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
+      // annotation is emitted with visibility `RUNTIME`
+      // dotty bug: #389
+      true
     }
-  }
 
   def shouldEmitAnnotation(annot: Annotation): Boolean = {
     annot.symbol.isJavaDefined &&
@@ -226,7 +224,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def retentionPolicyOf(annot: Annotation): Symbol =
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-      flatMap(_.argument(0).map(_.symbol)).getOrElse(AnnotationRetentionClassAttr)
+      flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
