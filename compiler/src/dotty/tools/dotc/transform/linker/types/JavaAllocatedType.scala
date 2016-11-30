@@ -2,11 +2,13 @@ package dotty.tools.dotc.transform.linker.types
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Hashable
-import dotty.tools.dotc.core.Types.{PolyType, SingletonType, Type}
+import dotty.tools.dotc.core.Types.{PolyParam, PolyType, SingletonType, Type}
 
 class JavaAllocatedType(private val u: Type) extends SingletonType {
 
-  assert(!u.isInstanceOf[JavaAllocatedType])
+  assert(!u.isInstanceOf[JavaAllocatedType], u)
+  assert(!u.isInstanceOf[PolyParam], u)
+  assert(!u.isInstanceOf[PolyType], u)
 
   /** customized hash code of this type.
     * NotCached for uncached types. Cached types
