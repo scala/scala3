@@ -489,7 +489,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
           // Add return type to reachable types
           val returnType = method.call.widenDealias.finalResultType
-          assert(!returnType.widenDealias.isInstanceOf[PolyType], returnType.widenDealias)
+
           val javaAllocatedType = returnType match {
             case returnType: JavaAllocatedType => returnType
             case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
