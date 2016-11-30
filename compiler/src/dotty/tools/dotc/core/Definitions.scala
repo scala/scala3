@@ -20,7 +20,8 @@ object Definitions {
 
   /** The maximum arity N of a function type that's implemented
    *  as a trait `scala.FunctionN`. Functions of higher arity are possible,
-   *  but are mapped to functions taking a vararg by erasure.
+   *  but are mapped in erasure to functions taking a single parameter of type
+   *  Object[].
    *  The limit 22 is chosen for Scala2x interop. It could be something
    *  else without affecting the set of programs that can be compiled.
    */
