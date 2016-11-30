@@ -19,16 +19,20 @@ object Show {
     //
     // charEscapeSeq ::= ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
     def show(str: String) =
-      "\"" +
-      str
-      .replaceAll("\b", "\\\\b")
-      .replaceAll("\t", "\\\\t")
-      .replaceAll("\n", "\\\\n")
-      .replaceAll("\f", "\\\\f")
-      .replaceAll("\r", "\\\\r")
-      .replaceAll("\'", "\\\\'")
-      .replaceAll("\"", "\\\\\"") +
-      "\""
+      "\"" + {
+        val sb = new StringBuilder
+        str.foreach {
+          case '\b' => sb.append("\\b")
+          case '\t' => sb.append("\\t")
+          case '\n' => sb.append("\\n")
+          case '\f' => sb.append("\\f")
+          case '\r' => sb.append("\\r")
+          case '\'' => sb.append("\\'")
+          case '\"' => sb.append("\\\"")
+          case c => sb.append(c)
+        }
+        sb.toString
+      } + "\""
   }
 
   implicit val intShow = new Show[Int] {
