@@ -2,10 +2,9 @@ package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.transform.linker.summaries.{CallWithContext, Cast, TypeWithContext}
 
-case class CallGraph(entryPoints: Map[CallWithContext, Int], reachableMethods: Set[CallWithContext],
-    reachableTypes: Set[TypeWithContext], casts: Set[Cast], classOfs: Set[Symbol], outerMethods: Set[Symbol])(implicit ctx: Context) {
+case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethods: Set[CallInfoWithContext],
+                     reachableTypes: Set[TypeWithContext], casts: Set[Cast], classOfs: Set[Symbol], outerMethods: Set[Symbol])(implicit ctx: Context) {
 
   private val reachableSet: Set[Symbol] =
     reachableMethods.map(x => x.call.termSymbol)

@@ -1,10 +1,9 @@
-package dotty.tools.dotc.transform.linker.summaries
+package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.transform.linker.CollectSummaries.SubstituteByParentMap
 
 object OuterTargs {
   def empty = new OuterTargs(Map.empty)

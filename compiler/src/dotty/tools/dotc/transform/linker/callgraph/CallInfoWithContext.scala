@@ -1,29 +1,30 @@
-package dotty.tools.dotc.transform.linker.summaries
+package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.transform.linker.summaries.CallInfo
 
 import scala.collection.mutable
 
-class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-    val parent: Option[CallWithContext], val callee: Option[CallInfo])(implicit ctx: Context)
+class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
+    val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context)
     extends CallInfo(call, targs, argumentsPassed) {
 
   assert(parent != null)
   assert(callee != null)
 
-  val outEdges = mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil)
+  val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
   private val outEdgesOpt =
-    if (trackOutEdges) Some(mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil))
+    if (trackOutEdges) Some(mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil))
     else None
 
-  def outEdgesIterator: Iterator[(CallInfo, List[CallWithContext])] =
-    outEdgesOpt.fold[Iterator[(CallInfo, List[CallWithContext])]](Iterator.empty)(_.iterator)
+  def outEdgesIterator: Iterator[(CallInfo, List[CallInfoWithContext])] =
+    outEdgesOpt.fold[Iterator[(CallInfo, List[CallInfoWithContext])]](Iterator.empty)(_.iterator)
 
-  def getOutEdges(callSite: CallInfo): List[CallWithContext] =
-    outEdgesOpt.fold(List.empty[CallWithContext])(_.apply(callSite))
+  def getOutEdges(callSite: CallInfo): List[CallInfoWithContext] =
+    outEdgesOpt.fold(List.empty[CallInfoWithContext])(_.apply(callSite))
 
-  def addOutEdges(callSite: CallInfo, edges: Traversable[CallWithContext]): Unit = {
+  def addOutEdges(callSite: CallInfo, edges: Traversable[CallInfoWithContext]): Unit = {
     outEdgesOpt.foreach { outEdges =>
       var es = outEdges(callSite)
       for (e <- edges) {
@@ -41,7 +42,7 @@ class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type]
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case t: CallWithContext =>
+      case t: CallInfoWithContext =>
         t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&
           this.outerTargs == t.outerTargs && this.source == t.source
       case _ => false

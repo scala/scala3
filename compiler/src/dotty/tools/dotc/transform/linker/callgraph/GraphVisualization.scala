@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.linker.callgraph.CallGraphBuilder._
-import dotty.tools.dotc.transform.linker.summaries.{CallInfo, CallWithContext}
+import dotty.tools.dotc.transform.linker.summaries.CallInfo
 
 import scala.collection.mutable
 
@@ -287,7 +287,7 @@ object GraphVisualization {
     }
   }
 
-  private def csToName(parent: CallWithContext, inner: CallInfo)(implicit ctx: Context): String = {
+  private def csToName(parent: CallInfoWithContext, inner: CallInfo)(implicit ctx: Context): String = {
     slash + csWTToName(parent) + escape(inner.call.show) + inner.hashCode() + slash
   }
 
