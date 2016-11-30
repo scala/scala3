@@ -8,10 +8,13 @@ trait Show[-T] {
 }
 
 object Show {
+  private[this] val defaultShow = new Show[Any] {
+    def show(x: Any) = x.toString
+  }
+
   implicit class ShowValue[V](val v: V) extends AnyVal {
-    def show(implicit ev: Show[V] = null): String =
-      if (ev != null) ev.show(v)
-      else v.toString
+    def show(implicit ev: Show[V] = defaultShow): String =
+      ev.show(v)
   }
 
   implicit val stringShow = new Show[String] {
