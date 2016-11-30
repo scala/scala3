@@ -7,20 +7,27 @@ trait Show[-T] {
   def show(t: T): String
 }
 
+/** Ideally show would only contain `defaultShow` and the pimped generic class,
+  * but since we can't change the current stdlib, we're stuck with providing
+  * default instances in this object
+  */
 object Show {
   private[this] val defaultShow = new Show[Any] {
     def show(x: Any) = x.toString
   }
 
+  /** This class implements pimping of all types to provide a show method.
+    * Currently it is quite permissive, if there's no instance of `Show[T]` for
+    * any `T`, we default to `T#toString`.
+    */
   implicit class ShowValue[V](val v: V) extends AnyVal {
     def show(implicit ev: Show[V] = defaultShow): String =
       ev.show(v)
   }
 
   implicit val stringShow = new Show[String] {
-    // From 2.12 spec:
-    //
-    // charEscapeSeq ::= ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
+    // From 2.12 spec, `charEscapeSeq`:
+    // ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
     def show(str: String) =
       "\"" + {
         val sb = new StringBuilder
