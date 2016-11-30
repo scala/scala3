@@ -213,7 +213,7 @@ class tests extends CompilerTest {
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all =
     runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
-  @Test def link_dce_vis_stdlib_all =
+  @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_dce_vis_stdlib_all =
     runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
