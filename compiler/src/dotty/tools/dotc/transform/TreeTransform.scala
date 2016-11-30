@@ -3,7 +3,6 @@ package dotc
 package transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.DenotTransformers.{InfoTransformer, DenotTransformer}
 import dotty.tools.dotc.core.Denotations.SingleDenotation
@@ -181,10 +180,15 @@ object TreeTransforms {
     abstract override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
       super.transform(ref) match {
         case ref1: SymDenotation if ref1.symbol.isDefinedInCurrentRun =>
-          val annotTrees = ref1.annotations.map(_.tree)
+          val annots = ref1.annotations
+          val annotTrees = annots.map(_.tree)
           val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
           if (annotTrees eq annotTrees1) ref1
-          else ref1.copySymDenotation(annotations = annotTrees1.map(new ConcreteAnnotation(_)))
+          else {
+            val derivedAnnots = (annots, annotTrees1).zipped.map((annot, annotTree1) =>
+              annot.derivedAnnotation(annotTree1))
+            ref1.copySymDenotation(annotations = derivedAnnots)
+          }
         case ref1 =>
           ref1
       }
