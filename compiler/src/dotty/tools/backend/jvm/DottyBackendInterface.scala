@@ -206,7 +206,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
-  /* dont emit any annotations for now*/
   def isRuntimeVisible(annot: Annotation): Boolean = {
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr) match {
       case Some(retentionAnnot) =>
@@ -708,7 +707,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       else Nil
 
-    def annotations: List[Annotation] = Nil
+    def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
