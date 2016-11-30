@@ -10,17 +10,9 @@ object OuterTargs {
   def empty = new OuterTargs(Map.empty)
 }
 
-final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
+final case class OuterTargs (mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
 
-  def nonEmpty = mp.nonEmpty
-
-  def ++(parent: (Symbol, List[Type]))(implicit ctx: Context): OuterTargs = {
-    parent._2.foldLeft(this)((x, y) => x.add(parent._1, y))
-  }
-
-  def +(parent: (Symbol, Type))(implicit ctx: Context): OuterTargs = {
-    this.add(parent._1, parent._2)
-  }
+  def nonEmpty: Boolean = mp.nonEmpty
 
   def add(parent: Symbol, tp: Type)(implicit ctx: Context): OuterTargs = {
     this.add(parent, tp.typeSymbol.name, tp)
@@ -31,7 +23,7 @@ final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
     new OuterTargs(mp.updated(parent, old + (name -> tp)))
   }
 
-  def ++(other: OuterTargs)(implicit ctx: Context) = {
+  def ++(other: OuterTargs)(implicit ctx: Context): OuterTargs = {
     other.mp.foldLeft(this) { (x, y) =>
       y._2.foldLeft(x: OuterTargs)((x: OuterTargs, z: (Name, Type)) => x.add(y._1, z._1, z._2))
     }
