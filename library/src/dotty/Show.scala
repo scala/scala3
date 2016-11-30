@@ -1,0 +1,88 @@
+package dotty
+
+import scala.annotation.implicitNotFound
+
+@implicitNotFound("No member of type class Show could be found for ${T}")
+trait Show[-T] {
+  def show(t: T): String
+}
+
+object Show {
+  implicit class ShowValue[V](val v: V) extends AnyVal {
+    def show(implicit ev: Show[V] = null): String =
+      if (ev != null) ev.show(v)
+      else v.toString
+  }
+
+  implicit val stringShow = new Show[String] {
+    //charEscapeSeq ::= ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
+    def show(str: String) =
+      "\"" +
+      str
+      .replaceAll("\b", "\\\\b")
+      .replaceAll("\t", "\\\\t")
+      .replaceAll("\n", "\\\\n")
+      .replaceAll("\f", "\\\\f")
+      .replaceAll("\r", "\\\\r")
+      .replaceAll("\'", "\\\\'")
+      .replaceAll("\"", "\\\\\"") +
+      "\""
+  }
+
+  implicit val intShow = new Show[Int] {
+    def show(i: Int) = i.toString
+  }
+
+  implicit val floatShow = new Show[Float] {
+    def show(f: Float) = f + "f"
+  }
+
+  implicit val doubleShow = new Show[Double] {
+    def show(d: Double) = d.toString
+  }
+
+  implicit val charShow = new Show[Char] {
+    def show(c: Char) = "'" + (c match {
+      case '\b' => "\\b"
+      case '\t' => "\\t"
+      case '\n' => "\\n"
+      case '\f' => "\\f"
+      case '\r' => "\\r"
+      case '\'' => "\\'"
+      case '\"' => "\\\""
+      case c    => c
+    }) + "'"
+  }
+
+  object List {
+    implicit def showList[T](implicit st: Show[T]) = new Show[List[T]] {
+      def show(xs: List[T]) =
+        if (xs.isEmpty) "Nil"
+        else "List(" + xs.map(_.show).mkString(", ") + ")"
+    }
+
+    implicit val showNil = new Show[List[Nothing]] {
+      def show(xs: List[Nothing]) = "Nil"
+    }
+  }
+
+  object Option {
+    implicit def showOption[T](implicit st: Show[T]) = new Show[Option[T]] {
+      def show(ot: Option[T]): String = ot match {
+        case Some(t) => "Some("+ st.show(t) + ")"
+        case none => "None"
+      }
+    }
+
+    implicit val showNone = new Show[Option[Nothing]] {
+      def show(n: Option[Nothing]) = "None"
+    }
+  }
+
+  object Map {
+    implicit def showMap[K, V](implicit sk: Show[K], sv: Show[V]) = new Show[Map[K, V]] {
+      def show(m: Map[K, V]) =
+        "Map(" + m.map { case (k, v) => sk.show(k) + " -> " + sv.show(v) } .mkString (", ") + ")"
+    }
+  }
+}
