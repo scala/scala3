@@ -87,12 +87,14 @@ object GraphVisualization {
         outGraph.append("  ").append(csToName(caller, call))
         outGraph.append(" [")
         outGraph.append("label=").append(slash).append(callSiteLabel(call)).append(slash)
-        if (call.source != null) {
-          outGraph.append(", color=")
-          val color =
-            if (call.source.call.widenDealias.classSymbol.is(JavaDefined)) "orange"
-            else "blue"
-          outGraph.append(color)
+        call.source match {
+          case Some(source) =>
+            outGraph.append(", color=")
+            val color =
+              if (source.call.widenDealias.classSymbol.is(JavaDefined)) "orange"
+              else "blue"
+            outGraph.append(color)
+          case None =>
         }
         outGraph.append("];\n")
       }
@@ -156,9 +158,15 @@ object GraphVisualization {
 
       for ((call, callees)  <- caller.outEdgesIterator) {
         callees.foreach { callee =>
-          val actualCallerId =
-            if (callee.callee != null && callee.callee.source != null) "'" + mkId(callee.callee.source) + "'"
-            else callerId
+          val actualCallerId = callee.callee match {
+            case Some(callee2) =>
+              callee2.source match {
+                case Some(source) => "'" + mkId(source) + "'"
+                case None => callerId
+              }
+
+            case None => callerId
+          }
           val calleeId = "'" + mkId(callee) + "'"
           edges(actualCallerId) = s"{ from: $actualCallerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(actualCallerId, Nil)
         }

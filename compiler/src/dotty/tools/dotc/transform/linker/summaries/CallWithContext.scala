@@ -6,8 +6,11 @@ import dotty.tools.dotc.core.Types.Type
 import scala.collection.mutable
 
 class CallWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-    val parent: CallWithContext, val callee: CallInfo)(implicit ctx: Context)
+    val parent: Option[CallWithContext], val callee: Option[CallInfo])(implicit ctx: Context)
     extends CallInfo(call, targs, argumentsPassed) {
+
+  assert(parent != null)
+  assert(callee != null)
 
   val outEdges = mutable.HashMap[CallInfo, List[CallWithContext]]().withDefault(x => Nil)
   private val outEdgesOpt =

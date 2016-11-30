@@ -46,7 +46,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
     }
     val targs = (0 until targsSize).map(x => new ErazedType()).toList
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
-    val call = new CallWithContext(tpe, targs, args, OuterTargs.empty, null, null)
+    val call = new CallWithContext(tpe, targs, args, OuterTargs.empty, None, None)
     entryPoints(call) = entryPointId
     reachableMethods += call
     val t = ref(s.owner).tpe
@@ -80,10 +80,10 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         }
         if (!clas.is(JavaDefined) && clas.is(Module)) {
           val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
-          val parent = new CallWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs, null, null)
+          val parent = Some(new CallWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs, None, None))
           reachableMethods ++= fields.map {
             fieldSym =>
-              new CallWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs, parent, null)
+              new CallWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs, parent, None)
           }
         }
       }
@@ -164,6 +164,9 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
   }
 
   private def instantiateCallSite(caller: CallWithContext, rec: Type, callee: CallInfo, types: Traversable[TypeWithContext]): Traversable[CallWithContext] = {
+
+    lazy val someCaller = Some(caller)
+    lazy val someCallee = Some(callee)
 
     val receiver = callee.call.normalizedPrefix
     registerParentModules(receiver, caller)
@@ -280,10 +283,10 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
             assert(call.exists)
             t.underlying.select(call)
           }
-          new CallWithContext(preciseSelectCall, targs, args, outerTargs, caller, callee) :: Nil
+          new CallWithContext(preciseSelectCall, targs, args, outerTargs, someCaller, someCallee) :: Nil
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
           val methodSym = t.meth.meth.symbol.asTerm
-          new CallWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs, caller, callee) :: Nil
+          new CallWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs, someCaller, someCallee) :: Nil
         case AndType(tp1, tp2) =>
           dispatchCalls(tp1).toSet.intersect(dispatchCalls(tp2).toSet)
         case _ =>
@@ -300,7 +303,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
             } yield {
-              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee)
             }
           }
 
@@ -325,7 +328,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
               addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
-              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, caller, callee)
+              new CallWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee)
             }
           }
 
@@ -350,7 +353,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         Nil
       case NoPrefix =>  // inner method
         assert(calleeSymbol.is(ParamAccessor) || calleeSymbol.owner.is(Method) || calleeSymbol.owner.isLocalDummy)
-        new CallWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
+        new CallWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee) :: Nil
 
       case t if calleeSymbol.isConstructor =>
 
@@ -388,7 +391,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
             propagateTargs(receiver).select(calleeSymbol)
         }
 
-        new CallWithContext(call, targs, args, outerTargs, caller, callee) :: Nil
+        new CallWithContext(call, targs, args, outerTargs, someCaller, someCallee) :: Nil
 
       // super call in a class (know target precisely)
       case st: SuperType =>
@@ -400,7 +403,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         val thisTpePropagated = propagateTargs(thisTpe)
 
 
-        new CallWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, caller, callee) :: Nil
+        new CallWithContext(TermRef.withFixedSym(thisTpePropagated, targetMethod.name, targetMethod), targs, args, outerTargs, someCaller, someCallee) :: Nil
 
       // super call in a trait
       case t if calleeSymbol.is(SuperAccessor) =>
@@ -422,7 +425,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
             if (s.nonEmpty) {
               val parentMethod = ResolveSuper.rebindSuper(x.tp.widenDealias.classSymbol, calleeSymbol).asTerm
               // todo: outerTargs are here defined in terms of location of the subclass. Is this correct?
-              new CallWithContext(TermRef.withFixedSym(t, parentMethod.name, parentMethod), targs, args, outerTargs, caller, callee) :: Nil
+              new CallWithContext(TermRef.withFixedSym(t, parentMethod.name, parentMethod), targs, args, outerTargs, someCaller, someCallee) :: Nil
 
             } else Nil
         }
@@ -438,7 +441,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         }
         if (currentThis.derivesFrom(thisType.cls)) {
           if (calleeSymbol.is(Private)) {
-            new CallWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, caller, callee) :: Nil
+            new CallWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee) :: Nil
           } else {
             val fullThisType = AndType.apply(currentThis, thisType.tref)
             dispatchCalls(propagateTargs(fullThisType))

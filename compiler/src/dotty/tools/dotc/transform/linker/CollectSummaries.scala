@@ -313,6 +313,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         }
 
         val thisCallInfo = CallInfo(method, typeArguments.map(_.tpe), arguments.flatten.map(argType))
+        lazy val someThisCallInfo = Some(thisCallInfo)
 
         // Create calls to wrapXArray for varArgs
         val repeatedArgsCalls = tree match {
@@ -333,7 +334,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
               val wrapArrayName = defn.wrapArrayMethodName(tp)
               val targs = if (wrapArrayName == nme.wrapRefArray || wrapArrayName == nme.genericWrapArray) List(tp) else Nil
               val args = List(defn.ArrayOf(tp))
-              CallInfo(wrapArrayTermRef(wrapArrayName), targs, args, thisCallInfo)
+              CallInfo(wrapArrayTermRef(wrapArrayName), targs, args, someThisCallInfo)
             }
 
           case _ => Nil
@@ -344,7 +345,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             val throwableClass = newThrowable.tpe.widenDealias.classSymbol
             val fillInStackTrace = throwableClass.requiredMethod(nme.fillInStackTrace)
             if (fillInStackTrace.is(JavaDefined)) Nil
-            else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, thisCallInfo))
+            else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, someThisCallInfo))
           case _ => Nil
         }
 
@@ -352,7 +353,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           ctx.owner.ownersIterator.exists(owner => owner == defn.ScalaPredefModule || owner.companionModule == defn.ScalaPredefModule)
 
         val loadPredefModule = if (!isInPredef && (repeatedArgsCalls.nonEmpty || tree.tpe.normalizedPrefix == defn.ScalaPredefModuleRef)) {
-          List(CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, thisCallInfo))
+          List(CallInfo(defn.ScalaPredefModuleRef, Nil, Nil, someThisCallInfo))
         } else {
           Nil
         }
@@ -367,9 +368,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
               decl.info match {
                 case tp: PolyType =>
-                  CallInfo(decl.termRef, tp.paramRefs, tp.resType.paramTypess.iterator.flatten.toList, thisCallInfo) // TODO get precise type params
+                  CallInfo(decl.termRef, tp.paramRefs, tp.resType.paramTypess.iterator.flatten.toList, someThisCallInfo) // TODO get precise type params
                 case tp =>
-                  CallInfo(decl.termRef, Nil, tp.paramTypess.iterator.flatten.toList, thisCallInfo)
+                  CallInfo(decl.termRef, Nil, tp.paramTypess.iterator.flatten.toList, someThisCallInfo)
               }
             }
           }
