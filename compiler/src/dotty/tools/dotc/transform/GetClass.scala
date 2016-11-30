@@ -21,7 +21,7 @@ class GetClass extends MiniPhaseTransform {
   override def phaseName: String = "getClass"
 
   // getClass transformation should be applied to specialized methods
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure], classOf[FunctionalInterfaces])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     import ast.Trees._

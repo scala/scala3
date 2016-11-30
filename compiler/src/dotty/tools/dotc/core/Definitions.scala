@@ -26,6 +26,19 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity = 22
+
+  /** This class would also be obviated by the implicit function type design */
+  class PerRun[T](generate: Context => T) {
+    private var current: RunId = NoRunId
+    private var cached: T = _
+    def apply()(implicit ctx: Context): T = {
+      if (current != ctx.runId) {
+        cached = generate(ctx)
+        current = ctx.runId
+      }
+      cached
+    }
+  }
 }
 
 /** A class defining symbols and types of standard definitions
@@ -737,19 +750,6 @@ class Definitions {
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 
   // ----- primitive value class machinery ------------------------------------------
-
-  /** This class would also be obviated by the implicit function type design */
-  class PerRun[T](generate: Context => T) {
-    private var current: RunId = NoRunId
-    private var cached: T = _
-    def apply()(implicit ctx: Context): T = {
-      if (current != ctx.runId) {
-        cached = generate(ctx)
-        current = ctx.runId
-      }
-      cached
-    }
-  }
 
   lazy val ScalaNumericValueTypeList = List(
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)

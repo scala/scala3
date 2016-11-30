@@ -290,6 +290,8 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
+    val specializer = new SpecializeFunctions
+
     def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = {
       val tp = tree.typeOpt
       if (tree.isTerm) erasedRef(tp) else valueErasure(tp)
@@ -538,7 +540,7 @@ object Erasure extends TypeTestsCasts{
      */
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
       val implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
-      implClosure.tpe match {
+      val implClosure2 = implClosure.tpe match {
         case SAMType(sam) =>
           val implType = meth.tpe.widen
 
@@ -582,6 +584,7 @@ object Erasure extends TypeTestsCasts{
         case _ =>
           implClosure
       }
+      specializer.transformClosure(implClosure2)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
