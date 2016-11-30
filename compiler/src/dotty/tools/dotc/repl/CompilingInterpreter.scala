@@ -683,9 +683,16 @@ class CompilingInterpreter(
         code.print(resultExtractors.mkString(""))
       }
 
+      private val ListReg = """^.*List\[(\w+)\]$""".r
+      private val MapReg = """^.*Map\[(\w+),[ ]*(\w+)\]$""".r
+
       private def resultExtractor(req: Request, varName: Name): String = {
         val prettyName = varName.decode
-        val varType = string2code(req.typeOf(varName))
+        val varType = string2code(req.typeOf(varName)) match {
+          case ListReg(param) => s"List[$param]"
+          case MapReg(k, v) => s"Map[$k, $v]"
+          case x => x
+        }
         val fullPath = req.fullPath(varName)
 
         val varOrVal = statement match {
