@@ -704,18 +704,7 @@ class CompilingInterpreter(
            |  if ($fullPath.asInstanceOf[AnyRef] != null) {
            |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") + {
            |      import dotty.Show._
-           |      if ("$varType".matches(".*Map\\\\[.*,.*\\\\]")) {
-           |        import dotty.Show.Map._
-           |        $fullPath.show /*toString()*/ + "\\n"
-           |      } else if ("$varType".matches(".*List\\\\[.*\\\\]")) {
-           |        import dotty.Show.List._
-           |        $fullPath.show /*toString()*/ + "\\n"
-           |      } else if ("$varType".matches(".*Option\\\\[.*\\\\]")) {
-           |        import dotty.Show.Option._
-           |        $fullPath.show /*toString()*/ + "\\n"
-           |      } else {
-           |        $fullPath.show /*toString()*/ + "\\n"
-           |      }
+           |      $fullPath.show /*toString()*/ + "\\n"
            |    }
            |  } else {
            |    "null\\n"

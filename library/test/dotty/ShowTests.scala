@@ -34,7 +34,6 @@ class ShowTests {
   }
 
   @Test def showCar = {
-    import Show.List._
     case class Car(model: String, manufacturer: String, year: Int)
     implicit val showCar = new Show[Car] {
       def show(c: Car) =
@@ -51,14 +50,12 @@ class ShowTests {
   }
 
   @Test def showOptions = {
-    import Show.Option._
     assertEquals("None", None.show)
     assertEquals("None", (None: Option[String]).show)
     assertEquals("Some(\"hello opt\")", Some("hello opt").show)
   }
 
   @Test def showMaps = {
-    import Show.Map._
     val mp = scala.collection.immutable.Map("str1" -> "val1", "str2" -> "val2")
     assertEquals("Map(\"str1\" -> \"val1\", \"str2\" -> \"val2\")", mp.show)
   }
@@ -67,9 +64,6 @@ class ShowTests {
     case class Car(model: String, manufacturer: String, year: Int)
 
     assertEquals("Car(Mustang,Ford,1967)", Car("Mustang", "Ford", 1967).show)
-    assertEquals(
-      "Map(str1 -> val1, str2 -> val2)",
-      scala.collection.immutable.Map("str1" -> "val1", "str2" -> "val2").show
-    )
+    assertEquals("Map()", Map().show)
   }
 }
