@@ -52,8 +52,7 @@ class ShowTests {
 
   @Test def showOptions = {
     import Show.Option._
-    // TODO: first case is not possible since there's no Show[Nothing] - yet
-    //assertEquals("None", None.show)
+    assertEquals("None", None.show)
     assertEquals("None", (None: Option[String]).show)
     assertEquals("Some(\"hello opt\")", Some("hello opt").show)
   }
