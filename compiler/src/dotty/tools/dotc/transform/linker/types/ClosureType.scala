@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{SingletonType, Type}
-import dotty.tools.dotc.transform.linker.summaries.OuterTargs
+import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
 
 class ClosureType(val meth: tpd.Closure, val u: Type, val implementedMethod: Symbol, val outerTargs: OuterTargs)(implicit ctx: Context) extends SingletonType {
   assert(outerTargs.mp != null)

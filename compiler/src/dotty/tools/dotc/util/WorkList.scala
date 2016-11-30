@@ -1,4 +1,4 @@
-package dotty.tools.dotc.transform.linker
+package dotty.tools.dotc.util
 
 import scala.collection.{immutable, mutable}
 

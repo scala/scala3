@@ -1,4 +1,4 @@
-package dotty.tools.dotc.transform.linker.summaries
+package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{PolyType, Type}
