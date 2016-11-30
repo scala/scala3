@@ -9,8 +9,9 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.TypeErasure
+import dotty.tools.dotc.core.{Flags, TypeErasure}
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
@@ -489,11 +490,26 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }
     }
 
-    override def transformMatch(tree: tpd.Match)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      tree.cases foreach { case CaseDef(pat, _, _) => pat match {
-        case unapply: tpd.UnApply => registerUnApply(tree.selector, unapply)
+    def collectMatch(selector: tpd.Tree, cases: List[tpd.CaseDef])(implicit ctx: Context, info: TransformerInfo): Unit = {
+      cases foreach { case CaseDef(pat, _, _) => pat match {
+        case unapply: tpd.UnApply => registerUnApply(selector, unapply)
         case _ =>
       }}
+    }
+
+    override def transformMatch(tree: tpd.Match)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      collectMatch(tree.selector, tree.cases)
+
+      tree
+    }
+
+    override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      // generate synthetic selector of Throwable type (from TryCatchPatters.scala)
+      val exName = ctx.freshName("ex").toTermName
+      val fallbackSelector = ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType)
+      val sel = Ident(fallbackSelector.termRef)
+
+      collectMatch(sel, tree.cases)
 
       tree
     }
