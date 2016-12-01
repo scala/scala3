@@ -12,7 +12,7 @@ trait Show[-T] {
   * default instances in this object
   */
 object Show {
-  private[this] val defaultShow = new Show[Any] {
+  private[this] val defaultShow: Show[Any] = new Show[Any] {
     def show(x: Any) = x.toString
   }
 
@@ -25,7 +25,7 @@ object Show {
       ev.show(v)
   }
 
-  implicit val stringShow = new Show[String] {
+  implicit val stringShow: Show[String] = new Show[String] {
     // From 2.12 spec, `charEscapeSeq`:
     // ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
     def show(str: String) =
@@ -45,19 +45,19 @@ object Show {
       } + "\""
   }
 
-  implicit val intShow = new Show[Int] {
+  implicit val intShow: Show[Int] = new Show[Int] {
     def show(i: Int) = i.toString
   }
 
-  implicit val floatShow = new Show[Float] {
+  implicit val floatShow: Show[Float] = new Show[Float] {
     def show(f: Float) = f + "f"
   }
 
-  implicit val doubleShow = new Show[Double] {
+  implicit val doubleShow: Show[Double] = new Show[Double] {
     def show(d: Double) = d.toString
   }
 
-  implicit val charShow = new Show[Char] {
+  implicit val charShow: Show[Char] = new Show[Char] {
     def show(c: Char) = "'" + (c match {
       case '\b' => "\\b"
       case '\t' => "\\t"
@@ -70,33 +70,33 @@ object Show {
     }) + "'"
   }
 
-  implicit def showList[T](implicit st: Show[T]) = new Show[List[T]] {
+  implicit def showList[T](implicit st: Show[T]): Show[List[T]] = new Show[List[T]] {
     def show(xs: List[T]) =
       if (xs.isEmpty) "Nil"
       else "List(" + xs.map(_.show).mkString(", ") + ")"
   }
 
-  implicit val showNil = new Show[List[Nothing]] {
+  implicit val showNil: Show[List[Nothing]] = new Show[List[Nothing]] {
     def show(xs: List[Nothing]) = "Nil"
   }
 
-  implicit def showOption[T](implicit st: Show[T]) = new Show[Option[T]] {
+  implicit def showOption[T](implicit st: Show[T]): Show[Option[T]] = new Show[Option[T]] {
     def show(ot: Option[T]): String = ot match {
       case Some(t) => "Some("+ st.show(t) + ")"
       case none => "None"
     }
   }
 
-  implicit val showNone = new Show[Option[Nothing]] {
+  implicit val showNone: Show[Option[Nothing]] = new Show[Option[Nothing]] {
     def show(n: Option[Nothing]) = "None"
   }
 
-  implicit def showMap[K, V](implicit sk: Show[K], sv: Show[V]) = new Show[Map[K, V]] {
+  implicit def showMap[K,V](implicit sk: Show[K], sv: Show[V]): Show[Map[K,V]] = new Show[Map[K,V]] {
     def show(m: Map[K, V]) =
       "Map(" + m.map { case (k, v) => sk.show(k) + " -> " + sv.show(v) } .mkString (", ") + ")"
   }
 
-  implicit def showMapOfNothing = new Show[Map[Nothing, Nothing]] {
+  implicit def showMapOfNothing: Show[Map[Nothing,Nothing]] = new Show[Map[Nothing,Nothing]] {
     def show(m: Map[Nothing, Nothing]) = m.toString
   }
 }
