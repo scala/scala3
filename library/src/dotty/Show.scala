@@ -76,8 +76,8 @@ object Show {
       else "List(" + xs.map(_.show).mkString(", ") + ")"
   }
 
-  implicit val showNil: Show[List[Nothing]] = new Show[List[Nothing]] {
-    def show(xs: List[Nothing]) = "Nil"
+  implicit val showNil: Show[Nil.type] = new Show[Nil.type] {
+    def show(xs: Nil.type) = "Nil"
   }
 
   implicit def showOption[T](implicit st: Show[T]): Show[Option[T]] = new Show[Option[T]] {
@@ -87,8 +87,8 @@ object Show {
     }
   }
 
-  implicit val showNone: Show[Option[Nothing]] = new Show[Option[Nothing]] {
-    def show(n: Option[Nothing]) = "None"
+  implicit val showNone: Show[None.type] = new Show[None.type] {
+    def show(n: None.type) = "None"
   }
 
   implicit def showMap[K,V](implicit sk: Show[K], sv: Show[V]): Show[Map[K,V]] = new Show[Map[K,V]] {
