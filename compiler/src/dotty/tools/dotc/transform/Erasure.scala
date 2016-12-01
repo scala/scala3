@@ -343,19 +343,22 @@ object Erasure extends TypeTestsCasts{
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      val oldSym = tree.symbol
-      assert(oldSym.exists)
-      val oldOwner = oldSym.owner
-      val owner =
-        if ((oldOwner eq defn.AnyClass) || (oldOwner eq defn.AnyValClass)) {
-          assert(oldSym.isConstructor, s"${oldSym.showLocated}")
+
+      def mapOwner(sym: Symbol): Symbol = {
+        val owner = sym.owner
+        if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
+          assert(sym.isConstructor, s"${sym.showLocated}")
           defn.ObjectClass
         }
-        else if (defn.isUnimplementedFunctionClass(oldOwner))
+        else if (defn.isUnimplementedFunctionClass(owner))
           defn.FunctionXXLClass
         else
-          oldOwner
-      val sym = if (owner eq oldOwner) oldSym else owner.info.decl(oldSym.name).symbol
+          owner
+      }
+
+      var sym = tree.symbol
+      val owner = mapOwner(sym)
+      if (owner ne sym.owner) sym = owner.info.decl(sym.name).symbol
       assert(sym.exists, owner)
 
       def select(qual: Tree, sym: Symbol): Tree = {
@@ -443,7 +446,7 @@ object Erasure extends TypeTestsCasts{
       }
     }
 
-	/** Besides notmal typing, this method collects all arguments
+	/** Besides normal typing, this method collects all arguments
 	 *  to a compacted function into a single argument of array type.
 	 */
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
