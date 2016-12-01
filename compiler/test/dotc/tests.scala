@@ -326,7 +326,7 @@ class tests extends CompilerTest {
     "CtxLazy.scala", "ElimByName.scala", "ElimErasedValueType.scala", "ElimRepeated.scala",
     "ElimStaticThis.scala", "Erasure.scala", "ExpandPrivate.scala", "ExpandSAMs.scala",
     "ExplicitOuter.scala", "ExtensionMethods.scala", "FirstTransform.scala",
-    "Flatten.scala", "FullParameterization.scala", "FunctionalInterfaces.scala", "GetClass.scala",
+    "Flatten.scala", "FullParameterization.scala", "SpecializeFunctions.scala", "GetClass.scala",
     "Getters.scala", "InterceptedMethods.scala", "LambdaLift.scala", "LiftTry.scala", "LinkScala2ImplClasses.scala",
     "MacroTransform.scala", "Memoize.scala", "Mixin.scala", "MixinOps.scala", "NonLocalReturns.scala",
     "NormalizeFlags.scala", "OverridingPairs.scala", "ParamForwarding.scala", "Pickler.scala", "PostTyper.scala",

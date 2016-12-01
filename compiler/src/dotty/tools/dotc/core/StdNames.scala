@@ -265,6 +265,7 @@ object StdNames {
     val THIS: N                     = "_$this"
     val TRAIT_CONSTRUCTOR: N        = "$init$"
     val U2EVT: N                    = "u2evt$"
+    val ALLARGS: N                  = "$allArgs"
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
