@@ -570,10 +570,10 @@ class Namer { typer: Typer =>
    *  that are already added to the symbol.
    */
   def addAnnotations(sym: Symbol, stat: MemberDef)(implicit ctx: Context) = {
-    // (1) The context in which an annotation of a top-evel class or module is evaluated
+    // (1) The context in which an annotation of a top-level class or module is evaluated
     // is the closest enclosing context which has the enclosing package as owner.
     // (2) The context in which an annotation for any other symbol is evaluated is the
-    // closest enclosing context which has the owner of the class enclpsing the symbol as owner.
+    // closest enclosing context which has the owner of the class enclosing the symbol as owner.
     // E.g in
     //
     //     package p
