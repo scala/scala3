@@ -1,12 +1,12 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.{PolyType, Type}
+import dotty.tools.dotc.core.Types.{MethodicType, Type}
 
 case class Cast(from: Type, to: Type)(implicit ctx: Context) {
 
-  assert(!from.widenDealias.isInstanceOf[PolyType], from.widenDealias)
-  assert(!to.widenDealias.isInstanceOf[PolyType], to.widenDealias)
+  assert(!from.widenDealias.isInstanceOf[MethodicType], from.widenDealias)
+  assert(!to.widenDealias.isInstanceOf[MethodicType], to.widenDealias)
 
   override def equals(other: Any): Boolean = {
     other match {

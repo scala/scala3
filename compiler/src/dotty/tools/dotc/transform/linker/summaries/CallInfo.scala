@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform.linker.summaries
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.{PolyType, Type}
+import dotty.tools.dotc.core.Types.{PolyType, Type, TypeBounds}
 
 case class CallInfo(call: Type, // this is type of method, that includes full type of reciever, eg: TermRef(reciever, Method)
                     targs: List[Type],
@@ -10,6 +10,8 @@ case class CallInfo(call: Type, // this is type of method, that includes full ty
                    )(implicit ctx: Context) {
 
   assert(call.termSymbol.isTerm)
+
+  targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
 
   call.widenDealias match {
     case t: PolyType => assert(t.paramNames.size == targs.size)

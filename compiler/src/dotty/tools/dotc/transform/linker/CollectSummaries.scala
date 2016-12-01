@@ -322,6 +322,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             @tailrec def refine(tp: Type): Type = tp match {
               case tp: TypeAlias => refine(tp.alias.dealias)
               case tp: RefinedType => refine(tp.refinedInfo)
+              case tp: TypeBounds => refine(tp.hi)
               case _ => tp
             }
             @tailrec def getVarArgTypes(tp: Type, acc: List[Type] = Nil): List[Type] = tp match {
