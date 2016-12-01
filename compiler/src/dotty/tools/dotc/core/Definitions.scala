@@ -650,6 +650,13 @@ class Definitions {
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
   def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)
 
+  val predefClassNames: Set[Name] =
+    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName)
+
+  /** Is `cls` the predef module class, or a class inherited by Predef? */
+  def isPredefClass(cls: Symbol) =
+    (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
+
   val StaticRootImportFns = List[() => TermRef](
     () => JavaLangPackageVal.termRef,
     () => ScalaPackageVal.termRef

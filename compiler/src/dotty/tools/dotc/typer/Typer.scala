@@ -27,7 +27,7 @@ import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
-import util.SourcePosition
+import util.{SourcePosition, Property}
 import collection.mutable
 import annotation.tailrec
 import Implicits._
@@ -57,6 +57,8 @@ object Typer {
   def assertPositioned(tree: untpd.Tree)(implicit ctx: Context) =
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
+
+  private val ExprOwner = new Property.Key[Symbol]
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Dynamic with Checking with Docstrings {
@@ -74,7 +76,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
    *  We should check that this has no performance degradation, however.
    */
-  private var importedFromRoot: Set[Symbol] = Set()
+  private var unimported: Set[Symbol] = Set()
 
   /** Temporary data item for single call to typed ident:
    *  This symbol would be found under Scala2 mode, but is not
@@ -101,15 +103,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  to typedIdent's context which is lost in nested calls to findRef
      */
     def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
-
-    /** Is this import a root import that has been shadowed by an explicit
-     *  import in the same program?
-     */
-    def isDisabled(imp: ImportInfo, site: Type): Boolean = {
-      if (imp.isRootImport && (importedFromRoot contains site.termSymbol)) return true
-      if (imp.hiddenRoot.exists) importedFromRoot += imp.hiddenRoot
-      false
-    }
 
     /** Does this identifier appear as a constructor of a pattern? */
     def isPatternConstr =
@@ -188,32 +181,44 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
-      def namedImportRef(site: Type, selectors: List[untpd.Tree])(implicit ctx: Context): Type = {
-        def checkUnambiguous(found: Type) = {
-          val other = namedImportRef(site, selectors.tail)
-          if (other.exists && found.exists && (found != other))
-            error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
-                  tree.pos)
-          found
-        }
+      def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
         val Name = name.toTermName.decode
-        selectors match {
+        def recur(selectors: List[untpd.Tree]): Type = selectors match {
           case selector :: rest =>
+            def checkUnambiguous(found: Type) = {
+              val other = recur(selectors.tail)
+              if (other.exists && found.exists && (found != other))
+                error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
+                      tree.pos)
+              found
+            }
+
+            def selection(name: Name) =
+              if (imp.sym.isCompleting) {
+                ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
+                NoType
+              }
+              else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
+                NoType
+              else {
+                // Pass refctx so that any errors are reported in the context of the
+                // reference instead of the
+                checkUnambiguous(selectionType(imp.site, name, tree.pos)(refctx))
+              }
+
             selector match {
               case Thicket(fromId :: Ident(Name) :: _) =>
                 val Ident(from) = fromId
-                val selName = if (name.isTypeName) from.toTypeName else from
-                // Pass refctx so that any errors are reported in the context of the
-                // reference instead of the context of the import.
-                checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
+                selection(if (name.isTypeName) from.toTypeName else from)
               case Ident(Name) =>
-                checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
+                selection(name)
               case _ =>
-                namedImportRef(site, rest)
+                recur(rest)
             }
           case nil =>
             NoType
         }
+        recur(imp.selectors)
       }
 
       /** The type representing a wildcard import with enclosing name when imported
@@ -222,7 +227,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
         if (imp.isWildcardImport) {
           val pre = imp.site
-          if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName) && name != nme.CONSTRUCTOR) {
+          if (!unimported.contains(pre.termSymbol) &&
+              !imp.excluded.contains(name.toTermName) &&
+              name != nme.CONSTRUCTOR) {
             val denot = pre.member(name).accessibleFrom(pre)(refctx)
             if (reallyExists(denot)) return pre.select(name, denot)
           }
@@ -279,19 +286,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (result.exists) result
           else {  // find import
             val curImport = ctx.importInfo
+            def updateUnimported() =
+              if (curImport.unimported.exists) unimported += curImport.unimported
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
-              val namedImp = namedImportRef(curImport.site, curImport.selectors)
+            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
+              val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
-              else if (isPossibleImport(wildImport)) {
+              else if (isPossibleImport(wildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
-                else loop(outer)
+                else {
+                  updateUnimported()
+                  loop(outer)
+                }
               }
-              else loop(outer)
+              else {
+                updateUnimported()
+                loop(outer)
+              }
             }
             else loop(outer)
           }
@@ -311,11 +326,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         return typed(desugar.patternVar(tree), pt)
     }
 
-
     val rawType = {
-      val saved1 = importedFromRoot
+      val saved1 = unimported
       val saved2 = foundUnderScala2
-      importedFromRoot = Set.empty
+      unimported = Set.empty
       foundUnderScala2 = NoType
       try {
         var found = findRef(NoType, BindingPrec.nothingBound, NoContext)
@@ -329,7 +343,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         found
       }
       finally {
-      	importedFromRoot = saved1
+      	unimported = saved1
       	foundUnderScala2 = saved2
       }
     }
@@ -576,7 +590,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
-    (index(stats), typedStats(stats, ctx.owner))
+    (indexAndAnnotate(stats), typedStats(stats, ctx.owner))
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
@@ -1058,7 +1072,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedPolyTypeTree(tree: untpd.PolyTypeTree)(implicit ctx: Context): Tree = track("typedPolyTypeTree") {
     val PolyTypeTree(tparams, body) = tree
-    index(tparams)
+    indexAndAnnotate(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
     assignType(cpy.PolyTypeTree(tree)(tparams1, body1), tparams1, body1)
@@ -1121,7 +1135,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.ensureCompleted)
-    val annotCtx = ctx.outersIterator.dropWhile(_.owner == sym).next
+    lazy val annotCtx = {
+      val c = ctx.outersIterator.dropWhile(_.owner == sym).next
+      c.property(ExprOwner) match {
+        case Some(exprOwner) if c.owner.isClass =>
+          // We need to evaluate annotation arguments in an expression context, since
+          // classes defined in a such arguments should not be entered into the
+          // enclosing class.
+          c.exprContext(mdef, exprOwner)
+        case None => c
+      }
+    }
     // necessary in order to mark the typed ahead annotations as definitely typed:
     untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }
@@ -1540,7 +1564,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case nil =>
         buf.toList
     }
-    traverse(stats)
+    val localCtx = {
+      val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
+      ctx.withProperty(ExprOwner, exprOwnerOpt)
+    }
+    traverse(stats)(localCtx)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
