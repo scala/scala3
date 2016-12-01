@@ -1,0 +1,8 @@
+> compile
+# Intentionally failing test
+-> test
+# Fix the bug!
+$ copy-file changes/A2.scala src/main/scala/A.scala
+> compile
+# The test should pass now
+> test
