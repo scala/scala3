@@ -176,7 +176,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
     val tpamsOuter = caller.call.widen match {
       case t: PolyType =>
-        (t.paramNames zip caller.targs).foldLeft(OuterTargs.empty)((x, nameType) => x.add(callerSymbol, nameType._1, nameType._2))
+        OuterTargs.empty.addAll(callerSymbol, t.paramNames, caller.targs)
       case _ =>
         OuterTargs.empty
     }
@@ -485,17 +485,24 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
         case None =>
           outerMethods += sym
 
-          def substituteOuterTargs = new SubstituteByParentMap(method.outerTargs)
+          val tParamNames = method.call.widenDealias.typeParams.map(_.paramName)
+          val newOuterTargs = method.outerTargs.addAll(sym, tParamNames, method.targs)
+          def substituteOuterTargs = new SubstituteByParentMap(newOuterTargs)
 
           // Add return type to reachable types
-          val returnType = method.call.widenDealias.finalResultType
+          val methodTpe = method.call.widenDealias
+
+          val returnType = methodTpe match {
+            case t: PolyType => t.instantiate(method.targs).finalResultType
+            case _ => methodTpe.finalResultType
+          }
 
           val javaAllocatedType = returnType match {
             case returnType: JavaAllocatedType => returnType
             case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
             case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
           }
-          addReachableType(new TypeWithContext(javaAllocatedType, method.outerTargs), method)
+          addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
 
           // Add all possible calls from java to object passed as parameters.
           processCallsFromJava(instantiatedTypes, method)

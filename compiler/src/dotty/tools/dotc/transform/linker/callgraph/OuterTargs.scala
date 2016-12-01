@@ -6,10 +6,10 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 
 object OuterTargs {
-  def empty = new OuterTargs(Map.empty)
+  lazy val empty = new OuterTargs(Map.empty)
 }
 
-final case class OuterTargs (mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
+final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
 
   def nonEmpty: Boolean = mp.nonEmpty
 
@@ -21,6 +21,9 @@ final case class OuterTargs (mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
     val old = mp.getOrElse(parent, Map.empty)
     new OuterTargs(mp.updated(parent, old + (name -> tp)))
   }
+
+  def addAll(parent: Symbol, names: List[Name], tps: List[Type]): OuterTargs =
+    (names zip tps).foldLeft(this)((x, nameType) => x.add(parent, nameType._1, nameType._2))
 
   def ++(other: OuterTargs)(implicit ctx: Context): OuterTargs = {
     other.mp.foldLeft(this) { (x, y) =>

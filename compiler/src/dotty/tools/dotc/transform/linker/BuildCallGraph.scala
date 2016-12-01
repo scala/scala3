@@ -132,11 +132,10 @@ class BuildCallGraph extends Phase {
           }
         }
 
-        val viz = GraphVisualization.outputGraphVis(mode, specLimit)(callGraph)
-
-        printToFile(new java.io.File(ctx.settings.d.value + "/CallGraph.html")) { out =>
-          out.println(viz)
-        }
+        val vis = GraphVisualization.outputGraphVis(mode, specLimit)(callGraph)
+        val visFile = new java.io.File(ctx.settings.d.value + "/CallGraph.html")
+        printToFile(visFile)(_.println(vis))
+        ctx.log("Created call graph visualization: " + visFile.getAbsoluteFile)
       }
 
     }
