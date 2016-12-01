@@ -22,58 +22,40 @@ import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 /**
  *  Rewires closures to implement more specific types of Functions.
  */
-class SpecializeFunctions {
+object SpecializeFunctions {
   import tpd._
 
   val maxArgsCount = 2
 
-  val specializedReturnTypesPerRun = new PerRun[Set[Symbol]](implicit ctx => Set(
-                                 defn.UnitClass,
-                                 defn.BooleanClass,
-                                 defn.IntClass,
-                                 defn.LongClass,
-                                 defn.FloatClass,
-                                 defn.DoubleClass,
-     /* only for Function0: */   defn.ByteClass,
-                                 defn.ShortClass,
-                                 defn.CharClass))
-  def specializedReturnTypes(implicit ctx: Context) = specializedReturnTypesPerRun()(ctx)
-
-  val specializedArgumentTypesPerRun = new PerRun[Set[Symbol]](implicit ctx => Set(
-                                 defn.IntClass,
-                                 defn.LongClass,
-                                 defn.FloatClass,
-                                 defn.DoubleClass))
-  def specializedArgumentTypes(implicit ctx: Context) = specializedArgumentTypesPerRun()(ctx)
-
-  def shouldSpecialize(m: MethodType)(implicit ctx: Context) =
-    (m.paramTypes.size <= maxArgsCount) &&
-      m.paramTypes.forall(x => specializedArgumentTypes.contains(x.typeSymbol)) &&
-      specializedReturnTypes.contains(m.resultType.typeSymbol)
+  def shouldSpecialize(paramTypes: List[Type], resultType: Type)(implicit ctx: Context) =
+    (paramTypes.size <= maxArgsCount) &&
+      paramTypes.forall(x => defn.specializedArgumentTypes.contains(x.typeSymbol)) &&
+      defn.specializedReturnTypes.contains(resultType.typeSymbol)
 
   val functionName = "JFunction".toTermName
   val functionPackage = "scala.compat.java8.".toTermName
+
+  def specialized(formals: List[Type], result: Type)(implicit ctx: Context): Type =
+    if (shouldSpecialize(formals, result)) {
+      val interfaceName = (functionName ++ formals.length.toString).specializedFor(result :: formals, Nil)
+      val interface = ctx.getClassIfDefined(functionPackage ++ interfaceName)
+      if (interface.exists) interface.asType.typeRef else NoType
+    }
+    else NoType
+
+  def specialized(tp: Type)(implicit ctx: Context): Type = tp match {
+    case defn.FunctionOf(formals, result) => specialized(formals, result).orElse(tp)
+    case _ => tp
+  }
 
   def transformClosure(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: Closure =>
       tree.tpt match {
         case EmptyTree =>
-          val m = tree.meth.tpe.widen.asInstanceOf[MethodType]
-
-          if (shouldSpecialize(m)) {
-            val functionSymbol = tree.tpe.widenDealias.classSymbol
-            val names = ctx.atPhase(ctx.erasurePhase) {
-              implicit ctx => functionSymbol.typeParams.map(_.name)
-            }
-            val interfaceName = (functionName ++ m.paramTypes.length.toString).specializedFor(m.paramTypes ::: m.resultType :: Nil, names, Nil, Nil)
-
-            // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
-            val interface = ctx.withPhase(ctx.typerPhase).getClassIfDefined(functionPackage ++ interfaceName)
-            if (interface.exists) {
-              val tpt = tpd.TypeTree(interface.asType.typeRef)
-              Closure(tree.env, tree.meth, tpt)
-            } else tree
-          } else tree
+          val mt @ MethodType(_, formals) = tree.meth.tpe.widen
+          val specializedType = specialized(formals, mt.resultType)
+          if (specializedType.exists) cpy.Closure(tree)(tpt = TypeTree(specializedType))
+          else tree
         case _ =>
           tree
       }

@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators.
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
+import dotc.transform.SpecializeFunctions
 import util.DotClass
 import Definitions.MaxImplementedFunctionArity
 
@@ -355,7 +356,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       if (!sym.isClass) this(tp.info)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
-      else if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
+      else if (defn.isFunctionClass(sym))
+        if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
+        else eraseNormalClassRef(tp)//SpecializeFunctions.specialized(tp).orElse(eraseNormalClassRef(tp))
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent

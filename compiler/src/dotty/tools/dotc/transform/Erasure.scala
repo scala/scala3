@@ -290,8 +290,6 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    val specializer = new SpecializeFunctions
-
     def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = {
       val tp = tree.typeOpt
       if (tree.isTerm) erasedRef(tp) else valueErasure(tp)
@@ -345,19 +343,22 @@ object Erasure extends TypeTestsCasts{
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      val oldSym = tree.symbol
-      assert(oldSym.exists)
-      val oldOwner = oldSym.owner
-      val owner =
-        if ((oldOwner eq defn.AnyClass) || (oldOwner eq defn.AnyValClass)) {
-          assert(oldSym.isConstructor, s"${oldSym.showLocated}")
+
+      def mapOwner(sym: Symbol): Symbol = {
+        val owner = sym.owner
+        if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
+          assert(sym.isConstructor, s"${sym.showLocated}")
           defn.ObjectClass
         }
-        else if (defn.isUnimplementedFunctionClass(oldOwner))
+        else if (defn.isUnimplementedFunctionClass(owner))
           defn.FunctionXXLClass
         else
-          oldOwner
-      val sym = if (owner eq oldOwner) oldSym else owner.info.decl(oldSym.name).symbol
+          owner
+      }
+
+      var sym = tree.symbol
+      val owner = mapOwner(sym)
+      if (owner ne sym.owner) sym = owner.info.decl(sym.name).symbol
       assert(sym.exists, owner)
 
       def select(qual: Tree, sym: Symbol): Tree = {
@@ -445,14 +446,23 @@ object Erasure extends TypeTestsCasts{
       }
     }
 
-	/** Besides notmal typing, this method collects all arguments
-	 *  to a compacted function into a single argument of array type.
-	 */
+    def specialize(fun: Tree): Tree = {
+
+
+    }
+
+	  /** Besides normal typing, this method collects all arguments
+	   *  to a compacted function into a single argument of array type.
+	   */
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.dummyApply)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt, this)) match {
+      else {
+        ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+          println(i"erase apply $fun: ${fun.typeOpt.widen}")
+        }
+        typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>
@@ -471,7 +481,7 @@ object Erasure extends TypeTestsCasts{
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
           }
       }
-    }
+    }}
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,
     // if the original proto-type is not a value type.
@@ -584,7 +594,7 @@ object Erasure extends TypeTestsCasts{
         case _ =>
           implClosure
       }
-      specializer.transformClosure(implClosure2)
+      SpecializeFunctions.transformClosure(implClosure2)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =

@@ -665,6 +665,25 @@ class Definitions {
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
   lazy val ProductNType = mkArityArray("scala.Product", MaxTupleArity, 0)
 
+  private val specializedReturnTypesPerRun = new PerRun[Set[Symbol]](implicit ctx => Set(
+                                 defn.UnitClass,
+                                 defn.BooleanClass,
+                                 defn.IntClass,
+                                 defn.LongClass,
+                                 defn.FloatClass,
+                                 defn.DoubleClass,
+     /* only for Function0: */   defn.ByteClass,
+                                 defn.ShortClass,
+                                 defn.CharClass))
+  def specializedReturnTypes(implicit ctx: Context) = specializedReturnTypesPerRun()(ctx)
+
+  private val specializedArgumentTypesPerRun = new PerRun[Set[Symbol]](implicit ctx => Set(
+                                 defn.IntClass,
+                                 defn.LongClass,
+                                 defn.FloatClass,
+                                 defn.DoubleClass))
+  def specializedArgumentTypes(implicit ctx: Context) = specializedArgumentTypesPerRun()(ctx)
+
   def FunctionClass(n: Int)(implicit ctx: Context) =
     if (n < MaxImplementedFunctionArity) FunctionClassPerRun()(ctx)(n)
     else ctx.requiredClass("scala.Function" + n.toString)
