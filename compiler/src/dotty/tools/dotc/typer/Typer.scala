@@ -1138,7 +1138,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     lazy val annotCtx = {
       val c = ctx.outersIterator.dropWhile(_.owner == sym).next
       c.property(ExprOwner) match {
-        case Some(exprOwner) if c.owner.isClass => c.exprContext(mdef, exprOwner)
+        case Some(exprOwner) if c.owner.isClass =>
+          // We need to evaluate annotation arguments in an expression context, since
+          // classes defined in a such arguments should not be entered into the
+          // enclosing class.
+          c.exprContext(mdef, exprOwner)
         case None => c
       }
     }
