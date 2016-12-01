@@ -1962,12 +1962,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             var typeArgs = tree match {
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
               case _ => Nil
             }
             if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
             convertNewGenericArray(
-              adaptInterpolated(tree.appliedToTypes(typeArgs), pt, original))
+              adaptInterpolated(tree.appliedToTypeTrees(typeArgs), pt, original))
           }
         case wtp =>
           pt match {

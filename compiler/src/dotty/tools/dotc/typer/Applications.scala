@@ -250,8 +250,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Splice new method reference into existing application */
     def spliceMeth(meth: Tree, app: Tree): Tree = app match {
-      case Apply(fn, args) => Apply(spliceMeth(meth, fn), args)
-      case TypeApply(fn, targs) => TypeApply(spliceMeth(meth, fn), targs)
+      case Apply(fn, args) =>
+        spliceMeth(meth, fn).appliedToArgs(args)
+      case TypeApply(fn, targs) =>
+        // Note: It is important that the type arguments `targs` are passed in new trees
+        // instead of being spliced in literally. Otherwise, a type argument to a default
+        // method could be constructed as the definition site of the type variable for
+        // that default constructor. This would interpolate type variables too early,
+        // causing lots of tests (among them tasty_unpickleScala2) to fail.
+        spliceMeth(meth, fn).appliedToTypes(targs.tpes)
       case _ => meth
     }
 
@@ -333,7 +340,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
-              addTyped(treeToArg(spliceMeth(getter withPos appPos, normalizedFun)), formal)
+              addTyped(treeToArg(spliceMeth(getter withPos normalizedFun.pos, normalizedFun)), formal)
               matchArgs(args1, formals1, n + 1)
             }
           }
