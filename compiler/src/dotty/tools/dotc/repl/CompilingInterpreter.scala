@@ -689,10 +689,27 @@ class CompilingInterpreter(
 
       private def resultExtractor(req: Request, varName: Name): String = {
         val prettyName = varName.decode
+        // FIXME: `varType` is prettified to abbreviate common types where
+        // appropriate, and to also prettify literal types
+        //
+        // This should be rewritten to use the actual types once we have a
+        // semantic representation available to the REPL
         val varType = string2code(req.typeOf(varName)) match {
+          // Extract List's paremeter from full path
           case ListReg(param) => s"List[$param]"
+          // Extract Map's paremeters from full path
           case MapReg(k, v) => s"Map[$k, $v]"
+          // Extract literal type from literal type representation. Example:
+          //
+          // ```
+          // scala> val x: 42 = 42
+          // val x: Int(42) = 42
+          // scala> val y: "hello" = "hello"
+          // val y: String("hello") = "hello"
+          // ```
           case LitReg(lit) => lit
+          // When the type is a singleton value like None, don't show `None$`
+          // instead show `None.type`.
           case x if x.lastOption == Some('$') => x.init + ".type"
           case x => x
         }
