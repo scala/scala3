@@ -685,12 +685,15 @@ class CompilingInterpreter(
 
       private val ListReg = """^.*List\[(\w+)\]$""".r
       private val MapReg = """^.*Map\[(\w+),[ ]*(\w+)\]$""".r
+      private val LitReg = """^.*\((.+)\)$""".r
 
       private def resultExtractor(req: Request, varName: Name): String = {
         val prettyName = varName.decode
         val varType = string2code(req.typeOf(varName)) match {
           case ListReg(param) => s"List[$param]"
           case MapReg(k, v) => s"Map[$k, $v]"
+          case LitReg(lit) => lit
+          case x if x.lastOption == Some('$') => x.init + ".type"
           case x => x
         }
         val fullPath = req.fullPath(varName)
