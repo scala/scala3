@@ -78,15 +78,19 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
+  val linkDCE = List("-link-dce")
+  val linkDCEwithVis = "-link-vis" :: linkDCE
+
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
   val posScala2Dir  = testsDir + "pos-scala2/"
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
-  val linkDir       = testsDir + "link/"
   val newDir        = testsDir + "new/"
   val javaDir       = testsDir + "pos-java-interop/"
+  val linkDCEDir    = testsDir + "link-dce/"
+  val linkDCEWithStdlibDir = testsDir + "link-dce-stdlib/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -203,18 +207,18 @@ class tests extends CompilerTest {
   @Test def run_all = runFiles(runDir)
 
   // Test callgraph DCE
-  @Test def link_dce_all = runFiles(linkDir + "dce/", List( "-link-dce", "-Ylog:callGraph"))
-  @Test def link_dce_vis_all = runFiles(linkDir + "dce/", List("-link-dce", "-link-vis",  "-Ylog:callGraph"))
+  @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
+  @Test def link_dce_vis_all = runFiles(linkDCEDir, linkDCEwithVis)
 
   // Test callgraph DCE on code that uses stdlib (not DCEed)
-  @Test def link_dce_precompiled_stdlib_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce",  "-Ylog:callGraph"))
-  @Test def link_dce_vis_precompiled_stdlib_all = runFiles(linkDir + "stdlib-dce/", List("-link-dce", "-link-vis",  "-Ylog:callGraph"))
+  @Test def link_dce_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCE)
+  @Test def link_dce_vis_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCEwithVis)
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = stdlibFiles)
   @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_dce_vis_stdlib_all =
-    runFiles(linkDir + "stdlib-dce/", List("-language:Scala2", "-link-dce", "-link-vis", "-Ylog:callGraph"), stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = stdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
