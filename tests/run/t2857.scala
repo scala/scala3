@@ -5,5 +5,3 @@ object Test extends App {
   m.removeBinding(6, "Foo")
   println(m.contains(6))
 }
-
-
