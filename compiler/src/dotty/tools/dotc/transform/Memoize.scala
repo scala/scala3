@@ -47,7 +47,9 @@ import Decorators._
     }
     tree match {
       case ddef: DefDef
-        if !ddef.symbol.is(Deferred) && ddef.rhs == EmptyTree =>
+        if !ddef.symbol.is(Deferred) &&
+           !ddef.symbol.isConstructor && // constructors bodies are added later at phase Constructors
+           ddef.rhs == EmptyTree =>
           errorLackImplementation(ddef)
       case tdef: TypeDef
         if tdef.symbol.isClass && !tdef.symbol.is(Deferred) && tdef.rhs == EmptyTree =>
@@ -89,10 +91,10 @@ import Decorators._
     }
 
     lazy val field = sym.field.orElse(newField).asTerm
-    
+
     def adaptToField(tree: Tree) =
       if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
-      
+
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
         def skipBlocks(t: Tree): Tree = t match {
