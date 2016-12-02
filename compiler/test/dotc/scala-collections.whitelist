@@ -269,29 +269,30 @@
 
 #../scala-scala/src/library/scala/sys/SystemProperties.scala # fails in partest
 
-../scala-scala/src/library/scala/Function0.scala
+# Removed after rebase on #1758 (Drop function 22 limit)
+#../scala-scala/src/library/scala/Function0.scala
 #../scala-scala/src/library/scala/Function1.scala # fails in 'testOnly dotc.tests'
-../scala-scala/src/library/scala/Function2.scala
-../scala-scala/src/library/scala/Function3.scala
-../scala-scala/src/library/scala/Function4.scala
-../scala-scala/src/library/scala/Function5.scala
-../scala-scala/src/library/scala/Function6.scala
-../scala-scala/src/library/scala/Function7.scala
-../scala-scala/src/library/scala/Function8.scala
-../scala-scala/src/library/scala/Function9.scala
-../scala-scala/src/library/scala/Function10.scala
-../scala-scala/src/library/scala/Function11.scala
-../scala-scala/src/library/scala/Function12.scala
-../scala-scala/src/library/scala/Function13.scala
-../scala-scala/src/library/scala/Function14.scala
-../scala-scala/src/library/scala/Function15.scala
-../scala-scala/src/library/scala/Function16.scala
-../scala-scala/src/library/scala/Function17.scala
-../scala-scala/src/library/scala/Function18.scala
-../scala-scala/src/library/scala/Function19.scala
-../scala-scala/src/library/scala/Function20.scala
-../scala-scala/src/library/scala/Function21.scala
-../scala-scala/src/library/scala/Function22.scala
+#../scala-scala/src/library/scala/Function2.scala
+#../scala-scala/src/library/scala/Function3.scala
+#../scala-scala/src/library/scala/Function4.scala
+#../scala-scala/src/library/scala/Function5.scala
+#../scala-scala/src/library/scala/Function6.scala
+#../scala-scala/src/library/scala/Function7.scala
+#../scala-scala/src/library/scala/Function8.scala
+#../scala-scala/src/library/scala/Function9.scala
+#../scala-scala/src/library/scala/Function10.scala
+#../scala-scala/src/library/scala/Function11.scala
+#../scala-scala/src/library/scala/Function12.scala
+#../scala-scala/src/library/scala/Function13.scala
+#../scala-scala/src/library/scala/Function14.scala
+#../scala-scala/src/library/scala/Function15.scala
+#../scala-scala/src/library/scala/Function16.scala
+#../scala-scala/src/library/scala/Function17.scala
+#../scala-scala/src/library/scala/Function18.scala
+#../scala-scala/src/library/scala/Function19.scala
+#../scala-scala/src/library/scala/Function20.scala
+#../scala-scala/src/library/scala/Function21.scala
+#../scala-scala/src/library/scala/Function22.scala
 
 ../scala-scala/src/library/scala/collection/mutable/MapLike.scala
 ../scala-scala/src/library/scala/collection/mutable/Map.scala

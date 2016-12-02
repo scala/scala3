@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.{PolyType, Type}
 import dotty.tools.dotc.transform.linker.summaries.CallInfo
 
 import scala.collection.mutable
@@ -12,6 +12,7 @@ class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[T
 
   assert(parent != null)
   assert(callee != null)
+  // FIXME: assert(!targs.exists(_.widenDealias.isInstanceOf[PolyType]), targs)
 
   val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
   private val outEdgesOpt =

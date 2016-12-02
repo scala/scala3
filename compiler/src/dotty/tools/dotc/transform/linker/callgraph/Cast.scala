@@ -5,8 +5,8 @@ import dotty.tools.dotc.core.Types.{MethodicType, Type}
 
 case class Cast(from: Type, to: Type)(implicit ctx: Context) {
 
-  assert(!from.widenDealias.isInstanceOf[MethodicType], from.widenDealias)
-  assert(!to.widenDealias.isInstanceOf[MethodicType], to.widenDealias)
+  assertNonMethodic("from", from.widenDealias)
+  assertNonMethodic("to", to.widenDealias)
 
   override def equals(other: Any): Boolean = {
     other match {
@@ -20,4 +20,8 @@ case class Cast(from: Type, to: Type)(implicit ctx: Context) {
     from.typeSymbol.hashCode() * 31 + to.typeSymbol.hashCode()
 
   override def toString: String = s"Cast($from, $to)"
+
+  private def assertNonMethodic(name: String, tpe: Type): Unit =
+    assert(!tpe.isInstanceOf[MethodicType], name + " = " + tpe)
+
 }
