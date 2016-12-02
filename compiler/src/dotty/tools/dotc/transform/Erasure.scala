@@ -82,7 +82,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
     assertErased(tree)
     tree match {
       case res: tpd.This =>
-        assert(!ExplicitOuter.referencesOuter(ctx.owner.enclosingClass, res),
+        assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")
       case ret: tpd.Return =>
         // checked only after erasure, as checking before erasure is complicated
@@ -389,7 +389,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
-      if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
+      if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
         ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
         outer.path(tree.symbol)

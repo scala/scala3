@@ -330,7 +330,7 @@ object ExplicitOuter {
     /** The path of outer accessors that references `toCls.this` starting from
      *  the context owner's this node.
      */
-    def path(toCls: Symbol, start: Tree = This(ctx.owner.enclosingClass.asClass)): Tree = try {
+    def path(toCls: Symbol, start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass)): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
