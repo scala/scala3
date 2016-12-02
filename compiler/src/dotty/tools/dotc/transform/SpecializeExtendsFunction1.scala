@@ -11,6 +11,16 @@ class SpecializeExtendsFunction1 extends MiniPhaseTransform {
 
   val phaseName = "specializeExtendsFunction1"
 
+  // types as abbreviated in scalac specialized class file names
+  private[this] val typeAbbr = Map(
+    "scala.Double"  -> "D",
+    "scala.Float"   -> "F",
+    "scala.Int"     -> "I",
+    "scala.Long"    -> "J",
+    "scala.Unit"    -> "V",
+    "scala.Boolean" -> "Z"
+  )
+
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val parentAndTypes =
       tree.parents
@@ -34,11 +44,11 @@ class SpecializeExtendsFunction1 extends MiniPhaseTransform {
       val t1Name = t1.typeSymbol.showFullName
       val rName  = r.typeSymbol.showFullName
 
-      val requiredClass = (t1Name, rName) match {
-        case ("scala.Int", "scala.Int") =>
-          ctx.requiredClassRef("scala.Function1$mcII$sp")
-        case ("scala.Char", "scala.Int") =>
-          ctx.requiredClassRef("scala.Function1$mcCI$sp")
+      // get the required class via the abbreviations in `typeAbbr`, if they
+      // don't both exist there, there is no specialization for the combination
+      val requiredClass = (typeAbbr.get(t1Name), typeAbbr.get(rName)) match {
+        case (Some(t1Abbr), Some(rAbbr)) =>
+          ctx.requiredClassRef("scala.Function1$mc" + rAbbr + t1Abbr +  "$sp")
         case _ => orig.tpe
       }
 
