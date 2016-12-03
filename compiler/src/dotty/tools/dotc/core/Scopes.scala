@@ -309,7 +309,7 @@ object Scopes {
 
     /** Lookup a symbol entry matching given name.
      */
-    override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+    override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
