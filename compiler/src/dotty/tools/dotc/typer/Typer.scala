@@ -1616,6 +1616,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+  /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
+  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt match {
+    case pt: SelectionProto => pt.name == nme.apply
+    case pt: FunProto       => pt.args.isEmpty && isApplyProto(pt.resultType)
+    case pt: IgnoredProto   => isApplyProto(pt.ignored)
+    case _                  => false
+  }
+
   /** Add apply node or implicit conversions. Two strategies are tried, and the first
    *  that is successful is picked. If neither of the strategies are successful, continues with
    *  `fallBack`.
@@ -1628,14 +1636,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *    with wildcard result type.
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
-
-    /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
-    def isApplyProto(pt: Type): Boolean = pt match {
-      case pt: SelectionProto => pt.name == nme.apply
-      case pt: FunProto => pt.args.isEmpty && isApplyProto(pt.resultType)
-      case pt: IgnoredProto => isApplyProto(pt.ignored)
-      case _ => false
-    }
 
     def tryApply(implicit ctx: Context) = {
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
@@ -1878,6 +1878,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           err.typeMismatch(tree, pt)
         else
           missingArgs
+      case wtp: RefinedType
+      if defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
+         !isApplyProto(pt) =>
+        typr.println(i"insert apply on implicit $tree")
+        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       case _ =>
         ctx.typeComparer.GADTused = false
         if (ctx.mode is Mode.Pattern) {

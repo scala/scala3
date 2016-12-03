@@ -86,7 +86,25 @@ class Definitions {
     newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
   }
 
-  /** The trait FunctionN, for some N */
+  /** The trait FunctionN or ImplicitFunctionN, for some N
+   *  @param  name   The name of the trait to be created
+   *
+   *  FunctionN traits follow this template:
+   *
+   *      trait FunctionN[T0,...T{N-1}, R] extends Object {
+   *        def apply($x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   *
+   *  That is, they follow the template given for Function2..Function22 in the
+   *  standard library, but without `tupled` and `curried` methods and without
+   *  a `toString`.
+   *
+   *  ImplicitFunctionN traits follow this template:
+   *
+   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object with FunctionN[T0,...,T{N-1}, R] {
+   *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   */
   private def newFunctionNTrait(name: TypeName) = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
@@ -97,17 +115,17 @@ class Definitions {
           for (i <- List.range(0, arity)) yield
             enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
         val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
-        val (implicitFlag, parentTraits) =
+        val (methodType, parentTraits) =
           if (name.startsWith(tpnme.ImplicitFunction)) {
             val superTrait =
               FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
-            (Implicit, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
+            (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
           }
-          else (EmptyFlags, Nil)
+          else (MethodType, Nil)
         val applyMeth =
           decls.enter(
             newMethod(cls, nme.apply,
-              MethodType(argParams.map(_.typeRef), resParam.typeRef), Deferred | implicitFlag))
+              methodType(argParams.map(_.typeRef), resParam.typeRef), Deferred))
         denot.info =
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
@@ -698,6 +716,7 @@ class Definitions {
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
+  def isImplicitFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.ImplicitFunction)
   def isUnimplementedFunctionClass(cls: Symbol) =
     isFunctionClass(cls) && cls.name.functionArity > MaxImplementedFunctionArity
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)

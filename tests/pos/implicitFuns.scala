@@ -19,9 +19,15 @@ object Test2 {
 
   val yy: (String, Int) => Any = xx
 
+  implicit val world: String = "world!"
+
   val b = x("hello")
 
   val b1: Boolean = b
+
+  val bi = x
+
+  val bi1: Boolean = bi
 
   val c = xx("hh", 22)
 
