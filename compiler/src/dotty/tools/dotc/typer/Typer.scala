@@ -1613,17 +1613,33 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  `fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
+   *                This strategy is not tried if the prototype represents already
+   *                another `.apply` or `.apply()` selection.
    *  2nd strategy: If tree is a select `qual.name`, try to insert an implicit conversion
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
    */
-  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
-    tryEither { implicit ctx =>
+  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
+
+    /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
+    def isApplyProto(pt: Type): Boolean = pt match {
+      case pt: SelectionProto => pt.name == nme.apply
+      case pt: FunProto => pt.args.isEmpty && isApplyProto(pt.resultType)
+      case pt: IgnoredProto => isApplyProto(pt.ignored)
+      case _ => false
+    }
+
+    def tryApply(implicit ctx: Context) = {
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
-    } { (failedTree, failedState) =>
-      tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack(failedTree, failedState))
     }
+
+    def tryImplicit =
+      tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack)
+
+    if (isApplyProto(pt)) tryImplicit
+    else tryEither(tryApply(_))((_, _) => tryImplicit) 
+  }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
@@ -1716,7 +1732,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
           pt match {
             case pt: FunProto =>
-              tryInsertApplyOrImplicit(tree, pt)((_, _) => noMatches)
+              tryInsertApplyOrImplicit(tree, pt)(noMatches)
             case _ =>
               if (altDenots exists (_.info.paramTypess == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
@@ -1755,7 +1771,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case Apply(_, _) => " more"
           case _ => ""
         }
-        (_, _) => errorTree(tree, em"$methodStr does not take$more parameters")
+        errorTree(tree, em"$methodStr does not take$more parameters")
       }
     }
 
@@ -1974,9 +1990,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApplyOrImplicit(tree, pt) {
-                (_, _) => tree // error will be reported in typedTypeApply
-              }
+              tryInsertApplyOrImplicit(tree, pt)(tree) // error will be reported in typedTypeApply
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)

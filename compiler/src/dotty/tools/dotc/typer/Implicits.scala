@@ -24,6 +24,7 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import reporting.diagnostic.MessageContainer
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
@@ -212,6 +213,8 @@ object Implicits {
   /** A "no matching implicit found" failure */
   case object NoImplicitMatches extends SearchFailure
 
+  case object DivergingImplicit extends SearchFailure
+
   /** A search failure that can show information about the cause */
   abstract class ExplainedSearchFailure extends SearchFailure {
     protected def pt: Type
@@ -233,9 +236,35 @@ object Implicits {
       "\n " + explanation
   }
 
-  class NonMatchingImplicit(ref: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
-    def explanation(implicit ctx: Context): String =
-      em"${err.refStr(ref)} does not $qualify"
+  class NonMatchingImplicit(ref: TermRef,
+                            val pt: Type,
+                            val argument: tpd.Tree,
+                            trail: List[MessageContainer]) extends ExplainedSearchFailure {
+    private val separator = "\n**** because ****\n"
+
+    /** Replace repeated parts beginning with `separator` by ... */
+    private def elideRepeated(str: String): String = {
+      val startIdx = str.indexOfSlice(separator)
+      val nextIdx = str.indexOfSlice(separator, startIdx + separator.length)
+      if (nextIdx < 0) str
+      else {
+        val prefix = str.take(startIdx)
+        val first = str.slice(startIdx, nextIdx)
+        var rest = str.drop(nextIdx)
+        if (rest.startsWith(first)) {
+          rest = rest.drop(first.length)
+          val dots = "\n\n     ...\n"
+          if (!rest.startsWith(dots)) rest = dots ++ rest
+        }
+        prefix ++ first ++ rest
+      }
+    }
+
+    def explanation(implicit ctx: Context): String = {
+      val headMsg = em"${err.refStr(ref)} does not $qualify"
+      val trailMsg = trail.map(mc => i"$separator  ${mc.message}").mkString
+      elideRepeated(headMsg ++ trailMsg)
+    }
   }
 
   class ShadowedImplicit(ref: TermRef, shadowing: Type, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
@@ -273,9 +302,10 @@ trait ImplicitRunInfo { self: RunInfo =>
    *                      a type variable, we need the current context, the current
    *                      runinfo context does not do.
    */
-  def implicitScope(tp: Type, liftingCtx: Context): OfTypeImplicits = {
+  def implicitScope(rootTp: Type, liftingCtx: Context): OfTypeImplicits = {
 
     val seen: mutable.Set[Type] = mutable.Set()
+    val incomplete: mutable.Set[Type] = mutable.Set()
 
     /** Replace every typeref that does not refer to a class by a conjunction of class types
      *  that has the same implicit scope as the original typeref. The motivation for applying
@@ -309,16 +339,23 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
     }
 
-    def iscopeRefs(tp: Type): TermRefSet =
-      if (seen contains tp) EmptyTermRefSet
-      else {
-        seen += tp
-        iscope(tp).companionRefs
-      }
-
     // todo: compute implicits directly, without going via companionRefs?
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
       ctx.traceIndented(i"collectCompanions($tp)", implicits) {
+
+        def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
+          case Some(is) =>
+            is.companionRefs
+          case None =>
+            if (seen contains t) {
+              incomplete += tp  // all references to rootTo will be accounted for in `seen` so we return `EmptySet`.
+              EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
+            } else {
+              seen += t
+              iscope(t).companionRefs
+            }
+        }
+
         val comps = new TermRefSet
         tp match {
           case tp: NamedType =>
@@ -356,7 +393,8 @@ trait ImplicitRunInfo { self: RunInfo =>
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
-      def computeIScope(cacheResult: Boolean) = {
+      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached
+      def computeIScope() = {
         val savedEphemeral = ctx.typerState.ephemeral
         ctx.typerState.ephemeral = false
         try {
@@ -367,33 +405,23 @@ trait ImplicitRunInfo { self: RunInfo =>
             else
               collectCompanions(tp)
           val result = new OfTypeImplicits(tp, refs)(ctx)
-          if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
-          else if (cacheResult) implicitScopeCache(tp) = result
+          if (ctx.typerState.ephemeral)
+            record("ephemeral cache miss: implicitScope")
+          else if (canCache &&
+                   ((tp eq rootTp) ||                  // first type traversed is always cached
+                    !incomplete.contains(tp) &&        // other types are cached if they are not incomplete
+                    result.companionRefs.forall(       // and all their companion refs are cached
+                      implicitScopeCache.contains)))
+            implicitScopeCache(tp) = result
           result
         }
         finally ctx.typerState.ephemeral |= savedEphemeral
       }
-
-      if (tp.hash == NotCached || !Config.cacheImplicitScopes)
-        computeIScope(cacheResult = false)
-      else implicitScopeCache get tp match {
-        case Some(is) => is
-        case None =>
-          // Implicit scopes are tricky to cache because of loops. For example
-          // in `tests/pos/implicit-scope-loop.scala`, the scope of B contains
-          // the scope of A which contains the scope of B. We break the loop
-          // by returning EmptyTermRefSet in `collectCompanions` for types
-          // that we have already seen, but this means that we cannot cache
-          // the computed scope of A, it is incomplete.
-          // Keeping track of exactly where these loops happen would require a
-          // lot of book-keeping, instead we choose to be conservative and only
-          // cache scopes before any type has been seen. This is unfortunate
-          // because loops are very common for types in scala.collection.
-          computeIScope(cacheResult = seen.isEmpty)
-      }
+      if (canCache) implicitScopeCache.getOrElse(tp, computeIScope())
+      else computeIScope()
     }
 
-    iscope(tp)
+    iscope(rootTp)
   }
 
   /** A map that counts the number of times an implicit ref was picked */
@@ -587,7 +615,7 @@ trait Implicits { self: Typer =>
     val wildProto = implicitProto(pt, wildApprox(_))
 
     /** Search failures; overridden in ExplainedImplicitSearch */
-    protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
+    protected def nonMatchingImplicit(ref: TermRef, trail: List[MessageContainer]): SearchFailure = NoImplicitMatches
     protected def divergingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
     protected def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure = NoImplicitMatches
     protected def failedSearch: SearchFailure = NoImplicitMatches
@@ -628,7 +656,7 @@ trait Implicits { self: Typer =>
             { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
         }
         if (ctx.reporter.hasErrors)
-          nonMatchingImplicit(ref)
+          nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
         else if (contextual && !ctx.mode.is(Mode.ImplicitShadowing) &&
                  !shadowing.tpe.isError && !refMatches(shadowing)) {
           implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
@@ -637,7 +665,7 @@ trait Implicits { self: Typer =>
         else generated1 match {
           case TypeApply(fn, targs @ (arg1 :: arg2 :: Nil))
           if fn.symbol == defn.Predef_eqAny && !validEqAnyArgs(arg1.tpe, arg2.tpe) =>
-            nonMatchingImplicit(ref)
+            nonMatchingImplicit(ref, Nil)
           case _ =>
             SearchSuccess(generated1, ref, ctx.typerState)
         }
@@ -743,8 +771,8 @@ trait Implicits { self: Typer =>
       fail
     }
     def failures = myFailures.toList
-    override def nonMatchingImplicit(ref: TermRef) =
-      record(new NonMatchingImplicit(ref, pt, argument))
+    override def nonMatchingImplicit(ref: TermRef, trail: List[MessageContainer]) =
+      record(new NonMatchingImplicit(ref, pt, argument, trail))
     override def divergingImplicit(ref: TermRef) =
       record(new DivergingImplicit(ref, pt, argument))
     override def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure =
