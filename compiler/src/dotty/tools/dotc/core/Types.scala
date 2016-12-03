@@ -1210,7 +1210,7 @@ object Types {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
         defn.FunctionOf(
-            formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType, mt.isImplicit && !ctx.erasedTypes)
     }
 
     /** The signature of this type. This is by default NotAMethod,
