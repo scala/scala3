@@ -478,7 +478,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1 @ MethodType(_, formals1) =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
-            tp1.isImplicit == tp2.isImplicit && // needed?
+            (!tp1.isImplicit || tp2.isImplicit) &&  // non-implicit functions shadow implicit ones
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -1003,9 +1003,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: MethodType =>
       tp2.widen match {
         case tp2: MethodType =>
-          tp1.isImplicit == tp2.isImplicit &&
-            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
-            matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
+          // implicitness is ignored when matching
+          matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+          matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
             matchesType(tp1.resultType, tp2, relaxed)
