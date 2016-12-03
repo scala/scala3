@@ -53,6 +53,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
+
+  /** An implicit function type */
+  class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body)
+
   /** A function created from a wildcard expression
    *  @param  placeHolderParams  a list of definitions of synthetic parameters
    *  @param  body               the function body where wildcards are replaced by

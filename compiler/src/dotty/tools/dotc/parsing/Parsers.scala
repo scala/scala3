@@ -681,7 +681,7 @@ object Parsers {
       }
     }
 
-    /** Type        ::=  FunArgTypes `=>' Type
+    /** Type        ::=  [`implicit'] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
      *                |  InfixType
      *  FunArgTypes ::=  InfixType
@@ -689,20 +689,26 @@ object Parsers {
      */
     def typ(): Tree = {
       val start = in.offset
+      val isImplicit = in.token == IMPLICIT
+      if (isImplicit) in.nextToken()
+      def functionRest(params: List[Tree]): Tree =
+        atPos(start, accept(ARROW)) {
+          val t = typ()
+          if (isImplicit) new ImplicitFunction(params, t) else Function(params, t)
+        }
       val t =
         if (in.token == LPAREN) {
           in.nextToken()
           if (in.token == RPAREN) {
             in.nextToken()
-            atPos(start, accept(ARROW)) { Function(Nil, typ()) }
+            functionRest(Nil)
           }
           else {
             openParens.change(LPAREN, 1)
             val ts = commaSeparated(funArgType)
             openParens.change(LPAREN, -1)
             accept(RPAREN)
-            if (in.token == ARROW)
-              atPos(start, in.skipToken()) { Function(ts, typ()) }
+            if (isImplicit || in.token == ARROW) functionRest(ts)
             else {
               for (t <- ts)
                 if (t.isInstanceOf[ByNameTypeTree])
@@ -722,7 +728,7 @@ object Parsers {
         else infixType()
 
       in.token match {
-        case ARROW => atPos(start, in.skipToken()) { Function(List(t), typ()) }
+        case ARROW => functionRest(t :: Nil)
         case FORSOME => syntaxError("existential types no longer supported; use a wildcard type or dependent type instead"); t
         case _ => t
       }

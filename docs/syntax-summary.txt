@@ -95,8 +95,8 @@ grammar.
                       |  [id '.'] `super' [ClassQualifier] `.' id
   ClassQualifier    ::=  `[' id `]'
 
-  Type              ::=  FunArgTypes `=>' Type                                  Function(ts, t)
-                      |  HkTypeParamClause `=>' Type						    TypeLambda(ps, t)
+  Type              ::=  [`implicit'] FunArgTypes `=>' Type                     Function(ts, t)
+                      |  HkTypeParamClause `=>' Type	                        TypeLambda(ps, t)
                       |  InfixType
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'

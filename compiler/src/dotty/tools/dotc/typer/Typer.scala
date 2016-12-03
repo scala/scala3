@@ -660,9 +660,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
     val untpd.Function(args, body) = tree
-    if (ctx.mode is Mode.Type)
+    if (ctx.mode is Mode.Type) {
+      val funCls =
+        if (tree.isInstanceOf[untpd.ImplicitFunction]) defn.ImplicitFunctionClass(args.length)
+        else defn.FunctionClass(args.length)
       typed(cpy.AppliedTypeTree(tree)(
-        untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
+        untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+    }
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
 
