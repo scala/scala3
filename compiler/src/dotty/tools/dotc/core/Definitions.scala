@@ -617,15 +617,16 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type)(implicit ctx: Context) =
-      FunctionType(args.length).appliedTo(args ::: resultType :: Nil)
+    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false)(implicit ctx: Context) =
+      FunctionType(args.length, isImplicit).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context) = {
       val tsym = ft.typeSymbol
-      if (isFunctionClass(tsym)) {
-        lazy val targs = ft.argInfos
+      val isImplicitFun = isImplicitFunctionClass(tsym)
+      if (isImplicitFun || isFunctionClass(tsym)) {
+        val targs = ft.argInfos
         val numArgs = targs.length - 1
-        if (numArgs >= 0 && FunctionType(numArgs).symbol == tsym)
-          Some(targs.init, targs.last)
+        if (numArgs >= 0 && FunctionType(numArgs, isImplicitFun).symbol == tsym)
+          Some(targs.init, targs.last, isImplicitFun)
         else None
       }
       else None
@@ -689,8 +690,9 @@ class Definitions {
   def ImplicitFunctionClass(n: Int)(implicit ctx: Context) =
     ctx.requiredClass("scala.ImplicitFunction" + n.toString)
 
-  def FunctionType(n: Int)(implicit ctx: Context): TypeRef =
-    if (n < MaxImplementedFunctionArity) ImplementedFunctionType(n)
+  def FunctionType(n: Int, isImplicit: Boolean = false)(implicit ctx: Context): TypeRef =
+    if (isImplicit && !ctx.erasedTypes) ImplicitFunctionClass(n).typeRef
+    else if (n < MaxImplementedFunctionArity) ImplementedFunctionType(n)
     else FunctionClass(n).typeRef
 
   private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
@@ -776,11 +778,15 @@ class Definitions {
       }
     else -1
 
-  def isFunctionType(tp: Type)(implicit ctx: Context) =
-    isFunctionClass(tp.dealias.typeSymbol) && {
-      val arity = functionArity(tp)
-      arity >= 0 && tp.isRef(FunctionType(functionArity(tp)).typeSymbol)
-    }
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN ? */
+  def isFunctionType(tp: Type)(implicit ctx: Context) = {
+    val arity = functionArity(tp)
+    val sym = tp.dealias.typeSymbol
+    arity >= 0 && (
+      isFunctionClass(sym) && tp.isRef(FunctionType(arity, isImplicit = false).typeSymbol) ||
+      isImplicitFunctionClass(sym) && tp.isRef(FunctionType(arity, isImplicit = true).typeSymbol)
+    )
+  }
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 

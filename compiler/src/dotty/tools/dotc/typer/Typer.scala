@@ -1880,8 +1880,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           missingArgs
       case wtp: RefinedType
       if defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
-         !isApplyProto(pt) =>
-        typr.println(i"insert apply on implicit $tree")
+         !isClosure(tree) &&
+         !isApplyProto(pt) &&
+         !ctx.isAfterTyper =>
+        typr.println("insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       case _ =>
         ctx.typeComparer.GADTused = false

@@ -1294,7 +1294,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
-      case defn.FunctionOf(args, resultType) =>
+      case defn.FunctionOf(args, resultType, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1345,7 +1345,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             //   (p_1_1, ..., p_m_1) => r_1
             //   ...
             //   (p_1_n, ..., p_m_n) => r_n
-            val decomposedFormalsForArg: List[Option[(List[Type], Type)]] =
+            val decomposedFormalsForArg: List[Option[(List[Type], Type, Boolean)]] =
               formalsForArg.map(defn.FunctionOf.unapply)
             if (decomposedFormalsForArg.forall(_.isDefined)) {
               val formalParamTypessForArg: List[List[Type]] =

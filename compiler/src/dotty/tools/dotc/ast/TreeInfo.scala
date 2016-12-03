@@ -501,11 +501,13 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   object closure {
     def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
-      case Block(_, Closure(env, meth, tpt)) => Some(env, meth, tpt)
+      case Block(_, expr) => unapply(expr)
       case Closure(env, meth, tpt) => Some(env, meth, tpt)
       case _ => None
     }
   }
+
+  def isClosure(tree: Tree) = closure.unapply(tree).isDefined
 
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(implicit ctx: Context): Tree = tree match {
