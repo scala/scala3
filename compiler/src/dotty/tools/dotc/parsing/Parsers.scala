@@ -1067,7 +1067,7 @@ object Parsers {
       case FOR =>
         forExpr()
       case IMPLICIT =>
-        implicitClosure(in.skipToken(), location)
+        implicitClosure(in.offset, location, atPos(in.skipToken()) { Mod.Implicit() })
       case _ =>
         expr1Rest(postfixExpr(), location)
     }
@@ -1118,9 +1118,8 @@ object Parsers {
     /** Expr         ::= implicit Id `=>' Expr
      *  BlockResult  ::= implicit Id [`:' InfixType] `=>' Block
      */
-    def implicitClosure(start: Int, location: Location.Value, implicitMod: Option[Mod] = None): Tree = {
-      var mods = atPos(start) { Modifiers(Implicit) }
-      if (implicitMod.nonEmpty) mods = mods.withAddedMod(implicitMod.get)
+    def implicitClosure(start: Int, location: Location.Value, implicitMod: Mod): Tree = {
+      val mods = Modifiers(Implicit).withAddedMod(implicitMod)
       val id = termIdent()
       val paramExpr =
         if (location == Location.InBlock && in.token == COLON)
@@ -1489,7 +1488,7 @@ object Parsers {
     private def modOfToken(tok: Int): Mod = tok match {
       case ABSTRACT  => Mod.Abstract()
       case FINAL     => Mod.Final()
-      case IMPLICIT  => Mod.Implicit(ImplicitCommon)
+      case IMPLICIT  => Mod.Implicit()
       case INLINE    => Mod.Inline()
       case LAZY      => Mod.Lazy()
       case OVERRIDE  => Mod.Override()
@@ -1745,7 +1744,7 @@ object Parsers {
         else {
           if (in.token == IMPLICIT) {
             implicitOffset = in.offset
-            implicitMod = atPos(in.skipToken()) { Mod.Implicit(Implicit) }
+            implicitMod = atPos(in.skipToken()) { Mod.Implicit() }
           }
           commaSeparated(param)
         }
@@ -2218,9 +2217,9 @@ object Parsers {
       stats.toList
     }
 
-    def localDef(start: Int, implicitFlag: FlagSet, implicitMod: Option[Mod] = None): Tree = {
-      var mods = addFlag(defAnnotsMods(localModifierTokens), implicitFlag)
-      if (implicitMod.nonEmpty) mods = mods.withAddedMod(implicitMod.get)
+    def localDef(start: Int, implicitMod: Option[Mod] = None): Tree = {
+      var mods = defAnnotsMods(localModifierTokens)
+      for (imod <- implicitMod) mods = (mods | ImplicitCommon).withAddedMod(imod)
       defOrDcl(start, mods)
     }
 
@@ -2243,11 +2242,11 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT) {
             val start = in.offset
-            val mod = atPos(in.skipToken()) { Mod.Implicit(ImplicitCommon) }
-            if (isIdent) stats += implicitClosure(start, Location.InBlock, Some(mod))
-            else stats += localDef(start, ImplicitCommon, Some(mod))
+            val mod = atPos(in.skipToken()) { Mod.Implicit() }
+            if (isIdent) stats += implicitClosure(start, Location.InBlock, mod)
+            else stats += localDef(start, Some(mod))
           } else {
-            stats += localDef(in.offset, EmptyFlags)
+            stats += localDef(in.offset)
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
