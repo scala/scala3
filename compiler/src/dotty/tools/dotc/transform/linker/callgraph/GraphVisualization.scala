@@ -27,7 +27,7 @@ object GraphVisualization {
 
     // add names and subraphs
     reachableMethods.foreach { caller =>
-      val subgraphColor = if (outerMethod.contains(caller.call.termSymbol)) "red" else "blue"
+      val subgraphColor = if (outerMethod.contains(caller.callSymbol)) "red" else "blue"
 
       outGraph.append("subgraph ").append(clusterName(caller)).append(" {\n")
       outGraph.append("  label = ").append(slash + csWTToName(caller) + slash).append(";\n")
@@ -91,7 +91,7 @@ object GraphVisualization {
     reachableMethods.foreach { caller =>
 
       val color =
-        if (outerMethod.contains(caller.call.termSymbol)) red
+        if (outerMethod.contains(caller.callSymbol)) red
         else blue
 
       def mkId(callInfo: AbstractCallInfo): String = callInfo.call.uniqId.toString
@@ -129,7 +129,7 @@ object GraphVisualization {
 
   private def callSiteLabel(x: CallInfo)(implicit ctx: Context): String = {
     val prefix = x.call.normalizedPrefix
-    val calleeSymbol = x.call.termSymbol
+    val calleeSymbol = x.callSymbol
     val prefixString = prefix match {
       case NoPrefix => calleeSymbol.name.toString
       case t if calleeSymbol.isPrimaryConstructor => calleeSymbol.showFullName
@@ -217,23 +217,23 @@ object GraphVisualization {
     val targs = typeArgumentsString(x.targs)
     val vargs = typeParameterString(x.call.widenDealias.paramTypess)
     val resultType = typeName(x.call.widenDealias.finalResultType)
-    if (x.call.termSymbol.owner == x.call.normalizedPrefix.classSymbol) {
+    if (x.callSymbol.owner == x.call.normalizedPrefix.classSymbol) {
       val callTypeName = typeName(x.call)
       htmlFormattedStringLabel(callTypeName + targs + vargs + ": " + resultType)
     } else {
       val callTypeName = typeName(x.call.normalizedPrefix)
-      val symName = symbolName(x.call.termSymbol)
+      val symName = symbolName(x.callSymbol)
       htmlFormattedStringLabel(callTypeName + ".super." + symName + targs + vargs + ": " + resultType)
     }
   }
 
   private def csWTToShortName(x: AbstractCallInfo)(implicit ctx: Context): String = {
-    if (x.call.termSymbol.owner.name == x.call.normalizedPrefix.classSymbol.name) {
+    if (x.callSymbol.owner.name == x.call.normalizedPrefix.classSymbol.name) {
       val callTypeName = typeName(x.call)
       callTypeName
     } else {
       val callTypeName = typeName(x.call.normalizedPrefix)
-      symbolName(x.call.termSymbol)
+      symbolName(x.callSymbol)
     }
   }
 
