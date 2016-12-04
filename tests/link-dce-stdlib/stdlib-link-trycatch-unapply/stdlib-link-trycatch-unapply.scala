@@ -1,3 +1,5 @@
+import scala.annotation.internal
+
 object Test {
   class Bar extends Exception("BarException")
   class Foo(e: Throwable) extends Exception(e)
@@ -5,7 +7,8 @@ object Test {
   object CausedBy {
     def unapply(e: Throwable): Option[Throwable] = Option(e.getCause)
   }
-  
+
+  @internal.link.CallGraphBounds(reachableClasses = 33, classesWithReachableMethods = 14, reachableMethods = 20)
   def main(args: Array[String]): Unit = {
     try {
         throw new Foo(new Bar)

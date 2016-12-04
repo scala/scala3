@@ -23,11 +23,9 @@ object CallGraphBuilder {
   final val AnalyseArgs = 3
 }
 
-class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
+class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int, specLimit: Int)(implicit ctx: Context) {
   import CallGraphBuilder._
   import tpd._
-
-  private val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.map(x => (x.methodDef, x)).toMap
 
   private val entryPoints = mutable.HashMap.empty[CallInfoWithContext, Int]
   private val reachableTypes = new WorkList[TypeWithContext]()
@@ -96,7 +94,7 @@ class CallGraphBuilder(mode: Int)(implicit ctx: Context) {
 
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph =
-    CallGraph(entryPoints.toMap, reachableMethods.items, reachableTypes.items, casts.items, classOfs.items, outerMethods.toSet)
+    CallGraph(entryPoints.toMap, reachableMethods.items, reachableTypes.items, casts.items, classOfs.items, outerMethods.toSet, mode, specLimit)
 
   private def addReachableType(x: TypeWithContext, from: CallInfoWithContext): Unit = {
     if (!reachableTypes.contains(x)) {

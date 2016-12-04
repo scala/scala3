@@ -10,6 +10,7 @@ class Foo {
 }
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 20, classesWithReachableMethods = 8, reachableMethods = 10)
   def main(args: Array[String]): Unit = {
     new Foo
   }

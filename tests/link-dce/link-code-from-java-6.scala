@@ -1,9 +1,12 @@
+import scala.annotation.internal
+
 class MyInt(val x: Int) extends java.lang.Comparable[MyInt] {
   override def compareTo(that: MyInt) = this.x - that.x
   override def toString = x.toString
 }
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 27, classesWithReachableMethods = 13, reachableMethods = 19)
   def main(args: Array[String]): Unit = {
     val a = new Array[java.lang.Object](3)
     a(0) = new MyInt(1)

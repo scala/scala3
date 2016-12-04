@@ -9,6 +9,7 @@ import dotty.runtime.DeadCodeEliminated
 import scala.annotation.internal
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 120, classesWithReachableMethods = 14, reachableMethods = 65)
   def main(args: Array[String]): Unit = {
     val classLoader = Test.getClass.getClassLoader()
 

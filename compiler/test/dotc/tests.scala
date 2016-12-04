@@ -78,7 +78,7 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
-  val linkDCE = List("-link-dce")
+  val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
   val linkDCEwithVis = "-link-vis" :: linkDCE
 
   val testsDir      = "../tests/"
