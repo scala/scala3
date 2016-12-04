@@ -4,13 +4,14 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{ConstantType, PolyType, Type}
+import dotty.tools.dotc.transform.linker.types.ClosureType
 
 case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethods: Set[CallInfoWithContext],
                      reachableTypes: Set[TypeWithContext], casts: Set[Cast], classOfs: Set[Symbol], outerMethods: Set[Symbol],
                      mode: Int, specLimit: Int)(implicit ctx: Context) { self =>
 
   private val reachableSet: Set[Symbol] =
-    reachableMethods.map(x => x.call.termSymbol)
+    reachableMethods.map(_.callSymbol)
 
   private val reachableClassesSet: Set[Symbol] =
     reachableTypes.flatMap(x => x.tp.classSymbol :: x.tp.baseClasses)

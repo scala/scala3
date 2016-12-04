@@ -515,6 +515,13 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       tree
     }
 
+    override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      if (curMethodSummary ne null) {
+        curMethodSummary.definedClosures = new ClosureType(tree, tree.tpe, tree.meth.symbol, OuterTargs.empty) :: curMethodSummary.definedClosures
+      }
+      tree
+    }
+
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
 
       methodSums = methodSummaries

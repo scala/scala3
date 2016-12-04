@@ -294,6 +294,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               new TypeRefWithFixedSym(t.classSymbol.owner.owner.typeRef, t.name, t.fixedSym)
             case t => t
           }
+
           val direct = {
             for {
               tp <- getTypesByMemberName(calleeSymbol.name)
@@ -466,16 +467,12 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     for (method <- callSites) {
       // Find new call sites
 
-      val sym = method.call.normalizedPrefix match {
-        case t: ClosureType =>
-          t.meth.meth.symbol
-        case _ =>
-          method.call.termSymbol
-      }
+      val sym = method.callSymbol
 
       collectedSummaries.get(sym) match {
         case Some(summary) =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
+          summary.definedClosures.foreach(x => addReachableType(new TypeWithContext(x, x.outerTargs ++ parentRefinements(x)), method))
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, instantiatedTypes, method, receiver))
           }
