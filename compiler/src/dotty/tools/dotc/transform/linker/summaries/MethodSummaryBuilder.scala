@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform.linker.summaries
 
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.transform.linker.types.ClosureType
 
 import scala.collection.mutable
 
@@ -12,6 +13,8 @@ class MethodSummaryBuilder(val methodDef: Symbol, argumentStoredToHeap: List[Boo
 
   private var thisAccessed: Boolean = false
   private var accessedModules: List[Symbol] = Nil
+
+  private var definedClosures: List[ClosureType] = Nil
 
   def setThisAccessed(b: Boolean): Unit = {
     thisAccessed = b
@@ -25,6 +28,10 @@ class MethodSummaryBuilder(val methodDef: Symbol, argumentStoredToHeap: List[Boo
     methodsCalled(tpe) = methods ::: methodsCalled.getOrElse(tpe, Nil)
   }
 
+  def addDefinedClosure(closure: ClosureType): Unit = {
+    definedClosures = closure :: definedClosures
+  }
+
   def result(): MethodSummary =
-    MethodSummary(methodDef, thisAccessed, methodsCalled.toMap, accessedModules, argumentReturned, argumentStoredToHeap)
+    MethodSummary(methodDef, thisAccessed, methodsCalled.toMap, definedClosures, accessedModules, argumentReturned, argumentStoredToHeap)
 }

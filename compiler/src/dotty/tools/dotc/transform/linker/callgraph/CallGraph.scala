@@ -30,7 +30,7 @@ case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethod
 
     lazy val reachableClasses = classesWithReachableMethods ++ reachableClassesSet
 
-    lazy val reachableDefs = reachableMethods.map(_.call.termSymbol)
+    lazy val reachableDefs = reachableMethods.map(_.callSymbol)
 
     /*val filter = scala.io.Source.fromFile("trace-filtered").getLines().toList
     /val filterUnMangled = filter.map(x => x.replace("::", ".").replace("$class", "")).toSet
@@ -42,8 +42,8 @@ case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethod
 
 
     lazy val reachableSpecs: Set[(Symbol, List[Type])] = reachableMethods.flatMap { x =>
-      val clas = x.call.termSymbol.maybeOwner.info.widen.classSymbol
-      val meth = x.call.termSymbol
+      val clas = x.callSymbol.maybeOwner.info.widen.classSymbol
+      val meth = x.callSymbol
       if (mode >= CallGraphBuilder.AnalyseTypes) (meth, x.call.normalizedPrefix.baseArgInfos(clas)) :: Nil
       else {
         val clazSpecializationsCount =
@@ -57,7 +57,7 @@ case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethod
       }
     }
 
-    private lazy val morphisms = reachableMethods.groupBy(x => x.callee).groupBy(x => x._2.map(_.call.termSymbol).toSet.size)
+    private lazy val morphisms = reachableMethods.groupBy(x => x.callee).groupBy(x => x._2.map(_.callSymbol).toSet.size)
 
     lazy val monomorphicCalls = if (morphisms.contains(1)) morphisms(1) else Map.empty
 
