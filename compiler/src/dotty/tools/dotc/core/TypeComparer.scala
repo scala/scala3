@@ -260,6 +260,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           secondTry(tp1, tp2)
       }
       compareErasedValueType
+    case ConstantType(v2) =>
+      tp1 match {
+        case ConstantType(v1) => v1.value == v2.value
+        case _ => secondTry(tp1, tp2)
+      }
     case ErrorType =>
       true
     case _ =>
