@@ -505,8 +505,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      // generate synthetic selector of Throwable type (from TryCatchPatters.scala)
-      val exName = ctx.freshName("ex").toTermName
+      // generate synthetic selector of Throwable type (from TryCatchPatterns.scala)
+      val exName = ctx.freshName(nme.DEFAULT_EXCEPTION_NAME).toTermName
       val fallbackSelector = ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType)
       val sel = Ident(fallbackSelector.termRef)
 
@@ -517,7 +517,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (curMethodSummary ne null) {
-        curMethodSummary.definedClosures = new ClosureType(tree, tree.tpe, tree.meth.symbol, OuterTargs.empty) :: curMethodSummary.definedClosures
+        curMethodSummary.addDefinedClosure(new ClosureType(tree, tree.tpe, tree.meth.symbol, OuterTargs.empty))
       }
       tree
     }

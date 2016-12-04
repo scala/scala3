@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform.linker.summaries
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{PolyType, Type, TypeBounds}
+import dotty.tools.dotc.transform.linker.types.ClosureType
 
 trait AbstractCallInfo {
 
@@ -22,4 +23,8 @@ trait AbstractCallInfo {
 
   def argumentsPassed: List[Type]
 
+  def callSymbol(implicit ctx: Context) = call.normalizedPrefix match {
+    case t: ClosureType => t.meth.meth.symbol
+    case _ => call.termSymbol
+  }
 }
