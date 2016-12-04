@@ -1,6 +1,8 @@
+import scala.annotation.internal
 import scala.math.Ordering
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 151, classesWithReachableMethods = 19, reachableMethods = 82)
   def main(args: Array[String]): Unit = {
     val arr = new Array[Object](1)
     arr(0) = 42

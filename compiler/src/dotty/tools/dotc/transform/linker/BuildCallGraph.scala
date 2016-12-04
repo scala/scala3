@@ -10,7 +10,7 @@ import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, CallGraphBuilder,
 
 object BuildCallGraph {
   def isPhaseRequired(implicit ctx: Context): Boolean =
-    DeadCodeElimination.isPhaseRequired || ctx.settings.linkVis.value
+    DeadCodeElimination.isPhaseRequired || CallGraphChecks.isPhaseRequired || ctx.settings.linkVis.value
 
   def listPhase(implicit ctx: Context): List[Phase] = {
     if (isPhaseRequired) List(new BuildCallGraph)
@@ -36,10 +36,12 @@ class BuildCallGraph extends Phase {
   private def buildCallGraph(mode: Int, specLimit: Int)(implicit ctx: Context): CallGraph = {
     val startTime = java.lang.System.currentTimeMillis()
 
-    val callGraphBuilder = new CallGraphBuilder(mode)
+    val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
+
+    val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit)
 
     var entryPointId = 0
-    ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries.foreach { x =>
+    for (x <- collectedSummaries.valuesIterator) {
       if (isEntryPoint(x.methodDef)) {
         entryPointId += 1
         callGraphBuilder.pushEntryPoint(x.methodDef, entryPointId)
@@ -120,7 +122,7 @@ class BuildCallGraph extends Phase {
 
 //      sendSpecializationRequests(callGraph)
 
-      GraphVisualization.outputDiagnostic(mode, specLimit)(callGraph)
+      callGraph.getInfo().log()
 
       if (ctx.settings.linkVis.value) {
         def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit): Unit = {
@@ -132,7 +134,7 @@ class BuildCallGraph extends Phase {
           }
         }
 
-        val vis = GraphVisualization.outputGraphVis(mode, specLimit)(callGraph)
+        val vis = GraphVisualization.outputGraphVis(callGraph)
         val visFile = new java.io.File(ctx.settings.d.value + "/CallGraph.html")
         printToFile(visFile)(_.println(vis))
         ctx.log("Created call graph visualization: " + visFile.getAbsoluteFile)

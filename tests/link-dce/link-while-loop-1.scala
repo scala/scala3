@@ -1,6 +1,7 @@
-import scala.annotation.tailrec
+import scala.annotation.{internal, tailrec}
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 20, classesWithReachableMethods = 6, reachableMethods = 7)
   def main(args: Array[String]): Unit = {
     var i = 0
     while (i < 5) {

@@ -191,6 +191,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
+  val YlinkDCEChecks = BooleanSetting("-Ylink-dce-checks", "Check number of reachable classes and methods.")
 
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"
 

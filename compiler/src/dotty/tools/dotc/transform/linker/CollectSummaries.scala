@@ -30,7 +30,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
   val treeTransform: TreeTransform = new Collect
 
-  private var methodSums = List[MethodSummary]()
+  private var methodSums = Map.empty[Symbol, MethodSummary]
   // private var noSummaryAvailable = Set[Symbol]()
 
    /*
@@ -159,9 +159,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
   class Collect extends TreeTransform {
     def phase = thisTransform
 
-    var methodSummaries = List[MethodSummary]()
-    var methodSummaryStack = mutable.Stack[MethodSummary]()
-    var curMethodSummary: MethodSummary = _
+    private var methodSummaries: Map[Symbol, MethodSummary] = Map.empty
+    private var methodSummaryStack: mutable.Stack[MethodSummary] = mutable.Stack()
+    private var curMethodSummary: MethodSummary = _
 
     override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
       if (ctx.compilationUnit.isInstanceOf[TASTYCompilationUnit])
@@ -183,7 +183,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (!tree.symbol.is(Label) && !tree.symbol.isPrimaryConstructor) {
         assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSummaries = curMethodSummary :: methodSummaries
+        methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
         curMethodSummary = methodSummaryStack.pop()
       }
       tree
@@ -209,7 +209,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
         if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
           assert(curMethodSummary.methodDef eq tree.symbol)
-          methodSummaries = curMethodSummary :: methodSummaries
+          methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
           curMethodSummary = methodSummaryStack.pop()
         }
         if (!isLazyValOrModule && (isBockInsideConstructor || ownerIsClass))
@@ -230,7 +230,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       val sym = tree.symbol
       assert(!sym.is(Label))
       assert(curMethodSummary.methodDef eq tree.symbol.owner.primaryConstructor)
-      methodSummaries = curMethodSummary :: methodSummaries
+      methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
       curMethodSummary = methodSummaryStack.pop()
       tree
     }
@@ -518,6 +518,10 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
 
       methodSums = methodSummaries
+
+      methodSummaries = Map.empty
+      methodSummaryStack = mutable.Stack()
+      curMethodSummary = null
 
       /*
 

@@ -1,6 +1,7 @@
 import scala.annotation.internal
 
 object Test {
+  @internal.link.CallGraphBounds(reachableClasses = 131, classesWithReachableMethods = 19, reachableMethods = 72)
   def main(args: Array[String]): Unit = {
     val classLoader = Test.getClass.getClassLoader()
 
