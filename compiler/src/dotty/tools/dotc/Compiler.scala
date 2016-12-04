@@ -88,14 +88,13 @@ class Compiler {
                                        // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
            new FunctionalInterfaces,// Rewrites closures to implement @specialized types of Functions.
            new GetClass,            // Rewrites getClass calls on primitive types.
-           new DeadCodeElimination),
+           new DeadCodeElimination),// Replaces dead code by a `throw new DeadCodeEliminated`
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
-      List(new DeadCodeElimination, // Replaces dead code by a `throw new DeadCodeEliminated`
-           new ExpandPrivate,       // Widen private definitions accessed from nested classes
+      List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
            new SelectStatic,        // get rid of selects that would be compiled into GetStatic
            new CollectEntryPoints,  // Find classes with main methods
            new CollectSuperCalls,   // Find classes that are called with super
