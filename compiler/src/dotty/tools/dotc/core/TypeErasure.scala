@@ -44,7 +44,7 @@ object TypeErasure {
       val sym = tp.symbol
       sym.isClass &&
       sym != defn.AnyClass && sym != defn.ArrayClass &&
-      !defn.isUnimplementedFunctionClass(sym)
+      !defn.isUnimplementedFunctionClass(sym) && !defn.isImplicitFunctionClass(sym)
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
