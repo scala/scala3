@@ -1132,8 +1132,18 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
+            if (false) // Don't error yet, as the alternative syntax "implicit (x: T) => ... "
+                       // is not supported by Scala2.x
+              migrationWarningOrError(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
+
             in.nextToken()
-            infixType()
+            val t = infixType()
+
+            if (false && in.isScala2Mode) {
+              patch(source, Position(start), "(")
+              patch(source, Position(in.lastOffset), ")")
+            }
+            t
           }
           else TypeTree()
         (atPos(start) { makeParameter(name, t, mods) }) :: Nil
