@@ -5,7 +5,9 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.transform.linker.callgraph.CallGraphBuilder._
 import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
+import dotty.tools.dotc.transform.linker.types.ClosureType
 
 import scala.collection.mutable
 
