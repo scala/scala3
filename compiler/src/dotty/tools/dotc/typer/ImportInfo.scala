@@ -98,7 +98,7 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
    *
    *  TODO: Once we have fully bootstrapped, I would prefer if we expressed
    *  unimport with an `override` modifier, and generalized it to all imports.
-   *  I believe this would be more transparent than the curren set of conditions. E.g.
+   *  I believe this would be more transparent than the current set of conditions. E.g.
    *
    *      override import Predef.{any2stringAdd => _, StringAdd => _, _} // disables String +
    *      override import java.lang.{}                                   // disables all imports

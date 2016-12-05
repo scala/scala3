@@ -519,7 +519,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
             inferImplicit(defn.ClassTagType.appliedTo(tref),
                EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
-              case SearchSuccess(arg, _, _) =>
+              case SearchSuccess(arg, _, _, _) =>
                 return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
               case _ =>
             }
@@ -1960,7 +1960,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       // try an implicit conversion
       inferView(tree, pt) match {
-        case SearchSuccess(inferred, _, _) =>
+        case SearchSuccess(inferred, _, _, _) =>
           adapt(inferred, pt)
         case failure: SearchFailure =>
           if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree

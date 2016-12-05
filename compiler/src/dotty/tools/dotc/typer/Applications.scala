@@ -975,9 +975,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
-   *  `alt2`? `alt1` and `alt2` are non-overloaded references.
+   *  `alt2`? Also used for implicits disambiguation.
+   *
+   *  @param  alt1, alt2      Non-overloaded references indicating the two choices
+   *  @param  level1, level2  If alternatives come from a comparison of two contextual
+   *                          implicit candidates, the nesting levels of the candidates.
+   *                          In all other cases the nesting levels are both 0.
+   *
+   *  An alternative A1 is "as good as" an alternative A2 if it wins or draws in a tournament
+   *  that awards one point for each of the following
+   *
+   *   - A1 is nested more deeply than A2
+   *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
+   *   - A1's type is more specific than A2's type.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
+  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -1092,9 +1104,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
 
-    def winsOwner1 = isDerived(owner1, owner2)
+    def winsOwner1 = nesting1 > nesting2 || isDerived(owner1, owner2)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsOwner2 = isDerived(owner2, owner1)
+    def winsOwner2 = nesting2 > nesting1 || isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
     overload.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
