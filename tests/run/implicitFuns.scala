@@ -51,5 +51,46 @@ object Test {
     val c = xx("hh", 22)
 
     val c1: Int = c
+
+    Contextual.main(args)
+  }
+}
+
+object Contextual {
+
+  class Key[+V]
+
+  class Context(bindings: Map[Key[Any], Any]) {
+    def binding[V](key: Key[V]): Option[V] =
+      bindings.get(key).asInstanceOf[Option[V]]
+    def withBinding[V](key: Key[V], value: V): Context =
+      new Context(bindings + ((key, value)))
+  }
+
+  val rootContext = new Context(Map())
+
+  val Source = new Key[String]
+  val Options = new Key[List[String]]
+
+  type Ctx[T] = implicit Context => T
+
+  def ctx: Ctx[Context] = implicitly[Context]
+
+  def compile(s: String): Ctx[Boolean] =
+    runOn(new java.io.File(s))(ctx.withBinding(Source, s)) >= 0
+
+  def runOn(f: java.io.File): Ctx[Int] = {
+    val options = List("-verbose", "-explaintypes")
+    process(f)(ctx.withBinding(Options, options))
+  }
+
+  def process(f: java.io.File): Ctx[Int] =
+    ctx.binding(Source).get.length - ctx.binding(Options).get.length
+
+  def main(args: Array[String]) = {
+    implicit val context: Context = rootContext
+    assert(compile("abc"))
+    assert(compile("ab"))
+    assert(!compile("a"))
   }
 }
