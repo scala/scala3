@@ -144,9 +144,14 @@ object Implicits {
   class ContextualImplicits(val refs: List[TermRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = new mutable.AnyRefMap[Type, List[Candidate]]
 
+    /** The level increases if current context has a different owner or scope than
+     *  the context of the next-outer ImplicitRefs. This is however disabled under
+     *  Scala2 mode, since we do not want to change the implicit disambiguation then.
+     */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if ((ctx.owner eq outerImplicits.ctx.owner) &&
+      else if (ctx.scala2Mode ||
+               (ctx.owner eq outerImplicits.ctx.owner) &&
                (ctx.scope eq outerImplicits.ctx.scope)) outerImplicits.level
       else outerImplicits.level + 1
 
