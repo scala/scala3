@@ -15,7 +15,30 @@ object Test {
 
     val y: String => Boolean = x
 
+    object nested {
+      implicit val empty: String = ""
+      assert(!x)
+    }
+
     val yy: (String, Int) => Any = xx
+
+    val z1: implicit String => Boolean = implicitly[String].length >= 2
+    assert(z1)
+
+    type StringlyBool = implicit String => Boolean
+
+    val z2: StringlyBool = implicitly[String].length >= 2
+    assert(z2)
+
+    type Stringly[T] = implicit String => T
+
+    val z3: Stringly[Boolean] = implicitly[String].length >= 2
+    assert(z3)
+
+    type GenericImplicit[X] = implicit X => Boolean
+
+    val z4: GenericImplicit[String] = implicitly[String].length >= 2
+    assert(z4)
 
     val b = x("hello")
 

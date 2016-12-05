@@ -29,7 +29,7 @@ import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
 import config.Config
-import config.Printers.{implicits, implicitsDetailed}
+import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 
 /** Implicit resolution */
@@ -146,7 +146,8 @@ object Implicits {
 
     override val level: Int =
       if (outerImplicits == null) 1
-      else if (ctx.scope eq outerImplicits.ctx.scope) outerImplicits.level
+      else if ((ctx.owner eq outerImplicits.ctx.owner) &&
+               (ctx.scope eq outerImplicits.ctx.scope)) outerImplicits.level
       else outerImplicits.level + 1
 
     /** The implicit references that are eligible for type `tp`. */
@@ -211,7 +212,7 @@ object Implicits {
    *  @param ctx   The context after the implicit search
    */
   case class SearchSuccess(tree: tpd.Tree, ref: TermRef, level: Int, tstate: TyperState) extends SearchResult {
-    override def toString = s"SearchSuccess($tree, $ref)"
+    override def toString = s"SearchSuccess($tree, $ref, $level)"
   }
 
   /** A failed search */
@@ -733,6 +734,7 @@ trait Implicits { self: Typer =>
         case best :: alts =>
           alts find (alt => isAsGood(alt.ref, best.ref, alt.level, best.level)(ctx.fresh.setExploreTyperState)) match {
             case Some(alt) =>
+              typr.println(i"ambiguous implicits for $pt: ${best.ref} @ ${best.level}, ${alt.ref} @ ${alt.level}")
             /* !!! DEBUG
               println(i"ambiguous refs: ${hits map (_.ref) map (_.show) mkString ", "}")
               isAsGood(best.ref, alt.ref, explain = true)(ctx.fresh.withExploreTyperState)

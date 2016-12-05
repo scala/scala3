@@ -1494,6 +1494,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
+          case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.Try => typedTry(tree, pt)
@@ -1521,9 +1522,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        xtree match {
+        if (defn.isImplicitFunctionType(pt) &&
+            xtree.isTerm &&
+            !untpd.isImplicitClosure(xtree) &&
+            !ctx.isAfterTyper)
+          makeImplicitFunction(xtree, pt)
+        else xtree match {
           case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
-          case xtree: untpd.Import => typedImport(xtree, retrieveSym(xtree))
           case xtree => typedUnnamed(xtree)
         }
     }
@@ -1531,6 +1536,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
     untpd.rename(tree, tree.name.encode)
+
+  protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+    val defn.FunctionOf(formals, resType, true) = pt.dealias
+    val paramTypes = formals.map(fullyDefinedType(_, "implicit function parameter", tree.pos))
+    val ifun = desugar.makeImplicitFunction(paramTypes, tree)
+    typr.println(i"make implicit function $tree / $pt ---> $ifun")
+    typedUnadapted(ifun)
+  }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     assertPositioned(tree)
@@ -1878,16 +1891,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           err.typeMismatch(tree, pt)
         else
           missingArgs
-      case wtp: RefinedType
-      if defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
-         !isClosure(tree) &&
-         !isApplyProto(pt) &&
-         !ctx.isAfterTyper =>
-        typr.println("insert apply on implicit $tree")
-        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       case _ =>
         ctx.typeComparer.GADTused = false
-        if (ctx.mode is Mode.Pattern) {
+        if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
+            !untpd.isImplicitClosure(tree) &&
+            !isApplyProto(pt) &&
+            !ctx.isAfterTyper) {
+          typr.println("insert apply on implicit $tree")
+          typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+        }
+        else if (ctx.mode is Mode.Pattern) {
           tree match {
             case _: RefTree | _: Literal
             if !isVarPattern(tree) &&

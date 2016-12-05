@@ -790,6 +790,9 @@ class Definitions {
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 
+  def isImplicitFunctionType(tp: Type)(implicit ctx: Context) =
+    isFunctionType(tp) && tp.dealias.typeSymbol.name.startsWith(tpnme.ImplicitFunction)
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */

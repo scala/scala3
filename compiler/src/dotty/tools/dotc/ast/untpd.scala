@@ -55,7 +55,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** An implicit function type */
-  class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body)
+  class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
+    override def toString = s"ImplicitFunction($args, $body"
+  }
 
   /** A function created from a wildcard expression
    *  @param  placeHolderParams  a list of definitions of synthetic parameters
@@ -273,8 +275,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Annotated(arg: Tree, annot: Tree): Annotated = new Annotated(arg, annot)
 
   // ------ Additional creation methods for untyped only -----------------
-
-  // def TypeTree(tpe: Type): TypeTree = TypeTree().withType(tpe) todo: move to untpd/tpd
 
   /**     new pre.C[Ts](args1)...(args_n)
    *  ==>

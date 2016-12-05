@@ -39,6 +39,10 @@ import dotty.tools.dotc.core.Names.TypeName
 import scala.annotation.tailrec
 
 class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
+  import Symbols.{toDenot, toClassDenot}
+    // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
+    // they would be shadowed by the more deeply nested `symHelper` decorator.
+
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
@@ -682,8 +686,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
     } //todo is handled specially for JavaDefined symbols in scalac
-
-
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
