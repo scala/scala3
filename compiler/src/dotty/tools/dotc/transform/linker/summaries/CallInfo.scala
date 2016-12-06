@@ -7,14 +7,8 @@ case class CallInfo(call: Type, // this is type of method, that includes full ty
                     targs: List[Type],
                     argumentsPassed: List[Type],
                     source: Option[CallInfo] = None // When source is not None this call was generated as part of a call to source
-                   )(implicit ctx: Context) {
+                   )(implicit ctx: Context) extends AbstractCallInfo {
 
-  assert(call.termSymbol.isTerm)
+  checkAbstractCallInfoAssertions()
 
-  targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
-
-  call.widenDealias match {
-    case t: PolyType => assert(t.paramNames.size == targs.size)
-    case _ =>
-  }
 }
