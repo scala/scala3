@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
-import dotty.tools.dotc.transform.linker.summaries.{CallInfo, MethodSummary}
+import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types.{ClosureType, PreciseType}
 import dotty.tools.dotc.typer.Applications._
 
@@ -154,14 +154,14 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       super.run
   }
 
-  def methodSummaries = methodSums
+  def methodSummaries: Map[Symbol, MethodSummary] = methodSums
 
   class Collect extends TreeTransform {
-    def phase = thisTransform
+    def phase: CollectSummaries = thisTransform
 
     private var methodSummaries: Map[Symbol, MethodSummary] = Map.empty
-    private var methodSummaryStack: mutable.Stack[MethodSummary] = mutable.Stack()
-    private var curMethodSummary: MethodSummary = _
+    private var methodSummaryStack: mutable.Stack[MethodSummaryBuilder] = mutable.Stack()
+    private var curMethodSummary: MethodSummaryBuilder = _
 
     override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
       if (ctx.compilationUnit.isInstanceOf[TASTYCompilationUnit])
@@ -175,7 +175,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         methodSummaryStack.push(curMethodSummary)
         val args = tree.vparamss.flatten.map(_.symbol) // outer param for constructors
         val argumentStoredToHeap = (0 to args.length).map(_ => true).toList
-        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, argumentStoredToHeap)
+        curMethodSummary = new MethodSummaryBuilder(sym, argumentStoredToHeap)
       }
       this
     }
@@ -183,7 +183,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (!tree.symbol.is(Label) && !tree.symbol.isPrimaryConstructor) {
         assert(curMethodSummary.methodDef eq tree.symbol)
-        methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
+        methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary.result())
         curMethodSummary = methodSummaryStack.pop()
       }
       tree
@@ -196,7 +196,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           sym.owner.isClass)) { // fields
         // owner is a template
         methodSummaryStack.push(curMethodSummary)
-        curMethodSummary = MethodSummary(sym, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
+        curMethodSummary = new MethodSummaryBuilder(sym, List(true))
       }
       this
     }
@@ -209,7 +209,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         val isBockInsideConstructor = sym.owner.name.startsWith(nme.LOCALDUMMY_PREFIX)
         if (isLazyValOrModule || isBockInsideConstructor || ownerIsClass) {
           assert(curMethodSummary.methodDef eq tree.symbol)
-          methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
+          methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary.result())
           curMethodSummary = methodSummaryStack.pop()
         }
         if (!isLazyValOrModule && (isBockInsideConstructor || ownerIsClass))
@@ -222,7 +222,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       val sym = tree.symbol
       assert(!sym.is(Label))
       methodSummaryStack.push(curMethodSummary)
-      curMethodSummary = MethodSummary(sym.owner.primaryConstructor, thisAccessed = false, mutable.Map.empty, Nil, -1, List(true))
+      curMethodSummary = new MethodSummaryBuilder(sym.owner.primaryConstructor, List(true))
       this
     }
 
@@ -230,7 +230,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       val sym = tree.symbol
       assert(!sym.is(Label))
       assert(curMethodSummary.methodDef eq tree.symbol.owner.primaryConstructor)
-      methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary)
+      methodSummaries = methodSummaries.updated(curMethodSummary.methodDef, curMethodSummary.result())
       curMethodSummary = methodSummaryStack.pop()
       tree
     }
@@ -251,12 +251,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     def registerModule(sym: Symbol)(implicit ctx: Context): Unit = {
       if ((curMethodSummary ne null) && sym.is(ModuleVal)) {
-        curMethodSummary.accessedModules = sym :: curMethodSummary.accessedModules
+        curMethodSummary.addAccessedModules(sym)
         registerModule(sym.owner)
       }
       val res = sym.info.finalResultType.termSymbol
       if ((curMethodSummary ne null) && res.is(ModuleVal)) {
-        curMethodSummary.accessedModules = res :: curMethodSummary.accessedModules
+        curMethodSummary.addAccessedModules(res)
         registerModule(res.owner)
       }
 
@@ -380,7 +380,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
         val languageDefinedCalls = loadPredefModule ::: fillInStackTrace ::: mixinConstructors ::: repeatedArgsCalls
 
-        curMethodSummary.methodsCalled(storedReceiver) = thisCallInfo :: languageDefinedCalls ::: curMethodSummary.methodsCalled.getOrElse(storedReceiver, Nil)
+        curMethodSummary.addMethodsCalledBy(storedReceiver, thisCallInfo :: languageDefinedCalls)
       }
     }
 
@@ -421,7 +421,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformThis(tree: tpd.This)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      curMethodSummary.thisAccessed = true
+      curMethodSummary.setThisAccessed(true)
       tree
     }
 
