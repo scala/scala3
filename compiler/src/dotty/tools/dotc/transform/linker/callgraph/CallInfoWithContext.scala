@@ -2,14 +2,14 @@ package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{PolyType, Type}
-import dotty.tools.dotc.transform.linker.summaries.CallInfo
+import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
 
 import scala.collection.mutable
 
-class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], val outerTargs: OuterTargs,
-    val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context)
-    extends CallInfo(call, targs, argumentsPassed) {
+case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs,
+    parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
+  checkAbstractCallInfoAssertions()
   assert(parent != null)
   assert(callee != null)
   // FIXME: assert(!targs.exists(_.widenDealias.isInstanceOf[PolyType]), targs)
@@ -39,19 +39,7 @@ class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[T
   def edgeCount: Int =
     outEdgesOpt.fold(0)(_.values.foldLeft(0)(_ + _.size))
 
-  override def hashCode(): Int = super.hashCode() ^ outerTargs.hashCode()
-
-  override def equals(obj: Any): Boolean = {
-    obj match {
-      case t: CallInfoWithContext =>
-        t.call == this.call && t.targs == this.targs && this.argumentsPassed == t.argumentsPassed &&
-          this.outerTargs == t.outerTargs && this.source == t.source
-      case _ => false
-    }
-  }
-
   private def trackOutEdges: Boolean =
     ctx.settings.linkVis.value
 
-  override def toString: String = s"CallWithContext($call, $targs, $argumentsPassed, $outerTargs, $parent, $callee)"
 }

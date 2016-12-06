@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.linker.summaries.CallInfo
+import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
 
 import scala.collection.mutable
 
@@ -92,7 +92,7 @@ object GraphVisualization {
         if (outerMethod.contains(caller.call.termSymbol)) red
         else blue
 
-      def mkId(callInfo: CallInfo): String = callInfo.call.uniqId.toString
+      def mkId(callInfo: AbstractCallInfo): String = callInfo.call.uniqId.toString
 
       val callerId = "'" + mkId(caller) + "'"
       nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color }"
@@ -211,7 +211,7 @@ object GraphVisualization {
     }
   }
 
-  private def csWTToName(x: CallInfo)(implicit ctx: Context): String = {
+  private def csWTToName(x: AbstractCallInfo)(implicit ctx: Context): String = {
     val targs = typeArgumentsString(x.targs)
     val vargs = typeParameterString(x.call.widenDealias.paramTypess)
     val resultType = typeName(x.call.widenDealias.finalResultType)
@@ -225,7 +225,7 @@ object GraphVisualization {
     }
   }
 
-  private def csWTToShortName(x: CallInfo)(implicit ctx: Context): String = {
+  private def csWTToShortName(x: AbstractCallInfo)(implicit ctx: Context): String = {
     if (x.call.termSymbol.owner.name == x.call.normalizedPrefix.classSymbol.name) {
       val callTypeName = typeName(x.call)
       callTypeName
@@ -239,11 +239,11 @@ object GraphVisualization {
     slash + csWTToName(parent) + escape(inner.call.show) + inner.hashCode() + slash
   }
 
-  private def dummyName(x: CallInfo)(implicit ctx: Context): String = {
+  private def dummyName(x: AbstractCallInfo)(implicit ctx: Context): String = {
     slash + csWTToName(x) + "_Dummy" + slash
   }
 
-  private def clusterName(x: CallInfo)(implicit ctx: Context): String = {
+  private def clusterName(x: AbstractCallInfo)(implicit ctx: Context): String = {
     slash + "cluster_" + csWTToName(x) + slash
   }
 
