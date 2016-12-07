@@ -358,3 +358,13 @@ comonads is very interesting in its own right.
 But these discussions will have to wait for another time, as
 this blog post is already too long.
 
+## Conclusion
+
+Implicit function types are unique way to abstract over the context in
+which some piece of code is run. I believe they will deeply influence
+the way we write Scala in the future. They are very powerful
+abstractions, in the sense that just declaring a type of a function
+will inject certain implicit values into the scope of the function's
+implementation. Can this be abused, making code more obscure?
+Absolutely, like every other powerful abstraction technique. To keep
+your code sane, please keep the (Principle of Least Power)[http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html] in mind.
