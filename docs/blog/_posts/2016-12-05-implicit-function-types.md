@@ -5,16 +5,10 @@ author: Martin Odersky
 authorImg: /images/martin.jpg
 ---
 
-I just made the first pull request to add _implicit function types_ to
-Scala. I am pretty excited about it, because, citing the explanation
-of the pull request "_This is the first step to bring contextual
-abstraction to Scala_". That's quite a mouthful, so I better explain what I
-mean by it.
-
-Let me try to explain the words in this sentence from right to left.
-
-**Scala**: I assume everyone who reads this understands that we mean the
- programming language, not the opera house.
+I just made the [first pull request](https://github.com/lampepfl/dotty/pull/1775) to add _implicit function types_ to
+Scala. I am pretty excited about it, because - citing the explanation
+of the pull request - "_This is the first step to bring contextual
+abstraction to Scala_". What do I mean by this?
 
 **Abstraction**: The ability to name a concept and use just the name afterwards.
 
@@ -367,4 +361,4 @@ abstractions, in the sense that just declaring a type of a function
 will inject certain implicit values into the scope of the function's
 implementation. Can this be abused, making code more obscure?
 Absolutely, like every other powerful abstraction technique. To keep
-your code sane, please keep the (Principle of Least Power)[http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html] in mind.
+your code sane, please keep the [Principle of Least Power](http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html) in mind.
