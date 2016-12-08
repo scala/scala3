@@ -10,11 +10,7 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
     parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   checkAbstractCallInfoAssertions()
-  assert(parent != null)
-  assert(callee != null)
-  assert(!targs.exists(_.widenDealias.isInstanceOf[PolyType]), targs)
 
-  val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
   private val outEdgesOpt =
     if (trackOutEdges) Some(mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil))
     else None
