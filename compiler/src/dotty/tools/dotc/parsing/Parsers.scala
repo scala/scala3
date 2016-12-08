@@ -625,6 +625,10 @@ object Parsers {
             atPos(in.offset) {
               if (in.token == IDENTIFIER)
                 termIdent()
+              else if (in.token == USCORE) {
+                in.nextToken()
+                Ident(nme.WILDCARD)
+              }
               else if (in.token == THIS) {
                 in.nextToken()
                 This(EmptyTypeIdent)
