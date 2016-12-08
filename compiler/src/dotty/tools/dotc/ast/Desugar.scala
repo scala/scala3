@@ -916,7 +916,11 @@ object desugar {
         val elems = segments flatMap {
           case ts: Thicket => ts.trees.tail
           case t => Nil
+        } map {
+          case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
+          case t => t
         }
+
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
@@ -1081,6 +1085,8 @@ object desugar {
         trees foreach collect
       case Thicket(trees) =>
         trees foreach collect
+      case Block(Nil, expr) =>
+        collect(expr)
       case _ =>
     }
     collect(tree)
