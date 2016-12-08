@@ -13,7 +13,7 @@ object Test {
     def unapply(x: Int): Option[(Int, Int)] = if (x % 2 == 0) Some(x / 2, x / 2) else None
   }
 
-  @internal.link.CallGraphBounds(reachableClasses = 39, classesWithReachableMethods = 17, reachableMethods = 30)
+  @internal.link.CallGraphBounds(reachableClasses = 44, classesWithReachableMethods = 25, reachableMethods = 47)
   def main(args: Array[String]): Unit = {
     84 match {
       case In2(Twice(x), Twice(Thrice(y))) =>

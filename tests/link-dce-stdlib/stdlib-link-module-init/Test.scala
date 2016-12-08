@@ -1,7 +1,7 @@
 import scala.annotation.internal
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 89, classesWithReachableMethods = 9, reachableMethods = 57)
+  @internal.link.CallGraphBounds(reachableClasses = 283, classesWithReachableMethods = 243, reachableMethods = 464)
   def main(args: Array[String]): Unit = {
     Predef // Just load Predef module
   }
