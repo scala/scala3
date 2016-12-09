@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, CallGraphBuilder, GraphVisualization}
+import dotty.tools.dotc.transform.linker.summaries.CallInfo
 
 object BuildCallGraph {
   def isPhaseRequired(implicit ctx: Context): Boolean =
@@ -37,6 +38,16 @@ class BuildCallGraph extends Phase {
     val startTime = java.lang.System.currentTimeMillis()
 
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
+
+    if (ctx.settings.YlinkDCEChecks.value) {
+      for {
+        methodSummaries <- collectedSummaries.valuesIterator
+        callInfos <- methodSummaries.methodsCalled.valuesIterator
+        callInfo <- callInfos
+      } {
+        CallInfo.check(callInfo)
+      }
+    }
 
     val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit)
 
