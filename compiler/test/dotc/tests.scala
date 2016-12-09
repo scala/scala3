@@ -211,16 +211,20 @@ class tests extends CompilerTest {
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
   @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_dce_vis_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
-  private val stdlibFiles: List[String] = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
-   .map(_.trim) // allow identation
-   .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-   .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-   .filter(_.nonEmpty)
-   .toList
+  def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
+    .map(_.trim) // allow identation
+    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+    .filter(_.nonEmpty)
+    .toList
+
+  private val stdlibFiles: List[String] = loadList("./test/dotc/scala-collections.whitelist")
+  private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
+  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
