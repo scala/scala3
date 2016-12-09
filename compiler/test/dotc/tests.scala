@@ -216,9 +216,9 @@ class tests extends CompilerTest {
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
   @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_dce_vis_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = stdlibFiles)
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
@@ -231,6 +231,8 @@ class tests extends CompilerTest {
   private def stdlibBlackFile = "./test/dotc/scala-collections.blacklist"
 
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
+  private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
+  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
 
   @Test def compileStdLib =
     if (!generatePartestFiles)

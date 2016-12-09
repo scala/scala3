@@ -1,0 +1,11 @@
+../library/src/scala/Product0.scala
+../library/src/scala/Eq.scala
+../library/src/scala/FunctionXXL.scala
+
+../library/src/dotty/DottyPredef.scala
+../library/src/dotty/runtime/Arrays.scala
+../library/src/dotty/runtime/DeadCodeEliminated.scala
+../library/src/dotty/runtime/LazyHolders.scala
+../library/src/dotty/runtime/LazyVals.scala
+../library/src/dotty/runtime/LegacyApp.scala
+../library/src/dotty/runtime/vc/VCPrototype.scala
