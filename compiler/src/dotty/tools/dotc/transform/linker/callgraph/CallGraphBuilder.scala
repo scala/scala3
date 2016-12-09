@@ -35,6 +35,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val casts = new WorkList[Cast]()
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
+  private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
     val tpe = ref(s).tpe
@@ -135,7 +136,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       for (tp <- reachableTypes.items) {
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
           casts += newCast
-          tp.castsCache += newCast
+          castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
         }
       }
     }
@@ -329,7 +330,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             }
             for {
               tp <- getTypesByMemberName(calleeSymbol.name)
-              cast <- tp.castsCache
+              cast <- castsCache.getOrElse(tp, Iterator.empty)
               if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, receiverType) && filterCast(cast)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
