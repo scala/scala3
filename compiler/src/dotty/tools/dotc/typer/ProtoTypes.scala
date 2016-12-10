@@ -353,20 +353,23 @@ object ProtoTypes {
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
    *  @return  The added polytype, and the list of created type variables.
    */
-  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
+  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeTree]) = {
     val state = ctx.typerState
     assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
-    def newTypeVars(pt: PolyType): List[TypeVar] =
+    def newTypeVars(pt: PolyType): List[TypeTree] =
       for (n <- (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
+      yield {
+        val tt = new TypeTree().withPos(owningTree.pos)
+        tt.withType(new TypeVar(PolyParam(pt, n), state, tt, ctx.owner))
+      }
 
     val added =
       if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
-    ctx.typeComparer.addToConstraint(added, tvars)
+    ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
 

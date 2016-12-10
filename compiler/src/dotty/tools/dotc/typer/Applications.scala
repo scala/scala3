@@ -250,8 +250,37 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Splice new method reference into existing application */
     def spliceMeth(meth: Tree, app: Tree): Tree = app match {
-      case Apply(fn, args) => Apply(spliceMeth(meth, fn), args)
-      case TypeApply(fn, targs) => TypeApply(spliceMeth(meth, fn), targs)
+      case Apply(fn, args) =>
+        spliceMeth(meth, fn).appliedToArgs(args)
+      case TypeApply(fn, targs) =>
+        // Note: It is important that the type arguments `targs` are passed in new trees
+        // instead of being spliced in literally. Otherwise, a type argument to a default
+        // method could be constructed as the definition site of the type variable for
+        // that default constructor. This would interpolate type variables too early,
+        // causing lots of tests (among them tasty_unpickleScala2) to fail.
+        //
+        // The test case is in i1757.scala. Here we have a variable `s` and a method `cpy`
+        // defined like this:
+        //
+        //      var s
+        //      def cpy[X](b: List[Int] = b): B[X] = new B[X](b)
+        //
+        // The call `s.cpy()` then gets expanded to
+        //
+        //      { val $1$: B[Int] = this.s
+        //        $1$.cpy[X']($1$.cpy$default$1[X']
+        //      }
+        //
+        // A type variable gets interpolated if it does not appear in the type
+        // of the current tree and the current tree contains the variable's "definition".
+        // Previously, the polymorphic function tree to which the variable was first added
+        // was taken as the variable's definition. But that fails here because that
+        // tree was `s.cpy` but got transformed into `$1$.cpy`. We now take the type argument
+        // [X'] of the variable as its definition tree, which is more robust. But then
+        // it's crucial that the type tree is not copied directly as argument to
+        // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
+        // when typing the default argument, which is too early.
+        spliceMeth(meth, fn).appliedToTypes(targs.tpes)
       case _ => meth
     }
 
@@ -333,7 +362,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
-              addTyped(treeToArg(spliceMeth(getter withPos appPos, normalizedFun)), formal)
+              addTyped(treeToArg(spliceMeth(getter withPos normalizedFun.pos, normalizedFun)), formal)
               matchArgs(args1, formals1, n + 1)
             }
           }
