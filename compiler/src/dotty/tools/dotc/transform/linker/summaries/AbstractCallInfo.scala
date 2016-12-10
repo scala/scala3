@@ -4,8 +4,11 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{PolyType, Type, TypeBounds}
 import dotty.tools.dotc.transform.linker.types.ClosureType
+import dotty.tools.sharable
 
 trait AbstractCallInfo {
+
+  final val id: Int = AbstractCallInfo.nextId()
 
   /** This is type of method, that includes full type of receiver, eg: TermRef(receiver, Method) */
   val call: Type
@@ -23,6 +26,13 @@ trait AbstractCallInfo {
 }
 
 object AbstractCallInfo {
+
+  @sharable private var lastId = 0
+
+  private[AbstractCallInfo] def nextId(): Int = {
+    lastId += 1
+    lastId
+  }
 
   def check(info: AbstractCallInfo)(implicit ctx: Context): Unit = {
     assert(info.call.termSymbol.isTerm)
