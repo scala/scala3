@@ -68,6 +68,16 @@ object GraphVisualization {
     outGraph.toString
   }
 
+  def outputGraphVisToFile(callGraph: CallGraph, outFile: java.io.File)(implicit ctx: Context): Unit = {
+    val p = new java.io.PrintWriter(outFile)
+    val visHTML = outputGraphVis(callGraph)
+    try {
+      p.println(visHTML)
+    } finally {
+      p.close()
+    }
+  }
+
   def outputGraphVis(callGraph: CallGraph)(implicit ctx: Context): String = {
     val reachableMethods = callGraph.reachableMethods
     val reachableTypes = callGraph.reachableTypes
@@ -77,15 +87,43 @@ object GraphVisualization {
     val nodes = mutable.Map.empty[String, String]
     val edges = mutable.Map.empty[String, List[String]]
 
+    def addNode(id: String, properties: String*): Unit = {
+      nodes(id) = (Iterator(s"id: '$id'") ++ properties).mkString("{ ", ", ", " }")
+    }
+
+    def addEdge(from: String, to: String, properties: String*): Unit = {
+      val newEntry = (Iterator(s"from: '$from'", s"to: '$to'") ++ properties).mkString("{ ", ", ", " }")
+      edges(from) = newEntry :: edges.getOrElse(from, Nil)
+    }
+
     val red = "'rgb(255,150,150)'"
     val blue = "'rgb(150,150,255)'"
     val green = "'rgb(150,255,150)'"
+    val grey = "'rgb(200,200,200)'"
 
-    def entryPointStingId(id: Int) = s"'entry-$id'"
+    def detailsHTML(info: CallInfoWithContext): String = {
+      htmlFormattedStringLabel(
+        s"""call: ${info.call.show}
+           |targs: ${info.targs.map(_.show)}
+           |arguments: ${info.argumentsPassed.map(_.show)}
+           |
+           |id: ${info.id}
+         """.stripMargin)
+    }
 
     callGraph.entryPoints.values.toSet[Int].foreach { entryPointId =>
-      val entryId = entryPointStingId(entryPointId)
-      nodes(entryId) = s"{ id: $entryId, shape: 'diamond', color: $green }"
+      addNode("entry-" + entryPointId, "shape: 'diamond'", "color: " + green)
+    }
+
+    reachableMethods.map(_.call).foreach { call =>
+      val widenCall = call.widenDealias
+      val callId = "call-" + widenCall.uniqId
+
+      val label = htmlFormattedStringLabel(call.termSymbol.owner.name + "." + call.termSymbol.name + (widenCall match {
+        case widenCall: PolyType => widenCall.paramRefs.map(_.show).mkString("[", ",", "]") + widenCall.resType.show
+        case widenCall => widenCall.show
+      }))
+      addNode(callId, s"label: '$label'", s"color: $grey")
     }
 
     reachableMethods.foreach { caller =>
@@ -94,38 +132,40 @@ object GraphVisualization {
         if (outerMethod.contains(caller.callSymbol)) red
         else blue
 
-      def mkId(callInfo: AbstractCallInfo): String = callInfo.call.uniqId.toString
+      val callId = "call-" + caller.call.widenDealias.uniqId
+      val callerId = caller.id.toString
 
-      val callerId = "'" + mkId(caller) + "'"
-      nodes(callerId) = s"{ id: $callerId, label: '${csWTToShortName(caller)}', title: '${csWTToName(caller)}', color: $color }"
+      addNode(callerId, s"label: '${csWTToName(caller)}'", s"title: '${detailsHTML(caller)}'", s"color: $color")
+      addEdge(callerId, callId, s"title: 'actually calls'", s"color: $grey")
 
       callGraph.entryPoints.get(caller) match {
         case Some(entryPointId) =>
-          val entryId = entryPointStingId(entryPointId)
-          edges(entryId) = s"{ from: $entryId, to: $callerId }" :: edges.getOrElse(entryId, Nil)
+          addEdge("entry-" + entryPointId, callerId)
         case None =>
       }
 
       for ((call, callees)  <- caller.outEdgesIterator) {
-        callees.foreach { callee =>
-          val actualCallerId = callee.callee match {
-            case Some(callee2) =>
-              callee2.source match {
-                case Some(source) => "'" + mkId(source) + "'"
-                case None => callerId
-              }
+        val callId = callerId + "-" + call.id
+        addNode(callId, s"label: '${callSiteLabel(call)}'")
 
-            case None => callerId
+        if (call.source.isEmpty)
+          addEdge(callerId, callId, s"title: 'calls'")
+
+        callees.foreach { callee =>
+          val calleeId = callee.id.toString
+          addEdge(callId, calleeId, s"title: 'dispatches to'")
+
+          callee.source.foreach { source =>
+            val actualCallerId = callerId + "-" + source.id
+            val calleeId = callee.id.toString
+            addEdge(actualCallerId, calleeId, s"title: 'also dispatches call to'")
           }
-          val calleeId = "'" + mkId(callee) + "'"
-          edges(actualCallerId) = s"{ from: $actualCallerId, to: $calleeId, title: '${callSiteLabel(call)}' }" :: edges.getOrElse(actualCallerId, Nil)
         }
       }
     }
 
     visHTML(nodes.toMap, edges.toMap)
   }
-
 
   private def callSiteLabel(x: CallInfo)(implicit ctx: Context): String = {
     val prefix = x.call.normalizedPrefix
@@ -267,8 +307,8 @@ object GraphVisualization {
 
 
   private def visHTML(nodes: Map[String, String], edges: Map[String, List[String]]): String = {
-    val nodesJSON = nodes.iterator.map{ case (key, v) => key + ": " + v}.mkString("{\n      ", ",\n      ", "\n    }")
-    val edgesJSON = edges.iterator.map{ case (key, ns) => key + ": " + ns.mkString("[", ",", "]")}.mkString("{\n      ", ",\n      ", "\n    }")
+    val nodesJSON = nodes.iterator.map{ case (key, v) => "'" + key + "': " + v}.mkString("{\n      ", ",\n      ", "\n    }")
+    val edgesJSON = edges.iterator.map{ case (key, ns) => "'" + key + "': " + ns.mkString("[", ",", "]")}.mkString("{\n      ", ",\n      ", "\n    }")
     s"""
       |<!doctype html>
       |<html>
@@ -335,7 +375,7 @@ object GraphVisualization {
       |    edges: new vis.DataSet([])
       |  };
       |
-      |  var doubleClickOnNode = function (id) {
+      |  var expandNode = function (id) {
       |    var edgs = edgesMap[id];
       |    var node = nodesMap[id];
       |    if (!id.startsWith('entry') && !node.isLeaf) {
@@ -366,11 +406,16 @@ object GraphVisualization {
       |      }
       |    }
       |  };
+      |
+      |  var doubleClickOnNode = function (id) {
+      |    expandNode(id);
+      |  };
+      |
       |  for (i in nodesMap) {
       |    if (i.startsWith('entry')) {
       |      data.nodes.add(nodesMap[i]);
       |      data.edges.add(edgesMap[i]);
-      |      doubleClickOnNode(i);
+      |      expandNode(i);
       |    }
       |  }
       |

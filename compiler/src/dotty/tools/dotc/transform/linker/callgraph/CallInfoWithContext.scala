@@ -27,6 +27,8 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
   def edgeCount: Int =
     outEdges.values.foldLeft(0)(_ + _.size)
 
+  def source: Option[CallInfo] = callee.flatMap(_.source)
+
 }
 
 object CallInfoWithContext {
