@@ -132,7 +132,7 @@ object Denotations {
     def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(implicit ctx: Context): Denotation
 
     /** The variant of this denotation that's current in the given context.
-     *  If no such denotation exists, returns the denotation with each alternative 
+     *  If no such denotation exists, returns the denotation with each alternative
      *  at its first point of definition.
      */
     def current(implicit ctx: Context): Denotation
@@ -744,6 +744,20 @@ object Denotations {
         else NoDenotation
     }
 
+    /** The next defined denotation (following `nextInRun`) or an arbitrary
+     *  undefined denotation, if all denotations in a `nextinRun` cycle are
+     *  undefined.
+     */
+    private def nextDefined: SingleDenotation = {
+      var p1 = this
+      var p2 = nextInRun
+      while (p1.validFor == Nowhere && (p1 ne p2)) {
+        p1 = p1.nextInRun
+        p2 = p2.nextInRun.nextInRun
+      }
+      p1
+    }
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
@@ -763,8 +777,9 @@ object Denotations {
         // can happen if we sit on a stale denotation which has been replaced
         // wholesale by an installAfter; in this case, proceed to the next
         // denotation and try again.
-        if (validFor == Nowhere && nextInRun.validFor != Nowhere) return nextInRun.current
-        assert(false)
+        val nxt = nextDefined
+        if (nxt.validFor != Nowhere) return nxt
+        assert(false, this)
       }
 
       if (valid.runId != currentPeriod.runId)
@@ -905,6 +920,7 @@ object Denotations {
       prev.nextInRun = this
       this.nextInRun = old.nextInRun
       old.validFor = Nowhere
+      old.nextInRun = this
     }
 
     def staleSymbolError(implicit ctx: Context) = {

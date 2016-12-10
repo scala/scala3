@@ -153,7 +153,7 @@ object Periods {
   final val FirstPhaseId = 1
 
   /** The number of bits needed to encode a phase identifier. */
-  final val PhaseWidth = 6
+  final val PhaseWidth = 7
   final val PhaseMask = (1 << PhaseWidth) - 1
   final val MaxPossiblePhaseId = PhaseMask
 }

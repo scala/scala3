@@ -142,16 +142,21 @@ object desugar {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
     val mods = meth.mods
     val epbuf = new ListBuffer[ValDef]
-    val tparams1 = tparams mapConserve {
-      case tparam @ TypeDef(_, ContextBounds(tbounds, cxbounds)) =>
+    def desugarContextBounds(rhs: Tree): Tree = rhs match {
+      case ContextBounds(tbounds, cxbounds) =>
         for (cxbound <- cxbounds) {
           val paramFlags: FlagSet = if (isPrimaryConstructor) PrivateLocalParamAccessor else Param
           val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
           epbuf += ValDef(epname, cxbound, EmptyTree).withFlags(paramFlags | Implicit)
         }
-        cpy.TypeDef(tparam)(rhs = tbounds)
-      case tparam =>
-        tparam
+        tbounds
+      case PolyTypeTree(tparams, body) =>
+        cpy.PolyTypeTree(rhs)(tparams, desugarContextBounds(body))
+      case _ =>
+        rhs
+    }
+    val tparams1 = tparams mapConserve { tdef =>
+      cpy.TypeDef(tdef)(rhs = desugarContextBounds(tdef.rhs))
     }
 
     val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
