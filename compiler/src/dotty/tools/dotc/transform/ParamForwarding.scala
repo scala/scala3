@@ -55,7 +55,9 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
         stat match {
           case stat: ValDef =>
             val sym = stat.symbol.asTerm
-            if (sym is (ParamAccessor, butNot = Mutable)) {
+            if (sym.is(ParamAccessor, butNot = Mutable) && !sym.info.isInstanceOf[ExprType]) {
+              // ElimByName gets confused with methods returning an ExprType,
+              // so avoid param forwarding if parameter is by name. See i1766.scala
               val idx = superArgs.indexWhere(_.symbol == sym)
               if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
                 val alias = inheritedAccessor(sym)
