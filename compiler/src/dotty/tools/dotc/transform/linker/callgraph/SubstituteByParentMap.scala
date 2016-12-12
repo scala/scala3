@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.{ClassInfo, DeepTypeMap, NoPrefix, RefinedType, TermType, Type, TypeAlias, TypeRef}
+import dotty.tools.dotc.core.Types.{ClassInfo, DeepTypeMap, HKApply, NoPrefix, RefinedType, TermType, Type, TypeAlias, TypeRef}
 
 class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends DeepTypeMap()(ctx) {
 
@@ -24,6 +24,7 @@ class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends
     tp match {
       case tp: RefinedType => mapOver(tp) // otherwise we will loose refinement
       case tp: TypeAlias => mapOver(tp) // map underlying
+      case tp: HKApply => mapOver(tp)
       case _ if tp.typeSymbol.exists && substitution.nonEmpty =>
         var typ = tp
         /*val id = tp.typeSymbol.owner.info match {
