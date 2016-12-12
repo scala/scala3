@@ -1638,7 +1638,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack)
 
     if (isApplyProto(pt)) tryImplicit
-    else tryEither(tryApply(_))((_, _) => tryImplicit) 
+    else tryEither(tryApply(_))((_, _) => tryImplicit)
   }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
