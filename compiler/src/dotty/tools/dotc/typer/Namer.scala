@@ -683,7 +683,7 @@ class Namer { typer: Typer =>
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
         myTypeParams = {
-          implicit val ctx: Context = nestedCtx
+          implicit val ctx = nestedCtx
           val tparams = original.rhs match {
             case PolyTypeTree(tparams, _) => tparams
             case _ => Nil

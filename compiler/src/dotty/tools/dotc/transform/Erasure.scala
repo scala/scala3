@@ -575,7 +575,7 @@ object Erasure extends TypeTestsCasts{
             val bridge = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method, sam.info)
             val bridgeCtx = ctx.withOwner(bridge)
             Closure(bridge, bridgeParamss => {
-              implicit val ctx: Context = bridgeCtx
+              implicit val ctx = bridgeCtx
 
               val List(bridgeParams) = bridgeParamss
               val rhs = Apply(meth, (bridgeParams, implParamTypes).zipped.map(adapt(_, _)))
@@ -691,7 +691,7 @@ object Erasure extends TypeTestsCasts{
       val bridgeCtx = ctx.withOwner(bridge)
 
       tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>
-          implicit val ctx: Context = bridgeCtx
+          implicit val ctx = bridgeCtx
 
           val rhs = paramss.foldLeft(sel)((fun, vparams) =>
             fun.tpe.widen match {

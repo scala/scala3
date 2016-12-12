@@ -125,7 +125,7 @@ class DottyPrimitives(ctx: Context) {
   /** Initialize the primitive map */
   private def init: immutable.Map[Symbol, Int]  = {
 
-    implicit val ctx: Context = this.ctx
+    implicit val ctx = this.ctx
 
     import core.Symbols.defn
     val primitives = new mutable.HashMap[Symbol, Int]()
