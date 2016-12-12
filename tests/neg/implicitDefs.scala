@@ -12,7 +12,7 @@ object implicitDefs {
   def foo(implicit x: String) = 1
 
   def bar() = {
-    implicit val x = foo
+    implicit val x = foo // error: cyclic reference
     x
   }
 }
