@@ -1001,7 +1001,6 @@ class Namer { typer: Typer =>
         def missingType(modifier: String) = {
           ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", mdef.pos)
           sym.resetFlag(Implicit)
-
         }
         if (sym is Implicit)
           mdef match {
