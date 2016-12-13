@@ -1,5 +1,7 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
+import java.io.File
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
@@ -88,6 +90,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       }
 
       val newReachableMethods = reachableMethods.newItems
+
+      // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
+      // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
+
       ctx.log(s"\t Found ${newReachableMethods.size} new call sites")
 
     }
