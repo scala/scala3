@@ -890,6 +890,11 @@ object Trees {
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name))
       }
+      /** Copy Ident or Select trees */
+      def Ref(tree: RefTree)(name: Name)(implicit ctx: Context) = tree match {
+        case Ident(_) => Ident(tree)(name)
+        case Select(qual, _) => Select(tree)(qual, name)
+      }
       def This(tree: Tree)(qual: untpd.Ident): This = tree match {
         case tree: This if qual eq tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
