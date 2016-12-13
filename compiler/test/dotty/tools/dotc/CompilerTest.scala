@@ -186,7 +186,7 @@ abstract class CompilerTest {
           val (_, _, _, expErrors) = computeFilePathsAndExpErrors
           expErrors.map(_.totalErrors).sum
         } else 0
-        computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString)
+        computeDestAndCopyFiles(sourceDir, firstDest, kind, flags, xerrors.toString, stdlibFiles = stdlibFiles)
         if (deep == "deep")
           Directory(sourceDir).deleteRecursively
       } else {
@@ -439,7 +439,7 @@ abstract class CompilerTest {
     * different flags). Detects existing versions and computes the path to be
     * used for this version, e.g. testname_v1 for the first alternative. */
   private def computeDestAndCopyFiles(source: JFile, dest: Path, kind: String, oldFlags: List[String], nerr: String,
-      nr: Int = 0, oldOutput: String = defaultOutputDir): Unit = {
+      nr: Int = 0, oldOutput: String = defaultOutputDir, stdlibFiles: List[String] = Nil): Unit = {
 
     val partestOutput = dest.jfile.getParentFile + JFile.separator + dest.stripExtension + "-" + kind + ".obj"
 
@@ -453,7 +453,14 @@ abstract class CompilerTest {
 
     val difference = getExisting(dest).isDifferent(source, flags, nerr)
     difference match {
-      case NotExists => copyFiles(source, dest, partestOutput, flags, nerr, kind)
+      case NotExists =>
+        stdlibFiles.foreach { file =>
+          val dest2 = dest / file.replace("../scala-scala/src/library/", "").replace("../library/src/", "")
+          dest2.parent.jfile.mkdirs
+          copyfile(new SFile(new JFile(file)), dest2, false)
+        }
+        copyFiles(source, dest, partestOutput, flags, nerr, kind)
+
       case ExistsSame => // nothing else to do
       case ExistsDifferent =>
         val nextDest = dest.parent / (dest match {
@@ -493,36 +500,10 @@ abstract class CompilerTest {
     * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
 
-    def copyfile(file: SFile, bytewise: Boolean): Unit = {
-      if (bytewise) {
-        val in = file.inputStream()
-        val out = SFile(dest).outputStream()
-        val buffer = new Array[Byte](1024)
-        def loop(available: Int):Unit = {
-          if (available < 0) {()}
-          else {
-            out.write(buffer, 0, available)
-            val read = in.read(buffer)
-            loop(read)
-          }
-        }
-        loop(0)
-        in.close()
-        out.close()
-      } else {
-        try {
-          SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
-        } catch {
-          case unmappable: java.nio.charset.MalformedInputException =>
-            copyfile(file, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
-        }
-      }
-    }
-
     processFileDir(sourceFile, { sf =>
       if (extensionsToCopy.contains(sf.extension)) {
         dest.parent.jfile.mkdirs
-        copyfile(sf, false)
+        copyfile(sf, dest, false)
       } else {
         log(s"WARNING: ignoring $sf")
       }
@@ -540,6 +521,32 @@ abstract class CompilerTest {
       val nerr = (dest changeExtension "nerr").toFile.safeSlurp
       ExistingFiles(content.get, flags, nerr)
     } else ExistingFiles()
+  }
+
+  private def copyfile(file: SFile, dest: Path, bytewise: Boolean): Unit = {
+    if (bytewise) {
+      val in = file.inputStream()
+      val out = SFile(dest).outputStream()
+      val buffer = new Array[Byte](1024)
+      def loop(available: Int):Unit = {
+        if (available < 0) {()}
+        else {
+          out.write(buffer, 0, available)
+          val read = in.read(buffer)
+          loop(read)
+        }
+      }
+      loop(0)
+      in.close()
+      out.close()
+    } else {
+      try {
+        SFile(dest)(scala.io.Codec.UTF8).writeAll((s"/* !!!!! WARNING: DO NOT MODIFY. Original is at: $file !!!!! */").replace("\\", "/"), file.slurp("UTF-8"))
+      } catch {
+        case unmappable: java.nio.charset.MalformedInputException =>
+          copyfile(file, dest, true) //there are bytes that can't be mapped with UTF-8. Bail and just do a straight byte-wise copy without the warning header.
+      }
+    }
   }
 
   /** Encapsulates existing generated test files. */

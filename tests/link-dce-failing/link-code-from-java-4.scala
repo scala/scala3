@@ -68,6 +68,7 @@ class Coll[E] extends java.util.Collection[E] {
 
   def toArray: Array[Object] = null
 
+  // FIXME cannot compile due to issue #1747
   def toArray[T](a: Array[T]): Array[T] = null
 
   def size(): Int = 0

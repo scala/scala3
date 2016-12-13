@@ -267,7 +267,11 @@
 ../scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ../scala-scala/src/library/scala/util/control/Breaks.scala
 
-#../scala-scala/src/library/scala/sys/SystemProperties.scala # fails in partest
+# FIXME required to load Predef
+#../scala-scala/src/library/scala/sys/SystemProperties.scala
+../scala-scala/src/library/scala/sys/Prop.scala
+#../scala-scala/src/library/scala/sys/BooleanProp.scala
+../scala-scala/src/library/scala/sys/PropImpl.scala
 
 # Removed after rebase on #1758 (Drop function 22 limit)
 #../scala-scala/src/library/scala/Function0.scala
@@ -297,10 +301,6 @@
 ../scala-scala/src/library/scala/collection/mutable/MapLike.scala
 ../scala-scala/src/library/scala/collection/mutable/Map.scala
 ../scala-scala/src/library/scala/collection/mutable/StringBuilder.scala
-
-../scala-scala/src/library/scala/sys/Prop.scala
-#../scala-scala/src/library/scala/sys/BooleanProp.scala
-../scala-scala/src/library/scala/sys/PropImpl.scala
 
 ../scala-scala/src/library/scala/math/BigDecimal.scala
 ../scala-scala/src/library/scala/math/BigInt.scala
