@@ -314,7 +314,8 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
-        else wrongNumberOfArgs(fn.tpe, "", fntpe.typeParams, args, tree.pos)
+        else
+          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${ptypes.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
@@ -369,7 +370,7 @@ trait TypeAssigner {
         else {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
-          else wrongNumberOfArgs(fn.tpe, "type", pt.typeParams, args, tree.pos)
+          else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
@@ -462,7 +463,7 @@ trait TypeAssigner {
     val ownType =
       if (hasNamedArg(args)) (tycon.tpe /: args)(refineNamed)
       else if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfArgs(tycon.tpe, "type", tparams, args, tree.pos)
+      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
     tree.withType(ownType)
   }
 
