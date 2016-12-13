@@ -390,6 +390,10 @@ object Symbols {
       denot
     }
 
+    /** The initial denotation of this symbol, without going through `current` */
+    final def initialDenot(implicit ctx: Context): SymDenotation =
+      lastDenot.initial
+
     private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
