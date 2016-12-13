@@ -206,13 +206,18 @@ class tests extends CompilerTest {
   @Test def link_dce_vis_all = runFiles(linkDCEDir, linkDCEwithVis)
 
   // Test callgraph DCE on code that uses stdlib (not DCEed)
+  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
   @Test def link_dce_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCE)
+
+  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
   @Test def link_dce_vis_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCEwithVis)
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all =
     runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
-  @org.junit.Ignore("Takes too long in 'sbt test'") @Test def link_dce_vis_stdlib_all =
+
+  @org.junit.Ignore("Too long to run in CI")
+  @Test def link_dce_vis_stdlib_all =
     runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
   def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
