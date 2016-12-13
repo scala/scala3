@@ -159,7 +159,7 @@ object desugar {
         rhs
     }
     val tparams1 = tparams mapConserve { tparam =>
-      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam))
+      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
     val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
