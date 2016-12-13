@@ -188,6 +188,8 @@ object NameOps {
 
     def errorName: N = likeTyped(name ++ nme.ERROR)
 
+    def directName: N = likeTyped(name ++ DIRECT_SUFFIX)
+
     def freshened(implicit ctx: Context): N =
       likeTyped(
         if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName

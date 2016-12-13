@@ -18,6 +18,7 @@ class JavaPlatform extends Platform {
       currentClassPath = Some(new PathResolver().result)
     val cp = currentClassPath.get
     //println(cp)
+    //println("------------------")
     cp
   }
 

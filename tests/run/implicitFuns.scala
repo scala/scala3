@@ -211,3 +211,47 @@ object TransactionalExpansion {
   }
 }
 
+object TransactionalAbstracted {
+  type Transactional[T] = implicit Transaction => T
+
+  trait TransOps {
+    def thisTransaction: Transactional[Transaction]
+    def f1(x: Int): Transactional[Int]
+    def f2(x: Int): Transactional[Int]
+    def f3(x: Int): Transactional[Int]
+  }
+
+  object TransOpsObj extends TransOps {
+
+    def thisTransaction: Transactional[Transaction] = implicitly[Transaction]
+
+    def f1(x: Int): Transactional[Int] = {
+      thisTransaction.println(s"first step: $x")
+      f2(x + 1)
+    }
+    def f2(x: Int): Transactional[Int] = {
+      thisTransaction.println(s"second step: $x")
+      f3(x * x)
+    }
+    def f3(x: Int): Transactional[Int] = {
+      thisTransaction.println(s"third step: $x")
+      if (x % 2 != 0) thisTransaction.abort()
+      x
+    }
+  }
+
+  val transOps: TransOps = TransOpsObj
+
+  def transaction[T](op: Transactional[T]) = {
+    implicit val trans: Transaction = new Transaction
+    op
+    trans.commit()
+  }
+
+  def main(args: Array[String]) = {
+    transaction {
+      val res = transOps.f1(args.length)
+      println(if (transOps.thisTransaction.isAborted) "aborted" else s"result: $res")
+    }
+  }
+}

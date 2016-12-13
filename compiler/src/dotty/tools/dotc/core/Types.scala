@@ -2376,7 +2376,9 @@ object Types {
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 
-    def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], resType: Type)(implicit ctx: Context) =
+    def derivedMethodType(paramNames: List[TermName] = this.paramNames,
+                          paramTypes: List[Type] = this.paramTypes,
+                          resType: Type = this.resType)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (resType eq this.resType)) this
       else {
         val resTypeFn = (x: MethodType) => resType.subst(this, x)
