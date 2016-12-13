@@ -56,7 +56,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   /** An implicit function type */
   class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
-    override def toString = s"ImplicitFunction($args, $body"
+    override def toString = s"ImplicitFunction($args, $body)"
   }
 
   /** A function created from a wildcard expression
