@@ -62,7 +62,8 @@ class Compiler {
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
            new CrossCastAnd,        // Normalize selections involving intersection types.
-           new Splitter),           // Expand selections involving union types into conditionals
+           new Splitter,           // Expand selections involving union types into conditionals
+           new SpecializeFunction1), // Specialized Function1 by replacing super with specialized super
       List(new VCInlineMethods,     // Inlines calls to value class methods
            new IsInstanceOfEvaluator, // Issues warnings when unreachable statements are present in match/if expressions
            new SeqLiterals,         // Express vararg arguments as arrays
@@ -71,9 +72,7 @@ class Compiler {
            new ElimByName,          // Expand by-name parameters and arguments
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
-           new ArrayConstructors,   // Intercept creation of (non-generic) arrays and intrinsify.
-           new SpecializeExtendsFunction1, // <- what he said
-           new DispatchToSpecializedApply), // <- what she said
+           new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
