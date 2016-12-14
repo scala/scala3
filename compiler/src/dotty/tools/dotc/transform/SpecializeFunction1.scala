@@ -6,6 +6,7 @@ import TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
 import core._
 import Contexts.Context, Types._, Decorators._, Symbols._, DenotTransformers._
 import Denotations._, SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import ast.tpd
 
 class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
   import ast.tpd._
@@ -116,10 +117,8 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
         )
       }
 
-      val alteredScope = newScope
-      scope.foreach { sym =>
-        alteredScope.enter(if (sym.name eq nme.apply) specializedApply else sym)
-      }
+      val alteredScope = scope.cloneScope
+      alteredScope.enter(specializedApply)
       alteredScope
     }
 
@@ -141,11 +140,19 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
         val specializedMethodName = specializedName(nme.apply, t1, r)
         val specializedApply = ctx.owner.info.decls.lookup(specializedMethodName).asTerm
 
-        polyDefDef(specializedApply, trefs => vrefss => {
+        val forwardingBody =
+          tpd.ref(specializedApply)
+          .appliedToArgs(tree.vparamss.head.map(vparam => ref(vparam.symbol)))
+
+        val applyWithForwarding = cpy.DefDef(tree)(rhs = forwardingBody)
+
+        val specializedApplyDefDef = polyDefDef(specializedApply, trefs => vrefss => {
           tree.rhs
             .changeOwner(tree.symbol, specializedApply)
             .subst(tree.vparamss.flatten.map(_.symbol), vrefss.flatten.map(_.symbol))
-        }) :: acc
+        })
+
+        applyWithForwarding :: specializedApplyDefDef :: acc
       }
       case (tree, acc) => tree :: acc
     }
