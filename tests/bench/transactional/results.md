@@ -13,7 +13,7 @@ Three alternatives:
 Two benchmarks:
 
  - `ImplicitMono`:  all calls are monomorphic
- - `IplicitMega` :  about half of the calls are (4-way) megamorphic,
+ - `ImplicitMega` :  about half of the calls are (4-way) megamorphic,
                     the others are monomorphic.
 
 ### Results
@@ -47,7 +47,7 @@ are no megamorphic targets). Specializing everything
 incurs about a 14% performance hit (maybe due to the extra
 code generated; it's hard to pin down what it is).
 
-Note: We compaute relative performance differences by comparing the
+Note: We compute relative performance differences by comparing the
 second-best test runs of each series with each other.
 
 In the megamorphic benchmark, it's the other way round.
@@ -57,13 +57,14 @@ everything leads to another 37% improvement (85% total compared
 to no specialization).
 
 I think we need larger benchmarks to decide whether we should
-specicialize mono-morphic call-targets or not.
+specicialize monomorphic call-targets or not.
 
 ### Comparing with the Reader Monad
 
-Translating `ImplicitMega` to the reader monad, gives the following runtimes:
+Translating `ImplicitMega` to the reader monad gives the following runtimes:
 
 | Reader |
+|---------|
 | 11563ms |
 | 11108ms |
 | 11300ms |
