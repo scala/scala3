@@ -6,7 +6,7 @@ Three alternatives:
 
   1. No implicit shortcuts
   2. Implicit shortcuts only for possible targets of megamorphic dispatch
-     (`specializeMonoTargets` set to false)
+     (`specializeMonoTargets` in [ShortcutImplicits.scala](../../../compiler/src/dotty/tools/dotc/transform/ShortcutImplicits.scala) set to false)
   3. Implicit shortcuts for all methods returning implicit function types
      (`specializeMonoTargets` set to true)
 
@@ -44,7 +44,7 @@ Two benchmarks:
 
 In the fully monomorphic benchmark, specializing
 only megamorphic targets has the same performance as
-not spezializing at all (not surprising, since there
+not specializing at all (not surprising, since there
 are no megamorphic targets). Specializing everything
 incurs about a 14% performance hit (maybe due to the extra
 code generated; it's hard to pin down what it is).
@@ -53,13 +53,13 @@ Note: We compute relative performance differences by comparing the
 second-best test runs of each series with each other.
 
 In the megamorphic benchmark, it's the other way round.
-Specializing only megamorphic callsites leads to a performance
+Specializing only megamorphic call-sites leads to a performance
 improvement of about 36% compared to no specialization. Specializing
 everything leads to another 37% improvement (85% total compared
 to no specialization).
 
 I think we need larger benchmarks to decide whether we should
-specicialize monomorphic call-targets or not.
+specialize monomorphic call-targets or not.
 
 ### Comparing with the Reader Monad
 
