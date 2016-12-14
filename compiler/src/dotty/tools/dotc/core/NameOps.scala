@@ -245,7 +245,7 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
-    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
+    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type] = scala.Nil, methodTarsNames: List[Name] = scala.Nil)(implicit ctx: Context): name.ThisName = {
 
       def typeToTag(tp: Types.Type): Name = {
         tp.classSymbol match {
