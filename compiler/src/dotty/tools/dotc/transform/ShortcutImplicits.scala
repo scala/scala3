@@ -37,7 +37,7 @@ import collection.mutable
  *  is expanded to:
  *
  *     def m(xs: Ts): IF
- *     def m$direct(xs: Ts, ys: Us): R
+ *     def m$direct(xs: Ts)(ys: Us): R
  *
  *  (2) A reference `qual.apply` where `qual` has implicit function type and
  *  `qual` refers to a method `m` is rewritten to a reference to `m$direct`,
@@ -49,6 +49,14 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
   override def phaseName: String = "shortcutImplicits"
   val treeTransform = new Transform
 
+  /** If this option true, we don't specialize symbols that are known to be only
+   *  targets of monomorphic calls.
+   *  The reason for this option is that benchmarks show that on the JVM for monomorphic dispatch
+   *  scenarios inlining and escape analysis can often remove all calling overhead, so we might as
+   *  well not duplicate the code. We need more experience to decide on the best setting of this option.
+   */
+  final val specializeMonoTargets = true
+
   class Transform extends TreeTransform {
     def phase = thisTransform
 
@@ -58,6 +66,17 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
      *  A fresh map is created for each unit.
      */
     private val directMeth = new mutable.HashMap[Symbol, Symbol]
+
+    /** Should `sym` get a ..$direct companion?
+     *  This is the case if (1) `sym` is a method with an implicit function type as final result type.
+     *  However if `specializeMonoTargets` is true, we exclude symbols that are known
+     *  to be only targets of monomorphic calls because they are effectively
+     *  final and don't override anything.
+     */
+    private def shouldBeSpecialized(sym: Symbol)(implicit ctx: Context) =
+      sym.is(Method, butNot = Accessor) &&
+      defn.isImplicitFunctionType(sym.info.finalResultType) &&
+      (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
 
     /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
      *  @return The type of the `apply` member of `implicit Ts => R`.
@@ -93,7 +112,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
       if (tree.name == nme.apply &&
           defn.isImplicitFunctionType(tree.qualifier.tpe.widen) &&
-          tree.qualifier.symbol.is(Method, butNot = Accessor)) {
+          shouldBeSpecialized(tree.qualifier.symbol)) {
         def directQual(tree: Tree): Tree = tree match {
           case Apply(fn, args)     => cpy.Apply(tree)(directQual(fn), args)
           case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
@@ -108,7 +127,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     /** Transform methods with implicit function type result according to rewrite rule (1) above */
     override def transformDefDef(mdef: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
       val original = mdef.symbol
-      if (defn.isImplicitFunctionType(original.info.finalResultType)) {
+      if (shouldBeSpecialized(original)) {
         val direct = directMethod(original)
 
         def splitClosure(tree: Tree): (List[Type] => List[List[Tree]] => Tree, Tree) = tree match {
