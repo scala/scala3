@@ -427,3 +427,7 @@
 ../scala-scala/src/library/scala/reflect/OptManifest.scala
 
 ../scala-scala/src/library/scala/Responder.scala
+
+../scala-scala/src/library/scala/collection/script/Location.scala
+../scala-scala/src/library/scala/collection/script/Message.scala
+../scala-scala/src/library/scala/collection/script/Scriptable.scala
