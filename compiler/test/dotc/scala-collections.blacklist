@@ -184,12 +184,10 @@
 #     |                ^^^
 #     |                not found: msg
 
-../scala-scala/src/library/scala/ref/PhantomReference.scala
-../scala-scala/src/library/scala/ref/Reference.scala
-../scala-scala/src/library/scala/ref/ReferenceQueue.scala
-../scala-scala/src/library/scala/ref/ReferenceWrapper.scala
-../scala-scala/src/library/scala/ref/SoftReference.scala
 ../scala-scala/src/library/scala/ref/WeakReference.scala
+# 33 |    if (x != null) Some(x) else None
+#    |       ^^^^^^^^^^^
+#    |       Values of types wr.underlying.java$lang$ref$WeakReference$$T and Null cannot be compared with == or !=
 
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
 ../scala-scala/src/library/scala/reflect/ClassTag.scala

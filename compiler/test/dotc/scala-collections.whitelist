@@ -416,3 +416,9 @@
 ../scala-scala/src/library/scala/math/BigDecimal.scala
 ../scala-scala/src/library/scala/math/BigInt.scala
 ../scala-scala/src/library/scala/math/PartiallyOrdered.scala
+
+../scala-scala/src/library/scala/ref/PhantomReference.scala
+../scala-scala/src/library/scala/ref/Reference.scala
+../scala-scala/src/library/scala/ref/ReferenceQueue.scala
+../scala-scala/src/library/scala/ref/ReferenceWrapper.scala
+../scala-scala/src/library/scala/ref/SoftReference.scala
