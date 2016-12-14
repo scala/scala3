@@ -6,12 +6,10 @@
 *.html    text eol=lf
 *.java    text eol=lf
 *.js      text eol=lf
-*.sbt     text eol=lf
-*.scala   text eol=lf
-*.sh      text eol=lf
+*.sbt     text eol=lfasdd
 *.txt     text eol=lf
 *.xml     text eol=lf
-
+asdasdas
 # Windows-specific files get windows endings
 *.bat     eol=crlf
 *.cmd     eol=crlf
