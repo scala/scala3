@@ -200,45 +200,17 @@
 #    |                                                             ^^^^^
 #    |                                                             not found: macro
 
-
-
-../scala-scala/src/library/scala/runtime/AbstractFunction0.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction1.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction10.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction11.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction12.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction13.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction14.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction15.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction16.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction17.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction18.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction19.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction2.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction20.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction21.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction22.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction3.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction4.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction5.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction6.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction7.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction8.scala
-../scala-scala/src/library/scala/runtime/AbstractFunction9.scala
-../scala-scala/src/library/scala/runtime/AbstractPartialFunction.scala
-../scala-scala/src/library/scala/runtime/Boxed.scala
-../scala-scala/src/library/scala/runtime/MethodCache.scala
-../scala-scala/src/library/scala/runtime/NonLocalReturnControl.scala
-../scala-scala/src/library/scala/runtime/Nothing$.scala
-../scala-scala/src/library/scala/runtime/Null$.scala
-../scala-scala/src/library/scala/runtime/package.scala
-../scala-scala/src/library/scala/runtime/ScalaNumberProxy.scala
-../scala-scala/src/library/scala/runtime/ScalaRunTime.scala
-../scala-scala/src/library/scala/runtime/SeqCharSequence.scala
-../scala-scala/src/library/scala/runtime/StringAdd.scala
-../scala-scala/src/library/scala/runtime/StringFormat.scala
 ../scala-scala/src/library/scala/runtime/Tuple2Zipped.scala
+# 122 |        val buf = bf(x._1)
+#     |                     ^^^^
+#     |                     found:    T1
+#     |                     required: CC1[_]
+
 ../scala-scala/src/library/scala/runtime/Tuple3Zipped.scala
+# 131 |        val buf = bf(x._1)
+#     |                     ^^^^
+#     |                     found:    T1
+#     |                     required: CC1[_]
 
 ../scala-scala/src/library/scala/StringContext.scala
 # 168 |  def f[A >: Any](args: A*): String = macro ???
