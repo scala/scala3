@@ -332,20 +332,15 @@
 ../scala-scala/src/library/scala/Tuple8.scala
 ../scala-scala/src/library/scala/Tuple9.scala
 
-../scala-scala/src/library/scala/util/control/Breaks.scala
-../scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ../scala-scala/src/library/scala/util/control/Exception.scala
-../scala-scala/src/library/scala/util/control/NonFatal.scala
-../scala-scala/src/library/scala/util/control/NoStackTrace.scala
+# scala.MatchError: PostfixOp(Select(Ident(pf),isDefinedAt),_) (of class dotty.tools.dotc.ast.untpd$PostfixOp)
+#      at dotty.tools.dotc.ast.Trees$Instance$TreeAccumulator.foldOver(Trees.scala:1173)
+
 ../scala-scala/src/library/scala/util/control/TailCalls.scala
-../scala-scala/src/library/scala/util/DynamicVariable.scala
-../scala-scala/src/library/scala/util/Either.scala
-../scala-scala/src/library/scala/util/hashing/ByteswapHashing.scala
+# assertion failed
+
 ../scala-scala/src/library/scala/util/hashing/Hashing.scala
-../scala-scala/src/library/scala/util/hashing/MurmurHash3.scala
-../scala-scala/src/library/scala/util/hashing/package.scala
-../scala-scala/src/library/scala/util/matching/Regex.scala
-../scala-scala/src/library/scala/util/MurmurHash.scala
-../scala-scala/src/library/scala/util/Properties.scala
-../scala-scala/src/library/scala/util/Random.scala
-../scala-scala/src/library/scala/util/Sorting.scala
+# 35 |  implicit def default[T] = new Default[T]
+#    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#    |  result type of implicit definition needs to be given explicitly
+

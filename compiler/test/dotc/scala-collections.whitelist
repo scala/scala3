@@ -282,3 +282,18 @@
 ../scala-scala/src/library/scala/collection/generic/package.scala
 
 ../scala-scala/src/library/scala/util/Try.scala
+
+../scala-scala/src/library/scala/util/control/Breaks.scala
+../scala-scala/src/library/scala/util/control/ControlThrowable.scala
+../scala-scala/src/library/scala/util/control/NonFatal.scala
+../scala-scala/src/library/scala/util/control/NoStackTrace.scala
+../scala-scala/src/library/scala/util/DynamicVariable.scala
+../scala-scala/src/library/scala/util/Either.scala
+../scala-scala/src/library/scala/util/hashing/ByteswapHashing.scala
+../scala-scala/src/library/scala/util/hashing/MurmurHash3.scala
+../scala-scala/src/library/scala/util/hashing/package.scala
+../scala-scala/src/library/scala/util/matching/Regex.scala
+../scala-scala/src/library/scala/util/MurmurHash.scala
+../scala-scala/src/library/scala/util/Properties.scala
+../scala-scala/src/library/scala/util/Random.scala
+../scala-scala/src/library/scala/util/Sorting.scala
