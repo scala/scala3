@@ -418,7 +418,7 @@ trait Checking {
   /** Check that Java statics and packages can only be used in selections.
    */
   def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-    if (!proto.isInstanceOf[SelectionProto]) {
+    if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
