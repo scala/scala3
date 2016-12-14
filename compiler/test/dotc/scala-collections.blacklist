@@ -117,30 +117,24 @@
 ../scala-scala/src/library/scala/collection/parallel/Tasks.scala
 ../scala-scala/src/library/scala/collection/parallel/TaskSupport.scala
 
-../scala-scala/src/library/scala/concurrent/Awaitable.scala
-../scala-scala/src/library/scala/concurrent/BatchingExecutor.scala
-../scala-scala/src/library/scala/concurrent/BlockContext.scala
-../scala-scala/src/library/scala/concurrent/Channel.scala
-../scala-scala/src/library/scala/concurrent/DelayedLazyVal.scala
-../scala-scala/src/library/scala/concurrent/duration/Deadline.scala
-../scala-scala/src/library/scala/concurrent/duration/Duration.scala
-../scala-scala/src/library/scala/concurrent/duration/DurationConversions.scala
-../scala-scala/src/library/scala/concurrent/duration/package.scala
-../scala-scala/src/library/scala/concurrent/ExecutionContext.scala
 ../scala-scala/src/library/scala/concurrent/Future.scala
-../scala-scala/src/library/scala/concurrent/FutureTaskRunner.scala
-../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
-../scala-scala/src/library/scala/concurrent/impl/Future.scala
-../scala-scala/src/library/scala/concurrent/impl/Promise.scala
-../scala-scala/src/library/scala/concurrent/JavaConversions.scala
-../scala-scala/src/library/scala/concurrent/Lock.scala
-../scala-scala/src/library/scala/concurrent/ManagedBlocker.scala
-../scala-scala/src/library/scala/concurrent/package.scala
-../scala-scala/src/library/scala/concurrent/Promise.scala
+# 188 |    implicit val ec = internalExecutor
+#     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#     |    type of implicit definition needs to be given explicitly
+
 ../scala-scala/src/library/scala/concurrent/SyncChannel.scala
-../scala-scala/src/library/scala/concurrent/SyncVar.scala
-../scala-scala/src/library/scala/concurrent/TaskRunner.scala
-../scala-scala/src/library/scala/concurrent/ThreadPoolRunner.scala
+# 45 |    writeReq.get
+#    |    ^^^^^^^^^^^^
+#    |    none of the overloaded alternatives of method get in class SyncVar with types
+#    |     (timeout: Long)Option[Boolean]
+#    |     => Boolean
+#    |    match expected type Unit
+
+../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
+# assertion failed
+
+../scala-scala/src/library/scala/concurrent/package.scala
+# assertion failed
 
 ../scala-scala/src/library/scala/Console.scala
 ../scala-scala/src/library/scala/Enumeration.scala
