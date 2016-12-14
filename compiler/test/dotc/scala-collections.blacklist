@@ -85,37 +85,64 @@
 ../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
 # assertion failed
 
-../scala-scala/src/library/scala/collection/parallel/Combiner.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/LazyCombiner.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/package.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParFlatHashTable.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParHashMap.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParHashSet.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParHashTable.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParIterable.scala
+# 648 |  class Map[S](f: T => S, targetarr: Array[Any], offset: Int, howmany: Int) extends Task[Unit, Map[S]] {
+#     |        ^
+#     |        overriding class Map in trait ParIterableLike;
+#     |         class Map cannot be used here - class definitions cannot be overridden
+
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParMapLike.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParSeq.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParTrieMap.scala
+# 42 |  override def updated [U >: V](key: K, value: U): ParMap[K, U] = this + ((key, value))
+#    |                                                                  ^^^^^^^^^^^^^^^^^^^^^
+#    |                                                       found:    scala.collection.parallel.ParMap[K, U]
+#    |                                                       required: scala.collection.parallel.mutable.ParMap'[K, U]
+#    |
+#    |                                                       where:    ParMap  is a trait in package parallel
+#    |                                                                 ParMap' is a trait in package mutable
+
+
 ../scala-scala/src/library/scala/collection/parallel/mutable/ResizableParArrayCombiner.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/UnrolledParArrayCombiner.scala
+# 91 |    new { val chain = c } with ResizableParArrayCombiner[T] // was: with EnvironmentPassingCombiner[T, ParArray[T]]
+#    |                          ^
+#    |                          early definitions are not supported; use trait parameters instead
+
+../scala-scala/src/library/scala/collection/parallel/mutable/ParTrieMap.scala
+# 136 |    it.iterated = this.iterated
+#     |    ^^^^^^^^^^^
+#     |    value `iterated` is not a member of scala.collection.concurrent.TrieMapIterator[K, V](it)
+
 ../scala-scala/src/library/scala/collection/parallel/package.scala
+# 75 |    implicit def factory2ops[From, Elem, To](bf: CanBuildFrom[From, Elem, To]) = new FactoryOps[From, Elem, To] {
+#     |    ^
+#     |    result type of implicit definition needs to be given explicitly
+
 ../scala-scala/src/library/scala/collection/parallel/ParIterable.scala
+# 304 |  protected implicit def task2ops[R, Tp](tsk: SSCTask[R, Tp]) = new TaskOps[R, Tp] {
+#     |  ^
+#     |  result type of implicit definition needs to be given explicitly
+
 ../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
+# 324 |  protected implicit def delegatedSignalling2ops[PI <: DelegatedSignalling](it: PI) = new SignallingOps[PI] {
+#     |  ^
+#     |  result type of implicit definition needs to be given explicitly
+
 ../scala-scala/src/library/scala/collection/parallel/ParMap.scala
 ../scala-scala/src/library/scala/collection/parallel/ParMapLike.scala
-../scala-scala/src/library/scala/collection/parallel/ParSeq.scala
+
 ../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
-../scala-scala/src/library/scala/collection/parallel/ParSet.scala
-../scala-scala/src/library/scala/collection/parallel/ParSetLike.scala
-../scala-scala/src/library/scala/collection/parallel/PreciseSplitter.scala
+# 334 |  protected trait Accessor[R, Tp] extends super.Accessor[R, Tp] {
+#     |                                          ^^^^^^^^^^^^^^^^^^^^^
+#     |                                          cyclic inheritance: trait Accessor extends itself
+
 ../scala-scala/src/library/scala/collection/parallel/RemainsIterator.scala
-../scala-scala/src/library/scala/collection/parallel/Splitter.scala
+# 617 |  class Zipped[S](ti: SeqSplitter[S]) extends super.Zipped[S](ti) with SeqSplitter[(T, S)] {
+#     |                                              ^^^^^^^^^^^^^^^^^^
+#     |                                              cyclic inheritance: class Zipped extends itself
+
 ../scala-scala/src/library/scala/collection/parallel/Tasks.scala
-../scala-scala/src/library/scala/collection/parallel/TaskSupport.scala
+# 429 |    fjtask.body.result
+#    |    ^^^^^^^^^^^
+#    |    value `body` is not a member of ForkJoinTasks.this.WrappedTask[R, Tp](fjtask)
 
 ../scala-scala/src/library/scala/concurrent/Future.scala
 # 188 |    implicit val ec = internalExecutor
