@@ -190,15 +190,27 @@
 #    |       Values of types wr.underlying.java$lang$ref$WeakReference$$T and Null cannot be compared with == or !=
 
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
+# 51 |      import Manifest._
+#    |             ^^^^^^^^
+#    |             not found: Manifest
 ../scala-scala/src/library/scala/reflect/ClassTag.scala
-../scala-scala/src/library/scala/reflect/macros/internal/macroImpl.scala
+# 124 |  val Short   : ClassTag[scala.Short]      = Manifest.Short
+#     |                                             ^^^^^^^^
+#     |                                             not found: Manifest
 ../scala-scala/src/library/scala/reflect/Manifest.scala
+# 104 |    private def readResolve(): Any = Manifest.Short
+#     |                                     ^^^^^^^^
+#     |                                     not found: Manifest
 ../scala-scala/src/library/scala/reflect/NameTransformer.scala
-../scala-scala/src/library/scala/reflect/NoManifest.scala
-../scala-scala/src/library/scala/reflect/OptManifest.scala
+# 89 |    if (buf eq null) name else buf.toString()
+#    |                               ^^^^^^^^^^^^^^
+#    |                               missing argument for parameter index of method apply: (index: Int)Char
 ../scala-scala/src/library/scala/reflect/package.scala
+# 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
+#    |                                                             ^^^^^
+#    |                                                             not found: macro
 
-../scala-scala/src/library/scala/Responder.scala
+
 
 ../scala-scala/src/library/scala/runtime/AbstractFunction0.scala
 ../scala-scala/src/library/scala/runtime/AbstractFunction1.scala
