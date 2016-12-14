@@ -109,11 +109,11 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
       def specializedApply: Symbol = {
         val specializedMethodName = specializedName(nme.apply, t1, r)
         ctx.newSymbol(
-          cref.symbol.owner,
+          cref.symbol,
           specializedMethodName,
           Flags.Override | Flags.Method,
           specializedFunction.info.decls.lookup(specializedMethodName).info
-        ).enteredAfter(this)
+        )
       }
 
       val alteredScope = newScope
