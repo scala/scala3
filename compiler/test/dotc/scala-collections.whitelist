@@ -363,3 +363,11 @@
 ../scala-scala/src/library/scala/collection/mutable/TreeSet.scala
 ../scala-scala/src/library/scala/collection/mutable/Undoable.scala
 ../scala-scala/src/library/scala/collection/mutable/WeakHashMap.scala
+
+../scala-scala/src/library/scala/collection/convert/DecorateAsJava.scala
+../scala-scala/src/library/scala/collection/convert/DecorateAsScala.scala
+../scala-scala/src/library/scala/collection/convert/Decorators.scala
+../scala-scala/src/library/scala/collection/convert/package.scala
+../scala-scala/src/library/scala/collection/convert/WrapAsJava.scala
+../scala-scala/src/library/scala/collection/convert/WrapAsScala.scala
+
