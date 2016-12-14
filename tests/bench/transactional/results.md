@@ -1,4 +1,4 @@
-# Benchmark results for implicit compilation scenarios.
+# Benchmark results for implicit compilation scenarios
 
 ### Setup
 
