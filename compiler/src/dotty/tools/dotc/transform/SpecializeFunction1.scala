@@ -86,7 +86,9 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
       .map { t => (t.tpe, t) }
       .collect {
         case (tp @ RefinedType(RefinedType(parent, _, t1), _, r), func1)
-        if tp.isRef(Function1) => (func1, t1, r)
+        if tp.isRef(Function1) &&
+           argTypes.contains(t1.typeSymbol) &&
+           returnTypes.contains(r.typeSymbol) => (func1, t1, r)
       }
       .headOption
   }
