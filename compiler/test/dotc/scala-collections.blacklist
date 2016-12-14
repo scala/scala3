@@ -173,12 +173,16 @@
 ../scala-scala/src/library/scala/Function8.scala
 ../scala-scala/src/library/scala/Function9.scala
 
-../scala-scala/src/library/scala/io/AnsiColor.scala
 ../scala-scala/src/library/scala/io/BufferedSource.scala
-../scala-scala/src/library/scala/io/Codec.scala
-../scala-scala/src/library/scala/io/Position.scala
+# 38 |  override lazy val iter = (
+#    |                    ^
+#    |                    overriding getter iter in class Source of type => collection.Iterator[Char];
+#    |                     lazy value iter of type collection.Iterator[Char] may not override a non-lazy value
+
 ../scala-scala/src/library/scala/io/Source.scala
-../scala-scala/src/library/scala/io/StdIn.scala
+# 303 |    report(pos, msg, out)
+#     |                ^^^
+#     |                not found: msg
 
 ../scala-scala/src/library/scala/math/BigDecimal.scala
 ../scala-scala/src/library/scala/math/BigInt.scala

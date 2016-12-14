@@ -407,3 +407,8 @@
 ../scala-scala/src/library/scala/beans/BeanProperty.scala
 ../scala-scala/src/library/scala/beans/BooleanBeanProperty.scala
 ../scala-scala/src/library/scala/beans/ScalaBeanInfo.scala
+
+../scala-scala/src/library/scala/io/AnsiColor.scala
+../scala-scala/src/library/scala/io/Codec.scala
+../scala-scala/src/library/scala/io/Position.scala
+../scala-scala/src/library/scala/io/StdIn.scala
