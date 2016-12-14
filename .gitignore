@@ -49,3 +49,7 @@ build/
 .packages
 /.cache-main
 /.cache-tests
+
+# Put local stuff here
+local/
+
