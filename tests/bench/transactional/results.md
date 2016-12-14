@@ -12,9 +12,11 @@ Three alternatives:
 
 Two benchmarks:
 
- - `ImplicitMono`:  all calls are monomorphic
- - `ImplicitMega` :  about half of the calls are (4-way) megamorphic,
+ - `ImplicitMono`:  All calls are monomorphic.
+                    Code in [ImplicitMono.scala](./ImplicitMono.scala).
+ - `ImplicitMega` : About half of the calls are (4-way) megamorphic,
                     the others are monomorphic.
+                    Code in [ImplicitMega.scala](./ImplicitMega.scala).
 
 ### Results
 
@@ -61,7 +63,7 @@ specicialize monomorphic call-targets or not.
 
 ### Comparing with the Reader Monad
 
-Translating `ImplicitMega` to the reader monad gives the following runtimes:
+Translating `ImplicitMega` to the reader monad (code in [ReaderMonadic.scala](./ReaderMonadic.scala)) gives the following runtimes:
 
 | Reader |
 |---------|
