@@ -683,9 +683,36 @@ class CompilingInterpreter(
         code.print(resultExtractors.mkString(""))
       }
 
+      private val ListReg = """^.*List\[(\w+)\]$""".r
+      private val MapReg = """^.*Map\[(\w+),[ ]*(\w+)\]$""".r
+      private val LitReg = """^.*\((.+)\)$""".r
+
       private def resultExtractor(req: Request, varName: Name): String = {
         val prettyName = varName.decode
-        val varType = string2code(req.typeOf(varName))
+        // FIXME: `varType` is prettified to abbreviate common types where
+        // appropriate, and to also prettify literal types
+        //
+        // This should be rewritten to use the actual types once we have a
+        // semantic representation available to the REPL
+        val varType = string2code(req.typeOf(varName)) match {
+          // Extract List's paremeter from full path
+          case ListReg(param) => s"List[$param]"
+          // Extract Map's paremeters from full path
+          case MapReg(k, v) => s"Map[$k, $v]"
+          // Extract literal type from literal type representation. Example:
+          //
+          // ```
+          // scala> val x: 42 = 42
+          // val x: Int(42) = 42
+          // scala> val y: "hello" = "hello"
+          // val y: String("hello") = "hello"
+          // ```
+          case LitReg(lit) => lit
+          // When the type is a singleton value like None, don't show `None$`
+          // instead show `None.type`.
+          case x if x.lastOption == Some('$') => x.init + ".type"
+          case x => x
+        }
         val fullPath = req.fullPath(varName)
 
         val varOrVal = statement match {
@@ -695,8 +722,10 @@ class CompilingInterpreter(
 
         s""" + "$varOrVal $prettyName: $varType = " + {
            |  if ($fullPath.asInstanceOf[AnyRef] != null) {
-           |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") +
-           |      $fullPath.toString() + "\\n"
+           |    (if ($fullPath.toString().contains('\\n')) "\\n" else "") + {
+           |      import dotty.Show._
+           |      $fullPath.show /*toString()*/ + "\\n"
+           |    }
            |  } else {
            |    "null\\n"
            |  }

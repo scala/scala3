@@ -375,7 +375,8 @@ object DottyBuild extends Build {
     settings(
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "org.scala-lang" % "scala-library" % scalaVersion.value
+        "org.scala-lang" % "scala-library" % scalaVersion.value,
+        "com.novocode" % "junit-interface" % "0.11" % "test"
       )
     ).
     settings(publishing)

@@ -7,5 +7,5 @@ val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(22)
 scala> buf ++= List(1, 2, 3)
 val res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(22, 1, 2, 3)
 scala> buf.toList
-val res2: scala.collection.immutable.List[Int] = List(22, 1, 2, 3)
+val res2: List[Int] = List(22, 1, 2, 3)
 scala> :quit
