@@ -399,3 +399,11 @@
 ../scala-scala/src/library/scala/sys/process/ProcessImpl.scala
 ../scala-scala/src/library/scala/sys/process/ProcessIO.scala
 ../scala-scala/src/library/scala/sys/process/ProcessLogger.scala
+
+../scala-scala/src/library/scala/beans/BeanDescription.scala
+../scala-scala/src/library/scala/beans/BeanDisplayName.scala
+../scala-scala/src/library/scala/beans/BeanInfo.scala
+../scala-scala/src/library/scala/beans/BeanInfoSkip.scala
+../scala-scala/src/library/scala/beans/BeanProperty.scala
+../scala-scala/src/library/scala/beans/BooleanBeanProperty.scala
+../scala-scala/src/library/scala/beans/ScalaBeanInfo.scala

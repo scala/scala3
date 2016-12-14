@@ -29,14 +29,6 @@
 ../scala-scala/src/library/scala/AnyVal.scala
 ../scala-scala/src/library/scala/App.scala
 
-../scala-scala/src/library/scala/beans/BeanDescription.scala
-../scala-scala/src/library/scala/beans/BeanDisplayName.scala
-../scala-scala/src/library/scala/beans/BeanInfo.scala
-../scala-scala/src/library/scala/beans/BeanInfoSkip.scala
-../scala-scala/src/library/scala/beans/BeanProperty.scala
-../scala-scala/src/library/scala/beans/BooleanBeanProperty.scala
-../scala-scala/src/library/scala/beans/ScalaBeanInfo.scala
-
 ../scala-scala/src/library/scala/collection/convert/Wrappers.scala
 # 34 |    def remove() = throw new UnsupportedOperationException
 #    |        ^
