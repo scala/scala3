@@ -49,80 +49,53 @@
 
 ../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 
-../scala-scala/src/library/scala/collection/mutable/AnyRefMap.scala
-../scala-scala/src/library/scala/collection/mutable/ArrayBuffer.scala
-../scala-scala/src/library/scala/collection/mutable/ArrayLike.scala
-../scala-scala/src/library/scala/collection/mutable/ArrayOps.scala
-../scala-scala/src/library/scala/collection/mutable/ArraySeq.scala
-../scala-scala/src/library/scala/collection/mutable/ArrayStack.scala
-../scala-scala/src/library/scala/collection/mutable/AVLTree.scala
-../scala-scala/src/library/scala/collection/mutable/BitSet.scala
-../scala-scala/src/library/scala/collection/mutable/Buffer.scala
-../scala-scala/src/library/scala/collection/mutable/BufferProxy.scala
-../scala-scala/src/library/scala/collection/mutable/Cloneable.scala
 ../scala-scala/src/library/scala/collection/mutable/DefaultEntry.scala
-../scala-scala/src/library/scala/collection/mutable/DefaultMapModel.scala
-../scala-scala/src/library/scala/collection/mutable/DoubleLinkedList.scala
-../scala-scala/src/library/scala/collection/mutable/DoubleLinkedListLike.scala
-../scala-scala/src/library/scala/collection/mutable/FlatHashTable.scala
-../scala-scala/src/library/scala/collection/mutable/HashEntry.scala
-../scala-scala/src/library/scala/collection/mutable/HashMap.scala
-../scala-scala/src/library/scala/collection/mutable/HashSet.scala
-../scala-scala/src/library/scala/collection/mutable/HashTable.scala
-../scala-scala/src/library/scala/collection/mutable/History.scala
+# 22 |    "(kv: " + key + ", " + value + ")" + (if (next != null) " -> " + next.toString else "")
+#    |                                                                     ^^^^
+#    |                                                                     cyclic reference involving method toString
+
 ../scala-scala/src/library/scala/collection/mutable/ImmutableMapAdaptor.scala
-../scala-scala/src/library/scala/collection/mutable/ImmutableSetAdaptor.scala
-../scala-scala/src/library/scala/collection/mutable/IndexedSeqLike.scala
-../scala-scala/src/library/scala/collection/mutable/IndexedSeqOptimized.scala
-../scala-scala/src/library/scala/collection/mutable/Iterable.scala
-../scala-scala/src/library/scala/collection/mutable/LazyBuilder.scala
-../scala-scala/src/library/scala/collection/mutable/LinearSeq.scala
-../scala-scala/src/library/scala/collection/mutable/LinkedEntry.scala
+# 78 |  override def toString() = imap.toString()
+#    |                            ^^^^^^^^^^^^^^^
+#    |                            missing argument for parameter index of method apply: (index: Int)Char
+
 ../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
-../scala-scala/src/library/scala/collection/mutable/LinkedHashSet.scala
-../scala-scala/src/library/scala/collection/mutable/LinkedList.scala
-../scala-scala/src/library/scala/collection/mutable/LinkedListLike.scala
-../scala-scala/src/library/scala/collection/mutable/ListMap.scala
-../scala-scala/src/library/scala/collection/mutable/LongMap.scala
-../scala-scala/src/library/scala/collection/mutable/Map.scala
-../scala-scala/src/library/scala/collection/mutable/MapBuilder.scala
-../scala-scala/src/library/scala/collection/mutable/MapLike.scala
-../scala-scala/src/library/scala/collection/mutable/MapProxy.scala
-../scala-scala/src/library/scala/collection/mutable/MultiMap.scala
-../scala-scala/src/library/scala/collection/mutable/MutableList.scala
+#  102 |  protected class FilteredKeys(p: A => Boolean) extends super.FilteredKeys(p) {
+#      |                                                        ^^^^^^^^^^^^^^^^^^^^
+#      |                                                        cyclic inheritance: class FilteredKeys extends itself
+# ...
+
 ../scala-scala/src/library/scala/collection/mutable/ObservableBuffer.scala
+#  73 |    })
+#     |     ^
+#     |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
+#     |     required: scala.collection.script.Message[A] & scala.collection.mutable.Undoable
+# ...
+
 ../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
+#  68 |    })
+#     |     ^
+#     |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
+#     |     required: scala.collection.script.Message[(A, B)] & scala.collection.mutable.Undoable
+
 ../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
-../scala-scala/src/library/scala/collection/mutable/OpenHashMap.scala
-../scala-scala/src/library/scala/collection/mutable/PriorityQueue.scala
-../scala-scala/src/library/scala/collection/mutable/PriorityQueueProxy.scala
-../scala-scala/src/library/scala/collection/mutable/Publisher.scala
-../scala-scala/src/library/scala/collection/mutable/Queue.scala
-../scala-scala/src/library/scala/collection/mutable/QueueProxy.scala
-../scala-scala/src/library/scala/collection/mutable/ResizableArray.scala
-../scala-scala/src/library/scala/collection/mutable/RevertibleHistory.scala
-../scala-scala/src/library/scala/collection/mutable/Seq.scala
-../scala-scala/src/library/scala/collection/mutable/SeqLike.scala
-../scala-scala/src/library/scala/collection/mutable/Set.scala
-../scala-scala/src/library/scala/collection/mutable/SetBuilder.scala
-../scala-scala/src/library/scala/collection/mutable/SetLike.scala
-../scala-scala/src/library/scala/collection/mutable/SetProxy.scala
-../scala-scala/src/library/scala/collection/mutable/SortedSet.scala
-../scala-scala/src/library/scala/collection/mutable/Stack.scala
-../scala-scala/src/library/scala/collection/mutable/StackProxy.scala
-../scala-scala/src/library/scala/collection/mutable/StringBuilder.scala
-../scala-scala/src/library/scala/collection/mutable/Subscriber.scala
-../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
-../scala-scala/src/library/scala/collection/mutable/SynchronizedMap.scala
-../scala-scala/src/library/scala/collection/mutable/SynchronizedPriorityQueue.scala
+# 52 |    })
+#    |     ^
+#    |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
+#    |     required: scala.collection.script.Message[A] & scala.collection.mutable.Undoable
+
 ../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
-../scala-scala/src/library/scala/collection/mutable/SynchronizedSet.scala
-../scala-scala/src/library/scala/collection/mutable/SynchronizedStack.scala
-../scala-scala/src/library/scala/collection/mutable/Traversable.scala
-../scala-scala/src/library/scala/collection/mutable/TreeSet.scala
-../scala-scala/src/library/scala/collection/mutable/Undoable.scala
+# 102 |  override def toString() = synchronized { super.toString() }
+#      |                                           ^^^^^^^^^^^^^^^^
+#      |                                        missing argument for parameter index of method apply: (index: Int)Char
+
 ../scala-scala/src/library/scala/collection/mutable/UnrolledBuffer.scala
-../scala-scala/src/library/scala/collection/mutable/WeakHashMap.scala
+# 347 |    override def toString = array.take(size).mkString("Unrolled[" + array.length + "](", ", ", ")") + " -> " + (if (next ne null) next.toString else "")
+#     |                                                                                                                                  ^^^^
+#     |                                                                    cyclic reference involving method toString
+
+../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
+# assertion failed
 
 ../scala-scala/src/library/scala/collection/parallel/Combiner.scala
 ../scala-scala/src/library/scala/collection/parallel/immutable/package.scala
