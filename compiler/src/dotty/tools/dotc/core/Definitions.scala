@@ -675,7 +675,9 @@ class Definitions {
 
   private def isVarArityClass(cls: Symbol, prefix: Name) = {
     val name = scalaClassName(cls)
-    name.startsWith(prefix) && name.drop(prefix.length).forall(_.isDigit)
+    name.startsWith(prefix) && 
+    name.length > prefix.length &&
+    name.drop(prefix.length).forall(_.isDigit)
   }
 
   def isBottomClass(cls: Symbol) =

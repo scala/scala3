@@ -32,15 +32,36 @@ import reporting.diagnostic.Message
 object Applications {
   import tpd._
 
+  def extractorMember(tp: Type, name: Name)(implicit ctx: Context) = {
+    def isPossibleExtractorType(tp: Type) = tp match {
+      case _: MethodType | _: PolyType => false
+      case _ => true
+    }
+    tp.member(name).suchThat(d => isPossibleExtractorType(d.info))
+  }
+
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx: Context) = {
-    val ref = tp.member(name).suchThat(_.info.isParameterless)
+    val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    else if (ref.info.isInstanceOf[PolyType])
-      errorType(i"Reference to polymorphic $ref: ${ref.info} is not allowed in extractor", errorPos)
-    else
-      ref.info.widenExpr.dealias
+    ref.info.widenExpr.dealias
   }
+
+  /** Does `tp` fit the "product match" conditions as an unapply result type?
+   *  This is the case of `tp` is a subtype of a ProductN class and `tp` has a
+   *  parameterless `isDefined` member of result type `Boolean`.
+   */
+  def isProductMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
+    extractorMemberType(tp, nme.isDefined, errorPos).isRef(defn.BooleanClass) &&
+    defn.isProductSubType(tp)
+
+  /** Does `tp` fit the "get match" conditions as an unapply result type?
+   *  This is the case of `tp` has a `get` member as well as a
+   *  parameterless `isDefined` member of result type `Boolean`.
+   */
+  def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
+    extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
+    extractorMemberType(tp, nme.get, errorPos).exists
 
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
@@ -62,24 +83,27 @@ object Applications {
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
 
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
-    def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
-    // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
-    if (extractorMemberType(unapplyResult, nme.isDefined, pos) isRef defn.BooleanClass) {
-      if (getTp.exists)
-        if (unapplyFn.symbol.name == nme.unapplySeq) {
-          val seqArg = boundsToHi(getTp.elemType)
-          if (seqArg.exists) return args map Function.const(seqArg)
-        }
-        else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
-    }
-    if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-    else if (unapplyResult isRef defn.BooleanClass) Nil
-    else {
+    def fail = {
       ctx.error(i"$unapplyResult is not a valid result type of an unapply method of an extractor", pos)
       Nil
     }
+
+    // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
+    if (isProductMatch(unapplyResult))
+      productSelectorTypes(unapplyResult)
+    else if (isGetMatch(unapplyResult)) {
+      val getTp = extractorMemberType(unapplyResult, nme.get, pos)
+      if (unapplyFn.symbol.name == nme.unapplySeq) {
+        val seqArg = boundsToHi(getTp.elemType)
+        if (seqArg.exists) args.map(Function.const(seqArg))
+        else fail
+      }
+      else getUnapplySelectors(getTp, args, pos)
+    }
+    else if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+    else if (unapplyResult isRef defn.BooleanClass) Nil
+    else fail
   }
 
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
