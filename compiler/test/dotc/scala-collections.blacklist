@@ -163,8 +163,7 @@
 ../scala-scala/src/library/scala/concurrent/package.scala
 # assertion failed
 
-../scala-scala/src/library/scala/Console.scala
-../scala-scala/src/library/scala/Enumeration.scala
+
 ../scala-scala/src/library/scala/Function.scala
 ../scala-scala/src/library/scala/Function0.scala
 ../scala-scala/src/library/scala/Function1.scala
@@ -278,6 +277,10 @@
 ../scala-scala/src/library/scala/text/Document.scala
 
 ../scala-scala/src/library/scala/Tuple1.scala
+# 19 |case class Tuple1[@specialized(Int, Long, Double) +T1](_1: T1)
+#    |                                                       ^
+#    |                                                       value _1 is already defined as method _1: => T1
+
 ../scala-scala/src/library/scala/Tuple10.scala
 ../scala-scala/src/library/scala/Tuple11.scala
 ../scala-scala/src/library/scala/Tuple12.scala

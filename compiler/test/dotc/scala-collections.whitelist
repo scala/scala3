@@ -472,3 +472,6 @@
 ../scala-scala/src/library/scala/collection/parallel/PreciseSplitter.scala
 ../scala-scala/src/library/scala/collection/parallel/Splitter.scala
 ../scala-scala/src/library/scala/collection/parallel/TaskSupport.scala
+
+../scala-scala/src/library/scala/Console.scala
+../scala-scala/src/library/scala/Enumeration.scala
