@@ -295,3 +295,6 @@
 #    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #    |  result type of implicit definition needs to be given explicitly
 
+
+../scala-scala/src/library/scala/sys/SystemProperties.scala
+# crashes on dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation

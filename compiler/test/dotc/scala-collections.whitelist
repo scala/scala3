@@ -390,7 +390,6 @@
 ../scala-scala/src/library/scala/sys/Prop.scala
 ../scala-scala/src/library/scala/sys/PropImpl.scala
 ../scala-scala/src/library/scala/sys/ShutdownHookThread.scala
-../scala-scala/src/library/scala/sys/SystemProperties.scala
 ../scala-scala/src/library/scala/sys/process/BasicIO.scala
 ../scala-scala/src/library/scala/sys/process/package.scala
 ../scala-scala/src/library/scala/sys/process/Process.scala
