@@ -412,3 +412,7 @@
 ../scala-scala/src/library/scala/io/Codec.scala
 ../scala-scala/src/library/scala/io/Position.scala
 ../scala-scala/src/library/scala/io/StdIn.scala
+
+../scala-scala/src/library/scala/math/BigDecimal.scala
+../scala-scala/src/library/scala/math/BigInt.scala
+../scala-scala/src/library/scala/math/PartiallyOrdered.scala
