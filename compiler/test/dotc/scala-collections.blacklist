@@ -129,8 +129,6 @@
 ../scala-scala/src/library/scala/collection/script/Message.scala
 ../scala-scala/src/library/scala/collection/script/Scriptable.scala
 
-../scala-scala/src/library/scala/compat/Platform.scala
-
 ../scala-scala/src/library/scala/concurrent/Awaitable.scala
 ../scala-scala/src/library/scala/concurrent/BatchingExecutor.scala
 ../scala-scala/src/library/scala/concurrent/BlockContext.scala
@@ -251,21 +249,12 @@
 ../scala-scala/src/library/scala/runtime/Tuple3Zipped.scala
 
 ../scala-scala/src/library/scala/StringContext.scala
+# 168 |  def f[A >: Any](args: A*): String = macro ???
+#     |                                      ^^^^^
+#     |                                      not found: macro
 
 ../scala-scala/src/library/scala/sys/BooleanProp.scala
-../scala-scala/src/library/scala/sys/package.scala
-../scala-scala/src/library/scala/sys/process/BasicIO.scala
-../scala-scala/src/library/scala/sys/process/package.scala
-../scala-scala/src/library/scala/sys/process/Process.scala
-../scala-scala/src/library/scala/sys/process/ProcessBuilder.scala
-../scala-scala/src/library/scala/sys/process/ProcessBuilderImpl.scala
-../scala-scala/src/library/scala/sys/process/ProcessImpl.scala
-../scala-scala/src/library/scala/sys/process/ProcessIO.scala
-../scala-scala/src/library/scala/sys/process/ProcessLogger.scala
-../scala-scala/src/library/scala/sys/Prop.scala
-../scala-scala/src/library/scala/sys/PropImpl.scala
-../scala-scala/src/library/scala/sys/ShutdownHookThread.scala
-../scala-scala/src/library/scala/sys/SystemProperties.scala
+# dotty.tools.dotc.reporting.diagnostic.messages$Error: method clear is already defined as getter clear: ()scala.runtime.BoxedUnit
 
 ../scala-scala/src/library/scala/text/Document.scala
 
