@@ -70,6 +70,7 @@ class Compiler {
            new Splitter,            // Expand selections involving union types into conditionals
            new SpecializeFunction1), // Specialized Function1 by replacing super with specialized super
       List(new PhantomArgLift, // Extracts the evaluation of phantom arguments placing them before the call.
+           new DispatchToSpecializedApply, // Dispatch to the specialized apply by `SpecializeFunction1`
            new VCInlineMethods,     // Inlines calls to value class methods
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
