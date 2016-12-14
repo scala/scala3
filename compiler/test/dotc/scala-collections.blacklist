@@ -37,9 +37,6 @@
 ../scala-scala/src/library/scala/beans/BooleanBeanProperty.scala
 ../scala-scala/src/library/scala/beans/ScalaBeanInfo.scala
 
-../scala-scala/src/library/scala/collection/concurrent/Map.scala
-../scala-scala/src/library/scala/collection/concurrent/TrieMap.scala
-
 ../scala-scala/src/library/scala/collection/convert/Wrappers.scala
 # 34 |    def remove() = throw new UnsupportedOperationException
 #    |        ^
