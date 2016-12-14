@@ -94,15 +94,6 @@
 # assertion failed
 
 ../scala-scala/src/library/scala/collection/parallel/Combiner.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/package.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParHashMap.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParHashSet.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParIterable.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParMap.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParRange.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParSeq.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParSet.scala
-../scala-scala/src/library/scala/collection/parallel/immutable/ParVector.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/LazyCombiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/package.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
