@@ -597,7 +597,7 @@ object Parsers {
       val isNegated = negOffset < in.offset
       atPos(negOffset) {
         if (in.token == SYMBOLLIT) atPos(in.skipToken()) { SymbolLit(in.strVal) }
-        else if (in.token == INTERPOLATIONID) interpolatedString()
+        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else finish(in.token match {
           case CHARLIT                => in.charVal
           case INTLIT                 => in.intVal(isNegated).toInt
@@ -621,10 +621,14 @@ object Parsers {
       in.nextToken()
       while (in.token == STRINGPART) {
         segmentBuf += Thicket(
-            literal(),
+            literal(inPattern = inPattern),
             atPos(in.offset) {
               if (in.token == IDENTIFIER)
                 termIdent()
+              else if (in.token == USCORE && inPattern) {
+                in.nextToken()
+                Ident(nme.WILDCARD)
+              }
               else if (in.token == THIS) {
                 in.nextToken()
                 This(EmptyTypeIdent)
@@ -633,12 +637,12 @@ object Parsers {
                 if (inPattern) Block(Nil, inBraces(pattern()))
                 else expr()
               else {
-                ctx.error(InterpolatedStringError())
+                ctx.error(InterpolatedStringError(), source atPos Position(in.offset))
                 EmptyTree
               }
             })
       }
-      if (in.token == STRINGLIT) segmentBuf += literal()
+      if (in.token == STRINGLIT) segmentBuf += literal(inPattern = inPattern)
       InterpolatedString(interpolator, segmentBuf.toList)
     }
 
@@ -1444,7 +1448,7 @@ object Parsers {
       case XMLSTART =>
         xmlLiteralPattern()
       case _ =>
-        if (isLiteral) literal()
+        if (isLiteral) literal(inPattern = true)
         else {
           syntaxErrorOrIncomplete(IllegalStartOfSimplePattern())
           errorTermTree

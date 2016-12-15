@@ -758,7 +758,7 @@ object Scanners {
           finishStringPart()
           nextRawChar()
           next.token = LBRACE
-        } else if (Character.isUnicodeIdentifierStart(ch)) {
+        } else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
           finishStringPart()
           do {
             putChar(ch)
