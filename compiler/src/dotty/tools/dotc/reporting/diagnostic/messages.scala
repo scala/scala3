@@ -899,15 +899,4 @@ object messages {
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
   }
-
-  case class CyclicImplicitVal(cycleSym: Symbol)(implicit ctx: Context)
-  extends Message(34) {
-    val kind = "Cyclic Reference"
-    val msg = em"cyclic reference involving $cycleSym"
-    val explanation =
-      hl"""|This happens when the right hand-side of $cycleSym's definition
-           |involves an implicit search.
-           |
-           |To avoid the error, give $cycleSym an explicit type."""
-  }
 }
