@@ -1,5 +1,5 @@
 object Test {
-  def main(args: Array[String]) = {
+  def main(args: Array[String]): Unit = {
 
     implicit val world: String = "world!"
 
@@ -53,6 +53,10 @@ object Test {
     val c1: Int = c
 
     Contextual.main(args)
+
+    def foo(s: String): Stringly[Int] = 42
+
+    (if ("".isEmpty) foo("") else foo("")).apply("")
   }
 }
 

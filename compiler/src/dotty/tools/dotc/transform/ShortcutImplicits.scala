@@ -89,11 +89,14 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
     }
 
     /** A new `m$direct` method to accompany the given method `m` */
-    private def newDirectMethod(sym: Symbol)(implicit ctx: Context): Symbol =
-      sym.copy(
+    private def newDirectMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
+      val direct = sym.copy(
         name = sym.name.directName,
         flags = sym.flags | Synthetic,
         info = directInfo(sym.info))
+      if (direct.allOverriddenSymbols.isEmpty) direct.resetFlag(Override)
+      direct
+    }
 
     /** The direct method `m$direct` that accompanies the given method `m`.
      *  Create one if it does not exist already.
