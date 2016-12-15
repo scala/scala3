@@ -76,6 +76,9 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
+  val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
+  val linkDCEwithVis = "-link-vis" :: linkDCE
+
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
   val posSpecialDir = testsDir + "pos-special/"
@@ -84,6 +87,8 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
+  val linkDCEDir    = testsDir + "link-dce/"
+  val linkDCEWithStdlibDir = testsDir + "link-dce-stdlib/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -196,12 +201,35 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
-  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
-   .map(_.trim) // allow identation
-   .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-   .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-   .filter(_.nonEmpty)
-   .toList
+  // Test callgraph DCE
+  @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
+  @Test def link_dce_vis_all = runFiles(linkDCEDir, linkDCEwithVis)
+
+  // Test callgraph DCE on code that uses stdlib (not DCEed)
+  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
+  @Test def link_dce_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCE)
+
+  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
+  @Test def link_dce_vis_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCEwithVis)
+
+  // Test callgraph DCE on code that use DCEed stdlib
+  @Test def link_dce_stdlib_all =
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
+
+  @org.junit.Ignore("Too long to run in CI")
+  @Test def link_dce_vis_stdlib_all =
+    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
+
+  def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
+    .map(_.trim) // allow identation
+    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
+    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
+    .filter(_.nonEmpty)
+    .toList
+
+  private val stdlibFiles: List[String] = loadList("./test/dotc/scala-collections.whitelist")
+  private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
+  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
