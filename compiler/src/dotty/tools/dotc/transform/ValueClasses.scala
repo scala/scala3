@@ -53,4 +53,14 @@ object ValueClasses {
   def underlyingOfValueClass(d: ClassDenotation)(implicit ctx: Context): Type =
     valueClassUnbox(d).info.resultType
 
+  /** Whether a value class wraps itself */
+  def isCyclic(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
+    def recur(seen: Set[Symbol], clazz: ClassSymbol)(implicit ctx: Context): Boolean =
+      (seen contains clazz) || {
+        val unboxed = underlyingOfValueClass(clazz).typeSymbol
+        (isDerivedValueClass(unboxed)) && recur(seen + clazz, unboxed.asClass)
+      }
+
+    recur(Set[Symbol](), cls)
+  }
 }

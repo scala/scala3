@@ -29,6 +29,7 @@ import ErrorReporting.{err, errorType}
 import config.Printers.typr
 import collection.mutable
 import SymDenotations.NoCompleter
+import dotty.tools.dotc.transform.ValueClasses._
 
 object Checking {
   import tpd._
@@ -56,7 +57,7 @@ object Checking {
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Check applied type trees for well-formedness. This means 
-   *   - all arguments are within their corresponding bounds 
+   *   - all arguments are within their corresponding bounds
    *   - if type is a higher-kinded application with wildcard arguments,
    *     check that it or one of its supertypes can be reduced to a normal application.
    *     Unreducible applications correspond to general existentials, and we
@@ -88,12 +89,12 @@ object Checking {
             checkWildcardHKApply(tp.superType, pos)
         }
       case _ =>
-    }    
+    }
     def checkValidIfHKApply(implicit ctx: Context): Unit =
       checkWildcardHKApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
     checkValidIfHKApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
   }
-  
+
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
@@ -406,6 +407,43 @@ object Checking {
     notPrivate.errors.foreach { case (msg, pos) => ctx.errorOrMigrationWarning(msg, pos) }
     info
   }
+
+  /** Verify classes extending AnyVal meet the requirements */
+  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
+    def checkValueClassMember(stat: Tree) = stat match {
+      case _: ValDef if !stat.symbol.is(ParamAccessor) =>
+        ctx.error(s"value class may not define non-parameter field", stat.pos)
+      case d: DefDef if d.symbol.isConstructor =>
+        ctx.error(s"value class may not define secondary constructor", stat.pos)
+      case _: MemberDef | _: Import | EmptyTree =>
+      // ok
+      case _ =>
+        ctx.error(s"value class may not contain initialization statements", stat.pos)
+    }
+    if (isDerivedValueClass(clazz)) {
+      if (clazz.is(Trait))
+        ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
+      if (clazz.is(Abstract))
+        ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
+      if (!clazz.isStatic)
+        ctx.error(s"value class may not be a ${if (clazz.owner.isTerm) "local class" else "member of another class"}", clazz.pos)
+      if (isCyclic(clazz.asClass))
+        ctx.error("value class cannot wrap itself", clazz.pos)
+      else {
+        val clParamAccessors = clazz.asClass.paramAccessors.filter(_.isTerm)
+        clParamAccessors match {
+          case List(param) =>
+            if (param.is(Mutable))
+              ctx.error("value class parameter must not be a var", param.pos)
+
+          case _ =>
+            ctx.error("value class needs to have exactly one val parameter", clazz.pos)
+        }
+      }
+      stats.foreach(checkValueClassMember)
+    }
+
+  }
 }
 
 trait Checking {
@@ -553,6 +591,10 @@ trait Checking {
       errorTree(tpt, ex"Singleton type ${tpt.tpe} is not allowed $where")
     }
     else tpt
+
+  /** Verify classes extending AnyVal meet the requirements */
+  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) =
+    Checking.checkDerivedValueClass(clazz, stats)
 }
 
 trait NoChecking extends Checking {
@@ -568,4 +610,5 @@ trait NoChecking extends Checking {
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
+  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
 }

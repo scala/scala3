@@ -135,14 +135,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 
-  private def checkNonCyclic(pos: Position, seen: Set[Symbol], clazz: ClassSymbol)(implicit ctx: Context): Unit =
-    if (seen contains clazz)
-      ctx.error("value class may not unbox to itself", pos)
-    else {
-      val unboxed = underlyingOfValueClass(clazz).typeSymbol
-      if (isDerivedValueClass(unboxed)) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
-    }
-
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (isDerivedValueClass(ctx.owner)) {
       /* This is currently redundant since value classes may not

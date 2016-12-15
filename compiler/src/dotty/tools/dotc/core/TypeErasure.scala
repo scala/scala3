@@ -438,7 +438,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    if (underlying.exists) ErasedValueType(tref, valueErasure(underlying))
+    if (underlying.exists && !isCyclic(cls)) ErasedValueType(tref, valueErasure(underlying))
     else NoType
   }
 

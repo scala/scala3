@@ -1,5 +1,5 @@
 class Foo {
-  class B(val a: Int) extends AnyVal
+  class B(val a: Int) extends AnyVal // error: value class may not be a member of another class`
 }
 
 object Test {
