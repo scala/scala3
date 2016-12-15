@@ -141,7 +141,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
         val result = ref(holderSymbol).select(lazyNme.value)
         val flag = ref(holderSymbol).select(lazyNme.initialized)
-        val initer = valueInitter.changeOwner(x.symbol, initSymbol)
+        val initer = valueInitter.changeOwnerAfter(x.symbol, initSymbol, this)
         val initBody =
           adaptToType(
             ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
