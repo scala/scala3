@@ -992,7 +992,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val nestedCtx = ctx.fresh.setExploreTyperState
 
             {
-              implicit val ctx: Context = nestedCtx
+              implicit val ctx = nestedCtx
               isAsSpecificValueType(tp1, constrained(tp2).resultType)
             }
           case _ => // (3b)

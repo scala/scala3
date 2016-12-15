@@ -1224,7 +1224,7 @@ object Trees {
           case AppliedTypeTree(tpt, args) =>
             this(this(x, tpt), args)
           case PolyTypeTree(tparams, body) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this(x, tparams), body)
           case ByNameTypeTree(result) =>
             this(x, result)
@@ -1237,13 +1237,13 @@ object Trees {
           case UnApply(fun, implicits, patterns) =>
             this(this(this(x, fun), implicits), patterns)
           case tree @ ValDef(name, tpt, _) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this(x, tpt), tree.rhs)
           case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
           case TypeDef(name, rhs) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(x, rhs)
           case tree @ Template(constr, parents, self, _) =>
             this(this(this(this(x, constr), parents), self), tree.body)

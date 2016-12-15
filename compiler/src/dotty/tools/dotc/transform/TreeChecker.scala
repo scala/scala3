@@ -129,7 +129,7 @@ class TreeChecker extends Phase with SymTransformer {
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
-        implicit val ctx: Context = checkingCtx
+        implicit val ctx = checkingCtx
         println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
         throw ex
     }

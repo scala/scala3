@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 /** Provides methods to compare types.
  */
 class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
-  implicit val ctx: Context = initctx
+  implicit val ctx = initctx
 
   val state = ctx.typerState
   import state.constraint
@@ -156,7 +156,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
-        implicit val ctx: Context = this.ctx
+        implicit val ctx = this.ctx
         tp2.info match {
           case info2: TypeAlias => isSubType(tp1, info2.alias)
           case _ => tp1 match {

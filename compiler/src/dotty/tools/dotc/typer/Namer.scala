@@ -683,7 +683,7 @@ class Namer { typer: Typer =>
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
         myTypeParams = {
-          implicit val ctx: Context = nestedCtx
+          implicit val ctx = nestedCtx
           val tparams = original.rhs match {
             case PolyTypeTree(tparams, _) => tparams
             case _ => Nil
@@ -998,11 +998,16 @@ class Namer { typer: Typer =>
           lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
         else inherited
       else {
-        if (sym is Implicit) {
-          val resStr = if (mdef.isInstanceOf[DefDef]) "result " else ""
-          ctx.error(s"${resStr}type of implicit definition needs to be given explicitly", mdef.pos)
+        def missingType(modifier: String) = {
+          ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", mdef.pos)
           sym.resetFlag(Implicit)
         }
+        if (sym is Implicit)
+          mdef match {
+            case _: DefDef => missingType("result")
+            case _: ValDef if sym.owner.isType => missingType("")
+            case _ =>
+          }
         lhsType orElse WildcardType
       }
     }
