@@ -1830,6 +1830,23 @@ object Types {
   class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
   class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
 
+  /* used by linker */
+  final class TypeRefWithFixedSymAndInfo(prefix: Type, name: TypeName, fixedSym: TypeSymbol, val underl: Type) extends TypeRefWithFixedSym(prefix, name, fixedSym) {
+    override def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
+      if (prefix eq this.prefix) this
+      else {
+        ???
+        //        val res = prefix.lookupRefined(name)
+        //        if (res.exists) res
+        //        else if (name == tpnme.hkApply && prefix.noHK) derivedSelect(prefix.EtaExpandCore)
+        //        else newLikeThis(prefix)
+      }
+
+    override def info(implicit ctx: Context): Type = underl
+
+    override def equals(that: Any): Boolean = that.isInstanceOf[TypeRefWithFixedSymAndInfo] && super.equals(that) && this.underl == that.asInstanceOf[TypeRefWithFixedSymAndInfo].underl
+  }
+
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
@@ -1940,6 +1957,11 @@ object Types {
      */
     def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       unique(new TypeRefWithFixedSym(prefix, name, sym))
+      
+     def withFixedSymAndInfo(prefix: Type, name: TypeName, sym: TypeSymbol, info: Type)(implicit ctx: Context): TypeRef = {
+      //if (Config.checkProjections) checkProjection(prefix, name)
+      unique(new TypeRefWithFixedSymAndInfo(prefix, name, sym, info))
+    }
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -3206,22 +3228,28 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(tpe: Type, annot: Annotation)
-      extends UncachedProxyType with ValueType {
+  abstract case class AnnotatedType(tpe: Type, annot: Annotation)
+      extends CachedProxyType with ValueType {
     // todo: cache them? but this makes only sense if annotations and trees are also cached.
     override def underlying(implicit ctx: Context): Type = tpe
-    def derivedAnnotatedType(tpe: Type, annot: Annotation) =
+    def derivedAnnotatedType(tpe: Type, annot: Annotation)(implicit ctx: Context) =
       if ((tpe eq this.tpe) && (annot eq this.annot)) this
       else AnnotatedType(tpe, annot)
 
     override def stripTypeVar(implicit ctx: Context): Type =
       derivedAnnotatedType(tpe.stripTypeVar, annot)
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
+
+    override def computeHash: Int = doHash(annot, tpe)
   }
 
+  class CachedAnnotatedType(tpe: Type, annot: Annotation) extends AnnotatedType(tpe, annot)
+
   object AnnotatedType {
-    def make(underlying: Type, annots: List[Annotation]) =
-      (underlying /: annots)(AnnotatedType(_, _))
+    def apply(tpe: Type, annot: Annotation)(implicit ctx: Context) =
+      unique(new CachedAnnotatedType(tpe, annot))
+    def make(underlying: Type, annots: List[Annotation])(implicit ctx: Context) =
+      (underlying /: annots)(apply(_, _))
   }
 
   // Special type objects and classes -----------------------------------------------------

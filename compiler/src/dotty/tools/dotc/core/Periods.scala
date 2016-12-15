@@ -46,9 +46,9 @@ object Periods {
    *  It is coded as follows:
    *
    *     sign, always 0        1 bit
-   *     runid                19 bits
-   *     last phase id:        6 bits
-   *     #phases before last:  6 bits
+   *     runid                17 bits
+   *     last phase id:        7 bits
+   *     #phases before last:  7 bits
    *
    *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
