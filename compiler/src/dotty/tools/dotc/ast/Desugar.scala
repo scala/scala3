@@ -24,7 +24,6 @@ object desugar {
 
   /** Names of methods that are added unconditionally to case classes */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.isDefined ||
     name == nme.copy ||
     name == nme.productArity ||
     name.isSelectorName
@@ -343,7 +342,6 @@ object desugar {
       if (isCaseClass) {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
-        val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
           syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
@@ -369,7 +367,7 @@ object desugar {
             DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
               .withMods(synthetic) :: Nil
           }
-        copyMeths ::: isDefinedMeth :: productElemMeths.toList
+        copyMeths ::: productElemMeths.toList
       }
       else Nil
 

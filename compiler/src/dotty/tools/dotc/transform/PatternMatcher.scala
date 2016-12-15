@@ -235,7 +235,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         // next: MatchMonad[U]
         // returns MatchMonad[U]
         def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
-          if (isProductMatch(prev.tpe)) {
+          val resultArity = defn.productArity(b.info)
+          if (isProductMatch(prev.tpe, resultArity)) {
             val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
             ifThenElseZero(
               nullCheck,
@@ -1429,7 +1430,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
 
       def resultInMonad  =
         if (aligner.isBool) defn.UnitType
-        else if (isProductMatch(resultType)) resultType
+        else if (isProductMatch(resultType, aligner.prodArity)) resultType
         else if (isGetMatch(resultType)) extractorMemberType(resultType, nme.get)
         else resultType
 
@@ -1630,7 +1631,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           ref(binder) :: Nil
         }
         else if ((aligner.isSingle && aligner.extractor.prodArity == 1) &&
-                 !isProductMatch(binderTypeTested) && isGetMatch(binderTypeTested))
+                 !isProductMatch(binderTypeTested, aligner.prodArity) && isGetMatch(binderTypeTested))
           List(ref(binder))
         else
           subPatRefs(binder)
@@ -1885,7 +1886,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           else if (result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
           else result.select(nme.get) :: Nil
           )*/
-          if (isProductMatch(resultType)) productSelectorTypes(resultType)
+          if (isProductMatch(resultType, args.length)) productSelectorTypes(resultType)
           else if (isGetMatch(resultType)) getUnapplySelectors(resultOfGet, args)
           else if (resultType isRef defn.BooleanClass) Nil
           else {

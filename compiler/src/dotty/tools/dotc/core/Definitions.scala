@@ -675,7 +675,7 @@ class Definitions {
 
   private def isVarArityClass(cls: Symbol, prefix: Name) = {
     val name = scalaClassName(cls)
-    name.startsWith(prefix) && 
+    name.startsWith(prefix) &&
     name.length > prefix.length &&
     name.drop(prefix.length).forall(_.isDigit)
   }
@@ -736,6 +736,14 @@ class Definitions {
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
     (tp derivesFrom ProductType.symbol) && tp.baseClasses.exists(isProductClass)
+
+  def productArity(tp: Type)(implicit ctx: Context) =
+    if (tp derivesFrom ProductType.symbol)
+      tp.baseClasses.find(isProductClass) match {
+        case Some(prod) => prod.typeParams.length
+        case None => -1
+      }
+    else -1
 
   def isFunctionType(tp: Type)(implicit ctx: Context) =
     isFunctionClass(tp.dealias.typeSymbol) && {
