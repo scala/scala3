@@ -206,18 +206,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
-  /* dont emit any annotations for now*/
-  def isRuntimeVisible(annot: Annotation): Boolean = {
-    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr) match {
-      case Some(retentionAnnot) =>
-        retentionAnnot.tree.find(_.symbol == AnnotationRetentionRuntimeAttr).isDefined
-      case _ =>
-        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
-        // annotation is emitted with visibility `RUNTIME`
-        // dotty bug: #389
-        true
+  def isRuntimeVisible(annot: Annotation): Boolean =
+    if (toDenot(annot.atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+      retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
+    else {
+      // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
+      // annotation is emitted with visibility `RUNTIME`
+      // dotty bug: #389
+      true
     }
-  }
 
   def shouldEmitAnnotation(annot: Annotation): Boolean = {
     annot.symbol.isJavaDefined &&
@@ -227,7 +224,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def retentionPolicyOf(annot: Annotation): Symbol =
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-      flatMap(_.argument(0).map(_.symbol)).getOrElse(AnnotationRetentionClassAttr)
+      flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
@@ -708,7 +705,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       else Nil
 
-    def annotations: List[Annotation] = Nil
+    def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.

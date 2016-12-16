@@ -3,7 +3,7 @@ package sbt
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
+import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
 import typer.Inliner
 
@@ -333,7 +333,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // TODO: Never dealias. We currently have to dealias because
     // sbt main class discovery relies on the signature of the main
     // method being fully dealiased. See https://github.com/sbt/zinc/issues/102
-    val tp2 = if (!tp.isHK) tp.dealias else tp
+    val tp2 = if (!tp.isHK) tp.dealiasKeepAnnots else tp
     tp2 match {
       case NoPrefix | NoType =>
         Constants.emptyType
@@ -411,9 +411,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case ConstantType(constant) =>
         new api.Constant(apiType(constant.tpe), constant.stringValue)
       case AnnotatedType(tpe, annot) =>
-        // TODO: Annotation support
-        ctx.debuglog(i"sbt-api: skipped annotation in $tp2")
-        apiType(tpe)
+        new api.Annotated(apiType(tpe), Array(apiAnnotation(annot)))
       case tp: ThisType =>
         apiThis(tp.cls)
       case tp: ParamType =>
@@ -498,7 +496,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.is(SuperAccessor))
   }
 
-  // TODO: Support other annotations
   def apiAnnotations(s: Symbol): List[api.Annotation] = {
     val annots = new mutable.ListBuffer[api.Annotation]
 
@@ -513,6 +510,27 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
     }
 
+    // In the Scala2 ExtractAPI phase we only extract annotations that extend
+    // StaticAnnotation, but in Dotty we currently pickle all annotations so we
+    // extract everything (except inline body annotations which are handled
+    // above).
+    s.annotations.filter(_.symbol != defn.BodyAnnot) foreach { annot =>
+      annots += apiAnnotation(annot)
+    }
+
     annots.toList
+  }
+
+  def apiAnnotation(annot: Annotation): api.Annotation = {
+    // FIXME: To faithfully extract an API we should extract the annotation tree,
+    // sbt instead wants us to extract the annotation type and its arguments,
+    // to do this properly we would need a way to hash trees and types in dotty itself,
+    // instead we pretty-print the annotation tree.
+    // However, we still need to extract the annotation type in the way sbt expect
+    // because sbt uses this information to find tests to run (for example
+    // junit tests are annotated @org.junit.Test).
+    new api.Annotation(
+      apiType(annot.tree.tpe), // Used by sbt to find tests to run
+      Array(new api.AnnotationArgument("FULLTREE", annot.tree.show.toString)))
   }
 }
