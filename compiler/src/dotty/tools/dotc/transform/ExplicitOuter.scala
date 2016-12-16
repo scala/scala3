@@ -147,7 +147,8 @@ object ExplicitOuter {
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
     val target = cls.owner.enclosingClass.typeRef
     val info = if (flags.is(Method)) ExprType(target) else target
-    ctx.newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
+    ctx.withPhaseNoEarlier(ctx.explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
+       .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
   }
 
   /** A new param accessor for the outer field in class `cls` */
