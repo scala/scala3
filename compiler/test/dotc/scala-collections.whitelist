@@ -280,3 +280,5 @@
 ../scala-scala/src/library/scala/collection/generic/Subtractable.scala
 ../scala-scala/src/library/scala/collection/generic/TraversableFactory.scala
 ../scala-scala/src/library/scala/collection/generic/package.scala
+
+../scala-scala/src/library/scala/util/Try.scala

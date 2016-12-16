@@ -32,15 +32,36 @@ import reporting.diagnostic.Message
 object Applications {
   import tpd._
 
+  def extractorMember(tp: Type, name: Name)(implicit ctx: Context) = {
+    def isPossibleExtractorType(tp: Type) = tp match {
+      case _: MethodType | _: PolyType => false
+      case _ => true
+    }
+    tp.member(name).suchThat(d => isPossibleExtractorType(d.info))
+  }
+
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx: Context) = {
-    val ref = tp.member(name).suchThat(_.info.isParameterless)
+    val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    else if (ref.info.isInstanceOf[PolyType])
-      errorType(i"Reference to polymorphic $ref: ${ref.info} is not allowed in extractor", errorPos)
-    else
-      ref.info.widenExpr.dealias
+    ref.info.widenExpr.dealias
   }
+
+  /** Does `tp` fit the "product match" conditions as an unapply result type
+   *  for a pattern with `numArgs` subpatterns>
+   *  This is the case of `tp` is a subtype of the Product<numArgs> class.
+   */
+  def isProductMatch(tp: Type, numArgs: Int)(implicit ctx: Context) =
+    0 <= numArgs && numArgs <= Definitions.MaxTupleArity &&
+    tp.derivesFrom(defn.ProductNType(numArgs).typeSymbol)
+
+  /** Does `tp` fit the "get match" conditions as an unapply result type?
+   *  This is the case of `tp` has a `get` member as well as a
+   *  parameterless `isDefined` member of result type `Boolean`.
+   */
+  def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
+    extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
+    extractorMemberType(tp, nme.get, errorPos).exists
 
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
@@ -61,24 +82,37 @@ object Applications {
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
 
+    val unapplyName = unapplyFn.symbol.name
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
-    // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
-    if (extractorMemberType(unapplyResult, nme.isDefined, pos) isRef defn.BooleanClass) {
-      if (getTp.exists)
-        if (unapplyFn.symbol.name == nme.unapplySeq) {
-          val seqArg = boundsToHi(getTp.elemType)
-          if (seqArg.exists) return args map Function.const(seqArg)
-        }
-        else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
-    }
-    if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-    else if (unapplyResult isRef defn.BooleanClass) Nil
-    else {
-      ctx.error(i"$unapplyResult is not a valid result type of an unapply method of an extractor", pos)
+    def fail = {
+      ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
       Nil
+    }
+
+    if (unapplyName == nme.unapplySeq) {
+      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+      else if (isGetMatch(unapplyResult, pos)) {
+        val seqArg = boundsToHi(getTp.elemType)
+        if (seqArg.exists) args.map(Function.const(seqArg))
+        else fail
+      }
+      else fail
+    }
+    else {
+      assert(unapplyName == nme.unapply)
+      if (isProductMatch(unapplyResult, args.length))
+        productSelectorTypes(unapplyResult)
+      else if (isGetMatch(unapplyResult, pos))
+        getUnapplySelectors(getTp, args, pos)
+      else if (unapplyResult isRef defn.BooleanClass)
+        Nil
+      else if (defn.isProductSubType(unapplyResult))
+        productSelectorTypes(unapplyResult)
+          // this will cause a "wrong number of arguments in pattern" error later on,
+          // which is better than the message in `fail`.
+      else fail
     }
   }
 

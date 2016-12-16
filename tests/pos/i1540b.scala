@@ -1,6 +1,6 @@
 class Casey1[T](val a: T) {
-  def isDefined: Boolean = true
-  def isDefined(x: T): Boolean = ???
+  def isEmpty: Boolean = false
+  def isEmpty(x: T): Boolean = ???
   def get: T = a
   def get(x: T): String = ???
 }

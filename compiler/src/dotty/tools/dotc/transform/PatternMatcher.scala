@@ -235,14 +235,21 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         // next: MatchMonad[U]
         // returns MatchMonad[U]
         def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
-
-          val getTp = extractorMemberType(prev.tpe, nme.get)
-          val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
-
-          if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            // isDefined and get may be overloaded
-            val getDenot = prev.tpe.member(nme.get).suchThat(_.info.isParameterless)
-            val isDefinedDenot = prev.tpe.member(nme.isDefined).suchThat(_.info.isParameterless)
+          val resultArity = defn.productArity(b.info)
+          if (isProductMatch(prev.tpe, resultArity)) {
+            val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
+            ifThenElseZero(
+              nullCheck,
+              Block(
+                List(ValDef(b.asTerm, prev)),
+                next //Substitution(b, ref(prevSym))(next)
+              )
+            )
+          }
+          else {
+            val getDenot = extractorMember(prev.tpe, nme.get)
+            val isEmptyDenot = extractorMember(prev.tpe, nme.isEmpty)
+            assert(getDenot.exists && isEmptyDenot.exists, i"${prev.tpe}")
 
             val tmpSym = freshSym(prev.pos, prev.tpe, "o")
             val prevValue = ref(tmpSym).select(getDenot.symbol).ensureApplied
@@ -251,18 +258,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
               List(ValDef(tmpSym, prev)),
               // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
               ifThenElseZero(
-                ref(tmpSym).select(isDefinedDenot.symbol),
+                ref(tmpSym).select(isEmptyDenot.symbol).select(defn.Boolean_!),
                 Block(List(ValDef(b.asTerm, prevValue)), next)
-              )
-            )
-          } else {
-            assert(defn.isProductSubType(prev.tpe))
-            val nullCheck: Tree = prev.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
-            ifThenElseZero(
-              nullCheck,
-              Block(
-                List(ValDef(b.asTerm, prev)),
-                next //Substitution(b, ref(prevSym))(next)
               )
             )
           }
@@ -1431,12 +1428,12 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
         case _        => or
       }
 
-      def resultInMonad  = if (aligner.isBool) defn.UnitType else {
-        val getTp = extractorMemberType(resultType, nme.get)
-        if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && getTp.exists)
-          getTp
+      def resultInMonad  =
+        if (aligner.isBool) defn.UnitType
+        else if (isProductMatch(resultType, aligner.prodArity)) resultType
+        else if (isGetMatch(resultType)) extractorMemberType(resultType, nme.get)
         else resultType
-      }
+
       def resultType: Type
 
       /** Create the TreeMaker that embodies this extractor call
@@ -1632,13 +1629,12 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           //val spr = subPatRefs(binder)
           assert(go && go1)
           ref(binder) :: Nil
-        } else {
-          lazy val getTp = extractorMemberType(binderTypeTested, nme.get)
-          if ((aligner.isSingle && aligner.extractor.prodArity == 1) && ((extractorMemberType(binderTypeTested, nme.isDefined) isRef defn.BooleanClass) && getTp.exists))
-            List(ref(binder))
-          else
-            subPatRefs(binder)
         }
+        else if ((aligner.isSingle && aligner.extractor.prodArity == 1) &&
+                 !isProductMatch(binderTypeTested, aligner.prodArity) && isGetMatch(binderTypeTested))
+          List(ref(binder))
+        else
+          subPatRefs(binder)
       }
 
       /*protected def spliceApply(binder: Symbol): Tree = {
@@ -1890,9 +1886,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
           else if (result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
           else result.select(nme.get) :: Nil
           )*/
-          if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)
-            getUnapplySelectors(resultOfGet, args)
-          else if (defn.isProductSubType(resultType)) productSelectorTypes(resultType)
+          if (isProductMatch(resultType, args.length)) productSelectorTypes(resultType)
+          else if (isGetMatch(resultType)) getUnapplySelectors(resultOfGet, args)
           else if (resultType isRef defn.BooleanClass) Nil
           else {
             ctx.error(i"invalid return type in Unapply node: $resultType")
