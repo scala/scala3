@@ -834,7 +834,7 @@ class Definitions {
     val newDecls = new MutableScope(oldDecls) {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val res = super.lookupEntry(name)
-        if (res == null && name.functionArity > 0)
+        if (res == null && name.functionArity > MaxImplementedFunctionArity)
           newScopeEntry(newFunctionNTrait(name.functionArity))
         else res
       }
