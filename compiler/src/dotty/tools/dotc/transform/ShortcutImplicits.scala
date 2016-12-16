@@ -49,7 +49,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
   override def phaseName: String = "shortcutImplicits"
   val treeTransform = new Transform
 
-  /** If this option true, we don't specialize symbols that are known to be only
+  /** If this option is true, we don't specialize symbols that are known to be only
    *  targets of monomorphic calls.
    *  The reason for this option is that benchmarks show that on the JVM for monomorphic dispatch
    *  scenarios inlining and escape analysis can often remove all calling overhead, so we might as
