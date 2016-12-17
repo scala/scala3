@@ -865,6 +865,9 @@ class Definitions {
 
   // ----- Initialization ---------------------------------------------------
 
+  private def maxImplemented(name: Name) =
+    if (name `startsWith` tpnme.Function) MaxImplementedFunctionArity else 0
+
   /** Give the scala package a scope where a FunctionN trait is automatically
    *  added when someone looks for it.
    */
@@ -874,7 +877,8 @@ class Definitions {
     val newDecls = new MutableScope(oldDecls) {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val res = super.lookupEntry(name)
-        if (res == null && name.isTypeName && name.functionArity > MaxImplementedFunctionArity)
+        if (res == null && name.isTypeName &&
+            name.functionArity > maxImplemented(name))
           newScopeEntry(newFunctionNTrait(name.asTypeName))
         else res
       }
