@@ -95,7 +95,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         if (needsOuterIfReferenced(parentTrait)) {
           val parentTp = cls.denot.thisType.baseTypeRef(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
-          newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parentTp)))
+          newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
       }
 
@@ -276,6 +276,25 @@ object ExplicitOuter {
       outerPrefix(tpe.underlying)
   }
 
+  /** It's possible (i1755.scala gives an example) that the type
+   *  given by outerPrefix contains a This-reference to a module outside
+   *  the context where that module is defined. This needs to be translated
+   *  to an access to the module object from the enclosing class or object.
+   *
+   *  This solution is a bit of a hack; it would be better to avoid
+   *  such references to the This of a module from outside the module
+   *  in the first place. I was not yet able to find out how such references
+   *  arise and how to avoid them.
+   */
+  private def fixThis(tpe: Type)(implicit ctx: Context): Type = tpe match {
+    case tpe: ThisType if tpe.cls.is(Module) && !ctx.owner.isContainedIn(tpe.cls) =>
+      fixThis(TermRef(tpe.cls.owner.thisType, tpe.cls.sourceModule.asTerm))
+    case tpe: TermRef =>
+      tpe.derivedSelect(fixThis(tpe.prefix))
+    case _ =>
+      tpe
+  }
+
   def outer(implicit ctx: Context): OuterOps = new OuterOps(ctx)
 
   /** The operations in this class
@@ -314,7 +333,7 @@ object ExplicitOuter {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
           case New(_) | Super(_, _) =>
-            singleton(outerPrefix(receiver.tpe))
+            singleton(fixThis(outerPrefix(receiver.tpe)))
           case This(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
