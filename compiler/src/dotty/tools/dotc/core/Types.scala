@@ -3252,6 +3252,9 @@ object Types {
     override def computeHash = hashSeed
   }
 
+  /** A common superclass of `ErrorType` and `TryDynamicCallSite`. Instances of this
+   *  class are at the same time subtypes and supertypes of every other type.
+   */
   abstract class FlexType extends UncachedGroundType with ValueType
 
   class ErrorType(_msg: => Message) extends FlexType {
