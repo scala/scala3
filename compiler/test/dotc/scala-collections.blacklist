@@ -30,24 +30,14 @@
 #      |                                                        cyclic inheritance: class FilteredKeys extends itself
 # ...
 
-../scala-scala/src/library/scala/collection/mutable/ObservableBuffer.scala
-#  73 |    })
-#     |     ^
-#     |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
-#     |     required: scala.collection.script.Message[A] & scala.collection.mutable.Undoable
-# ...
-
 ../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
-#  68 |    })
-#     |     ^
-#     |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
-#     |     required: scala.collection.script.Message[(A, B)] & scala.collection.mutable.Undoable
+#  assertion failed
 
 ../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
-# 52 |    })
-#    |     ^
-#    |     found:    scala.collection.script.Reset with scala.collection.mutable.Undoable{...}
-#    |     required: scala.collection.script.Message[A] & scala.collection.mutable.Undoable
+# 35 |      publish(new Include(elem) with Undoable { def undo = -=(elem) })
+#    |                                                    ^
+#    |                         overriding method undo in trait Undoable of type ()Unit;
+#    |                          method undo of type => scala.collection.mutable.ObservableSet[A] has incompatible type
 
 ../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
 # 102 |  override def toString() = synchronized { super.toString() }

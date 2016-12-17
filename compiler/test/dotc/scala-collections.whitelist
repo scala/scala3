@@ -86,6 +86,7 @@
 ../scala-scala/src/library/scala/collection/mutable/BufferLike.scala
 
 ../scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
+../scala-scala/src/library/scala/collection/mutable/ObservableBuffer.scala
 
 ../scala-scala/src/library/scala/collection/immutable/Stack.scala
 ../scala-scala/src/library/scala/collection/immutable/StringLike.scala
