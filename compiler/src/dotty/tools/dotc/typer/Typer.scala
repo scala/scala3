@@ -454,6 +454,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tree.tpt match {
       case templ: untpd.Template =>
         import untpd._
+        templ.parents foreach {
+          case parent: RefTree =>
+            typedAheadImpl(parent, tree => inferTypeParams(typedType(tree), pt))
+          case _ =>
+        }
         val x = tpnme.ANON_CLASS
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)

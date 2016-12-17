@@ -119,6 +119,18 @@ object Inferencing {
     }
   }
 
+  /** If `tree` has a PolyType, infer its type parameters by comparing with expected type `pt` */
+  def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
+    case poly: PolyType =>
+      val (poly1, tvars) = constrained(poly, tree)
+      val tree1 = tree.withType(poly1).appliedToTypeTrees(tvars)
+      tree1.tpe <:< pt
+      fullyDefinedType(tree1.tpe, "template parent", tree.pos)
+      tree1
+    case _ =>
+      tree
+  }
+
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
    *  occur in at least one formal parameter type of a prefix application.
    *  Considered prefixes are:

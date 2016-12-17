@@ -852,23 +852,23 @@ class Namer { typer: Typer =>
     }
   }
 
-  /** Typecheck tree during completion, and remember result in typedtree map */
-  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
+  /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
+  def typedAheadImpl(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
-        val ttree = typer.typed(tree, pt)
+        val ttree = typed(tree)
         xtree.putAttachment(TypedAhead, ttree)
         ttree
     }
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
+    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType)
+    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrType))
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotation(fn)
