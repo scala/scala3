@@ -69,7 +69,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisTr
 
     /** Should `sym` get a ..$direct companion?
      *  This is the case if (1) `sym` is a method with an implicit function type as final result type.
-     *  However if `specializeMonoTargets` is true, we exclude symbols that are known
+     *  However if `specializeMonoTargets` is false, we exclude symbols that are known
      *  to be only targets of monomorphic calls because they are effectively
      *  final and don't override anything.
      */
