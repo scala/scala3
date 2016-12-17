@@ -343,8 +343,9 @@ object desugar {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
         val caseParams = constrVparamss.head.toArray
-        val productElemMeths = for (i <- 0 until arity) yield
-          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
+        val productElemMeths =
+          for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
+          yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
         def isRepeated(tree: Tree): Boolean = tree match {
           case PostfixOp(_, nme.raw.STAR) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)
