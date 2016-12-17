@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
+import ErrorReporting._
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =
@@ -41,10 +42,9 @@ trait Dynamic { self: Typer with Applications =>
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
       val dynName = if (args.exists(isNamedArg)) nme.applyDynamicNamed else nme.applyDynamic
-      if (dynName == nme.applyDynamicNamed && untpd.isWildcardStarArgList(args)) {
-        ctx.error("applyDynamicNamed does not support passing a vararg parameter", tree.pos)
-        tree.withType(ErrorType)
-      } else {
+      if (dynName == nme.applyDynamicNamed && untpd.isWildcardStarArgList(args))
+        errorTree(tree, "applyDynamicNamed does not support passing a vararg parameter")
+      else {
         def namedArgTuple(name: String, arg: untpd.Tree) = untpd.Tuple(List(Literal(Constant(name)), arg))
         def namedArgs = args.map {
           case NamedArg(argName, arg) => namedArgTuple(argName.toString, arg)
@@ -89,8 +89,7 @@ trait Dynamic { self: Typer with Applications =>
       case TypeApply(Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, targs)
       case _ =>
-        ctx.error("reassignment to val", tree.pos)
-        tree.withType(ErrorType)
+        errorTree(tree, "reassignment to val")
     }
   }
 

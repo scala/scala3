@@ -154,7 +154,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(AndPrec) { toText(tp1) ~ " & " ~ toText(tp2) }
       case OrType(tp1, tp2) =>
         changePrec(OrPrec) { toText(tp1) ~ " | " ~ toText(tp2) }
-      case ErrorType =>
+      case _: ErrorType =>
         "<error>"
       case tp: WildcardType =>
         if (tp.optBounds.exists) "(?" ~ toTextRHS(tp.bounds) ~ ")" else "?"

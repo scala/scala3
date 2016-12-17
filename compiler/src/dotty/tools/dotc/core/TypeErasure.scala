@@ -55,7 +55,7 @@ object TypeErasure {
       tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
     case tp @ ClassInfo(pre, _, parents, decls, _) =>
       isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
-    case NoType | NoPrefix | WildcardType | ErrorType | SuperType(_, _) =>
+    case NoType | NoPrefix | WildcardType | _: ErrorType | SuperType(_, _) =>
       true
     case _ =>
       false
@@ -398,7 +398,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
-    case NoType | NoPrefix | ErrorType | JavaArrayType(_) =>
+    case NoType | NoPrefix | _: ErrorType | JavaArrayType(_) =>
       tp
     case tp: WildcardType if wildcardOK =>
       tp
@@ -506,7 +506,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case ErrorType | WildcardType =>
+      case _: ErrorType | WildcardType =>
         tpnme.WILDCARD
       case tp: WildcardType =>
         sigName(tp.optBounds)

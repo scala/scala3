@@ -265,7 +265,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case ConstantType(v1) => v1.value == v2.value
         case _ => secondTry(tp1, tp2)
       }
-    case ErrorType =>
+    case _: FlexType =>
       true
     case _ =>
       secondTry(tp1, tp2)
@@ -341,7 +341,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           false
       }
       joinOK || isSubType(tp11, tp2) && isSubType(tp12, tp2)
-    case ErrorType =>
+    case _: FlexType =>
       true
     case _ =>
       thirdTry(tp1, tp2)

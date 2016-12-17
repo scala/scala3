@@ -561,7 +561,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success) app0.withType(ErrorType)
+        if (!success) app0.withType(UnspecifiedErrorType)
         else {
           if (!sameSeq(args, orderedArgs)) {
             // need to lift arguments to maintain evaluation order in the
@@ -654,7 +654,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(ErrorType)
+        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           tryEither {
@@ -918,7 +918,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType ErrorType
+        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
     }
   }
 
