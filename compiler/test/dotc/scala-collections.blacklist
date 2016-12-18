@@ -13,11 +13,6 @@
 #    |                                                                     ^^^^
 #    |                                                                     cyclic reference involving method toString
 
-../scala-scala/src/library/scala/collection/mutable/ImmutableMapAdaptor.scala
-# 78 |  override def toString() = imap.toString()
-#    |                            ^^^^^^^^^^^^^^^
-#    |                            missing argument for parameter index of method apply: (index: Int)Char
-
 ../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
 #  102 |  protected class FilteredKeys(p: A => Boolean) extends super.FilteredKeys(p) {
 #      |                                                        ^^^^^^^^^^^^^^^^^^^^

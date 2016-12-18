@@ -217,6 +217,14 @@ object Types {
       case _ => false
     }
 
+    /** Is this the type of a method with a leading empty parameter list?
+     */
+    def isNullaryMethod(implicit ctx: Context): Boolean = this match {
+      case MethodType(Nil, _) => true
+      case tp: PolyType => tp.resultType.isNullaryMethod
+      case _ => false
+    }
+
     /** Is this an alias TypeBounds? */
     def isAlias: Boolean = this.isInstanceOf[TypeAlias]
 

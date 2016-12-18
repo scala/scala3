@@ -657,18 +657,20 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
-          tryEither {
-            implicit ctx => simpleApply(fun1, proto)
-          } {
-            (failedVal, failedState) =>
-              def fail = { failedState.commit(); failedVal }
-              // Try once with original prototype and once (if different) with tupled one.
-              // The reason we need to try both is that the decision whether to use tupled
-              // or not was already taken but might have to be revised when an implicit
-              // is inserted on the qualifier.
-              tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
-                if (proto eq originalProto) fail
-                else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
+          if (originalProto.isDropped) fun1
+          else
+            tryEither {
+              implicit ctx => simpleApply(fun1, proto)
+            } {
+              (failedVal, failedState) =>
+                def fail = { failedState.commit(); failedVal }
+                // Try once with original prototype and once (if different) with tupled one.
+                // The reason we need to try both is that the decision whether to use tupled
+                // or not was already taken but might have to be revised when an implicit
+                // is inserted on the qualifier.
+                tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
+                  if (proto eq originalProto) fail
+                  else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
           }
       }
     }
