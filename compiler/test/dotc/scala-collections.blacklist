@@ -4,13 +4,7 @@
 # 55 |abstract class AnyVal extends Any {
 #    |^
 #    |illegal redefinition of standard class AnyVal
-
-
-../scala-scala/src/library/scala/collection/convert/Wrappers.scala
-# 34 |    def remove() = throw new UnsupportedOperationException
-#    |        ^
-#    |        overriding method remove in trait Iterator of type ()Unit;
-#    |         method remove of type ()Unit needs `override' modifier
+# (This is intended)
 
 ../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 

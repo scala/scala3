@@ -299,7 +299,9 @@ object RefChecks {
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
-        if (autoOverride(member))
+        // Also excluded under Scala2 mode are overrides of default methods of Java traits.
+        if (autoOverride(member) ||
+            other.owner.is(JavaTrait) && ctx.scala2Mode)
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
