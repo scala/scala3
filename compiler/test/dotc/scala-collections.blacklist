@@ -1,0 +1,229 @@
+../scala-scala/src/library/scala/annotation/unchecked/uncheckedVariance.scala
+
+../scala-scala/src/library/scala/AnyVal.scala
+# 55 |abstract class AnyVal extends Any {
+#    |^
+#    |illegal redefinition of standard class AnyVal
+
+
+../scala-scala/src/library/scala/collection/convert/Wrappers.scala
+# 34 |    def remove() = throw new UnsupportedOperationException
+#    |        ^
+#    |        overriding method remove in trait Iterator of type ()Unit;
+#    |         method remove of type ()Unit needs `override' modifier
+
+../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
+
+../scala-scala/src/library/scala/collection/mutable/DefaultEntry.scala
+# 22 |    "(kv: " + key + ", " + value + ")" + (if (next != null) " -> " + next.toString else "")
+#    |                                                                     ^^^^
+#    |                                                                     cyclic reference involving method toString
+
+../scala-scala/src/library/scala/collection/mutable/ImmutableMapAdaptor.scala
+# 78 |  override def toString() = imap.toString()
+#    |                            ^^^^^^^^^^^^^^^
+#    |                            missing argument for parameter index of method apply: (index: Int)Char
+
+../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
+#  102 |  protected class FilteredKeys(p: A => Boolean) extends super.FilteredKeys(p) {
+#      |                                                        ^^^^^^^^^^^^^^^^^^^^
+#      |                                                        cyclic inheritance: class FilteredKeys extends itself
+# ...
+
+../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
+#  assertion failed
+
+../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
+# 35 |      publish(new Include(elem) with Undoable { def undo = -=(elem) })
+#    |                                                    ^
+#    |                         overriding method undo in trait Undoable of type ()Unit;
+#    |                          method undo of type => scala.collection.mutable.ObservableSet[A] has incompatible type
+
+../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
+# 102 |  override def toString() = synchronized { super.toString() }
+#      |                                           ^^^^^^^^^^^^^^^^
+#      |                                        missing argument for parameter index of method apply: (index: Int)Char
+
+../scala-scala/src/library/scala/collection/mutable/UnrolledBuffer.scala
+# 347 |    override def toString = array.take(size).mkString("Unrolled[" + array.length + "](", ", ", ")") + " -> " + (if (next ne null) next.toString else "")
+#     |                                                                                                                                  ^^^^
+#     |                                                                    cyclic reference involving method toString
+
+../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
+# assertion failed
+
+../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
+# 648 |  class Map[S](f: T => S, targetarr: Array[Any], offset: Int, howmany: Int) extends Task[Unit, Map[S]] {
+#     |        ^
+#     |        overriding class Map in trait ParIterableLike;
+#     |         class Map cannot be used here - class definitions cannot be overridden
+
+../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
+# 42 |  override def updated [U >: V](key: K, value: U): ParMap[K, U] = this + ((key, value))
+#    |                                                                  ^^^^^^^^^^^^^^^^^^^^^
+#    |                                                       found:    scala.collection.parallel.ParMap[K, U]
+#    |                                                       required: scala.collection.parallel.mutable.ParMap'[K, U]
+#    |
+#    |                                                       where:    ParMap  is a trait in package parallel
+#    |                                                                 ParMap' is a trait in package mutable
+
+
+../scala-scala/src/library/scala/collection/parallel/mutable/ResizableParArrayCombiner.scala
+# 91 |    new { val chain = c } with ResizableParArrayCombiner[T] // was: with EnvironmentPassingCombiner[T, ParArray[T]]
+#    |                          ^
+#    |                          early definitions are not supported; use trait parameters instead
+
+../scala-scala/src/library/scala/collection/parallel/mutable/ParTrieMap.scala
+# 136 |    it.iterated = this.iterated
+#     |    ^^^^^^^^^^^
+#     |    value `iterated` is not a member of scala.collection.concurrent.TrieMapIterator[K, V](it)
+
+../scala-scala/src/library/scala/collection/parallel/package.scala
+# 75 |    implicit def factory2ops[From, Elem, To](bf: CanBuildFrom[From, Elem, To]) = new FactoryOps[From, Elem, To] {
+#     |    ^
+#     |    result type of implicit definition needs to be given explicitly
+
+../scala-scala/src/library/scala/collection/parallel/ParIterable.scala
+# 304 |  protected implicit def task2ops[R, Tp](tsk: SSCTask[R, Tp]) = new TaskOps[R, Tp] {
+#     |  ^
+#     |  result type of implicit definition needs to be given explicitly
+
+../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
+# 324 |  protected implicit def delegatedSignalling2ops[PI <: DelegatedSignalling](it: PI) = new SignallingOps[PI] {
+#     |  ^
+#     |  result type of implicit definition needs to be given explicitly
+
+../scala-scala/src/library/scala/collection/parallel/ParMap.scala
+../scala-scala/src/library/scala/collection/parallel/ParMapLike.scala
+
+../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
+# 334 |  protected trait Accessor[R, Tp] extends super.Accessor[R, Tp] {
+#     |                                          ^^^^^^^^^^^^^^^^^^^^^
+#     |                                          cyclic inheritance: trait Accessor extends itself
+
+../scala-scala/src/library/scala/collection/parallel/RemainsIterator.scala
+# 617 |  class Zipped[S](ti: SeqSplitter[S]) extends super.Zipped[S](ti) with SeqSplitter[(T, S)] {
+#     |                                              ^^^^^^^^^^^^^^^^^^
+#     |                                              cyclic inheritance: class Zipped extends itself
+
+../scala-scala/src/library/scala/collection/parallel/Tasks.scala
+# 429 |    fjtask.body.result
+#    |    ^^^^^^^^^^^
+#    |    value `body` is not a member of ForkJoinTasks.this.WrappedTask[R, Tp](fjtask)
+
+../scala-scala/src/library/scala/concurrent/Future.scala
+# 188 |    implicit val ec = internalExecutor
+#     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#     |    type of implicit definition needs to be given explicitly
+
+../scala-scala/src/library/scala/concurrent/SyncChannel.scala
+# 45 |    writeReq.get
+#    |    ^^^^^^^^^^^^
+#    |    none of the overloaded alternatives of method get in class SyncVar with types
+#    |     (timeout: Long)Option[Boolean]
+#    |     => Boolean
+#    |    match expected type Unit
+
+../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
+# assertion failed
+
+../scala-scala/src/library/scala/concurrent/package.scala
+# assertion failed
+
+../scala-scala/src/library/scala/Function1.scala
+../scala-scala/src/library/scala/Function2.scala
+../scala-scala/src/library/scala/Function3.scala
+../scala-scala/src/library/scala/Function4.scala
+../scala-scala/src/library/scala/Function5.scala
+../scala-scala/src/library/scala/Function6.scala
+../scala-scala/src/library/scala/Function7.scala
+../scala-scala/src/library/scala/Function8.scala
+../scala-scala/src/library/scala/Function9.scala
+../scala-scala/src/library/scala/Function10.scala
+../scala-scala/src/library/scala/Function11.scala
+../scala-scala/src/library/scala/Function12.scala
+../scala-scala/src/library/scala/Function13.scala
+../scala-scala/src/library/scala/Function14.scala
+../scala-scala/src/library/scala/Function15.scala
+../scala-scala/src/library/scala/Function16.scala
+../scala-scala/src/library/scala/Function17.scala
+../scala-scala/src/library/scala/Function18.scala
+../scala-scala/src/library/scala/Function19.scala
+../scala-scala/src/library/scala/Function20.scala
+../scala-scala/src/library/scala/Function21.scala
+../scala-scala/src/library/scala/Function22.scala
+
+../scala-scala/src/library/scala/io/BufferedSource.scala
+# 38 |  override lazy val iter = (
+#    |                    ^
+#    |                    overriding getter iter in class Source of type => collection.Iterator[Char];
+#    |                     lazy value iter of type collection.Iterator[Char] may not override a non-lazy value
+
+../scala-scala/src/library/scala/io/Source.scala
+# 303 |    report(pos, msg, out)
+#     |                ^^^
+#     |                not found: msg
+
+../scala-scala/src/library/scala/ref/WeakReference.scala
+# 33 |    if (x != null) Some(x) else None
+#    |       ^^^^^^^^^^^
+#    |       Values of types wr.underlying.java$lang$ref$WeakReference$$T and Null cannot be compared with == or !=
+
+../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
+# 51 |      import Manifest._
+#    |             ^^^^^^^^
+#    |             not found: Manifest
+../scala-scala/src/library/scala/reflect/ClassTag.scala
+# 124 |  val Short   : ClassTag[scala.Short]      = Manifest.Short
+#     |                                             ^^^^^^^^
+#     |                                             not found: Manifest
+../scala-scala/src/library/scala/reflect/Manifest.scala
+# 104 |    private def readResolve(): Any = Manifest.Short
+#     |                                     ^^^^^^^^
+#     |                                     not found: Manifest
+../scala-scala/src/library/scala/reflect/NameTransformer.scala
+# 89 |    if (buf eq null) name else buf.toString()
+#    |                               ^^^^^^^^^^^^^^
+#    |                               missing argument for parameter index of method apply: (index: Int)Char
+../scala-scala/src/library/scala/reflect/package.scala
+# 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
+#    |                                                             ^^^^^
+#    |                                                             not found: macro
+
+../scala-scala/src/library/scala/runtime/Tuple2Zipped.scala
+# 122 |        val buf = bf(x._1)
+#     |                     ^^^^
+#     |                     found:    T1
+#     |                     required: CC1[_]
+
+../scala-scala/src/library/scala/runtime/Tuple3Zipped.scala
+# 131 |        val buf = bf(x._1)
+#     |                     ^^^^
+#     |                     found:    T1
+#     |                     required: CC1[_]
+
+../scala-scala/src/library/scala/StringContext.scala
+# 168 |  def f[A >: Any](args: A*): String = macro ???
+#     |                                      ^^^^^
+#     |                                      not found: macro
+
+../scala-scala/src/library/scala/text/Document.scala
+
+../scala-scala/src/library/scala/util/control/Exception.scala
+# scala.MatchError: PostfixOp(Select(Ident(pf),isDefinedAt),_) (of class dotty.tools.dotc.ast.untpd$PostfixOp)
+#      at dotty.tools.dotc.ast.Trees$Instance$TreeAccumulator.foldOver(Trees.scala:1173)
+
+../scala-scala/src/library/scala/util/control/TailCalls.scala
+# assertion failed
+
+../scala-scala/src/library/scala/util/hashing/Hashing.scala
+# 35 |  implicit def default[T] = new Default[T]
+#    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#    |  result type of implicit definition needs to be given explicitly
+
+
+../scala-scala/src/library/scala/sys/SystemProperties.scala
+# crashes on dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation
+
+../scala-scala/src/library/scala/util/Sorting.scala
+# assertion failed: invalid prefix ImplicitMethodType(List(ord), List(RefinedType(TypeRef(ThisType(TypeRef(NoPrefix,math)),Ordering), scala$math$Ordering$$T, TypeAlias(TypeRef(NoPrefix,K), 0))), RefinedType(TypeRef(ThisType(TypeRef(NoPrefix,math)),Ordering), scala$math$Ordering$$T, TypeAlias(TypeRef(NoPrefix,K), 0)))
