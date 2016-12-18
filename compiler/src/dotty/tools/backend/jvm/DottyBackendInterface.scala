@@ -1024,7 +1024,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case JavaArrayType(elem) => elem
       case _ =>
         ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", field.pos)
-        ErrorType
+        UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
   }

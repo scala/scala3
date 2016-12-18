@@ -12,7 +12,7 @@ import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types.{JavaArrayType, ErrorType, Type}
+import dotty.tools.dotc.core.Types.{JavaArrayType, UnspecifiedErrorType, Type}
 
 import scala.collection.{ mutable, immutable }
 
@@ -73,7 +73,7 @@ class DottyPrimitives(ctx: Context) {
       case JavaArrayType(el) => el
       case _ =>
         ctx.error(s"expected Array $tpe")
-        ErrorType
+        UnspecifiedErrorType
     }
 
     code match {

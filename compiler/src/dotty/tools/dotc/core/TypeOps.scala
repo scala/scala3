@@ -433,7 +433,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               formals = formals.updated(name, tp1.typeParamNamed(name))
           }
           normalizeToRef(tp1)
-        case ErrorType =>
+        case _: ErrorType =>
           defn.AnyType
         case AnnotatedType(tpe, _) =>
           normalizeToRef(tpe)

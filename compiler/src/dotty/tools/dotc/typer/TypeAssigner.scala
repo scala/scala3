@@ -189,9 +189,8 @@ trait TypeAssigner {
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-            if (!tpe.isError)
-              ctx.error(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
-            ErrorType
+            if (tpe.isError) tpe
+            else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
         else if (d.symbol is TypeParamAccessor)
@@ -215,17 +214,17 @@ trait TypeAssigner {
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
     } else {
-      if (!site.isErroneous) {
+      if (site.isErroneous) UnspecifiedErrorType
+      else {
         def kind = if (name.isTypeName) "type" else "value"
         def addendum =
           if (site.derivesFrom(defn.DynamicClass)) "\npossible cause: maybe a wrong Dynamic method signature?"
           else ""
-        ctx.error(
+        errorType(
           if (name == nme.CONSTRUCTOR) ex"$site does not have a constructor"
           else NotAMember(site, name, kind),
           pos)
       }
-      ErrorType
     }
   }
 

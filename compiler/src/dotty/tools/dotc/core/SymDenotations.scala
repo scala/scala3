@@ -1937,12 +1937,12 @@ object SymDenotations {
   /** A completer for missing references */
   class StubInfo() extends LazyType {
 
-    def initializeToDefaults(denot: SymDenotation)(implicit ctx: Context) = {
+    def initializeToDefaults(denot: SymDenotation, errMsg: => String)(implicit ctx: Context) = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
         case _ =>
-          ErrorType
+          new ErrorType(errMsg)
       }
       denot.privateWithin = NoSymbol
     }
@@ -1954,13 +1954,14 @@ object SymDenotations {
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
       val name = ctx.fresh.setSetting(ctx.settings.debugNames, true).nameString(denot.name)
-      ctx.error(
+      def errMsg =
         i"""bad symbolic reference. A signature$location
            |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
            |It may be completely missing from the current classpath, or the version on
-           |the classpath might be incompatible with the version used when compiling $src.""")
+           |the classpath might be incompatible with the version used when compiling $src."""
+      ctx.error(errMsg)
       if (ctx.debug) throw new Error()
-      initializeToDefaults(denot)
+      initializeToDefaults(denot, errMsg)
     }
   }
 

@@ -15,9 +15,10 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.Position
+import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleMap}
+import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -176,7 +177,7 @@ object Types {
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
-      case ErrorType => true
+      case _: ErrorType => true
       case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
     }
 
@@ -387,8 +388,8 @@ object Types {
         tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
-      case ErrorType =>
-        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name)
+      case err: ErrorType =>
+        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
         NoDenotation
     }
@@ -453,8 +454,8 @@ object Types {
           go(tp.join)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, excluded)
-        case ErrorType =>
-          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
+        case err: ErrorType =>
+          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
       }
@@ -1497,7 +1498,7 @@ object Types {
           (lastDefRunId != sym.defRunId) ||
           (lastDefRunId == NoRunId)
         } ||
-        (lastSymbol.infoOrCompleter == ErrorType ||
+        (lastSymbol.infoOrCompleter.isInstanceOf[ErrorType] ||
         sym.owner != lastSymbol.owner &&
         (sym.owner.derivesFrom(lastSymbol.owner) ||
          selfTypeOf(sym).derivesFrom(lastSymbol.owner) ||
@@ -2693,7 +2694,7 @@ object Types {
     protected def checkInst(implicit ctx: Context): this.type = {
       def check(tycon: Type): Unit = tycon.stripTypeVar match {
         case tycon: TypeRef if !tycon.symbol.isClass =>
-        case _: PolyParam | ErrorType | _: WildcardType =>
+        case _: PolyParam | _: ErrorType | _: WildcardType =>
         case _: PolyType =>
           assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
@@ -3251,12 +3252,19 @@ object Types {
     override def computeHash = hashSeed
   }
 
-  abstract class ErrorType extends UncachedGroundType with ValueType
+  /** A common superclass of `ErrorType` and `TryDynamicCallSite`. Instances of this
+   *  class are at the same time subtypes and supertypes of every other type.
+   */
+  abstract class FlexType extends UncachedGroundType with ValueType
 
-  object ErrorType extends ErrorType
+  class ErrorType(_msg: => Message) extends FlexType {
+    val msg = _msg
+  }
+
+  object UnspecifiedErrorType extends ErrorType("unspecified error")
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
-  object TryDynamicCallType extends ErrorType
+  object TryDynamicCallType extends FlexType
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {

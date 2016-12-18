@@ -56,7 +56,7 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
     checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
-  /** Check applied type trees for well-formedness. This means 
+  /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
    *   - if type is a higher-kinded application with wildcard arguments,
    *     check that it or one of its supertypes can be reduced to a normal application.
@@ -237,8 +237,7 @@ object Checking {
     catch {
       case ex: CyclicReference =>
         if (reportErrors) {
-          ctx.error(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)
-          ErrorType
+          errorType(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)
         }
         else info
     }

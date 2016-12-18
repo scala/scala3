@@ -351,10 +351,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val ownType =
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
-      else {
-        error(new MissingIdent(tree, kind, name.show), tree.pos)
-        ErrorType
-      }
+      else
+        errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 
     val tree1 = ownType match {
       case ownType: NamedType if !prefixIsElidable(ownType) =>
@@ -1970,10 +1968,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       else err.typeMismatch(tree1, pt)
     }
 
+    /** If tree has an error type but no errors are reported yet, issue
+     *  the error message stored in the type.
+     *  One way this can happen is if implicit search causes symbols and types
+     *  to be completed. The types are stored by `typedAhead` so that they can be
+     *  retrieved later and thus avoid duplication of typechecking work.
+     *  But if the implicit search causing the `typedAhead` fails locally but
+     *  another alternative succeeds we can be left with an ErrorType in the
+     *  tree that went unreported. A scenario where this happens is i1802.scala.
+     */
+    def ensureReported(tp: Type) = tp match {
+      case err: ErrorType if !ctx.reporter.hasErrors => ctx.error(err.msg, tree.pos)
+      case _ =>
+    }
+
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
       case _ => tree.tpe.widen match {
-        case _: ErrorType =>
+        case tp: FlexType =>
+          ensureReported(tp)
           tree
         case ref: TermRef =>
           pt match {

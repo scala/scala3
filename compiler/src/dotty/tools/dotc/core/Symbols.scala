@@ -22,6 +22,7 @@ import NameOps._
 import ast.tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant
+import reporting.diagnostic.Message
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -290,9 +291,11 @@ trait Symbols { this: Context =>
    */
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name) =
+  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
+    val errType = new ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
-      if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
+        if (name.isTypeName) TypeAlias(errType) else errType)
+  }
 
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
