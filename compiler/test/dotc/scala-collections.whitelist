@@ -297,6 +297,7 @@
 ../scala-scala/src/library/scala/util/MurmurHash.scala
 ../scala-scala/src/library/scala/util/Properties.scala
 ../scala-scala/src/library/scala/util/Random.scala
+../scala-scala/src/library/scala/util/Sorting.scala
 
 ../scala-scala/src/library/scala/collection/mutable/AnyRefMap.scala
 ../scala-scala/src/library/scala/collection/mutable/ArrayBuffer.scala
