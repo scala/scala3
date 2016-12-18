@@ -71,21 +71,24 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       val Select(qual, name) = sel
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
-      var supername = name.superName
-      if (clazz is Trait) supername = supername.expandedName(clazz)
+      var superName = name.superName
+      if (clazz is Trait) superName = superName.expandedName(clazz)
+      val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
-      val superAcc = clazz.info.decl(supername).suchThat(_.signature == sym.signature).symbol orElse {
-        ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
-        val deferredOrPrivate = if (clazz is Trait) Deferred | ExpandedName else Private
-        val acc = ctx.newSymbol(
-            clazz, supername, SuperAccessor | Artifact | Method | deferredOrPrivate,
-            sel.tpe.widenSingleton.ensureMethodic, coord = sym.coord).enteredAfter(thisTransformer)
-        // Diagnostic for SI-7091
-        if (!accDefs.contains(clazz))
-          ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
-        else accDefs(clazz) += DefDef(acc, EmptyTree)
-        acc
-      }
+      val superAcc = clazz.info.decl(superName)
+        .suchThat(_.signature == superInfo.signature).symbol
+        .orElse {
+          ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
+          val deferredOrPrivate = if (clazz is Trait) Deferred | ExpandedName else Private
+          val acc = ctx.newSymbol(
+              clazz, superName, SuperAccessor | Artifact | Method | deferredOrPrivate,
+              superInfo, coord = sym.coord).enteredAfter(thisTransformer)
+          // Diagnostic for SI-7091
+          if (!accDefs.contains(clazz))
+            ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
+          else accDefs(clazz) += DefDef(acc, EmptyTree)
+          acc
+        }
 
       This(clazz).select(superAcc).withPos(sel.pos)
     }
