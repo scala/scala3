@@ -2275,11 +2275,13 @@ object Types {
 
     protected def resultSignature(implicit ctx: Context) = try resultType match {
       case rtp: MethodicType => rtp.signature
-      case tp => Signature(tp, isJava = false)
+      case tp =>
+        if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
+        else Signature(tp, isJava = false)
     }
     catch {
       case ex: AssertionError =>
-        println(i"failure while taking result signture of $this: $resultType")
+        println(i"failure while taking result signature of $this: $resultType")
         throw ex
     }
 
