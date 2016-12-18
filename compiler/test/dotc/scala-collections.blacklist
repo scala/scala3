@@ -207,9 +207,6 @@
 #     |                                      ^^^^^
 #     |                                      not found: macro
 
-../scala-scala/src/library/scala/sys/BooleanProp.scala
-# dotty.tools.dotc.reporting.diagnostic.messages$Error: method clear is already defined as getter clear: ()scala.runtime.BoxedUnit
-
 ../scala-scala/src/library/scala/text/Document.scala
 
 ../scala-scala/src/library/scala/util/control/Exception.scala

@@ -390,6 +390,7 @@
 ../scala-scala/src/library/scala/sys/package.scala
 ../scala-scala/src/library/scala/sys/Prop.scala
 ../scala-scala/src/library/scala/sys/PropImpl.scala
+../scala-scala/src/library/scala/sys/BooleanProp.scala
 ../scala-scala/src/library/scala/sys/ShutdownHookThread.scala
 ../scala-scala/src/library/scala/sys/process/BasicIO.scala
 ../scala-scala/src/library/scala/sys/process/package.scala
