@@ -371,7 +371,7 @@
 ../scala-scala/src/library/scala/collection/convert/package.scala
 ../scala-scala/src/library/scala/collection/convert/WrapAsJava.scala
 ../scala-scala/src/library/scala/collection/convert/WrapAsScala.scala
-../scala-scala/src/library/scala/collection/convert/Wrapper.scala
+../scala-scala/src/library/scala/collection/convert/Wrappers.scala
 
 ../scala-scala/src/library/scala/collection/concurrent/Map.scala
 ../scala-scala/src/library/scala/collection/concurrent/TrieMap.scala
