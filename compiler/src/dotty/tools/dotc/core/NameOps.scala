@@ -188,6 +188,8 @@ object NameOps {
 
     def errorName: N = likeTyped(name ++ nme.ERROR)
 
+    def directName: N = likeTyped(name ++ DIRECT_SUFFIX)
+
     def freshened(implicit ctx: Context): N =
       likeTyped(
         if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
@@ -229,11 +231,14 @@ object NameOps {
       }
     }
 
-    def functionArity: Int =
-      if (name.startsWith(tpnme.Function))
-        try name.drop(tpnme.Function.length).toString.toInt
-        catch { case ex: NumberFormatException => -1 }
-      else -1
+    def functionArity: Int = {
+      def test(prefix: Name): Int =
+        if (name.startsWith(prefix))
+          try name.drop(prefix.length).toString.toInt
+          catch { case ex: NumberFormatException => -1 }
+        else -1
+      test(tpnme.Function) max test(tpnme.ImplicitFunction)
+    }
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {

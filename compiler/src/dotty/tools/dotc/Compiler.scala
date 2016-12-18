@@ -61,6 +61,7 @@ class Compiler {
            new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
+           new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
       List(new VCInlineMethods,     // Inlines calls to value class methods

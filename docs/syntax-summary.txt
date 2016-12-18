@@ -95,8 +95,8 @@ grammar.
                       |  [id '.'] `super' [ClassQualifier] `.' id
   ClassQualifier    ::=  `[' id `]'
 
-  Type              ::=  FunArgTypes `=>' Type                                  Function(ts, t)
-                      |  HkTypeParamClause `=>' Type						    TypeLambda(ps, t)
+  Type              ::=  [`implicit'] FunArgTypes `=>' Type                     Function(ts, t)
+                      |  HkTypeParamClause `=>' Type	                        TypeLambda(ps, t)
                       |  InfixType
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
@@ -125,13 +125,13 @@ grammar.
   TypeBounds        ::=  [`>:' Type] [`<: Type] | INT                           TypeBoundsTree(lo, hi)
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
-  Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+  Expr              ::=  [`implicit'] FunParams `=>' Expr                       Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
   FunParams         ::=  Bindings
-                      |  [`implicit'] id
+                      |  id
                       |  `_'
   ExprInParens      ::=  PostfixExpr `:' Type
                       |  Expr
-  BlockResult       ::=  (FunParams | [`implicit'] id `:' InfixType) `=>' Block
+  BlockResult       ::=   [`implicit'] FunParams `=>' Block
                       |  Expr1
   Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]         If(Parens(cond), thenp, elsep?)
                       |  `if' Expr `then' Expr [[semi] else Expr]               If(cond, thenp, elsep?)
@@ -178,9 +178,7 @@ grammar.
                       |  {Annotation} {LocalModifier} TmplDef
                       |  Expr1
                       |
-  ResultExpr        ::=  Expr1
-                      |  (Bindings | ([`implicit'] id | `_') `:' ) `=>' Block
-                                                                                Function(args, block)    // block starts at =>
+
   ForExpr           ::=  `for' (`(' Enumerators `)' | `{' Enumerators `}')      ForYield(enums, expr)
                          {nl} [`yield'] Expr                                    ForDo(enums, expr)
                       |  `for' Enumerators (`do' Expr | `yield' Expr)
@@ -241,7 +239,7 @@ grammar.
   DefParams         ::=  DefParam {`,' DefParam}
   DefParam          ::=  {Annotation} [`inline'] Param                          ValDef(mods, id, tpe, expr) -- point of mods at id.
 
-  Bindings          ::=  `(' Binding {`,' Binding `)'                           bindings
+  Bindings          ::=  `(' Binding {`,' Binding}] `)'
   Binding           ::=  (id | `_') [`:' Type]                                  ValDef(_, id, tpe, EmptyTree)
 
   Modifier          ::=  LocalModifier

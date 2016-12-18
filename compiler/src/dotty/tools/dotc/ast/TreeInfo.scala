@@ -290,6 +290,16 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  /** Is `tree` an implicit function or closure, possibly nested in a block? */
+  def isImplicitClosure(tree: Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+    case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Implicit)
+    case Closure(_, meth, _) => true
+    case Block(Nil, expr) => isImplicitClosure(expr)
+    case Block(DefDef(nme.ANON_FUN, _, (param :: _) :: _, _, _) :: Nil, _: Closure) =>
+      param.mods.is(Implicit)
+    case _ => false
+  }
+
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
 
@@ -501,7 +511,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   object closure {
     def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
-      case Block(_, Closure(env, meth, tpt)) => Some(env, meth, tpt)
+      case Block(_, expr) => unapply(expr)
       case Closure(env, meth, tpt) => Some(env, meth, tpt)
       case _ => None
     }

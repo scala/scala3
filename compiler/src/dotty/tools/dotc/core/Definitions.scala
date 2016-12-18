@@ -86,24 +86,51 @@ class Definitions {
     newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
   }
 
-  /** The trait FunctionN, for some N */
-  private def newFunctionNTrait(n: Int) = {
+  /** The trait FunctionN or ImplicitFunctionN, for some N
+   *  @param  name   The name of the trait to be created
+   *
+   *  FunctionN traits follow this template:
+   *
+   *      trait FunctionN[T0,...T{N-1}, R] extends Object {
+   *        def apply($x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   *
+   *  That is, they follow the template given for Function2..Function22 in the
+   *  standard library, but without `tupled` and `curried` methods and without
+   *  a `toString`.
+   *
+   *  ImplicitFunctionN traits follow this template:
+   *
+   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object with FunctionN[T0,...,T{N-1}, R] {
+   *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      }
+   */
+  private def newFunctionNTrait(name: TypeName) = {
     val completer = new LazyType {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
+        val arity = name.functionArity
         val argParams =
-          for (i <- List.range(0, n)) yield
-            enterTypeParam(cls, s"T$i".toTypeName, Contravariant, decls)
-        val resParam = enterTypeParam(cls, s"R".toTypeName, Covariant, decls)
+          for (i <- List.range(0, arity)) yield
+            enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
+        val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
+        val (methodType, parentTraits) =
+          if (name.startsWith(tpnme.ImplicitFunction)) {
+            val superTrait =
+              FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
+            (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
+          }
+          else (MethodType, Nil)
         val applyMeth =
           decls.enter(
             newMethod(cls, nme.apply,
-              MethodType(argParams.map(_.typeRef), resParam.typeRef), Deferred))
-        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
+              methodType(argParams.map(_.typeRef), resParam.typeRef), Deferred))
+        denot.info =
+          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, s"Function$n".toTypeName, Trait, completer)
+    newClassSymbol(ScalaPackageClass, name, Trait, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -590,15 +617,16 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type)(implicit ctx: Context) =
-      FunctionType(args.length).appliedTo(args ::: resultType :: Nil)
+    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false)(implicit ctx: Context) =
+      FunctionType(args.length, isImplicit).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context) = {
       val tsym = ft.typeSymbol
-      if (isFunctionClass(tsym)) {
-        lazy val targs = ft.argInfos
+      val isImplicitFun = isImplicitFunctionClass(tsym)
+      if (isImplicitFun || isFunctionClass(tsym)) {
+        val targs = ft.argInfos
         val numArgs = targs.length - 1
-        if (numArgs >= 0 && FunctionType(numArgs).symbol == tsym)
-          Some(targs.init, targs.last)
+        if (numArgs >= 0 && FunctionType(numArgs, isImplicitFun).symbol == tsym)
+          Some(targs.init, targs.last, isImplicitFun)
         else None
       }
       else None
@@ -659,8 +687,12 @@ class Definitions {
     lazy val Function0_applyR = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
 
-  def FunctionType(n: Int)(implicit ctx: Context): TypeRef =
-    if (n < MaxImplementedFunctionArity) ImplementedFunctionType(n)
+  def ImplicitFunctionClass(n: Int)(implicit ctx: Context) =
+    ctx.requiredClass("scala.ImplicitFunction" + n.toString)
+
+  def FunctionType(n: Int, isImplicit: Boolean = false)(implicit ctx: Context): TypeRef =
+    if (isImplicit && !ctx.erasedTypes) ImplicitFunctionClass(n).typeRef
+    else if (n < MaxImplementedFunctionArity) ImplementedFunctionType(n)
     else FunctionClass(n).typeRef
 
   private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
@@ -686,6 +718,7 @@ class Definitions {
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
+  def isImplicitFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.ImplicitFunction)
   def isUnimplementedFunctionClass(cls: Symbol) =
     isFunctionClass(cls) && cls.name.functionArity > MaxImplementedFunctionArity
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
@@ -745,13 +778,20 @@ class Definitions {
       }
     else -1
 
-  def isFunctionType(tp: Type)(implicit ctx: Context) =
-    isFunctionClass(tp.dealias.typeSymbol) && {
-      val arity = functionArity(tp)
-      arity >= 0 && tp.isRef(FunctionType(functionArity(tp)).typeSymbol)
-    }
+  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ImplicitFunctionN ? */
+  def isFunctionType(tp: Type)(implicit ctx: Context) = {
+    val arity = functionArity(tp)
+    val sym = tp.dealias.typeSymbol
+    arity >= 0 && (
+      isFunctionClass(sym) && tp.isRef(FunctionType(arity, isImplicit = false).typeSymbol) ||
+      isImplicitFunctionClass(sym) && tp.isRef(FunctionType(arity, isImplicit = true).typeSymbol)
+    )
+  }
 
   def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
+
+  def isImplicitFunctionType(tp: Type)(implicit ctx: Context) =
+    isFunctionType(tp) && tp.dealias.typeSymbol.name.startsWith(tpnme.ImplicitFunction)
 
   // ----- primitive value class machinery ------------------------------------------
 
@@ -825,6 +865,9 @@ class Definitions {
 
   // ----- Initialization ---------------------------------------------------
 
+  private def maxImplemented(name: Name) =
+    if (name `startsWith` tpnme.Function) MaxImplementedFunctionArity else 0
+
   /** Give the scala package a scope where a FunctionN trait is automatically
    *  added when someone looks for it.
    */
@@ -834,8 +877,8 @@ class Definitions {
     val newDecls = new MutableScope(oldDecls) {
       override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
         val res = super.lookupEntry(name)
-        if (res == null && name.functionArity > MaxImplementedFunctionArity)
-          newScopeEntry(newFunctionNTrait(name.functionArity))
+        if (res == null && name.isTypeName && name.functionArity > maxImplemented(name))
+          newScopeEntry(newFunctionNTrait(name.asTypeName))
         else res
       }
     }

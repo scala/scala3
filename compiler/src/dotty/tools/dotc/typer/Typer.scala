@@ -522,7 +522,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
             inferImplicit(defn.ClassTagType.appliedTo(tref),
                EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
-              case SearchSuccess(arg, _, _) =>
+              case SearchSuccess(arg, _, _, _) =>
                 return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
               case _ =>
             }
@@ -663,9 +663,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
     val untpd.Function(args, body) = tree
-    if (ctx.mode is Mode.Type)
+    if (ctx.mode is Mode.Type) {
+      val funCls =
+        if (tree.isInstanceOf[untpd.ImplicitFunction]) defn.ImplicitFunctionClass(args.length)
+        else defn.FunctionClass(args.length)
       typed(cpy.AppliedTypeTree(tree)(
-        untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
+        untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+    }
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
 
@@ -1055,7 +1059,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (hasNamedArg(args)) typedNamedArgs(args)
         else {
           if (args.length != tparams.length) {
-            wrongNumberOfArgs(tpt1.tpe, "type", tparams, args, tree.pos)
+            wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
             args = args.take(tparams.length)
           }
           def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
@@ -1493,6 +1497,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
+          case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.Try => typedTry(tree, pt)
@@ -1520,9 +1525,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
-        xtree match {
+        if (defn.isImplicitFunctionType(pt) &&
+            xtree.isTerm &&
+            !untpd.isImplicitClosure(xtree) &&
+            !ctx.isAfterTyper)
+          makeImplicitFunction(xtree, pt)
+        else xtree match {
           case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
-          case xtree: untpd.Import => typedImport(xtree, retrieveSym(xtree))
           case xtree => typedUnnamed(xtree)
         }
     }
@@ -1530,6 +1539,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
     untpd.rename(tree, tree.name.encode)
+
+  protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
+    val defn.FunctionOf(formals, resType, true) = pt.dealias
+    val paramTypes = formals.map(fullyDefinedType(_, "implicit function parameter", tree.pos))
+    val ifun = desugar.makeImplicitFunction(paramTypes, tree)
+    typr.println(i"make implicit function $tree / $pt ---> $ifun")
+    typedUnadapted(ifun)
+  }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     assertPositioned(tree)
@@ -1615,6 +1632,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
+  /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
+  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt match {
+    case pt: SelectionProto => pt.name == nme.apply
+    case pt: FunProto       => pt.args.isEmpty && isApplyProto(pt.resultType)
+    case pt: IgnoredProto   => isApplyProto(pt.ignored)
+    case _                  => false
+  }
+
   /** Add apply node or implicit conversions. Two strategies are tried, and the first
    *  that is successful is picked. If neither of the strategies are successful, continues with
    *  `fallBack`.
@@ -1627,14 +1652,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *    with wildcard result type.
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
-
-    /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
-    def isApplyProto(pt: Type): Boolean = pt match {
-      case pt: SelectionProto => pt.name == nme.apply
-      case pt: FunProto => pt.args.isEmpty && isApplyProto(pt.resultType)
-      case pt: IgnoredProto => isApplyProto(pt.ignored)
-      case _ => false
-    }
 
     def tryApply(implicit ctx: Context) = {
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
@@ -1879,7 +1896,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           missingArgs
       case _ =>
         ctx.typeComparer.GADTused = false
-        if (ctx.mode is Mode.Pattern) {
+        if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
+            !untpd.isImplicitClosure(tree) &&
+            !isApplyProto(pt) &&
+            !ctx.isAfterTyper) {
+          typr.println("insert apply on implicit $tree")
+          typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+        }
+        else if (ctx.mode is Mode.Pattern) {
           tree match {
             case _: RefTree | _: Literal
             if !isVarPattern(tree) &&
@@ -1952,7 +1976,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       // try an implicit conversion
       inferView(tree, pt) match {
-        case SearchSuccess(inferred, _, _) =>
+        case SearchSuccess(inferred, _, _, _) =>
           adapt(inferred, pt)
         case failure: SearchFailure =>
           if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree

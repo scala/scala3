@@ -209,6 +209,8 @@ object Tokens extends TokensCommon {
   final val canStartTypeTokens = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
+  final val canStartBindingTokens = identifierTokens | BitSet(USCORE, LPAREN)
+
   final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens = BitSet(DEF, VAL, VAR, TYPE)

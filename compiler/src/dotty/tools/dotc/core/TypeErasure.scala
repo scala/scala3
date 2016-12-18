@@ -2,7 +2,9 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._
+import Flags.JavaDefined
+import NameOps._
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
@@ -42,7 +44,7 @@ object TypeErasure {
       val sym = tp.symbol
       sym.isClass &&
       sym != defn.AnyClass && sym != defn.ArrayClass &&
-      !defn.isUnimplementedFunctionClass(sym)
+      !defn.isUnimplementedFunctionClass(sym) && !defn.isImplicitFunctionClass(sym)
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -327,6 +329,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
+   *   - For a typeref scala.ImplicitFunctionN, | scala.FunctionN |
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
@@ -356,6 +359,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
+      else if (defn.isImplicitFunctionClass(sym)) apply(defn.FunctionType(sym.name.functionArity))
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent
@@ -492,7 +496,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           val erasedVCRef = eraseDerivedValueClassRef(tp)
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
-        normalizeClass(sym.asClass).fullName.asTypeName
+        if (defn.isImplicitFunctionClass(sym))
+          sigName(defn.FunctionType(sym.name.functionArity))
+        else
+          normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayOf(elem) =>
         sigName(this(tp))
       case JavaArrayType(elem) =>

@@ -345,21 +345,23 @@ object Erasure extends TypeTestsCasts{
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
 
       def mapOwner(sym: Symbol): Symbol = {
-        val owner = sym.owner
-        if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
-          assert(sym.isConstructor, s"${sym.showLocated}")
-          defn.ObjectClass
-        }
-        else if (defn.isUnimplementedFunctionClass(owner))
-          defn.FunctionXXLClass
-        else
-          owner
+        def recur(owner: Symbol): Symbol =
+          if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
+            assert(sym.isConstructor, s"${sym.showLocated}")
+            defn.ObjectClass
+          } else if (defn.isUnimplementedFunctionClass(owner))
+            defn.FunctionXXLClass
+          else if (defn.isImplicitFunctionClass(owner))
+            recur(defn.FunctionClass(owner.name.functionArity))
+          else
+            owner
+        recur(sym.owner)
       }
 
-      var sym = tree.symbol
-      val owner = mapOwner(sym)
-      if (owner ne sym.owner) sym = owner.info.decl(sym.name).symbol
-      assert(sym.exists, owner)
+      val origSym = tree.symbol
+      val owner = mapOwner(origSym)
+      val sym = if (owner eq origSym.owner) origSym else owner.info.decl(origSym.name).symbol
+      assert(sym.exists, origSym.showLocated)
 
       def select(qual: Tree, sym: Symbol): Tree = {
         val name = tree.typeOpt match {

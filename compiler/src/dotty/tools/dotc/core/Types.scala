@@ -1211,7 +1211,7 @@ object Types {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
         defn.FunctionOf(
-            formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType, mt.isImplicit && !ctx.erasedTypes)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -2377,7 +2377,9 @@ object Types {
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 
-    def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], resType: Type)(implicit ctx: Context) =
+    def derivedMethodType(paramNames: List[TermName] = this.paramNames,
+                          paramTypes: List[Type] = this.paramTypes,
+                          resType: Type = this.resType)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (resType eq this.resType)) this
       else {
         val resTypeFn = (x: MethodType) => resType.subst(this, x)

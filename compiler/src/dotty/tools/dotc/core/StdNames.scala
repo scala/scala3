@@ -129,6 +129,7 @@ object StdNames {
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
     val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
+    val DIRECT_SUFFIX: N              = "$direct"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -181,6 +182,7 @@ object StdNames {
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
     final val Function: N            = "Function"
+    final val ImplicitFunction: N    = "ImplicitFunction"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
     final val Null: N                = "Null"
