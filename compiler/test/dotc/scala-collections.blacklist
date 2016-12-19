@@ -8,37 +8,39 @@
 
 ../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 
-../scala-scala/src/library/scala/collection/mutable/DefaultEntry.scala
+#../scala-scala/src/library/scala/collection/mutable/DefaultEntry.scala
 # 22 |    "(kv: " + key + ", " + value + ")" + (if (next != null) " -> " + next.toString else "")
 #    |                                                                     ^^^^
 #    |                                                                     cyclic reference involving method toString
+# (Fixed by adding type annotation to DefaultEntry)
 
-../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
+#../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
 #  102 |  protected class FilteredKeys(p: A => Boolean) extends super.FilteredKeys(p) {
 #      |                                                        ^^^^^^^^^^^^^^^^^^^^
 #      |                                                        cyclic inheritance: class FilteredKeys extends itself
 # ...
+# (Fixed by rewriring inner class names in LinkedHashMap)
 
-../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
+#../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
 #  assertion failed
 
-../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
+#../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
 # 35 |      publish(new Include(elem) with Undoable { def undo = -=(elem) })
 #    |                                                    ^
 #    |                         overriding method undo in trait Undoable of type ()Unit;
 #    |                          method undo of type => scala.collection.mutable.ObservableSet[A] has incompatible type
 
-../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
+#../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
 # 102 |  override def toString() = synchronized { super.toString() }
 #      |                                           ^^^^^^^^^^^^^^^^
 #      |                                        missing argument for parameter index of method apply: (index: Int)Char
 
-../scala-scala/src/library/scala/collection/mutable/UnrolledBuffer.scala
+#../scala-scala/src/library/scala/collection/mutable/UnrolledBuffer.scala
 # 347 |    override def toString = array.take(size).mkString("Unrolled[" + array.length + "](", ", ", ")") + " -> " + (if (next ne null) next.toString else "")
 #     |                                                                                                                                  ^^^^
 #     |                                                                    cyclic reference involving method toString
 
-../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
+#../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
 # assertion failed
 
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
@@ -100,12 +102,12 @@
 #    |    ^^^^^^^^^^^
 #    |    value `body` is not a member of ForkJoinTasks.this.WrappedTask[R, Tp](fjtask)
 
-../scala-scala/src/library/scala/concurrent/Future.scala
+#../scala-scala/src/library/scala/concurrent/Future.scala
 # 188 |    implicit val ec = internalExecutor
 #     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #     |    type of implicit definition needs to be given explicitly
 
-../scala-scala/src/library/scala/concurrent/SyncChannel.scala
+#../scala-scala/src/library/scala/concurrent/SyncChannel.scala
 # 45 |    writeReq.get
 #    |    ^^^^^^^^^^^^
 #    |    none of the overloaded alternatives of method get in class SyncVar with types

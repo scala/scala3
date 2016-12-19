@@ -87,6 +87,13 @@
 
 ../scala-scala/src/library/scala/collection/mutable/ArrayBuilder.scala
 ../scala-scala/src/library/scala/collection/mutable/ObservableBuffer.scala
+../scala-scala/src/library/scala/collection/mutable/DefaultEntry.scala
+../scala-scala/src/library/scala/collection/mutable/LinkedHashMap.scala
+../scala-scala/src/library/scala/collection/mutable/ObservableMap.scala
+../scala-scala/src/library/scala/collection/mutable/ObservableSet.scala
+../scala-scala/src/library/scala/collection/mutable/SynchronizedQueue.scala
+../scala-scala/src/library/scala/collection/mutable/UnrolledBuffer.scala
+../scala-scala/src/library/scala/collection/mutable/SynchronizedBuffer.scala
 
 ../scala-scala/src/library/scala/collection/immutable/Stack.scala
 ../scala-scala/src/library/scala/collection/immutable/StringLike.scala
@@ -364,6 +371,7 @@
 ../scala-scala/src/library/scala/collection/mutable/TreeSet.scala
 ../scala-scala/src/library/scala/collection/mutable/Undoable.scala
 ../scala-scala/src/library/scala/collection/mutable/WeakHashMap.scala
+../scala-scala/src/library/scala/collection/mutable/ImmutableMapAdaptor.scala
 
 ../scala-scala/src/library/scala/collection/convert/DecorateAsJava.scala
 ../scala-scala/src/library/scala/collection/convert/DecorateAsScala.scala
@@ -437,6 +445,8 @@
 ../scala-scala/src/library/scala/collection/script/Message.scala
 ../scala-scala/src/library/scala/collection/script/Scriptable.scala
 
+#../scala-scala/src/library/scala/concurrent/package.scala
+../scala-scala/src/library/scala/concurrent/Future.scala
 ../scala-scala/src/library/scala/concurrent/Awaitable.scala
 ../scala-scala/src/library/scala/concurrent/BatchingExecutor.scala
 ../scala-scala/src/library/scala/concurrent/BlockContext.scala
@@ -457,6 +467,8 @@
 ../scala-scala/src/library/scala/concurrent/SyncVar.scala
 ../scala-scala/src/library/scala/concurrent/TaskRunner.scala
 ../scala-scala/src/library/scala/concurrent/ThreadPoolRunner.scala
+../scala-scala/src/library/scala/concurrent/SyncChannel.scala
+#../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
 
 ../scala-scala/src/library/scala/collection/parallel/Combiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/LazyCombiner.scala
