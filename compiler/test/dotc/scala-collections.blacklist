@@ -222,8 +222,5 @@
 #    |  result type of implicit definition needs to be given explicitly
 
 
-../scala-scala/src/library/scala/sys/SystemProperties.scala
-# crashes on dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation
-
 ../scala-scala/src/library/scala/util/Sorting.scala
 # assertion failed: invalid prefix ImplicitMethodType(List(ord), List(RefinedType(TypeRef(ThisType(TypeRef(NoPrefix,math)),Ordering), scala$math$Ordering$$T, TypeAlias(TypeRef(NoPrefix,K), 0))), RefinedType(TypeRef(ThisType(TypeRef(NoPrefix,math)),Ordering), scala$math$Ordering$$T, TypeAlias(TypeRef(NoPrefix,K), 0)))

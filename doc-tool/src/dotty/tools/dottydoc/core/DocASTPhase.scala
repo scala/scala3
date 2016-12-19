@@ -8,6 +8,7 @@ import dotc.CompilationUnit
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
 import dotc.core.Comments.ContextDocstrings
+import dotc.core.Types.NoType
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 
@@ -44,32 +45,35 @@ class DocASTPhase extends Phase {
     }
 
     def membersFromSymbol(sym: Symbol): List[Entity] = {
-      val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
-        .filterNot(_.symbol.owner.name.show == "Any")
-        .map { meth =>
-          DefImpl(
-            meth.symbol,
-            meth.symbol.name.show,
-            Nil,
-            path(meth.symbol),
-            returnType(meth.info),
-            typeParams(meth.symbol),
-            paramLists(meth.info),
-            implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
+      if (sym.info ne NoType) {
+        val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
+          .filterNot(_.symbol.owner.name.show == "Any")
+          .map { meth =>
+            DefImpl(
+              meth.symbol,
+              meth.symbol.name.show,
+              Nil,
+              path(meth.symbol),
+              returnType(meth.info),
+              typeParams(meth.symbol),
+              paramLists(meth.info),
+              implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
+            )
+          }.toList
+
+        val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
+          ValImpl(
+            value.symbol,
+            value.symbol.name.show,
+            Nil, path(value.symbol),
+            returnType(value.info),
+            implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
           )
-        }.toList
+        }
 
-      val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
-        ValImpl(
-          value.symbol,
-          value.symbol.name.show,
-          Nil, path(value.symbol),
-          returnType(value.info),
-          implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
-        )
+        defs ++ vals
       }
-
-      defs ++ vals
+      else Nil
     }
 
 
