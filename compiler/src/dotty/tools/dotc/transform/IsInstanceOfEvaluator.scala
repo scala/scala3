@@ -6,6 +6,7 @@ import TreeTransforms.{MiniPhaseTransform, TransformerInfo}
 import core._
 import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._
+import reporting.diagnostic.messages._
 
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
  *
@@ -149,8 +150,8 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           val inMatch = s.qualifier.symbol is Case
 
           if (valueClassesOrAny) {
-            if (selector eq defn.ObjectType)
-              ctx.warning(i"abstract type pattern is unchecked since it is eliminated by erasure", tree.pos)
+            if ((selector eq defn.ObjectType))
+              ctx.uncheckedWarning(ErasedType(), tree.pos)
             tree
           } else if (knownStatically)
             handleStaticallyKnown(s, scrutinee, selector, inMatch, tree.pos)
