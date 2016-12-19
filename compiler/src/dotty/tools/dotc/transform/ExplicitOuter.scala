@@ -79,8 +79,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     val isTrait = cls.is(Trait)
     if (needsOuterIfReferenced(cls) &&
         !needsOuterAlways(cls) &&
-        (cls.mixins.exists(needsOuterIfReferenced) ||
-          impl.existsSubTree(referencesOuter(cls, _))))
+        impl.existsSubTree(referencesOuter(cls, _)))
       ensureOuterAccessors(cls)
 
     val hasOuterFlag = hasOuter(cls)
@@ -187,6 +186,7 @@ object ExplicitOuter {
   private def needsOuterAlways(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
+     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
      cls.classInfo.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
