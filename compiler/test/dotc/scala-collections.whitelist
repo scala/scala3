@@ -400,9 +400,8 @@
 
 ../scala-scala/src/library/scala/compat/Platform.scala
 
-../scala-scala/src/library/scala/sys/SystemProperties.scala
 ../scala-scala/src/library/scala/sys/package.scala
-../scala-scala/src/library/scala/sys/SystemProperties.scala
+#../scala-scala/src/library/scala/sys/SystemProperties.scala
 ../scala-scala/src/library/scala/sys/Prop.scala
 ../scala-scala/src/library/scala/sys/PropImpl.scala
 ../scala-scala/src/library/scala/sys/BooleanProp.scala

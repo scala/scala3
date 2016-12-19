@@ -56,3 +56,6 @@
 
 ../scala-scala/src/library/scala/util/control/TailCalls.scala
 # -Ycheck:classOf failure
+
+#../scala-scala/src/library/scala/sys/SystemProperties.scala
+# Test dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation failed
