@@ -98,6 +98,9 @@ class tests extends CompilerTest {
   val typerDir  = dotcDir + "typer/"
   val libDir = "../library/src/"
 
+  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
     Directory(defaultOutputDir + "scala").deleteRecursively()
@@ -253,11 +256,10 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
-  // Not a junit test anymore since it is order dependent
-  def dottyBootedLib = compileDir(libDir, ".")(allowDeepSubtypes) // note the -deep argument
-
-  // Not a junit test anymore since it is order dependent
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".")(allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = {
+    dottyBootedLib
+    dottyDependsOnBootedLib
+  }
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
