@@ -542,6 +542,15 @@ trait Implicits { self: Typer =>
   }
 
   private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
+    def eqNullable: Boolean = {
+      val other =
+        if (ltp.isRef(defn.NullClass)) rtp
+        else if (rtp.isRef(defn.NullClass)) ltp
+        else NoType
+
+      (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
+    }
+
     val lift = new TypeMap {
       def apply(t: Type) = t match {
         case t: TypeRef =>
@@ -553,7 +562,7 @@ trait Implicits { self: Typer =>
           if (variance > 0) mapOver(t) else t
       }
     }
-    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp)
+    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp) || eqNullable
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
@@ -669,6 +678,7 @@ trait Implicits { self: Typer =>
             case result: AmbiguousImplicits => true
             case _ => false
           }
+
         def validEqAnyArgs(tp1: Type, tp2: Type) = {
           List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
           assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2) ||

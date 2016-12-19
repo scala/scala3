@@ -423,6 +423,7 @@
 ../scala-scala/src/library/scala/ref/ReferenceQueue.scala
 ../scala-scala/src/library/scala/ref/ReferenceWrapper.scala
 ../scala-scala/src/library/scala/ref/SoftReference.scala
+../scala-scala/src/library/scala/ref/WeakReference.scala
 
 ../scala-scala/src/library/scala/reflect/macros/internal/macroImpl.scala
 ../scala-scala/src/library/scala/reflect/NoManifest.scala
