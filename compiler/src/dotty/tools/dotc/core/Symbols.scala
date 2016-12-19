@@ -328,6 +328,7 @@ trait Symbols { this: Context =>
                                // Note that this is a hack, but hack commonly used in Dotty
                                // The same thing is done by other completers all the time
             denot.info = ttmap1.mapType(oinfo)
+            denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
           }
         }
 
@@ -337,7 +338,7 @@ trait Symbols { this: Context =>
           initFlags = odenot.flags &~ (Frozen | Touched) | Fresh,
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
-          annotations = odenot.annotations.mapConserve(ttmap1.apply))
+          annotations = odenot.annotations)
 
       }
 
