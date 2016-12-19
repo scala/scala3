@@ -301,7 +301,7 @@ object RefChecks {
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
-            other.owner.is(JavaTrait) && ctx.scala2Mode)
+            other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
@@ -328,7 +328,8 @@ object RefChecks {
         overrideError("needs to be a stable, immutable value")
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
-      } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy)) {
+      } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
+                 !ctx.testScala2Mode("may not override a non-lazy value", member.pos)) {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
