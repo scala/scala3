@@ -39,16 +39,6 @@ class BuildCallGraph extends Phase {
 
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
 
-    if (ctx.settings.YlinkDCEChecks.value) {
-      for {
-        methodSummaries <- collectedSummaries.valuesIterator
-        callInfos <- methodSummaries.methodsCalled.valuesIterator
-        callInfo <- callInfos
-      } {
-        CallInfo.check(callInfo)
-      }
-    }
-
     val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit)
 
     var entryPointId = 0

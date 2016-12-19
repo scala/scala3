@@ -107,12 +107,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val casts = this.casts.items
     val classOfs = this.classOfs.items
     val outerMethods = this.outerMethods.toSet
-
-    if (ctx.settings.YlinkDCEChecks.value) {
-      entryPoints.keysIterator.foreach(CallInfoWithContext.check)
-      reachableMethods.foreach(CallInfoWithContext.check)
-    }
-
     CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
