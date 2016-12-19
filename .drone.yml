@@ -1,6 +1,6 @@
 pipeline:
   test:
-    image: lampepfl/dotty:0.1
+    image: lampepfl/dotty:0.2
     pull: true
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
