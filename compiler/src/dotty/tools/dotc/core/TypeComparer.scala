@@ -757,8 +757,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
       val v = tparams.head.paramVariance
-      (v > 0 || isSubType(args2.head, args1.head)) &&
-      (v < 0 || isSubType(args1.head, args2.head))
+      def isSub(tp1: Type, tp2: Type) = tp2 match {
+        case tp2: TypeBounds =>
+          tp2.contains(tp1)
+        case _ =>
+          (v > 0 || isSubType(tp2, tp1)) &&
+          (v < 0 || isSubType(tp1, tp2))
+      }
+      isSub(args1.head, args2.head)
     } && isSubArgs(args1.tail, args2.tail, tparams)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
