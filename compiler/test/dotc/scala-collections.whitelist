@@ -272,10 +272,9 @@
 ../scala-scala/src/library/scala/collection/generic/SetFactory.scala
 ../scala-scala/src/library/scala/collection/generic/ParFactory.scala
 
-# https://github.com/lampepfl/dotty/issues/974 -> @smarter
 ../scala-scala/src/library/scala/collection/generic/MutableSortedSetFactory.scala
 
-# cyclic reference, maybe related to #974 -> @smarter
+# deep subtype
 #../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 
 ../scala-scala/src/library/scala/collection/generic/OrderedTraversableFactory.scala
@@ -423,6 +422,8 @@
 ../scala-scala/src/library/scala/io/Codec.scala
 ../scala-scala/src/library/scala/io/Position.scala
 ../scala-scala/src/library/scala/io/StdIn.scala
+../scala-scala/src/library/scala/io/BufferedSource.scala
+../scala-scala/src/library/scala/io/Source.scala
 
 ../scala-scala/src/library/scala/math/BigDecimal.scala
 ../scala-scala/src/library/scala/math/BigInt.scala
@@ -470,8 +471,15 @@
 ../scala-scala/src/library/scala/concurrent/SyncChannel.scala
 #../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
 
+../scala-scala/src/library/scala/collection/parallel/package.scala
+../scala-scala/src/library/scala/collection/parallel/ParIterable.scala
+#../scala-scala/src/library/scala/collection/parallel/ParMap.scala
+#../scala-scala/src/library/scala/collection/parallel/ParMapLike.scala
+#../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
+#../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
 ../scala-scala/src/library/scala/collection/parallel/Combiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/LazyCombiner.scala
+../scala-scala/src/library/scala/collection/parallel/mutable/ResizableParArrayCombiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/package.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParFlatHashTable.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParHashMap.scala
@@ -483,12 +491,15 @@
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/UnrolledParArrayCombiner.scala
+../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
+#../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
 ../scala-scala/src/library/scala/collection/parallel/ParSeq.scala
 ../scala-scala/src/library/scala/collection/parallel/ParSet.scala
 ../scala-scala/src/library/scala/collection/parallel/ParSetLike.scala
 ../scala-scala/src/library/scala/collection/parallel/PreciseSplitter.scala
 ../scala-scala/src/library/scala/collection/parallel/Splitter.scala
 ../scala-scala/src/library/scala/collection/parallel/TaskSupport.scala
+../scala-scala/src/library/scala/collection/parallel/Tasks.scala
 
 ../scala-scala/src/library/scala/Console.scala
 ../scala-scala/src/library/scala/Enumeration.scala
