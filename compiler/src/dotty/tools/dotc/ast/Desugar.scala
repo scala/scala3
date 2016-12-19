@@ -150,8 +150,7 @@ object desugar {
     val epbuf = new ListBuffer[ValDef]
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
-        for (cxbound <- cxbounds)
-          epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
+        epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
         tbounds
       case PolyTypeTree(tparams, body) =>
         cpy.PolyTypeTree(rhs)(tparams, desugarContextBounds(body))
