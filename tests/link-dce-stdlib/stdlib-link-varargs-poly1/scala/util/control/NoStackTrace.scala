@@ -27,7 +27,6 @@ object NoStackTrace {
   final def noSuppression = _noSuppression
 
   // two-stage init to make checkinit happy, since sys.SystemProperties.noTraceSupression.value calls back into NoStackTrace.noSuppression
-  final private var _noSuppression = false
-  // FIXME
-  // _noSuppression = sys.SystemProperties.noTraceSupression.value
+  // FIXME: had to remove the two-stage init, was failing at runtime not finding field _noSuppression
+  final private val _noSuppression = sys.SystemProperties.noTraceSupression.value
 }

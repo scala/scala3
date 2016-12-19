@@ -37,6 +37,7 @@ package object scala {
   type TraversableOnce[+A] = scala.collection.TraversableOnce[A]
 
   type Traversable[+A] = scala.collection.Traversable[A]
+  // FIXME
   lazy val Traversable = scala.collection.Traversable
 
   type Iterable[+A] = scala.collection.Iterable[A]
