@@ -537,6 +537,7 @@
 ../scala-scala/src/library/scala/annotation/tailrec.scala
 ../scala-scala/src/library/scala/annotation/TypeConstraint.scala
 ../scala-scala/src/library/scala/annotation/unchecked/uncheckedStable.scala
+#../scala-scala/src/library/scala/annotation/unchecked/uncheckedVariance.scala
 ../scala-scala/src/library/scala/annotation/unspecialized.scala
 ../scala-scala/src/library/scala/annotation/varargs.scala
 

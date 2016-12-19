@@ -1,10 +1,14 @@
-../scala-scala/src/library/scala/annotation/unchecked/uncheckedVariance.scala
+## Errors having to do with bootstrap
 
-../scala-scala/src/library/scala/AnyVal.scala
-# 55 |abstract class AnyVal extends Any {
-#    |^
-#    |illegal redefinition of standard class AnyVal
-# (This is intended)
+../scala-scala/src/library/scala/annotation/unchecked/uncheckedVariance.scala
+#java.lang.AssertionError: assertion failed: data race? overwriting symbol of type scala.annotation.unchecked.uncheckedVariance,
+
+../scala-scala/src/library/scala/Function1.scala
+../scala-scala/src/library/scala/Function2.scala
+# Cyclic reference because of @specialized annotation
+
+
+## Errors having to do with deep subtypes
 
 ../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
 # This gives a deep subtype violation when run with the rest of the whitelist.
@@ -13,17 +17,24 @@
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
 # -Yno-deep-subtypes fails
 
-../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
-# -Ycheck:classOf fails
-
 ../scala-scala/src/library/scala/collection/parallel/ParMap.scala
 # -Yno-deep-subtypes fails
 
 ../scala-scala/src/library/scala/collection/parallel/ParMapLike.scala
 # -Yno-deep-subtypes fails
 
+
+
+## Ycheck failures
+
+../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
+# -Ycheck:classOf fails
+
 ../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
 # -Ycheck:classOf fails
+
+../scala-scala/src/library/scala/util/control/TailCalls.scala
+# -Ycheck:classOf failure
 
 ../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
 # -Ycheck:arrayConstructors failure
@@ -31,18 +42,29 @@
 ../scala-scala/src/library/scala/concurrent/package.scala
 # -Ycheck:arrayConstructors failure
 
-../scala-scala/src/library/scala/Function1.scala
-../scala-scala/src/library/scala/Function2.scala
-# Cyclic reference because of @specialized annotation
+
+
+
+
+## Errors involving dottydoc:
+
+../scala-scala/src/library/scala/sys/SystemProperties.scala
+# Test dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation failed
+
+
+
+## Errors having to do with unavailable APIs or language features:
 
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
 # 51 |      import Manifest._
 #    |             ^^^^^^^^
 #    |             not found: Manifest
+
 ../scala-scala/src/library/scala/reflect/ClassTag.scala
 # 124 |  val Short   : ClassTag[scala.Short]      = Manifest.Short
 #     |                                             ^^^^^^^^
 #     |                                             not found: Manifest
+
 ../scala-scala/src/library/scala/reflect/Manifest.scala
 # 104 |    private def readResolve(): Any = Manifest.Short
 #     |                                     ^^^^^^^^
@@ -54,8 +76,9 @@
 # but still wants to extract lists using ::. We won't support that.
 # Since Document should have been removed already, let's ignore it.
 
-../scala-scala/src/library/scala/util/control/TailCalls.scala
-# -Ycheck:classOf failure
+../scala-scala/src/library/scala/AnyVal.scala
+# 55 |abstract class AnyVal extends Any {
+#    |^
+#    |illegal redefinition of standard class AnyVal
+# (This is intended)
 
-#../scala-scala/src/library/scala/sys/SystemProperties.scala
-# Test dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation failed
