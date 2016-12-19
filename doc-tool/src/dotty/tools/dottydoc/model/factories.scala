@@ -9,6 +9,7 @@ import dotc.core.TypeApplications._
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.{ Symbol, ClassSymbol }
 import dotty.tools.dotc.core.SymDenotations._
+import dotty.tools.dotc.config.Printers.dottydoc
 import dotty.tools.dotc.core.Names.TypeName
 import dotc.ast.Trees._
 
@@ -105,6 +106,17 @@ object factories {
           else paramName
 
         typeRef(name)
+      case tr: TermRef =>
+        /** A `TermRef` appears in the return type in e.g:
+          * ```
+          * def id[T](t: T): t.type = t
+          * ```
+          */
+        val name = tr.show
+        if (!name.endsWith(".type"))
+          ctx.warning(s"unhandled return type found: $tr")
+
+        typeRef(name, params = params)
     }
 
     expandTpe(t)
@@ -154,7 +166,8 @@ object factories {
 
     case annot: AnnotatedType => paramLists(annot.tpe)
     case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
-          _: ExprType  | _: OrType      | _: AndType | _: HKApply) => Nil // return types should not be in the paramlist
+          _: ExprType  | _: OrType      | _: AndType | _: HKApply  | _: TermRef) =>
+      Nil // return types should not be in the paramlist
   }
 
   def superTypes(t: Tree)(implicit ctx: Context): List[MaterializableLink] = t.symbol.denot match {
