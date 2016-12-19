@@ -40,7 +40,9 @@ object ProtoTypes {
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
       val nestedCtx = ctx.fresh.setExploreTyperState
-      isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
+      val normTp = normalize(tp, pt)(nestedCtx)
+      isCompatible(normTp, pt)(nestedCtx) ||
+        pt.isRef(defn.UnitClass) && normTp.isParameterless
     }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
