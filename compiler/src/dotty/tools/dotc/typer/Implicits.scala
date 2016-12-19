@@ -542,6 +542,15 @@ trait Implicits { self: Typer =>
   }
 
   private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
+    def eqNullable: Boolean = {
+      val other =
+        if (ltp.isRef(defn.NullClass)) rtp
+        else if (rtp.isRef(defn.NullClass)) ltp
+        else NoType
+
+      (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
+    }
+
     val lift = new TypeMap {
       def apply(t: Type) = t match {
         case t: TypeRef =>
@@ -553,7 +562,7 @@ trait Implicits { self: Typer =>
           if (variance > 0) mapOver(t) else t
       }
     }
-    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp)
+    ltp.isError || rtp.isError || ltp <:< lift(rtp) || rtp <:< lift(ltp) || eqNullable
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
@@ -670,27 +679,10 @@ trait Implicits { self: Typer =>
             case _ => false
           }
 
-        // Is Eq[X, Null] or Eq[Null, X] where !(X <:< AnyVal)?
-        def eqNullable(tp1: Type, tp2: Type): Boolean = {
-          val other =
-            if (tp1.stripTypeVar eq defn.NullType) tp2
-            else if (tp2.stripTypeVar eq defn.NullType) tp1
-            else NoType
-
-          (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
-        }
-
         def validEqAnyArgs(tp1: Type, tp2: Type) = {
           List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
-          def invalidEqAny = {
-            implicits.println(i"invalid eqAny[$tp1, $tp2]")
-            false
-          }
-
-          assumedCanEqual(tp1, tp2)  ||
-          !hasEq(tp1) && !hasEq(tp2) ||
-          eqNullable(tp1, tp2)       ||
-          invalidEqAny
+          assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2) ||
+            { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
         }
         if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
