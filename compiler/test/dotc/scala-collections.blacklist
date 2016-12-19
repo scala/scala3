@@ -11,20 +11,7 @@
 # Works without -Yno-deep-subtypes, though.
 
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
-# 42 |  override def updated [U >: V](key: K, value: U): ParMap[K, U] = this + ((key, value))
-#    |                                                                  ^^^^^^^^^^^^^^^^^^^^^
-#    |                                                       found:    scala.collection.parallel.ParMap[K, U]
-#    |                                                       required: scala.collection.parallel.mutable.ParMap'[K, U]
-#    |
-#    |                                                       where:    ParMap  is a trait in package parallel
-#    |                                                                 ParMap' is a trait in package mutable
-
-
-../scala-scala/src/library/scala/collection/parallel/mutable/ParTrieMap.scala
-# 136 |    it.iterated = this.iterated
-#     |    ^^^^^^^^^^^
-#     |    value `iterated` is not a member of scala.collection.concurrent.TrieMapIterator[K, V](it)
-
+# -Yno-deep-subtypes fails
 
 ../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
 # -Ycheck:classOf fails
@@ -38,14 +25,8 @@
 ../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
 # -Ycheck:classOf fails
 
-../scala-scala/src/library/scala/collection/parallel/RemainsIterator.scala
-# 467 |    def dup: IterableSplitter[S] = self.dup map f
-#     |                                   ^^^^^^^^^^^^^^
-#     |               found:    scala.collection.Iterator[S]
-#     |               required: scala.collection.parallel.IterableSplitter[S]
-
 ../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
-# assertion failed
+# -Ycheck:arrayConstructors failure
 
 ../scala-scala/src/library/scala/concurrent/package.scala
 # -Ycheck:arrayConstructors failure
@@ -67,20 +48,11 @@
 #     |                                     ^^^^^^^^
 #     |                                     not found: Manifest
 
-../scala-scala/src/library/scala/runtime/Tuple2Zipped.scala
-# 122 |        val buf = bf(x._1)
-#     |                     ^^^^
-#     |                     found:    T1
-#     |                     required: CC1[_]
-
-../scala-scala/src/library/scala/runtime/Tuple3Zipped.scala
-# 131 |        val buf = bf(x._1)
-#     |                     ^^^^
-#     |                     found:    T1
-#     |                     required: CC1[_]
-
 ../scala-scala/src/library/scala/text/Document.scala
-# Lots of type errors for pattern matches
+# Lots of type errors for pattern matches, having to do with the fact
+# that Document contains a :: method without corresponding extractor,
+# but still wants to extract lists using ::. We won't support that.
+# Since Document should have been removed already, let's ignore it.
 
 ../scala-scala/src/library/scala/util/control/TailCalls.scala
 # -Ycheck:classOf failure

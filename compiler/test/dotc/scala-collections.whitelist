@@ -7,6 +7,8 @@
 ../scala-scala/src/library/scala/runtime/RichInt.scala
 ../scala-scala/src/library/scala/runtime/RichLong.scala
 ../scala-scala/src/library/scala/runtime/RichShort.scala
+../scala-scala/src/library/scala/runtime/Tuple2Zipped.scala
+../scala-scala/src/library/scala/runtime/Tuple3Zipped.scala
 ../scala-scala/src/library/scala/Array.scala
 ../scala-scala/src/library/scala/NotImplementedError.scala
 ../scala-scala/src/library/scala/AnyValCompanion.scala
@@ -486,6 +488,7 @@
 ../scala-scala/src/library/scala/collection/parallel/Combiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/LazyCombiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ResizableParArrayCombiner.scala
+../scala-scala/src/library/scala/collection/parallel/RemainsIterator.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/package.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParFlatHashTable.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParHashMap.scala
@@ -496,6 +499,7 @@
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParSeq.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
+../scala-scala/src/library/scala/collection/parallel/mutable/ParTrieMap.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/UnrolledParArrayCombiner.scala
 ../scala-scala/src/library/scala/collection/parallel/mutable/ParArray.scala
 #../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
