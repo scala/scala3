@@ -317,6 +317,7 @@
 ../scala-scala/src/library/scala/collection/mutable/Traversable.scala
 ../scala-scala/src/library/scala/collection/mutable/Iterable.scala
 ../scala-scala/src/library/scala/collection/mutable/Seq.scala
+../scala-scala/src/library/scala/collection/mutable/Set.scala
 ../scala-scala/src/library/scala/collection/mutable/ArrayBuffer.scala
 ../scala-scala/src/library/scala/collection/mutable/ResizableArray.scala
 #../scala-scala/src/library/scala/collection/mutable/HashMap.scala
