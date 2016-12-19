@@ -1,4 +1,4 @@
-class A {
+trait A {
   val a = "a"
   trait Inner {
     def f = println(a)
@@ -6,12 +6,14 @@ class A {
   }
 }
 
-class Inner extends Test.a.Inner
+trait B extends A {
+  trait Inner2 extends Inner
+  def g = new Inner2 {}
+}
 
 object Test {
-  val a = new A
-
   def main(args: Array[String]): Unit = {
-    (new Inner).f
+    val b = new B {}
+    b.g.f
   }
 }
