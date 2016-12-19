@@ -164,11 +164,6 @@
 #     |                ^^^
 #     |                not found: msg
 
-../scala-scala/src/library/scala/ref/WeakReference.scala
-# 33 |    if (x != null) Some(x) else None
-#    |       ^^^^^^^^^^^
-#    |       Values of types wr.underlying.java$lang$ref$WeakReference$$T and Null cannot be compared with == or !=
-
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
 # 51 |      import Manifest._
 #    |             ^^^^^^^^
