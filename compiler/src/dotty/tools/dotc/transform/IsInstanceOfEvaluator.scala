@@ -148,8 +148,11 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
 
           val inMatch = s.qualifier.symbol is Case
 
-          if (valueClassesOrAny) tree
-          else if (knownStatically)
+          if (valueClassesOrAny) {
+            if (selector eq defn.ObjectType)
+              ctx.warning(i"abstract type pattern is unchecked since it is eliminated by erasure", tree.pos)
+            tree
+          } else if (knownStatically)
             handleStaticallyKnown(s, scrutinee, selector, inMatch, tree.pos)
           else if (falseIfUnrelated && scrutinee <:< selector)
             // scrutinee is a subtype of the selector, safe to rewrite
