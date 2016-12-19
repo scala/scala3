@@ -136,7 +136,7 @@ class BuildCallGraph extends Phase {
       callGraph.getInfo().log()
 
       if (ctx.settings.linkVis.value) {
-        val visFile = new java.io.File(ctx.settings.d.value + "/CallGraph.html")
+        val visFile = new java.io.File(ctx.settings.d.value + "-call-graph.html")
         GraphVisualization.outputGraphVisToFile(callGraph, visFile)
         ctx.log("Created call graph visualization: " + visFile.getAbsoluteFile)
       }

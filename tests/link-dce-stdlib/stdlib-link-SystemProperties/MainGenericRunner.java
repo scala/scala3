@@ -6,13 +6,13 @@ public class MainGenericRunner {
         try {
             java.lang.Class.forName("Test").getMethod("main", String[].class).invoke(null, (Object) args);
         } catch (ClassNotFoundException ex) {
-            throw new java.lang.RuntimeException(ex.getCause());
+            throw new java.lang.RuntimeException(ex);
         } catch (NoSuchMethodException ex) {
-            throw new java.lang.RuntimeException(ex.getCause());
+            throw new java.lang.RuntimeException(ex);
         } catch (IllegalAccessException ex) {
-            throw new java.lang.RuntimeException(ex.getCause());
+            throw new java.lang.RuntimeException(ex);
         } catch (java.lang.reflect.InvocationTargetException ex) {
-            throw new java.lang.RuntimeException(ex.getCause());
+            throw new java.lang.RuntimeException(ex);
         }
     }
 }
