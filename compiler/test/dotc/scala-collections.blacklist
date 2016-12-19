@@ -52,26 +52,7 @@
 
 ../scala-scala/src/library/scala/Function1.scala
 ../scala-scala/src/library/scala/Function2.scala
-../scala-scala/src/library/scala/Function3.scala
-../scala-scala/src/library/scala/Function4.scala
-../scala-scala/src/library/scala/Function5.scala
-../scala-scala/src/library/scala/Function6.scala
-../scala-scala/src/library/scala/Function7.scala
-../scala-scala/src/library/scala/Function8.scala
-../scala-scala/src/library/scala/Function9.scala
-../scala-scala/src/library/scala/Function10.scala
-../scala-scala/src/library/scala/Function11.scala
-../scala-scala/src/library/scala/Function12.scala
-../scala-scala/src/library/scala/Function13.scala
-../scala-scala/src/library/scala/Function14.scala
-../scala-scala/src/library/scala/Function15.scala
-../scala-scala/src/library/scala/Function16.scala
-../scala-scala/src/library/scala/Function17.scala
-../scala-scala/src/library/scala/Function18.scala
-../scala-scala/src/library/scala/Function19.scala
-../scala-scala/src/library/scala/Function20.scala
-../scala-scala/src/library/scala/Function21.scala
-../scala-scala/src/library/scala/Function22.scala
+# Cyclic reference because of @specialized annotation
 
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
 # 51 |      import Manifest._
@@ -85,14 +66,6 @@
 # 104 |    private def readResolve(): Any = Manifest.Short
 #     |                                     ^^^^^^^^
 #     |                                     not found: Manifest
-../scala-scala/src/library/scala/reflect/NameTransformer.scala
-# 89 |    if (buf eq null) name else buf.toString()
-#    |                               ^^^^^^^^^^^^^^
-#    |                               missing argument for parameter index of method apply: (index: Int)Char
-../scala-scala/src/library/scala/reflect/package.scala
-# 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
-#    |                                                             ^^^^^
-#    |                                                             not found: macro
 
 ../scala-scala/src/library/scala/runtime/Tuple2Zipped.scala
 # 122 |        val buf = bf(x._1)
@@ -106,25 +79,8 @@
 #     |                     found:    T1
 #     |                     required: CC1[_]
 
-../scala-scala/src/library/scala/StringContext.scala
-# 168 |  def f[A >: Any](args: A*): String = macro ???
-#     |                                      ^^^^^
-#     |                                      not found: macro
-
 ../scala-scala/src/library/scala/text/Document.scala
-
-../scala-scala/src/library/scala/util/control/Exception.scala
-# scala.MatchError: PostfixOp(Select(Ident(pf),isDefinedAt),_) (of class dotty.tools.dotc.ast.untpd$PostfixOp)
-#      at dotty.tools.dotc.ast.Trees$Instance$TreeAccumulator.foldOver(Trees.scala:1173)
+# Lots of type errors for pattern matches
 
 ../scala-scala/src/library/scala/util/control/TailCalls.scala
-# assertion failed
-
-../scala-scala/src/library/scala/util/hashing/Hashing.scala
-# 35 |  implicit def default[T] = new Default[T]
-#    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#    |  result type of implicit definition needs to be given explicitly
-
-
-../scala-scala/src/library/scala/sys/SystemProperties.scala
-# crashes on dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation
+# -Ycheck:classOf failure

@@ -62,6 +62,7 @@
 ../scala-scala/src/library/scala/Serializable.scala
 ../scala-scala/src/library/scala/Specializable.scala
 ../scala-scala/src/library/scala/Symbol.scala
+../scala-scala/src/library/scala/StringContext.scala
 ../scala-scala/src/library/scala/UninitializedError.scala
 ../scala-scala/src/library/scala/UninitializedFieldError.scala
 ../scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
@@ -290,12 +291,14 @@
 
 ../scala-scala/src/library/scala/util/Try.scala
 
+../scala-scala/src/library/scala/util/control/Exception.scala
 ../scala-scala/src/library/scala/util/control/Breaks.scala
 ../scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ../scala-scala/src/library/scala/util/control/NonFatal.scala
 ../scala-scala/src/library/scala/util/control/NoStackTrace.scala
 ../scala-scala/src/library/scala/util/DynamicVariable.scala
 ../scala-scala/src/library/scala/util/Either.scala
+../scala-scala/src/library/scala/util/hashing/Hashing.scala
 ../scala-scala/src/library/scala/util/hashing/ByteswapHashing.scala
 ../scala-scala/src/library/scala/util/hashing/MurmurHash3.scala
 ../scala-scala/src/library/scala/util/hashing/package.scala
@@ -397,6 +400,7 @@
 
 ../scala-scala/src/library/scala/sys/SystemProperties.scala
 ../scala-scala/src/library/scala/sys/package.scala
+../scala-scala/src/library/scala/sys/SystemProperties.scala
 ../scala-scala/src/library/scala/sys/Prop.scala
 ../scala-scala/src/library/scala/sys/PropImpl.scala
 ../scala-scala/src/library/scala/sys/BooleanProp.scala
@@ -439,6 +443,8 @@
 ../scala-scala/src/library/scala/reflect/macros/internal/macroImpl.scala
 ../scala-scala/src/library/scala/reflect/NoManifest.scala
 ../scala-scala/src/library/scala/reflect/OptManifest.scala
+../scala-scala/src/library/scala/reflect/NameTransformer.scala
+../scala-scala/src/library/scala/reflect/package.scala
 
 ../scala-scala/src/library/scala/Responder.scala
 
@@ -571,6 +577,28 @@
 
 ../scala-scala/src/library/scala/Function.scala
 ../scala-scala/src/library/scala/Function0.scala
+#../scala-scala/src/library/scala/Function1.scala
+#../scala-scala/src/library/scala/Function2.scala
+../scala-scala/src/library/scala/Function3.scala
+../scala-scala/src/library/scala/Function4.scala
+../scala-scala/src/library/scala/Function5.scala
+../scala-scala/src/library/scala/Function6.scala
+../scala-scala/src/library/scala/Function7.scala
+../scala-scala/src/library/scala/Function8.scala
+../scala-scala/src/library/scala/Function9.scala
+../scala-scala/src/library/scala/Function10.scala
+../scala-scala/src/library/scala/Function11.scala
+../scala-scala/src/library/scala/Function12.scala
+../scala-scala/src/library/scala/Function13.scala
+../scala-scala/src/library/scala/Function14.scala
+../scala-scala/src/library/scala/Function15.scala
+../scala-scala/src/library/scala/Function16.scala
+../scala-scala/src/library/scala/Function17.scala
+../scala-scala/src/library/scala/Function18.scala
+../scala-scala/src/library/scala/Function19.scala
+../scala-scala/src/library/scala/Function20.scala
+../scala-scala/src/library/scala/Function21.scala
+../scala-scala/src/library/scala/Function22.scala
 
 ../scala-scala/src/library/scala/Tuple1.scala
 ../scala-scala/src/library/scala/Tuple2.scala
