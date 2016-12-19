@@ -1,9 +1,10 @@
 pipeline:
   test:
-    image: lampepfl/dotty:0.2
+    image: lampepfl/dotty:latest
     pull: true
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
+      - (cd scala-scala && git pull)
       - sbt -Ddotty.drone.mem=4096m -ivy /var/cache/drone/ivy2 "${TEST}"
 
 matrix:
