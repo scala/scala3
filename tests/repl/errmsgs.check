@@ -93,7 +93,7 @@ scala> { def f: Int = g; val x: Int = 1; def g: Int = 5; }
 
 longer explanation available when compiling with `-explain`
 scala> def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
--- Warning: <console> ----------------------------------------------------------
+-- [E034] Erased Type Unchecked Warning: <console> -----------------------------
 4 |def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
   |                                                ^
   |      abstract type pattern is unchecked since it is eliminated by erasure

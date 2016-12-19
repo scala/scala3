@@ -10,7 +10,7 @@ import org.junit.Test
 
 /** A subclass of REPL used for testing.
  *  It takes a transcript of a REPL session in `script`. The transcript
- *  starts with the first input prompt `scala> ` and ends with `scala> :quit` and a newline.
+ *  starts with the first input prompt `scala> ` and ends with `scala> :quit`.
  *  Invoking `process()` on the `TestREPL` runs all input lines and
  *  collects then interleaved with REPL output in a string writer `out`.
  *  Invoking `check()` checks that the collected output matches the original
@@ -26,6 +26,7 @@ class TestREPL(script: String) extends REPL {
     override def context(ctx: Context) = {
       val fresh = ctx.fresh
       fresh.setSetting(ctx.settings.color, "never")
+      fresh.setSetting(ctx.settings.unchecked, true)
       fresh.setSetting(ctx.settings.classpath, Jars.dottyReplDeps.mkString(":"))
       fresh.initialize()(fresh)
       fresh
