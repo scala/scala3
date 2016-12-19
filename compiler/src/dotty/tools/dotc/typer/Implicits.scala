@@ -669,10 +669,28 @@ trait Implicits { self: Typer =>
             case result: AmbiguousImplicits => true
             case _ => false
           }
+
+        // Is Eq[X, Null] or Eq[Null, X] where !(X <:< AnyVal)?
+        def eqNullable(tp1: Type, tp2: Type): Boolean = {
+          val other =
+            if (tp1.stripTypeVar eq defn.NullType) tp2
+            else if (tp2.stripTypeVar eq defn.NullType) tp1
+            else NoType
+
+          (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
+        }
+
         def validEqAnyArgs(tp1: Type, tp2: Type) = {
           List(tp1, tp2).foreach(fullyDefinedType(_, "eqAny argument", pos))
-          assumedCanEqual(tp1, tp2) || !hasEq(tp1) && !hasEq(tp2) ||
-            { implicits.println(i"invalid eqAny[$tp1, $tp2]"); false }
+          def invalidEqAny = {
+            implicits.println(i"invalid eqAny[$tp1, $tp2]")
+            false
+          }
+
+          assumedCanEqual(tp1, tp2)  ||
+          !hasEq(tp1) && !hasEq(tp2) ||
+          eqNullable(tp1, tp2)       ||
+          invalidEqAny
         }
         if (ctx.reporter.hasErrors)
           nonMatchingImplicit(ref, ctx.reporter.removeBufferedMessages)
