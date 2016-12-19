@@ -10,7 +10,6 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
     parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   assert(!call.widenDealias.isInstanceOf[PolyParam], call.widenDealias)
-  assert(call.termSymbol.isTerm, call)
 
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
 
@@ -31,13 +30,5 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
     outEdges.values.foldLeft(0)(_ + _.size)
 
   def source: Option[CallInfo] = callee.flatMap(_.source)
-
-}
-
-object CallInfoWithContext {
-
-  def check(info: CallInfoWithContext)(implicit ctx: Context): Unit = {
-    AbstractCallInfo.check(info)
-  }
 
 }
