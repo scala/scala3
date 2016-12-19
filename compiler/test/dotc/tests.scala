@@ -256,6 +256,11 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
+  @Test def dotty = {
+    dottyBootedLib
+    dottyDependsOnBootedLib
+  }
+
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
   @Test def dotc_core = compileDir(dotcDir, "core")(allowDeepSubtypes)// twice omitted to make tests run faster
