@@ -81,14 +81,19 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         !needsOuterAlways(cls) &&
         impl.existsSubTree(referencesOuter(cls, _)))
       ensureOuterAccessors(cls)
-    if (hasOuter(cls)) {
+
+    val clsHasOuter = hasOuter(cls)
+    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
       val newDefs = new mutable.ListBuffer[Tree]
-      if (isTrait)
-        newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
-      else {
-        val outerParamAcc = outerParamAccessor(cls)
-        newDefs += ValDef(outerParamAcc, EmptyTree)
-        newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
+
+      if (clsHasOuter) {
+        if (isTrait)
+          newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
+        else {
+          val outerParamAcc = outerParamAccessor(cls)
+          newDefs += ValDef(outerParamAcc, EmptyTree)
+          newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
+        }
       }
 
       for (parentTrait <- cls.mixins) {
@@ -181,6 +186,7 @@ object ExplicitOuter {
   private def needsOuterAlways(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
+     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
      cls.classInfo.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
