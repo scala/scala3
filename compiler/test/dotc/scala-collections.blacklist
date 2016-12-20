@@ -42,17 +42,6 @@
 ../scala-scala/src/library/scala/concurrent/package.scala
 # -Ycheck:arrayConstructors failure
 
-
-
-
-
-## Errors involving dottydoc:
-
-../scala-scala/src/library/scala/sys/SystemProperties.scala
-# Test dotty.tools.dottydoc.TestWhitelistedCollections.arrayHasDocumentation failed
-
-
-
 ## Errors having to do with unavailable APIs or language features:
 
 ../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
