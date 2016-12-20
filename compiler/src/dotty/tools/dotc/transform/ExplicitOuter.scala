@@ -82,11 +82,11 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         impl.existsSubTree(referencesOuter(cls, _)))
       ensureOuterAccessors(cls)
 
-    val hasOuterFlag = hasOuter(cls)
-    if (hasOuterFlag || cls.mixins.exists(needsOuterIfReferenced)) {
+    val clsHasOuter = hasOuter(cls)
+    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
       val newDefs = new mutable.ListBuffer[Tree]
 
-      if (hasOuterFlag) {
+      if (clsHasOuter) {
         if (isTrait)
           newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
         else {
