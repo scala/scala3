@@ -154,6 +154,21 @@ object Build {
         ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test-only dotc.tests" +
         ";dotty-compiler/runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-stdlib-only",
+        ";packageAll" +
+        ";dotty-compiler/test:runMain dotc.build" +
+        ";dotty-compiler/lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.stdlibTests" +
+        ";dotty-compiler/runPartestRunner"
+      ) ++
+      addCommandAlias(
+        "partest-stdlib-only-no-bootstrap",
+        ";packageAll" +
+        ";dotty-compiler/lockPartestFile" +
+        ";dotty-compiler/test:test-only dotc.stdlibTests" +
+        ";dotty-compiler/runPartestRunner"
       )
     ).
     settings(publishing)
