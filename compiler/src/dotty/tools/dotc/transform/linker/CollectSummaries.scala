@@ -440,6 +440,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       tree
     }
 
+    // FIXME: nme.isDefined is not present anymore. stdlib-link-patmatch-1, stdlib-link-patmatch-2, stdlib-link-patmatch-3 and stdlib-link-trycatch-unapply depend on this code
+    /*
     def registerUnApply(selector: tpd.Tree, tree: tpd.UnApply)(implicit ctx: Context, info: TransformerInfo): Unit = {
       def registerNestedUnapply(nestedSelector: Tree, nestedPattern: Tree): Unit = nestedPattern match {
         case nestedUnapply: UnApply => registerUnApply(nestedSelector, nestedUnapply)
@@ -518,6 +520,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       tree
     }
+    */
 
     override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (curMethodSummary ne null) {

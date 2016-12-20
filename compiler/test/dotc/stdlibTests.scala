@@ -96,10 +96,12 @@ class stdlibTests extends CompilerTest {
     .filter(_.nonEmpty)
     .toList
 
+  private def linkStdlibWhitelistFile: String = "./test/dotc/scala-library.whitelist"
   private def stdlibWhitelistFile: String = "./test/dotc/scala-collections.whitelist"
 
   private val stdlibFiles: List[String] = loadList(stdlibWhitelistFile)
+  private val linkStdlibFiles: List[String] = loadList(linkStdlibWhitelistFile)
   private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
-  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
+  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: linkStdlibFiles
 
 }
