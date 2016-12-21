@@ -87,6 +87,7 @@ semi             ::=  ‘;’ |  nl {nl}
 The context-free syntax of Scala is given by the following EBNF
 grammar:
 
+### Literals and Paths
 ```ebnf
 SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  [‘-’] floatingPointLiteral
@@ -107,7 +108,10 @@ StableId          ::=  id
                     |  Path ‘.’ id
                     |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
 ClassQualifier    ::=  ‘[’ id ‘]’
+```
 
+### Types
+```ebnf
 Type              ::=  [‘implicit’] FunArgTypes ‘=>’ Type
                     |  HkTypeParamClause ‘=>’ Type
                     |  InfixType
@@ -224,7 +228,10 @@ PatVar            ::=  varid
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ')
+```
 
+### Type and Value Parameters
+```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [{Modifier} type] [‘+’ | ‘-’]
                        id [HkTypeParamClause] TypeParamBounds
@@ -251,7 +258,10 @@ DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ ‘implicit’ DefParams �
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param
+```
 
+### Bindings and Imports
+```ebnf
 Bindings          ::=  ‘(’ Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]
 
@@ -281,7 +291,10 @@ Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
 ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
+```
 
+### Declarations and Definitions
+```ebnf
 Dcl               ::=  ‘val’ ValDcl
                     |  ‘var’ VarDcl
                     |  ‘def’ DefDcl
