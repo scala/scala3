@@ -4,6 +4,7 @@ import java.io.{File => JFile}
 
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
+import org.junit.Assert._
 import org.junit.{Before, Test}
 
 import scala.io.Source
@@ -79,6 +80,37 @@ class stdlibTests extends CompilerTest {
     Directory(defaultOutputDir + "java").deleteRecursively()
   }
 
+  @Test def checkWBLists(): Unit = {
+    val stdlibFilesBlackListed = loadList(stdlibBlackFile)
+
+    def checkForRepeated(list: List[String], listFile: String) = {
+      val duplicates = list.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+      val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in $listFile:\n", "\n", "\n")
+      assertTrue(msg, duplicates.isEmpty)
+    }
+    checkForRepeated(stdlibFiles, stdlibWhitelistFile)
+    checkForRepeated(stdlibFilesBlackListed, stdlibBlackFile)
+
+    val whitelistSet = stdlibFiles.toSet
+    val blacklistSet = stdlibFilesBlackListed.toSet
+
+    val intersection = whitelistSet.intersect(blacklistSet)
+    val msgIntersection =
+      intersection.map(x => s"'$x'").mkString(s"Entries where found in both $stdlibWhitelistFile and $stdlibBlackFile:\n", "\n", "\n")
+    assertTrue(msgIntersection, intersection.isEmpty)
+
+    def collectAllFilesInDir(dir: JFile, acc: List[String]): List[String] = {
+      val files = dir.listFiles()
+      val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
+      files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
+    }
+    val filesInStdLib = collectAllFilesInDir(new JFile("../scala-scala/src/library/"), Nil)
+    val missingFiles = filesInStdLib.toSet -- whitelistSet -- blacklistSet
+    val msgMissing =
+      missingFiles.map(x => s"'$x'").mkString(s"Entries are missing in $stdlibWhitelistFile or $stdlibBlackFile:\n", "\n", "\n")
+    assertTrue(msgMissing, missingFiles.isEmpty)
+  }
+
   @Test def compileStdLib(): Unit = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
 
   // Test callgraph DCE on code that use DCEed stdlib
@@ -86,7 +118,7 @@ class stdlibTests extends CompilerTest {
     runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
 
   @org.junit.Ignore("Too long to run in CI")
-   def link_dce_vis_stdlib_all(): Unit =
+  @Test def link_dce_vis_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
   private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
@@ -96,12 +128,11 @@ class stdlibTests extends CompilerTest {
     .filter(_.nonEmpty)
     .toList
 
-  private def linkStdlibWhitelistFile: String = "./test/dotc/scala-library.whitelist"
   private def stdlibWhitelistFile: String = "./test/dotc/scala-collections.whitelist"
+  private def stdlibBlackFile: String = "./test/dotc/scala-collections.blacklist"
 
   private val stdlibFiles: List[String] = loadList(stdlibWhitelistFile)
-  private val linkStdlibFiles: List[String] = loadList(linkStdlibWhitelistFile)
   private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
-  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: linkStdlibFiles
+  private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
 
 }
