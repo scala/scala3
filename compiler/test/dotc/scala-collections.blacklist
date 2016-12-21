@@ -25,7 +25,7 @@
 
 
 
-## Ycheck failures
+## Ycheck failures, presumably linked to TailCalls
 
 ../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
 # -Ycheck:classOf fails
@@ -34,13 +34,9 @@
 # -Ycheck:classOf fails
 
 ../scala-scala/src/library/scala/util/control/TailCalls.scala
-# -Ycheck:classOf failure
+# -Ycheck:classOf fails
 
-../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
-# -Ycheck:arrayConstructors failure
 
-../scala-scala/src/library/scala/concurrent/package.scala
-# -Ycheck:arrayConstructors failure
 
 ## Errors having to do with unavailable APIs or language features:
 

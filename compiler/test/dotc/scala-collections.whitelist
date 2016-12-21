@@ -453,7 +453,7 @@
 ../scala-scala/src/library/scala/collection/script/Message.scala
 ../scala-scala/src/library/scala/collection/script/Scriptable.scala
 
-#../scala-scala/src/library/scala/concurrent/package.scala
+../scala-scala/src/library/scala/concurrent/package.scala
 ../scala-scala/src/library/scala/concurrent/Future.scala
 ../scala-scala/src/library/scala/concurrent/Awaitable.scala
 ../scala-scala/src/library/scala/concurrent/BatchingExecutor.scala
@@ -476,7 +476,7 @@
 ../scala-scala/src/library/scala/concurrent/TaskRunner.scala
 ../scala-scala/src/library/scala/concurrent/ThreadPoolRunner.scala
 ../scala-scala/src/library/scala/concurrent/SyncChannel.scala
-#../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
+../scala-scala/src/library/scala/concurrent/impl/ExecutionContextImpl.scala
 
 ../scala-scala/src/library/scala/collection/parallel/package.scala
 ../scala-scala/src/library/scala/collection/parallel/ParIterable.scala
