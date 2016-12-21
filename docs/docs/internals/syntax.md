@@ -21,13 +21,18 @@ The lexical syntax of Scala is given by the following grammar in EBNF
 form.
 
 ```ebnf
+whiteSpace       ::=  ‘\u0020’ | ‘\u0009’ | ‘\u000D’ | ‘\u000A’
 upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and Unicode category Lu”
 lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
 letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
 digit            ::=  ‘0’ | … | ‘9’
+paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’
+delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  “printableChar not matched by (whiteSpace | upper | lower |
                        letter | digit | paren | delim | opchar | Unicode_Sm |
                        Unicode_So)”
+printableChar    ::=  “all characters in [\u0020, \u007F] inclusive”
+charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 
 op               ::=  opchar {opchar}
 varid            ::=  lower idrest
@@ -36,7 +41,7 @@ alphaid          ::=  upper idrest
 plainid          ::=  alphaid
                    |  op
 id               ::=  plainid
-                   |  ‘\`’ stringLit ‘\`’
+                   |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
                    |  INT                           // interpolation id, only for quasi-quotes
 idrest           ::=  {letter | digit} [‘_’ op]
 
@@ -51,20 +56,19 @@ floatingPointLiteral
                    |  ‘.’ digit {digit} [exponentPart] [floatType]
                    |  digit {digit} exponentPart [floatType]
                    |  digit {digit} [exponentPart] floatType
-
 exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit {digit}
 floatType        ::=  ‘F’ | ‘f’ | ‘D’ | ‘d’
+
 booleanLiteral   ::=  ‘true’ | ‘false’
 
-characterLiteral ::=  ‘\'’ printableChar ‘\'’
-                   |  ‘\'’ charEscapeSeq ‘\'’
+characterLiteral ::=  ‘'’ (printableChar | charEscapeSeq) ‘'’
 
 stringLiteral    ::=  ‘"’ {stringElement} ‘"’
-                   |  ‘"""’ {[‘"’] [‘"’] char \ ‘"’} {‘"’} ‘"""’
+                   |  ‘"""’ multiLineChars ‘"""’
 stringElement    ::=  printableChar \ (‘"’ | ‘\’)
+                   |  UnicodeEscape
                    |  charEscapeSeq
-charEscapeSeq    ::=  ‘\b’ | ‘\n’ | ‘\t’ | ‘\f’ | ‘\r’ | ‘"’ | ‘'’ | ‘\\’
-
+multiLineChars   ::=  {[‘"’] [‘"’] char \ ‘"’} {‘"’}
 processedStringLiteral
                  ::=  alphaid ‘"’ {printableChar \ (‘"’ | ‘$’) | escape} ‘"’
                    |  alphaid ‘"""’ {[‘"’] [‘"’] char \ (‘"’ | ‘$’) | escape} {‘"’} ‘"""’
@@ -72,7 +76,6 @@ escape           ::=  ‘$$’ \comment{$}
                    |  ‘$’ letter { letter | digit }
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’
 stringFormat     ::=  {printableChar \ (‘"’ | ‘}’ | ‘ ’ | ‘\t’ | ‘\n’)}
-whiteSpace       ::=  {‘ ’ | ‘\t’}
 
 symbolLiteral    ::=  ‘'’ plainid
 
