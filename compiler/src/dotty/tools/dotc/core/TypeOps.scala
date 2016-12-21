@@ -90,7 +90,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           else {
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
             if (pre1.isUnsafeNonvariant) {
-              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(Config.PendingFindMemberLimit))
+              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
               pre1.member(tp.name)(safeCtx).info match {
                 case TypeAlias(alias) =>
                   // try to follow aliases of this will avoid skolemization.
@@ -565,5 +565,5 @@ object TypeOps {
    *  of recursive member searches. If the limit is reached, findMember returns
    *  NoDenotation.
    */
-  val findMemberLimit = new Property.Key[Int]
+  val findMemberLimit = new Property.Key[Unit]
 }

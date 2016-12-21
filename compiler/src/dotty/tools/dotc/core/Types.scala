@@ -575,10 +575,9 @@ object Types {
         ctx.findMemberCount = recCount
         if (recCount >= Config.LogPendingFindMemberThreshold) {
           ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
-          ctx.property(TypeOps.findMemberLimit) match {
-            case Some(limit) if ctx.findMemberCount > limit => return NoDenotation
-            case _ =>
-          }
+          if (ctx.property(TypeOps.findMemberLimit).isDefined &&
+              ctx.findMemberCount > Config.PendingFindMemberLimit)
+            return NoDenotation
         }
       }
 
