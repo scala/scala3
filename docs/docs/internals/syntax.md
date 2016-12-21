@@ -120,7 +120,7 @@ Type              ::=  [‘implicit’] FunArgTypes ‘=>’ Type
                     |  HkTypeParamClause ‘=>’ Type
                     |  InfixType
 FunArgTypes       ::=  InfixType
-                    | ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
 InfixType         ::=  RefinedType {id [nl] RefinedType}
 RefinedType       ::=  WithType {[nl] Refinement}
 WithType          ::=  AnnotType {‘with’ AnnotType}
@@ -134,7 +134,7 @@ SimpleType        ::=  SimpleType (TypeArgs | NamedTypeArgs)
                     |  Refinement
                     |  SimpleLiteral
 ArgTypes          ::=  Type {‘,’ Type}
-                    |  NamedTypeArg {‘,’ NamedTypeArg }
+                    |  NamedTypeArg {‘,’ NamedTypeArg}
 FunArgType        ::=  Type
                     |  ‘=>’ Type
 ParamType         ::=  [‘=>’] ParamValueType
@@ -143,7 +143,7 @@ TypeArgs          ::=  ‘[’ ArgTypes ‘]’
 NamedTypeArg      ::=  id ‘=’ Type
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’
 Refinement        ::=  ‘{’ [Dcl] {semi [Dcl]} ‘}’
-TypeBounds        ::=  [‘>:’ Type] [`<: Type] | INT
+TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}
 
 Expr              ::=  [‘implicit’] FunParams ‘=>’ Expr
@@ -181,7 +181,7 @@ SimpleExpr        ::=  ‘new’ Template
 SimpleExpr1       ::=  Literal
                     |  Path
                     |  ‘_’
-                    |  ‘(’ ExprsInParens2 ‘)’
+                    |  ‘(’ ExprsInParens ‘)’
                     |  SimpleExpr ‘.’ id
                     |  SimpleExpr (TypeArgs | NamedTypeArgs)
                     |  SimpleExpr1 ArgumentExprs
@@ -231,7 +231,7 @@ PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ')
+                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
 ```
 
 ### Type and Value Parameters
@@ -243,7 +243,7 @@ ClsTypeParam      ::=  {Annotation} [{Modifier} type] [‘+’ | ‘-’]
 DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
 
-TypTypeParamCaluse::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
+TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
@@ -252,9 +252,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ ‘implicit’ ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
-ClsParams         ::=  ClsParam {‘’ ClsParam}
-ClsParam          ::=  {Annotation}
-                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
+ClsParams         ::=  ClsParam {‘,’ ClsParam}
+ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
@@ -266,7 +265,7 @@ DefParam          ::=  {Annotation} [‘inline’] Param
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’ Binding {‘,’ Binding}] ‘)’
+Bindings          ::=  ‘(’ Binding {‘,’ Binding} ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]
 
 Modifier          ::=  LocalModifier
@@ -282,14 +281,13 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} `}
+TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
                     |  Expr1
-                    |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’
-                    |  ‘this’ ‘:’ InfixType `=>
+                    |  ‘this’ ‘:’ InfixType ‘=>’
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)
@@ -304,7 +302,6 @@ Dcl               ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDcl
                     |  INT
-
 
 ValDcl            ::=  ids ‘:’ Type
 VarDcl            ::=  ids ‘:’ Type
