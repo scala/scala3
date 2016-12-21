@@ -472,14 +472,14 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       registerCall(unapplyCall)
 
       val unapplyResultType = unapplyCall.tpe
-      val hasIsDefined = extractorMemberType(unapplyResultType, nme.isDefined) isRef defn.BooleanClass
+      val hasIsDefined = extractorMemberType(unapplyResultType, nme.isEmpty) isRef defn.BooleanClass
       val hasGet = extractorMemberType(unapplyResultType, nme.get).exists
 
       if (hasIsDefined && hasGet) { // if result of unapply is an Option
         val getCall = unapplyCall.select(nme.get)
 
         // register Option.isDefined and Option.get calls
-        registerCall(unapplyCall.select(nme.isDefined))
+        registerCall(unapplyCall.select(nme.isEmpty))
         registerCall(getCall)
 
         if (tree.fun.symbol.name == nme.unapplySeq)                 // result of unapplySeq is Option[Seq[T]]
@@ -518,6 +518,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
       tree
     }
+
 
     override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (curMethodSummary ne null) {
