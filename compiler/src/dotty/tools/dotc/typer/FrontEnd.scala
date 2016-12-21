@@ -84,7 +84,6 @@ class FrontEnd extends Phase {
     }
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
-    unitContexts.foreach(ctx => println(ctx.compilationUnit))
     remaining = unitContexts
     while (remaining.nonEmpty) {
       enterSyms(remaining.head)
