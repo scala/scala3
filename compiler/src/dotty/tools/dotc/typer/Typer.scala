@@ -1646,7 +1646,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  0th strategy: If `tree` overrides a nullary method, mark the prototype
    *                so that the argument is dropped and return `tree` itself.
    *
-   *  After that, two strategies are tried, and the firs that is successful is picked.
+   *  After that, two strategies are tried, and the first that is successful is picked.
    *  If neither of the strategies are successful, continues with`fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
