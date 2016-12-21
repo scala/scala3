@@ -486,7 +486,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       collectedSummaries.get(sym) match {
         case Some(summary) =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
-          summary.definedClosures.foreach(x => addReachableType(new TypeWithContext(x, x.outerTargs ++ parentRefinements(x)), method))
+          summary.definedClosures.foreach(x => {
+            val substitution = new SubstituteByParentMap(method.outerTargs)
+            val tp = new ClosureType(x.meth, substitution.apply(x.u), x.implementedMethod, x.outerTargs)
+            addReachableType(new TypeWithContext(tp, x.outerTargs ++ parentRefinements(tp.u)), method)
+          })
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, instantiatedTypes, method, receiver))
           }
