@@ -504,7 +504,7 @@ object Parsers {
     def selector(t: Tree): Tree =
       atPos(startOffset(t), in.offset) { Select(t, ident()) }
 
-    /** Selectors ::= ident { `.' ident()
+    /** Selectors ::= id { `.' id }
      *
      *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
      *  @param finish   An alternative parse in case the next token is not an identifier.
@@ -515,7 +515,7 @@ object Parsers {
       if (t1 ne t) t1 else dotSelectors(selector(t), finish)
     }
 
-    /** DotSelectors ::= { `.' ident()
+    /** DotSelectors ::= { `.' id }
      *
      *  Accept `.' separated identifiers acting as a selectors on given tree `t`.
      *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
@@ -528,9 +528,9 @@ object Parsers {
     private val id: Tree => Tree = x => x
 
     /** Path       ::= StableId
-     *              |  [Ident `.'] this
+     *              |  [id `.'] this
      *
-     *  @param thisOK   If true, [Ident `.'] this is acceptable as the path.
+     *  @param thisOK   If true, the path can end with the keyword `this`.
      *                  If false, another selection is required after the `this`.
      *  @param finish   An alternative parse in case the token following a `.' is not an identifier.
      *                  If the alternative does not apply, its tree argument is returned unchanged.
@@ -565,20 +565,20 @@ object Parsers {
       }
     }
 
-    /** MixinQualifier ::= `[' Id `]'
+    /** MixinQualifier ::= `[' id `]'
     */
     def mixinQualifierOpt(): Ident =
       if (in.token == LBRACKET) inBrackets(atPos(in.offset) { typeIdent() })
       else EmptyTypeIdent
 
-    /** StableId ::= Id
-     *            |  Path `.' Id
+    /** StableId ::= id
+     *            |  Path `.' id
      *            |  [id '.'] super [`[' id `]']`.' id
      */
     def stableId(): Tree =
       path(thisOK = false)
 
-    /** QualId ::= Id {`.' Id}
+    /** QualId ::= id {`.' id}
     */
     def qualId(): Tree =
       dotSelectors(termIdent())
@@ -773,7 +773,7 @@ object Parsers {
       else t
 
     /** SimpleType       ::=  SimpleType TypeArgs
-     *                     |  SimpleType `#' Id
+     *                     |  SimpleType `#' id
      *                     |  StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
@@ -959,7 +959,7 @@ object Parsers {
     /** Expr              ::=  [`implicit'] FunParams `=>' Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
-     *                      |  Id
+     *                      |  id
      *                      |  `_'
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
@@ -975,12 +975,12 @@ object Parsers {
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
      *                      |  ForExpr
-     *                      |  [SimpleExpr `.'] Id `=' Expr
+     *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  PostfixExpr `match' `{' CaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
-     *  Binding           ::= (Id | `_') [`:' Type]
+     *  Binding           ::= (id | `_') [`:' Type]
      *  Ascription        ::= `:' CompoundType
      *                      | `:' Annotation {Annotation}
      *                      | `:' `_' `*'
@@ -1124,7 +1124,7 @@ object Parsers {
     }
 
     /** FunParams         ::=  Bindings
-     *                     |   Id
+     *                     |   id
      *                     |   `_'
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      */
@@ -1153,7 +1153,7 @@ object Parsers {
         (atPos(start) { makeParameter(name, t, mods) }) :: Nil
       }
 
-    /**  Binding           ::= (Id | `_') [`:' Type]
+    /**  Binding           ::= (id | `_') [`:' Type]
      */
     def binding(mods: Modifiers): Tree =
       atPos(in.offset) { makeParameter(bindingName(), typedOpt(), mods) }
@@ -1165,8 +1165,8 @@ object Parsers {
       }
       else ident()
 
-    /** Expr         ::= implicit Id `=>' Expr
-     *  BlockResult  ::= implicit Id [`:' InfixType] `=>' Block // Scala2 only
+    /** Expr         ::= implicit id `=>' Expr
+     *  BlockResult  ::= implicit id [`:' InfixType] `=>' Block // Scala2 only
      */
     def implicitClosure(start: Int, location: Location.Value, implicitMods: Modifiers): Tree =
       closureRest(start, location, funParams(implicitMods, location))
@@ -1177,9 +1177,9 @@ object Parsers {
         Function(params, if (location == Location.InBlock) block() else expr())
       }
 
-    /** PostfixExpr   ::= InfixExpr [Id [nl]]
+    /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
-     *                  | InfixExpr Id [nl] InfixExpr
+     *                  | InfixExpr id [nl] InfixExpr
      */
     def postfixExpr(): Tree =
       infixOps(prefixExpr(), canStartExpressionTokens, prefixExpr, maybePostfix = true)
@@ -1204,7 +1204,7 @@ object Parsers {
      *                 |  xmlLiteral
      *                 |  Path
      *                 |  `(' [ExprsInParens] `)'
-     *                 |  SimpleExpr `.' Id
+     *                 |  SimpleExpr `.' id
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      */
@@ -1456,7 +1456,7 @@ object Parsers {
         p
     }
 
-    /**  InfixPattern ::= SimplePattern {Id [nl] SimplePattern}
+    /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
       infixOps(simplePattern(), canStartExpressionTokens, simplePattern, notAnOperator = nme.raw.BAR)
@@ -1468,8 +1468,8 @@ object Parsers {
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *  SimplePattern1   ::= Path
      *                    |  `{' Block `}'
-     *                    |  SimplePattern1 `.' Id
-     *  PatVar           ::= Id
+     *                    |  SimplePattern1 `.' id
+     *  PatVar           ::= id
      *                    |  `_'
      */
     val simplePattern = () => in.token match {
@@ -1586,7 +1586,7 @@ object Parsers {
     def addMod(mods: Modifiers, mod: Mod): Modifiers =
       addFlag(mods, mod.flags).withAddedMod(mod)
 
-    /** AccessQualifier ::= "[" (Id | this) "]"
+    /** AccessQualifier ::= "[" (id | this) "]"
      */
     def accessQualifierOpt(mods: Modifiers): Modifiers =
       if (in.token == LBRACKET) {
@@ -1665,16 +1665,16 @@ object Parsers {
 
     /** ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
      *  ClsTypeParam      ::=  {Annotation} [{Modifier} type] [`+' | `-']
-     *                         Id [HkTypeParamClause] TypeParamBounds
+     *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
-     *  DefTypeParam      ::=  {Annotation} Id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
-     *  TypTypeParam      ::=  {Annotation} Id [HkTypePamClause] TypeBounds
+     *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
      *
      *  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
-     *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id[HkTypePamClause] | _') TypeBounds
+     *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (id [HkTypePamClause] | _') TypeBounds
      */
     def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
       def typeParam(): TypeDef = {
@@ -1829,7 +1829,7 @@ object Parsers {
       }
     }
 
-    /**  ImportExpr ::= StableId `.' (Id | `_' | ImportSelectors)
+    /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
     val importExpr = () => path(thisOK = false, handleImport) match {
       case imp: Import =>
@@ -1863,7 +1863,7 @@ object Parsers {
         }
       }
 
-   /** ImportSelector ::= Id [`=>' Id | `=>' `_']
+   /** ImportSelector ::= id [`=>' id | `=>' `_']
      */
     def importSelector(): Tree = {
       val from = termIdentOrWildcard()
@@ -1908,9 +1908,9 @@ object Parsers {
     }
 
     /** PatDef ::= Pattern2 {`,' Pattern2} [`:' Type] `=' Expr
-     *  VarDef ::= PatDef | Id {`,' Id} `:' Type `=' `_'
-     *  ValDcl ::= Id {`,' Id} `:' Type
-     *  VarDcl ::= Id {`,' Id} `:' Type
+     *  VarDef ::= PatDef | id {`,' id} `:' Type `=' `_'
+     *  ValDcl ::= id {`,' id} `:' Type
+     *  VarDcl ::= id {`,' id} `:' Type
      */
     def patDefOrDcl(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): Tree = atPos(start, nameStart) {
       val lhs = commaSeparated(pattern2)
@@ -2012,8 +2012,8 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDef ::= type Id [TypeParamClause] `=' Type
-     *  TypeDcl ::= type Id [TypeParamClause] TypeBounds
+    /** TypeDef ::= type id [TypeParamClause] `=' Type
+     *  TypeDcl ::= type id [TypeParamClause] TypeBounds
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): Tree = {
       newLinesOpt()
@@ -2055,7 +2055,7 @@ object Parsers {
       }
     }
 
-    /** ClassDef ::= Id [ClsTypeParamClause]
+    /** ClassDef ::= id [ClsTypeParamClause]
      *               [ConstrMods] ClsParamClauses TemplateOpt
      */
     def classDef(start: Offset, mods: Modifiers, docstring: Option[Comment]): TypeDef = atPos(start, nameStart) {
@@ -2083,7 +2083,7 @@ object Parsers {
       mods
     }
 
-    /** ObjectDef       ::= Id TemplateOpt
+    /** ObjectDef       ::= id TemplateOpt
      */
     def objectDef(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): ModuleDef = atPos(start, nameStart) {
       val name = ident()
