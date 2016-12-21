@@ -46,7 +46,7 @@ class DocASTPhase extends Phase {
 
     def membersFromSymbol(sym: Symbol): List[Entity] = {
       if (sym.info ne NoType) {
-        val defs = sym.info.bounds.hi.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
+        val defs = sym.info.bounds.hi.finalResultType.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
           .filterNot(_.symbol.owner.name.show == "Any")
           .map { meth =>
             DefImpl(

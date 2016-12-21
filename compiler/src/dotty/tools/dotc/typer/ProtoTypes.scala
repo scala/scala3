@@ -40,7 +40,9 @@ object ProtoTypes {
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
       val nestedCtx = ctx.fresh.setExploreTyperState
-      isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
+      val normTp = normalize(tp, pt)(nestedCtx)
+      isCompatible(normTp, pt)(nestedCtx) ||
+        pt.isRef(defn.UnitClass) && normTp.isParameterless
     }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
@@ -249,6 +251,22 @@ object ProtoTypes {
 
     /** Somebody called the `tupled` method of this prototype */
     def isTupled: Boolean = myTupled.isInstanceOf[FunProto]
+
+    /** If true, the application of this prototype was canceled. */
+    private var toDrop: Boolean = false
+
+    /** Cancel the application of this prototype. This can happen for a nullary
+     *  application `f()` if `f` refers to a symbol that exists both in parameterless
+     *  form `def f` and nullary method form `def f()`. A common example for such
+     *  a method is `toString`. If in that case the type in the denotation is
+     *  parameterless, we compensate by dropping the application.
+     */
+    def markAsDropped() = {
+      assert(args.isEmpty)
+      toDrop = true
+    }
+
+    def isDropped: Boolean = toDrop
 
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
 

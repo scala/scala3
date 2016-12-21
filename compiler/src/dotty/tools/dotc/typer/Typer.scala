@@ -1640,13 +1640,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     case _                  => false
   }
 
-  /** Add apply node or implicit conversions. Two strategies are tried, and the first
-   *  that is successful is picked. If neither of the strategies are successful, continues with
-   *  `fallBack`.
+  /** Potentially add apply node or implicit conversions. Before trying either,
+   *  if the function is applied to an empty parameter list (), we try
+   *
+   *  0th strategy: If `tree` overrides a nullary method, mark the prototype
+   *                so that the argument is dropped and return `tree` itself.
+   *
+   *  After that, two strategies are tried, and the first that is successful is picked.
+   *  If neither of the strategies are successful, continues with`fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
    *                This strategy is not tried if the prototype represents already
    *                another `.apply` or `.apply()` selection.
+   *
    *  2nd strategy: If tree is a select `qual.name`, try to insert an implicit conversion
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
@@ -1661,8 +1667,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def tryImplicit =
       tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack)
 
-    if (isApplyProto(pt)) tryImplicit
-    else tryEither(tryApply(_))((_, _) => tryImplicit)
+    pt match {
+      case pt @ FunProto(Nil, _, _)
+      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) =>
+        pt.markAsDropped()
+        tree
+      case _ =>
+        if (isApplyProto(pt)) tryImplicit
+        else tryEither(tryApply(_))((_, _) => tryImplicit)
+     }
   }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
