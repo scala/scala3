@@ -19,13 +19,15 @@ Informal descriptions are typeset as `“some comment”`.
 ### Lexical Syntax
 The lexical syntax of Scala is given by the following grammar in EBNF
 form.
+
 ```ebnf
-upper            ::=  ‘A’ | $\cdots$ | ‘Z’ | ‘$\Dollar$’ | ‘_’ $\mbox{\rm\em and Unicode category Lu}$
-lower            ::=  ‘a’ | $\cdots$ | ‘z’ $\mbox{\rm\em and Unicode category Ll}$
-letter           ::=  upper | lower $\mbox{\rm\em and Unicode categories Lo, Lt, Nl}$
-digit            ::=  ‘0’ | $\cdots$ | ‘9’
-opchar           ::=  $\mbox{\rm\em ``all other characters in \U{0020-007F} and Unicode}$
-                      $\mbox{\rm\em categories Sm, So except parentheses ([{}]) and periods''}$
+upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and Unicode category Lu”
+lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
+letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
+digit            ::=  ‘0’ | … | ‘9’
+opchar           ::=  “printableChar not matched by (whiteSpace | upper | lower |
+                       letter | digit | paren | delim | opchar | Unicode_Sm |
+                       Unicode_So)”
 
 op               ::=  opchar {opchar}
 varid            ::=  lower idrest
@@ -42,8 +44,8 @@ integerLiteral   ::=  (decimalNumeral | hexNumera) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit {digit}
 hexNumeral       ::=  ‘0’ ‘x’ hexDigit {hexDigit}
 digit            ::=  ‘0’ | nonZeroDigit
-nonZeroDigit     ::=  ‘1’ | $\cdots$ | ‘9’
-octalDigit       ::=  ‘0’ | $\cdots$ | ‘7’
+nonZeroDigit     ::=  ‘1’ | … | ‘9’
+octalDigit       ::=  ‘0’ | … | ‘7’
 
 floatingPointLiteral
                  ::=  digit {digit} ‘.’ {digit} [exponentPart] [floatType]
@@ -75,10 +77,10 @@ whiteSpace       ::=  {‘ ’ | ‘\t’}
 
 symbolLiteral    ::=  ‘'’ plainid
 
-comment          ::=  ‘/*’ $\mbox{\rm\em ``any sequence of characters''}$ ‘*/’
-                   |  ‘//’ $\mbox{\rm\em ``any sequence of characters up to end of line''}$
+comment          ::=  ‘/*’ “any sequence of characters; nested comments are allowed” ‘*/’
+                   |  ‘//’ “any sequence of characters up to end of line”
 
-nl               ::=  $\mbox{\rm\em ``new line character''}$
+nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
