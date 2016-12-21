@@ -10,7 +10,8 @@ import NameOps._
 import Decorators._
 import StdNames._
 import Annotations._
-import util.SimpleMap
+import config.Config
+import util.{SimpleMap, Property}
 import collection.mutable
 import ast.tpd._
 
@@ -67,7 +68,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
             if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
               ctx.base.unsafeNonvariant = ctx.runId
-              AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+              pre match {
+                case AnnotatedType(_, ann) if ann.symbol == defn.UnsafeNonvariantAnnot => pre
+                case _ => AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+              }
             }
             else pre
           }
@@ -85,13 +89,15 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (sym.isStatic) tp
           else {
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (pre1.isUnsafeNonvariant)
-              pre1.member(tp.name).info match {
+            if (pre1.isUnsafeNonvariant) {
+              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(Config.PendingFindMemberLimit))
+              pre1.member(tp.name)(safeCtx).info match {
                 case TypeAlias(alias) =>
                   // try to follow aliases of this will avoid skolemization.
                   return alias
                 case _ =>
               }
+            }
             tp.derivedSelect(pre1)
           }
         case tp: ThisType =>
@@ -554,4 +560,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
 object TypeOps {
   @sharable var track = false // !!!DEBUG
+
+  /** When a property with this key is set in a context, it limit the number
+   *  of recursive member searches. If the limit is reached, findMember returns
+   *  NoDenotation.
+   */
+  val findMemberLimit = new Property.Key[Int]
 }

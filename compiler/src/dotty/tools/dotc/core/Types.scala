@@ -573,8 +573,13 @@ object Types {
 
       { val recCount = ctx.findMemberCount + 1
         ctx.findMemberCount = recCount
-        if (recCount >= Config.LogPendingFindMemberThreshold)
+        if (recCount >= Config.LogPendingFindMemberThreshold) {
           ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
+          ctx.property(TypeOps.findMemberLimit) match {
+            case Some(limit) if ctx.findMemberCount > limit => return NoDenotation
+            case _ =>
+          }
+        }
       }
 
       //assert(ctx.findMemberCount < 20)
