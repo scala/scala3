@@ -7,7 +7,7 @@ import dotc.core._
 import Contexts.Context, Decorators._, Symbols._, Names._, NameOps._, Types._
 import util.SourcePosition
 import config.Settings.Setting
-import interfaces.Diagnostic.{ERROR, INFO, WARNING}
+import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 import printing.Highlighting._
 import printing.Formatting
 
@@ -903,19 +903,23 @@ object messages {
 
   case class ExistentialTypesNoLongerSupported()(implicit ctx: Context) extends Message(34) {
     val kind = "Syntax"
-    val msg = "Existential types are no longer supported - use a wildcard or dependent type instead"
+    val msg =
+      hl"""|Existential types are no longer supported -
+           |use a wildcard or dependent type instead"""
     val explanation =
-      hl"""| The use of existential types is no longer supported and a wildcard or dependent type should be used instead
+      hl"""|The use of existential types is no longer supported.
            |
-           | For example:
+           |You should use a wildcard or dependent type instead.
            |
-           | Instead of using ${"forSome"} to specify a type variable
+           |For example:
            |
-           | ${"List[T forSome { type T }]"}
+           |Instead of using ${"forSome"} to specify a type variable
            |
-           | Try using a wildcard type variable
+           |${"List[T forSome { type T }]"}
            |
-           | ${"List[_]"}
+           |Try using a wildcard type variable
+           |
+           |${"List[_]"}
            |"""
   }
 
