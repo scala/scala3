@@ -730,7 +730,7 @@ object Parsers {
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
-        case FORSOME => syntaxError("existential types no longer supported; use a wildcard type or dependent type instead"); t
+        case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ => t
       }
     }
