@@ -120,6 +120,18 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
   }
 
+  private def addReachableClosure(x: ClosureType, from: CallInfoWithContext): Unit = {
+    val substitution = new SubstituteByParentMap(from.outerTargs)
+    val tp = substitution(x)
+
+    val ctp = tp match {
+      case t: ClosureType => new TypeWithContext(t, t.outerTargs ++ parentRefinements(t))
+      case _ => new TypeWithContext(tp, parentRefinements(tp))
+    }
+
+    addReachableType(ctp, from)
+  }
+
   private def getTypesByMemberName(x: Name): Set[TypeWithContext] = {
     val ret1 = typesByMemberNameCache.get(x)
     if (ret1 eq null) {
@@ -169,6 +181,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
           val nList = x.add(parent, t.refinedName, t.refinedInfo)
           apply(nList, t.parent)
+        case t: ClosureType =>
+          apply(x, t.u)
         case _ =>
           foldOver(x, tp)
       }
@@ -486,11 +500,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       collectedSummaries.get(sym) match {
         case Some(summary) =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
-          summary.definedClosures.foreach(x => {
-            val substitution = new SubstituteByParentMap(method.outerTargs)
-            val tp = new ClosureType(x.meth, substitution.apply(x.u), x.implementedMethod, x.outerTargs)
-            addReachableType(new TypeWithContext(tp, x.outerTargs ++ parentRefinements(tp.u)), method)
-          })
+          summary.definedClosures.foreach(x => addReachableClosure(x, method))
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, instantiatedTypes, method, receiver))
           }

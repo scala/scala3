@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{ClassInfo, DeepTypeMap, HKApply, NoPrefix, RefinedType, TermType, Type, TypeAlias, TypeRef}
+import dotty.tools.dotc.transform.linker.types.ClosureType
 
 class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends DeepTypeMap()(ctx) {
 
@@ -62,6 +63,8 @@ class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends
         val tmp = apply(t.info)
         if (tmp ne t.info) termTypeIfNeed(tmp)
         else mapOver(t)
+      case tp: ClosureType =>
+        new ClosureType(tp.meth, apply(tp.underlying), tp.implementedMethod, tp.outerTargs)
       case _ => mapOver(tp)
 
     }
