@@ -129,8 +129,14 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           val selClassNonFinal = selClass && !(selector.typeSymbol is Final)
           val selFinalClass    = selClass && (selector.typeSymbol is Final)
           val selTypeParam     = tree.args.head.tpe.widen match {
-            case AppliedType(tycon, args) =>
-              ctx.uncheckedWarning(
+            case tp @ AppliedType(tycon, args) =>
+              // If the type is Array[X] where x extends AnyVal, this shouldn't yield a warning:
+              val illegalComparison = !(tp.isRef(defn.ArrayClass) && {
+                args.head.derivesFrom(defn.AnyValClass) ||
+                args.head.isRef(defn.AnyClass)
+              })
+
+              if (illegalComparison) ctx.uncheckedWarning(
                 ErasedType(hl"""|Since type parameters are erased, you should not match on them in
                                 |${"match"} expressions."""),
                 tree.pos
