@@ -133,6 +133,8 @@ object Config {
    */
   final val LogPendingFindMemberThreshold = 10
 
-  /** Maximal number of outstanding recursive calls to findMember  */
+  /** Maximal number of outstanding recursive calls to findMember before backing out
+   *  when findMemberLimit is set.
+   */
   final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 4
 }
