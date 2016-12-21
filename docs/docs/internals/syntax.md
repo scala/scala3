@@ -86,6 +86,7 @@ nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
+
 ## Context-free Syntax
 
 The context-free syntax of Scala is given by the following EBNF
@@ -202,12 +203,9 @@ BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation} {LocalModifier} TmplDef
                     |  Expr1
-                    |
 
-ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)
-                       {nl} [‘yield’] Expr
+ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
                     |  ‘for’ Enumerators (‘do’ Expr | ‘yield’ Expr)
-
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard
@@ -217,7 +215,6 @@ Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)
-
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
 Pattern1          ::=  PatVar ‘:’ RefinedType
                     |  Pattern2
@@ -330,8 +327,7 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
-ClassDef          ::=  id [ClsTypeParamClause]
-                       [ConstrMods] ClsParamClauses TemplateOpt
+ClassDef          ::=  id [ClsTypeParamClause] [ConstrMods] ClsParamClauses TemplateOpt
 ConstrMods        ::=  AccessModifier
                     |  Annotation {Annotation} (AccessModifier | ‘this’)
 ObjectDef         ::=  id TemplateOpt
@@ -339,18 +335,16 @@ TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 ConstrApp         ::=  AnnotType {ArgumentExprs}
-
 ConstrExpr        ::=  SelfInvocation
                     |  ConstrBlock
-ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
+ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 
 TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef
                     |  Import
                     |  Packaging
                     |  PackageObject
-                    |
 Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef
 
