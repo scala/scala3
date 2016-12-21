@@ -145,17 +145,19 @@ NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’
 Refinement        ::=  ‘{’ [Dcl] {semi [Dcl]} ‘}’
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}
+```
 
+### Expressions
+```ebnf
 Expr              ::=  [‘implicit’] FunParams ‘=>’ Expr
+                    |  Expr1
+BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
+                    |  Expr1
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-ExprInParens      ::=  PostfixExpr ‘:’ Type
-                    |  Expr
-BlockResult       ::=   [‘implicit’] FunParams ‘=>’ Block
-                    |  Expr1
-Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] else Expr]
-                    |  ‘if’ Expr ‘then’ Expr [[semi] else Expr]
+Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
                     |  ‘while’ Expr ‘do’ Expr
                     |  ‘do’ Expr [semi] ‘while’ Expr
@@ -187,8 +189,10 @@ SimpleExpr1       ::=  Literal
                     |  SimpleExpr1 ArgumentExprs
                     |  XmlExpr
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
-                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’
+ExprInParens      ::=  PostfixExpr ‘:’ Type
+                    |  Expr
+ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’
+                    |  ‘(’ [ExprsInParens] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [nl] BlockExpr
 BlockExpr         ::=  ‘{’ CaseClauses ‘}’
