@@ -72,7 +72,7 @@ multiLineChars   ::=  {[‘"’] [‘"’] char \ ‘"’} {‘"’}
 processedStringLiteral
                  ::=  alphaid ‘"’ {printableChar \ (‘"’ | ‘$’) | escape} ‘"’
                    |  alphaid ‘"""’ {[‘"’] [‘"’] char \ (‘"’ | ‘$’) | escape} {‘"’} ‘"""’
-escape           ::=  ‘$$’ \comment{$}
+escape           ::=  ‘$$’
                    |  ‘$’ letter { letter | digit }
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’
 stringFormat     ::=  {printableChar \ (‘"’ | ‘}’ | ‘ ’ | ‘\t’ | ‘\n’)}
