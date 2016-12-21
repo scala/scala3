@@ -966,4 +966,31 @@ object messages {
            |    ${"val foo: Int = 3"}
            |"""
   }
+
+  case class DanglingThisInPath()(implicit ctx: Context) extends Message(36) {
+    val kind = "Syntax"
+    val msg = hl"""Expected an additional member selection after the keyword ${"this"}"""
+
+    val importCode =
+      """import MyClass.this.member
+        |//                 ^^^^^^^
+      """
+
+    val typeCode =
+      """type T = MyClass.this.Member
+        |//                   ^^^^^^^
+      """
+
+    val explanation =
+      hl"""|Paths of imports and type selections must not end with the keyword ${"this"}.
+           |
+           |Maybe you forgot to select a member of ${"this"}?
+           |
+           |- Example for a valid import expression using a path
+           |${importCode}
+           |
+           |- Example for a valid type using a path
+           |${typeCode}
+           |"""
+  }
 }
