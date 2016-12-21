@@ -19,6 +19,11 @@ import reporting.diagnostic.messages._
  *  This is a generalized solution to raising an error on unreachable match
  *  cases and warnings on other statically known results of `isInstanceOf`.
  *
+ *  This phase also warns if the erased type parameter of a parameterized type
+ *  is used in a match where it would be erased to `Object` or if the
+ *  typeparameters are removed. Both of these cases could cause surprising
+ *  behavior for the users.
+ *
  *  Steps taken:
  *
  *  1. `evalTypeApply` will establish the matrix and choose the appropriate
@@ -128,6 +133,8 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
 
           val selClassNonFinal = selClass && !(selector.typeSymbol is Final)
           val selFinalClass    = selClass && (selector.typeSymbol is Final)
+
+          /** Check if the selector's potential type parameters will be erased, and if so warn */
           val selTypeParam     = tree.args.head.tpe.widen match {
             case tp @ AppliedType(tycon, args) =>
               // If the type is Array[X] where x extends AnyVal, this shouldn't yield a warning:
