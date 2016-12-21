@@ -16,8 +16,10 @@ hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | 
 
 Informal descriptions are typeset as `“some comment”`.
 
-{\small
-\begin{lstlisting}
+### Lexical Syntax
+The lexical syntax of Scala is given by the following grammar in EBNF
+form.
+```ebnf
   upper            ::=  `A' | $\cdots$ | `Z' | `$\Dollar$' | `_' $\mbox{\rm\em and Unicode category Lu}$
   lower            ::=  `a' | $\cdots$ | `z' $\mbox{\rm\em and Unicode category Ll}$
   letter           ::=  upper | lower $\mbox{\rm\em and Unicode categories Lo, Lt, Nl}$
@@ -78,13 +80,14 @@ Informal descriptions are typeset as `“some comment”`.
 
   nl               ::=  $\mbox{\rm\em ``new line character''}$
   semi             ::=  `;' |  nl {nl}
-\end{lstlisting}}
+```
+
+## Context-free Syntax
 
 The context-free syntax of Scala is given by the following EBNF
-grammar.
+grammar:
 
-{\small
-\begin{lstlisting}
+```ebnf
   SimpleLiteral     ::=  [`-'] integerLiteral
                       |  [`-'] floatingPointLiteral
                       |  booleanLiteral
@@ -333,5 +336,4 @@ grammar.
   PackageObject     ::=  `package' `object' ObjectDef                           object with package in mods.
 
   CompilationUnit   ::=  {`package' QualId semi} TopStatSeq                     Package(qid, stats)
-\end{lstlisting}
-}
+```
