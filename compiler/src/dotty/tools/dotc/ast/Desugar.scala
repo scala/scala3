@@ -7,6 +7,7 @@ import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, F
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
 import language.higherKinds
+import typer.FrontEnd
 import collection.mutable.ListBuffer
 import util.Property
 import reporting.diagnostic.messages._
@@ -363,7 +364,7 @@ object desugar {
           if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
           else {
             def copyDefault(vparam: ValDef) =
-              makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))
+              makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
             val copyFirstParams = derivedVparamss.head.map(vparam =>
               cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
@@ -559,7 +560,7 @@ object desugar {
     case VarPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
-      val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
+      val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
       val vars = getVariables(pat)
       val isMatchingTuple: Tree => Boolean = {
         case Tuple(es) => es.length == vars.length
@@ -688,11 +689,28 @@ object desugar {
     new ImplicitFunction(params, body)
   }
 
-  /** Add annotation with class `cls` to tree:
-   *      tree @cls
+  /** Add annotation to tree:
+   *      tree @fullName
+   *
+   *  The annotation is usually represented as a TypeTree referring to the class
+   *  with the given name `fullName`. However, if the annotation matches a file name
+   *  that is still to be entered, the annotation is represented as a cascade of `Selects`
+   *  following `fullName`. This is necessary so that we avoid reading an annotation from
+   *  the classpath that is also compiled from source.
    */
-  def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(tree, untpd.New(untpd.TypeTree(cls.typeRef), Nil))
+  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context) = {
+    val parts = fullName.split('.')
+    val ttree = ctx.typerPhase match {
+      case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
+        val prefix =
+          ((Ident(nme.ROOTPKG): Tree) /: parts.init)((qual, name) =>
+            Select(qual, name.toTermName))
+        Select(prefix, parts.last.toTypeName)
+      case _ =>
+        TypeTree(ctx.requiredClass(fullName).typeRef)
+    }
+    Annotated(tree, untpd.New(ttree, Nil))
+  }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)

@@ -1,8 +1,5 @@
 ## Errors having to do with bootstrap
 
-../scala-scala/src/library/scala/annotation/unchecked/uncheckedVariance.scala
-#java.lang.AssertionError: assertion failed: data race? overwriting symbol of type scala.annotation.unchecked.uncheckedVariance,
-
 ../scala-scala/src/library/scala/Function1.scala
 ../scala-scala/src/library/scala/Function2.scala
 # Cyclic reference because of @specialized annotation
