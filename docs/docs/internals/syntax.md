@@ -1,10 +1,20 @@
-% $Id: SyntaxSummary.tex 21104 2010-03-08 13:49:27Z odersky $
+---
+layout: default
+title: "Scala Syntax Summary"
+---
 
-\chapter{Scala Syntax Summary}\label{sec:syntax}
-\todo{introduce SeqPattern syntax}
+The following descriptions of Scala tokens uses literal characters `‘c’` when
+referring to the ASCII fragment `\u0000` – `\u007F`.
 
-The lexical syntax of Scala is given by the following grammar in EBNF
-form.
+_Unicode escapes_ are used to represent the Unicode character with the given
+hexadecimal code:
+
+```ebnf
+UnicodeEscape ::= ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
+hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
+```
+
+Informal descriptions are typeset as `“some comment”`.
 
 {\small
 \begin{lstlisting}
