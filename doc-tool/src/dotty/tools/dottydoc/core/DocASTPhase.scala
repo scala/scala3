@@ -80,28 +80,24 @@ class DocASTPhase extends Phase {
     tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
-        val newPath = prev :+ pid.name.toString
-        addEntity(PackageImpl(pd.symbol, newPath.mkString("."), collectEntityMembers(st, newPath), newPath))
+        val pkgPath = path(pd.symbol)
+        addEntity(PackageImpl(pd.symbol, pd.symbol.showFullName, collectEntityMembers(st, pkgPath), pkgPath))
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
-        val name = n.decode.toString
-        val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(t.symbol, name, collectMembers(rhs), flags(t), newPath, typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
+        TraitImpl(t.symbol, n.show, collectMembers(rhs), flags(t), path(t.symbol), typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
-        val name = n.decode.toString.dropRight(1)
+        val name = o.name.show
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(o.symbol, name, collectMembers(rhs, prev :+ name),  flags(o), prev :+ (name + "$"), superTypes(o))
+        ObjectImpl(o.symbol, name.dropRight(1), collectMembers(rhs, prev :+ name),  flags(o), path(o.symbol).init :+ name, superTypes(o))
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
-        val name = n.decode.toString
-        val newPath = prev :+ name
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (c.symbol, name, collectMembers(rhs), flags(c), newPath, typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
+        (c.symbol, n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }
