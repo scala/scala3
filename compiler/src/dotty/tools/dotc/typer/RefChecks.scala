@@ -804,7 +804,18 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkOverloadedRestrictions(cls)
       checkParents(cls)
       checkCompanionNameClashes(cls)
-      checkAllOverrides(cls)
+
+      def ownerPossibleProblematic(cls: Symbol) = {
+        !cls.owner.is(Flags.PackageClass) && cls.owner.isClass &&
+          cls.owner.info.baseClasses.exists(_.info.member(cls.name).exists)
+      }
+
+      // If owner is possibly problematic, check owner first.
+      // If there are overriding errors with owner, stop checking current to avoid cyclic reference.
+      // See neg/i1750.scala.
+      if (ownerPossibleProblematic(cls)) checkAllOverrides(cls.owner)
+
+      if (!ctx.reporter.hasErrors) checkAllOverrides(cls)
       tree
     } catch {
       case ex: MergeError =>
