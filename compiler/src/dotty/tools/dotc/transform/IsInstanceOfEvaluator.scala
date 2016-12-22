@@ -135,30 +135,32 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           val selFinalClass    = selClass && (selector.typeSymbol is Final)
 
           /** Check if the selector's potential type parameters will be erased, and if so warn */
-          val selTypeParam     = tree.args.head.tpe.widen match {
-            case tp @ AppliedType(tycon, args) =>
-              // If the type is Array[X] where x extends AnyVal, this shouldn't yield a warning:
-              val illegalComparison = !(tp.isRef(defn.ArrayClass) && {
-                args.head.derivesFrom(defn.AnyValClass) ||
-                args.head.isRef(defn.AnyClass)
-              })
+          val selTypeParam = tree.args.head.tpe.widen match {
+            case tp @ AppliedType(_, arg :: _) =>
+              // If the type is `Array[X]` where `X` extends AnyVal or `X =:=
+              // Any`, this shouldn't yield a warning:
+              val isArray = tp.isRef(defn.ArrayClass)
+              val unerased = arg.derivesFrom(defn.AnyValClass) || arg.isRef(defn.AnyClass)
+              val hasAnnot = arg.hasAnnotation(defn.UncheckedAnnot)
 
-              if (illegalComparison) ctx.uncheckedWarning(
+              if (!hasAnnot && !(isArray && unerased)) ctx.uncheckedWarning(
                 ErasedType(hl"""|Since type parameters are erased, you should not match on them in
                                 |${"match"} expressions."""),
                 tree.pos
               )
               true
-            case x if tree.args.head.symbol is TypeParam =>
-              ctx.uncheckedWarning(
-                ErasedType(
-                  hl"""|`${tree.args.head.tpe}` will be erased to `${selector}`. Which means that the specified
-                       |behavior could be different during runtime."""
-                ),
-                tree.pos
-              )
-              true
-            case _ => false
+            case _ =>
+              if (tree.args.head.symbol.is(TypeParam)) {
+                ctx.uncheckedWarning(
+                  ErasedType(
+                    hl"""|`${tree.args.head.tpe}` will be erased to `${selector}`. Which means that the specified
+                         |behavior could be different during runtime."""
+                  ),
+                  tree.pos
+                )
+                true
+              }
+              else false
           }
 
           // Cases ---------------------------------

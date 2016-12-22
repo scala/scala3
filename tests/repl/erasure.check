@@ -50,4 +50,10 @@ scala> def matchArray4(xs: Array[Any]) = xs match { case xs: Array[Int] => xs; c
 
 longer explanation available when compiling with `-explain`
 def matchArray4(xs: Array[Any]): Array[Int]
+scala> def matchArray5[A](xs: Array[Any]) = xs match { case xs: Array[Int] => xs; case xs: Array[A @unchecked] => ??? }
+def matchArray5[A](xs: Array[Any]): [A] => (xs: Array[Any])Array[Int]
+scala> def matchList1(xs: List[Any]) = xs match { case xs: List[Int @unchecked] => ??? }
+def matchList1(xs: List[Any]): Nothing
+scala> def matchList2(xs: List[Any]) = xs match { case List() => ???; case _ => ??? }
+def matchList2(xs: List[Any]): Nothing
 scala> :quit
