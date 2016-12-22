@@ -162,7 +162,12 @@ object factories {
         )
       }, mt.isImplicit) :: paramLists(mt.resultType)
 
-    case annot: AnnotatedType => paramLists(annot.tpe)
+    case mp: MethodParam =>
+      paramLists(mp.underlying)
+
+    case annot: AnnotatedType =>
+      paramLists(annot.tpe)
+
     case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
           _: ExprType  | _: OrType      | _: AndType | _: HKApply  | _: TermRef) =>
       Nil // return types should not be in the paramlist
