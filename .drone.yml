@@ -2,6 +2,8 @@ pipeline:
   test:
     image: lampepfl/dotty:latest
     pull: true
+    environment:
+      - DRONE_TIMEOUT=15m
     commands:
       - ln -s /var/cache/drone/scala-scala scala-scala
       - ln -s /var/cache/drone/ivy2 "$HOME/.ivy2"
