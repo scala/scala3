@@ -96,8 +96,6 @@ object factories {
         typeRef(ci.cls.name.show, query = query)
       case mt: MethodType =>
         expandTpe(mt.resultType)
-      case pt: PolyType =>
-        expandTpe(pt.resultType)
       case pp: PolyParam =>
         val paramName = pp.paramName.show
         val name =
