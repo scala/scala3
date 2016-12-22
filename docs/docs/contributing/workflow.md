@@ -33,7 +33,7 @@ Here are some useful debugging `<OPTIONS>`:
 
 * `-Xprint:PHASE1,PHASE2,...` or `-Xprint:all`: prints the `AST` after each
   specified phase. Phase names can be found by searching
-  `src/dotty/tools/dotc/transform/` for `phaseName`.
+  `compiler/src/dotty/tools/dotc/transform/` for `phaseName`.
 * `-Ylog:PHASE1,PHASE2,...` or `-Ylog:all`: enables `ctx.log("")` logging for
   the specified phase.
 * `-Ycheck:all` verifies the consistency of `AST` nodes between phases, in
@@ -42,7 +42,7 @@ Here are some useful debugging `<OPTIONS>`:
   `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
 
 Additional logging information can be obtained by changes some `noPrinter` to
-`new Printer` in `src/dotty/tools/dotc/config/Printers.scala`. This enables the
+`new Printer` in `compiler/src/dotty/tools/dotc/config/Printers.scala`. This enables the
 `subtyping.println("")` and `ctx.traceIndented("", subtyping)` style logging.
 
 ## Running tests ##
