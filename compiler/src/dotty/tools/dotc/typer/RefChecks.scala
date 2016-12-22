@@ -813,9 +813,10 @@ class RefChecks extends MiniPhase { thisTransformer =>
       // If owner is possibly problematic, check owner first.
       // If there are overriding errors with owner, stop checking current to avoid cyclic reference.
       // See neg/i1750.scala.
+      val errors = ctx.reporter.errorCount
       if (ownerPossibleProblematic(cls)) checkAllOverrides(cls.owner)
+      if (ctx.reporter.errorCount == errors) checkAllOverrides(cls)
 
-      if (!ctx.reporter.hasErrors) checkAllOverrides(cls)
       tree
     } catch {
       case ex: MergeError =>
