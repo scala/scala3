@@ -49,7 +49,7 @@ class DocFrontEnd extends FrontEnd {
     unit.isJava
 }
 
-abstract class DocDriver extends Driver {
+class DocDriver extends Driver {
   import scala.collection.JavaConverters._
 
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {

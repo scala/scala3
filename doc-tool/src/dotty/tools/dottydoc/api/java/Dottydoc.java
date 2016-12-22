@@ -30,20 +30,21 @@ import java.net.URL;
  * The tool can also generate JSON from the created index using "toJson(index)"
  * or directly using "createJsonIndex"
  */
-public class Dottydoc extends DocDriver {
+public class Dottydoc {
+    private DocDriver driver = new DocDriver();
 
     /** Creates index from compiler arguments */
     public Map<String, Package> createIndex(String[] args) {
-        return compiledDocsJava(args);
+        return driver.compiledDocsJava(args);
     }
 
     /** Creates JSON from compiler arguments */
     public String createJsonIndex(String[] args) {
-        return indexToJsonJava(createIndex(args));
+        return driver.indexToJsonJava(createIndex(args));
     }
 
     public String toJson(Map<String, Package> index) {
-        return indexToJsonJava(index);
+        return driver.indexToJsonJava(index);
     }
 
     /** Creates a documentation from the given parameters */
