@@ -28,6 +28,22 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
       case _ => tree
     }
 
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) = {
+    import ast.Trees._
+    tree match {
+      case Apply(select @ Select(id, nme.apply), arg :: Nil) =>
+        val params = List(arg.tpe, tree.tpe)
+        val specializedApply = nme.apply.specializedFor(params, params.map(_.typeSymbol.name))
+        val hasOverridenSpecializedApply = id.tpe.decls.iterator.exists { sym =>
+          sym.is(Flags.Override) && (sym.name eq specializedApply)
+        }
+
+        if (hasOverridenSpecializedApply) tpd.Apply(tpd.Select(id, specializedApply), arg :: Nil)
+        else tree
+      case _ => tree
+    }
+  }
+
   private[this] val functionName = "JFunction1".toTermName
   private[this] val functionPkg  = "scala.compat.java8.".toTermName
   private[this] var Function1: Symbol = _
