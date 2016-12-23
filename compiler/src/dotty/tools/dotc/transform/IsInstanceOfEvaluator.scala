@@ -137,13 +137,14 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           /** Check if the selector's potential type parameters will be erased, and if so warn */
           val selTypeParam = tree.args.head.tpe.widen match {
             case tp @ AppliedType(_, arg :: _) =>
-              // If the type is `Array[X]` where `X` extends AnyVal or `X =:=
-              // Any`, this shouldn't yield a warning:
-              val isArray = tp.isRef(defn.ArrayClass)
-              val unerased = arg.derivesFrom(defn.AnyValClass) || arg.isRef(defn.AnyClass)
-              val hasAnnot = arg.hasAnnotation(defn.UncheckedAnnot)
+              // If the type is `Array[X]` where `X` extends AnyVal
+              val anyValArray = tp.isRef(defn.ArrayClass) && arg.derivesFrom(defn.AnyValClass)
+              // param is: Any | AnyRef | java.lang.Object
+              val topType = defn.ObjectType <:< arg
+              // has @unchecked annotation to suppress warnings
+              val hasUncheckedAnnot = arg.hasAnnotation(defn.UncheckedAnnot)
 
-              if (!hasAnnot && !(isArray && unerased)) ctx.uncheckedWarning(
+              if (!topType && !hasUncheckedAnnot && !anyValArray) ctx.uncheckedWarning(
                 ErasedType(hl"""|Since type parameters are erased, you should not match on them in
                                 |${"match"} expressions."""),
                 tree.pos

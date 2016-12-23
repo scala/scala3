@@ -1222,7 +1222,7 @@ object messages {
            |""".stripMargin
   }
 
-  case class ErasedType()(implicit ctx: Context)
+  case class ErasedType(val explanation: String = "")(implicit ctx: Context)
   extends Message(ErasedTypeID) {
     val kind = "Erased Type"
     val msg =
