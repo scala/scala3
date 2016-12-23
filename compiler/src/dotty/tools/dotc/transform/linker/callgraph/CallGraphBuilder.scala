@@ -502,7 +502,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
           summary.methodsCalled.foreach {
-            case (receiver, theseCallSites) => theseCallSites.foreach(callSite => processCallSite(callSite, instantiatedTypes, method, receiver))
+            case (receiver, theseCallSites) => theseCallSites.foreach { callSite =>
+              val nw = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
+              reachableMethods ++= nw
+              method.addOutEdges(callSite, nw)
+            }
           }
 
         case None =>
@@ -534,65 +538,71 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def processCallsFromJava(instantiatedTypes: immutable.Set[TypeWithContext], method: CallInfoWithContext): Unit = {
-    def allNonJavaDecls(argType: Type) = {
-      (argType.decls ++ argType.parents.filter(!_.symbol.is(JavaDefined)).flatMap(_.decls)).toSet
-    }
+    def allDecls(argType: Type) =
+      (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
 
-    val addedTypes = mutable.HashSet.empty[Type]
+    def isJavaClass(sym: Symbol) =
+      sym == defn.AnyClass || sym == defn.ObjectClass || sym.is(JavaDefined)
 
-    def addAllPotentialCallsFor(argType: Type): Unit = {
-      if (!defn.isPrimitiveClass(argType.classSymbol) && !addedTypes.contains(argType)) {
-        addedTypes.add(argType)
-        for {
-          decl <- allNonJavaDecls(argType)
-          if decl.isTerm && !decl.isConstructor
-          if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
-        } {
-          val termName = decl.name.asTermName
-          val paramTypes = decl.info.paramTypess.flatten
+    def allPotentialCallsFor(argType: Type): Set[CallInfo] = {
+      if (defn.isPrimitiveClass(argType.classSymbol) || isJavaClass(argType.widenDealias.classSymbol)) {
+        Set.empty
+      } else {
+        def potentialCall(decl: Symbol) = {
+          def paramTypes = decl.info.paramTypess.flatten
+          val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
+          val targs = call.widenDealias match {
+            case call: PolyType =>
+              def erasedBounds(tp: TypeBounds): Type = tp.hi match {
+                case RefinedType(parent, refinedName, refinedInfo: TypeBounds) =>
+                  RefinedType(parent, refinedName, erasedBounds(refinedInfo))
+                case t => t
+              }
+              call.paramBounds.map(erasedBounds)
 
-          def addCall(call: TermRef): Unit = {
-            val targs = call.widenDealias match {
-              case call: PolyType => call.paramBounds.map(_.hi)
-              case _ => Nil
-            }
-            processCallSite(CallInfo(call, targs, paramTypes), instantiatedTypes, method, argType)
-            // TODO add transitively reachable calls from java (fix link-code-from-java-3.scala)
-            // val resultType = call.widenDealias.finalResultType.widenDealias
-            // addAllPotentialCallsFor(resultType)
+            case _ => Nil
           }
 
-          val definedInJavaClass: Boolean = {
-            def isDefinedInJavaClass(sym: Symbol) =
-              sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
+          def isDefinedInJavaClass(sym: Symbol) =
+            sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
 
+          val definedInJavaClass: Boolean =
             isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
-          }
 
           argType match {
             case argType: PreciseType =>
-              if (definedInJavaClass)
-                addCall(new TermRefWithFixedSym(argType, termName, decl.asTerm))
+              if (!definedInJavaClass) Nil
+              else List(CallInfo(call, targs, paramTypes))
+
             case _ =>
-              // FIXME
-//              val argTypeWiden = argType.widenDealias
-//              if (argTypeWiden.member(termName).exists) {
-//                val sym = argTypeWiden.classSymbol.requiredMethod(termName, paramTypes)
-//                if (!definedInJavaClass || !sym.isEffectivelyFinal)
-//                  addCall(TermRef(argType, sym))
-//              }
+              val argTypeWiden = argType.widenDealias
+              lazy val sym = argTypeWiden.classSymbol.requiredMethod(decl.name, paramTypes)
+              if (!argTypeWiden.member(decl.name).exists || !definedInJavaClass || (sym.isEffectivelyFinal && isDefinedInJavaClass(decl))) Nil
+              else List(CallInfo(TermRef(argType, sym), targs, paramTypes))
+
           }
         }
+
+        for {
+          decl <- allDecls(argType)
+          if decl.isTerm && !decl.isConstructor && decl.name != nme.COMPANION_MODULE_METHOD
+          if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
+          callInfo <- potentialCall(decl)
+        } yield callInfo
       }
     }
 
-    method.argumentsPassed.foreach(addAllPotentialCallsFor)
-  }
-
-  private def processCallSite(callSite: CallInfo, instantiatedTypes: immutable.Set[TypeWithContext], method: CallInfoWithContext, receiver: Type): Unit = {
-    val nw = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
-    reachableMethods ++= nw
-    method.addOutEdges(callSite, nw)
+    // FIXME java method could potentially call this.xyz()
+    // addAllPotentialCallsFor(method.call.normalizedPrefix)
+    for {
+      rec <- method.argumentsPassed.distinct
+      potentialCall <- allPotentialCallsFor(rec)
+      if method.getOutEdges(potentialCall).isEmpty
+    } {
+      val nw = instantiateCallSite(method, rec, potentialCall, instantiatedTypes)
+      reachableMethods ++= nw
+      method.addOutEdges(potentialCall, nw)
+    }
   }
 
 }
