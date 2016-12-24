@@ -368,7 +368,12 @@ trait TypeAssigner {
         }
         else {
           val argTypes = args.tpes
-          if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
+          if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) {
+            val index = argTypes.indexWhere(!_.isInstanceOf[TermType])
+            if (index != -1)
+              errorType(i"Incorrect type parameter `${args(index)}` for ${err.exprStr(fn)}", args(index).pos)
+            else pt.instantiate(argTypes)
+          }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>
