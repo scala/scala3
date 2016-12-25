@@ -783,7 +783,9 @@ object Parsers {
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
-        atPos(in.offset) { makeTupleOrParens(inParens(argTypes())) }
+        atPos(in.offset) {
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
+        }
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
@@ -805,7 +807,8 @@ object Parsers {
 
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
-      case LBRACKET => simpleTypeRest(atPos(startOffset(t)) { AppliedTypeTree(t, typeArgs(namedOK = true)) })
+      case LBRACKET => simpleTypeRest(atPos(startOffset(t)) {
+        AppliedTypeTree(t, typeArgs(namedOK = true, wildOK = true)) })
       case _ => t
     }
 
@@ -826,7 +829,7 @@ object Parsers {
     /**   ArgTypes          ::=  Type {`,' Type}
      *                        |  NamedTypeArg {`,' NamedTypeArg}
      */
-    def argTypes(namedOK: Boolean = false) = {
+    def argTypes(namedOK: Boolean, wildOK: Boolean) = {
       def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
         val rest =
           if (in.token == COMMA) {
@@ -836,8 +839,9 @@ object Parsers {
           else Nil
         first :: rest
       }
+      def typParser() = if (wildOK) typ() else toplevelTyp()
       if (namedOK && in.token == IDENTIFIER)
-        typ() match {
+        typParser() match {
           case Ident(name) if in.token == EQUALS =>
             in.nextToken()
             otherArgs(NamedArg(name, typ()), namedTypeArg)
@@ -845,7 +849,7 @@ object Parsers {
             if (in.token == EQUALS) println(s"??? $firstArg")
             otherArgs(firstArg, typ)
         }
-      else commaSeparated(typ)
+      else commaSeparated(typParser)
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -873,7 +877,7 @@ object Parsers {
     /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
-    def typeArgs(namedOK: Boolean = false): List[Tree] = inBrackets(argTypes(namedOK))
+    def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBrackets(argTypes(namedOK, wildOK))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -1250,7 +1254,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selector(t), canApply = true)
         case LBRACKET =>
-          val tapp = atPos(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true)) }
+          val tapp = atPos(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE if canApply =>
           val app = atPos(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
@@ -1501,7 +1505,7 @@ object Parsers {
     def simplePatternRest(t: Tree): Tree = {
       var p = t
       if (in.token == LBRACKET)
-        p = atPos(startOffset(t), in.offset) { TypeApply(p, typeArgs()) }
+        p = atPos(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
       if (in.token == LPAREN)
         p = atPos(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
       p
