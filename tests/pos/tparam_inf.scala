@@ -23,6 +23,14 @@ object Test {
     foo2(10)
   }
 
+  def test1b: Unit = {
+    implicit val ii: Int = 42
+    implicit val ss: String = "foo"
+
+    foo1(10)
+    foo2(10)
+  }
+
   def hf[T]: HasFoo[T] = ???
   def test2: Unit = {
     implicit val ii: Int = 42

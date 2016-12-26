@@ -79,8 +79,9 @@ object Inferencing {
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar
-      if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
-        force.appliesTo(tvar) && {
+        if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
+        val forceApplies = force.appliesTo(tvar)
+        if (forceApplies) {
           val direction = instDirection(tvar.origin)
           if (direction != 0) {
             //if (direction > 0) println(s"inst $tvar dir = up")
@@ -95,8 +96,13 @@ object Inferencing {
             if (minimize) instantiate(tvar, fromBelow = true)
             else toMaximize = true
           }
-          foldOver(x, tvar)
         }
+        foldOver(x && forceApplies,
+          if (tvar.isInstantiated) tvar
+          else ctx.typerState.constraint.entry(tvar.origin)
+        )
+      case tp: PolyParam =>
+        apply(x, ctx.typerState.constraint.typeVarOfParam(tp))
       case tp =>
         foldOver(x, tp)
     }
