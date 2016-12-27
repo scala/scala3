@@ -37,7 +37,7 @@ list of sub-packages and their focus.
 ├── reporting           // Reporting of error messages, warnings and other info.
 ├── rewrite             // Helpers for rewriting Scala 2's constructs into dotty's.
 ├── transform           // Miniphases and helpers for tree transformations.
-├── typer               //Type-checking and other frontend phases
+├── typer               // Type-checking and other frontend phases
 └── util                // General purpose utility classes and modules.
 ```
 
@@ -93,7 +93,9 @@ phases. The current list of phases is specified in class [Compiler] as follows:
 ```scala
     def phases: List[List[Phase]] = List(
       List(new FrontEnd),           // Compiler frontend: scanner, parser, namer, typer
+      List(new sbt.ExtractDependencies), // Sends information on classes' dependencies to sbt via callbacks
       List(new PostTyper),          // Additional checks and cleanups after type checking
+      List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
@@ -106,18 +108,22 @@ phases. The current list of phases is specified in class [Compiler] as follows:
            new TailRec,             // Rewrite tail recursion to loops
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new ClassOf),            // Expand `Predef.classOf` calls.
-      List(new PatternMatcher,      // Compile pattern matches
+      List(new TryCatchPatterns,    // Compile cases in try/catch
+           new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
+           new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
       List(new VCInlineMethods,     // Inlines calls to value class methods
+           new IsInstanceOfEvaluator, // Issues warnings when unreachable statements are present in match/if expressions
            new SeqLiterals,         // Express vararg arguments as arrays
            new InterceptedMethods,  // Special handling of `==`, `|=`, `getClass` methods
            new Getters,             // Replace non-private vals and vars with getter defs (fields are added later)
            new ElimByName,          // Expand by-name parameters and arguments
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
-           new ResolveSuper),       // Implement super accessors and add forwarders to trait methods
+           new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
+           new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
@@ -137,9 +143,12 @@ phases. The current list of phases is specified in class [Compiler] as follows:
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
       List(new ExpandPrivate,       // Widen private definitions accessed from nested classes
+           new SelectStatic,        // get rid of selects that would be compiled into GetStatic
            new CollectEntryPoints,  // Find classes with main methods
+           new CollectSuperCalls,   // Find classes that are called with super
+           new DropInlined,         // Drop Inlined nodes, since backend has no use for them
+           new MoveStatics,         // Move static methods to companion classes
            new LabelDefs),          // Converts calls to labels to jumps
-      List(new GenSJSIR),           // Generate .js code
       List(new GenBCode)            // Generate JVM bytecode
     )
 ```
@@ -180,10 +189,10 @@ Phases fall into four categories:
 * Code generators: These map the transformed trees to Java classfiles or
   Javascript files.
 
-[dotty.tools]: https://github.com/lampepfl/dotty/tree/master/src/dotty/tools
-[dotc]: https://github.com/lampepfl/dotty/tree/master/src/dotty/tools/dotc
-[Main]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Main.scala
-[Driver]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Driver.scala
-[Compiler]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Compiler.scala
-[Run]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/Run.scala
-[Context]: https://github.com/lampepfl/dotty/blob/master/src/dotty/tools/dotc/core/Contexts.scala
+[dotty.tools]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools
+[dotc]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools/dotc
+[Main]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Main.scala
+[Driver]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Driver.scala
+[Compiler]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Compiler.scala
+[Run]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Run.scala
+[Context]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala
