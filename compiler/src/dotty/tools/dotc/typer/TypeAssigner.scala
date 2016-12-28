@@ -282,7 +282,9 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.This)(implicit ctx: Context) = {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
-    tree.withType(cls.thisType)
+    tree.withType(
+        if (cls.isClass) cls.thisType
+        else errorType("not a legal qualifying class for this", tree.pos))
   }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
