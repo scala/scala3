@@ -923,4 +923,47 @@ object messages {
            |"""
   }
 
+  case class UnboundWildcardType()(implicit ctx: Context) extends Message(35) {
+    val kind = "Syntax"
+    val msg = "Unbound wildcard type"
+    val explanation =
+      hl"""|The wildcard type syntax (`_`) was used where it could not be bound.
+           |Replace `_` with a non-wildcard type. If the type doesn't matter,
+           |try replacing `_` with ${"Any"}.
+           |
+           |Examples:
+           |
+           |- Parameter lists
+           |
+           |  Instead of:
+           |    ${"def foo(x: _) = ..."}
+           |
+           |  Use ${"Any"} if the type doesn't matter:
+           |    ${"def foo(x: Any) = ..."}
+           |
+           |- Type arguments
+           |
+           |  Instead of:
+           |    ${"val foo = List[_](1, 2)"}
+           |
+           |  Use:
+           |    ${"val foo = List[Int](1, 2)"}
+           |
+           |- Type bounds
+           |
+           |  Instead of:
+           |    ${"def foo[T <: _](x: T) = ..."}
+           |
+           |  Remove the bounds if the type doesn't matter:
+           |    ${"def foo[T](x: T) = ..."}
+           |
+           |- ${"val"} and ${"def"} types
+           |
+           |  Instead of:
+           |    ${"val foo: _ = 3"}
+           |
+           |  Use:
+           |    ${"val foo: Int = 3"}
+           |"""
+  }
 }

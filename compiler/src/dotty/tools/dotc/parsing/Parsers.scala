@@ -676,7 +676,7 @@ object Parsers {
       val t = typ()
       findWildcardType(t) match {
         case Some(wildcardPos) =>
-          syntaxError("unbound wildcard type", wildcardPos)
+          syntaxError(UnboundWildcardType(), wildcardPos)
           scalaAny
         case None => t
       }
