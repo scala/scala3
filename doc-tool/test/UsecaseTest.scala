@@ -10,7 +10,7 @@ import model.internal._
 import model.references._
 import util.syntax._
 
-class UsecaseTest extends DottyTest {
+class UsecaseTest extends DottyDocTest {
   @Test def simpleUsecase = {
     val source = new SourceFile(
       "DefWithUseCase.scala",

@@ -10,7 +10,7 @@ import dottydoc.core.{ DocASTPhase, ContextDottydoc }
 import model.Package
 import dotty.tools.dottydoc.util.syntax._
 
-trait DottyTest {
+trait DottyDocTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
   implicit val ctx: FreshContext = {

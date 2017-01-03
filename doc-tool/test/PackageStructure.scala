@@ -7,7 +7,7 @@ import org.junit.Assert._
 import dotc.util.SourceFile
 import model.internal._
 
-class PackageStructure extends DottyTest {
+class PackageStructure extends DottyDocTest {
   @Test def multipleCompilationUnits = {
     val source1 = new SourceFile(
       "TraitA.scala",

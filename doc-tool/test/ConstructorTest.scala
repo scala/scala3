@@ -9,7 +9,7 @@ import model._
 import model.internal._
 import model.references._
 
-class Constructors extends DottyTest {
+class Constructors extends DottyDocTest {
   @Test def singleClassConstructor = {
     val source = new SourceFile (
       "Class.scala",

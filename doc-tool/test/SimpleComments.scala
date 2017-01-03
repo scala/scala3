@@ -4,7 +4,7 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-class TestSimpleComments extends DottyTest {
+class TestSimpleComments extends DottyDocTest {
 
   @Test def simpleComment = {
     val source =

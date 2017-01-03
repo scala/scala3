@@ -4,9 +4,7 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-class WhitelistedStdLib extends DottyTest {
-  val files: List[String] =
-    StdLibSources.whitelisted.filterNot(_.endsWith("package.scala"))
+class TestWhitelistedCollections extends DottyDocTest {
 
   @Test def arrayHasDocumentation =
     checkFiles(TestWhitelistedCollections.files) { packages =>
