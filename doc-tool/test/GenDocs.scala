@@ -19,6 +19,11 @@ trait LocalResources extends api.scala.Dottydoc {
     sys.env.get("DOC_RESOURCES").getOrElse("../../dottydoc-client/resources/")
   ).listFiles
 
+  def getFiles(file: JFile): Array[JFile] =
+    if (file.isDirectory) file.listFiles.flatMap(getFiles)
+    else if (file.getAbsolutePath.endsWith(".scala")) Array(file)
+    else Array()
+
   assert(template.exists, "please specify a template.html file using DOC_TEMPLATE env var")
   assert(resources.forall(_.exists), "please specify a resource dir using DOC_RESOURCES env var")
 
@@ -42,11 +47,6 @@ object GenCollections extends LocalResources {
 
 object GenDottyDocs extends LocalResources {
   import Files._
-
-  def getFiles(file: JFile): Array[JFile] =
-    if (file.isDirectory) file.listFiles.flatMap(getFiles)
-    else if (file.getAbsolutePath.endsWith(".scala")) Array(file)
-    else Array()
 
   val dottyFiles = new JFile("../compiler/src/dotty").listFiles.flatMap(getFiles).map(_.getAbsolutePath)
 
