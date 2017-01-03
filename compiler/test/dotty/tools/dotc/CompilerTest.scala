@@ -228,8 +228,9 @@ abstract class CompilerTest {
     } else {
       val destDir = Directory(DPConfig.testRoot + JFile.separator + testName)
       files.foreach({ file =>
-        val jfile = new JFile(file)
-        recCopyFiles(jfile, destDir / jfile.getName)
+        val sourceFile = new JFile(file)
+        val destFile = destDir / (if (file.startsWith("../")) file.substring(3) else file)
+        recCopyFiles(sourceFile,  destFile)
       })
       compileDir(DPConfig.testRoot + JFile.separator, testName, args)
       destDir.deleteRecursively

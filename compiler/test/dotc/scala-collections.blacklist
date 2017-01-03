@@ -64,3 +64,20 @@
 #    |illegal redefinition of standard class AnyVal
 # (This is intended)
 
+../scala-scala/src/library/scala/collection/parallel/Tasks.scala
+# java.lang.StackOverflowError
+
+../scala-scala/src/library/scala/reflect/package.scala
+# 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
+#    |                                                             ^^^^^
+#    |                                                             not found: macro
+
+../scala-scala/src/library/scala/StringContext.scala
+# 168 |  def f[A >: Any](args: A*): String = macro ???
+#     |                                      ^^^^^
+#     |                                      not found: macro
+
+../scala-scala/src/library/scala/util/control/Exception.scala
+# 51 |  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
+#    |                                                                                                 ^
+#    |                                                                     cyclic reference involving method mkCatcher
