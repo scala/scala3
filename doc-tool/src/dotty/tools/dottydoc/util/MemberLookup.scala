@@ -17,14 +17,10 @@ import model._
 trait MemberLookup {
   /** Performs a lookup based on the provided (pruned) query string
    *
-   *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or LinkToExternal
+   *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or
+   *  LinkToExternal
    */
-  def lookup(
-    entity: Entity,
-    packages: Map[String, Package],
-    query: String,
-    pos: Position
-  ): LinkTo = {
+  def lookup(entity: Entity, packages: Map[String, Package], query: String): LinkTo = {
     val notFound: LinkTo = Tooltip(query)
     val querys = query.split("\\.").toList
 
@@ -78,7 +74,7 @@ trait MemberLookup {
         downwardLookup(e, querys)
       case (x :: xs, _) =>
         if (xs.nonEmpty) globalLookup
-        else lookup(entity, packages, "scala." + query, pos)
+        else lookup(entity, packages, "scala." + query)
     }
   }
 
@@ -88,5 +84,5 @@ trait MemberLookup {
     title: Inline,
     pos: Position,
     query: String
-  ): EntityLink = EntityLink(title, lookup(entity, packages, query, pos))
+  ): EntityLink = EntityLink(title, lookup(entity, packages, query))
 }

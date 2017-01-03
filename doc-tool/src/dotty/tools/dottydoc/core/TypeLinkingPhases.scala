@@ -10,7 +10,7 @@ import model._
 import model.internal._
 import model.comment._
 import model.references._
-import BodyParsers._
+import HtmlParsers._
 import util.MemberLookup
 import util.traversing._
 import util.internal.setters._

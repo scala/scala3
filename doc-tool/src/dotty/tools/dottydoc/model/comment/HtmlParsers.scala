@@ -1,11 +1,62 @@
-package dotty.tools.dottydoc
+package dotty.tools
+package dottydoc
 package model
 package comment
 
-object BodyParsers {
+import dotc.core.Contexts.Context
+import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
+import dotty.tools.dottydoc.util.syntax._
+import util.MemberLookup
+
+object HtmlParsers {
+
+  implicit class MarkdownToHtml(val node: MarkdownNode) extends AnyVal {
+    def fromMarkdown(origin: Entity)(implicit ctx: Context): String = {
+      import com.vladsch.flexmark.util.sequence.CharSubSequence
+      import com.vladsch.flexmark.ast.{ Link, Visitor, VisitHandler, NodeVisitor }
+      import com.vladsch.flexmark.parser.Parser
+      import com.vladsch.flexmark.html.HtmlRenderer
+
+      implicit def toCharSeq(str: String) = CharSubSequence.of(str)
+
+      val inlineToHtml = InlineToHtml(origin)
+
+      def isOuter(url: String) =
+        url.startsWith("http://") ||
+        url.startsWith("https://") ||
+        url.startsWith("ftp://") ||
+        url.startsWith("ftps://")
+
+      def isRelative(url: String) =
+        url.startsWith("../") ||
+        url.startsWith("./")
+
+      val linkVisitor = new NodeVisitor(
+        new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
+          def queryToUrl(link: String) = lookup(origin, ctx.docbase.packages, link) match {
+            case Tooltip(_) => "#"
+            case LinkToExternal(_, url) => url
+            case LinkToEntity(t: Entity) => t match {
+              case e: Entity with Members => inlineToHtml.relativePath(t)
+              case x => x.parent.fold("#") { xpar => inlineToHtml.relativePath(xpar) }
+            }
+          }
+
+          override def visit(link: Link) = {
+            val linkUrl = link.getUrl.toString
+            if (!isOuter(linkUrl) && !isRelative(linkUrl))
+              link.setUrl(queryToUrl(linkUrl))
+          }
+        })
+      )
+
+      linkVisitor.visit(node)
+      HtmlRenderer.builder(ctx.docbase.markdownOptions).build().render(node)
+    }
+  }
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {
-    def toHtml(origin: Entity): String = {
+    def fromBody(origin: Entity): String = {
       val inlineToHtml = InlineToHtml(origin)
 
       def bodyToHtml(body: Body): String =

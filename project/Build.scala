@@ -185,6 +185,8 @@ object DottyBuild extends Build {
       libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
                                   dottyOrganization % "dottydoc-client" % "0.1.0",
+                                  "com.vladsch.flexmark" % "flexmark" % "0.10.1",
+                                  "com.vladsch.flexmark" % "flexmark-ext-tables" % "0.10.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "com.github.spullara.mustache.java" % "compiler" % "0.9.3",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),

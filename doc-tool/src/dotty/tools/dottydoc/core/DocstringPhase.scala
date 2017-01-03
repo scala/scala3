@@ -7,14 +7,14 @@ import transform.DocMiniPhase
 import model._
 import model.internal._
 import model.comment._
-import BodyParsers._
+import HtmlParsers._
 import util.syntax._
 
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
   private def parsedComment[E <: Entity](ent: E)(implicit ctx: Context): Option[Comment] =
     ctx.docbase.docstring(ent.symbol).map { cmt =>
-       parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
-        .toComment(_.toHtml(ent))
+      parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
+        .toComment(_.fromBody(ent), _.fromMarkdown(ent))
     }
 
   override def transformPackage(implicit ctx: Context) = { case ent: PackageImpl =>

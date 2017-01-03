@@ -2,19 +2,23 @@ package dotty.tools.dottydoc
 package model
 package comment
 
+import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
+import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
+import com.vladsch.flexmark.parser.{ Parser => MarkdownParser }
 
 trait CommentParser extends util.MemberLookup {
   import Regexes._
   import model.internal._
 
   case class FullComment (
-    body:                    Body,
+    private val parseBody:   () => Body,
+    rawBody:                 String,
     authors:                 List[Body],
     see:                     List[Body],
     result:                  Option[Body],
@@ -36,34 +40,52 @@ trait CommentParser extends util.MemberLookup {
     shortDescription:        List[Body]
   ) {
 
+    /** The body parsed in Wiki format, should only be used when
+      * `-Xwiki-syntax` is passed as a command line argument.
+      */
+    lazy val wikiBody: Body = parseBody()
+
+    private[this] var _markdownBody: MarkdownNode = _
+    def markdownBody(implicit ctx: Context): MarkdownNode = {
+      if (_markdownBody eq null) _markdownBody = MarkdownParser
+        .builder(ctx.docbase.markdownOptions).build
+        .parse(rawBody)
+
+      _markdownBody
+    }
+
     /**
      * Transform this CommentParser.FullComment to a Comment using the supplied
      * Body transformer
      */
-    def toComment(transform: Body => String) = Comment(
-      transform(body),
-      short =
-        if (shortDescription.nonEmpty) shortDescription.map(transform).mkString
-        else body.summary.map(transform).getOrElse(""),
-      authors.map(transform),
-      see.map(transform),
-      result.map(transform),
-      throws.map { case (k, v) => (k, transform(v)) },
-      valueParams.map { case (k, v) => (k, transform(v)) },
-      typeParams.map { case (k, v) => (k, transform(v)) },
-      version.map(transform),
-      since.map(transform),
-      todo.map(transform),
-      deprecated.map(transform),
-      note.map(transform),
-      example.map(transform),
-      constructor.map(transform),
-      group.map(transform),
-      groupDesc.map { case (k, v) => (k, transform(v)) },
-      groupNames.map { case (k, v) => (k, transform(v)) },
-      groupPrio.map { case (k, v) => (k, transform(v)) },
-      hideImplicitConversions.map(transform)
-    )
+    def toComment(fromBody: Body => String, fromMarkdown: MarkdownNode => String)(implicit ctx: Context) =
+      Comment(
+        body =
+          if (ctx.settings.wikiSyntax.value) fromBody(wikiBody)
+          else fromMarkdown(markdownBody),
+        short =
+          if (shortDescription.nonEmpty) shortDescription.map(fromBody).mkString
+          else if (!ctx.settings.wikiSyntax.value) fromMarkdown(markdownBody)
+          else wikiBody.summary.map(fromBody).getOrElse(""),
+        authors.map(fromBody),
+        see.map(fromBody),
+        result.map(fromBody),
+        throws.map { case (k, v) => (k, fromBody(v)) },
+        valueParams.map { case (k, v) => (k, fromBody(v)) },
+        typeParams.map { case (k, v) => (k, fromBody(v)) },
+        version.map(fromBody),
+        since.map(fromBody),
+        todo.map(fromBody),
+        deprecated.map(fromBody),
+        note.map(fromBody),
+        example.map(fromBody),
+        constructor.map(fromBody),
+        group.map(fromBody),
+        groupDesc.map { case (k, v) => (k, fromBody(v)) },
+        groupNames.map { case (k, v) => (k, fromBody(v)) },
+        groupPrio.map { case (k, v) => (k, fromBody(v)) },
+        hideImplicitConversions.map(fromBody)
+      )
   }
 
   /** Parses a raw comment string into a `Comment` object.
@@ -82,19 +104,19 @@ trait CommentParser extends util.MemberLookup {
   )(implicit ctx: Context): FullComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
-     *  instance, recursively on lines. To do so, it splits the whole comment
-     *  into main body and tag bodies, then runs the `WikiParser` on each body
-     *  before creating the comment instance.
-     *
-     * @param docBody     The body of the comment parsed until now.
-     * @param tags        All tags parsed until now.
-     * @param lastTagKey  The last parsed tag, or `None` if the tag section
-     *                    hasn't started. Lines that are not tagged are part
-     *                    of the previous tag or, if none exists, of the body.
-     * @param remaining   The lines that must still recursively be parsed.
-     * @param inCodeBlock Whether the next line is part of a code block (in
-     *                    which no tags must be read).
-     */
+      * instance, recursively on lines. To do so, it splits the whole comment
+      * into main body and tag bodies, then runs the `WikiParser` on each body
+      * before creating the comment instance.
+      *
+      * @param docBody     The body of the comment parsed until now.
+      * @param tags        All tags parsed until now.
+      * @param lastTagKey  The last parsed tag, or `None` if the tag section
+      *                    hasn't started. Lines that are not tagged are part
+      *                    of the previous tag or, if none exists, of the body.
+      * @param remaining   The lines that must still recursively be parsed.
+      * @param inCodeBlock Whether the next line is part of a code block (in
+      *                    which no tags must be read).
+      */
     def parseComment (
       docBody: StringBuilder,
       tags: Map[TagKey, List[String]],
@@ -234,7 +256,7 @@ trait CommentParser extends util.MemberLookup {
           val m = allSymsOneTag(SimpleTagKey("throws"), filterEmpty = false)
 
           m.map { case (targetStr,body) =>
-            val link = lookup(entity, packages, targetStr, pos)
+            val link = lookup(entity, packages, targetStr)
             val newBody = body match {
               case Body(List(Paragraph(Chain(content)))) =>
                 val descr = Text(" ") +: content
@@ -246,8 +268,10 @@ trait CommentParser extends util.MemberLookup {
           }
         }
 
+        val rawBody = docBody.toString
         val cmt = FullComment(
-          body                    = parseWikiAtSymbol(entity, packages, docBody.toString, pos, site),
+          parseBody               = () => parseWikiAtSymbol(entity, packages, rawBody, pos, site),
+          rawBody                 = rawBody,
           authors                 = allTags(SimpleTagKey("author")),
           see                     = allTags(SimpleTagKey("see")),
           result                  = oneTag(SimpleTagKey("return")),

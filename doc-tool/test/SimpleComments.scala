@@ -25,5 +25,4 @@ class TestSimpleComments extends DottyDocTest {
       assertEquals(traitCmt, "<p>Hello, world!</p>")
     }
   }
-
 }
