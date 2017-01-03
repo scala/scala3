@@ -64,7 +64,7 @@
 ../scala-scala/src/library/scala/Serializable.scala
 ../scala-scala/src/library/scala/Specializable.scala
 ../scala-scala/src/library/scala/Symbol.scala
-../scala-scala/src/library/scala/StringContext.scala
+#../scala-scala/src/library/scala/StringContext.scala
 ../scala-scala/src/library/scala/UninitializedError.scala
 ../scala-scala/src/library/scala/UninitializedFieldError.scala
 ../scala-scala/src/library/scala/collection/IndexedSeqOptimized.scala
@@ -293,7 +293,7 @@
 
 ../scala-scala/src/library/scala/util/Try.scala
 
-../scala-scala/src/library/scala/util/control/Exception.scala
+#../scala-scala/src/library/scala/util/control/Exception.scala
 ../scala-scala/src/library/scala/util/control/Breaks.scala
 ../scala-scala/src/library/scala/util/control/ControlThrowable.scala
 ../scala-scala/src/library/scala/util/control/NonFatal.scala
@@ -445,7 +445,7 @@
 ../scala-scala/src/library/scala/reflect/NoManifest.scala
 ../scala-scala/src/library/scala/reflect/OptManifest.scala
 ../scala-scala/src/library/scala/reflect/NameTransformer.scala
-../scala-scala/src/library/scala/reflect/package.scala
+#../scala-scala/src/library/scala/reflect/package.scala
 
 ../scala-scala/src/library/scala/Responder.scala
 
@@ -508,7 +508,7 @@
 ../scala-scala/src/library/scala/collection/parallel/PreciseSplitter.scala
 ../scala-scala/src/library/scala/collection/parallel/Splitter.scala
 ../scala-scala/src/library/scala/collection/parallel/TaskSupport.scala
-../scala-scala/src/library/scala/collection/parallel/Tasks.scala
+#../scala-scala/src/library/scala/collection/parallel/Tasks.scala
 
 ../scala-scala/src/library/scala/Console.scala
 ../scala-scala/src/library/scala/Enumeration.scala
