@@ -4,22 +4,26 @@ package model
 package comment
 
 import dotc.core.Contexts.Context
-import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
+import dotc.util.Positions._
 import dotty.tools.dottydoc.util.syntax._
 import util.MemberLookup
 
 object HtmlParsers {
 
-  implicit class MarkdownToHtml(val node: MarkdownNode) extends AnyVal {
+  implicit class MarkdownToHtml(val text: String) extends AnyVal {
     def fromMarkdown(origin: Entity)(implicit ctx: Context): String = {
       import com.vladsch.flexmark.util.sequence.CharSubSequence
       import com.vladsch.flexmark.ast.{ Link, Visitor, VisitHandler, NodeVisitor }
       import com.vladsch.flexmark.parser.Parser
       import com.vladsch.flexmark.html.HtmlRenderer
 
-      implicit def toCharSeq(str: String) = CharSubSequence.of(str)
-
       val inlineToHtml = InlineToHtml(origin)
+
+      // TODO: split out into different step so that we can get a short summary
+      val node = Parser.builder(ctx.docbase.markdownOptions)
+        .build.parse(text)
+
+      implicit def toCharSeq(str: String) = CharSubSequence.of(str)
 
       def isOuter(url: String) =
         url.startsWith("http://") ||
@@ -55,8 +59,13 @@ object HtmlParsers {
     }
   }
 
+  implicit class StringToWiki(val text: String) extends AnyVal {
+    def toWiki(origin: Entity, packages: Map[String, Package], pos: Position): Body =
+      new WikiParser(origin, packages, text, pos, origin.symbol).document()
+  }
+
   implicit class BodyToHtml(val body: Body) extends AnyVal {
-    def fromBody(origin: Entity): String = {
+    def wikiToString(origin: Entity): String = {
       val inlineToHtml = InlineToHtml(origin)
 
       def bodyToHtml(body: Body): String =

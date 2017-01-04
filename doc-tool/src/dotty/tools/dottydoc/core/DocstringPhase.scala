@@ -13,8 +13,9 @@ import util.syntax._
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
   private def parsedComment[E <: Entity](ent: E)(implicit ctx: Context): Option[Comment] =
     ctx.docbase.docstring(ent.symbol).map { cmt =>
-      parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
-        .toComment(_.fromBody(ent), _.fromMarkdown(ent))
+      val parsed = parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
+      if (ctx.settings.wikiSyntax.value) WikiComment(parsed, ent, cmt.pos)
+      else MarkdownComment(parsed, ent)
     }
 
   override def transformPackage(implicit ctx: Context) = { case ent: PackageImpl =>
