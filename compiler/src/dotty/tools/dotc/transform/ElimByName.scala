@@ -71,7 +71,8 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
 
     def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
       case formalExpr: ExprType =>
-        val argType = arg.tpe.widenIfUnstable
+        var argType = arg.tpe.widenIfUnstable
+        if (defn.isBottomType(argType)) argType = formal.widenExpr
         val argFun = arg match {
           case Apply(Select(qual, nme.apply), Nil)
           if qual.tpe.derivesFrom(defn.FunctionClass(0)) && isPureExpr(qual) =>
