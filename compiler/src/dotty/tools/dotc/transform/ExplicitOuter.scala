@@ -276,6 +276,7 @@ object ExplicitOuter {
           if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
         case _ =>
+          // Need to be careful to dealias before erasure, otherwise we lose prefixes.
           outerPrefix(tpe.underlying(ctx.withPhaseNoLater(ctx.erasurePhase)))
       }
     case tpe: TypeProxy =>
@@ -339,7 +340,6 @@ object ExplicitOuter {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
           case New(_) | Super(_, _) =>
-            println(i"outerarg: ${receiver.tpe} --> ${outerPrefix(receiver.tpe)} at ${ctx.phase}")
             singleton(fixThis(outerPrefix(receiver.tpe)))
           case This(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
