@@ -69,7 +69,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val genPhaseGraph = StringSetting("-Xgenerate-phase-graph", "file", "Generate the phase graphs (outputs .dot files) to fileX.dot.", "")
   val XlogImplicits = BooleanSetting("-Xlog-implicits", "Show more detail on why some implicits are not applicable.")
   val XminImplicitSearchDepth = IntSetting("-Xmin-implicit-search-depth", "Set number of levels of implicit searches undertaken before checking for divergence.", 5)
-  val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 70)
+  val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)
   val logImplicitConv = BooleanSetting("-Xlog-implicit-conversions", "Print a message whenever an implicit conversion is inserted.")
   val logReflectiveCalls = BooleanSetting("-Xlog-reflective-calls", "Print a message when a reflective method call is generated")
   val logFreeTerms = BooleanSetting("-Xlog-free-terms", "Print a message when reification creates a free term.")
