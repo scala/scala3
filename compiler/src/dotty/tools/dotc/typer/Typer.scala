@@ -1150,7 +1150,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           // classes defined in a such arguments should not be entered into the
           // enclosing class.
           c.exprContext(mdef, exprOwner)
-        case None => c
+        case _ => c
       }
     }
     // necessary in order to mark the typed ahead annotations as definitely typed:
