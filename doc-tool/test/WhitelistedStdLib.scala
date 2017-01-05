@@ -4,19 +4,9 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-class TestWhitelistedCollections extends DottyTest {
-  val files: List[String] = {
-    val whitelist = "./test/dotc/scala-collections.whitelist"
-
-    scala.io.Source.fromFile(whitelist, "UTF8")
-      .getLines()
-      .map(_.trim) // allow identation
-      .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-      .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-      .filter(_.nonEmpty)
-      .filterNot(_.endsWith("package.scala"))
-      .toList
-  }
+class WhitelistedStdLib extends DottyTest {
+  val files: List[String] =
+    StdLibSources.whitelisted.filterNot(_.endsWith("package.scala"))
 
   @Test def arrayHasDocumentation =
     checkFiles(files) { packages =>
