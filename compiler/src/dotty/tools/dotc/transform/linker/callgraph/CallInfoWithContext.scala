@@ -9,8 +9,6 @@ import scala.collection.mutable
 case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs,
     parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
-  assert(!call.widenDealias.isInstanceOf[PolyParam], call.widenDealias)
-
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
 
   def outEdgesIterator: Iterator[(CallInfo, List[CallInfoWithContext])] = outEdges.iterator

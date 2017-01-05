@@ -61,7 +61,7 @@ object SystemProperties {
    */
   def exclusively[T](body: => T) = this synchronized body
 
-  //  implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
+  implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
   // FIXME: A PolyParam ends up in a CallInfoWithContext
   //  private lazy val propertyHelp = mutable.Map[String, String]()
   private def addHelp[P <: Prop[_]](p: P, helpText: String): P = {

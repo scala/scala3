@@ -61,18 +61,17 @@ object SystemProperties {
    */
   def exclusively[T](body: => T) = this synchronized body
 
-  //  implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
-  // FIXME: A PolyParam ends up in a CallInfoWithContext
-  //  private lazy val propertyHelp = mutable.Map[String, String]()
+  implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
+  private lazy val propertyHelp = mutable.Map[String, String]()
   private def addHelp[P <: Prop[_]](p: P, helpText: String): P = {
-//    propertyHelp(p.key) = helpText
+    propertyHelp(p.key) = helpText
     p
   }
   private def bool(key: String, helpText: String): BooleanProp = addHelp[BooleanProp](
     if (key startsWith "java.") BooleanProp.valueIsTrue(key) else BooleanProp.keyExists(key),
     helpText
   )
-//  def help(key: String) = propertyHelp.getOrElse(key, "")
+  def help(key: String) = propertyHelp.getOrElse(key, "")
 
   // Todo: bring some sanity to the intersection of system properties aka "mutable
   // state shared by everyone and everything" and the reality that there is no other
