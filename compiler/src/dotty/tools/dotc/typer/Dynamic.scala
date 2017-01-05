@@ -116,11 +116,11 @@ trait Dynamic { self: Typer with Applications =>
    *
    *  If `U` is a value type, map `x.a` to the equivalent of:
    *
-   *     implicitly[Projection[T]].get(x, "a").asInstanceOf[U]
+   *     implicitly[Projector[T]].get(x, "a").asInstanceOf[U]
    *
    *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
    *
-   *     implicitly[Projection[T]].getMethod(x, "a")(CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
+   *     implicitly[Projector[T]].getMethod(x, "a")(CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
    *
    *  where CT1,...,CTn are the classtags representing the erasure of T1,...,Tn.
    *

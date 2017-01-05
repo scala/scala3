@@ -67,5 +67,5 @@ class Projector extends scala.Projector[Any] {
 }
 
 object Projector {
-  implicit def reflectiveProjector: scala.Projector[Any] = new Projector
+  implicit val reflectiveProjector: scala.Projector[Any] = new Projector
 }

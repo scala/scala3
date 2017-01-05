@@ -1805,7 +1805,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case Apply(_, _) => " more"
           case _ => ""
         }
-        println(i"tree = $tree, pt = $pt")
         errorTree(tree, em"$methodStr does not take$more parameters")
       }
     }
