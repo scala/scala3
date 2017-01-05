@@ -276,7 +276,8 @@ object ExplicitOuter {
           if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
         case _ =>
-          outerPrefix(tpe.underlying)
+          // Need to be careful to dealias before erasure, otherwise we lose prefixes.
+          outerPrefix(tpe.underlying(ctx.withPhaseNoLater(ctx.erasurePhase)))
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
