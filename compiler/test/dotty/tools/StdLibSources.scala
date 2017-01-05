@@ -6,6 +6,8 @@ import scala.io.Source
 
 object StdLibSources {
 
+  private final val stdLibPath = "../scala-scala/src/library/"
+
   def blacklistFile: String = "./test/dotc/scala-collections.blacklist"
 
   def whitelisted: List[String] = (all.toSet -- blacklisted).toList
@@ -17,7 +19,7 @@ object StdLibSources {
       val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
       files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
     }
-    collectAllFilesInDir(new File("../scala-scala/src/library/"), Nil)
+    collectAllFilesInDir(new File(stdLibPath), Nil)
   }
 
   private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
@@ -25,6 +27,7 @@ object StdLibSources {
     .filter(!_.startsWith("#")) // allow comment lines prefixed by #
     .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
     .filter(_.nonEmpty)
+    .map(stdLibPath + _)
     .toList
 
 }
