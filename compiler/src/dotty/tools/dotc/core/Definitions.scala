@@ -26,6 +26,9 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity = 22
+
+  /** The maximal arity of a function thta can be accessed as member of a structrual type */
+  val MaxStructuralMethodArity = 7
 }
 
 /** A class defining symbols and types of standard definitions
@@ -505,6 +508,8 @@ class Definitions {
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
+  lazy val ProjectorType: TypeRef            = ctx.requiredClassRef("scala.Projector")
+  def ProjectorClass(implicit ctx: Context) = ProjectorType.symbol.asClass
 
   lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass

@@ -629,6 +629,28 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+
+  /** Is this a selection of a member of a structural type that is not a member
+   *  of an underlying class or trait?
+   */
+  def isStructuralTermSelect(tree: Tree)(implicit ctx: Context) = tree match {
+    case tree: Select =>
+      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
+        case RefinedType(parent, rname, rinfo) =>
+          rname == tree.name && tree.tpe.widen <:< rinfo || hasRefinement(parent)
+        case tp: TypeProxy =>
+          hasRefinement(tp.underlying)
+        case tp: OrType =>
+          hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
+        case tp: AndType =>
+          hasRefinement(tp.tp1) && hasRefinement(tp.tp2)
+        case _ =>
+          false
+      }
+      !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
+    case _ =>
+      false
+  }
 }
 
 object TreeInfo {

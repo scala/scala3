@@ -40,5 +40,5 @@ def newLion: Lion = new {
 }
 val milka = newCow
 val leo = newLion
-leo.eats(milka)  // error: no projector found
+leo.eats(milka)
 }
