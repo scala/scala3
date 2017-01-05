@@ -187,6 +187,8 @@ object DottyBuild extends Build {
                                   dottyOrganization % "dottydoc-client" % "0.1.0",
                                   "com.vladsch.flexmark" % "flexmark" % "0.10.1",
                                   "com.vladsch.flexmark" % "flexmark-ext-tables" % "0.10.1",
+                                  "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.10.3",
+                                  "nl.big-o" % "liqp" % "0.6.7",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "com.github.spullara.mustache.java" % "compiler" % "0.9.3",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
