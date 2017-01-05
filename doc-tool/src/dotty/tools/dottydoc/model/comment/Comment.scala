@@ -68,28 +68,27 @@ object MarkdownComment extends util.MemberLookup {
       }
     }
 
-    val parsedBody = parsed.body.fromMarkdown(ent)
     Comment(
-      body                    = parsedBody,
-      short                   = parsedBody,
-      authors                 = filterEmpty(parsed.authors).map(_.fromMarkdown(ent)),
-      see                     = filterEmpty(parsed.see).map(_.fromMarkdown(ent)),
-      result                  = single("@result", parsed.result).map(_.fromMarkdown(ent)),
-      throws                  = linkedExceptions(parsed.throws).mapValues(_.fromMarkdown(ent)),
-      valueParams             = filterEmpty(parsed.valueParams).mapValues(_.fromMarkdown(ent)),
-      typeParams              = filterEmpty(parsed.typeParams).mapValues(_.fromMarkdown(ent)),
-      version                 = single("@version", parsed.version).map(_.fromMarkdown(ent)),
-      since                   = single("@since", parsed.since).map(_.fromMarkdown(ent)),
-      todo                    = filterEmpty(parsed.todo).map(_.fromMarkdown(ent)),
-      deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(_.fromMarkdown(ent)),
-      note                    = filterEmpty(parsed.note).map(_.fromMarkdown(ent)),
-      example                 = filterEmpty(parsed.example).map(_.fromMarkdown(ent)),
-      constructor             = single("@constructor", parsed.constructor).map(_.fromMarkdown(ent)),
-      group                   = single("@group", parsed.group).map(_.fromMarkdown(ent)),
-      groupDesc               = filterEmpty(parsed.groupDesc).mapValues(_.fromMarkdown(ent)),
-      groupNames              = filterEmpty(parsed.groupNames).mapValues(_.fromMarkdown(ent)),
-      groupPrio               = filterEmpty(parsed.groupPrio).mapValues(_.fromMarkdown(ent)),
-      hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(_.fromMarkdown(ent))
+      body                    = parsed.body.toMarkdownString(ent),
+      short                   = parsed.body.toMarkdown(ent).shortenAndShow,
+      authors                 = filterEmpty(parsed.authors).map(_.toMarkdownString(ent)),
+      see                     = filterEmpty(parsed.see).map(_.toMarkdownString(ent)),
+      result                  = single("@result", parsed.result).map(_.toMarkdownString(ent)),
+      throws                  = linkedExceptions(parsed.throws).mapValues(_.toMarkdownString(ent)),
+      valueParams             = filterEmpty(parsed.valueParams).mapValues(_.toMarkdownString(ent)),
+      typeParams              = filterEmpty(parsed.typeParams).mapValues(_.toMarkdownString(ent)),
+      version                 = single("@version", parsed.version).map(_.toMarkdownString(ent)),
+      since                   = single("@since", parsed.since).map(_.toMarkdownString(ent)),
+      todo                    = filterEmpty(parsed.todo).map(_.toMarkdownString(ent)),
+      deprecated              = single("@deprecated", parsed.deprecated, filter = false).map(_.toMarkdownString(ent)),
+      note                    = filterEmpty(parsed.note).map(_.toMarkdownString(ent)),
+      example                 = filterEmpty(parsed.example).map(_.toMarkdownString(ent)),
+      constructor             = single("@constructor", parsed.constructor).map(_.toMarkdownString(ent)),
+      group                   = single("@group", parsed.group).map(_.toMarkdownString(ent)),
+      groupDesc               = filterEmpty(parsed.groupDesc).mapValues(_.toMarkdownString(ent)),
+      groupNames              = filterEmpty(parsed.groupNames).mapValues(_.toMarkdownString(ent)),
+      groupPrio               = filterEmpty(parsed.groupPrio).mapValues(_.toMarkdownString(ent)),
+      hideImplicitConversions = filterEmpty(parsed.hideImplicitConversions).map(_.toMarkdownString(ent))
     )
   }
 
@@ -114,7 +113,7 @@ object WikiComment extends util.MemberLookup {
   def apply(parsed: ParsedComment, ent: Entity, pos: Position)(implicit ctx: Context): Comment = {
     val inlineToHtml = InlineToHtml(ent)
     val packages = ctx.docbase.packages
-    val parsedBody = parsed.body.toWiki(ent, packages, pos).wikiToString(ent)
+    val parsedBody = parsed.body.toWiki(ent, packages, pos).show(ent)
 
     def linkedExceptions(m: Map[String, Body]): Map[String, Body] = {
       m.map { case (targetStr, body) =>
@@ -131,7 +130,7 @@ object WikiComment extends util.MemberLookup {
     }
 
     def toWiki(str: String): Body = str.toWiki(ent, packages, pos)
-    def toString(body: Body): String = body.wikiToString(ent)
+    def toString(body: Body): String = body.show(ent)
 
     def filterEmpty(xs: List[String]): List[Body] =
       xs.map(toWiki).filterNot(_.blocks.isEmpty)

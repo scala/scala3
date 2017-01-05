@@ -8,22 +8,22 @@ import dotc.util.Positions._
 import dotty.tools.dottydoc.util.syntax._
 import util.MemberLookup
 
+import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
+import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.util.sequence.CharSubSequence
+
 object HtmlParsers {
 
-  implicit class MarkdownToHtml(val text: String) extends AnyVal {
-    def fromMarkdown(origin: Entity)(implicit ctx: Context): String = {
-      import com.vladsch.flexmark.util.sequence.CharSubSequence
+  implicit class StringToMarkdown(val text: String) extends AnyVal {
+    def toMarkdown(origin: Entity)(implicit ctx: Context): MarkdownNode = {
       import com.vladsch.flexmark.ast.{ Link, Visitor, VisitHandler, NodeVisitor }
-      import com.vladsch.flexmark.parser.Parser
-      import com.vladsch.flexmark.html.HtmlRenderer
 
       val inlineToHtml = InlineToHtml(origin)
 
-      // TODO: split out into different step so that we can get a short summary
       val node = Parser.builder(ctx.docbase.markdownOptions)
         .build.parse(text)
 
-      implicit def toCharSeq(str: String) = CharSubSequence.of(str)
 
       def isOuter(url: String) =
         url.startsWith("http://") ||
@@ -49,14 +49,25 @@ object HtmlParsers {
           override def visit(link: Link) = {
             val linkUrl = link.getUrl.toString
             if (!isOuter(linkUrl) && !isRelative(linkUrl))
-              link.setUrl(queryToUrl(linkUrl))
+              link.setUrl(CharSubSequence.of(queryToUrl(linkUrl)))
           }
         })
       )
 
       linkVisitor.visit(node)
-      HtmlRenderer.builder(ctx.docbase.markdownOptions).build().render(node)
+      node
     }
+
+    def toMarkdownString(origin: Entity)(implicit ctx: Context): String =
+      toMarkdown(origin).show
+  }
+
+  implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
+    def show(implicit ctx: Context): String =
+      HtmlRenderer.builder(ctx.docbase.markdownOptions).build().render(markdown)
+
+    def shortenAndShow(implicit ctx: Context): String =
+      (new MarkdownShortener).shorten(markdown).show
   }
 
   implicit class StringToWiki(val text: String) extends AnyVal {
@@ -65,7 +76,7 @@ object HtmlParsers {
   }
 
   implicit class BodyToHtml(val body: Body) extends AnyVal {
-    def wikiToString(origin: Entity): String = {
+    def show(origin: Entity): String = {
       val inlineToHtml = InlineToHtml(origin)
 
       def bodyToHtml(body: Body): String =

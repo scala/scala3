@@ -237,11 +237,73 @@ class MarkdownTests extends DottyDocTest {
         .flatMap(_.comment.map(_.body))
         .get
         .trim
-        println(traitCmt)
 
         assertEquals(
           """|<pre><code class="language-scala">val x = 1 + 5
              |</code></pre>""".stripMargin, traitCmt)
     }
+  }
+
+  @Test def docstringSummary = {
+    val source =
+      """
+      |package scala
+      |
+      |/** This
+      |  * ====
+      |  * is a short text [that](http://google.com) should not be more than a
+      |  * `few` lines long. This text *should* be shortened somewhere that is
+      |  * appropriate for the **ui**. Might be here, or there or somewhere
+      |  * else.
+      |  */
+      |trait HelloWorld
+      """.stripMargin
+
+    checkSource(source) { packages =>
+      val traitCmt =
+        packages("scala")
+        .children.find(_.path.mkString(".") == "scala.HelloWorld")
+        .flatMap(_.comment.map(_.short))
+        .get
+        .trim
+
+      assert(
+        traitCmt.endsWith("Might be here...\n</p>"),
+        s"""|docstring summary should strip the following docstring so that it ends in "Might be here..."
+            |
+            |$traitCmt""".stripMargin
+      )
+    }
+  }
+
+  @Test def docstringSummaryWithImage = {
+    val source =
+      """
+      |package scala
+      |
+      |/** This
+      |  * ====
+      |  * should quit before ![alt text](https://whatever.com/1.png "Img Text"),
+      |  * I shouldn't be visible.
+      |  */
+      |trait HelloWorld
+      """.stripMargin
+
+    checkSource(source) { packages =>
+      val traitCmt =
+        packages("scala")
+        .children.find(_.path.mkString(".") == "scala.HelloWorld")
+        .flatMap(_.comment.map(_.short))
+        .get
+        .trim
+
+      assert(
+        !traitCmt.contains("<img") &&
+        !traitCmt.contains("I shouldn't be visible."),
+        s"""|docstring summary shouldn't contain image, error in `MarkdownShortener.scala`
+            |
+            |$traitCmt""".stripMargin)
+    }
+
   }
 }

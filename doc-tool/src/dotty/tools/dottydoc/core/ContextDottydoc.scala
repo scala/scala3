@@ -25,7 +25,6 @@ class ContextDottydoc extends ContextDocstrings {
     s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
   })
 
-
   val markdownOptions: DataHolder =
     new MutableDataSet()
       .setFrom(ParserEmulationFamily.KRAMDOWN.getOptions)
