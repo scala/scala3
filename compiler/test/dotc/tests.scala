@@ -205,33 +205,16 @@ class tests extends CompilerTest {
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
 
   @Test def checkWBLists = {
-    import StdLibSources.{whitelistFile, blacklistFile}
-
     val stdlibFilesBlackListed = StdLibSources.blacklisted
 
-    def checkForRepeated(list: List[String], listFile: String) = {
-      val duplicates = list.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
-      val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in $listFile:\n", "\n", "\n")
-      assertTrue(msg, duplicates.isEmpty)
-    }
-    checkForRepeated(stdlibFiles, whitelistFile)
-    checkForRepeated(stdlibFilesBlackListed, blacklistFile)
+    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
+    assertTrue(msg, duplicates.isEmpty)
 
-    val whitelistSet = stdlibFiles.toSet
-    val blacklistSet = stdlibFilesBlackListed.toSet
-
-    val intersection = whitelistSet.intersect(blacklistSet)
-    val msgIntersection =
-      intersection.map(x => s"'$x'").mkString(s"Entries where found in both $whitelistFile and $blacklistFile:\n", "\n", "\n")
-    assertTrue(msgIntersection, intersection.isEmpty)
-
-    val filesInStdLib = StdLibSources.all
-    val missingFiles = filesInStdLib.toSet -- whitelistSet -- blacklistSet
-    val msgMissing =
-      missingFiles.map(x => s"'$x'").mkString(s"Entries are missing in $whitelistFile or $blacklistFile:\n", "\n", "\n")
-    assertTrue(msgMissing, missingFiles.isEmpty)
+    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
+    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
+    assertTrue(msg2, filesNotInStdLib.isEmpty)
   }
-
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(

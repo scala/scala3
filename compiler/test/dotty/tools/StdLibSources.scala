@@ -6,10 +6,9 @@ import scala.io.Source
 
 object StdLibSources {
 
-  def whitelistFile: String = "./test/dotc/scala-collections.whitelist"
   def blacklistFile: String = "./test/dotc/scala-collections.blacklist"
 
-  def whitelisted: List[String] = loadList(whitelistFile)
+  def whitelisted: List[String] = (all.toSet -- blacklisted).toList
   def blacklisted: List[String] = loadList(blacklistFile)
 
   def all: List[String] = {
