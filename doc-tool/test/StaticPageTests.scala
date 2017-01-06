@@ -4,12 +4,12 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-import staticsite.MarkdownPage
+import staticsite.{ MarkdownPage, HtmlPage, IllegalFrontMatter }
 
-class YamlTest extends DottyDocTest {
+class StaticPageTests extends DottyDocTest {
   import scala.collection.JavaConverters._
 
-  @Test def has1Key = {
+  @Test def mdHas1Key = {
     val page = new MarkdownPage(
       """|---
          |key:
@@ -65,5 +65,42 @@ class YamlTest extends DottyDocTest {
       "<p>These shoes are awesome!</p>\n",
       page3.html
     )
+  }
+
+  @Test def simpleHtmlPage = {
+    val p1 = new HtmlPage("""<h1>{{ "hello, world!" }}</h1>""", Map.empty)
+    assert(p1.yaml == Map(), "non-empty yaml found")
+    assertEquals("<h1>hello, world!</h1>", p1.html)
+  }
+
+  @Test def htmlPageHasNoYaml = {
+    val page = new HtmlPage(
+      """|---
+         |layout: main
+         |---
+         |
+         |Hello, world!""".stripMargin,
+      Map.empty
+    )
+
+    assert(!page.html.contains("---\nlayout: main\n---"),
+           s"page still contains yaml:\n${page.html}")
+  }
+
+  @Test def illegalYamlFrontMatter = try {
+    val page = new HtmlPage(
+      """|---
+         |layout: main
+         |
+         |
+         |Hello, world!""".stripMargin,
+      Map.empty
+    )
+
+    page.html
+    fail("illegal front matter didn't throw exception")
+  } catch {
+    case IllegalFrontMatter(x) => // success!
+    case t: Throwable => throw t
   }
 }
