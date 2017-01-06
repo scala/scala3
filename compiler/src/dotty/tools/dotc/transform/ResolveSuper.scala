@@ -38,6 +38,14 @@ import ResolveSuper._
  *
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
  *
+ *          3.3 (done in `methodPrimitiveForwarders`) For every method that is declared both
+ *              as generic with a primitive type and with a primitive type
+ *              `<mods> def f[Ts](ps1)...(psN): U` in trait M` and
+ *              `<mods> def f[Ts](ps1)...(psN): V = ...` in implemented in N`
+ *              where U is a primitive and V a polymorphic type (or vice versa) needs:
+ *
+ *                <mods> def f[Ts](ps1)...(psN): U = super[N].f[Ts](ps1)...(psN)
+ *
  *        A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *        and if it overrides another concrete method.
  *
@@ -65,7 +73,11 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
       for (meth <- mixin.info.decls.toList if needsForwarder(meth))
         yield polyDefDef(implementation(meth.asTerm), forwarder(meth))
 
-    val overrides = mixins.flatMap(mixin => superAccessors(mixin) ::: methodOverrides(mixin))
+    def methodPrimitiveForwarders: List[Tree] =
+      for (meth <- mixins.flatMap(_.info.decls.flatMap(needsPrimitiveForwarderTo)).distinct)
+        yield polyDefDef(implementation(meth.asTerm), forwarder(meth))
+
+    val overrides = mixins.flatMap(mixin => superAccessors(mixin) ::: methodOverrides(mixin)) ::: methodPrimitiveForwarders
 
     cpy.Template(impl)(body = overrides ::: impl.body)
   }

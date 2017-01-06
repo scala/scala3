@@ -48,11 +48,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
    *   - there are multiple traits defining method with same signature
    */
   def needsForwarder(meth: Symbol): Boolean = {
-    lazy val competingMethods = cls.baseClasses.iterator
-      .filter(_ ne meth.owner)
-      .map(meth.overriddenSymbol)
-      .filter(_.exists)
-      .toList
+    lazy val competingMethods = competingMethodsIterator(meth).toList
 
     def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
@@ -61,8 +57,37 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     (needsDisambiguation || hasNonInterfaceDefinition || meth.owner.is(Scala2x))
   }
 
+  /** Get `sym` of the method that needs a forwarder
+    *  Method needs a forwarder in those cases:
+    *   - there is a trait that defines a primitive version of implemented polymorphic method.
+    *   - there is a trait that defines a polymorphic version of implemented primitive method.
+    */
+  def needsPrimitiveForwarderTo(meth: Symbol): Option[Symbol] = {
+    def hasPrimitiveMissMatch(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
+      case (tp1: MethodicType, tp2: MethodicType) =>
+        hasPrimitiveMissMatch(tp1.resultType, tp2.resultType) ||
+        tp1.paramTypess.flatten.zip(tp1.paramTypess.flatten).exists(args => hasPrimitiveMissMatch(args._1, args._2))
+      case _ =>
+        tp1.typeSymbol.isPrimitiveValueClass ^ tp2.typeSymbol.isPrimitiveValueClass
+    }
+
+    def needsPrimitiveForwarder(m: Symbol): Boolean =
+      m.owner != cls && !m.is(Deferred) && hasPrimitiveMissMatch(meth.info, m.info)
+
+    if (!meth.is(Method | Deferred, butNot = PrivateOrAccessor) || meth.overriddenSymbol(cls).exists || needsForwarder(meth)) None
+    else competingMethodsIterator(meth).find(needsPrimitiveForwarder)
+  }
+
+  final val PrivateOrAccessor = Private | Accessor
   final val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
 
   def forwarder(target: Symbol) = (targs: List[Type]) => (vrefss: List[List[Tree]]) =>
     superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
+
+  private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
+    cls.baseClasses.iterator
+      .filter(_ ne meth.owner)
+      .map(meth.overriddenSymbol)
+      .filter(_.exists)
+  }
 }
