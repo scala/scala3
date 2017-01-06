@@ -373,6 +373,8 @@ object DottyBuild extends Build {
       // project, for sbt integration
       // FIXME: note part of dottyCompilerSettings because the doc-tool does not
       // compile with dotty
+      unmanagedResourceDirectories in Compile := Seq((resourceDirectory in Compile).value),
+      unmanagedResourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "resources",
       unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
       unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "src",
       unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
