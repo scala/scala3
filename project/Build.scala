@@ -555,11 +555,15 @@ object DottyInjectedPlugin extends AutoPlugin {
       }
     )
 
-   lazy val `scala-library` = project
-    .settings(
-      libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
-    )
-    .settings(publishing)
+
+  // Dummy scala-library artefact. This is useful because sbt projects
+  // automatically depend on scalaOrganization.value % "scala-library" % scalaVersion.value
+  lazy val `scala-library` = project.
+    dependsOn(`dotty-library`).
+    settings(
+      crossPaths := false
+    ).
+    settings(publishing)
 
    lazy val publishing = Seq(
      publishMavenStyle := true,
