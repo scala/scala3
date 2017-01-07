@@ -971,25 +971,34 @@ object messages {
     val kind = "Syntax"
     val msg = hl"""Expected an additional member selection after the keyword ${"this"}"""
 
+    val contextCode =
+      """  trait Outer {
+        |    val member: Int
+        |    type Member
+        |    trait Inner {
+        |      ...
+        |    }
+        |  }"""
+
     val importCode =
-      """import MyClass.this.member
-        |//                 ^^^^^^^
-      """
+      """  import Outer.this.member
+        |  //               ^^^^^^^"""
 
     val typeCode =
-      """type T = MyClass.this.Member
-        |//                   ^^^^^^^
-      """
+      """  type T = Outer.this.Member
+        |  //                 ^^^^^^^"""
 
     val explanation =
       hl"""|Paths of imports and type selections must not end with the keyword ${"this"}.
            |
-           |Maybe you forgot to select a member of ${"this"}?
+           |Maybe you forgot to select a member of ${"this"}? As an example, in the
+           |following context:
+           |${contextCode}
            |
-           |- Example for a valid import expression using a path
+           |- this is a valid import expression using a path
            |${importCode}
            |
-           |- Example for a valid type using a path
+           |- this is a valid type using a path
            |${typeCode}
            |"""
   }
