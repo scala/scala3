@@ -33,8 +33,8 @@ object Dynamic {
  *
  *  The first matching rule of is applied.
  *
- * 2. Translates member seclections on structural types by means of an implicit
- *    Projector instance. @See handleStructural.
+ * 2. Translates member selections on structural types to calls of `selectDynamic`
+ *    or `selectDynamicMethod` on a `Selectable` instance. @See handleStructural.
  *
  */
 trait Dynamic { self: Typer with Applications =>
@@ -116,44 +116,45 @@ trait Dynamic { self: Typer with Applications =>
    *
    *  If `U` is a value type, map `x.a` to the equivalent of:
    *
-   *     implicitly[Projector[T]].get(x, "a").asInstanceOf[U]
+   *     (x: Selectable).selectDynamic(x, "a").asInstanceOf[U]
    *
    *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
    *
-   *     implicitly[Projector[T]].getMethod(x, "a")(CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
+   *     (x: Selectable).selectDynamicMethod(x, "a")(CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
    *
-   *  where CT1,...,CTn are the classtags representing the erasure of T1,...,Tn.
+   *  where CT1,...,CTn are the class tags representing the erasure of T1,...,Tn.
    *
-   *  The small print: (1) T is forced to be fully defined. (2) It's an error if
-   *  U is neither a value nor a method type, or a dependent method type, or of too
-   *  large arity (limit is Definitions.MaxStructuralMethodArity).
+   *  It's an error if U is neither a value nor a method type, or a dependent method
+   *  type, or of too large arity (limit is Definitions.MaxStructuralMethodArity).
    */
   def handleStructural(tree: Tree)(implicit ctx: Context): Tree = {
     val Select(qual, name) = tree
 
-    def issueError(msgFn: String => String): Unit = ctx.error(msgFn("reflective call"), tree.pos)
-    def implicitArg(tpe: Type) = inferImplicitArg(tpe, issueError, tree.pos.endPos)
-    val projector = implicitArg(defn.ProjectorType.appliedTo(qual.tpe.widen))
-
-    def structuralCall(getterName: TermName, formals: List[Tree]) = {
+    def structuralCall(selectorName: TermName, formals: List[Tree]) = {
+      val selectable = adapt(qual, defn.SelectableType)
       val scall = untpd.Apply(
-        untpd.TypedSplice(projector.select(getterName)),
-        (qual :: Literal(Constant(name.toString)) :: formals).map(untpd.TypedSplice(_)))
+        untpd.TypedSplice(selectable.select(selectorName)),
+        (Literal(Constant(name.toString)) :: formals).map(untpd.TypedSplice(_)))
       typed(scall)
     }
+
     def fail(reason: String) =
       errorTree(tree, em"Structural access not allowed on method $name because it $reason")
-    fullyDefinedType(tree.tpe.widen, "structural access", tree.pos) match {
+
+    tree.tpe.widen match {
       case tpe: MethodType =>
         if (tpe.isDependent)
           fail(i"has a dependent method type")
         else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
           fail(i"takes too many parameters")
-        val ctags = tpe.paramTypes.map(pt =>
-          implicitArg(defn.ClassTagType.appliedTo(pt :: Nil)))
-        structuralCall(nme.getMethod, ctags).asInstance(tpe.toFunctionType())
+        else {
+          def issueError(msgFn: String => String): Unit = ctx.error(msgFn(""), tree.pos)
+          val ctags = tpe.paramTypes.map(pt =>
+            inferImplicitArg(defn.ClassTagType.appliedTo(pt :: Nil), issueError, tree.pos.endPos))
+          structuralCall(nme.selectDynamicMethod, ctags).asInstance(tpe.toFunctionType())
+        }
       case tpe: ValueType =>
-        structuralCall(nme.get, Nil).asInstance(tpe)
+        structuralCall(nme.selectDynamic, Nil).asInstance(tpe)
       case tpe: PolyType =>
         fail("is polymorphic")
       case tpe =>

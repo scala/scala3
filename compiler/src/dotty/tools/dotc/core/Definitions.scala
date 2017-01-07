@@ -508,8 +508,7 @@ class Definitions {
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
-  lazy val ProjectorType: TypeRef            = ctx.requiredClassRef("scala.Projector")
-  def ProjectorClass(implicit ctx: Context) = ProjectorType.symbol.asClass
+  lazy val SelectableType: TypeRef              = ctx.requiredClassRef("scala.Selectable")
 
   lazy val ClassTagType = ctx.requiredClassRef("scala.reflect.ClassTag")
   def ClassTagClass(implicit ctx: Context) = ClassTagType.symbol.asClass

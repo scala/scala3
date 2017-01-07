@@ -1,3 +1,4 @@
+import scala.reflect.Selectable.reflectiveSelectable
 object Test {
 type Meat = {
   type IsMeat = Any

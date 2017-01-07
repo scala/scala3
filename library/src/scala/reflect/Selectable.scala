@@ -1,8 +1,7 @@
 package scala.reflect
 
-class Projector extends scala.Projector[Any] {
-  import Projector._
-  def get(receiver: Any, name: String): Any = {
+class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
+  def selectDynamic(name: String): Any = {
     val rcls = receiver.getClass
     try {
       val fld = rcls.getField(name)
@@ -10,11 +9,11 @@ class Projector extends scala.Projector[Any] {
     }
     catch {
       case ex: NoSuchFieldError =>
-        getMethod(receiver, name).asInstanceOf[() => Any]()
+        selectDynamicMethod(name).asInstanceOf[() => Any]()
     }
   }
 
-  override def getMethod(receiver: Any, name: String, paramTypes: ClassTag[_]*): Any = {
+  override def selectDynamicMethod(name: String, paramTypes: ClassTag[_]*): Any = {
     val rcls = receiver.getClass
     val paramClasses = paramTypes.map(_.runtimeClass)
     val mth = rcls.getMethod(name, paramClasses: _*)
@@ -66,6 +65,9 @@ class Projector extends scala.Projector[Any] {
   }
 }
 
-object Projector {
-  implicit val reflectiveProjector: scala.Projector[Any] = new Projector
+object Selectable {
+  implicit def reflectiveSelectable(receiver: Any): scala.Selectable = receiver match {
+    case receiver: scala.Selectable => receiver
+    case _                          => new Selectable(receiver)
+  }
 }

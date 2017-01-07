@@ -1,4 +1,4 @@
-import scala.reflect.Projector.reflectiveProjector
+import scala.reflect.Selectable.reflectiveSelectable
 
 /** Demonstrates limitation of structural method dispatch (in Scala 2.x and dotty).
  *  The method must be defined at exactly the argument types given in the structural type;

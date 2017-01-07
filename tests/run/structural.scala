@@ -1,22 +1,14 @@
-case class Record(elems: (String, Any)*)
-
-object Record {
-
-  implicit def projector: Projector[Record] = new Projector[Record] {
-    def get(receiver: Record, name: String): Any =
-      receiver.elems.find(_._1 == name).get._2
-  }
-
+case class Record(elems: (String, Any)*) extends Selectable {
+  def selectDynamic(name: String): Any = elems.find(_._1 == name).get._2
 }
 
 object Test {
-  import scala.reflect.Projector.reflectiveProjector
-  import Record.projector
+  import scala.reflect.Selectable.reflectiveSelectable
 
   def f(closeable: { def close(): Unit }) =
     closeable.close()
 
-  type RN = Record { val name: String }
+  type RN = Record { val name: String; val age: Int }
 
   def g(r: RN) = r.name
 
