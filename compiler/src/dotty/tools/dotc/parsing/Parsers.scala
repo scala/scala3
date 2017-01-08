@@ -540,7 +540,7 @@ object Parsers {
       def handleThis(qual: Ident) = {
         in.nextToken()
         val t = atPos(start) { This(qual) }
-        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), start)
+        if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.pos)
         dotSelectors(t, finish)
       }
       def handleSuper(qual: Ident) = {
