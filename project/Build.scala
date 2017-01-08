@@ -96,7 +96,8 @@ object DottyBuild extends Build {
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef, `scala-library`).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef,
+      `scala-library`, `scala-compiler`, `scala-reflect`, `scalap`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -556,6 +557,32 @@ object DottyInjectedPlugin extends AutoPlugin {
     dependsOn(`dotty-library`).
     settings(
       crossPaths := false
+    ).
+    settings(publishing)
+
+  // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
+  // any version in any organization of scala{-library,-compiler,-reflect,p}
+  // to have organization `scalaOrganization` and version `scalaVersion`
+  // (see https://github.com/sbt/sbt/pull/2634).
+  // This means that we need to provide dummy artefacts for these projects,
+  // otherwise users will get compilation errors if they happen to transitively
+  // depend on one of these projects.
+  lazy val `scala-compiler` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq(scalaCompiler)
+    ).
+    settings(publishing)
+  lazy val `scala-reflect` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+    ).
+    settings(publishing)
+  lazy val `scalap` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
     ).
     settings(publishing)
 
