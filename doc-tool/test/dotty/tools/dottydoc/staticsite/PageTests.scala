@@ -1,12 +1,11 @@
 package dotty.tools
 package dottydoc
+package staticsite
 
 import org.junit.Test
 import org.junit.Assert._
 
-import staticsite.{ MarkdownPage, HtmlPage, IllegalFrontMatter }
-
-class StaticPageTests extends DottyDocTest {
+class PageTests extends DottyDocTest {
   import scala.collection.JavaConverters._
 
   @Test def mdHas1Key = {

@@ -33,11 +33,6 @@ class Site(val root: JFile) {
       }
       .toMap
 
-    def getResource(p: String): String =
-      Option(getClass.getResourceAsStream(p)).map(scala.io.Source.fromInputStream)
-        .map(_.mkString)
-        .getOrElse(throw ResourceNotFoundException(p))
-
     val userDefinedLayouts =
       root
       .listFiles.find(d => d.getName == "_layouts" && d.isDirectory)
@@ -45,18 +40,25 @@ class Site(val root: JFile) {
       .getOrElse(Map.empty)
 
     val defaultLayouts: Map[String, String] = Map(
-      "main" -> "/_layouts/main.html"
+      "main" -> "/_layouts/main.html",
+      "index" -> "/_layouts/index.html"
     ).mapValues(getResource)
 
     defaultLayouts ++ userDefinedLayouts
   }
 
+  private def getResource(r: String): String =
+    Option(getClass.getResourceAsStream(r)).map(scala.io.Source.fromInputStream)
+      .map(_.mkString)
+      .getOrElse(throw ResourceNotFoundException(r))
+
   def render(page: Page, params: Map[String, AnyRef])(implicit ctx: Context): String = {
     page.yaml.get("layout").flatMap(layouts.get(_)) match {
-      case Some(layout) =>
-        (new HtmlPage(layout, Map("content" -> page.html) ++ params)).html
       case None =>
         page.html
+      case Some(layout) =>
+        val expandedTemplate = new HtmlPage(layout, Map("content" -> page.html) ++ params)
+        render(expandedTemplate, params)
     }
   }
 }
