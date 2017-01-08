@@ -11,7 +11,7 @@ import sbt.Package.ManifestAttributes
 
 object DottyBuild extends Build {
 
-  val baseVersion = "0.1"
+  val baseVersion = "0.1.1"
   val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 
   val jenkinsMemLimit = List("-Xmx1500m")
@@ -414,12 +414,6 @@ object DottyBuild extends Build {
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
-      version := {
-        if (isNightly)
-          "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
-        else
-          "0.1.1-SNAPSHOT"
-      },
       // The sources should be published with crossPaths := false since they
       // need to be compiled by the project using the bridge.
       crossPaths := false,
@@ -455,13 +449,13 @@ object DottyInjectedPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override val projectSettings = Seq(
-    scalaVersion := "0.1-SNAPSHOT",
+    scalaVersion := "0.1.1-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",
     autoScalaLibrary := false,
     libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
+    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % scalaVersion.value % "component").sources()
   )
 }
 """)
