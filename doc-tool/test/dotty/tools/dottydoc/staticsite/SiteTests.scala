@@ -56,4 +56,26 @@ class SiteTests extends DottyDocTest {
       "html page did not render properly"
     )
   }
+
+  @Test def preservesPageYaml = {
+    val site = new Site(new java.io.File("../doc-tool/resources/"))
+
+    val renderedPage = site.render(new HtmlPage(
+      """|---
+         |title: Hello, world
+         |layout: index
+         |---
+         |Hello, world!""".stripMargin,
+      Map.empty
+    ), Map.empty)
+
+    assert(
+      renderedPage.contains("<h1>Hello, world!</h1>") &&
+      !renderedPage.contains("---\nlayout: main\n---\n") &&
+      !renderedPage.contains("---\nlayout: index\n---\n") &&
+      renderedPage.contains("<title>Hello, world</title>") &&
+      renderedPage.contains("<!DOCTYPE html>"),
+      "html page did not render properly"
+    )
+  }
 }

@@ -57,7 +57,8 @@ class Site(val root: JFile) {
       case None =>
         page.html
       case Some(layout) =>
-        val expandedTemplate = new HtmlPage(layout, Map("content" -> page.html) ++ params)
+        val newParams = Map("content" -> page.html) ++ params ++ Map("page" -> page.yaml)
+        val expandedTemplate = new HtmlPage(layout, newParams)
         render(expandedTemplate, params)
     }
   }

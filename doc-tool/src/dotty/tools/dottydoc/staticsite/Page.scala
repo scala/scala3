@@ -10,6 +10,7 @@ import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
 import liqp.{ Template => LiquidTemplate }
+import _root_.java.util.{ Map => JMap }
 
 case class IllegalFrontMatter(message: String) extends Exception(message)
 
@@ -37,10 +38,12 @@ trait Page {
     val yamlCollector = new AbstractYamlFrontMatterVisitor()
     yamlCollector.visit(md)
 
-    _yaml = yamlCollector
+    _yaml = updatedYaml {
+      yamlCollector
       .getData().asScala
       .mapValues(_.asScala.headOption.getOrElse(""))
       .toMap
+    }
 
     // YAML must start with "---" and end in either "---" or "..."
     val withoutYaml =
@@ -57,11 +60,25 @@ trait Page {
       else pageContent
 
     // make accessible via "{{ page.title }}" in templates
-    val page = Map("page" -> _yaml.asJava)
+    val page = Map("page" ->  _yaml.asJava)
     _html = LiquidTemplate
       .parse(withoutYaml)
-      .render((page ++ params).asJava)
+      .render((params ++ page).asJava)
   }
+
+  /** Takes "page" from `params` map in case this is a second expansion, and
+    * removes "layout" from the parameters if it exists. We don't want to
+    * preserve the layout from the previously expanded template
+    */
+  private def updatedYaml(newYaml: Map[String, String]): Map[String, String] =
+    params
+    .get("page")
+    .flatMap {
+      case page: Map[String, String] @unchecked =>
+        Some(page - "layout" ++ newYaml)
+      case _ => None
+    }
+    .getOrElse(newYaml)
 }
 
 class HtmlPage(fileContents: => String, val params: Map[String, AnyRef]) extends Page {
