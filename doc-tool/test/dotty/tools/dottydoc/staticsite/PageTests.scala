@@ -15,6 +15,7 @@ class PageTests extends DottyDocTest {
          |---
          |
          |great""".stripMargin,
+      Map.empty,
       Map.empty
     )
 
@@ -33,7 +34,8 @@ class PageTests extends DottyDocTest {
          |---
          |
          |{{ content }}""".stripMargin,
-       Map("content" -> "Hello, world!")
+       Map("content" -> "Hello, world!"),
+       Map.empty
     )
 
     assert(
@@ -45,7 +47,8 @@ class PageTests extends DottyDocTest {
 
     val page2 = new MarkdownPage(
       """|{{ content }}""".stripMargin,
-      Map("content" -> "hello")
+      Map("content" -> "hello"),
+      Map.empty
     )
     assert(
       page2.yaml == Map(),
@@ -57,7 +60,8 @@ class PageTests extends DottyDocTest {
       """|{% if product.title == "Awesome Shoes" %}
          |These shoes are awesome!
          |{% endif %}""".stripMargin,
-      Map("product" -> Map("title" -> "Awesome Shoes").asJava)
+      Map("product" -> Map("title" -> "Awesome Shoes").asJava),
+      Map.empty
     )
 
     assertEquals(
@@ -67,7 +71,7 @@ class PageTests extends DottyDocTest {
   }
 
   @Test def simpleHtmlPage = {
-    val p1 = new HtmlPage("""<h1>{{ "hello, world!" }}</h1>""", Map.empty)
+    val p1 = new HtmlPage("""<h1>{{ "hello, world!" }}</h1>""", Map.empty, Map.empty)
     assert(p1.yaml == Map(), "non-empty yaml found")
     assertEquals("<h1>hello, world!</h1>", p1.html)
   }
@@ -79,6 +83,7 @@ class PageTests extends DottyDocTest {
          |---
          |
          |Hello, world!""".stripMargin,
+      Map.empty,
       Map.empty
     )
 
@@ -93,6 +98,7 @@ class PageTests extends DottyDocTest {
          |
          |
          |Hello, world!""".stripMargin,
+      Map.empty,
       Map.empty
     )
 

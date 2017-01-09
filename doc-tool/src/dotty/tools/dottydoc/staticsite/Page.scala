@@ -9,7 +9,6 @@ import dotc.config.Printers.dottydoc
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
-import liqp.{ Template => LiquidTemplate }
 import _root_.java.util.{ Map => JMap }
 
 case class IllegalFrontMatter(message: String) extends Exception(message)
@@ -17,7 +16,7 @@ case class IllegalFrontMatter(message: String) extends Exception(message)
 trait Page {
   import scala.collection.JavaConverters._
 
-
+  def includes: Map[String, String]
   def pageContent: String
   def params: Map[String, AnyRef]
 
@@ -61,9 +60,7 @@ trait Page {
 
     // make accessible via "{{ page.title }}" in templates
     val page = Map("page" ->  _yaml.asJava)
-    _html = LiquidTemplate
-      .parse(withoutYaml)
-      .render((params ++ page).asJava)
+    _html = LiquidTemplate(withoutYaml).render(params ++ page, includes)
   }
 
   /** Takes "page" from `params` map in case this is a second expansion, and
@@ -81,11 +78,11 @@ trait Page {
     .getOrElse(newYaml)
 }
 
-class HtmlPage(fileContents: => String, val params: Map[String, AnyRef]) extends Page {
+class HtmlPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String]) extends Page {
   lazy val pageContent = fileContents
 }
 
-class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef]) extends Page {
+class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String]) extends Page {
   lazy val pageContent = fileContents
 
   override protected[this] def initFields()(implicit ctx: Context) = {

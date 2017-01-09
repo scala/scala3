@@ -7,12 +7,7 @@ import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
 import scala.io.Source
 
-class Site(val root: JFile) {
-
-  /** If, for some reason, the supplied default files cannot be found - this
-    * exception will be thrown in `layouts`.
-    */
-  final case class ResourceNotFoundException(message: String) extends Exception(message)
+class Site(val root: JFile) extends ResourceFinder {
 
   /** Files that define a layout then referred to by `layout: filename-no-ext`
     * in yaml front-matter.
@@ -24,19 +19,10 @@ class Site(val root: JFile) {
     * defaults, the user-defined one will take precedence.
     */
   val layouts: Map[String, String] = {
-    def collectLayouts(dir: JFile): Map[String, String] =
-      dir
-      .listFiles
-      .filter(f => f.getName.endsWith(".md") || f.getName.endsWith(".html"))
-      .map { f =>
-        (f.getName.substring(0, f.getName.lastIndexOf('.')), Source.fromFile(f).mkString)
-      }
-      .toMap
-
     val userDefinedLayouts =
       root
       .listFiles.find(d => d.getName == "_layouts" && d.isDirectory)
-      .map(collectLayouts)
+      .map(collectFiles(_, f => f.endsWith(".md") || f.endsWith(".html")))
       .getOrElse(Map.empty)
 
     val defaultLayouts: Map[String, String] = Map(
@@ -47,10 +33,28 @@ class Site(val root: JFile) {
     defaultLayouts ++ userDefinedLayouts
   }
 
-  private def getResource(r: String): String =
-    Option(getClass.getResourceAsStream(r)).map(scala.io.Source.fromInputStream)
-      .map(_.mkString)
-      .getOrElse(throw ResourceNotFoundException(r))
+  val includes: Map[String, String] = {
+    val userDefinedIncludes =
+      root
+      .listFiles.find(d => d.getName == "_includes" && d.isDirectory)
+      .map(collectFiles(_, f => f.endsWith(".md") || f.endsWith(".html")))
+      .getOrElse(Map.empty)
+
+    val defaultIncludes: Map[String, String] = Map(
+      "header.html" -> "/_includes/header.html"
+    ).mapValues(getResource)
+
+    defaultIncludes ++ userDefinedIncludes
+  }
+
+  private def collectFiles(dir: JFile, includes: String => Boolean): Map[String, String] =
+    dir
+    .listFiles
+    .filter(f => includes(f.getName))
+    .map { f =>
+      (f.getName.substring(0, f.getName.lastIndexOf('.')), Source.fromFile(f).mkString)
+    }
+    .toMap
 
   def render(page: Page, params: Map[String, AnyRef])(implicit ctx: Context): String = {
     page.yaml.get("layout").flatMap(layouts.get(_)) match {
@@ -58,7 +62,7 @@ class Site(val root: JFile) {
         page.html
       case Some(layout) =>
         val newParams = Map("content" -> page.html) ++ params ++ Map("page" -> page.yaml)
-        val expandedTemplate = new HtmlPage(layout, newParams)
+        val expandedTemplate = new HtmlPage(layout, newParams, includes)
         render(expandedTemplate, params)
     }
   }
