@@ -6,6 +6,8 @@ import org.junit.Test
 import org.junit.Assert._
 
 class SiteTests extends DottyDocTest {
+  val site = new Site(new java.io.File("../doc-tool/resources/"))
+
   private def html(
     str: String,
     params: Map[String, AnyRef] = Map.empty,
@@ -13,8 +15,6 @@ class SiteTests extends DottyDocTest {
   ) = new HtmlPage(str, params, includes)
 
   @Test def hasCorrectLayoutFiles = {
-    val site = new Site(new java.io.File("../doc-tool/resources/"))
-
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
@@ -24,8 +24,6 @@ class SiteTests extends DottyDocTest {
   }
 
   @Test def renderHelloInMainLayout = {
-    val site = new Site(new java.io.File("../doc-tool/resources/"))
-
     val renderedPage = site.render(html(
       """|---
          |layout: main
@@ -43,8 +41,6 @@ class SiteTests extends DottyDocTest {
   }
 
   @Test def renderMultipleTemplates = {
-    val site = new Site(new java.io.File("../doc-tool/resources/"))
-
     val renderedPage = site.render(html(
       """|---
          |layout: index
@@ -62,8 +58,6 @@ class SiteTests extends DottyDocTest {
   }
 
   @Test def preservesPageYaml = {
-    val site = new Site(new java.io.File("../doc-tool/resources/"))
-
     val renderedPage = site.render(html(
       """|---
          |title: Hello, world
@@ -83,13 +77,31 @@ class SiteTests extends DottyDocTest {
   }
 
   @Test def include = {
-    val site = new Site(new java.io.File("../doc-tool/resources/"))
-
     val renderedInclude = site.render(
       html("""{% include "header.html" %}""", includes = site.includes),
       Map.empty
     )
 
     assertEquals("<h1>Some header</h1>\n", renderedInclude)
+  }
+
+  @Test def siteStructure = {
+    val assets = site.staticAssets.map(site.stripRoot).toSet
+    val compd  = site.compilableFiles.map(site.stripRoot).toSet
+
+    val expectedAssets = Set(
+      "css/dottydoc.css"
+    )
+    val expectedCompd = Set(
+      "index.md",
+      "_includes/header.html",
+      "_layouts/index.html",
+      "_layouts/main.html"
+    )
+
+    assert(expectedAssets == assets,
+           s"assets incorrect, found: $assets - expected $expectedAssets")
+    assert(expectedCompd == compd,
+           s"compilable files incorrect, found: $compd - expected $expectedCompd")
   }
 }
