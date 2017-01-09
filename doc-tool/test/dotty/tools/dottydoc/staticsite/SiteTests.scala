@@ -93,10 +93,11 @@ class SiteTests extends DottyDocTest {
       "css/dottydoc.css"
     )
     val expectedCompd = Set(
-      "index.md",
-      "_includes/header.html",
-      "_layouts/index.html",
-      "_layouts/main.html"
+      "index.md"
+      // Directories starting in `_` are not included in compilable files
+      //"_includes/header.html",
+      //"_layouts/index.html",
+      //"_layouts/main.html"
     )
 
     assert(expectedAssets == assets,

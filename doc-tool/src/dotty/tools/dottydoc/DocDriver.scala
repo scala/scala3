@@ -9,6 +9,7 @@ import model.Package
 import model.json._
 import dotc.config._
 import dotc.core.Comments.ContextDoc
+import staticsite.Site
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
   * tool. It's methods are used by the external scala and java APIs.
@@ -47,4 +48,24 @@ class DocDriver extends Driver {
 
   def indexToJsonJava(index: JMap[String, Package]): String =
     indexToJson(index.asScala)
+
+  override def main(args: Array[String]): Unit = {
+    implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
+    //doCompile(newCompiler(ctx), fileNames)(ctx)
+
+    val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
+
+    if (!siteRoot.exists || !siteRoot.isDirectory)
+      ctx.error(s"Site root does not exist: $siteRoot")
+    else {
+      Site(siteRoot)
+        .copyStaticFiles()
+        .generateHtmlFiles()
+
+
+      // FIXME: liqp templates are compiled by threadpools, for some reason it
+      // is not shutting down  :-(
+      System.exit(0)
+    }
+  }
 }

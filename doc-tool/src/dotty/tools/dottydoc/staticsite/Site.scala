@@ -2,13 +2,19 @@ package dotty.tools
 package dottydoc
 package staticsite
 
+import _root_.java.nio.file.{ Files, FileSystems }
+import _root_.java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import _root_.java.io.{ File => JFile }
+import _root_.java.nio.file.Path
+import _root_.java.io.ByteArrayInputStream
+import _root_.java.nio.charset.StandardCharsets
+
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 
-class Site(val root: JFile) extends ResourceFinder {
+case class Site(val root: JFile) extends ResourceFinder {
   /** All files that are considered static in this context, this can be
     * anything from CSS, JS to images and other files.
     *
@@ -31,6 +37,51 @@ class Site(val root: JFile) extends ResourceFinder {
     _compilableFiles
   }
 
+  // FileSystem getter
+  private[this] val fs = FileSystems.getDefault
+
+  def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site")): this.type = {
+    if (!outDir.isDirectory) outDir.mkdirs()
+    if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
+    else staticAssets.foreach { asset =>
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath, stripRoot(asset)))
+      val source = mkdirs(fs.getPath(asset.getAbsolutePath))
+      Files.copy(source, target, REPLACE_EXISTING)
+    }
+    this
+  }
+
+  /** Generate HTML files from markdown and .html sources */
+  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type = {
+    if (!outDir.isDirectory) outDir.mkdirs()
+    if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
+    else compilableFiles.foreach { asset =>
+      val fileContents = Source.fromFile(asset).mkString
+      val page =
+        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, Map.empty, includes)
+        else new HtmlPage(fileContents, Map.empty, includes)
+
+      val renderedPage = render(page)
+      val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
+      val target = {
+        val tgt = stripRoot(asset)
+        tgt.splitAt(tgt.lastIndexOf('.'))._1 + ".html"
+      }
+      val htmlTarget = mkdirs(fs.getPath(outDir.getAbsolutePath, target))
+      Files.copy(source, htmlTarget, REPLACE_EXISTING)
+    }
+    this
+  }
+
+  private def mkdirs(path: Path): path.type = {
+    val parent = path.getParent.toFile
+
+    if (!parent.isDirectory && !parent.mkdirs())
+      dottydoc.println(s"couldn't create directory: $parent")
+
+    path
+  }
+
   /** This function allows the stripping of the path that leads up to root.
     *
     * ```scala
@@ -51,7 +102,9 @@ class Site(val root: JFile) extends ResourceFinder {
     // Split files between compilable and static assets
     def splitFiles(f: JFile, assets: ArrayBuffer[JFile], comp: ArrayBuffer[JFile]): Unit = {
       val name = f.getName
-      if (f.isDirectory) f.listFiles.foreach(splitFiles(_, assets, comp))
+      if (f.isDirectory) {
+        if (!f.getName.startsWith("_")) f.listFiles.foreach(splitFiles(_, assets, comp))
+      }
       else if (name.endsWith(".md") || name.endsWith(".html")) comp.append(f)
       else assets.append(f)
     }
@@ -126,7 +179,7 @@ class Site(val root: JFile) extends ResourceFinder {
   /** Render a page to html, the resulting string is the result of the complete
     * expansion of the template with all its layouts and includes.
     */
-  def render(page: Page, params: Map[String, AnyRef])(implicit ctx: Context): String = {
+  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): String = {
     page.yaml.get("layout").flatMap(layouts.get(_)) match {
       case None =>
         page.html

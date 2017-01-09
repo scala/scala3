@@ -213,6 +213,13 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing static resources needed for the API documentation"
   )
 
+  val siteRoot = StringSetting(
+    "-siteroot",
+    "site root",
+    "A directory containing static files from which to generate documentation",
+    sys.props("user.dir")
+  )
+
   val DocTitle = StringSetting (
     "-Ydoc-title",
     "title",
