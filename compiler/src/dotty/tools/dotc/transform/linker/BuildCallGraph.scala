@@ -47,7 +47,7 @@ class BuildCallGraph extends Phase {
         entryPointId += 1
         callGraphBuilder.pushEntryPoint(x.methodDef, entryPointId)
         x.methodDef.owner.ownersIterator.foreach { owner =>
-          if (owner.is(Module)) {
+          if (owner.is(Module) && !owner.isEmptyPackage) {
             val sourceModule = owner.sourceModule
             val moduleEntryPoint =
               if (sourceModule.owner.exists && !sourceModule.owner.isEmptyPackage) sourceModule
