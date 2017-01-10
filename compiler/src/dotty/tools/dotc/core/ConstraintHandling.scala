@@ -57,6 +57,7 @@ trait ConstraintHandling {
           b match {
             case b: AndOrType => occursIn(b.tp1) || occursIn(b.tp2)
             case b: TypeVar => occursIn(b.origin)
+            case b: TermRef => occursIn(b.underlying)
             case _ => false
           }
         }
