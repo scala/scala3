@@ -95,6 +95,8 @@ import Decorators._
     def adaptToField(tree: Tree) =
       if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
+    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
+
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
         def skipBlocks(t: Tree): Tree = t match {
@@ -127,5 +129,4 @@ import Decorators._
                 // neither getters nor setters
     else tree
   }
-  private val NoFieldNeeded  = Lazy | Deferred | JavaDefined
 }
