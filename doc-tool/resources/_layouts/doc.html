@@ -1,0 +1,42 @@
+---
+layout: main
+---
+
+<div id="content-wrapper">
+    <div class="index-wrapper">
+        {% include "toc" %}
+        <ul class="index-entities">
+        {% if docs.size > 0 %}
+        <li class="index-entity">
+            <a class="title" href="#">API</a>
+        </li>
+        {% endif %}
+        {% for item in docs %}
+            <li class="index-entity entity-package">
+                <a href="#">{{ item.name }}</a>
+            </li>
+            {% for child in item.members %}
+                {% if child.kind != "package" %}
+                <li class="index-entity">
+                    <a href="#">{{ child.kind }} {{ child.name }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        </ul>
+    </div>
+    <div id="content-body">
+        <div id="top-drawer">
+            <a href="#menu-toggle" id="menu-toggle" onclick="toggleMenu()"><i class="fa fa-bars" aria-hidden="true"></i></a>
+        </div>
+        {{ content }}
+    </div>
+</div>
+
+
+<script>
+function toggleMenu() {
+    var wrapper = document.getElementById("content-wrapper");
+    wrapper.classList.toggle("toggled");
+}
+</script>

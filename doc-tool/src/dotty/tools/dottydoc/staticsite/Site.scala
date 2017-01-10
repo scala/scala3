@@ -2,19 +2,20 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import _root_.java.nio.file.{ Files, FileSystems }
-import _root_.java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import _root_.java.io.{ File => JFile }
-import _root_.java.nio.file.Path
-import _root_.java.io.ByteArrayInputStream
-import _root_.java.nio.charset.StandardCharsets
+import java.nio.file.{ Files, FileSystems }
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.io.{ File => JFile }
+import java.util.{ List => JList }
+import java.nio.file.Path
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 
-case class Site(val root: JFile) extends ResourceFinder {
+case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
   /** All files that are considered static in this context, this can be
     * anything from CSS, JS to images and other files.
     *
@@ -43,10 +44,26 @@ case class Site(val root: JFile) extends ResourceFinder {
   def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site")): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
-    else staticAssets.foreach { asset =>
-      val target = mkdirs(fs.getPath(outDir.getAbsolutePath, stripRoot(asset)))
-      val source = mkdirs(fs.getPath(asset.getAbsolutePath))
-      Files.copy(source, target, REPLACE_EXISTING)
+    else {
+      // Copy user-defined static assets
+      staticAssets.foreach { asset =>
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath, stripRoot(asset)))
+        val source = mkdirs(fs.getPath(asset.getAbsolutePath))
+        Files.copy(source, target, REPLACE_EXISTING)
+      }
+
+      // Copy statics included in resources
+      Map(
+        "css/dottydoc.css" -> "/css/dottydoc.css",
+        "css/color-brewer.css" -> "/css/color-brewer.css",
+        "js/highlight.pack.js" -> "/js/highlight.pack.js"
+      )
+      .mapValues(getResource)
+      .foreach { case (path, resource) =>
+        val source = new ByteArrayInputStream(resource.getBytes(StandardCharsets.UTF_8))
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath, path))
+        Files.copy(source, target, REPLACE_EXISTING)
+      }
     }
     this
   }
@@ -56,10 +73,21 @@ case class Site(val root: JFile) extends ResourceFinder {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
     else compilableFiles.foreach { asset =>
+      import scala.collection.JavaConverters._
+      val baseUrl: String = {
+        val rootLen = root.getAbsolutePath.split('/').length
+        val assetLen = asset.getAbsolutePath.split('/').length
+        "../" * (assetLen - rootLen - 1) + "."
+      }
+      val defaultParams = Map(
+        "docs" -> docs,
+        "page" -> Map("url" -> stripRoot(asset)),
+        "site" -> Map("baseUrl" -> baseUrl).asJava
+      )
       val fileContents = Source.fromFile(asset).mkString
       val page =
-        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, Map.empty, includes)
-        else new HtmlPage(fileContents, Map.empty, includes)
+        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, defaultParams, includes)
+        else new HtmlPage(fileContents, defaultParams, includes)
 
       val renderedPage = render(page)
       val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
@@ -131,9 +159,12 @@ case class Site(val root: JFile) extends ResourceFinder {
       .listFiles.find(d => d.getName == "_layouts" && d.isDirectory)
       .map(collectFiles(_, f => f.endsWith(".md") || f.endsWith(".html")))
       .getOrElse(Map.empty)
+      .map { case (k, v) => (k.substring(0, k.lastIndexOf('.')), v) }
 
     val defaultLayouts: Map[String, String] = Map(
       "main" -> "/_layouts/main.html",
+      "doc" -> "/_layouts/doc.html",
+      "doc-page" -> "/_layouts/doc-page.html",
       "index" -> "/_layouts/index.html"
     ).mapValues(getResource)
 
@@ -161,8 +192,10 @@ case class Site(val root: JFile) extends ResourceFinder {
       .getOrElse(Map.empty)
 
     val defaultIncludes: Map[String, String] = Map(
-      "header.html" -> "/_includes/header.html"
+      "header.html" -> "/_includes/header.html",
+      "toc.html" -> "/_includes/toc.html"
     ).mapValues(getResource)
+
 
     defaultIncludes ++ userDefinedIncludes
   }
@@ -171,22 +204,20 @@ case class Site(val root: JFile) extends ResourceFinder {
     dir
     .listFiles
     .filter(f => includes(f.getName))
-    .map { f =>
-      (f.getName.substring(0, f.getName.lastIndexOf('.')), Source.fromFile(f).mkString)
-    }
+    .map(f => (f.getName, Source.fromFile(f).mkString))
     .toMap
 
   /** Render a page to html, the resulting string is the result of the complete
     * expansion of the template with all its layouts and includes.
     */
-  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): String = {
+  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): String =
     page.yaml.get("layout").flatMap(layouts.get(_)) match {
       case None =>
         page.html
       case Some(layout) =>
-        val newParams = Map("content" -> page.html) ++ params ++ Map("page" -> page.yaml)
+        import scala.collection.JavaConverters._
+        val newParams = page.params ++ params ++ Map("page" -> page.yaml) ++ Map("content" -> page.html)
         val expandedTemplate = new HtmlPage(layout, newParams, includes)
         render(expandedTemplate, params)
     }
-  }
 }

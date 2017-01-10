@@ -4,6 +4,9 @@ package model
 import comment._
 import references._
 
+import _root_.java.util.HashMap
+import _root_.java.util.LinkedList
+
 object java {
   import scala.collection.JavaConverters._
   import _root_.java.util.{ Optional => JOptional, Map => JMap }
@@ -15,36 +18,36 @@ object java {
 
   implicit class JavaComment(val cmt: Comment) extends AnyVal {
     def asJava: JMap[String, _] = Map(
-      "body"                     -> cmt.body,
-       "short"                   -> cmt.short,
-       "authors"                 -> cmt.authors.asJava,
-       "see"                     -> cmt.see.asJava,
-       "result"                  -> cmt.result.asJava,
-       "throws"                  -> cmt.throws.asJava,
-       "valueParams"             -> cmt.valueParams.asJava,
-       "typeParams"              -> cmt.typeParams.asJava,
-       "version"                 -> cmt.version.asJava,
-       "since"                   -> cmt.since.asJava,
-       "todo"                    -> cmt.todo.asJava,
-       "deprecated"              -> cmt.deprecated.asJava,
-       "note"                    -> cmt.note.asJava,
-       "example"                 -> cmt.example.asJava,
-       "constructor"             -> cmt.constructor.asJava,
-       "group"                   -> cmt.group.asJava,
-       "groupDesc"               -> cmt.groupDesc.asJava,
-       "groupNames"              -> cmt.groupNames.asJava,
-       "groupPrio"               -> cmt.groupPrio.asJava,
-       "hideImplicitConversions" -> cmt.hideImplicitConversions.asJava
+      "body"                    -> cmt.body,
+      "short"                   -> cmt.short,
+      "authors"                 -> cmt.authors.asJava,
+      "see"                     -> cmt.see.asJava,
+      "result"                  -> cmt.result.asJava,
+      "throws"                  -> cmt.throws.asJava,
+      "valueParams"             -> cmt.valueParams.asJava,
+      "typeParams"              -> cmt.typeParams.asJava,
+      "version"                 -> cmt.version.asJava,
+      "since"                   -> cmt.since.asJava,
+      "todo"                    -> cmt.todo.asJava,
+      "deprecated"              -> cmt.deprecated.asJava,
+      "note"                    -> cmt.note.asJava,
+      "example"                 -> cmt.example.asJava,
+      "constructor"             -> cmt.constructor.asJava,
+      "group"                   -> cmt.group.asJava,
+      "groupDesc"               -> cmt.groupDesc.asJava,
+      "groupNames"              -> cmt.groupNames.asJava,
+      "groupPrio"               -> cmt.groupPrio.asJava,
+      "hideImplicitConversions" -> cmt.hideImplicitConversions.asJava
     ).asJava
   }
 
   implicit class JavaPackage(val ent: Package) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"    -> ent.kind,
-      "name"    -> ent.name,
-      "path"    -> ent.path.asJava,
-      "members" -> ent.members.map(_.asJava()).asJava,
-      "comment" -> ent.comment.map(_.asJava).asJava
+      "kind"     -> ent.kind,
+      "name"     -> ent.name,
+      "path"     -> ent.path.asJava,
+      "members"  -> ent.members.map(_.asJava()).asJava,
+      "comment"  -> ent.comment.map(_.asJava).asJava
     ) ++ extras).asJava
   }
 
@@ -219,5 +222,16 @@ object java {
     case ent: Object    => ent.asJava(extras)
     case ent: Def       => ent.asJava
     case ent: Val       => ent.asJava
+  }
+
+  implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
+    def toJavaList: LinkedList[AnyRef] = {
+      map.toList
+         .sortBy(_._1)
+         .foldLeft(new LinkedList[AnyRef]()) { case (list, (_, pkg)) =>
+           list.add(pkg.asJava())
+           list
+         }
+    }
   }
 }

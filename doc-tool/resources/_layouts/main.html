@@ -13,6 +13,20 @@
             integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi"
             crossorigin="anonymous"
         >
+        <link
+            rel="stylesheet"
+            href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"
+        >
+
+        <link
+            rel="stylesheet"
+            href="{{ site.baseUrl }}/css/dottydoc.css"
+        >
+
+        <link
+            rel="stylesheet"
+            href="{{ site.baseUrl }}/css/color-brewer.css"
+        >
     </head>
     <body>
 
@@ -33,5 +47,13 @@
             integrity="sha384-BLiI7JTZm+JWlgKa0M0kGRpJbF2J8q+qreVrKBC47e3K6BW78kGLrCkeRX6I9RoK"
             crossorigin="anonymous"
         ></script>
+        <script src="{{ site.baseUrl }}/js/highlight.pack.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('pre code').each(function(i, block) {
+                    hljs.highlightBlock(block);
+                });
+            });
+        </script>
     </body>
 </html>

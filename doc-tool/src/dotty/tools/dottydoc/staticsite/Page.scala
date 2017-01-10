@@ -88,6 +88,8 @@ class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val
   override protected[this] def initFields()(implicit ctx: Context) = {
     super.initFields()
     val md = Parser.builder(ctx.docbase.markdownOptions).build.parse(_html)
+    // fix markdown linking
+    MarkdownLinkVisitor(md)
     _html = HtmlRenderer
       .builder(ctx.docbase.markdownOptions)
       .escapeHtml(false)

@@ -16,7 +16,7 @@ import staticsite.Site
   */
 class DocDriver extends Driver {
   import _root_.java.util.{ Map => JMap }
-  import scala.collection.JavaConverters._
+  import model.java._
 
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx     = rootCtx.fresh
@@ -40,28 +40,31 @@ class DocDriver extends Driver {
     ctx.docbase.packages
   }
 
-  def compiledDocsJava(args: Array[String]): JMap[String, Package] =
-    compiledDocs(args).asJava
+  def compiledDocsJava(args: Array[String]): JMap[String, Package] = {
+    scala.collection.JavaConverters.mapAsJavaMapConverter(compiledDocs(args)).asJava
+  }
 
   def indexToJson(index: collection.Map[String, Package]): String =
     index.json
 
-  def indexToJsonJava(index: JMap[String, Package]): String =
+  def indexToJsonJava(index: JMap[String, Package]): String = {
+    import scala.collection.JavaConverters._
     indexToJson(index.asScala)
+  }
 
   override def main(args: Array[String]): Unit = {
     implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
-    //doCompile(newCompiler(ctx), fileNames)(ctx)
+    doCompile(newCompiler(ctx), filesToDocument)(ctx)
 
+    val docs = ctx.docbase.packages.toJavaList
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
 
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot)
+      Site(siteRoot, docs)
         .copyStaticFiles()
         .generateHtmlFiles()
-
 
       // FIXME: liqp templates are compiled by threadpools, for some reason it
       // is not shutting down  :-(

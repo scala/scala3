@@ -6,11 +6,12 @@ import org.junit.Test
 import org.junit.Assert._
 
 class SiteTests extends DottyDocTest {
-  val site = new Site(new java.io.File("../doc-tool/resources/"))
+  import scala.collection.JavaConverters._
+  val site = new Site(new java.io.File("../doc-tool/resources/"), List.empty.asJava)
 
   private def html(
     str: String,
-    params: Map[String, AnyRef] = Map.empty,
+    params: Map[String, AnyRef] = Map("docs" -> List.empty.asJava),
     includes: Map[String, String] = Map.empty
   ) = new HtmlPage(str, params, includes)
 
@@ -18,7 +19,7 @@ class SiteTests extends DottyDocTest {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index")
+    val expectedLayouts = Set("main", "index", "doc", "doc-page")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
@@ -72,7 +73,7 @@ class SiteTests extends DottyDocTest {
       !renderedPage.contains("---\nlayout: index\n---\n") &&
       renderedPage.contains("<title>Hello, world</title>") &&
       renderedPage.contains("<!DOCTYPE html>"),
-      "html page did not render properly"
+      "html page did not render properly:\n" + renderedPage
     )
   }
 
@@ -90,7 +91,9 @@ class SiteTests extends DottyDocTest {
     val compd  = site.compilableFiles.map(site.stripRoot).toSet
 
     val expectedAssets = Set(
-      "css/dottydoc.css"
+      "css/dottydoc.css",
+      "css/color-brewer.css",
+      "js/highlight.pack.js"
     )
     val expectedCompd = Set(
       "index.md"

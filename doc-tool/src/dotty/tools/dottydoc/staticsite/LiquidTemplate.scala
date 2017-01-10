@@ -9,18 +9,27 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
   import liqp.{ Template, TemplateContext }
   import liqp.nodes.LNode
   import liqp.tags.Tag
+  import liqp.filters.Filter
+  import liqp.parser.Flavor.JEKYLL
+  import java.util.{ HashMap, Map => JMap }
 
-  def render(params: Map[String, AnyRef], includes: Map[String, String]): String = {
-    Template.parse(contents).`with`(ResourceInclude(params, includes)).render(params.asJava)
-  }
+  // For some reason, liqp rejects a straight conversion using `.asJava`
+  private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =
+    map.foldLeft(new HashMap[String, Object]()) { case (map, (k, v)) =>
+      map.put(k, v)
+      map
+    }
+
+  def render(params: Map[String, AnyRef], includes: Map[String, String]): String =
+    Template.parse(contents, JEKYLL)
+            .`with`(ResourceInclude(params, includes))
+            .render(toJavaMap(params))
 
   private case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, String])
   extends Tag("include") {
     val DefaultExtension = ".html"
 
-    private def renderTemplate(template: String) = "dude"
-
-    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = {
+    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = try {
       val origInclude = asString(nodes(0).render(ctx))
       val incResource = origInclude match {
         case fileWithExt if fileWithExt.indexOf('.') > 0 => fileWithExt
@@ -35,12 +44,16 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
             if (nodes.length > 1) params + (origInclude -> nodes(1).render(ctx))
             else params
 
-          Template.parse(template, ctx.flavor).render(additionalParams.asJava)
+          Template.parse(template, JEKYLL).render(toJavaMap(additionalParams))
         }
         .getOrElse {
           /*dottydoc.*/println(s"couldn't find include file '$origInclude'")
           ""
         }
+    } catch {
+      case t: Throwable =>
+        println(s"got error: ${t.getMessage}")
+        throw t
     }
   }
 }
