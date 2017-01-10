@@ -102,7 +102,7 @@ import Decorators._
           case _ => t
         }
         skipBlocks(tree.rhs) match {
-          case lit: Literal if sym.is(Final, butNot = Mutable) && isIdempotentExpr(tree.rhs) =>
+          case lit: Literal if sym.is(Final) && isIdempotentExpr(tree.rhs) =>
             // duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
             // and instead return the value. This seemingly minor optimization has huge effect on initialization
             // order and the values that can be observed during superconstructor call
