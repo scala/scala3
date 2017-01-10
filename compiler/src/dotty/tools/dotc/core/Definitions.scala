@@ -27,7 +27,7 @@ object Definitions {
    */
   val MaxImplementedFunctionArity = 22
 
-  /** The maximal arity of a function thta can be accessed as member of a structrual type */
+  /** The maximal arity of a function that can be accessed as member of a structural type */
   val MaxStructuralMethodArity = 7
 }
 

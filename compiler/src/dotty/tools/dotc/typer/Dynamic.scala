@@ -120,7 +120,7 @@ trait Dynamic { self: Typer with Applications =>
    *
    *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
    *
-   *     (x: Selectable).selectDynamicMethod(x, "a")(CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
+   *     (x: Selectable).selectDynamicMethod("a", CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
    *
    *  where CT1,...,CTn are the class tags representing the erasure of T1,...,Tn.
    *
@@ -146,7 +146,8 @@ trait Dynamic { self: Typer with Applications =>
         if (tpe.isDependent)
           fail(i"has a dependent method type")
         else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
-          fail(i"takes too many parameters")
+          fail(i"""takes too many parameters.
+                  |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")
         else {
           def issueError(msgFn: String => String): Unit = ctx.error(msgFn(""), tree.pos)
           val ctags = tpe.paramTypes.map(pt =>
