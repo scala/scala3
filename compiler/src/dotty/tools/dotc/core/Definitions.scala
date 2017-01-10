@@ -319,7 +319,17 @@ class Definitions {
     def staticsMethodRef(name: PreName) = ScalaStaticsModule.requiredMethodRef(name)
     def staticsMethod(name: PreName) = ScalaStaticsModule.requiredMethod(name)
 
-  lazy val DottyPredefModuleRef = ctx.requiredModuleRef("dotty.DottyPredef")
+  // Dotty deviation: we cannot use a lazy val here because lazy vals in dotty
+  // will return "null" when called recursively, see #1856.
+  def DottyPredefModuleRef = {
+    if (_DottyPredefModuleRef == null) {
+      _DottyPredefModuleRef = ctx.requiredModuleRef("dotty.DottyPredef")
+      assert(_DottyPredefModuleRef != null)
+    }
+    _DottyPredefModuleRef
+  }
+  private[this] var _DottyPredefModuleRef: TermRef = _
+
   def DottyPredefModule(implicit ctx: Context) = DottyPredefModuleRef.symbol
 
     def Predef_eqAny(implicit ctx: Context) = DottyPredefModule.requiredMethod(nme.eqAny)
