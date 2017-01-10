@@ -119,19 +119,17 @@ object DottyBuild extends Build {
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias(
         "partest",
-        ";packageAll" +
-        ";dotty-compiler/test:runMain dotc.build" +
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test" +
-        ";dotty-compiler/runPartestRunner"
+        ";dotty-compiler-bootstrapped/packageAll" +
+        ";dotty-compiler-bootstrapped/lockPartestFile" +
+        ";dotty-compiler-bootstrapped/test:test" +
+        ";dotty-compiler-bootstrapped/runPartestRunner"
       ) ++
       addCommandAlias(
         "partest-only",
-        ";packageAll" +
-        ";dotty-compiler/test:runMain dotc.build" +
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.tests" +
-        ";dotty-compiler/runPartestRunner"
+        ";dotty-compiler-bootstrapped/packageAll" +
+        ";dotty-compiler-bootstrapped/lockPartestFile" +
+        ";dotty-compiler-bootstrapped/test:test-only dotc.tests" +
+        ";dotty-compiler-bootstrapped/runPartestRunner"
       ) ++
       addCommandAlias(
         "partest-only-no-bootstrap",
