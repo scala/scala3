@@ -95,28 +95,15 @@ import Decorators._
     def adaptToField(tree: Tree) =
       if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
+    val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
+
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
-        def skipBlocks(t: Tree): Tree = t match {
-          case Block(_, t1) => skipBlocks(t1)
-          case _ => t
-        }
-        skipBlocks(tree.rhs) match {
-          case lit: Literal if sym.is(Final, butNot = Mutable) && isIdempotentExpr(tree.rhs) =>
-            // duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
-            // and instead return the value. This seemingly minor optimization has huge effect on initialization
-            // order and the values that can be observed during superconstructor call
-
-            // see remark about idempotency in PostTyper#normalizeTree
-            cpy.DefDef(tree)(rhs = lit)
-          case _ =>
-            var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
-            if (isWildcardArg(rhs)) rhs = EmptyTree
-
-            val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
-            val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
-            Thicket(fieldDef, getterDef)
-        }
+        var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
+        if (isWildcardArg(rhs)) rhs = EmptyTree
+        val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
+        val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
+        Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
@@ -127,5 +114,4 @@ import Decorators._
                 // neither getters nor setters
     else tree
   }
-  private val NoFieldNeeded  = Lazy | Deferred | JavaDefined
 }
