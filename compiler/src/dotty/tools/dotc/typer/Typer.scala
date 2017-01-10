@@ -1173,6 +1173,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     if (sym.is(Inline, butNot = DeferredOrParamAccessor))
       checkInlineConformant(rhs1, em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
+    patchFinalVals(vdef1)
     vdef1
   }
 
@@ -1183,6 +1184,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
       patch(Position(toUntyped(vdef).pos.start), "@volatile ")
+  }
+
+  /** Adds inline to final vals with idempotent rhs
+   *
+   *  duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
+   *  and instead return the value. This seemingly minor optimization has huge effect on initialization
+   *  order and the values that can be observed during superconstructor call
+   *
+   *  see remark about idempotency in PostTyper#normalizeTree
+   */
+  private def patchFinalVals(vdef: ValDef)(implicit ctx: Context): Unit = {
+    def isFinalInlinableVal(sym: Symbol): Boolean = {
+      sym.is(Final, butNot = Mutable) &&
+      isIdempotentExpr(vdef.rhs) /* &&
+      ctx.scala2Mode (stay compatible with Scala2 for now) */
+    }
+    val sym = vdef.symbol
+    sym.info match {
+      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
+      case _ =>
+    }
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
