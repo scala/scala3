@@ -6,8 +6,8 @@ import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
 
 import scala.collection.mutable
 
-case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs,
-    parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
+case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)
+    (val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
 
