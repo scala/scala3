@@ -375,11 +375,22 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       thirdTryNamed(tp1, tp2)
     case tp2: PolyParam =>
       def comparePolyParam =
-        (ctx.mode is Mode.TypevarsMissContext) ||
-        isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+        (ctx.mode is Mode.TypevarsMissContext) || {
+        val alwaysTrue =
+          // The following condition is carefully formulated to catch all cases
+          // where the subtype relation is true without needing to add a constraint
+          // It's tricky because we might need to either appriximate tp2 by its
+          // lower bound or else widen tp1 and check that the result is a subtype of tp2.
+          // So if the constraint is not yet frozen, we do the same comparison again
+          // with a frozen constraint, which means that we get a chance to do the
+          // widening in `fourthTry` before adding to the constraint.
+          if (frozenConstraint || alwaysFluid) isSubType(tp1, bounds(tp2).lo)
+          else isSubTypeWhenFrozen(tp1, tp2)
+        alwaysTrue || {
           if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
           else fourthTry(tp1, tp2)
         }
+      }
       comparePolyParam
     case tp2: RefinedType =>
       def compareRefinedSlow: Boolean = {
