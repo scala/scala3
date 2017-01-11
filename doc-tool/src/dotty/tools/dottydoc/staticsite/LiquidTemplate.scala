@@ -13,6 +13,14 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
   import liqp.parser.Flavor.JEKYLL
   import java.util.{ HashMap, Map => JMap }
 
+  Filter.registerFilter(new Filter("reverse") {
+    override def apply(value: Any, params: AnyRef*): AnyRef = {
+      val array = super.asArray(value)
+      if (array.length == 0) null
+      else array.reverse
+    }
+  })
+
   // For some reason, liqp rejects a straight conversion using `.asJava`
   private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =
     map.foldLeft(new HashMap[String, Object]()) { case (map, (k, v)) =>
@@ -29,7 +37,7 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
   extends Tag("include") {
     val DefaultExtension = ".html"
 
-    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = try {
+    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = {
       val origInclude = asString(nodes(0).render(ctx))
       val incResource = origInclude match {
         case fileWithExt if fileWithExt.indexOf('.') > 0 => fileWithExt
@@ -50,10 +58,6 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
           /*dottydoc.*/println(s"couldn't find include file '$origInclude'")
           ""
         }
-    } catch {
-      case t: Throwable =>
-        println(s"got error: ${t.getMessage}")
-        throw t
     }
   }
 }
