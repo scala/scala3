@@ -5,7 +5,7 @@ import org.junit.runner.notification.RunListener;
 import org.junit.Assert;
 import java.lang.ref.WeakReference;
 
-public class ContextEscapeDetector extends RunListener {
+/*public class ContextEscapeDetector extends RunListener {
 
     //context can be captured by objects, eg NoDenotation
     public static final int CONTEXTS_ALLOWED = 1;
@@ -106,3 +106,4 @@ public class ContextEscapeDetector extends RunListener {
         }
     }
 }
+*/

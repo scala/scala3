@@ -14,7 +14,7 @@ import dotc.Compiler
 
 import dotc.core.Phases.Phase
 
-class DottyTest extends ContextEscapeDetection{
+class DottyTest /*extends ContextEscapeDetection*/{
 
   dotc.parsing.Scanners // initialize keywords
 
@@ -30,10 +30,12 @@ class DottyTest extends ContextEscapeDetection{
     ctx
   }
 
+  /*
   override def getCtx: Context = ctx
   override def clearCtx() = {
     ctx = null
   }
+  */
 
   private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
     override def phases = {

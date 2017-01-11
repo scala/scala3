@@ -237,8 +237,8 @@ object DottyBuild extends Build {
 
       // enable verbose exception messages for JUnit
       testOptions in Test += Tests.Argument(
-        TestFrameworks.JUnit, "-a", "-v",
-        "--run-listener=dotty.tools.ContextEscapeDetector"
+        TestFrameworks.JUnit, "-a", "-v"/*,
+        "--run-listener=dotty.tools.ContextEscapeDetector"*/
       ),
       testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
 
