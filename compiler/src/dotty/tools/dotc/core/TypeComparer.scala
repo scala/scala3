@@ -381,6 +381,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // where the subtype relation is true without needing to add a constraint
           // It's tricky because we might need to either appriximate tp2 by its
           // lower bound or else widen tp1 and check that the result is a subtype of tp2.
+          // So if the constraint is not yet frozen, we do the same comparison again
+          // with a frozen constraint, which means that we get a chance to do the
+          // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint || alwaysFluid) isSubType(tp1, bounds(tp2).lo)
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
