@@ -140,6 +140,12 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
+  // Meta project aggregating all bootstrapped projects
+  lazy val `dotty-bootstrapped` = project.
+    aggregate(`dotty-library-bootstrapped`, `dotty-compiler-bootstrapped`).
+    settings(
+      publishArtifact := false
+    )
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
     settings(sourceStructure).
