@@ -38,6 +38,19 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     _compilableFiles
   }
 
+  /** All files that are considered blogposts, currently this means that files have been placed in:
+    *
+    * ```
+    * ./blog/_posts/year-month-day-title.ext
+    * ```
+    *
+    * where `ext` is either markdown or html.
+    */
+  def blogposts: Array[JFile] = {
+    if (_blogposts eq null) initFiles()
+    _blogposts
+  }
+
   // FileSystem getter
   private[this] val fs = FileSystems.getDefault
 
@@ -68,37 +81,57 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     this
   }
 
+  def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): Map[String, AnyRef] = {
+    import scala.collection.JavaConverters._
+    val pathFromRoot = stripRoot(pageLocation)
+    val baseUrl: String = {
+      val rootLen = root.getAbsolutePath.split('/').length
+      val assetLen = pageLocation.getAbsolutePath.split('/').length
+      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
+    }
+
+    Map(
+      "docs" -> docs,
+      "page" -> Map(
+        "url" -> pathFromRoot,
+        "path" -> pathFromRoot.split('/').reverse.drop(1)
+      ),
+      "site" -> Map("baseurl" -> baseUrl).asJava
+    )
+  }
+
   /** Generate HTML files from markdown and .html sources */
   def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
     else compilableFiles.foreach { asset =>
-      import scala.collection.JavaConverters._
-      val baseUrl: String = {
-        val rootLen = root.getAbsolutePath.split('/').length
-        val assetLen = asset.getAbsolutePath.split('/').length
-        "../" * (assetLen - rootLen - 1) + "."
-      }
-      val defaultParams = Map(
-        "docs" -> docs,
-        "page" -> Map("url" -> stripRoot(asset)),
-        "site" -> Map("baseUrl" -> baseUrl).asJava
-      )
+      val pathFromRoot = stripRoot(asset)
       val fileContents = Source.fromFile(asset).mkString
       val page =
-        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, defaultParams, includes)
-        else new HtmlPage(fileContents, defaultParams, includes)
+        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, defaultParams(asset), includes)
+        else new HtmlPage(fileContents, defaultParams(asset), includes)
 
       val renderedPage = render(page)
       val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
-      val target = {
-        val tgt = stripRoot(asset)
-        tgt.splitAt(tgt.lastIndexOf('.'))._1 + ".html"
-      }
+      val target = pathFromRoot.splitAt(pathFromRoot.lastIndexOf('.'))._1 + ".html"
       val htmlTarget = mkdirs(fs.getPath(outDir.getAbsolutePath, target))
       Files.copy(source, htmlTarget, REPLACE_EXISTING)
     }
     this
+  }
+
+  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): Unit = {
+    blogposts.foreach { file =>
+      val Post(year, month, day, name, ext) = file.getName
+      val fileContents = Source.fromFile(file).mkString
+      val page =
+        if (ext == "md") new MarkdownPage(fileContents, defaultParams(file, 2), includes)
+        else new HtmlPage(fileContents, defaultParams(file, 2), includes)
+
+      val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
+      val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
+      Files.copy(source, target, REPLACE_EXISTING)
+    }
   }
 
   private def mkdirs(path: Path): path.type = {
@@ -123,9 +156,12 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     f.getAbsolutePath.drop(rootLen)
   }
 
-  // Initialization of `staticAssets` and `compilableAssets`:
+  private[this] val Post = """(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.(md|html)""".r
+  // Initialization of `staticAssets` and `compilableAssets`, and `blogPosts`:
   private[this] var _staticAssets: Array[JFile] = _
   private[this] var _compilableFiles: Array[JFile] = _
+  private[this] var _blogposts: Array[JFile] = _
+
   private[this] def initFiles() = {
     // Split files between compilable and static assets
     def splitFiles(f: JFile, assets: ArrayBuffer[JFile], comp: ArrayBuffer[JFile]): Unit = {
@@ -137,11 +173,26 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
       else assets.append(f)
     }
 
+    // Collect posts from ./blog/_posts
+    def collectPosts(file: JFile): Option[JFile] = file.getName match {
+      case Post(year, month, day, name, ext) => Some(file)
+      case _ => None
+    }
+
     val assets = new ArrayBuffer[JFile]
     val comp = new ArrayBuffer[JFile]
     splitFiles(root, assets, comp)
     _staticAssets = assets.toArray
     _compilableFiles = comp.toArray
+
+    _blogposts =
+      root
+      .listFiles
+      .find(dir => dir.getName == "blog" && dir.isDirectory)
+      .map(_.listFiles).getOrElse(Array.empty)
+      .find(dir => dir.getName == "_posts" && dir.isDirectory)
+      .map(_.listFiles).getOrElse(Array.empty)
+      .flatMap(collectPosts)
   }
 
   /** Files that define a layout then referred to by `layout: filename-no-ext`

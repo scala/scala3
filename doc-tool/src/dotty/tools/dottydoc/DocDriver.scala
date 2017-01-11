@@ -65,6 +65,7 @@ class DocDriver extends Driver {
       Site(siteRoot, docs)
         .copyStaticFiles()
         .generateHtmlFiles()
+        .generateBlog()
 
       // FIXME: liqp templates are compiled by threadpools, for some reason it
       // is not shutting down  :-(
