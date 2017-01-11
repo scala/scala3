@@ -20,7 +20,7 @@ class PageTests extends DottyDocTest {
     )
 
     assert(
-      page.yaml == Map("key" -> ""),
+      page.yaml == Map("key" -> List.empty.asJava),
       s"""incorrect yaml, expected "key:" without key in: ${page.yaml}"""
     )
 
@@ -39,7 +39,7 @@ class PageTests extends DottyDocTest {
     )
 
     assert(
-      page1.yaml == Map("key" -> ""),
+      page1.yaml == Map("key" -> List.empty.asJava),
       s"""incorrect yaml, expected "key:" without key in: ${page1.yaml}"""
     )
 

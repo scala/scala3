@@ -9,7 +9,7 @@ import dotc.config.Printers.dottydoc
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
-import _root_.java.util.{ Map => JMap }
+import _root_.java.util.{ Map => JMap, List => JList }
 
 case class IllegalFrontMatter(message: String) extends Exception(message)
 
@@ -20,7 +20,7 @@ trait Page {
   def pageContent: String
   def params: Map[String, AnyRef]
 
-  def yaml(implicit ctx: Context): Map[String, String] = {
+  def yaml(implicit ctx: Context): Map[String, AnyRef] = {
     if (_yaml eq null) initFields()
     _yaml
   }
@@ -30,7 +30,7 @@ trait Page {
     _html
   }
 
-  protected[this] var _yaml: Map[String, String] = _
+  protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
   protected[this] var _html: String = _
   protected[this] def initFields()(implicit ctx: Context) = {
     val md = Parser.builder(ctx.docbase.markdownOptions).build.parse(pageContent)
@@ -40,7 +40,10 @@ trait Page {
     _yaml = updatedYaml {
       yamlCollector
       .getData().asScala
-      .mapValues(_.asScala.headOption.getOrElse(""))
+      .mapValues {
+        case xs if xs.size == 1 => xs.get(0)
+        case xs => xs
+      }
       .toMap
     }
 
@@ -67,11 +70,11 @@ trait Page {
     * removes "layout" from the parameters if it exists. We don't want to
     * preserve the layout from the previously expanded template
     */
-  private def updatedYaml(newYaml: Map[String, String]): Map[String, String] =
+  private def updatedYaml(newYaml: Map[String, AnyRef]): Map[String, AnyRef] =
     params
     .get("page")
     .flatMap {
-      case page: Map[String, String] @unchecked =>
+      case page: Map[String, AnyRef] @unchecked =>
         Some(page - "layout" ++ newYaml)
       case _ => None
     }

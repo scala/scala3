@@ -262,7 +262,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     * expansion of the template with all its layouts and includes.
     */
   def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): String =
-    page.yaml.get("layout").flatMap(layouts.get(_)) match {
+    page.yaml.get("layout").flatMap(xs => layouts.get(xs.toString)) match {
       case None =>
         page.html
       case Some(layout) =>
