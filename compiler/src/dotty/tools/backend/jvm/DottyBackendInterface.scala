@@ -560,7 +560,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def javaBinaryName: Name = toDenot(sym).fullNameSeparated("/") // addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
-    def rawname: Name = sym.name // todo ????
+    def rawname: Name = {
+      val original = toDenot(sym).initial
+      sym.name(ctx.withPhase(original.validFor.phaseId))
+    }
 
     // types
     def info: Type = toDenot(sym).info
