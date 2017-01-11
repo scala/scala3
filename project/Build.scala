@@ -326,7 +326,7 @@ object DottyBuild extends Build {
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       // packageAll should always be run before tests
-      javaOptions <++= (dependencyClasspath in Runtime, packageAll) map { (attList, _) =>
+      javaOptions <++= (dependencyClasspath in Runtime, packageAll) map { (attList, pA) =>
         // put needed dependencies on classpath:
         val path = for {
           file <- attList.map(_.data)
@@ -356,7 +356,13 @@ object DottyBuild extends Build {
             List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
           else List()
 
-        ("-DpartestParentID=" + pid) :: tuning ::: agentOptions ::: ci_build ::: path.toList
+        val jars = List(
+          "-Ddotty.tests.classes.interfaces=" + pA("dotty-interfaces"),
+          "-Ddotty.tests.classes.library=" + pA("dotty-library"),
+          "-Ddotty.tests.classes.compiler=" + pA("dotty-compiler")
+        )
+
+        ("-DpartestParentID=" + pid) :: jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
     ).
     settings(publishing)
