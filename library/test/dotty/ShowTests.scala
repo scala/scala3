@@ -35,13 +35,13 @@ class ShowTests {
 
   @Test def showCar = {
     case class Car(model: String, manufacturer: String, year: Int)
-    implicit val showCar = new Show[Car] {
+    implicit val showCar: Show[Car] = new Show[Car] {
       def show(c: Car) =
         "Car(" + c.model.show + ", " + c.manufacturer.show + ", " + c.year.show + ")"
     }
 
     case class Shop(xs: List[Car], name: String)
-    implicit val showShop = new Show[Shop] {
+    implicit val showShop: Show[Shop] = new Show[Shop] {
       def show(sh: Shop) =
         "Shop(" + sh.xs.show + ", " + sh.name.show + ")"
     }
