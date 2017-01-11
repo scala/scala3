@@ -85,7 +85,7 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
   private val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
 }
 
-object ResolveSuper{
+object ResolveSuper {
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
    *  @param base       The class in which everything is mixed together
