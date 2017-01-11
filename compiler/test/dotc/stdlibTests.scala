@@ -66,7 +66,7 @@ class stdlibTests extends CompilerTest {
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   } ++ checkOptions ++ classPath
 
-  val scala2mode = List("-language:Scala2")
+  val stdlibMode = List("-migration", "-Yno-inline", "-language:Scala2")
 
   private val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
   private val linkDCEwithVis = "-link-vis" :: linkDCE
@@ -111,15 +111,15 @@ class stdlibTests extends CompilerTest {
     assertTrue(msgMissing, missingFiles.isEmpty)
   }
 
-  @Test def compileStdLib(): Unit = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
+  @Test def compileStdLib(): Unit = compileList("compileStdLib", stdlibFiles, stdlibMode)
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
+    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
 
   @org.junit.Ignore("Too long to run in CI")
   @Test def link_dce_vis_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
+    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
   private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
