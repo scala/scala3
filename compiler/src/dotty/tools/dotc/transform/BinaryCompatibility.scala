@@ -22,7 +22,7 @@ import ValueClasses._
 /** Checks that all non-private methods of a class are explicitly defined, not desugared and expressible in java
  */
 
-class BinaryCompatibility extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class BinaryCompatibility extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "binCompat"
