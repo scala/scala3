@@ -1,0 +1,61 @@
+/** Fonts */
+@import url(https://fonts.googleapis.com/css?family=Source+Code+Pro:400,700,600);
+
+div#entity-container {
+    margin-top: 10px;
+    padding: 0 20px 20px;
+}
+
+div#entity-title {
+    color: #34495e;
+    font-family: "Helvetica","Arial",sans-serif;
+    font-weight: 400;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+}
+
+div#entity-title > span#entity-modifiers,
+div#entity-title > span#entity-kind {
+    font-weight: 100;
+}
+
+div.entity-section {
+    background-color: #fff;
+    border-radius: 4px;
+    margin: 0;
+    padding: 30px;
+}
+
+div.entity-section *:last-child {
+    margin-bottom: 0px;
+}
+
+h1.section {
+    margin: 30px 0;
+}
+
+div#entity-members > div.member {
+    margin-bottom: 30px;
+}
+
+div#entity-members > div.member:last-child {
+    margin-bottom: 0px;
+}
+
+div#entity-members > div.member > div.member-title {
+    font-family: "Source Code Pro", sans-serif;
+}
+
+div#entity-members > div.member > div.member-title > span.member-name {
+    color: #458;
+    font-weight: 600;
+}
+
+div#entity-members > div.member > div.member-title span.keyword {
+    font-weight: 600;
+    margin-right: 11px;
+}
+
+div#entity-members > div.member > div.member-title span.no-left {
+    margin-left: -11px;
+}

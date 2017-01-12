@@ -1,0 +1,70 @@
+---
+layout: doc
+extraCSS:
+    - css/api-page.css
+---
+
+<div id="entity-container">
+    <div id="entity-title">
+        <span id="entity-modifiers">
+            {{ entity.modifiers | join: " " }}
+        </span>
+        <span id="entity-kind">
+            {{ entity.kind }}
+        </span>
+        <span id="entity-name">
+            {{ entity.name }}
+        </span>
+    </div>
+
+    {% if entity.comment.body %}
+    <div id="entity-body" class="entity-section">
+        {{ entity.comment.body }}
+    </div>
+    {% endif %}
+
+    <h1 class="section">Members</h1>
+
+    <div id="entity-members" class="entity-section">
+        {% for member in entity.members %}
+        <div class="member">
+            <div class="member-title">
+                <span class="member-modifiers">
+                    {{ member.modifiers | join: " " }}
+                </span>
+                <span class="member-kind">
+                    {{ member.kind }}
+                </span>
+                <span class="member-name">
+                    {{ member.name }}
+                </span>
+
+                {% if member.kind == "def" and member.paramLists.size > 0 %}
+                    {% for plist in member.paramLists %}
+                    <span class="no-left">(</span>
+                        {% if plist.isImplicit %}
+                        <span class="no-left keyword">implicit</span>
+                        {% endif %}
+                        {% for ref in plist.list %}
+                            {% if forloop.last %}
+                            <span class="no-left">{{ ref.title }}</span>
+                            {% else %}
+                            <span class="no-left">{{ ref.title }}, </span>
+                            {% endif %}
+                        {% endfor %}
+                    <span class="no-left">)</span>
+                    {% endfor %}
+                {% endif %}
+
+                {% if member.returnValue %}
+                <span class="no-left">: {{ member.returnValue.title }}</span>
+                {% endif %}
+            </div><!-- end member-title -->
+
+            <div class="member-body">
+                {{ member.comment.short }}
+            </div>
+        </div><!-- end member -->
+        {% endfor %}
+    </div>
+</div><!-- end entity-container -->

@@ -18,10 +18,17 @@ import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
+import model.Package
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 
-case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
+case class Site(val root: JFile, val documentation: Map[String, Package]) extends ResourceFinder {
+  /** Documentation serialized to java maps */
+  private val docs: JList[_] = {
+    import model.java._
+    documentation.toJavaList
+  }
+
   /** All files that are considered static in this context, this can be
     * anything from CSS, JS to images and other files.
     *
@@ -87,6 +94,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
 
       // Copy statics included in resources
       Map(
+        "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
         "js/highlight.pack.js" -> "/js/highlight.pack.js"
@@ -113,41 +121,73 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, Array()))
   }
 
-  /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type = {
+  private def createOutput(outDir: JFile)(op: => Unit): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) /*dottydoc.*/println(s"couldn't create output folder: $outDir")
-    else compilableFiles.foreach { asset =>
-      val pathFromRoot = stripRoot(asset)
-      val fileContents = Source.fromFile(asset).mkString
-      val params = defaultParams(asset).withPosts(blogInfo).toMap
-      val page =
-        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes)
-        else new HtmlPage(fileContents, params, includes)
-
-      val renderedPage = render(page)
-      val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
-      val target = pathFromRoot.splitAt(pathFromRoot.lastIndexOf('.'))._1 + ".html"
-      val htmlTarget = mkdirs(fs.getPath(outDir.getAbsolutePath, target))
-      Files.copy(source, htmlTarget, REPLACE_EXISTING)
-    }
+    else op
     this
   }
 
-  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): Unit = {
-    blogposts.foreach { file =>
-      val BlogPost.extract(year, month, day, name, ext) = file.getName
-      val fileContents = Source.fromFile(file).mkString
-      val params = defaultParams(file, 2).withPosts(blogInfo).toMap
-      val page =
-        if (ext == "md") new MarkdownPage(fileContents, params, includes)
-        else new HtmlPage(fileContents, params, includes)
+  /** Generate HTML for the API documentation */
+  def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+    createOutput(outDir) {
+      def genDoc(e: model.Entity) = {
+        // Suffix is index.html for packages and therefore the additional depth
+        // is increased by 1
+        val (suffix, offset) =
+          if (e.kind == "package") ("/index.html", -1)
+          else (".html", 0)
 
-      val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
-      val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
-      Files.copy(source, target, REPLACE_EXISTING)
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
+        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e)
+        val page = new HtmlPage(layouts("api-page"), params.toMap, includes)
+
+        val rendered = render(page)
+        val source = new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8))
+
+        Files.copy(source, target, REPLACE_EXISTING)
+      }
+
+      documentation.values.foreach { pkg =>
+        genDoc(pkg)
+        pkg.members.filterNot(_.kind == "package").map(genDoc)
+      }
     }
-  }
+
+  /** Generate HTML files from markdown and .html sources */
+  def generateHtmlFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+    createOutput(outDir) {
+      compilableFiles.foreach { asset =>
+        val pathFromRoot = stripRoot(asset)
+        val fileContents = Source.fromFile(asset).mkString
+        val params = defaultParams(asset).withPosts(blogInfo).toMap
+        val page =
+          if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes)
+          else new HtmlPage(fileContents, params, includes)
+
+        val renderedPage = render(page)
+        val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
+        val target = pathFromRoot.splitAt(pathFromRoot.lastIndexOf('.'))._1 + ".html"
+        val htmlTarget = mkdirs(fs.getPath(outDir.getAbsolutePath, target))
+        Files.copy(source, htmlTarget, REPLACE_EXISTING)
+      }
+    }
+
+  def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
+    createOutput(outDir) {
+      blogposts.foreach { file =>
+        val BlogPost.extract(year, month, day, name, ext) = file.getName
+        val fileContents = Source.fromFile(file).mkString
+        val params = defaultParams(file, 2).withPosts(blogInfo).toMap
+        val page =
+          if (ext == "md") new MarkdownPage(fileContents, params, includes)
+          else new HtmlPage(fileContents, params, includes)
+
+        val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
+        Files.copy(source, target, REPLACE_EXISTING)
+      }
+    }
 
   private def mkdirs(path: Path): path.type = {
     val parent = path.getParent.toFile
@@ -181,7 +221,11 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     def splitFiles(f: JFile, assets: ArrayBuffer[JFile], comp: ArrayBuffer[JFile]): Unit = {
       val name = f.getName
       if (f.isDirectory) {
-        if (!f.getName.startsWith("_")) f.listFiles.foreach(splitFiles(_, assets, comp))
+        val name = f.getName
+        if (!name.startsWith("_") && name != "api") f.listFiles.foreach(splitFiles(_, assets, comp))
+        if (f.getName == "api") dottydoc.println {
+          "the specified `/api` directory will not be used since it is needed for the api documentation"
+        }
       }
       else if (name.endsWith(".md") || name.endsWith(".html")) comp.append(f)
       else assets.append(f)
@@ -230,6 +274,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
       "main" -> "/_layouts/main.html",
       "doc" -> "/_layouts/doc.html",
       "doc-page" -> "/_layouts/doc-page.html",
+      "api-page" -> "/_layouts/api-page.html",
       "blog" -> "/_layouts/blog.html",
       "index" -> "/_layouts/index.html"
     ).mapValues(getResource)

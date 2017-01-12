@@ -11,9 +11,12 @@ object java {
   import scala.collection.JavaConverters._
   import _root_.java.util.{ Optional => JOptional, Map => JMap }
 
-  implicit class JavaOption[A](val opt: Option[A]) extends AnyVal {
-    def asJava: JOptional[A] =
-      opt.map(a => JOptional.of(a)).getOrElse(JOptional.empty[A])
+  implicit class OptStr(val opt: Option[String]) extends AnyVal {
+    def asJava = opt.getOrElse(null)
+  }
+
+  implicit class OptMap(val opt: Option[JMap[String, _]]) extends AnyVal {
+    def asJava = opt.getOrElse(Map.empty.asJava)
   }
 
   implicit class JavaComment(val cmt: Comment) extends AnyVal {
@@ -222,6 +225,7 @@ object java {
     case ent: Object    => ent.asJava(extras)
     case ent: Def       => ent.asJava
     case ent: Val       => ent.asJava
+    case _              => Map.empty.asJava
   }
 
   implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {

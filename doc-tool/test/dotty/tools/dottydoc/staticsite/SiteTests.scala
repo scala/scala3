@@ -7,7 +7,7 @@ import org.junit.Assert._
 
 class SiteTests extends DottyDocTest {
   import scala.collection.JavaConverters._
-  val site = new Site(new java.io.File("../doc-tool/resources/"), List.empty.asJava)
+  val site = new Site(new java.io.File("../doc-tool/resources/"), Map.empty)
 
   private def html(
     str: String,
@@ -19,7 +19,7 @@ class SiteTests extends DottyDocTest {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index", "blog", "doc", "doc-page")
+    val expectedLayouts = Set("main", "index", "blog", "doc", "doc-page", "api-page")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
@@ -91,16 +91,14 @@ class SiteTests extends DottyDocTest {
     val compd  = site.compilableFiles.map(site.stripRoot).toSet
 
     val expectedAssets = Set(
+      "css/api-page.css",
       "css/dottydoc.css",
       "css/color-brewer.css",
       "js/highlight.pack.js"
     )
     val expectedCompd = Set(
-      "index.md"
       // Directories starting in `_` are not included in compilable files
-      //"_includes/header.html",
-      //"_layouts/index.html",
-      //"_layouts/main.html"
+      "index.md"
     )
 
     assert(expectedAssets == assets,

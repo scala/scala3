@@ -3,24 +3,31 @@ package dottydoc
 package staticsite
 
 import java.util.{ List => JList }
+import model.{ Entity, NonEntity }
 
 case class DefaultParams(
   docs: JList[_],
   page: PageInfo,
-  site: SiteInfo
+  site: SiteInfo,
+  entity: Entity = NonEntity
 ) {
-
+  import model.java._
   import scala.collection.JavaConverters._
+
   def toMap: Map[String, AnyRef] = Map(
     "docs" -> docs,
+
     "page" -> Map(
       "url" -> page.url,
       "path" -> page.path
     ),
+
     "site" -> Map(
       "baseurl" -> site.baseurl,
       "posts" -> site.posts.map(_.toMap)
-    ).asJava
+    ).asJava,
+
+    "entity" -> entity.asJava()
   )
 
   def withPosts(posts: Array[BlogPost]): DefaultParams =
@@ -28,6 +35,8 @@ case class DefaultParams(
 
   def withUrl(url: String): DefaultParams =
     copy(page = PageInfo(url))
+
+  def withEntity(e: model.Entity) = copy(entity = e)
 }
 
 case class PageInfo(url: String) {

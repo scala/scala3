@@ -8,17 +8,17 @@ layout: main
         <ul class="index-entities">
         {% if docs.size > 0 %}
         <li class="index-title">
-            <a href="{{ site.baseurl }}/api/index.html">API</a>
+            <span>API</span>
         </li>
         {% endif %}
         {% for pkg in docs %}
             <li class="index-entity entity-package">
-                <a href="#">{{ pkg.name }}</a>
+                <a href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">{{ pkg.name }}</a>
             </li>
             {% for member in pkg.members %}
                 {% if member.kind != "package" %}
                 <li class="index-entity">
-                    <a href="#">{{ member.kind }} {{ member.name }}</a>
+                    <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.kind }} {{ member.name }}</a>
                 </li>
                 {% endif %}
             {% endfor %}

@@ -59,6 +59,7 @@ ul.toc {
 ul.toc > li.toc-title > a {
     font-size: 16px;
     font-weight: bold;
+    margin-top: 1rem;
 }
 
 ul.toc > li > a#home-button,
@@ -101,10 +102,11 @@ ul.toc > li > ul.hide {
     display: none;
 }
 
-ul.index-entities > li.index-title > a {
+ul.index-entities > li.index-title > span {
     font-size: 16px;
     font-weight: bold;
-    color: rgba(0,0,0,.87)
+    color: rgba(0,0,0,.87);
+    padding: 0 24px;
 }
 
 li.index-entity > a:focus {

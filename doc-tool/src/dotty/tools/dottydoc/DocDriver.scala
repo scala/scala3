@@ -56,13 +56,14 @@ class DocDriver extends Driver {
     implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
     doCompile(newCompiler(ctx), filesToDocument)(ctx)
 
-    val docs = ctx.docbase.packages.toJavaList
+    val docs = ctx.docbase.packages
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
 
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
       Site(siteRoot, docs)
+        .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()
         .generateBlog()
