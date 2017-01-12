@@ -40,7 +40,11 @@ trait Page {
       yamlCollector
       .getData().asScala
       .mapValues {
-        case xs if xs.size == 1 => xs.get(0)
+        case xs if xs.size == 1 =>
+          val str = xs.get(0)
+          if (str.length > 0 && str.head == '"' && str.last == '"')
+            str.substring(1, str.length - 1)
+          else str
         case xs => xs
       }
       .toMap
