@@ -57,6 +57,20 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     _blogposts
   }
 
+  protected lazy val blogInfo: Array[BlogPost] =
+    blogposts
+    .map { file =>
+      val BlogPost.extract(year, month, day, name, ext) = file.getName
+      val fileContents = Source.fromFile(file).mkString
+      val params = defaultParams(file, 2).withUrl(s"/blog/$year/$month/$day/$name.html").toMap
+      val page =
+        if (ext == "md") new MarkdownPage(fileContents, params, includes)
+        else new HtmlPage(fileContents, params, includes)
+      BlogPost(file, page)
+    }
+    .sortBy(_.date)
+    .reverse
+
   // FileSystem getter
   private[this] val fs = FileSystems.getDefault
 
@@ -87,7 +101,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     this
   }
 
-  def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): Map[String, AnyRef] = {
+  private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
     import scala.collection.JavaConverters._
     val pathFromRoot = stripRoot(pageLocation)
     val baseUrl: String = {
@@ -96,14 +110,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    Map(
-      "docs" -> docs,
-      "page" -> Map(
-        "url" -> pathFromRoot,
-        "path" -> pathFromRoot.split('/').reverse.drop(1)
-      ),
-      "site" -> Map("baseurl" -> baseUrl).asJava
-    )
+    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, Array()))
   }
 
   /** Generate HTML files from markdown and .html sources */
@@ -113,9 +120,10 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     else compilableFiles.foreach { asset =>
       val pathFromRoot = stripRoot(asset)
       val fileContents = Source.fromFile(asset).mkString
+      val params = defaultParams(asset).withPosts(blogInfo).toMap
       val page =
-        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, defaultParams(asset), includes)
-        else new HtmlPage(fileContents, defaultParams(asset), includes)
+        if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes)
+        else new HtmlPage(fileContents, params, includes)
 
       val renderedPage = render(page)
       val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
@@ -128,11 +136,12 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
 
   def generateBlog(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): Unit = {
     blogposts.foreach { file =>
-      val Post(year, month, day, name, ext) = file.getName
+      val BlogPost.extract(year, month, day, name, ext) = file.getName
       val fileContents = Source.fromFile(file).mkString
+      val params = defaultParams(file, 2).withPosts(blogInfo).toMap
       val page =
-        if (ext == "md") new MarkdownPage(fileContents, defaultParams(file, 2), includes)
-        else new HtmlPage(fileContents, defaultParams(file, 2), includes)
+        if (ext == "md") new MarkdownPage(fileContents, params, includes)
+        else new HtmlPage(fileContents, params, includes)
 
       val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
       val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
@@ -162,7 +171,6 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
     f.getAbsolutePath.drop(rootLen)
   }
 
-  private[this] val Post = """(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.(md|html)""".r
   // Initialization of `staticAssets` and `compilableAssets`, and `blogPosts`:
   private[this] var _staticAssets: Array[JFile] = _
   private[this] var _compilableFiles: Array[JFile] = _
@@ -181,7 +189,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
 
     // Collect posts from ./blog/_posts
     def collectPosts(file: JFile): Option[JFile] = file.getName match {
-      case Post(year, month, day, name, ext) => Some(file)
+      case BlogPost.extract(year, month, day, name, ext) => Some(file)
       case _ => None
     }
 
