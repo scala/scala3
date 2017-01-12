@@ -2,13 +2,11 @@ package dotc
 
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
-import dotty.tools.StdLibSources
 import org.junit.{Before, Test}
 import org.junit.Assert._
 
 import java.io.{ File => JFile }
 import scala.reflect.io.Directory
-import scala.io.Source
 
 // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
 class tests extends CompilerTest {

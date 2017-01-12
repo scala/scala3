@@ -103,6 +103,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YlinkDCEChecks = BooleanSetting("-Ylink-dce-checks", "Check number of reachable classes and methods.")
+  val YlinkStdlib = BooleanSetting("-Ylink-stdlib", "Linker is linking the entire stdlib in tests.")
 
   /** Linker specific flags */
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"

@@ -70,7 +70,7 @@ class stdlibTests extends CompilerTest {
 
   val stdlibMode = List("-migration", "-Yno-inline", "-language:Scala2")
 
-  private val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
+  private val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph", "-Ylink-stdlib")
   private val linkDCEwithVis = "-link-vis" :: linkDCE
 
   private val testsDir      = "../tests/"

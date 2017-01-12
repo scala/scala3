@@ -72,13 +72,8 @@ class DPSuiteRunner(testSourcePath: String, // relative path, like "files", or "
   javaOpts: String = DPConfig.runJVMOpts)
 extends SuiteRunner(testSourcePath, fileManager, updateCheck, failed, javaCmdPath, javacCmdPath, scalacExtraArgs, javaOpts) {
 
-  // Needed to not overload CI when running stdlib tests.
-  private val maxThreads = 6
-
   if (!DPConfig.runTestsInParallel)
     sys.props("partest.threads") = "1"
-  else
-    sys.props("partest.threads") = (PartestDefaults.numThreads min maxThreads).toString
 
   sys.props("partest.root") = "."
 
