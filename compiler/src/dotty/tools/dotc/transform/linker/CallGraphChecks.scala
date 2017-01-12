@@ -64,8 +64,12 @@ class CallGraphChecks extends MiniPhaseTransform {
         def check(indexInAnnotation: Int, name: String, actual: Int): Unit = {
           ann.argument(indexInAnnotation) match {
             case Some(lit @ Trees.Literal(Constant(bound: Int))) =>
-              if (actual > bound)
+              if (bound <= 0)
+                ctx.error(s"Invalid bound $name: bound must be positive ", lit.pos)
+              else if (actual > bound)
                 ctx.error(s"Too many $name: expected at most $bound but was $actual", lit.pos)
+              else if (actual < bound / 1.2)
+                ctx.error(s"Bound is not tight $name: bound is $bound and actually have $actual", lit.pos)
             case Some(arg) => ctx.error("Argument must be a literal integer", arg.pos)
             case _ => assert(false)
           }

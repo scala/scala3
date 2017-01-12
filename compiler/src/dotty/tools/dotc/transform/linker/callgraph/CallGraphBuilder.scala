@@ -594,8 +594,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       }
     }
 
-    // FIXME java method could potentially call this.xyz()
-    // addAllPotentialCallsFor(method.call.normalizedPrefix)
     for {
       rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
       potentialCall <- allPotentialCallsFor(rec)

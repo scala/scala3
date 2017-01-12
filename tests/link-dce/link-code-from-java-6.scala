@@ -6,7 +6,7 @@ class MyInt(val x: Int) extends java.lang.Comparable[MyInt] {
 }
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 27, classesWithReachableMethods = 13, reachableMethods = 19)
+  @internal.link.CallGraphBounds(reachableClasses = 27, classesWithReachableMethods = 12, reachableMethods = 18)
   def main(args: Array[String]): Unit = {
     val a = new Array[java.lang.Object](3)
     a(0) = new MyInt(1)

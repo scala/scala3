@@ -4,6 +4,7 @@ import java.util.Observable
 import scala.annotation.internal
 
 object Test {
+  // @internal.link.CallGraphBounds(reachableClasses = 1, classesWithReachableMethods = 1, reachableMethods = 1)
   def main(args: Array[String]): Unit = {
     val classLoader = Test.getClass.getClassLoader()
 
