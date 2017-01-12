@@ -33,10 +33,16 @@ div#content-body {
     min-height: 100vh;
 }
 
-a#menu-toggle:focus,
-a#menu-toggle {
+div#menu-toggle {
     color: #837F84;
     outline: none;
+    padding-left: 20px;
+    padding-top: 10px;
+}
+
+div#menu-toggle:hover {
+    color: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
 }
 
 ul.index-entities {
@@ -67,6 +73,17 @@ li.index-entity > a {
     padding: 0 24px;
     color: rgba(0,0,0,.87);
     background: transparent;
+    cursor: pointer;
+}
+
+ul.toc > li > ul.show {
+    display: block;
+    list-style-type: none;
+    font-size: 13px;
+}
+
+ul.toc > li > ul.hide {
+    display: none;
 }
 
 li.index-entity > a.title {
@@ -78,7 +95,7 @@ li.index-entity > a:focus {
     text-decoration: none;
 }
 
-li.index-entity > a:hover {
+ul.toc > li > a:hover {
     text-decoration: none;
     background-color: rgba(0, 0, 0, 0.2);
 }

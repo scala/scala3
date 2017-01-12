@@ -230,6 +230,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
       "main" -> "/_layouts/main.html",
       "doc" -> "/_layouts/doc.html",
       "doc-page" -> "/_layouts/doc-page.html",
+      "blog" -> "/_layouts/blog.html",
       "index" -> "/_layouts/index.html"
     ).mapValues(getResource)
 

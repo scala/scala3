@@ -1,5 +1,47 @@
+{% assign parent = page.path | first %}
 <ul class="toc">
-    <li><a href="{{ site.baseUrl }}/usage/">Usage</a></li>
-    <li><a href="{{ site.baseUrl }}/contributing/">Contributing</a></li>
-    <li><a href="{{ site.baseUrl }}/internals/">Internals</a></li>
+    <li>
+        <a href="{{ site.baseurl }}/blog/index.html">Blog</a>
+    </li>
+    <li>
+        <a class="toggle-children" onclick="tocToggleChild('usage')">Usage</a>
+        <ul id="usage" class="{% if parent == "usage" %} show {% else %} hide {% endif %}">
+            <li><a href="{{ site.baseurl }}/docs/usage/cbt-projects.html">cbt-projects</a></li>
+            <li><a href="{{ site.baseurl }}/docs/usage/sbt-projects.html">sbt-projects</a></li>
+            <li><a href="{{ site.baseurl }}/docs/usage/migrating.html">migrating</a></li>
+        </ul>
+    </li>
+    <li>
+        <a class="toggle-children" onclick="tocToggleChild('contributing')">Contributing</a>
+        <ul id="contributing" class="{% if parent == "contributing" %} show {% else %} hide {% endif %}">
+            <li><a href="{{ site.baseurl }}/docs/contributing/eclipse.html">Eclipse</a></li>
+            <li><a href="{{ site.baseurl }}/docs/contributing/getting-started.html">Getting Started</a></li>
+            <li><a href="{{ site.baseurl }}/docs/contributing/intellij-idea.html">IntelliJ IDEA</a></li>
+            <li><a href="{{ site.baseurl }}/docs/contributing/workflow.html">Workflow</a></li>
+        </ul>
+    </li>
+    <li>
+        <a class="toggle-children" onclick="tocToggleChild('internals')">Internals</a>
+        <ul id="internals" class="{% if parent == "internals" %} show {% else %} hide {% endif %}">
+            <li><a href="{{ site.baseurl }}/docs/internals/backend.html">Backend</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/benchmarks.html">Benchmarks</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/classpaths.html">Classpaths</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/core-data-structures.html">Core Data Structures</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/contexts.html">Contexts</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/dotc-scalac.html">Dotc vs Scalac</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/higher-kinded-v2.html">Higher-Kinded Types</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/overall-structure.html">Overall Structure</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/periods.html">Periods</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/syntax.html">Syntax</a></li>
+            <li><a href="{{ site.baseurl }}/docs/internals/type-system.html">Type System</a></li>
+        </ul>
+    </li>
 </ul>
+
+<script>
+function tocToggleChild(c) {
+    var child = document.getElementById(c);
+    child.classList.toggle("show");
+    child.classList.toggle("hide");
+}
+</script>

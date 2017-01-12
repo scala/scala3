@@ -19,7 +19,7 @@ class SiteTests extends DottyDocTest {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index", "doc", "doc-page")
+    val expectedLayouts = Set("main", "index", "blog", "doc", "doc-page")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
