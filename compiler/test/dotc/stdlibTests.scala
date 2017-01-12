@@ -3,6 +3,7 @@ package dotc
 import java.io.{File => JFile}
 
 import dotty.Jars
+import dotty.tools.StdLibSources
 import dotty.tools.dotc.CompilerTest
 import org.junit.Assert._
 import org.junit.{Before, Test}
@@ -81,34 +82,15 @@ class stdlibTests extends CompilerTest {
   }
 
   @Test def checkWBLists(): Unit = {
-    val stdlibFilesBlackListed = loadList(stdlibBlackFile)
+    val stdlibFilesBlackListed = StdLibSources.blacklisted
 
-    def checkForRepeated(list: List[String], listFile: String) = {
-      val duplicates = list.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
-      val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in $listFile:\n", "\n", "\n")
-      assertTrue(msg, duplicates.isEmpty)
-    }
-    checkForRepeated(stdlibFiles, stdlibWhitelistFile)
-    checkForRepeated(stdlibFilesBlackListed, stdlibBlackFile)
+    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
+    assertTrue(msg, duplicates.isEmpty)
 
-    val whitelistSet = stdlibFiles.toSet
-    val blacklistSet = stdlibFilesBlackListed.toSet
-
-    val intersection = whitelistSet.intersect(blacklistSet)
-    val msgIntersection =
-      intersection.map(x => s"'$x'").mkString(s"Entries where found in both $stdlibWhitelistFile and $stdlibBlackFile:\n", "\n", "\n")
-    assertTrue(msgIntersection, intersection.isEmpty)
-
-    def collectAllFilesInDir(dir: JFile, acc: List[String]): List[String] = {
-      val files = dir.listFiles()
-      val acc2 = files.foldLeft(acc)((acc1, file) => if (file.isFile && file.getPath.endsWith(".scala")) file.getPath :: acc1 else acc1)
-      files.foldLeft(acc2)((acc3, file) => if (file.isDirectory) collectAllFilesInDir(file, acc3) else acc3)
-    }
-    val filesInStdLib = collectAllFilesInDir(new JFile("../scala-scala/src/library/"), Nil)
-    val missingFiles = filesInStdLib.toSet -- whitelistSet -- blacklistSet
-    val msgMissing =
-      missingFiles.map(x => s"'$x'").mkString(s"Entries are missing in $stdlibWhitelistFile or $stdlibBlackFile:\n", "\n", "\n")
-    assertTrue(msgMissing, missingFiles.isEmpty)
+    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
+    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
+    assertTrue(msg2, filesNotInStdLib.isEmpty)
   }
 
   @Test def compileStdLib(): Unit = compileList("compileStdLib", stdlibFiles, stdlibMode)
@@ -121,18 +103,11 @@ class stdlibTests extends CompilerTest {
   @Test def link_dce_vis_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
 
-  private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .toList
-
   private def stdlibWhitelistFile: String = "./test/dotc/scala-collections.whitelist"
   private def stdlibBlackFile: String = "./test/dotc/scala-collections.blacklist"
 
-  private val stdlibFiles: List[String] = loadList(stdlibWhitelistFile)
-  private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
+  private val stdlibFiles: List[String] = StdLibSources.whitelisted
+  private val dottyStdlibFiles: List[String] = StdLibSources.loadList("./test/dotc/dotty-library.whitelist", "../library/src/")
   private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
 
 }

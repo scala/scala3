@@ -83,11 +83,11 @@ scala/util/control/Exception.scala
 #    |                                                                     cyclic reference involving method mkCatcher
 
 # Fail with callgraph
-../scala-scala/src/library/scala/App.scala
-../scala-scala/src/library/scala/Enumeration.scala
-../scala-scala/src/library/scala/concurrent/duration/DurationConversions.scala
-../scala-scala/src/library/scala/collection/parallel/ParSetLike.scala
-../scala-scala/src/library/scala/util/Properties.scala
-../scala-scala/src/library/scala/collection/immutable/HashSet.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
-../scala-scala/src/library/scala/collection/parallel/mutable/ParMapLike.scala
+scala/App.scala
+scala/Enumeration.scala
+scala/concurrent/duration/DurationConversions.scala
+scala/collection/parallel/ParSetLike.scala
+scala/util/Properties.scala
+scala/collection/immutable/HashSet.scala
+scala/collection/parallel/mutable/ParSetLike.scala
+scala/collection/parallel/mutable/ParMapLike.scala

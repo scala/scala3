@@ -23,11 +23,11 @@ object StdLibSources {
       genWhitelist(whitelistBasedOnBlacklist.map(_.replace(stdLibPath, "")))
       whitelistBasedOnBlacklist
     } else {
-      loadList(whitelistFile)
+      loadList(whitelistFile, stdLibPath)
     }
   }
 
-  def blacklisted: List[String] = loadList(blacklistFile)
+  def blacklisted: List[String] = loadList(blacklistFile, stdLibPath)
 
   def all: List[String] = {
     def collectAllFilesInDir(dir: File, acc: List[String]): List[String] = {
@@ -49,12 +49,12 @@ object StdLibSources {
     }
   }
 
-  private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
+  def loadList(path: String, prefix: String): List[String] = Source.fromFile(path, "UTF8").getLines()
     .map(_.trim) // allow identation
     .filter(!_.startsWith("#")) // allow comment lines prefixed by #
     .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
     .filter(_.nonEmpty)
-    .map(stdLibPath + _)
+    .map(prefix + _)
     .toList
 
 }
