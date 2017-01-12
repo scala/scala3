@@ -2,14 +2,13 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import dotc.core.Contexts.Context
-import dotty.tools.dottydoc.util.syntax._
 import dotc.config.Printers.dottydoc
 
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
-import _root_.java.util.{ Map => JMap, List => JList }
+
+import java.util.{ Map => JMap, List => JList }
 
 case class IllegalFrontMatter(message: String) extends Exception(message)
 
@@ -20,20 +19,20 @@ trait Page {
   def pageContent: String
   def params: Map[String, AnyRef]
 
-  def yaml(implicit ctx: Context): Map[String, AnyRef] = {
+  def yaml: Map[String, AnyRef] = {
     if (_yaml eq null) initFields()
     _yaml
   }
 
-  def html(implicit ctx: Context): String = {
+  def html: String = {
     if (_html eq null) initFields()
     _html
   }
 
   protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
   protected[this] var _html: String = _
-  protected[this] def initFields()(implicit ctx: Context) = {
-    val md = Parser.builder(ctx.docbase.markdownOptions).build.parse(pageContent)
+  protected[this] def initFields() = {
+    val md = Parser.builder(Site.markdownOptions).build.parse(pageContent)
     val yamlCollector = new AbstractYamlFrontMatterVisitor()
     yamlCollector.visit(md)
 
@@ -88,13 +87,13 @@ class HtmlPage(fileContents: => String, val params: Map[String, AnyRef], val inc
 class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String]) extends Page {
   lazy val pageContent = fileContents
 
-  override protected[this] def initFields()(implicit ctx: Context) = {
+  override protected[this] def initFields() = {
     super.initFields()
-    val md = Parser.builder(ctx.docbase.markdownOptions).build.parse(_html)
+    val md = Parser.builder(Site.markdownOptions).build.parse(_html)
     // fix markdown linking
     MarkdownLinkVisitor(md)
     _html = HtmlRenderer
-      .builder(ctx.docbase.markdownOptions)
+      .builder(Site.markdownOptions)
       .escapeHtml(false)
       .build()
       .render(md)

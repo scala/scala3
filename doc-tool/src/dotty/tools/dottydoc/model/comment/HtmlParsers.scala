@@ -21,7 +21,7 @@ object HtmlParsers {
 
       val inlineToHtml = InlineToHtml(origin)
 
-      val node = Parser.builder(ctx.docbase.markdownOptions)
+      val node = Parser.builder(staticsite.Site.markdownOptions)
         .build.parse(text)
 
 
@@ -64,7 +64,7 @@ object HtmlParsers {
 
   implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
     def show(implicit ctx: Context): String =
-      HtmlRenderer.builder(ctx.docbase.markdownOptions).build().render(markdown)
+      HtmlRenderer.builder(staticsite.Site.markdownOptions).build().render(markdown)
 
     def shortenAndShow(implicit ctx: Context): String =
       (new MarkdownShortener).shorten(markdown).show

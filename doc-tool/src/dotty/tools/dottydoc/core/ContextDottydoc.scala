@@ -5,12 +5,6 @@ package core
 import dotc.core.Symbols.Symbol
 import dotc.core.Comments.ContextDocstrings
 import model.Package
-import com.vladsch.flexmark.parser.ParserEmulationFamily
-import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.ext.tables.TablesExtension
-import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
-import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
-import java.util.{ Collections => JCollections }
 
 class ContextDottydoc extends ContextDocstrings {
   import scala.collection.mutable
@@ -26,10 +20,4 @@ class ContextDottydoc extends ContextDocstrings {
   def addDef(s: Symbol, d: Symbol): Unit = _defs = (_defs + {
     s -> _defs.get(s).map(xs => xs + d).getOrElse(Set(d))
   })
-
-  val markdownOptions: DataHolder =
-    new MutableDataSet()
-      .setFrom(ParserEmulationFamily.KRAMDOWN.getOptions)
-      .set(Parser.EXTENSIONS, JCollections.singleton(TablesExtension.create()))
-      .set(Parser.EXTENSIONS, JCollections.singleton(YamlFrontMatterExtension.create()))
 }
