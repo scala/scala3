@@ -29,6 +29,34 @@ trait Page {
     _html
   }
 
+  def firstParagraph: String = {
+    if (_html eq null) initFields()
+
+    val sb = new StringBuilder
+    var pos = 0
+    // to handle nested paragraphs in non markdown code
+    var open = 0
+
+    while (pos < _html.length - 4) {
+      val str = _html.substring(pos, pos + 4)
+      val lstr = str.toLowerCase
+      sb append str.head
+
+      pos += 1
+      if (lstr.contains("<p>"))
+        open += 1
+      else if (lstr == "</p>") {
+        open -= 1
+        if (open == 0) {
+          pos = Int.MaxValue
+          sb append "/p>"
+        }
+      }
+    }
+
+    sb.toString
+  }
+
   protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
   protected[this] var _html: String = _
   protected[this] def initFields() = {
