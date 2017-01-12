@@ -1,7 +1,15 @@
 {% assign parent = page.path | first %}
 <ul class="toc">
     <li>
+        <a id="home-button" href="{{ site.baseurl }}/index.html">
+            {% include "scala-logo.html" %}
+        </a>
+    </li>
+    <li>
         <a href="{{ site.baseurl }}/blog/index.html">Blog</a>
+    </li>
+    <li class="toc-title">
+        <a href="{{ site.baseurl }}/docs/index.html">Docs</a>
     </li>
     <li>
         <a class="toggle-children" onclick="tocToggleChild('usage')">Usage</a>

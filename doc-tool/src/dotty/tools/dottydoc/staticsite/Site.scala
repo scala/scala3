@@ -259,6 +259,7 @@ case class Site(val root: JFile, val docs: JList[_]) extends ResourceFinder {
 
     val defaultIncludes: Map[String, String] = Map(
       "header.html" -> "/_includes/header.html",
+      "scala-logo.html" -> "/_includes/scala-logo.html",
       "toc.html" -> "/_includes/toc.html"
     ).mapValues(getResource)
 

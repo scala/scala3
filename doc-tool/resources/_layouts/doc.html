@@ -7,8 +7,8 @@ layout: main
         {% include "toc" %}
         <ul class="index-entities">
         {% if docs.size > 0 %}
-        <li class="index-entity">
-            <a class="title" href="#">API</a>
+        <li class="index-title">
+            <a href="{{ site.baseurl }}/api/index.html">API</a>
         </li>
         {% endif %}
         {% for pkg in docs %}

@@ -52,7 +52,7 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
             if (nodes.length > 1) params + (origInclude -> nodes(1).render(ctx))
             else params
 
-          Template.parse(template, JEKYLL).render(toJavaMap(additionalParams))
+          LiquidTemplate(template).render(additionalParams, includes)
         }
         .getOrElse {
           /*dottydoc.*/println(s"couldn't find include file '$origInclude'")

@@ -56,18 +56,33 @@ ul.toc {
     padding-left: 0;
 }
 
+ul.toc > li.toc-title > a {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+ul.toc > li > a#home-button,
+ul.toc > li > a#home-button:hover {
+    text-align: center;
+    background: transparent;
+}
+
+ul.toc > li > a#home-button svg path {
+    fill: #423e3e;
+}
+
 ul.toc > li,
-ul.index-entities > li.index-entity {
+ul.index-entities > li {
     line-height: 40px;
 }
 
 li.index-entity.entity-package > a {
   color: #ff4081;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 ul.toc > li > a,
-li.index-entity > a {
+ul.index-entities > li > a {
     font-size: 13px;
     display: block;
     padding: 0 24px;
@@ -86,15 +101,17 @@ ul.toc > li > ul.hide {
     display: none;
 }
 
-li.index-entity > a.title {
-    font-size: 17px;
+ul.index-entities > li.index-title > a {
+    font-size: 16px;
     font-weight: bold;
+    color: rgba(0,0,0,.87)
 }
 
 li.index-entity > a:focus {
     text-decoration: none;
 }
 
+ul.index-entities > li > a:hover,
 ul.toc > li > a:hover {
     text-decoration: none;
     background-color: rgba(0, 0, 0, 0.2);
