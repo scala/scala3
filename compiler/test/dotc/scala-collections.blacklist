@@ -1,83 +1,83 @@
 ## Errors having to do with bootstrap
 
-../scala-scala/src/library/scala/Function1.scala
-../scala-scala/src/library/scala/Function2.scala
+scala/Function1.scala
+scala/Function2.scala
 # Cyclic reference because of @specialized annotation
 
 
 ## Errors having to do with deep subtypes
 
-../scala-scala/src/library/scala/collection/generic/ParSetFactory.scala
+scala/collection/generic/ParSetFactory.scala
 # This gives a deep subtype violation when run with the rest of the whitelist.
 # Works without -Yno-deep-subtypes, though.
 
-../scala-scala/src/library/scala/collection/parallel/mutable/ParMap.scala
+scala/collection/parallel/mutable/ParMap.scala
 # -Yno-deep-subtypes fails
 
-../scala-scala/src/library/scala/collection/parallel/ParMap.scala
+scala/collection/parallel/ParMap.scala
 # -Yno-deep-subtypes fails
 
-../scala-scala/src/library/scala/collection/parallel/ParMapLike.scala
+scala/collection/parallel/ParMapLike.scala
 # -Yno-deep-subtypes fails
 
 
 
 ## Ycheck failures, presumably linked to TailCalls
 
-../scala-scala/src/library/scala/collection/parallel/ParIterableLike.scala
+scala/collection/parallel/ParIterableLike.scala
 # -Ycheck:classOf fails
 
-../scala-scala/src/library/scala/collection/parallel/ParSeqLike.scala
+scala/collection/parallel/ParSeqLike.scala
 # -Ycheck:classOf fails
 
-../scala-scala/src/library/scala/util/control/TailCalls.scala
+scala/util/control/TailCalls.scala
 # -Ycheck:classOf fails
 
 
 
 ## Errors having to do with unavailable APIs or language features:
 
-../scala-scala/src/library/scala/reflect/ClassManifestDeprecatedApis.scala
+scala/reflect/ClassManifestDeprecatedApis.scala
 # 51 |      import Manifest._
 #    |             ^^^^^^^^
 #    |             not found: Manifest
 
-../scala-scala/src/library/scala/reflect/ClassTag.scala
+scala/reflect/ClassTag.scala
 # 124 |  val Short   : ClassTag[scala.Short]      = Manifest.Short
 #     |                                             ^^^^^^^^
 #     |                                             not found: Manifest
 
-../scala-scala/src/library/scala/reflect/Manifest.scala
+scala/reflect/Manifest.scala
 # 104 |    private def readResolve(): Any = Manifest.Short
 #     |                                     ^^^^^^^^
 #     |                                     not found: Manifest
 
-../scala-scala/src/library/scala/text/Document.scala
+scala/text/Document.scala
 # Lots of type errors for pattern matches, having to do with the fact
 # that Document contains a :: method without corresponding extractor,
 # but still wants to extract lists using ::. We won't support that.
 # Since Document should have been removed already, let's ignore it.
 
-../scala-scala/src/library/scala/AnyVal.scala
+scala/AnyVal.scala
 # 55 |abstract class AnyVal extends Any {
 #    |^
 #    |illegal redefinition of standard class AnyVal
 # (This is intended)
 
-../scala-scala/src/library/scala/collection/parallel/Tasks.scala
+scala/collection/parallel/Tasks.scala
 # java.lang.StackOverflowError
 
-../scala-scala/src/library/scala/reflect/package.scala
+scala/reflect/package.scala
 # 63 |  private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
 #    |                                                             ^^^^^
 #    |                                                             not found: macro
 
-../scala-scala/src/library/scala/StringContext.scala
+scala/StringContext.scala
 # 168 |  def f[A >: Any](args: A*): String = macro ???
 #     |                                      ^^^^^
 #     |                                      not found: macro
 
-../scala-scala/src/library/scala/util/control/Exception.scala
+scala/util/control/Exception.scala
 # 51 |  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]) =
 #    |                                                                                                 ^
 #    |                                                                     cyclic reference involving method mkCatcher

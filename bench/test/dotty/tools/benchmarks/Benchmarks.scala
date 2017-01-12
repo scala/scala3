@@ -1,5 +1,6 @@
 package dotty.tools.benchmarks
 
+import dotty.tools.StdLibSources
 import org.scalameter.Key.reports._
 import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
@@ -49,13 +50,7 @@ object BenchTests extends OnlineRegressionReport {
   val dottyDir = "../compiler/src/dotty/"
   val testDir  = "../bench/tests/"
 
-  val stdlibFiles = Source.fromFile("../compiler/test/dotc/scala-collections.whitelist", "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .map("." + _)
-    .toList
+  val stdlibFiles = StdLibSources.whitelisted
 
   def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
 
