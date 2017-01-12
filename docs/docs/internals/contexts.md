@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Contexts"
+layout: doc-page
+title: Contexts
 ---
 
 The `Context` contains the state of the compiler, for example

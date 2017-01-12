@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Getting Started"
+layout: doc-page
+title: Getting Started
 ---
 
 Talks on Dotty

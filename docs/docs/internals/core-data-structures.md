@@ -1,10 +1,14 @@
+---
+layout: doc-page
+title: Core Data Structures
+---
+
 (The following is work in progress)
 
 ## Symbols and SymDenotations
 
  - why symbols are not enough: their contents change all the time
- - they change themselvesSo a `Symbol
-
+ - they change themselvesSo a `Symbol`
  - reference: string + sig
 
 

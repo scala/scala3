@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: doc-page
 title: "Backend Internals"
 ---
 
@@ -33,18 +33,19 @@ BCodeIdiomatic     ---------------->        utilities for code generation, e.g. 
 
 ### Data Flow ###
 Compiler creates a `BCodePhase`, calls `runOn(compilationUnits)`.
-  * initializes fields of `GenBCode` defined in `BCodeTypes` (BType maps,
-    common BTypes like `StringReference`)
-  * initialize `primitives` map defined in `scalaPrimitives` (maps primitive
-    members, like `int.+`, to bytecode instructions)
-  * creates `BytecodeWriter`, `JMirrorBuilder` and `JBeanInfoBuilder` instances
-    (on each compiler run)
-  * `buildAndSendToDisk(units)`: uses work queues, see below.
-    - `BCodePhase.addToQ1` adds class trees to `q1`
-    - `Worker1.visit` creates ASM `ClassNodes`, adds to `q2`. It creates one
-      `PlainClassBuilder` for each compilation unit.
-    - `Worker2.addToQ3` adds byte arrays (one for each class) to `q3`
-    - `BCodePhase.drainQ3` writes byte arrays to disk
+
+* initializes fields of `GenBCode` defined in `BCodeTypes` (BType maps,
+  common BTypes like `StringReference`)
+* initialize `primitives` map defined in `scalaPrimitives` (maps primitive
+  members, like `int.+`, to bytecode instructions)
+* creates `BytecodeWriter`, `JMirrorBuilder` and `JBeanInfoBuilder` instances
+  (on each compiler run)
+* `buildAndSendToDisk(units)`: uses work queues, see below.
+  - `BCodePhase.addToQ1` adds class trees to `q1`
+  - `Worker1.visit` creates ASM `ClassNodes`, adds to `q2`. It creates one
+    `PlainClassBuilder` for each compilation unit.
+  - `Worker2.addToQ3` adds byte arrays (one for each class) to `q3`
+  - `BCodePhase.drainQ3` writes byte arrays to disk
 
 
 ### Architecture ###

@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: doc-page
 title: "Scala Syntax Summary"
 ---
 

@@ -3,6 +3,7 @@ layout: blog
 author: Martin Odersky and Dmitry Petrashko
 title: "We got liftoff!"
 subTitle: The Dotty compiler for Scala bootstraps.
+excerpt_separator: <!--more-->
 ---
 
 The [Dotty project](https://github.com/lampepfl/dotty)
@@ -15,6 +16,8 @@ today will let us iterate faster with new ideas in the future.
 Today we reached an important milestone: the Dotty compiler can
 compile itself, and the compiled compiler can act as a drop-in for the
 original one. This is what one calls a *bootstrap*.
+
+<!--more-->
 
 ## Why is this important?
 
