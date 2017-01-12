@@ -8,7 +8,6 @@ import dotty.tools.dotc.CompilerTest
 import org.junit.Assert._
 import org.junit.{Before, Test}
 
-import scala.io.Source
 import scala.reflect.io.Directory
 
 // tests that match regex '(pos|dotc|run|java|compileStdLib)\.*' would be executed as benchmarks.
@@ -62,10 +61,12 @@ class stdlibTests extends CompilerTest {
     List("-classpath", paths)
   }
 
-  implicit val defaultOptions = noCheckOptions ++ {
+  val basicOptions = noCheckOptions ++ checkOptions ++ classPath
+
+  implicit val defaultOptions = {
     if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
-  } ++ checkOptions ++ classPath
+  } ++ basicOptions
 
   val stdlibMode = List("-migration", "-Yno-inline", "-language:Scala2")
 
@@ -97,11 +98,11 @@ class stdlibTests extends CompilerTest {
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
+    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(basicOptions)
 
   @org.junit.Ignore("Too long to run in CI")
   @Test def link_dce_vis_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
+    runFiles(linkDCEWithStdlibDir, stdlibMode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)(basicOptions)
 
   private def stdlibWhitelistFile: String = "./test/dotc/scala-collections.whitelist"
   private def stdlibBlackFile: String = "./test/dotc/scala-collections.blacklist"

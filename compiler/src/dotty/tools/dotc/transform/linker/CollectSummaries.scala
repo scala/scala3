@@ -377,7 +377,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           if (!sym.isPrimaryConstructor) {
             Nil
           } else {
-            sym.owner.mixins.distinct.map { mixin =>
+            val directMixins = sym.owner.mixins.diff(sym.owner.info.parents.head.symbol.mixins)
+            directMixins.map { mixin =>
               val decl = mixin.primaryConstructor
               val (tparams, params) = decl.info match {
                 case tp: PolyType => (mixin.info.typeParams.map(_.paramRef), tp.resType.paramTypess.flatten)
