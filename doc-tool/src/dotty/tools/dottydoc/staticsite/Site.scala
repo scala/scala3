@@ -352,4 +352,6 @@ object Site {
         YamlFrontMatterExtension.create(),
         StrikethroughExtension.create()
       ))
+      .set(EmojiExtension.ROOT_IMAGE_PATH,
+        "https://github.global.ssl.fastly.net/images/icons/emoji/")
 }
