@@ -497,9 +497,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     for (method <- callSites) {
       // Find new call sites
 
-      val sym = method.callSymbol
-
-      collectedSummaries.get(sym) match {
+      collectedSummaries.get(method.callSymbol) match {
         case Some(summary) =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
@@ -512,34 +510,37 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
-          outerMethods += sym
-
-          val tParamNames = method.call.widenDealias.typeParams.map(_.paramName)
-          val newOuterTargs = method.outerTargs.addAll(sym, tParamNames, method.targs)
-          def substituteOuterTargs = new SubstituteByParentMap(newOuterTargs)
-
-          // Add return type to reachable types
-          val methodTpe = method.call.widenDealias
-
-          val returnType = methodTpe match {
-            case t: PolyType => t.instantiate(method.targs).finalResultType
-            case _ => methodTpe.finalResultType
+          outerMethods += method.callSymbol
+          if (!method.call.termSymbol.is(Module | Package)) {
+            // Add all possible calls from java to object passed as parameters.
+            processCallsFromJava(method, instantiatedTypes)
           }
-
-          val javaAllocatedType = returnType match {
-            case returnType: JavaAllocatedType => returnType
-            case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
-            case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
-          }
-          addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
-
-          // Add all possible calls from java to object passed as parameters.
-          processCallsFromJava(instantiatedTypes, method)
       }
     }
   }
 
-  private def processCallsFromJava(instantiatedTypes: immutable.Set[TypeWithContext], method: CallInfoWithContext): Unit = {
+  private def processCallsFromJava(method: CallInfoWithContext, instantiatedTypes: immutable.Set[TypeWithContext]): Unit = {
+
+    val tParamNames = method.call.widenDealias.typeParams.map(_.paramName)
+    val newOuterTargs = method.outerTargs.addAll(method.callSymbol, tParamNames, method.targs)
+
+    def substituteOuterTargs = new SubstituteByParentMap(newOuterTargs)
+
+    // Add return type to reachable types
+    val methodTpe = method.call.widenDealias
+
+    val returnType = methodTpe match {
+      case t: PolyType => t.instantiate(method.targs).finalResultType
+      case _ => methodTpe.finalResultType
+    }
+
+    val javaAllocatedType = returnType match {
+      case returnType: JavaAllocatedType => returnType
+      case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
+      case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
+    }
+    addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
+
     def allDecls(argType: Type) =
       (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
 
