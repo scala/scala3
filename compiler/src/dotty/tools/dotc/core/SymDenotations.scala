@@ -1220,7 +1220,7 @@ object SymDenotations {
     ownerIfExists: Symbol,
     initName: Name,
     initFlags: FlagSet,
-    initInfo: Type,
+    val initInfo: Type,
     initPrivateWithin: Symbol,
     initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, initName, initFlags, initInfo, initPrivateWithin) {

@@ -4,14 +4,18 @@ import dotty.tools.dotc.FromTasty.TASTYCompilationUnit
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.{Flags, TypeErasure}
+import dotty.tools.dotc.core.{ClassfileLoader, Flags, TypeErasure}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.SymDenotations.ClassDenotation
+import dotty.tools.dotc.core.tasty._
+import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
@@ -30,16 +34,21 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
   val treeTransform: Collect = new Collect
 
-  // private var noSummaryAvailable = Set[Symbol]()
+  /*
+  private val sectionName = "MethodSummaries"
+  private val version = 1
 
-   /*
+  private var noSummaryAvailable = Set[Symbol]()
+
+  private var methodSummaries2: List[MethodSummary] = Nil
+
   def getSummary(d: Symbol)(implicit ctx: Context): Option[MethodSummary] = {
     if (noSummaryAvailable(d)) None
-    else methodSums.find(_.methodDef == d).orElse {
+    else methodSummaries.find(_._2.methodDef == d).orElse {
       val nw = retrieveSummary(d)
-      methodSums = nw ::: methodSums
+      methodSummaries2 = nw ::: methodSummaries2
       nw.headOption
-    }
+    }.flatten
   }
 
   private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = {
@@ -50,7 +59,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case info: ClassfileLoader =>
             info.load(clsd) match {
               case Some(unpickler: DottyUnpickler) =>
-                class STreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) extends TreeUnpickler(reader, tastyName) {
+                class STreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) extends TreeUnpickler(reader, tastyName, posUnpicklerOpt = None) {
 
                   roots = Set.empty
 
@@ -73,8 +82,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                   }
 
                }
-                class STreeSectionUnpickler extends TreeSectionUnpickler {
-                  override def unpickle(reader: TastyReader, tastyName: Table): STreeUnpickler = {
+                class STreeSectionUnpickler extends DottyUnpickler.TreeSectionUnpickler(posUnpickler = None) {
+                  override def unpickle(reader: TastyReader, tastyName: TastyName.Table): STreeUnpickler = {
                       new STreeUnpickler(reader, tastyName)
                   }
                 }
@@ -82,8 +91,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                 val tastySection = unpickler.unpickler.unpickle(new STreeSectionUnpickler).get
                 val treeReader = tastySection.asInstanceOf[STreeUnpickler].getStartReader.get
 
-                val unp = new SectionUnpickler[List[MethodSummary]](sectionName) {
-                  def unpickle(reader: TastyReader, tastyName: Table): List[MethodSummary] = {
+                val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
+                  def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[MethodSummary] = {
                     def readSymbolRef = {
                       val s = treeReader.readType()
                       s.termSymbol.orElse(s.typeSymbol).orElse(s.classSymbol)
@@ -106,8 +115,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                           val targsSz = reader.readByte()
                           val targs = for(_ <- 0 until targsSz) yield readType
                           val argsSz = reader.readByte()
-                          val argsPassed = for(_ <- 0 until argsSz) yield readSymbolRef
-                          new CallInfo(t, targs.toList, argsPassed.toList)
+                          val argsPassed = for(_ <- 0 until argsSz) yield readSymbolRef.info
+                          val source = None // TODO
+                          new CallInfo(t, targs.toList, argsPassed.toList, source)
                         }
 
                         val calls = for(_ <- 0 until listSz) yield readCallInfo
@@ -128,8 +138,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                         List((bt & 1)  != 0, (bt & 2)  != 0, (bt & 4)  != 0, (bt & 8)   != 0,
                              (bt & 16) != 0, (bt & 32) != 0, (bt & 64) != 0, (bt & 128) != 0)
                       }
-
-                      new MethodSummary(sym, thisAccessed, methodsCalled, accesedModules.toList, argumentReturned.toByte, argumentStoredToHeap.take(bitsExtected - 1))
+                      val definedClosures = Nil // TODO
+                      new MethodSummary(sym, thisAccessed, methodsCalled.toMap, definedClosures, accesedModules.toList, argumentReturned.toByte, argumentStoredToHeap.take(bitsExtected - 1))
                     }
 
                     val version = reader.readInt()
@@ -146,7 +156,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             }
         }
     }
-  }  */
+  }
+  */
 
   override def run(implicit ctx: Context): Unit = {
     if (CollectSummaries.isPhaseRequired)
@@ -535,10 +546,8 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-
-      /*
-
-      for { cls <- ctx.compilationUnit.picklers.keySet} {
+  /*
+      for { cls <- ctx.compilationUnit.pickled.keySet} {
         def serializeCS(methods: List[MethodSummary], pickler: TastyPickler): Unit = {
           val buf = new TastyBuffer(5000)
           val treePickl = pickler.treePkl
@@ -573,7 +582,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                 c.targs foreach writeTypeRef
 
                 buf.writeByte(c.argumentsPassed.size)
-                c.argumentsPassed foreach writeSymbolRef
+                c.argumentsPassed.foreach(arg => writeSymbolRef(arg.classSymbol))
               }
               methods foreach writeCallInfo
             }
@@ -599,11 +608,11 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           // and will be compressed during bytecode generation by TreePickler.compactify
         }
 
-          val s = methodSummaries.filter(_.methodDef.topLevelClass == cls)
+          val s = methodSummaries.filter(_._2.methodDef.topLevelClass == cls)
 
           // println(s)
 
-          serializeCS(s, ctx.compilationUnit.picklers(cls))
+          serializeCS(s.values.toList, ctx.compilationUnit.pickled(cls))
       } */
 
 
