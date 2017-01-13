@@ -85,7 +85,6 @@ scala/util/control/Exception.scala
 # Fail with callgraph
 scala/App.scala
 scala/Enumeration.scala
-scala/concurrent/duration/DurationConversions.scala
 scala/collection/parallel/ParSetLike.scala
 scala/util/Properties.scala
 scala/collection/immutable/HashSet.scala

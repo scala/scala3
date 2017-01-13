@@ -434,8 +434,9 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      if (!tree.symbol.is(Package | Label) && !tree.symbol.isClass) {
-        registerModule(tree.symbol)
+      val sym = tree.symbol
+      if (!sym.is(Package | Label) && !sym.isClass && !sym.isType) {
+        registerModule(sym)
         registerCall(tree)
       }
       // handle nullary methods
