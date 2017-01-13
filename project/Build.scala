@@ -129,13 +129,14 @@ object DottyBuild extends Build {
     settings(publishing)
 
 
-  lazy val `dotty-interfaces` = project.in(file("interfaces")).
+  lazy val `dotty-interfaces`: Project = project.in(file("interfaces")).
     settings(sourceStructure).
+    dependsOn(`dotty-library`).
     settings(
       // Do not append Scala versions to the generated artifacts
       crossPaths := false,
       // Do not depend on the Scala library
-      autoScalaLibrary := false,
+      //autoScalaLibrary := false,
       //Remove javac invalid options in Compile doc
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     ).
