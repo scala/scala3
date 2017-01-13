@@ -29,6 +29,9 @@ extraCSS:
         {% for member in entity.members %}
         <div class="member">
             <div class="member-title">
+                <span class="member-annotations">
+                    {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
+                </span>
                 <span class="member-modifiers">
                     {{ member.modifiers | join: " " }}
                 </span>

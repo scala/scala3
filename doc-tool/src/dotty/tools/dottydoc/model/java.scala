@@ -47,6 +47,7 @@ object java {
   implicit class JavaPackage(val ent: Package) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
       "kind"     -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"     -> ent.name,
       "path"     -> ent.path.asJava,
       "members"  -> ent.members.map(_.asJava()).asJava,
@@ -57,6 +58,7 @@ object java {
   implicit class JavaCaseClass(val ent: CaseClass) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
       "kind"       -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"       -> ent.name,
       "members"    -> ent.members.map(_.asJava()).asJava,
       "modifiers"  -> ent.modifiers.asJava,
@@ -70,6 +72,7 @@ object java {
   implicit class JavaClass(val ent: Class) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
       "kind"       -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"       -> ent.name,
       "members"    -> ent.members.map(_.asJava()).asJava,
       "modifiers"  -> ent.modifiers.asJava,
@@ -83,6 +86,7 @@ object java {
   implicit class JavaTrait(val ent: Trait) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
       "kind"       -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"       -> ent.name,
       "members"    -> ent.members.map(_.asJava()).asJava,
       "modifiers"  -> ent.modifiers.asJava,
@@ -96,6 +100,7 @@ object java {
   implicit class JavaObject(val ent: Object) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
       "kind"       -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"       -> ent.name,
       "members"    -> ent.members.map(_.asJava()).asJava,
       "modifiers"  -> ent.modifiers.asJava,
@@ -108,6 +113,7 @@ object java {
   implicit class JavaDef(val ent: Def) extends AnyVal {
     def asJava: JMap[String, _] = Map(
       "kind"                -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"                -> ent.name,
       "modifiers"           -> ent.modifiers.asJava,
       "path"                -> ent.path.asJava,
@@ -122,6 +128,7 @@ object java {
   implicit class JavaVal(val ent: Val) extends AnyVal {
     def asJava: JMap[String, _] = Map(
       "kind"                -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
       "name"                -> ent.name,
       "modifiers"           -> ent.modifiers.asJava,
       "path"                -> ent.path.asJava,

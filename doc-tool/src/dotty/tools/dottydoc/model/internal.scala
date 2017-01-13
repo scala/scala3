@@ -13,6 +13,7 @@ object internal {
 
   final case class PackageImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     var members: List[Entity],
     path: List[String],
@@ -24,6 +25,7 @@ object internal {
 
   final case class ClassImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -36,6 +38,7 @@ object internal {
 
   final case class CaseClassImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -48,6 +51,7 @@ object internal {
 
   final case class TraitImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -60,6 +64,7 @@ object internal {
 
   final case class ObjectImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -70,6 +75,7 @@ object internal {
 
   final case class DefImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     modifiers: List[String],
     path: List[String],
@@ -82,6 +88,7 @@ object internal {
 
   final case class ValImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     modifiers: List[String],
     path: List[String],

@@ -32,6 +32,8 @@ object factories {
     case sym => path(sym.owner) :+ sym.name.show
   }
 
+  def annotations(sym: Symbol)(implicit ctx: Context): List[String] =
+    sym.annotations.map(_.symbol.showFullName)
 
   private val product = """Product[1-9][0-9]*""".r
 

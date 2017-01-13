@@ -19,6 +19,8 @@ trait Entity {
 
   def parent: Entity
 
+  def annotations: List[String]
+
   /** All parents from package level i.e. Package to Object to Member etc */
   def parents: List[Entity] = parent match {
     case NonEntity => Nil
@@ -105,12 +107,13 @@ trait Var extends Entity with Modifiers with ReturnValue {
 }
 
 trait NonEntity extends Entity {
-  val name    = ""
-  val symbol  = NoSymbol
+  val annotations = Nil
+  val name = ""
+  val symbol = NoSymbol
   val comment = None
-  val path    = Nil
-  val kind    = ""
-  val parent  = NonEntity
+  val path = Nil
+  val kind = ""
+  val parent = NonEntity
 }
 
 final case object NonEntity extends NonEntity

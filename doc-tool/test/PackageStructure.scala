@@ -29,7 +29,7 @@ class PackageStructure extends DottyDocTest {
 
     checkSources(source1 :: source2 :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, List(tA, tB), _, _) =>
+        case PackageImpl(_, _, _, List(tA, tB), _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
             s"trait A had name '${tA.name}' and trait B had name '${tB.name}'"
@@ -63,8 +63,9 @@ class PackageStructure extends DottyDocTest {
       packages("scala") match {
         case PackageImpl(
           _,
+          _,
           "scala",
-          List(PackageImpl(_, "scala.collection", List(tA, tB), _, _)),
+          List(PackageImpl(_, _, "scala.collection", List(tA, tB), _, _)),
           _, _
         ) =>
           assert(
@@ -77,7 +78,7 @@ class PackageStructure extends DottyDocTest {
       }
 
       packages("scala.collection") match {
-        case PackageImpl(_, "scala.collection", List(tA, tB), _, _) =>
+        case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
             s"trait A had name '${tA.name}' and trait B had name '${tB.name}'"
