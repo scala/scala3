@@ -5,14 +5,18 @@ package staticsite
 import java.nio.file.{ Files, FileSystems }
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.io.{ File => JFile }
-import java.util.{ List => JList, Map => JMap, Collections => JCollections }
+import java.util.{ List => JList, Map => JMap, Arrays }
 import java.nio.file.Path
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
 import com.vladsch.flexmark.parser.ParserEmulationFamily
 import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.ext.tables.TablesExtension
+import com.vladsch.flexmark.ext.gfm.tables.TablesExtension
+import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
+import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
+import com.vladsch.flexmark.ext.emoji.EmojiExtension
+import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
@@ -340,6 +344,12 @@ object Site {
   val markdownOptions: DataHolder =
     new MutableDataSet()
       .setFrom(ParserEmulationFamily.KRAMDOWN.getOptions)
-      .set(Parser.EXTENSIONS, JCollections.singleton(TablesExtension.create()))
-      .set(Parser.EXTENSIONS, JCollections.singleton(YamlFrontMatterExtension.create()))
+      .set(Parser.EXTENSIONS, Arrays.asList(
+        TablesExtension.create(),
+        TaskListExtension.create(),
+        AutolinkExtension.create(),
+        EmojiExtension.create(),
+        YamlFrontMatterExtension.create(),
+        StrikethroughExtension.create()
+      ))
 }
