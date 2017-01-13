@@ -2,7 +2,6 @@ package dotty.tools.dottydoc.api.scala
 
 import dotty.tools.dottydoc.DocDriver
 import dotty.tools.dottydoc.model.Package
-import dotty.tools.dottydoc.util.OutputWriter
 
 import scala.collection.Map
 import java.net.URL
@@ -37,12 +36,4 @@ trait Dottydoc extends DocDriver {
   /** Creates JSON from compiler arguments */
   def createJsonIndex(args: Array[String]): String =
     indexToJson(compiledDocs(args))
-
-  /** Creates a documentation from the given parameters */
-  def buildDocs(outDir: String, template: URL, resources: List[URL], index: Map[String, Package]) =
-    new OutputWriter().write(index, outDir, template, resources)
-
-  /** Writes JSON to an output directory as "index.json" */
-  def writeJson(index: Map[String, Package], outputDir: String) =
-    new OutputWriter().writeJson(index, outputDir)
 }

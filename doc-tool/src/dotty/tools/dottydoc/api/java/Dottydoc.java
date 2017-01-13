@@ -2,7 +2,6 @@ package dotty.tools.dottydoc.api.java;
 
 import dotty.tools.dottydoc.DocDriver;
 import dotty.tools.dottydoc.model.Package;
-import dotty.tools.dottydoc.util.OutputWriter;
 import java.util.Map;
 import java.util.List;
 import java.net.URL;
@@ -45,20 +44,5 @@ public class Dottydoc {
 
     public String toJson(Map<String, Package> index) {
         return driver.indexToJsonJava(index);
-    }
-
-    /** Creates a documentation from the given parameters */
-    public void buildDocs(
-        String outputDir,
-        URL template,
-        List<URL> resources,
-        Map<String, Package> index
-    ) {
-        new OutputWriter().writeJava(index, outputDir, template, resources);
-    }
-
-    /** Writes JSON to an output directory as "index.json" */
-    public void writeJson(Map<String, Package> index, String outputDir) {
-        new OutputWriter().writeJsonJava(index, outputDir);
     }
 }

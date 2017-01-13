@@ -18,9 +18,10 @@ class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter)
     val resources = getResources(args)
     val template  = getTemplate(resources)
 
-    template.fold(writeJson(index, outputFolder)) { tpl =>
-      buildDocs(outputFolder, tpl, resources, index)
-    }
+    // FIXME: temporarily disabled until new implementation in place
+    //template.fold(writeJson(index, outputFolder)) { tpl =>
+    //  buildDocs(outputFolder, tpl, resources, index)
+    //}
   } getOrElse {
     delegate.log(
       NoPosition,
