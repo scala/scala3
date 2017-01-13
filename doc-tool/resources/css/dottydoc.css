@@ -123,11 +123,25 @@ ul.toc > li > a:hover {
     background-color: rgba(0, 0, 0, 0.2);
 }
 
+div#post-title,
+div#post-footer,
 h1#doc-page-title {
     margin-left: 20px;
     margin-top: 10px;
 }
 
+div#post-title > h2#sub-title {
+    font-weight: 100;
+    font-size: 24px;
+}
+
+div#post-title > h3#post-date {
+    font-weight: 100;
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+div#blog-post-container,
 div#doc-page-container {
     background-color: #fff;
     padding: 10px;
@@ -138,6 +152,17 @@ div#doc-page-container {
 
 div#doc-page-container > p + h1 {
     margin-bottom: 40px;
+}
+
+div#post-footer > img#author-image {
+    width: 100px;
+    height: auto;
+    border-radius: 50%;
+}
+
+div#post-footer > span#post-author {
+    margin-left: 10px;
+    font-weight: 100;
 }
 
 pre {

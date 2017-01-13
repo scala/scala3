@@ -19,6 +19,7 @@ case class DefaultParams(
 
     "page" -> Map(
       "url" -> page.url,
+      "date" -> page.date,
       "path" -> page.path
     ),
 
@@ -37,9 +38,11 @@ case class DefaultParams(
     copy(page = PageInfo(url))
 
   def withEntity(e: model.Entity) = copy(entity = e)
+
+  def withDate(d: String) = copy(page = PageInfo(page.url, d))
 }
 
-case class PageInfo(url: String) {
+case class PageInfo(url: String, date: String = "") {
   val path: Array[String] = url.split('/').reverse.drop(1)
 }
 

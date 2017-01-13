@@ -178,10 +178,12 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
         val fileContents = Source.fromFile(file).mkString
-        val params = defaultParams(file, 2).withPosts(blogInfo).toMap
+        val date = s"$year-$month-$day 00:00:00"
+        val params = defaultParams(file, 2).withPosts(blogInfo).withDate(date).toMap
         val page =
           if (ext == "md") new MarkdownPage(fileContents, params, includes)
           else new HtmlPage(fileContents, params, includes)
+
 
         val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
