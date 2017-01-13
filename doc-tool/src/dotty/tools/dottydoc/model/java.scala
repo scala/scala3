@@ -169,7 +169,7 @@ object java {
       case FunctionReference(args, returnValue) => Map(
         "kind" -> "FunctionReference",
         "args" -> args.map(_.asJava).asJava,
-        "returnValue" -> returnValue
+        "returnValue" -> returnValue.asJava
       ).asJava
 
       case TupleReference(args) => Map(

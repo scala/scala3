@@ -63,3 +63,7 @@ div#entity-members > div.member > div.member-title span.keyword {
 div#entity-members > div.member > div.member-title span.no-left {
     margin-left: -11px;
 }
+
+div#entity-members > div.member > div.member-title span.no-right {
+    margin-right: -11px;
+}

@@ -49,10 +49,11 @@ extraCSS:
                         <span class="no-left keyword">implicit</span>
                         {% endif %}
                         {% for ref in plist.list %}
-                            {% if forloop.last %}
-                            <span class="no-left">{{ ref.title }}</span>
-                            {% else %}
-                            <span class="no-left">{{ ref.title }}, </span>
+                        <span class="{% if forloop.first %}no-left{% endif %}">{{ ref.title }}:{% if ref.isByName %} =&gt;{% endif %}</span>
+                            {% assign reference = ref.ref %}
+                            {% include "reference" %}
+                            {% if forloop.last != true %}
+                            <span class="no-left">, </span>
                             {% endif %}
                         {% endfor %}
                     <span class="no-left">)</span>

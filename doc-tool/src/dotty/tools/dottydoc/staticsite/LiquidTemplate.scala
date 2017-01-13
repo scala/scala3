@@ -47,12 +47,8 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
       includes
         .get(incResource)
         .map { template =>
-          val additionalParams =
-            // include has `with` clause:
-            if (nodes.length > 1) params + (origInclude -> nodes(1).render(ctx))
-            else params
-
-          LiquidTemplate(template).render(additionalParams, includes)
+          if (nodes.length > 1) ctx.put(origInclude, nodes(1).render(ctx))
+          LiquidTemplate(template).render(Map.empty ++ ctx.getVariables.asScala, includes)
         }
         .getOrElse {
           /*dottydoc.*/println(s"couldn't find include file '$origInclude'")

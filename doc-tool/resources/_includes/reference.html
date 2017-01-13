@@ -1,0 +1,77 @@
+{% case reference.kind %}
+{% when 'TypeReference' %}
+
+    {% assign tpeLink = reference.tpeLink %}
+    {% include 'link' %}
+    {% if reference.paramLinks.size > 0 %}
+    <span class="no-left no-right">[</span>
+    {% for reference in reference.paramLinks %}
+        {% include 'reference' %}
+        {% if forloop.last != true %}
+        <span class="no-left">, </span>
+        {% endif %}
+    {% endfor %}
+    <span class="no-left">]</span>
+    {% endif %}
+
+{% when 'FunctionReference' %}
+
+    {% assign originalLink = reference %}
+    {% case reference.args.size %}
+        {% when 0 %}
+            <span>()</span>
+        {% when 1 %}
+            {% for reference in reference.args %}
+                {% include 'reference' %}
+            {% endfor %}
+        {% else %}
+            {% for reference in reference.args %}
+                {% if forloop.first %}
+                <span class="no-right">(</span>
+                {% endif %}
+                {% include 'reference' %}
+                {% if forloop.last != true %}
+                <span class="no-left">,</span>
+                {% else %}
+                <span class="no-left">)</span>
+                {% endif %}
+            {% endfor %}
+    {% endcase %}
+    <span>=&gt;</span>
+    {% assign reference = originalLink.returnValue %}
+    {% include 'reference' %}
+
+{% when 'TupleReference' %}
+
+    {% for reference in reference.args %}
+        {% if forloop.first %}<span class="no-right">(</span>{% endif %}
+        {% include 'reference' %}
+        {% if forloop.last %}
+        <span class="no-left">)</span>
+        {% else %}
+        <span class="no-left">,</span>
+        {% endif %}
+    {% endfor %}
+
+{% when 'BoundsReference' %}
+
+    {% assign oldRef = reference %}
+    {% assign reference = oldRef.low %}
+    {% include 'reference' %}
+    <span>&lt;:</span>
+    {% assign reference = oldRef.hi %}
+    {% include 'reference' %}
+
+{% when 'ConstantReference' %}
+    {{ reference.title }}
+
+{% else %}
+
+    {% assign original= reference %}
+    {% assign reference = original.left %}
+    {% include 'reference' %}
+    <span>{% if original.kind == "OrTypeReference" %}|{% else %}&amp;{% endif %}</span>
+    {% assign reference = original.right %}
+    {% include 'reference' %}
+
+{% endcase %}
