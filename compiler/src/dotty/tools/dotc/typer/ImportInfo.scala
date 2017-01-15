@@ -15,17 +15,20 @@ object ImportInfo {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr = tpd.Ident(refFn())
     def imp = tpd.Import(expr, selectors)
-    new ImportInfo(imp.symbol, selectors, isRootImport = true)
+    new ImportInfo(imp.symbol, selectors, None, isRootImport = true)
   }
 }
 
 /** Info relating to an import clause
- *  @param   sym        The import symbol defined by the clause
- *  @param   selectors  The selector clauses
- *  @param   rootImport true if this is one of the implicit imports of scala, java.lang
- *                      or Predef in the start context, false otherwise.
+ *  @param   sym          The import symbol defined by the clause
+ *  @param   selectors    The selector clauses
+ *  @param   symNameOpt   Optionally, the name of the import symbol. None for root imports.
+ *                        Defined for all explicit imports from ident or select nodes.
+ *  @param   isRootImport true if this is one of the implicit imports of scala, java.lang,
+ *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImport: Boolean = false)(implicit ctx: Context) {
+class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree],
+                 symNameOpt: Option[TermName], val isRootImport: Boolean = false)(implicit ctx: Context) {
 
   lazy val sym = symf
 
@@ -105,11 +108,11 @@ class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImp
    */
   lazy val unimported: Symbol = {
     lazy val sym = site.termSymbol
-    val hasMaskingSelector = selectors exists {
-      case Thicket(_ :: Ident(nme.WILDCARD) :: Nil) => true
-      case _ => false
+    def maybeShadowsRoot = symNameOpt match {
+      case Some(symName) => defn.ShadowableImportNames.contains(symName)
+      case None => false
     }
-    if (hasMaskingSelector && defn.RootImportTypes.exists(_.symbol == sym)) sym
+    if (maybeShadowsRoot && defn.RootImportTypes.exists(_.symbol == sym)) sym
     else NoSymbol
   }
 
