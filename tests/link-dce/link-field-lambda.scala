@@ -6,7 +6,7 @@ object Test {
   
   def lala(x: Boolean): Int=>Int = if (x) f else g
 
-  @internal.link.CallGraphBounds(reachableClasses = 21, classesWithReachableMethods = 6, reachableMethods = 11)
+  @internal.link.CallGraphBounds(reachableClasses = 22, classesWithReachableMethods = 7, reachableMethods = 45)
   def main(args: Array[String]): Unit = {
     System.out.println(lala(true)(21))
   }

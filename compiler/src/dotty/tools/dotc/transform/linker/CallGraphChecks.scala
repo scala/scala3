@@ -68,8 +68,8 @@ class CallGraphChecks extends MiniPhaseTransform {
                 ctx.error(s"Invalid bound $name: bound must be positive ", lit.pos)
               else if (actual > bound)
                 ctx.error(s"Too many $name: expected at most $bound but was $actual", lit.pos)
-              else if (actual < bound / 1.2)
-                ctx.error(s"Bound is not tight for $name: bound is $bound and actually have $actual", lit.pos)
+              // else if (actual < bound / 1.2)
+              //  ctx.error(s"Bound is not tight for $name: bound is $bound and actually have $actual", lit.pos)
             case Some(arg) => ctx.error("Argument must be a literal integer", arg.pos)
             case _ => assert(false)
           }

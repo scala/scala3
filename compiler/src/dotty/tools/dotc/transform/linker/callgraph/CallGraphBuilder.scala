@@ -541,17 +541,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
     addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
 
-    def allDecls(argType: Type) =
-      (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
-
-    def isJavaClass(sym: Symbol) =
-      sym == defn.AnyClass || sym == defn.ObjectClass || sym.is(JavaDefined)
-
     def allPotentialCallsFor(argType: Type): Set[CallInfo] = {
-      if (defn.isPrimitiveClass(argType.classSymbol) || isJavaClass(argType.widenDealias.classSymbol)) {
+      if (defn.isPrimitiveClass(argType.classSymbol)) {
         Set.empty
       } else {
-        def potentialCall(decl: Symbol) = {
+        def potentialCall(decl: Symbol): Option[CallInfo] = {
           def paramTypes = decl.info.paramTypess.flatten
           val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
           val targs = call.widenDealias match {
@@ -574,17 +568,23 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
           argType match {
             case argType: PreciseType =>
-              if (!definedInJavaClass) Nil
-              else List(CallInfo(call, targs, paramTypes))
+              if (!definedInJavaClass) None
+              else Some(CallInfo(call, targs, paramTypes))
 
             case _ =>
               val argTypeWiden = argType.widenDealias
               lazy val sym = argTypeWiden.classSymbol.requiredMethod(decl.name, paramTypes)
-              if (!argTypeWiden.member(decl.name).exists || !definedInJavaClass || (sym.isEffectivelyFinal && isDefinedInJavaClass(decl))) Nil
-              else List(CallInfo(TermRef(argType, sym), targs, paramTypes))
+              if (paramTypes.exists(_.typeSymbol.isTypeParam)) {
+                // println(s"Ignoring `${decl.name}` in java call graph construction because type parameters are not suported yet")
+                None
+              } else if (!argTypeWiden.member(decl.name).exists || !definedInJavaClass || (isDefinedInJavaClass(decl) && sym.isEffectivelyFinal)) None
+              else Some(CallInfo(TermRef(argType, sym), targs, paramTypes))
 
           }
         }
+
+        def allDecls(argType: Type) =
+          (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
 
         for {
           decl <- allDecls(argType)

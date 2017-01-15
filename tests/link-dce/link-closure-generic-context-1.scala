@@ -5,6 +5,6 @@ object Test {
     def f(y: T): T = ((x: T) => x)(y)
   }
 
-  @internal.link.CallGraphBounds(reachableClasses = 22, classesWithReachableMethods = 7, reachableMethods = 9)
+  @internal.link.CallGraphBounds(reachableClasses = 23, classesWithReachableMethods = 8, reachableMethods = 43)
   def main(args: Array[String]): Unit = System.out.println((new A[Int]).f(42))
 }

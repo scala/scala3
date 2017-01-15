@@ -357,15 +357,6 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case _ => Nil
         }
 
-        val fillInStackTrace = tree match {
-          case Apply(Select(newThrowable, nme.CONSTRUCTOR), _) if newThrowable.tpe.derivesFrom(defn.ThrowableClass) =>
-            val throwableClass = newThrowable.tpe.widenDealias.classSymbol
-            val fillInStackTrace = throwableClass.requiredMethod(nme.fillInStackTrace)
-            if (fillInStackTrace.is(JavaDefined)) Nil
-            else List(CallInfo(TermRef(newThrowable.tpe, fillInStackTrace), Nil, Nil, someThisCallInfo))
-          case _ => Nil
-        }
-
         val isInPredef =
           ctx.owner.ownersIterator.exists(owner => owner == defn.ScalaPredefModule || owner.companionModule == defn.ScalaPredefModule)
 
@@ -400,7 +391,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           }
         }
 
-        val languageDefinedCalls = loadPredefModule ::: fillInStackTrace ::: mixinConstructors ::: repeatedArgsCalls
+        val languageDefinedCalls = loadPredefModule ::: mixinConstructors ::: repeatedArgsCalls
 
         curMethodSummary.addMethodsCalledBy(storedReceiver, thisCallInfo :: languageDefinedCalls)
       }
