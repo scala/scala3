@@ -83,6 +83,8 @@ object GraphVisualization {
     val reachableTypes = callGraph.reachableTypes
     val outerMethod = callGraph.outerMethods
 
+    val callInfoNodeId = mutable.Map.empty[CallInfoWithContext, String]
+
     // add names and subraphs
     val nodes = mutable.Map.empty[String, String]
     val edges = mutable.Map.empty[String, List[String]]
@@ -133,7 +135,7 @@ object GraphVisualization {
         else blue
 
       val callId = "call-" + caller.call.widenDealias.uniqId
-      val callerId = caller.id.toString
+      val callerId = callInfoNodeId.getOrElseUpdate(caller, caller.id.toString)
 
       addNode(callerId, s"label: '${csWTToName(caller)}'", s"title: '${detailsHTML(caller)}'", s"color: $color")
       addEdge(callerId, callId, s"title: 'actually calls'", s"color: $grey")
@@ -152,7 +154,7 @@ object GraphVisualization {
           addEdge(callerId, callId, s"title: 'calls'")
 
         callees.foreach { callee =>
-          val calleeId = callee.id.toString
+          val calleeId = callInfoNodeId.getOrElseUpdate(callee, callee.id.toString)
           addEdge(callId, calleeId, s"title: 'dispatches to'")
 
           callee.source.foreach { source =>
