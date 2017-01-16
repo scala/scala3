@@ -600,6 +600,7 @@ object Erasure extends TypeTestsCasts{
     // this implementation doesn't check for bridge clashes with value types!
     def addBridges(oldStats: List[untpd.Tree], newStats: List[tpd.Tree])(implicit ctx: Context): List[tpd.Tree] = {
       val beforeCtx = ctx.withPhase(ctx.erasurePhase)
+      val afterCtx = ctx.withPhase(ctx.elimErasedValueTypePhase.next)
       def traverse(after: List[Tree], before: List[untpd.Tree],
                    emittedBridges: ListBuffer[tpd.DefDef] = ListBuffer[tpd.DefDef]()): List[tpd.DefDef] = {
         after match {
@@ -613,7 +614,7 @@ object Erasure extends TypeTestsCasts{
                   val newSymbol = member.symbol(ctx)
                   assert(oldSymbol.name(beforeCtx) == newSymbol.name,
                     s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
-                  val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
+                  val newOverridden = oldSymbol.denot.allOverriddenSymbols(afterCtx).toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
                   val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
                   def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
                   val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
