@@ -46,77 +46,82 @@ object factories {
     }
 
     def expandTpe(t: Type, params: List[Reference] = Nil): Reference = t match {
-      case tl: PolyType =>
-        //FIXME: should be handled correctly
-        // example, in `Option`:
-        //
-        // {{{
-        //   def companion: GenericCompanion[collection.Iterable]
-        // }}}
-        //
-        // Becomes: def companion: [+X0] -> collection.Iterable[X0]
-        typeRef(tl.show + " (not handled)")
-      case AppliedType(tycon, args) =>
+      case AppliedType(tycon, args) => {
         val cls = tycon.typeSymbol
-        if (tycon.isRepeatedParam)
-          expandTpe(args.head)
-        else if (defn.isFunctionClass(cls))
+
+        if (defn.isFunctionClass(cls))
           FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
         else if (defn.isTupleClass(cls))
           TupleReference(args.map(expandTpe(_, Nil)))
         else {
-          val query = tycon.show
-          val name  = query.split("\\.").last
+          val query = cls.showFullName
+          val name = cls.name.show
           typeRef(name, query, params = args.map(expandTpe(_, Nil)))
         }
+      }
 
-      case ref @ RefinedType(parent, rn, info) =>
-        expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
-      case ref @ HKApply(tycon, args) =>
-        expandTpe(tycon, args.map(expandTpe(_, params)))
-      case TypeRef(_, n) =>
-        val name = n.decode.toString.split("\\$").last
-        typeRef(name, params = params)
-      case ta: TypeAlias =>
-        expandTpe(ta.alias.widenDealias)
-      case OrType(left, right) =>
-        OrTypeReference(expandTpe(left), expandTpe(right))
-      case AndType(left, right) =>
-        AndTypeReference(expandTpe(left), expandTpe(right))
-      case tb @ TypeBounds(lo, hi) =>
+      case t: TypeRef => {
+        val cls = t.typeSymbol
+        typeRef(cls.name.show.split("\\$\\$").last, query = cls.showFullName, params = params)
+      }
+
+      case TypeBounds(lo, hi) =>
         BoundsReference(expandTpe(lo), expandTpe(hi))
-      case AnnotatedType(tpe, _) =>
-        expandTpe(tpe)
+
+      case t: PolyParam =>
+        typeRef(t.paramName.show, params = params)
+
       case ExprType(tpe) =>
         expandTpe(tpe)
-      case c: ConstantType =>
-        ConstantReference(c.show)
-      case tt: ThisType =>
-        expandTpe(tt.underlying)
-      case ci: ClassInfo =>
-        val query = path(ci.typeSymbol).mkString(".")
-        typeRef(ci.cls.name.show, query = query)
-      case mt: MethodType =>
-        expandTpe(mt.resultType)
-      case pp: PolyParam =>
-        val paramName = pp.paramName.show
-        val name =
-          if (paramName.contains('$'))
-            paramName.split("\\$\\$").last
-          else paramName
 
-        typeRef(name)
-      case tr: TermRef =>
+      case t: ThisType =>
+        expandTpe(t.underlying)
+
+      case AnnotatedType(t, _) =>
+        expandTpe(t)
+
+      case t: MethodType =>
+        expandTpe(t.finalResultType)
+
+      case t: TermRef => {
         /** A `TermRef` appears in the return type in e.g:
           * ```
           * def id[T](t: T): t.type = t
           * ```
           */
-        val name = tr.show
+        val name = t.show
         if (!name.endsWith(".type"))
-          ctx.warning(s"unhandled return type found: $tr")
+          ctx.warning(s"unhandled return type found: $t")
 
-        typeRef(name, params = params)
+        typeRef(name, query = t.typeSymbol.showFullName, params = params)
+      }
+
+      case ci: ClassInfo =>
+        typeRef(ci.cls.name.show, query = ci.typeSymbol.showFullName)
+
+      case tl: PolyType => {
+        // FIXME: should be handled correctly
+        // example, in `Option`:
+        //
+        // ```scala
+        // def companion: GenericCompanion[collection.Iterable]
+        // ```
+        //
+        // Becomes: def companion: [+X0] -> collection.Iterable[X0]
+        typeRef(tl.show + " (not handled)")
+      }
+
+      case OrType(left, right) =>
+        OrTypeReference(expandTpe(left), expandTpe(right))
+
+      case AndType(left, right) =>
+        AndTypeReference(expandTpe(left), expandTpe(right))
+
+      case c: ConstantType =>
+        ConstantReference(c.show)
+
+      case ref @ RefinedType(parent, rn, info) =>
+        expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
     }
 
     expandTpe(t)

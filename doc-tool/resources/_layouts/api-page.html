@@ -38,7 +38,7 @@ extraCSS:
                 <span class="member-kind">
                     {{ member.kind }}
                 </span>
-                <span class="member-name">
+                <span class="member-name {% if member.isImplicitlyAddedFrom != null %}implicitly-added{% endif %}">
                     {{ member.name }}
                 </span>
 

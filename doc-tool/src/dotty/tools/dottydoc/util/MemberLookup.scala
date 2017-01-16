@@ -7,7 +7,6 @@ import dotc.core.Contexts.Context
 import dotc.core.Flags
 import dotc.core.Names._
 import dotc.core.Symbols._
-import dotc.core.Types._
 import dotc.core.Names._
 import dotc.util.Positions._
 import model.internal._
@@ -31,7 +30,13 @@ trait MemberLookup {
         .collect { case x if x.name == searchStr => x }
         .sortBy(_.path.last)
         .headOption
-        .fold(notFound)(e => LinkToEntity(e))
+        .fold(notFound) {
+          case e: TypeAlias =>
+            // TODO: will explode once type aliases are fixed
+            if (e.alias.isDefined) ???
+            else notFound
+          case e => LinkToEntity(e)
+        }
 
     /** Looks for an entity down in the structure, if the search list is Nil,
      *  the search stops
@@ -44,7 +49,10 @@ trait MemberLookup {
         case x :: xs  =>
           ent
             .members
-            .collect { case e: Entity with Members if e.name == x => e }
+            .collect {
+              case e: Entity with Members if e.name == x => e
+              case e: Entity with Members if e.name == x.init && x.last == '$' => e
+            }
             .headOption
             .fold(notFound)(e => downwardLookup(e, xs))
       }
@@ -54,7 +62,7 @@ trait MemberLookup {
      */
     def globalLookup: LinkTo = {
       def longestMatch(list: List[String]): List[String] =
-        if (list == Nil) Nil
+        if (list eq Nil) Nil
         else
           packages
           .get(list.mkString("."))

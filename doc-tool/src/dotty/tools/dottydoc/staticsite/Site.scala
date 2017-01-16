@@ -135,7 +135,7 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
   /** Generate HTML for the API documentation */
   def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
     createOutput(outDir) {
-      def genDoc(e: model.Entity) = {
+      def genDoc(e: model.Entity): Unit = {
         // Suffix is index.html for packages and therefore the additional depth
         // is increased by 1
         val (suffix, offset) =
@@ -150,11 +150,14 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
         val source = new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8))
 
         Files.copy(source, target, REPLACE_EXISTING)
+
+        // Generate docs for nested objects/classes:
+        e.children.foreach(genDoc)
       }
 
       documentation.values.foreach { pkg =>
         genDoc(pkg)
-        pkg.members.filterNot(_.kind == "package").map(genDoc)
+        pkg.members.filterNot(_.kind == "package").foreach(genDoc)
       }
     }
 
