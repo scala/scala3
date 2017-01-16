@@ -99,7 +99,9 @@ object GraphVisualization {
     }
 
     val red = "'rgb(255,150,150)'"
+    val lightRed = "'rgb(255,200,200)'"
     val blue = "'rgb(150,150,255)'"
+    val lightBlue = "'rgb(200,200,255)'"
     val green = "'rgb(150,255,150)'"
     val grey = "'rgb(200,200,200)'"
 
@@ -148,7 +150,10 @@ object GraphVisualization {
 
       for ((call, callees)  <- caller.outEdgesIterator) {
         val callId = callerId + "-" + call.id
-        addNode(callId, s"label: '${callSiteLabel(call)}'")
+        val color =
+          if (outerMethod.contains(caller.callSymbol)) lightRed
+          else lightBlue
+        addNode(callId, s"label: '${callSiteLabel(call)}'", s"color: $color")
 
         if (call.source.isEmpty)
           addEdge(callerId, callId, s"title: 'calls'")
