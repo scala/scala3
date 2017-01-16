@@ -85,4 +85,3 @@ scala/util/control/Exception.scala
 # Fail with callgraph
 scala/Enumeration.scala
 scala/util/Properties.scala
-scala/collection/immutable/HashSet.scala
