@@ -69,8 +69,12 @@ ul.toc > li > a#home-button:hover {
     background: transparent;
 }
 
-ul.toc > li > a#home-button svg path {
-    fill: #423e3e;
+ul.toc > li > a#home-button svg g#logo-foreground {
+    fill: rgba(152, 101, 167, 1);
+}
+
+ul.toc > li > a#home-button svg g#logo-background {
+    fill: rgba(152, 101, 167, 0.45);
 }
 
 ul.toc > li,

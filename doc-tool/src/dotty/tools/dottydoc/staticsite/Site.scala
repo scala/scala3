@@ -310,7 +310,7 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
 
     val defaultIncludes: Map[String, String] = Map(
       "header.html" -> "/_includes/header.html",
-      "scala-logo.html" -> "/_includes/scala-logo.html",
+      "scala-logo.svg" -> "/_includes/scala-logo.svg",
       "toc.html" -> "/_includes/toc.html"
     ).mapValues(getResource)
 
