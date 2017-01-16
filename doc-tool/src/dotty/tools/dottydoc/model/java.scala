@@ -151,36 +151,42 @@ object java {
         "kind"       -> "TypeReference",
         "title"      -> title,
         "tpeLink"    -> tpeLink.asJava,
-        "paramLinks" -> paramLinks.map(_.asJava).asJava
+        "paramLinks" -> paramLinks.map(_.asJava).asJava,
+        "scala"      -> ref
       ).asJava
 
       case OrTypeReference(left, right) => Map(
         "kind"  -> "OrTypeReference",
         "left"  -> left.asJava,
-        "right" -> right.asJava
+        "right" -> right.asJava,
+        "scala" -> ref
       ).asJava
 
       case AndTypeReference(left, right) => Map(
         "kind"  -> "AndTypeReference",
         "left"  -> left.asJava,
-        "right" -> right.asJava
+        "right" -> right.asJava,
+        "scala" -> ref
       ).asJava
 
       case FunctionReference(args, returnValue) => Map(
         "kind" -> "FunctionReference",
         "args" -> args.map(_.asJava).asJava,
-        "returnValue" -> returnValue.asJava
+        "returnValue" -> returnValue.asJava,
+        "scala" -> ref
       ).asJava
 
       case TupleReference(args) => Map(
         "kind" -> "TupleReference",
-        "args" -> args.map(_.asJava).asJava
+        "args" -> args.map(_.asJava).asJava,
+        "scala" -> ref
       ).asJava
 
       case BoundsReference(low, high) => Map(
         "kind"  -> "BoundsReference",
         "low"   -> low.asJava,
-        "hight" -> high.asJava
+        "hight" -> high.asJava,
+        "scala" -> ref
       ).asJava
 
       case NamedReference(title, ref, isByName, isRepeated) => Map(
@@ -188,12 +194,14 @@ object java {
         "title"      -> title,
         "ref"        -> ref.asJava,
         "isByName"   -> isByName,
-        "isRepeated" -> isRepeated
+        "isRepeated" -> isRepeated,
+        "scala"      -> ref
       ).asJava
 
       case ConstantReference(title) => Map(
         "kind"  -> "ConstantReference",
-        "title" -> title
+        "title" -> title,
+        "scala" -> ref
       ).asJava
     }
   }
@@ -203,19 +211,22 @@ object java {
       case UnsetLink(title, query) => Map(
         "kind"  -> "UnsetLink",
         "title" -> title,
-        "query" -> query
+        "query" -> query,
+        "scala" -> link
       ).asJava
 
       case MaterializedLink(title, target) => Map(
         "kind"   -> "MaterializedLink",
         "title"  -> title,
-        "target" -> target
+        "target" -> target,
+        "scala" -> link
       ).asJava
 
       case NoLink(title, target) => Map(
         "kind"   -> "NoLink",
         "title"  -> title,
-        "target" -> target
+        "target" -> target,
+        "scala" -> link
       ).asJava
     }
   }

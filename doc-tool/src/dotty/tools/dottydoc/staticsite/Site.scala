@@ -10,7 +10,7 @@ import java.nio.file.Path
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
-import com.vladsch.flexmark.parser.ParserEmulationFamily
+import com.vladsch.flexmark.parser.ParserEmulationProfile
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.gfm.tables.TablesExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -311,9 +311,7 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
     val defaultIncludes: Map[String, String] = Map(
       "header.html" -> "/_includes/header.html",
       "scala-logo.html" -> "/_includes/scala-logo.html",
-      "toc.html" -> "/_includes/toc.html",
-      "reference.html" -> "/_includes/reference.html",
-      "link.html" -> "/_includes/link.html"
+      "toc.html" -> "/_includes/toc.html"
     ).mapValues(getResource)
 
 
@@ -345,7 +343,7 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
 object Site {
   val markdownOptions: DataHolder =
     new MutableDataSet()
-      .setFrom(ParserEmulationFamily.KRAMDOWN.getOptions)
+      .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
       .set(Parser.EXTENSIONS, Arrays.asList(
         TablesExtension.create(),
         TaskListExtension.create(),

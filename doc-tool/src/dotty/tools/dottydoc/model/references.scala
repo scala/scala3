@@ -17,4 +17,12 @@ object references {
   final case class UnsetLink(title: String, query: String) extends MaterializableLink
   final case class MaterializedLink(title: String, target: String) extends MaterializableLink
   final case class NoLink(title: String, target: String) extends MaterializableLink
+
+  object AndOrTypeReference {
+    def unapply(ref: Reference): Option[(Reference, String, Reference)] = ref match {
+      case OrTypeReference(left, right) => Some((left, "|", right))
+      case AndTypeReference(left, right) => Some((left, "&amp;", right))
+      case _ => None
+    }
+  }
 }

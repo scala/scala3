@@ -12,14 +12,12 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
   import liqp.filters.Filter
   import liqp.parser.Flavor.JEKYLL
   import java.util.{ HashMap, Map => JMap }
+  import filters._
 
-  Filter.registerFilter(new Filter("reverse") {
-    override def apply(value: Any, params: AnyRef*): AnyRef = {
-      val array = super.asArray(value)
-      if (array.length == 0) null
-      else array.reverse
-    }
-  })
+  /** Register filters to static container */
+  Filter.registerFilter(new Reverse)
+  Filter.registerFilter(new RenderReference)
+  Filter.registerFilter(new RenderLink)
 
   // For some reason, liqp rejects a straight conversion using `.asJava`
   private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =

@@ -48,12 +48,13 @@ extraCSS:
                         {% if plist.isImplicit %}
                         <span class="no-left keyword">implicit</span>
                         {% endif %}
-                        {% for ref in plist.list %}
-                        <span class="{% if forloop.first %}no-left{% endif %}">{{ ref.title }}:{% if ref.isByName %} =&gt;{% endif %}</span>
-                            {% assign reference = ref.ref %}
-                            {% include "reference" %}
+                        {% for namedRef in plist.list %}
+                            <span class="{% if forloop.first %}no-left{% endif %}">
+                                {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
+                            </span>
+                            {{ namedRef.ref | renderRef }}
                             {% if forloop.last != true %}
-                            <span class="no-left">, </span>
+                                <span class="no-left">, </span>
                             {% endif %}
                         {% endfor %}
                     <span class="no-left">)</span>
