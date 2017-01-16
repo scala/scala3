@@ -155,6 +155,14 @@ object Implicits {
                (ctx.scope eq outerImplicits.ctx.scope)) outerImplicits.level
       else outerImplicits.level + 1
 
+    /** Is this the outermost implicits? This is the case if it either the implicits
+     *  of NoContext, or the last one before it.
+     */
+    private def isOuterMost = {
+      val finalImplicits = NoContext.implicits
+      (this eq finalImplicits) || (outerImplicits eq finalImplicits)
+    }
+
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
       if (tp.hash == NotCached) computeEligible(tp)
@@ -162,7 +170,7 @@ object Implicits {
         case Some(eligibles) =>
           def elided(ci: ContextualImplicits): Int = {
             val n = ci.refs.length
-            if (ci.outerImplicits == NoContext.implicits) n
+            if (ci.isOuterMost) n
             else n + elided(ci.outerImplicits)
           }
           if (monitored) record(s"elided eligible refs", elided(this))
@@ -183,7 +191,7 @@ object Implicits {
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
       val ownEligible = filterMatching(tp)
-      if (outerImplicits == NoContext.implicits) ownEligible
+      if (isOuterMost) ownEligible
       else ownEligible ::: {
         val shadowed = ownEligible.map(_.ref.name).toSet
         outerImplicits.eligible(tp).filterNot(cand => shadowed.contains(cand.ref.name))
@@ -192,7 +200,7 @@ object Implicits {
 
     override def toString = {
       val own = s"(implicits: ${refs mkString ","})"
-      if (outerImplicits == NoContext.implicits) own else own + "\n " + outerImplicits
+      if (isOuterMost) own else own + "\n " + outerImplicits
     }
 
     /** This context, or a copy, ensuring root import from symbol `root`
