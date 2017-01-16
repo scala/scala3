@@ -18,10 +18,17 @@ object internal {
     var members: List[Entity],
     path: List[String],
     var comment: Option[Comment] = None
-  ) extends Package with Impl {
-    def children: List[Entity with Members] =
-      members.collect { case x: Entity with Members => x }
-  }
+  ) extends Package with Impl
+
+  final case class TypeAliasImpl (
+    symbol: Symbol,
+    annotations: List[String],
+    modifiers: List[String],
+    name: String,
+    path: List[String],
+    alias: Option[Reference],
+    var comment: Option[Comment] = None
+  ) extends TypeAlias with Impl
 
   final case class ClassImpl(
     symbol: Symbol,

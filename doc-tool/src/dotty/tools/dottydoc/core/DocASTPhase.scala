@@ -85,6 +85,11 @@ class DocASTPhase extends Phase {
         val pkgPath = path(pd.symbol)
         addEntity(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st, pkgPath), pkgPath))
 
+      /** type alias */
+      case t: TypeDef if !t.isClassDef =>
+        val sym = t.symbol
+        TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show, path(sym), None)
+
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well

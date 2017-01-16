@@ -92,6 +92,17 @@ object transform {
 
           newPackage
         }
+        case t: TypeAlias => transformEntity(t, _.typeAliasTransformation) { t =>
+          TypeAliasImpl(
+            t.symbol,
+            t.annotations,
+            t.modifiers,
+            t.name,
+            t.path,
+            t.alias,
+            t.comment
+          )
+        }
         case c: Class => transformEntity(c, _.classTransformation) { cls =>
           ClassImpl(
             cls.symbol,
@@ -195,8 +206,8 @@ object transform {
       case id => id
     }
 
-    // Partial functions instead????
     def transformPackage(implicit ctx: Context): PartialFunction[Package, Package] = identity
+    def transformTypeAlias(implicit ctx: Context): PartialFunction[TypeAlias, TypeAlias] = identity
     def transformClass(implicit ctx: Context): PartialFunction[Class, Class] = identity
     def transformCaseClass(implicit ctx: Context): PartialFunction[CaseClass, CaseClass] = identity
     def transformTrait(implicit ctx: Context): PartialFunction[Trait, Trait] = identity
@@ -205,6 +216,7 @@ object transform {
     def transformVal(implicit ctx: Context): PartialFunction[Val, Val] = identity
 
     private[transform] def packageTransformation(p: Package)(implicit ctx: Context) = (transformPackage orElse identity)(p)
+    private[transform] def typeAliasTransformation(alias: TypeAlias)(implicit ctx: Context) = (transformTypeAlias orElse identity)(alias)
     private[transform] def classTransformation(cls: Class)(implicit ctx: Context) = (transformClass orElse identity)(cls)
     private[transform] def caseClassTransformation(cc: CaseClass)(implicit ctx: Context) = (transformCaseClass orElse identity)(cc)
     private[transform] def traitTransformation(trt: Trait)(implicit ctx: Context) = (transformTrait orElse identity)(trt)

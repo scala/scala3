@@ -5,7 +5,7 @@ import comment._
 import references._
 import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
-trait Entity {
+trait Entity { entity =>
   def symbol: Symbol
 
   def name: String
@@ -20,6 +20,12 @@ trait Entity {
   def parent: Entity
 
   def annotations: List[String]
+
+  def children: List[Entity with Members] = entity match {
+    case e: Entity with Members =>
+      e.members.collect { case e: Entity with Members if e.kind != "package" => e }
+    case _ => Nil
+  }
 
   /** All parents from package level i.e. Package to Object to Member etc */
   def parents: List[Entity] = parent match {
@@ -72,8 +78,12 @@ trait ImplicitlyAddedEntity extends Entity {
 
 trait Package extends Entity with Members {
   val kind = "package"
+}
 
-  def children: List[Entity with Members]
+trait TypeAlias extends Entity with Modifiers {
+  val kind = "type"
+  def alias: Option[Reference]
+  def isAbstract: Boolean = !alias.isDefined
 }
 
 trait Class extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members {
