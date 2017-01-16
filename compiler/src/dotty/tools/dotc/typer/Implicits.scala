@@ -176,15 +176,17 @@ object Implicits {
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
         case None =>
-          val savedEphemeral = ctx.typerState.ephemeral
-          ctx.typerState.ephemeral = false
-          try {
-            val result = computeEligible(tp)
-            if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
-            else eligibleCache(tp) = result
-            result
+          if (ctx eq NoContext) Nil
+          else {
+            val savedEphemeral = ctx.typerState.ephemeral
+            ctx.typerState.ephemeral = false
+            try {
+              val result = computeEligible(tp)
+              if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
+              else eligibleCache(tp) = result
+              result
+            } finally ctx.typerState.ephemeral |= savedEphemeral
           }
-          finally ctx.typerState.ephemeral |= savedEphemeral
       }
     }
 
