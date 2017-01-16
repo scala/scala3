@@ -747,6 +747,7 @@ class Definitions {
     else if (ctx.settings.YnoPredef.value) StaticRootImportFns
     else StaticRootImportFns ++ PredefImportFns
 
+  lazy val ShadowableImportNames = Set("Predef", "DottyPredef").map(_.toTermName)
   lazy val RootImportTypes = RootImportFns.map(_())
 
   /** Modules whose members are in the default namespace and their module classes */
