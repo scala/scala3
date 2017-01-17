@@ -7,16 +7,16 @@ object Test {
 }
 
 class OfInt extends IndexedSeqLike2[Int] {
-  def apply(index: Int): Int = 42
+  def foo(index: Int): Int = 42
 }
 
 trait IndexedSeqLike2[A] {
 
-  def apply(index: Int): A
+  def foo(index: Int): A
   def iterator: Elements = new Elements
 
   class Elements extends Iterator2[A] {
-    def next(): A = apply(0)
+    def next(): A = foo(0)
   }
 }
 

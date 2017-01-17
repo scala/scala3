@@ -17,6 +17,7 @@ import dotty.tools.dotc.transform.linker.types._
 import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.util.WorkList
 
+import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 
 object CallGraphBuilder {
@@ -459,27 +460,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       case thisType: ThisType if !calleeSymbol.owner.flags.is(PackageCreationFlags) =>
         val dropUntil = thisType.tref.classSymbol
-        var currentThis = caller.call.normalizedPrefix
-        var currentOwner = caller.call.termSymbol.owner
-        if (!dropUntil.is(Trait)) {
-          while ((currentOwner ne dropUntil) && (currentThis ne NoType)) {
-            if (!currentOwner.is(Method))
-              currentThis = currentThis.normalizedPrefix
-            currentOwner = currentOwner.owner.enclosingClass
-          }
-        }
-        if (currentThis.derivesFrom(thisType.cls)) {
-          if (calleeSymbol.is(Private)) {
-            CallInfoWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs)(someCaller, someCallee) :: Nil
-          } else {
-            val fullThisType = AndType.apply(currentThis, thisType.tref)
-            dispatchCalls(propagateTargs(fullThisType))
-          }
-        } else {
-          dispatchCalls(propagateTargs(receiver.widenDealias))
+        @tailrec def getPreciseThis(currentThis: Type, currentOwner: Symbol): Type = {
+          if ((currentOwner eq dropUntil) || currentOwner.owner.is(Package) || (currentThis eq NoType)) currentThis
+          else if (currentOwner.is(Method)) getPreciseThis(currentThis, currentOwner.owner.enclosingClass)
+          else getPreciseThis(currentThis.normalizedPrefix, currentOwner.owner.enclosingClass)
         }
 
-      // todo: handle calls on this of outer classes
+        val currentThis = getPreciseThis(caller.call.normalizedPrefix, caller.call.termSymbol.owner)
+
+        if (!currentThis.derivesFrom(thisType.cls))
+          dispatchCalls(propagateTargs(receiver.widenDealias))
+        else if (calleeSymbol.is(Private))
+          CallInfoWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs)(someCaller, someCallee) :: Nil
+        else
+          dispatchCalls(propagateTargs(AndType.apply(currentThis, thisType.tref)))
 
 
       case _: PreciseType =>
