@@ -204,7 +204,7 @@ object transform {
 
   trait DocMiniPhase { phase =>
     private def identity[E]: PartialFunction[E, E] = {
-      case id => id
+      case id: E @unchecked => id
     }
 
     def transformPackage(implicit ctx: Context): PartialFunction[Package, Package] = identity

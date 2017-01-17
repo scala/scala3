@@ -104,8 +104,8 @@ object HtmlParsers {
           item match {
             case OrderedList(_, _) | UnorderedList(_) =>  // html requires sub ULs to be put into the last LI
               list + s"<li>${blockToHtml(item)}</li>"
-            case Paragraph(inline) =>
-              list + s"<li>${inlineToHtml(inline)}</li>"  // LIs are blocks, no need to use Ps
+            case Paragraph(inl) =>
+              list + s"<li>${inlineToHtml(inl)}</li>"  // LIs are blocks, no need to use Ps
             case block =>
               list + s"<li>${blockToHtml(block)}</li>"
           }
@@ -116,12 +116,12 @@ object HtmlParsers {
   }
 
   case class InlineToHtml(origin: Entity) {
-    def apply(inline: Inline) = toHtml(inline)
+    def apply(inl: Inline) = toHtml(inl)
 
     def relativePath(target: Entity) =
       util.traversing.relativePath(origin, target)
 
-    def toHtml(inline: Inline): String = inline match {
+    def toHtml(inl: Inline): String = inl match {
       case Chain(items)     => (items map toHtml).mkString
       case Italic(in)       => s"<i>${toHtml(in)}</i>"
       case Bold(in)         => s"<b>${toHtml(in)}</b>"

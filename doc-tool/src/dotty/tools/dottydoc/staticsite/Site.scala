@@ -257,9 +257,9 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       root
       .listFiles
       .find(dir => dir.getName == "blog" && dir.isDirectory)
-      .map(_.listFiles).getOrElse(Array.empty)
+      .map(_.listFiles).getOrElse(Array.empty[JFile]) //FIXME: remove [JFile] once #1907 is fixed
       .find(dir => dir.getName == "_posts" && dir.isDirectory)
-      .map(_.listFiles).getOrElse(Array.empty)
+      .map(_.listFiles).getOrElse(Array.empty[JFile]) //FIXME: remove [JFile] once #1907 is fixed
       .flatMap(collectPosts)
   }
 

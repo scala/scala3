@@ -54,7 +54,7 @@ class DocDriver extends Driver {
 
   override def main(args: Array[String]): Unit = {
     implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
-    doCompile(newCompiler(ctx), filesToDocument)(ctx)
+    val reporter = doCompile(newCompiler(ctx), filesToDocument)(ctx)
 
     val docs = ctx.docbase.packages
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
@@ -68,9 +68,7 @@ class DocDriver extends Driver {
         .generateHtmlFiles()
         .generateBlog()
 
-      // FIXME: liqp templates are compiled by threadpools, for some reason it
-      // is not shutting down  :-(
-      System.exit(0)
+      System.exit(if (reporter.hasErrors) 1 else 0)
     }
   }
 }

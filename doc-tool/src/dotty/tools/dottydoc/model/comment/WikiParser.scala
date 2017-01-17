@@ -82,7 +82,7 @@ private[comment] final class WikiParser(
       else {
         jumpWhitespace()
         jump(style)
-        val p = Paragraph(inline(isInlineEnd = false))
+        val p = Paragraph(getInline(isInlineEnd = false))
         blockEnded("end of list line ")
         Some(p)
       }
@@ -121,7 +121,7 @@ private[comment] final class WikiParser(
   def title(): Block = {
     jumpWhitespace()
     val inLevel = repeatJump('=')
-    val text = inline(check("=" * inLevel))
+    val text = getInline(check("=" * inLevel))
     val outLevel = repeatJump('=', inLevel)
     if (inLevel != outLevel)
       reportError(pos, "unbalanced or unclosed heading")
@@ -141,11 +141,11 @@ private[comment] final class WikiParser(
   def para(): Block = {
     val p =
       if (summaryParsed)
-        Paragraph(inline(isInlineEnd = false))
+        Paragraph(getInline(isInlineEnd = false))
       else {
         val s = summary()
         val r =
-          if (checkParaEnded()) List(s) else List(s, inline(isInlineEnd = false))
+          if (checkParaEnded()) List(s) else List(s, getInline(isInlineEnd = false))
         summaryParsed = true
         Paragraph(Chain(r))
       }
@@ -193,7 +193,7 @@ private[comment] final class WikiParser(
     list mkString ""
   }
 
-  def inline(isInlineEnd: => Boolean): Inline = {
+  def getInline(isInlineEnd: => Boolean): Inline = {
 
     def inline0(): Inline = {
       if (char == safeTagMarker) {
@@ -264,35 +264,35 @@ private[comment] final class WikiParser(
 
   def bold(): Inline = {
     jump("'''")
-    val i = inline(check("'''"))
+    val i = getInline(check("'''"))
     jump("'''")
     Bold(i)
   }
 
   def italic(): Inline = {
     jump("''")
-    val i = inline(check("''"))
+    val i = getInline(check("''"))
     jump("''")
     Italic(i)
   }
 
   def monospace(): Inline = {
     jump("`")
-    val i = inline(check("`"))
+    val i = getInline(check("`"))
     jump("`")
     Monospace(i)
   }
 
   def underline(): Inline = {
     jump("__")
-    val i = inline(check("__"))
+    val i = getInline(check("__"))
     jump("__")
     Underline(i)
   }
 
   def superscript(): Inline = {
     jump("^")
-    val i = inline(check("^"))
+    val i = getInline(check("^"))
     if (jump("^")) {
       Superscript(i)
     } else {
@@ -302,13 +302,13 @@ private[comment] final class WikiParser(
 
   def subscript(): Inline = {
     jump(",,")
-    val i = inline(check(",,"))
+    val i = getInline(check(",,"))
     jump(",,")
     Subscript(i)
   }
 
   def summary(): Inline = {
-    val i = inline(checkSentenceEnded())
+    val i = getInline(checkSentenceEnded())
     Summary(
       if (jump("."))
         Chain(List(i, Text(".")))
@@ -326,7 +326,7 @@ private[comment] final class WikiParser(
     val title =
       if (!check(stop)) Some({
         jumpWhitespaceOrNewLine()
-        inline(check(stop))
+        getInline(check(stop))
       })
       else None
     jump(stop)

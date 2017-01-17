@@ -10,9 +10,17 @@ import model.internal._
 
 /** This DocMiniPhase sorts the members of all classes, traits, objects and packages */
 class SortMembers extends DocMiniPhase {
+  private implicit val EntityOrdering: Ordering[Entity] = new Ordering[Entity] {
+    def compare(x: Entity, y: Entity): Int = {
+      val nameComp = x.name.compareTo(y.name)
+      if (nameComp == 0) x.kind.compareTo(y.kind)
+      else nameComp
+    }
+  }
+
   private def sort(xs: List[Entity]): List[Entity] = {
     def sortOrNil(xs: Option[List[Entity]]*) =
-      xs.map(_.getOrElse(Nil)).reduceLeft(_ ++ _).sortBy(_.name)
+      xs.map(_.getOrElse(Nil)).reduceLeft(_ ++ _).sorted
 
     val map = xs.groupBy(_.kind)
 

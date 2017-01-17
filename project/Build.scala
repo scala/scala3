@@ -52,6 +52,9 @@ object DottyBuild extends Build {
   lazy val dotr =
     inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
+  // Compiles the documentation and static site
+  lazy val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := scalacVersion,
@@ -209,6 +212,21 @@ object DottyBuild extends Build {
         val dottyLib = packageAll.value("dotty-library")
         (runMain in Compile).toTask(
           s" dotty.tools.dotc.repl.Main -classpath $dottyLib " + args.mkString(" ")
+        )
+      }.evaluated,
+
+      genDocs := Def.inputTaskDyn {
+        val dottyLib = packageAll.value("dotty-library")
+        val dottyInterfaces = packageAll.value("dotty-interfaces")
+        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+        val sources = (managedSources in (Compile, compile)).value ++ (unmanagedSources in (Compile, compile)).value
+        val args: Seq[String] = Seq(
+          "-siteroot", "docs",
+          "-project", "Dotty",
+          "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
+        )
+        (runMain in Compile).toTask(
+          s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
         )
       }.evaluated,
 
