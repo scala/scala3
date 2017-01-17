@@ -63,12 +63,14 @@ class DocASTPhase extends Phase {
           }.toList
 
         val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
+          val kind = if (value.symbol.is(Flags.Mutable)) "var" else "val"
           ValImpl(
             value.symbol,
             annotations(value.symbol),
             value.symbol.name.show,
             Nil, path(value.symbol),
             returnType(value.info),
+            kind,
             implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
           )
         }
@@ -115,7 +117,8 @@ class DocASTPhase extends Phase {
 
       /** val */
       case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
-        ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe))
+        val kind = if (v.symbol.is(Flags.Mutable)) "var" else "val"
+        ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind)
 
       case x => {
         //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")

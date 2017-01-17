@@ -108,13 +108,7 @@ trait Def extends Entity with Modifiers with TypeParams with ReturnValue with Im
   def paramLists: List[ParamList]
 }
 
-trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity {
-  val kind = "val"
-}
-
-trait Var extends Entity with Modifiers with ReturnValue {
-  val kind = "var"
-}
+trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity
 
 trait NonEntity extends Entity {
   val annotations = Nil

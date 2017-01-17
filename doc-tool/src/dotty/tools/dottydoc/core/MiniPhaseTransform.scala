@@ -179,6 +179,7 @@ object transform {
             vl.modifiers,
             vl.path,
             vl.returnValue,
+            vl.kind,
             vl.comment,
             vl.implicitlyAddedFrom
           )

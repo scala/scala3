@@ -100,6 +100,7 @@ object internal {
     modifiers: List[String],
     path: List[String],
     returnValue: Reference,
+    kind: String,
     var comment: Option[Comment] = None,
     implicitlyAddedFrom: Option[Reference] = None
   ) extends Val with Impl
