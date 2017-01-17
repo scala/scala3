@@ -26,7 +26,7 @@ import model.Package
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 
-case class Site(val root: JFile, val documentation: Map[String, Package]) extends ResourceFinder {
+case class Site(val root: JFile, val projectTitle: String, val documentation: Map[String, Package]) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
     import model.java._
@@ -122,7 +122,7 @@ case class Site(val root: JFile, val documentation: Map[String, Package]) extend
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, Array()))
+    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()))
   }
 
   private def createOutput(outDir: JFile)(op: => Unit): this.type = {

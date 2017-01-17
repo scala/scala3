@@ -25,14 +25,15 @@ case class DefaultParams(
 
     "site" -> Map(
       "baseurl" -> site.baseurl,
-      "posts" -> site.posts.map(_.toMap)
+      "posts" -> site.posts.map(_.toMap),
+      "project" -> site.projectTitle
     ).asJava,
 
     "entity" -> entity.asJava()
   )
 
   def withPosts(posts: Array[BlogPost]): DefaultParams =
-    copy(site = SiteInfo(site.baseurl, posts))
+    copy(site = SiteInfo(site.baseurl, site.projectTitle, posts))
 
   def withUrl(url: String): DefaultParams =
     copy(page = PageInfo(url))
@@ -46,4 +47,4 @@ case class PageInfo(url: String, date: String = "") {
   val path: Array[String] = url.split('/').reverse.drop(1)
 }
 
-case class SiteInfo(baseurl: String, posts: Array[BlogPost])
+case class SiteInfo(baseurl: String, projectTitle: String, posts: Array[BlogPost])

@@ -62,7 +62,7 @@ class DocDriver extends Driver {
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, docs)
+      Site(siteRoot, ctx.settings.projectName.value, docs)
         .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()

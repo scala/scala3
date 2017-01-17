@@ -220,11 +220,11 @@ class ScalaSettings extends Settings.SettingGroup {
     sys.props("user.dir")
   )
 
-  val DocTitle = StringSetting (
-    "-Ydoc-title",
-    "title",
-    "The overall name of the Scaladoc site",
-    ""
+  val projectName = StringSetting (
+    "-project",
+    "project title",
+    "The name of the project",
+    sys.props("user.dir").split(sys.props("file.separator")).last
   )
 
   val DocVersion = StringSetting (

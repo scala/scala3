@@ -7,7 +7,7 @@ import org.junit.Assert._
 
 class SiteTests extends DottyDocTest {
   import scala.collection.JavaConverters._
-  val site = new Site(new java.io.File("../doc-tool/resources/"), Map.empty)
+  val site = new Site(new java.io.File("../doc-tool/resources/"), "test-site", Map.empty)
 
   private def html(
     str: String,
