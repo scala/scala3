@@ -336,7 +336,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case Apply(fun, _) if fun.symbol.info.isVarArgsMethod =>
             @tailrec def refine(tp: Type): Type = tp match {
               case tp: TypeAlias => refine(tp.alias.dealias)
-              case tp: RefinedType => refine(tp.refinedInfo)
+              case tp: RefinedType if tp.parent == defn.RepeatedParamType => refine(tp.refinedInfo)
               case tp: TypeBounds => refine(tp.hi)
               case _ => tp
             }
