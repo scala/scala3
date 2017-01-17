@@ -38,6 +38,14 @@ h1.section {
     margin: 30px 0;
 }
 
+div#entity-members > div.member.protected {
+    display: none;
+}
+
+div#entity-members > div.member.private {
+    display: none;
+}
+
 div#entity-members > div.member {
     margin-bottom: 30px;
 }

@@ -53,6 +53,9 @@ trait Modifiers {
 
   val isPrivate: Boolean =
     modifiers.contains("private")
+
+  val isProtected: Boolean =
+    modifiers.contains("protected")
 }
 
 trait TypeParams {

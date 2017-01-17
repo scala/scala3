@@ -57,15 +57,17 @@ object java {
 
   implicit class JavaCaseClass(val ent: CaseClass) extends AnyVal {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"       -> ent.kind,
+      "kind" -> ent.kind,
       "annotations" -> ent.annotations.asJava,
-      "name"       -> ent.name,
-      "members"    -> ent.members.map(_.asJava()).asJava,
-      "modifiers"  -> ent.modifiers.asJava,
-      "path"       -> ent.path.asJava,
+      "name" -> ent.name,
+      "members" -> ent.members.map(_.asJava()).asJava,
+      "modifiers" -> ent.modifiers.asJava,
+      "path" -> ent.path.asJava,
       "typeParams" -> ent.typeParams.asJava,
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava
+      "comment" -> ent.comment.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ) ++ extras).asJava
   }
 
@@ -79,7 +81,9 @@ object java {
       "path"       -> ent.path.asJava,
       "typeParams" -> ent.typeParams.asJava,
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava
+      "comment"    -> ent.comment.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ) ++ extras).asJava
   }
 
@@ -93,7 +97,9 @@ object java {
       "path"       -> ent.path.asJava,
       "typeParams" -> ent.typeParams.asJava,
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava
+      "comment"    -> ent.comment.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ) ++ extras).asJava
   }
 
@@ -106,7 +112,9 @@ object java {
       "modifiers"  -> ent.modifiers.asJava,
       "path"       -> ent.path.asJava,
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava
+      "comment"    -> ent.comment.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ) ++ extras).asJava
   }
 
@@ -121,7 +129,9 @@ object java {
       "typeParams"          -> ent.typeParams.asJava,
       "paramLists"          -> ent.paramLists.map(_.asJava).asJava,
       "comment"             -> ent.comment.map(_.asJava).asJava,
-      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava
+      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ).asJava
   }
 
@@ -134,7 +144,9 @@ object java {
       "path"                -> ent.path.asJava,
       "returnValue"         -> ent.returnValue.asJava,
       "comment"             -> ent.comment.map(_.asJava).asJava,
-      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava
+      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
     ).asJava
   }
 

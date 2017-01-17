@@ -27,7 +27,7 @@ extraCSS:
 
     <div id="entity-members" class="entity-section">
         {% for member in entity.members %}
-        <div class="member">
+        <div class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
             <div class="member-title">
                 <span class="member-annotations">
                     {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
