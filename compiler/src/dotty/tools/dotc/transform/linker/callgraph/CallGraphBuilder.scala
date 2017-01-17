@@ -59,45 +59,48 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   /** Builds the call graph based on the current reachable items, mainly entry points. */
   def build(): Unit = {
     ctx.log(s"\t Building call graph with ${reachableMethods.newItems.size} entry points")
+    @tailrec def buildLoop(): Unit = {
+      if (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
+        reachableMethods.clearNewItems()
+        reachableTypes.clearNewItems()
+        casts.clearNewItems()
+        classOfs.clearNewItems()
 
-    while (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
-      reachableMethods.clearNewItems()
-      reachableTypes.clearNewItems()
-      casts.clearNewItems()
-      classOfs.clearNewItems()
+        processCallSites(reachableMethods.items, reachableTypes.items)
 
-      processCallSites(reachableMethods.items, reachableTypes.items)
-
-      val newReachableTypes = reachableTypes.newItems
-      ctx.log(s"\t Found ${newReachableTypes.size} new instantiated types")
-      val newClassOfs = classOfs.newItems
-      ctx.log(s"\t Found ${newClassOfs.size} new classOfs ")
-      newReachableTypes.foreach { x =>
-        val clas = x.tp match {
-          case t: ClosureType =>
-            t.u.classSymbol.asClass
-          case t: JavaAllocatedType =>
-            t.underlying.widenDealias.classSymbol.asClass
-          case _ => x.tp.classSymbol.asClass
-        }
-        if (!clas.is(JavaDefined) && clas.is(Module)) {
-          val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
-          val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
-          reachableMethods ++= fields.map {
-            fieldSym =>
-              CallInfoWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs)(parent, None)
+        val newReachableTypes = reachableTypes.newItems
+        ctx.log(s"\t Found ${newReachableTypes.size} new instantiated types")
+        val newClassOfs = classOfs.newItems
+        ctx.log(s"\t Found ${newClassOfs.size} new classOfs ")
+        newReachableTypes.foreach { x =>
+          val clas = x.tp match {
+            case t: ClosureType =>
+              t.u.classSymbol.asClass
+            case t: JavaAllocatedType =>
+              t.underlying.widenDealias.classSymbol.asClass
+            case _ => x.tp.classSymbol.asClass
+          }
+          if (!clas.is(JavaDefined) && clas.is(Module)) {
+            val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
+            val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
+            reachableMethods ++= fields.map {
+              fieldSym =>
+                CallInfoWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs)(parent, None)
+            }
           }
         }
+
+        val newReachableMethods = reachableMethods.newItems
+
+        // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
+        // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
+
+        ctx.log(s"\t Found ${newReachableMethods.size} new call sites")
+        buildLoop()
       }
-
-      val newReachableMethods = reachableMethods.newItems
-
-      // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
-      // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
-
-      ctx.log(s"\t Found ${newReachableMethods.size} new call sites")
-
     }
+
+    buildLoop()
   }
 
   /** Packages the current call graph into a CallGraph */
@@ -156,18 +159,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def registerParentModules(tp: Type, from: CallInfoWithContext): Unit = {
-    var tp1 = tp
-    while ((tp1 ne NoType) && (tp1 ne NoPrefix)) {
-      if (tp1.widen ne tp1) registerParentModules(tp1.widen, from)
-      if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
-      if (tp1.termSymbol.is(Module)) {
-        addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
-      } else if (tp1.typeSymbol.is(Module, Package)) {
-        val t = ref(tp1.typeSymbol).tpe
-        addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
+    @tailrec def register(tp1: Type): Unit = {
+      if ((tp1 ne NoType) && (tp1 ne NoPrefix)) {
+        if (tp1.widen ne tp1) registerParentModules(tp1.widen, from)
+        if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
+        if (tp1.termSymbol.is(Module)) {
+          addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
+        } else if (tp1.typeSymbol.is(Module, Package)) {
+          val t = ref(tp1.typeSymbol).tpe
+          addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
+        }
+        register(tp1.normalizedPrefix)
       }
-      tp1 = tp1.normalizedPrefix
     }
+    register(tp)
   }
 
   private def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs = {
@@ -387,22 +392,21 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
         val constructedType = callee.call.widen.appliedTo(targs).widen.resultType
         val fixNoPrefix = if (constructedType.normalizedPrefix eq NoPrefix) {
-          var currentPrefix = caller.call.normalizedPrefix
-          while (!currentPrefix.classSymbol.exists) {
-            if (currentPrefix.termSymbol.is(Module)) {
-              currentPrefix = currentPrefix.widenDealias
-            } else {
-              currentPrefix = currentPrefix.normalizedPrefix
-              currentPrefix = currentPrefix match {
+          @tailrec def getPrefix(currentPrefix: Type): Type = {
+            if (currentPrefix.classSymbol.exists) currentPrefix
+            else if (currentPrefix.termSymbol.is(Module)) getPrefix(currentPrefix.widenDealias)
+            else {
+              getPrefix(currentPrefix.normalizedPrefix match {
                 case t: ThisType => t.tref
-                case _ => currentPrefix
-              }
+                case t => t
+              })
             }
           }
           constructedType match {
             case constructedType @ TypeRef(prefix, name)  =>
               constructedType.underlying match {
                 case ci: ClassInfo =>
+                  val currentPrefix = getPrefix(caller.call.normalizedPrefix)
                   val nci = ci.derivedClassInfo(prefix = currentPrefix) // todo: do this only for inner anonym classes
                   TypeRef.withFixedSymAndInfo(currentPrefix, name, constructedType.symbol.asType, nci)
               }
