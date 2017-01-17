@@ -88,7 +88,9 @@ object filters {
 
     override def apply(value: Any, params: AnyRef*): AnyRef = value match {
       case value: JMap[String, _] @unchecked =>
-        renderReference(value.get("scala").asInstanceOf[Reference])
+        val ref = value.get("scala").asInstanceOf[Reference]
+        if (ref ne null) renderReference(ref)
+        else null
       case _ =>
         /*dottydoc.*/println(s"couldn't render: '$value'")
         null

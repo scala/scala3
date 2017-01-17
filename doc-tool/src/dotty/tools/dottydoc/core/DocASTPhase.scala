@@ -92,7 +92,10 @@ class DocASTPhase extends Phase {
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
         val sym = t.symbol
-        TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), None)
+        if (sym.is(Flags.Synthetic | Flags.Param))
+          NonEntity
+        else
+          TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe))
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>

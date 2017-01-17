@@ -70,11 +70,11 @@ ul.toc > li > a#home-button:hover {
 }
 
 ul.toc > li > a#home-button svg g#logo-foreground {
-    fill: rgba(152, 101, 167, 1);
+    fill: rgba(202, 68, 94, 1);
 }
 
 ul.toc > li > a#home-button svg g#logo-background {
-    fill: rgba(152, 101, 167, 0.45);
+    fill: rgba(202, 68, 94, 0.45);
 }
 
 ul.toc > li,

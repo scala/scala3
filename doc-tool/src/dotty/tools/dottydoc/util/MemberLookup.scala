@@ -30,13 +30,7 @@ trait MemberLookup {
         .collect { case x if x.name == searchStr => x }
         .sortBy(_.path.last)
         .headOption
-        .fold(notFound) {
-          case e: TypeAlias =>
-            // TODO: will explode once type aliases are fixed
-            if (e.alias.isDefined) ???
-            else notFound
-          case e => LinkToEntity(e)
-        }
+        .fold(notFound)(e => LinkToEntity(e))
 
     /** Looks for an entity down in the structure, if the search list is Nil,
      *  the search stops

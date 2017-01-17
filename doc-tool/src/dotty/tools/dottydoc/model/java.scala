@@ -51,7 +51,8 @@ object java {
       "name"     -> ent.name,
       "path"     -> ent.path.asJava,
       "members"  -> ent.members.map(_.asJava()).asJava,
-      "comment"  -> ent.comment.map(_.asJava).asJava
+      "comment"  -> ent.comment.map(_.asJava).asJava,
+      "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
 
@@ -67,7 +68,8 @@ object java {
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
 
@@ -83,7 +85,8 @@ object java {
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
 
@@ -99,7 +102,8 @@ object java {
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
 
@@ -114,7 +118,8 @@ object java {
       "superTypes" -> ent.superTypes.map(_.asJava).asJava,
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
 
@@ -137,14 +142,28 @@ object java {
 
   implicit class JavaVal(val ent: Val) extends AnyVal {
     def asJava: JMap[String, _] = Map(
-      "kind"                -> ent.kind,
+      "kind" -> ent.kind,
       "annotations" -> ent.annotations.asJava,
-      "name"                -> ent.name,
-      "modifiers"           -> ent.modifiers.asJava,
-      "path"                -> ent.path.asJava,
-      "returnValue"         -> ent.returnValue.asJava,
-      "comment"             -> ent.comment.map(_.asJava).asJava,
+      "name" -> ent.name,
+      "modifiers" -> ent.modifiers.asJava,
+      "path" -> ent.path.asJava,
+      "returnValue" -> ent.returnValue.asJava,
+      "comment" -> ent.comment.map(_.asJava).asJava,
       "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
+      "isPrivate" -> ent.isPrivate,
+      "isProtected" -> ent.isProtected
+    ).asJava
+  }
+
+  implicit class JavaTypeAlias(val ent: TypeAlias) extends AnyVal {
+    def asJava: JMap[String, _] = Map(
+      "kind" -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
+      "modifiers" -> ent.modifiers.asJava,
+      "name" -> ent.name,
+      "path" -> ent.path.asJava,
+      "alias" -> ent.alias.map(_.asJava).asJava,
+      "comment" -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected
     ).asJava
@@ -255,6 +274,7 @@ object java {
     case ent: Object    => ent.asJava(extras)
     case ent: Def       => ent.asJava
     case ent: Val       => ent.asJava
+    case ent: TypeAlias => ent.asJava
     case _              => Map.empty.asJava
   }
 

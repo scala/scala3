@@ -46,15 +46,20 @@ trait SuperTypes {
 
 trait Members {
   def members: List[Entity]
+
+  def hasVisibleMembers: Boolean = members.exists {
+    case e: Entity with Modifiers => !(e.isPrivate || e.isProtected)
+    case e => true
+  }
 }
 
 trait Modifiers {
   def modifiers: List[String]
 
-  val isPrivate: Boolean =
+  def isPrivate: Boolean =
     modifiers.contains("private")
 
-  val isProtected: Boolean =
+  def isProtected: Boolean =
     modifiers.contains("protected")
 }
 

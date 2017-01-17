@@ -27,9 +27,9 @@ extraCSS:
     </div>
     {% endif %}
 
-    <h1 class="section">Members</h1>
+    <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">Members</h1>
 
-    <div id="entity-members" class="entity-section">
+    <div id="entity-members" class="entity-section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
         {% for member in entity.members %}
         <div class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
             <div class="member-title">
@@ -63,6 +63,13 @@ extraCSS:
                         {% endfor %}
                     <span class="no-left">)</span>
                     {% endfor %}
+                {% endif %}
+
+                {% if member.kind == "type" and member.alias != null %}
+                <span class="type-alias">
+                    <span class="equals"> = </span>
+                    {{ member.alias | renderRef  }}
+                </span>
                 {% endif %}
 
                 {% if member.returnValue %}
