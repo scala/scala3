@@ -14,6 +14,7 @@ class MarkdownShortener {
 
   def shorten(node: Node, maxLen: Int = 150): Node = {
     var len = 0
+    var didUnlinkBullets = false
 
     def count(node: Node, length: => Int, shortenOrUnlink: Int => Unit) = {
       val remaining = math.max(maxLen - len, 0)
@@ -48,6 +49,17 @@ class MarkdownShortener {
       }),
       new VisitHandler(classOf[Image], new Visitor[Image] {
         override def visit(node: Image) = count(node, maxLen, _ => node.unlink())
+      }),
+      new VisitHandler(classOf[BulletListItem], new Visitor[BulletListItem] {
+        override def visit(node: BulletListItem) = count(
+          node,
+          if (didUnlinkBullets) maxLen
+          else node.getSegments.map(_.length).reduceLeft(_ + _),
+          _ => {
+            node.unlink()
+            didUnlinkBullets = true // unlink all following bullets
+          }
+        )
       })
     )
 
