@@ -43,7 +43,13 @@ extraCSS:
                     {{ member.kind }}
                 </span>
                 <span class="member-name {% if member.isImplicitlyAddedFrom != null %}implicitly-added{% endif %}">
-                    {{ member.name }}
+                    {% if member.kind == "class" or member.kind == "case class" or member.kind == "object" or member.kind == "trait" %}
+                        <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
+                    {% elsif member.kind == "package" %}
+                        <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}/index.html">{{ member.name }}</a>
+                    {% else %}
+                        {{ member.name }}
+                    {% endif %}
                 </span>
 
                 {% if member.kind == "def" and member.paramLists.size > 0 %}
