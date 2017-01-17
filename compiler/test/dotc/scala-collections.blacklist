@@ -83,5 +83,4 @@ scala/util/control/Exception.scala
 #    |                                                                     cyclic reference involving method mkCatcher
 
 # Fail with callgraph
-scala/Enumeration.scala
 scala/util/Properties.scala
