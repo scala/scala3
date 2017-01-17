@@ -45,7 +45,7 @@ class DocASTPhase extends Phase {
     }
 
     def membersFromSymbol(sym: Symbol): List[Entity] = {
-      if (sym.info ne NoType) {
+      if (sym.info.exists) {
         val defs = sym.info.bounds.hi.finalResultType.membersBasedOnFlags(Flags.Method, Flags.Synthetic | Flags.Private)
           .filterNot(_.symbol.owner.name.show == "Any")
           .map { meth =>
@@ -62,7 +62,9 @@ class DocASTPhase extends Phase {
             )
           }.toList
 
-        val vals = sym.info.fields.filterNot(_.symbol.is(Flags.Private | Flags.Synthetic)).map { value =>
+        // don't add privates, synthetics or class parameters (i.e. value class constructor val)
+        val vals = sym.info.fields.filterNot(_.symbol.is(Flags.ParamAccessor | Flags.Private | Flags.Synthetic)).map { value =>
+          println(value + " " + value.symbol.flags)
           val kind = if (value.symbol.is(Flags.Mutable)) "var" else "val"
           ValImpl(
             value.symbol,
@@ -90,7 +92,7 @@ class DocASTPhase extends Phase {
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
         val sym = t.symbol
-        TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show, path(sym), None)
+        TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), None)
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>

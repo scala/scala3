@@ -136,6 +136,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
   def generateApiDocs(outDir: JFile = new JFile(root.getAbsolutePath + "/_site"))(implicit ctx: Context): this.type =
     createOutput(outDir) {
       def genDoc(e: model.Entity): Unit = {
+        /*dottydoc.*/println(s"Generating doc page for: ${e.path.mkString(".")}")
         // Suffix is index.html for packages and therefore the additional depth
         // is increased by 1
         val (suffix, offset) =
