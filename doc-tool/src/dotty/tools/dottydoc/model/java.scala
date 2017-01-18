@@ -51,6 +51,7 @@ object java {
       "name"     -> ent.name,
       "path"     -> ent.path.asJava,
       "members"  -> ent.members.map(_.asJava()).asJava,
+      "children"  -> ent.children.map(_.asJava()).asJava,
       "comment"  -> ent.comment.map(_.asJava).asJava,
       "superTypes" -> ent.superTypes,
       "hasVisibleMembers" -> ent.hasVisibleMembers

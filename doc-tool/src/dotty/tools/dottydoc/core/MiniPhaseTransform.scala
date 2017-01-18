@@ -42,7 +42,7 @@ object transform {
    *
    * Deleting nodes in the AST
    * -------------------------
-   * To delete a node in the AST, simply return NonEntity from transforming method
+   * To delete a node in the AST, simply return `NonEntity` from transforming method
    */
   abstract class DocMiniTransformations(transformations: List[DocMiniPhase]) extends Phase {
 
