@@ -305,17 +305,21 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       }
     }
 
+    def appliedToTargs(tp: Type): Type =
+      tp.widen.appliedTo(targs).widen
+
+    def preciseSelectCall(tp: Type, callSym: Symbol): TermRef = {
+      val selectByName = tp.select(callSym.name)
+      val call = selectByName.asInstanceOf[TermRef].denot.suchThat(x =>
+        x == callSym || x.overriddenSymbol(callSym.owner.asClass) == callSym).symbol
+      assert(call.exists)
+      tp.select(call).asInstanceOf[TermRef]
+    }
+
     def dispatchCalls(receiverType: Type): Traversable[CallInfoWithContext] = {
       receiverType match {
         case t: PreciseType =>
-          def preciseSelectCall = {
-            val selectByName = t.underlying.select(calleeSymbol.name)
-            val call = selectByName.asInstanceOf[TermRef].denot.suchThat(x =>
-              x == calleeSymbol || x.overriddenSymbol(calleeSymbol.owner.asClass) == calleeSymbol).symbol
-            assert(call.exists)
-            t.underlying.select(call).asInstanceOf[TermRef]
-          }
-          CallInfoWithContext(preciseSelectCall, targs, args, outerTargs)(someCaller, someCallee) :: Nil
+          CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs)(someCaller, someCallee) :: Nil
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
           val methodSym = t.meth.meth.symbol.asTerm
           CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs)(someCaller, someCallee) :: Nil
@@ -356,12 +360,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               if alt.exists
             } yield {
               // this additionaly introduces a cast of result type and argument types
-              val uncastedSig = tp.tp.select(alt.symbol).widen.appliedTo(targs).widen
-              val castedSig = receiverType.select(calleeSymbol).widen.appliedTo(targs).widen
+              val preciseCall = preciseSelectCall(tp.tp, alt.symbol)
+              val uncastedSig = appliedToTargs(preciseCall)
+              val castedSig = appliedToTargs(preciseSelectCall(receiverType, calleeSymbol))
+
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
               addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
-              CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
+              CallInfoWithContext(preciseCall.asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
             }
           }
 
@@ -390,7 +396,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       case t if calleeSymbol.isConstructor =>
 
-        val constructedType = callee.call.widen.appliedTo(targs).widen.resultType
+        val constructedType = appliedToTargs(callee.call).resultType
         val fixNoPrefix = if (constructedType.normalizedPrefix eq NoPrefix) {
           @tailrec def getPrefix(currentPrefix: Type): Type = {
             if (currentPrefix.classSymbol.exists) currentPrefix
