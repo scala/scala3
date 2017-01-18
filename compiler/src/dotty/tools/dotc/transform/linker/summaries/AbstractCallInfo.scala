@@ -1,14 +1,12 @@
 package dotty.tools.dotc.transform.linker.summaries
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.{PolyType, Type, TypeBounds}
+import dotty.tools.dotc.core.Symbols.TermSymbol
+import dotty.tools.dotc.core.Types.{PolyType, TermRef, Type, TypeBounds}
 import dotty.tools.dotc.transform.linker.types.ClosureType
 import dotty.tools.sharable
 
 abstract class AbstractCallInfo(implicit ctx: Context) {
-
-  assert(callSymbol.isTerm, callSymbol)
 
   targs.foreach(targ => assert(!targ.isInstanceOf[TypeBounds], targs))
 
@@ -20,7 +18,7 @@ abstract class AbstractCallInfo(implicit ctx: Context) {
   final val id: Int = AbstractCallInfo.nextId()
 
   /** This is type of method, that includes full type of receiver, eg: TermRef(receiver, Method) */
-  val call: Type
+  val call: TermRef
 
   /** Type arguments at call site */
   val targs: List[Type]
@@ -28,9 +26,9 @@ abstract class AbstractCallInfo(implicit ctx: Context) {
   /** Type of the arguments at call site */
   val argumentsPassed: List[Type]
 
-  def callSymbol: Symbol = call.normalizedPrefix match {
-    case t: ClosureType => t.meth.meth.symbol
-    case _ => call.termSymbol
+  def callSymbol: TermSymbol = call.normalizedPrefix match {
+    case t: ClosureType => t.meth.meth.symbol.asTerm
+    case _ => call.termSymbol.asTerm
   }
 }
 

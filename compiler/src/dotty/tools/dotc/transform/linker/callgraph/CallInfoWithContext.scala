@@ -7,7 +7,7 @@ import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
 
 import scala.collection.mutable
 
-case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)
+case class CallInfoWithContext(call: TermRef, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)
     (val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
@@ -30,9 +30,6 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
 
   def source: Option[CallInfo] = callee.flatMap(_.source)
 
-  def isOnJavaAllocatedType: Boolean = call match {
-    case TermRef(_: JavaAllocatedType, _) => true
-    case _ => false
-  }
+  def isOnJavaAllocatedType: Boolean = call.prefix.isInstanceOf[JavaAllocatedType]
 
 }

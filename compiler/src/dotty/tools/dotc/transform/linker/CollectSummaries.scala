@@ -286,14 +286,14 @@ class CollectSummaries extends MiniPhase { thisTransform =>
       }
 
       @tailrec def receiverArgumentsAndSymbol(t: Tree, accArgs: List[List[Tree]] = Nil, accT: List[Tree] = Nil):
-          (Tree, Tree, List[List[Tree]], List[Tree], Type) = t match {
+          (Tree, Tree, List[List[Tree]], List[Tree], TermRef) = t match {
         case Block(stats, expr) => receiverArgumentsAndSymbol(expr, accArgs, accT)
         case TypeApply(fun, targs) if fun.symbol eq t.symbol => receiverArgumentsAndSymbol(fun, accArgs, targs)
         case Apply(fn, args) if fn.symbol == t.symbol => receiverArgumentsAndSymbol(fn, args :: accArgs, accT)
         case Select(qual, _) =>
-          (qual, t, accArgs, accT, t.tpe)
-        case x: This => (x, x, accArgs, accT, x.tpe)
-        case x => (x, x, accArgs, accT, x.tpe)
+          (qual, t, accArgs, accT, t.tpe.asInstanceOf[TermRef])
+        case x: This => (x, x, accArgs, accT, x.tpe.asInstanceOf[TermRef])
+        case x => (x, x, accArgs, accT, x.tpe.asInstanceOf[TermRef])
       }
       val widenedTp = tree.tpe.widen
       if (!widenedTp.isInstanceOf[MethodicType] || (tree.symbol.exists && !tree.symbol.info.isInstanceOf[MethodicType])) {

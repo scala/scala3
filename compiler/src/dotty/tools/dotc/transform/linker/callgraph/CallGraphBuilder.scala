@@ -41,7 +41,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
-    val tpe = ref(s).tpe
+    val tpe = ref(s).tpe.asInstanceOf[TermRef]
     val targsSize = tpe.widen match {
       case t: PolyType => t.paramNames.size
       case _ => 0
@@ -82,10 +82,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
           if (!clas.is(JavaDefined) && clas.is(Module)) {
             val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
-            val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor), x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
+            val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
             reachableMethods ++= fields.map {
               fieldSym =>
-                CallInfoWithContext(x.tp.select(fieldSym), Nil, Nil, x.outerTargs)(parent, None)
+                CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs)(parent, None)
             }
           }
         }
@@ -313,7 +313,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             val call = selectByName.asInstanceOf[TermRef].denot.suchThat(x =>
               x == calleeSymbol || x.overriddenSymbol(calleeSymbol.owner.asClass) == calleeSymbol).symbol
             assert(call.exists)
-            t.underlying.select(call)
+            t.underlying.select(call).asInstanceOf[TermRef]
           }
           CallInfoWithContext(preciseSelectCall, targs, args, outerTargs)(someCaller, someCallee) :: Nil
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
@@ -336,7 +336,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
             } yield {
-              CallInfoWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
+              CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
             }
           }
 
@@ -361,7 +361,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
               addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
-              CallInfoWithContext(tp.tp.select(alt.symbol), targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
+              CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
             }
           }
 
@@ -420,7 +420,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           if (callerSymbol.isConstructor && callerSymbol.owner == calleeSymbol.owner)
             new TermRefWithFixedSym(calleeSymbol.owner.typeRef, calleeSymbol.name, calleeSymbol)
           else
-            propagateTargs(receiver).select(calleeSymbol)
+            propagateTargs(receiver).select(calleeSymbol).asInstanceOf[TermRef]
         }
 
         CallInfoWithContext(call, targs, args, outerTargs)(someCaller, someCallee) :: Nil
