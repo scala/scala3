@@ -98,11 +98,7 @@ object factories {
           * def id[T](t: T): t.type = t
           * ```
           */
-        val name = t.show
-        if (!name.endsWith(".type"))
-          ctx.warning(s"unhandled return type found: $t")
-
-        typeRef(name, query = t.typeSymbol.showFullName, params = params)
+        typeRef(t.name.show + ".type", params = params)
       }
 
       case ci: ClassInfo =>
@@ -127,7 +123,7 @@ object factories {
         AndTypeReference(expandTpe(left), expandTpe(right))
 
       case c: ConstantType =>
-        ConstantReference(c.show)
+        ConstantReference(c.value.show)
 
       case ref @ RefinedType(parent, rn, info) =>
         expandTpe(parent) //FIXME: will be a refined HK, aka class Foo[X] { def bar: List[X] } or similar
@@ -185,7 +181,8 @@ object factories {
       paramLists(annot.tpe)
 
     case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
-          _: ExprType  | _: OrType      | _: AndType | _: HKApply  | _: TermRef) =>
+          _: ExprType  | _: OrType      | _: AndType | _: HKApply  |
+          _: TermRef   | _: ConstantType) =>
       Nil // return types should not be in the paramlist
   }
 
