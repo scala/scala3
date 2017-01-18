@@ -380,13 +380,14 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             Nil
           } else {
             val directMixins = sym.owner.mixins.diff(sym.owner.info.parents.head.symbol.mixins)
-            directMixins.map { mixin =>
-              val decl = mixin.primaryConstructor
-              val (tparams, params) = decl.info match {
-                case tp: PolyType => (mixin.info.typeParams.map(_.paramRef), tp.resType.paramTypess.flatten)
-                case tp => (Nil, tp.paramTypess.flatten)
-              }
-              CallInfo(decl.termRef, tparams, params, someThisCallInfo)
+            directMixins.collect {
+              case mixin if !mixin.is(NoInits) =>
+                val decl = mixin.primaryConstructor
+                val (tparams, params) = decl.info match {
+                  case tp: PolyType => (mixin.info.typeParams.map(_.paramRef), tp.resType.paramTypess.flatten)
+                  case tp => (Nil, tp.paramTypess.flatten)
+                }
+                CallInfo(decl.termRef, tparams, params, someThisCallInfo)
             }
           }
         }
