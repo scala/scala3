@@ -509,7 +509,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
         case None =>
           outerMethods += method.callSymbol
-          if (!method.call.termSymbol.is(Module | Package)) {
+          if (!method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
             // Add all possible calls from java to object passed as parameters.
             processCallsFromJava(method, instantiatedTypes)
           }

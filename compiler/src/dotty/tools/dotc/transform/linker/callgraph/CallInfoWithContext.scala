@@ -1,8 +1,9 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.{PolyParam, Type}
+import dotty.tools.dotc.core.Types.{TermRef, Type}
 import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
+import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
 
 import scala.collection.mutable
 
@@ -28,5 +29,10 @@ case class CallInfoWithContext(call: Type, targs: List[Type], argumentsPassed: L
     outEdges.values.foldLeft(0)(_ + _.size)
 
   def source: Option[CallInfo] = callee.flatMap(_.source)
+
+  def isOnJavaAllocatedType: Boolean = call match {
+    case TermRef(_: JavaAllocatedType, _) => true
+    case _ => false
+  }
 
 }
