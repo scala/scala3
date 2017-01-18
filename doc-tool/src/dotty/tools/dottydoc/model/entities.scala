@@ -84,7 +84,7 @@ trait ImplicitlyAddedEntity extends Entity {
   def implicitlyAddedFrom: Option[Reference]
 }
 
-trait Package extends Entity with Members {
+trait Package extends Entity with Members with SuperTypes {
   val kind = "package"
 }
 

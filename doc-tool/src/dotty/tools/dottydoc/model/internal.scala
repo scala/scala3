@@ -17,6 +17,7 @@ object internal {
     name: String,
     var members: List[Entity],
     path: List[String],
+    superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None
   ) extends Package with Impl
 

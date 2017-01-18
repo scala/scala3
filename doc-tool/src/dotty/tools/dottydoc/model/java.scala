@@ -52,6 +52,7 @@ object java {
       "path"     -> ent.path.asJava,
       "members"  -> ent.members.map(_.asJava()).asJava,
       "comment"  -> ent.comment.map(_.asJava).asJava,
+      "superTypes" -> ent.superTypes,
       "hasVisibleMembers" -> ent.hasVisibleMembers
     ) ++ extras).asJava
   }
@@ -234,6 +235,8 @@ object java {
         "title" -> title,
         "scala" -> ref
       ).asJava
+
+      case EmptyReference => ???
     }
   }
 

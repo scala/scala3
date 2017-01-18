@@ -11,6 +11,7 @@ object references {
   final case class BoundsReference(low: Reference, high: Reference) extends Reference
   final case class NamedReference(title: String, ref: Reference, isByName: Boolean = false, isRepeated: Boolean = false) extends Reference
   final case class ConstantReference(title: String) extends Reference
+  final case object EmptyReference extends Reference
 
   /** Use MaterializableLink for entities that need be picklable */
   sealed trait MaterializableLink { def title: String }
