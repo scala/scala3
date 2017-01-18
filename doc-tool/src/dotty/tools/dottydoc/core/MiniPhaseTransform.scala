@@ -21,11 +21,11 @@ object transform {
    *
    * Create a `DocMiniPhase` which overrides the relevant method:
    *
-   * {{{
-   *    override def transformDef(implicit ctx: Context) = {
-   *      case x if shouldTransform(x) => x.copy(newValue = ...)
-   *    }
-   * }}}
+   * ```scala
+   * override def transformDef(implicit ctx: Context) = {
+   *   case x if shouldTransform(x) => x.copy(newValue = ...)
+   * }
+   * ```
    *
    * On each node in the AST, the appropriate method in `DocMiniPhase` will be
    * called in the order that they are supplied in
@@ -39,6 +39,10 @@ object transform {
    * `transformPackage`, because `transformX` will be called for the relevant
    * children. If you want to add children to `Package` you need to do that in
    * `transformPackage`, these additions will be persisted.
+   *
+   * Deleting nodes in the AST
+   * -------------------------
+   * To delete a node in the AST, simply return NonEntity from transforming method
    */
   abstract class DocMiniTransformations(transformations: List[DocMiniPhase]) extends Phase {
 
@@ -69,11 +73,13 @@ object transform {
     }
 
     private def performPackageTransform(pack: Package)(implicit ctx: Context): Package = {
-      def transformEntity[E <: Entity](e: E, f: DocMiniPhase => E => E)(createNew: E => E): E = {
+      def transformEntity[E <: Entity](e: E, f: DocMiniPhase => E => E)(createNew: E => E): Entity = {
         val transformedEntity = transformations.foldLeft(e) { case (oldE, transf) =>
           f(transf)(oldE)
         }
-        createNew(transformedEntity)
+
+        if (transformedEntity eq NonEntity) NonEntity
+        else createNew(transformedEntity)
       }
 
       def traverse(ent: Entity): Entity = ent match {
@@ -82,8 +88,9 @@ object transform {
             p.symbol,
             p.annotations,
             p.name,
-            p.members.map(traverse),
+            p.members.map(traverse).filterNot(_ eq NonEntity),
             p.path,
+            p.superTypes,
             p.comment
           )
 
@@ -108,7 +115,7 @@ object transform {
             cls.symbol,
             cls.annotations,
             cls.name,
-            cls.members.map(traverse),
+            cls.members.map(traverse).filterNot(_ eq NonEntity),
             cls.modifiers,
             cls.path,
             cls.typeParams,
@@ -122,7 +129,7 @@ object transform {
             cc.symbol,
             cc.annotations,
             cc.name,
-            cc.members.map(traverse),
+            cc.members.map(traverse).filterNot(_ eq NonEntity),
             cc.modifiers,
             cc.path,
             cc.typeParams,
@@ -136,7 +143,7 @@ object transform {
             trt.symbol,
             trt.annotations,
             trt.name,
-            trt.members.map(traverse),
+            trt.members.map(traverse).filterNot(_ eq NonEntity),
             trt.modifiers,
             trt.path,
             trt.typeParams,
@@ -150,7 +157,7 @@ object transform {
             obj.symbol,
             obj.annotations,
             obj.name,
-            obj.members.map(traverse),
+            obj.members.map(traverse).filterNot(_ eq NonEntity),
             obj.modifiers,
             obj.path,
             obj.superTypes,

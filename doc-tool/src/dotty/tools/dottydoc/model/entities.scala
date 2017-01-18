@@ -118,14 +118,25 @@ trait Def extends Entity with Modifiers with TypeParams with ReturnValue with Im
 
 trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity
 
-trait NonEntity extends Entity {
+sealed trait NonEntity extends Package with TypeAlias with Class with CaseClass with Trait with Object with Def with Val {
+  override val kind = ""
   val annotations = Nil
   val name = ""
   val symbol = NoSymbol
   val comment = None
   val path = Nil
-  val kind = ""
   val parent = NonEntity
+  val constructors = Nil
+  val paramLists = Nil
+  val implicitlyAddedFrom = None
+  val members = Nil
+  val modifiers = Nil
+  val reference = EmptyReference
+  val returnValue = EmptyReference
+  val superTypes = Nil
+  val typeParams = Nil
+  val traitParams = Nil
+  val alias = None
 }
 
 final case object NonEntity extends NonEntity
