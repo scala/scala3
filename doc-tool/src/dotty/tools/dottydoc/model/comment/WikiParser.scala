@@ -335,7 +335,7 @@ private[comment] final class WikiParser(
       case (SchemeUri(uri), optTitle) =>
         Link(uri, optTitle getOrElse Text(uri))
       case (qualName, optTitle) =>
-        makeEntityLink(entity, packages, optTitle getOrElse Text(target), pos, target)
+        makeEntityLink(entity, packages, optTitle getOrElse Text(target), target)
     }
   }
 

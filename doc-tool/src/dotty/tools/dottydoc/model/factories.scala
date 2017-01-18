@@ -26,6 +26,7 @@ object factories {
       .flagStrings.toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
+      .filter(_ != "case")
 
   def path(sym: Symbol)(implicit ctx: Context): List[String] = sym match {
     case sym if sym.name.decode.toString == "<root>" => Nil

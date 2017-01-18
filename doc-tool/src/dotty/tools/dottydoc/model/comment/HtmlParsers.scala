@@ -37,7 +37,7 @@ object HtmlParsers {
 
       val linkVisitor = new NodeVisitor(
         new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
-          def queryToUrl(link: String) = lookup(origin, ctx.docbase.packages, link) match {
+          def queryToUrl(title: String, link: String) = makeEntityLink(origin, ctx.docbase.packages, Text(title), link).link match {
             case Tooltip(_) => "#"
             case LinkToExternal(_, url) => url
             case LinkToEntity(t: Entity) => t match {
@@ -49,7 +49,7 @@ object HtmlParsers {
           override def visit(link: Link) = {
             val linkUrl = link.getUrl.toString
             if (!isOuter(linkUrl) && !isRelative(linkUrl))
-              link.setUrl(CharSubSequence.of(queryToUrl(linkUrl)))
+              link.setUrl(CharSubSequence.of(queryToUrl(link.getTitle.toString, linkUrl)))
           }
         })
       )

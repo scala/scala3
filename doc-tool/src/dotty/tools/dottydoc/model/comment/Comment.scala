@@ -62,9 +62,8 @@ object MarkdownComment extends util.MemberLookup {
     val inlineToHtml = InlineToHtml(ent)
     def linkedExceptions(m: Map[String, String]): Map[String, String] = {
       m.map { case (targetStr, body) =>
-        val link = lookup(ent, ctx.docbase.packages, targetStr)
-        val entityLink = EntityLink(Monospace(Text(targetStr)), link)
-        (targetStr, inlineToHtml(entityLink))
+        val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
+        (targetStr, inlineToHtml(link))
       }
     }
 
@@ -121,8 +120,8 @@ object WikiComment extends util.MemberLookup {
         val newBody = body match {
           case Body(List(Paragraph(Chain(content)))) =>
             val descr = Text(" ") +: content
-            val entityLink = EntityLink(Monospace(Text(targetStr)), link)
-            Body(List(Paragraph(Chain(entityLink +: descr))))
+            val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
+            Body(List(Paragraph(Chain(link +: descr))))
           case _ => body
         }
         (targetStr, newBody)

@@ -62,7 +62,7 @@ extraCSS:
                             <span class="{% if forloop.first %}no-left{% endif %}">
                                 {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
                             </span>
-                            {{ namedRef.ref | renderRef }}
+                            {% renderRef namedRef.ref %}
                             {% if forloop.last != true %}
                                 <span class="no-left">, </span>
                             {% endif %}
@@ -74,7 +74,7 @@ extraCSS:
                 {% if member.kind == "type" and member.alias != null %}
                 <span class="type-alias">
                     <span class="equals"> = </span>
-                    {{ member.alias | renderRef  }}
+                    {% renderRef member.alias %}
                 </span>
                 {% endif %}
 

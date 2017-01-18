@@ -19,23 +19,22 @@ trait MemberLookup {
    *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or
    *  LinkToExternal
    */
-  def lookup(entity: Entity, packages: Map[String, Package], query: String): LinkTo = {
-    val notFound: LinkTo = Tooltip(query)
+  def lookup(entity: Entity, packages: Map[String, Package], query: String): Option[Entity] = {
+    val notFound: Option[Entity] = None
     val querys = query.split("\\.").toList
 
     /** Looks for the specified entity among `ent`'s members */
-    def localLookup(ent: Entity with Members, searchStr: String): LinkTo =
+    def localLookup(ent: Entity with Members, searchStr: String): Option[Entity] =
       ent
         .members
         .collect { case x if x.name == searchStr => x }
         .sortBy(_.path.last)
         .headOption
-        .fold(notFound)(e => LinkToEntity(e))
 
     /** Looks for an entity down in the structure, if the search list is Nil,
      *  the search stops
      */
-    def downwardLookup(ent: Entity with Members, search: List[String]): LinkTo =
+    def downwardLookup(ent: Entity with Members, search: List[String]): Option[Entity] =
       search match {
         case Nil => notFound
         case x :: Nil =>
@@ -54,7 +53,7 @@ trait MemberLookup {
     /** Finds package with longest matching name, then does downwardLookup in
      *  the package
      */
-    def globalLookup: LinkTo = {
+    def globalLookup: Option[Entity] = {
       def longestMatch(list: List[String]): List[String] =
         if (list eq Nil) Nil
         else
@@ -84,7 +83,13 @@ trait MemberLookup {
     entity: Entity,
     packages: Map[String, Package],
     title: Inline,
-    pos: Position,
     query: String
-  ): EntityLink = EntityLink(title, lookup(entity, packages, query))
+  ): EntityLink = {
+    val link =
+      lookup(entity, packages, query)
+      .map(LinkToEntity)
+      .getOrElse(Tooltip(query))
+
+    EntityLink(title, link)
+  }
 }

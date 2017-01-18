@@ -43,9 +43,7 @@ class LinkSuperTypes extends DocMiniPhase with TypeLinker {
   def linkSuperTypes(ent: Entity with SuperTypes)(implicit ctx: Context): List[MaterializableLink] =
     ent.superTypes.collect {
       case UnsetLink(title, query) =>
-        val packages = ctx.docbase.packages
-        val entityLink = makeEntityLink(ent, packages, Text(title), NoPosition, query).link
-        handleEntityLink(title, entityLink, ent)
+        handleEntityLink(title, lookup(ent, ctx.docbase.packages, query), ent)
     }
 
   override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
@@ -80,11 +78,15 @@ class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
 }
 
 trait TypeLinker extends MemberLookup {
-  def handleEntityLink(title: String, lt: LinkTo, ent: Entity): MaterializableLink = lt match {
-    case Tooltip(str)           => NoLink(title, str)
-    case LinkToExternal(_, url) => MaterializedLink(title, url)
-    case LinkToEntity(target)   => MaterializedLink(title, util.traversing.relativePath(ent, target))
-  }
+  def handleEntityLink(title: String, target: Option[Entity], ent: Entity, query: String = ""): MaterializableLink =
+    target match {
+      case Some(target: Package) =>
+        MaterializedLink(title, target.path.mkString("/") + "/index.html")
+      case Some(target) =>
+        MaterializedLink(title, target.path.mkString("/") + ".html")
+      case none =>
+        NoLink(title, query)
+    }
 
   def linkReference(ent: Entity, ref: Reference, packs: Map[String, Package]): Reference = {
     def linkRef(ref: Reference) = linkReference(ent, ref, packs)
@@ -94,7 +96,7 @@ trait TypeLinker extends MemberLookup {
         val inlineToHtml = InlineToHtml(ent)
         val title = t
 
-        val target = handleEntityLink(title, makeEntityLink(ent, packs, Text(t), NoPosition, query).link, ent)
+        val target = handleEntityLink(title, lookup(ent, packs, query), ent, query)
         val tpTargets = tps.map(linkReference(ent, _, packs))
         ref.copy(tpeLink = target, paramLinks = tpTargets)
       case ref @ OrTypeReference(left, right) =>
