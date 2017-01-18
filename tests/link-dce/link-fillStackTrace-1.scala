@@ -1,7 +1,7 @@
 import scala.annotation.internal
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 36, classesWithReachableMethods = 12, reachableMethods = 64)
+  @internal.link.CallGraphBounds(reachableClasses = 31, classesWithReachableMethods = 9, reachableMethods = 56)
   def main(args: Array[String]): Unit = {
     try {
       throw new BreakControl
