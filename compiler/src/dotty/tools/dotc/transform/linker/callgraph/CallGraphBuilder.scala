@@ -216,15 +216,23 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     lazy val outerParent = if (callerSymbol.owner ne caller.call.normalizedPrefix.classSymbol) {
       val current = caller.call.normalizedPrefix
       val superTpe = callerSymbol.owner.info
-      val outers = current.typeMembers.foldLeft(OuterTargs.empty) { (outerTargs: OuterTargs, x) =>
+      @tailrec def collectTypeMembers(classes: List[ClassSymbol], acc: Map[Name, Symbol]): Iterable[Symbol] = classes match {
+        case x :: xs =>
+          val typeDecls = x.unforcedDecls.filter(_.isType)
+          val acc2 = typeDecls.foldLeft(acc)((acc1, sym) => if (acc1.contains(sym.name)) acc1 else acc1.updated(sym.name, sym))
+          collectTypeMembers(xs, acc2)
+        case Nil => acc.values
+      }
+      val typeMembers = collectTypeMembers(current.baseClasses, Map.empty)
+      val outers = typeMembers.foldLeft(OuterTargs.empty) { (outerTargs: OuterTargs, x) =>
         val old = superTpe.member(x.symbol.name)
-        if (old.exists) outerTargs.add(callerSymbol.owner, x.symbol.name, x.info) else outerTargs
+        if (old.exists) outerTargs.add(callerSymbol.owner, x.symbol.name, current.select(x).widen) else outerTargs
       }
       outers
     } else OuterTargs.empty
 
-    lazy val outerPropagetedTargs = caller.outerTargs ++ tpamsOuter ++ outerParent
-    lazy val substitution = new SubstituteByParentMap(outerPropagetedTargs)
+    lazy val outerPropagatedTargs = caller.outerTargs ++ tpamsOuter ++ outerParent
+    lazy val substitution = new SubstituteByParentMap(outerPropagatedTargs)
 
     def propagateArgs(tp: Type): Type = {
       tp match {
@@ -308,10 +316,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     def appliedToTargs(tp: Type): Type =
       tp.widen.appliedTo(targs).widen
 
-    def preciseSelectCall(tp: Type, callSym: Symbol): TermRef = {
-      val selectByName = tp.select(callSym.name)
-      val call = selectByName.asInstanceOf[TermRef].denot.suchThat(x =>
-        x == callSym || x.overriddenSymbol(callSym.owner.asClass) == callSym).symbol
+    def preciseSelectCall(tp: Type, sym: Symbol): TermRef = {
+      val selectByName = tp.select(sym.name)
+      val denot = selectByName.asInstanceOf[TermRef].denot
+      val call = denot.suchThat(x => x == sym || x.overriddenSymbol(sym.owner.asClass) == sym).symbol
       assert(call.exists)
       tp.select(call).asInstanceOf[TermRef]
     }
@@ -355,19 +363,17 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             for {
               tp <- getTypesByMemberName(calleeSymbol.name)
               cast <- castsCache.getOrElse(tp, Iterator.empty)
-              if /*filterTypes(tp.tp, cast.from) &&*/ filterTypes(cast.to, receiverType) && filterCast(cast)
+              if filterTypes(tp.tp, cast.from) && filterTypes(cast.to, receiverType) && filterCast(cast)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
             } yield {
-              // this additionaly introduces a cast of result type and argument types
-              val preciseCall = preciseSelectCall(tp.tp, alt.symbol)
-              val uncastedSig = appliedToTargs(preciseCall)
-              val castedSig = appliedToTargs(preciseSelectCall(receiverType, calleeSymbol))
-
+              // this additionally introduces a cast of result type and argument types
+              val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
+              val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
               addCast(uncastedSig.finalResultType, castedSig.finalResultType)
 
-              CallInfoWithContext(preciseCall.asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
+              CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
             }
           }
 
