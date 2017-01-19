@@ -41,7 +41,8 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil
   ) extends Class with Impl
 
   final case class CaseClassImpl(
@@ -54,7 +55,8 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil
   ) extends CaseClass with Impl
 
   final case class TraitImpl(
@@ -67,7 +69,8 @@ object internal {
     typeParams: List[String] = Nil,
     traitParams: List[ParamList] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil
   ) extends Trait with Impl
 
   final case class ObjectImpl(
@@ -78,7 +81,8 @@ object internal {
     modifiers: List[String],
     path: List[String],
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil
   ) extends Object with Impl
 
   final case class DefImpl(

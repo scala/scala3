@@ -16,7 +16,8 @@ layout: main
                 <a href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">{{ pkg.name }}</a>
             </li>
             {% for member in pkg.children %}
-                {% if member.kind != "package" %}
+                {% if member.kind == "object" and member.hasCompanion %}
+                {% elsif member.kind != "package" %}
                 <li class="index-entity">
                     <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.kind }} {{ member.name }}</a>
                 </li>

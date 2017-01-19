@@ -121,7 +121,8 @@ object transform {
             cls.typeParams,
             cls.constructors,
             cls.superTypes,
-            cls.comment
+            cls.comment,
+            cls.companionPath
           )
         }
         case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
@@ -135,7 +136,8 @@ object transform {
             cc.typeParams,
             cc.constructors,
             cc.superTypes,
-            cc.comment
+            cc.comment,
+            cc.companionPath
           )
         }
         case trt: Trait => transformEntity(trt, _.traitTransformation) { trt =>
@@ -149,7 +151,8 @@ object transform {
             trt.typeParams,
             trt.traitParams,
             trt.superTypes,
-            trt.comment
+            trt.comment,
+            trt.companionPath
           )
         }
         case obj: Object => transformEntity(obj, _.objectTransformation) { obj =>
@@ -161,7 +164,8 @@ object transform {
             obj.modifiers,
             obj.path,
             obj.superTypes,
-            obj.comment
+            obj.comment,
+            obj.companionPath
           )
         }
         case df: Def => transformEntity(df, _.defTransformation) { df =>

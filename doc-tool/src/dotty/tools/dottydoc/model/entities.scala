@@ -80,6 +80,14 @@ trait Constructors {
   def constructors: List[List[ParamList]]
 }
 
+trait Companion extends Entity {
+  def hasCompanion: Boolean = companionPath ne Nil
+
+  def companionPath: List[String]
+
+  def companionPath_=(xs: List[String]): Unit
+}
+
 trait ImplicitlyAddedEntity extends Entity {
   def implicitlyAddedFrom: Option[Reference]
 }
@@ -94,20 +102,20 @@ trait TypeAlias extends Entity with Modifiers {
   def isAbstract: Boolean = !alias.isDefined
 }
 
-trait Class extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members {
+trait Class extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members with Companion {
   val kind = "class"
 }
 
-trait CaseClass extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members {
+trait CaseClass extends Entity with Modifiers with TypeParams with Constructors with SuperTypes with Members with Companion {
   override val kind = "case class"
 }
 
-trait Trait extends Entity with Modifiers with TypeParams with SuperTypes with Members {
+trait Trait extends Entity with Modifiers with TypeParams with SuperTypes with Members with Companion {
   def traitParams: List[ParamList]
   override val kind = "trait"
 }
 
-trait Object extends Entity with Modifiers with SuperTypes with Members {
+trait Object extends Entity with Modifiers with SuperTypes with Members with Companion {
   override val kind = "object"
 }
 
@@ -137,6 +145,8 @@ sealed trait NonEntity extends Package with TypeAlias with Class with CaseClass 
   val typeParams = Nil
   val traitParams = Nil
   val alias = None
+  val companionPath = Nil
+  def companionPath_=(xs: List[String]) = ()
 }
 
 final case object NonEntity extends NonEntity

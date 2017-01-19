@@ -71,7 +71,9 @@ object java {
       "comment" -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers
+      "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasCompanion" -> ent.hasCompanion,
+      "companionPath" -> ent.companionPath.asJava
     ) ++ extras).asJava
   }
 
@@ -88,7 +90,9 @@ object java {
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers
+      "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasCompanion" -> ent.hasCompanion,
+      "companionPath" -> ent.companionPath.asJava
     ) ++ extras).asJava
   }
 
@@ -105,7 +109,9 @@ object java {
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers
+      "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasCompanion" -> ent.hasCompanion,
+      "companionPath" -> ent.companionPath.asJava
     ) ++ extras).asJava
   }
 
@@ -121,7 +127,9 @@ object java {
       "comment"    -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers
+      "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasCompanion" -> ent.hasCompanion,
+      "companionPath" -> ent.companionPath.asJava
     ) ++ extras).asJava
   }
 

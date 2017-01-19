@@ -111,7 +111,7 @@ class DocASTPhase extends Phase {
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None) match {
+        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }
