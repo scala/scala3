@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{ConstantType, PolyType, Type}
 import dotty.tools.dotc.transform.linker.types.ClosureType
@@ -69,8 +70,9 @@ case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethod
       ctx.log(s"\t Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations")
       ctx.log(s"\t mono: ${monomorphicCalls.size}, bi: ${bimorphicCalls.size}, mega: ${megamorphicCalls.map(_._2.size).sum}")
       ctx.log(s"\t Found ${outerMethods.size} not defined calls: ${outerMethods.map(_.showFullName)}")
-      ctx.log(s"\t Reachable classes: ${classesWithReachableMethods.mkString(", ")}")
-      ctx.log(s"\t Reachable methods: ${reachableDefs.mkString(", ")}")
+      ctx.log(s"\t Reachable classes: ${reachableClasses.mkString(", ")}")
+      ctx.log(s"\t Reachable methods: ${reachableDefs.map(x => if (x.is(Flags.Module)) x else x.owner.name + "." + x.name).mkString(", ")}")
+      ctx.log(s"\t Reachable method classes: ${classesWithReachableMethods.mkString(", ")}")
       ctx.log(s"\t Reachable specs: ${reachableSpecs.mkString(", ")}")
       ctx.log(s"\t Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}")
     }

@@ -3,7 +3,7 @@ import java.util.Observable
 import scala.annotation.internal
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 93, classesWithReachableMethods = 17, reachableMethods = 104)
+  @internal.link.CallGraphBounds(reachableClasses = 106, classesWithReachableMethods = 19, reachableMethods = 70)
   def main(args: Array[String]): Unit = {
     val classLoader = Test.getClass.getClassLoader()
 

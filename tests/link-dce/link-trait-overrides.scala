@@ -1,7 +1,7 @@
 import scala.annotation.internal
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 24, classesWithReachableMethods = 9, reachableMethods = 44)
+  @internal.link.CallGraphBounds(reachableClasses = 24, classesWithReachableMethods = 7, reachableMethods = 8)
   def main(args: Array[String]): Unit = {
     new Foo().foo
   }

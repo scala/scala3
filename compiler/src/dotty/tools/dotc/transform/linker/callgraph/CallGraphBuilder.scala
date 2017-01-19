@@ -507,16 +507,16 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach { callSite =>
-              val nw = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
-              reachableMethods ++= nw
-              method.addOutEdges(callSite, nw)
+              val instantiatedCalls = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
+              reachableMethods ++= instantiatedCalls
+              method.addOutEdges(callSite, instantiatedCalls)
             }
           }
 
         case None =>
-          outerMethods += method.callSymbol
           if (!method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
             // Add all possible calls from java to object passed as parameters.
+            outerMethods += method.callSymbol
             processCallsFromJava(method, instantiatedTypes)
           }
       }
@@ -604,9 +604,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       potentialCall <- allPotentialCallsFor(rec)
       if method.getOutEdges(potentialCall).isEmpty
     } {
-      val nw = instantiateCallSite(method, rec, potentialCall, instantiatedTypes)
-      reachableMethods ++= nw
-      method.addOutEdges(potentialCall, nw)
+      val instantiatedCalls = instantiateCallSite(method, rec, potentialCall, instantiatedTypes)
+      val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
+      reachableMethods ++= instantiatedCallsToDefinedMethods
+      method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)
     }
   }
 

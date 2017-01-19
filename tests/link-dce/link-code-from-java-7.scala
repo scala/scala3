@@ -3,7 +3,7 @@ import scala.annotation.internal
 import java.lang.InheritableThreadLocal
 
 object Test {
-  @internal.link.CallGraphBounds(reachableClasses = 27, classesWithReachableMethods = 10, reachableMethods = 53)
+  @internal.link.CallGraphBounds(reachableClasses = 27, classesWithReachableMethods = 10, reachableMethods = 14)
   def main(args: Array[String]): Unit = {
     val a = new DynamicVariable2(42)
     System.out.println(a.value)
