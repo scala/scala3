@@ -158,7 +158,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
       documentation.values.foreach { pkg =>
         genDoc(pkg)
-        pkg.members.filterNot(_.kind == "package").foreach(genDoc)
+        pkg.children.foreach(genDoc)
       }
     }
 

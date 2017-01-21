@@ -21,6 +21,13 @@ trait Entity { entity =>
 
   def annotations: List[String]
 
+  def signature: String =
+    entity.name + (entity match {
+      case o: Object => "$"
+      case d: Def => d.paramLists.mkString
+      case _ => ""
+    })
+
   def children: List[Entity with Members] = entity match {
     case e: Entity with Members =>
       e.members.collect { case e: Entity with Members if e.kind != "package" => e }
@@ -74,6 +81,8 @@ trait ReturnValue {
 trait ParamList {
   def list: List[NamedReference]
   def isImplicit: Boolean
+
+  override def toString = list.map(_.title).mkString("(", ",", ")")
 }
 
 trait Constructors {

@@ -9,6 +9,7 @@ import dotc.core.Phases.Phase
 import model._
 import model.internal._
 import util.syntax._
+import util.traversing._
 
 object transform {
   /**
@@ -48,28 +49,11 @@ object transform {
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       for {
-        rootName    <- rootPackages
+        rootName    <- rootPackages(ctx.docbase.packages)
         pack        =  ctx.docbase.packages(rootName)
         transformed =  performPackageTransform(pack)
       } yield ctx.docbase.packagesMutable(rootName) = transformed
       super.runOn(units)
-    }
-
-    private def rootPackages(implicit ctx: Context): List[String] = {
-      var currentDepth = Int.MaxValue
-      var packs = List.empty[String]
-
-      for (key <- ctx.docbase.packages.keys) {
-        val keyDepth = key.split("\\.").length
-        packs =
-          if (keyDepth < currentDepth) {
-            currentDepth = keyDepth
-            key :: Nil
-          } else if (keyDepth == currentDepth) {
-            key :: packs
-          } else packs
-      }
-      packs
     }
 
     private def performPackageTransform(pack: Package)(implicit ctx: Context): Package = {
@@ -91,7 +75,8 @@ object transform {
             p.members.map(traverse).filterNot(_ eq NonEntity),
             p.path,
             p.superTypes,
-            p.comment
+            p.comment,
+            p.parent
           )
 
           // Update reference in context to newPackage
@@ -107,7 +92,8 @@ object transform {
             t.name,
             t.path,
             t.alias,
-            t.comment
+            t.comment,
+            t.parent
           )
         }
         case c: Class => transformEntity(c, _.classTransformation) { cls =>
@@ -122,7 +108,8 @@ object transform {
             cls.constructors,
             cls.superTypes,
             cls.comment,
-            cls.companionPath
+            cls.companionPath,
+            cls.parent
           )
         }
         case cc: CaseClass => transformEntity(cc, _.caseClassTransformation) { cc =>
@@ -137,7 +124,8 @@ object transform {
             cc.constructors,
             cc.superTypes,
             cc.comment,
-            cc.companionPath
+            cc.companionPath,
+            cc.parent
           )
         }
         case trt: Trait => transformEntity(trt, _.traitTransformation) { trt =>
@@ -152,7 +140,8 @@ object transform {
             trt.traitParams,
             trt.superTypes,
             trt.comment,
-            trt.companionPath
+            trt.companionPath,
+            trt.parent
           )
         }
         case obj: Object => transformEntity(obj, _.objectTransformation) { obj =>
@@ -165,7 +154,8 @@ object transform {
             obj.path,
             obj.superTypes,
             obj.comment,
-            obj.companionPath
+            obj.companionPath,
+            obj.parent
           )
         }
         case df: Def => transformEntity(df, _.defTransformation) { df =>
@@ -179,7 +169,8 @@ object transform {
             df.typeParams,
             df.paramLists,
             df.comment,
-            df.implicitlyAddedFrom
+            df.implicitlyAddedFrom,
+            df.parent
           )
         }
         case vl: Val => transformEntity(vl, _.valTransformation) { vl =>
@@ -192,7 +183,8 @@ object transform {
             vl.returnValue,
             vl.kind,
             vl.comment,
-            vl.implicitlyAddedFrom
+            vl.implicitlyAddedFrom,
+            vl.parent
           )
         }
       }

@@ -22,4 +22,22 @@ object traversing {
     "../" * (from.path.length - offset) +
     to.path.mkString("", "/", ".html")
   }
+
+
+  def rootPackages(pkgs: Map[String, Package]): List[String] = {
+    var currentDepth = Int.MaxValue
+    var packs = List.empty[String]
+
+    for (key <- pkgs.keys) {
+      val keyDepth = key.split("\\.").length
+      packs =
+        if (keyDepth < currentDepth) {
+          currentDepth = keyDepth
+          key :: Nil
+        } else if (keyDepth == currentDepth) {
+          key :: packs
+        } else packs
+    }
+    packs
+  }
 }

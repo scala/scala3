@@ -82,6 +82,12 @@ trait TypeLinker extends MemberLookup {
     target match {
       case Some(target: Package) =>
         MaterializedLink(title, target.path.mkString("/") + "/index.html")
+      case Some(target: TypeAlias) =>
+        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
+      case Some(target: Def) =>
+        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
+      case Some(target: Val) =>
+        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
       case Some(target) =>
         MaterializedLink(title, target.path.mkString("/") + ".html")
       case none =>

@@ -54,7 +54,8 @@ object java {
       "children"  -> ent.children.map(_.asJava()).asJava,
       "comment"  -> ent.comment.map(_.asJava).asJava,
       "superTypes" -> ent.superTypes,
-      "hasVisibleMembers" -> ent.hasVisibleMembers
+      "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "signature" -> ent.signature
     ) ++ extras).asJava
   }
 
@@ -73,7 +74,8 @@ object java {
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
       "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava
+      "companionPath" -> ent.companionPath.asJava,
+      "signature" -> ent.signature
     ) ++ extras).asJava
   }
 
@@ -92,7 +94,8 @@ object java {
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
       "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava
+      "companionPath" -> ent.companionPath.asJava,
+      "signature" -> ent.signature
     ) ++ extras).asJava
   }
 
@@ -111,7 +114,8 @@ object java {
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
       "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava
+      "companionPath" -> ent.companionPath.asJava,
+      "signature" -> ent.signature
     ) ++ extras).asJava
   }
 
@@ -129,7 +133,8 @@ object java {
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
       "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava
+      "companionPath" -> ent.companionPath.asJava,
+      "signature" -> ent.signature
     ) ++ extras).asJava
   }
 
@@ -146,7 +151,8 @@ object java {
       "comment"             -> ent.comment.map(_.asJava).asJava,
       "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "signature" -> ent.signature
     ).asJava
   }
 
@@ -161,7 +167,8 @@ object java {
       "comment" -> ent.comment.map(_.asJava).asJava,
       "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "signature" -> ent.signature
     ).asJava
   }
 
@@ -175,7 +182,8 @@ object java {
       "alias" -> ent.alias.map(_.asJava).asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
       "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected
+      "isProtected" -> ent.isProtected,
+      "signature" -> ent.signature
     ).asJava
   }
 

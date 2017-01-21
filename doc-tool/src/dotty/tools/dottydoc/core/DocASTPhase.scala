@@ -23,7 +23,7 @@ class DocASTPhase extends Phase {
   import util.traversing._
   import util.internal.setters._
 
-  def phaseName = "docphase"
+  def phaseName = "docASTPhase"
 
   /** Build documentation hierarchy from existing tree */
   def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = {
@@ -64,7 +64,6 @@ class DocASTPhase extends Phase {
 
         // don't add privates, synthetics or class parameters (i.e. value class constructor val)
         val vals = sym.info.fields.filterNot(_.symbol.is(Flags.ParamAccessor | Flags.Private | Flags.Synthetic)).map { value =>
-          println(value + " " + value.symbol.flags)
           val kind = if (value.symbol.is(Flags.Mutable)) "var" else "val"
           ValImpl(
             value.symbol,
@@ -87,7 +86,7 @@ class DocASTPhase extends Phase {
       /** package */
       case pd @ PackageDef(pid, st) =>
         val pkgPath = path(pd.symbol)
-        addEntity(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st, pkgPath), pkgPath))
+        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st, pkgPath), pkgPath))
 
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
@@ -111,7 +110,7 @@ class DocASTPhase extends Phase {
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil) match {
+        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, NonEntity) match {
           case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
           case x => ClassImpl.tupled(x)
         }
@@ -132,29 +131,90 @@ class DocASTPhase extends Phase {
     }
   }
 
-  var packages: Map[String, Package] = Map.empty
+  var packages: Map[String, PackageImpl] = Map.empty
 
-  def addEntity(p: Package): Package = {
-    def mergedChildren(x1s: List[Entity], x2s: List[Entity]): List[Entity] = {
-      val (packs1, others1) = x1s.partition(_.kind == "package")
-      val (packs2, others2) = x2s.partition(_.kind == "package")
+  def addPackage(newPkg: PackageImpl): Package = {
+    def mergeMembers(newPkg: PackageImpl, oldPkg: PackageImpl): Unit = {
+      val othersNew  = newPkg.members.filterNot(_.kind == "package")
+      val (oldPacks, othersOld) = oldPkg.members.partition(_.kind == "package")
 
-      val others = others1 ::: others2
-      val packs  = (packs1 ::: packs2).groupBy(_.path).map(_._2.head)
+      val others = othersNew ::: othersOld
+      // here we can just choose the old packs, since we're recursively (bottom up)
+      // discovering the tree, we should have met the child packages first, as
+      // such - they were already inserted into the tree
+      val newMembers = (others ++ oldPacks)
 
-      (others ++ packs).sortBy(_.name)
+      oldPkg.members = newMembers
     }
 
-    val path    = p.path.mkString(".")
-    val newPack = packages.get(path).map {
-      case ex: PackageImpl =>
-        if (!ex.comment.isDefined) ex.comment = p.comment
-        ex.members = mergedChildren(ex.members, p.members)
-        ex
-    }.getOrElse(p)
+    // This function mutates packages in place as not to create any orphaned references
+    def mergedPackages(old: PackageImpl, newPkg: PackageImpl): PackageImpl = {
+      if (old.symbol eq NoSymbol) old.symbol = newPkg.symbol
+      if (old.annotations.isEmpty) old.annotations = newPkg.annotations
+      mergeMembers(newPkg, old)
+      if (old.superTypes.isEmpty) old.superTypes = newPkg.superTypes
+      if (!old.comment.isDefined) old.comment = newPkg.comment
+      old
+    }
 
-    packages = packages + (path -> newPack)
-    newPack
+    def insertOrModifyRoot(): PackageImpl = {
+      val modifiedPkg =
+        packages
+        .get(newPkg.name)
+        .map(mergedPackages(_, newPkg))
+        .getOrElse(newPkg)
+
+      packages = packages + (modifiedPkg.name -> modifiedPkg)
+      modifiedPkg
+    }
+
+    // This function inserts a package by creating empty packages to the point
+    // where it can insert the supplied package `newPkg`.
+    def createAndInsert(currentPkg: PackageImpl, path: List[String]): PackageImpl = {
+      (path: @unchecked) match {
+        case x :: Nil => {
+          val existingPkg = currentPkg.members.collect {
+            case p: PackageImpl if p.name == newPkg.name => p
+          }.headOption
+
+          if (existingPkg.isDefined) mergedPackages(existingPkg.get, newPkg)
+          else {
+            currentPkg.members = newPkg :: currentPkg.members
+            newPkg
+          }
+        }
+        case x :: xs => {
+          val subPkg = s"${currentPkg.name}.$x"
+          val existingPkg = currentPkg.members.collect {
+            case p: PackageImpl if p.name == subPkg => p
+          }.headOption
+
+          if (existingPkg.isDefined) createAndInsert(existingPkg.get, xs)
+          else {
+            val newEmpty = EmptyPackage(currentPkg.path :+ x, subPkg)
+            packages = packages + (subPkg -> newEmpty)
+            currentPkg.members = newEmpty :: currentPkg.members
+            createAndInsert(newEmpty, xs)
+          }
+        }
+      }
+    }
+
+    val path = newPkg.path
+    if (path.length == 1)
+      insertOrModifyRoot()
+    else if (packages.contains(newPkg.name))
+      mergedPackages(packages(newPkg.name), newPkg)
+    else {
+      val root = packages.get(path.head)
+
+      if (root.isDefined) createAndInsert(root.get, newPkg.path.drop(1))
+      else {
+        val newEmpty = EmptyPackage(List(path.head), path.head)
+        packages = packages + (path.head -> newEmpty)
+        createAndInsert(newEmpty, newPkg.path.drop(1))
+      }
+    }
   }
 
   private[this] var totalRuns  = 0

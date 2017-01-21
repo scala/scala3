@@ -3,23 +3,26 @@ package model
 
 import comment.Comment
 import references._
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
 object internal {
 
-  trait Impl {
-    var parent: Entity = NonEntity
-  }
-
   final case class PackageImpl(
-    symbol: Symbol,
-    annotations: List[String],
-    name: String,
+    var symbol: Symbol,
+    var annotations: List[String],
+    var name: String,
     var members: List[Entity],
-    path: List[String],
-    superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
-  ) extends Package with Impl
+    var path: List[String],
+    var superTypes: List[MaterializableLink] = Nil,
+    var comment: Option[Comment] = None,
+    var parent: Entity = NonEntity
+  ) extends Package
+
+  object EmptyPackage {
+    def apply(path: List[String], name: String): PackageImpl = {
+      PackageImpl(NoSymbol, Nil, name, Nil, path)
+    }
+  }
 
   final case class TypeAliasImpl (
     symbol: Symbol,
@@ -28,8 +31,9 @@ object internal {
     name: String,
     path: List[String],
     alias: Option[Reference],
-    var comment: Option[Comment] = None
-  ) extends TypeAlias with Impl
+    var comment: Option[Comment] = None,
+    var parent: Entity = NonEntity
+  ) extends TypeAlias
 
   final case class ClassImpl(
     symbol: Symbol,
@@ -42,8 +46,9 @@ object internal {
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
-    var companionPath: List[String] = Nil
-  ) extends Class with Impl
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Class
 
   final case class CaseClassImpl(
     symbol: Symbol,
@@ -56,8 +61,9 @@ object internal {
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
-    var companionPath: List[String] = Nil
-  ) extends CaseClass with Impl
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends CaseClass
 
   final case class TraitImpl(
     symbol: Symbol,
@@ -70,8 +76,9 @@ object internal {
     traitParams: List[ParamList] = Nil,
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
-    var companionPath: List[String] = Nil
-  ) extends Trait with Impl
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Trait
 
   final case class ObjectImpl(
     symbol: Symbol,
@@ -82,8 +89,9 @@ object internal {
     path: List[String],
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
-    var companionPath: List[String] = Nil
-  ) extends Object with Impl
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Object
 
   final case class DefImpl(
     symbol: Symbol,
@@ -95,8 +103,9 @@ object internal {
     typeParams: List[String] = Nil,
     paramLists: List[ParamList] = Nil,
     var comment: Option[Comment] = None,
-    implicitlyAddedFrom: Option[Reference] = None
-  ) extends Def with Impl
+    implicitlyAddedFrom: Option[Reference] = None,
+    var parent: Entity = NonEntity
+  ) extends Def
 
   final case class ValImpl(
     symbol: Symbol,
@@ -107,8 +116,9 @@ object internal {
     returnValue: Reference,
     kind: String,
     var comment: Option[Comment] = None,
-    implicitlyAddedFrom: Option[Reference] = None
-  ) extends Val with Impl
+    implicitlyAddedFrom: Option[Reference] = None,
+    var parent: Entity = NonEntity
+  ) extends Val
 
   final case class ParamListImpl(
     list: List[NamedReference],

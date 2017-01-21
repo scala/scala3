@@ -35,6 +35,8 @@ object setters {
       e.parent = to
     case e: DefImpl =>
       e.parent = to
+    case e: TypeAliasImpl =>
+      e.parent = to
     case _ => ()
   }
 

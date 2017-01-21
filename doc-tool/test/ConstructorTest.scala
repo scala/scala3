@@ -22,7 +22,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(cls: Class), _, _, _) =>
+        case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors.headOption match {
             case Some(ParamListImpl(NamedReference("str", _,  false, false) :: Nil, false) :: Nil) =>
               // success!
@@ -44,7 +44,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _,  _, List(cls: Class), _, _, _) =>
+        case PackageImpl(_, _,  _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
             case (
               ParamListImpl(NamedReference("str1", _,  false, false) :: Nil, false) ::
@@ -69,7 +69,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(cls: Class), _, _, _) =>
+        case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
             case (
               ParamListImpl(NamedReference("str1", _,  false, false) :: Nil, false) ::
@@ -101,7 +101,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(cls: Class), _, _, _) =>
+        case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
             case (
               ParamListImpl(NamedReference("main", _,  false, false) :: Nil, false) :: Nil
@@ -139,7 +139,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(cls: CaseClass, obj: Object), _, _, _) =>
+        case PackageImpl(_, _, _, List(cls: CaseClass, obj: Object), _, _, _, _) =>
           cls.constructors match {
             case (
               ParamListImpl(NamedReference("main", _,  false, false) :: Nil, false) :: Nil
@@ -172,7 +172,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(trt: Trait), _, _, _) =>
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           trt.traitParams match {
             case ParamListImpl(NamedReference("main", _,  false, false) :: Nil, false) :: Nil =>
             case _ =>
@@ -199,7 +199,7 @@ class Constructors extends DottyDocTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, _, List(cc: CaseClass, _, cls: Class, trt: Trait), _, _, _) =>
+        case PackageImpl(_, _, _, List(cc: CaseClass, _, cls: Class, trt: Trait), _, _, _, _) =>
           import model.json._
           lazy val incorrectJson = s"The json generated for:\n$actualSource\n\nIs not correct"
           assert(cc.json.contains(s""""constructors":[[{"list":[{"title":"main""""), incorrectJson)
