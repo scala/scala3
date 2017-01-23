@@ -269,7 +269,7 @@ object Phases {
     /** A name given to the `Phase` that can be used to debug the compiler. For
       * instance, it is possible to print trees after a given phase using:
       *
-      * ```none
+      * ```bash
       * $ ./bin/dotc -Xprint:<phaseNameHere> sourceFile.scala
       * ```
       */
