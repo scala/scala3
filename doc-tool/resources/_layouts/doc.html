@@ -13,13 +13,19 @@ layout: main
         {% endif %}
         {% for pkg in docs %}
             <li class="index-entity entity-package">
-                <a href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">{{ pkg.name }}</a>
+                <a class="entity-name" href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">{{ pkg.name }}</a>
             </li>
             {% for member in pkg.children %}
                 {% if member.kind == "object" and member.hasCompanion %}
                 {% elsif member.kind != "package" %}
-                <li class="index-entity">
-                    <a href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.kind }} {{ member.name }}</a>
+                <li class="index-entity {% if member.hasCompanion %} with-companion {% endif %}">
+                    <div class="entity-kinds">
+                        {% if member.hasCompanion %}
+                        <a class="letter-anchor object" href="{{ site.baseurl }}/api/{{ member.companionPath | join: "/" }}.html">O</a>
+                        {% endif %}
+                        <a class="letter-anchor {{ member.kind }}" href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.kind | first | capitalize }}</a>
+                    </div>
+                    <a class="entity-name" href="{{ site.baseurl }}/api/{{ member.path | join: "/" }}.html">{{ member.name }}</a>
                 </li>
                 {% endif %}
             {% endfor %}

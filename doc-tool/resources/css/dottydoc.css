@@ -58,10 +58,17 @@ ul.toc {
     padding-left: 0;
 }
 
+ul.toc > li:hover {
+    background-color: transparent;
+}
+
+ul.toc > li.toc-title {
+    margin-top: 1rem;
+}
+
 ul.toc > li.toc-title > a {
     font-size: 16px;
     font-weight: bold;
-    margin-top: 1rem;
 }
 
 ul.toc > li > a#home-button,
@@ -78,24 +85,84 @@ ul.toc > li > a#home-button svg g#logo-background {
     fill: rgba(202, 68, 94, 0.45);
 }
 
+ul.toc > li > a.toggle-children {
+    width: 100%;
+    user-select: none;
+}
+
 ul.toc > li,
 ul.index-entities > li {
     line-height: 40px;
+    display: inline-block;
+    width: 100%;
 }
 
-li.index-entity.entity-package > a {
+ul.index-entities > li.index-entity:not(.entity-package) {
+    width: calc(100% + 40px);
+    transition: all 0.2s ease;
+    margin-left: -40px;
+}
+
+ul.index-entities > li.index-entity.with-companion {
+    width: calc(100% + 80px);
+    margin-left: -80px;
+}
+
+ul.index-entities > li.index-entity:hover {
+    margin-left: 0;
+}
+
+ul.toc > li.logo-li > a {
+    margin: 0;
+    padding: 0;
+    float: none;
+}
+
+li.index-entity.entity-package > a.entity-name {
   color: #ff4081;
   text-decoration: none;
 }
 
 ul.toc > li > a,
-ul.index-entities > li > a {
+ul.index-entities > li > a.entity-name {
     font-size: 13px;
     display: block;
-    padding: 0 24px;
+    padding: 0 0 0 24px;
     color: rgba(0,0,0,.87);
     background: transparent;
     cursor: pointer;
+    float: left;
+}
+
+ul.index-entities > li > div.entity-kinds {
+    float: left;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor {
+    float: left;
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor:focus,
+ul.index-entities > li > div.entity-kinds > a.letter-anchor:hover {
+    text-decoration: none;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.object {
+    background-color: rgb(44, 108, 141);
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.class {
+    background-color: rgb(68, 173, 125);
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.trait {
+    background-color: rgb(25, 170, 207);
 }
 
 ul.toc > li > ul.show {
@@ -119,10 +186,15 @@ li.index-entity > a:focus {
     text-decoration: none;
 }
 
+ul.index-entities > li:hover,
+ul.toc > li.toc-title:hover,
+ul.toc > li > a.toggle-children:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
 ul.index-entities > li > a:hover,
 ul.toc > li > a:hover {
     text-decoration: none;
-    background-color: rgba(0, 0, 0, 0.2);
 }
 
 .darken {
