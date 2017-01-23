@@ -15,6 +15,7 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
 
   /** Register filters to static container */
   Filter.registerFilter(new Reverse)
+  Filter.registerFilter(new First)
 
   // For some reason, liqp rejects a straight conversion using `.asJava`
   private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =
