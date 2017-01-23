@@ -7,5 +7,5 @@ dotty/runtime/Arrays.scala
 dotty/runtime/DeadCodeEliminated.scala
 dotty/runtime/LazyHolders.scala
 dotty/runtime/LazyVals.scala
-dotty/runtime/LegacyApp.scala
+#dotty/runtime/LegacyApp.scala
 dotty/runtime/vc/VCPrototype.scala

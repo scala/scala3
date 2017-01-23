@@ -361,11 +361,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           ctx.owner.ownersIterator.exists(owner => owner == defn.ScalaPredefModule || owner.companionModule == defn.ScalaPredefModule)
 
         val isMethodOnPredef = {
-          val prefix = tree match {
-            case Apply(fun: Ident, _) => fun.tpe.normalizedPrefix
-            case _ => tree.tpe.normalizedPrefix
+          val funTpe = tree match {
+            case Apply(TypeApply(fun: Ident, _), _) => fun.tpe
+            case Apply(fun: Ident, _) => fun.tpe
+            case _ => tree.tpe
           }
-          prefix == defn.ScalaPredefModuleRef
+          funTpe.normalizedPrefix == defn.ScalaPredefModuleRef
         }
 
         val loadPredefModule = if (!isInPredef && (repeatedArgsCalls.nonEmpty || isMethodOnPredef)) {
