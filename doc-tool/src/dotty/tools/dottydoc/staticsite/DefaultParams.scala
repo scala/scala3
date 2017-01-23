@@ -2,13 +2,14 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import model.{ Entity, NonEntity }
+import model.{ Entity, Package, NonEntity }
 
 import java.util.{ HashMap, List => JList, Map => JMap }
 import scala.collection.JavaConverters._
 
 case class DefaultParams(
   docs: JList[_],
+  originalDocs: Map[String, Package],
   page: PageInfo,
   site: SiteInfo,
   sidebar: Sidebar,
@@ -18,6 +19,8 @@ case class DefaultParams(
 
   def toMap: Map[String, AnyRef] = Map(
     "docs" -> docs,
+
+    "originalDocs" -> originalDocs,
 
     "page" -> Map(
       "url" -> page.url,

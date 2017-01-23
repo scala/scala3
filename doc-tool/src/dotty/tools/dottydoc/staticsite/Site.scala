@@ -132,7 +132,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()), sidebar)
+    DefaultParams(docs, documentation, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()), sidebar)
   }
 
   private def createOutput(outDir: JFile)(op: => Unit): this.type = {

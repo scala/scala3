@@ -9,6 +9,7 @@ import liqp.TemplateContext
 import liqp.nodes.LNode
 
 import java.util.{ Map => JMap }
+import model._
 
 object tags {
 
@@ -167,5 +168,40 @@ object tags {
         case (t: Title, parent: String) => renderTitle(t, parent)
         case _ => null
       }
+  }
+
+  /** Allows the extraction of docstrings from the given path. E.g:
+    *
+    * ```html
+    * {% docstring "scala.collection.Seq" %}
+    * ```
+    *
+    * In Scaladoc, objects are denoted by a name ending in '$'. This means that
+    * a path that goes through, or targets an object need to appropriately
+    * intersperse these, e.g:
+    *
+    * ```html
+    * {% docstring "scala.collection.Seq$" %}
+    * ```
+    */
+  case class Docstring(params: Map[String, AnyRef]) extends Tag("docstring") {
+    private def find(xs: List[String], ent: Entity with Members): Option[Entity] = xs match {
+      case Nil => None
+      case x :: Nil =>
+        ent.members collect { case e: Entity with Members => e } find (_.path.last == x)
+      case x :: xs =>
+        ent.members collect { case e: Entity with Members => e } find (_.path.last == x) flatMap (find(xs, _))
+    }
+
+    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(ctx) match {
+      case query: String =>
+        params.get("originalDocs").collect {
+          case docs: Map[String, Package] @unchecked =>
+            val search = query.split("\\.")
+            if (search.isEmpty || !docs.contains(search.head)) null
+            else find(search.tail.toList, docs(search.head)).flatMap(_.comment.map(_.body)).getOrElse(null)
+        }.getOrElse(null)
+      case _ => null
+    }
   }
 }

@@ -29,5 +29,6 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
             .`with`(ResourceInclude(params, includes))
             .`with`(RenderReference(params))
             .`with`(RenderTitle(params))
+            .`with`(Docstring(params))
             .render(toJavaMap(params))
 }
