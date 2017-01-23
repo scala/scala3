@@ -131,4 +131,41 @@ object tags {
         }
     }
   }
+
+  /** Can be used to render the `sidebar.yml` entries, represented here as
+    * `Title`.
+    *
+    * ```html
+    * {% renderTitle title, parent %}
+    * ```
+    *
+    * The rendering currently works on depths up to 2. This means that each
+    * title can have a subsection with its own titles.
+    */
+  case class RenderTitle(params: Map[String, AnyRef]) extends Tag("renderTitle") with ParamConverter {
+    private def renderTitle(t: Title, parent: String): String = {
+        if (!t.url.isDefined && t.subsection.nonEmpty) {
+          val onclickFunction =
+            s"""(function(){var child=document.getElementById("${t.title}");child.classList.toggle("show");child.classList.toggle("hide");})();"""
+          s"""|<a class="toggle-children" onclick='$onclickFunction'>${t.title}</a>
+              |<ul id="${t.title}" class="${if (parent.toLowerCase == t.title.toLowerCase) "show" else "hide"}">
+              |    ${t.subsection.map(renderTitle(_, parent)).mkString("<li>", "</li><li>", "</li>")}
+              |</ul>""".stripMargin
+        }
+        else if (t.url.isDefined) {
+          val url = t.url.get
+          s"""<a href="$baseurl/$url">${t.title}</a>"""
+        }
+        else /*if (t.subsection.nonEmpty)*/ {
+          /*dottydoc.*/println(s"url was defined for subsection with title: ${t.title}, remove url to get toggleable entries")
+          t.title
+        }
+    }
+
+    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef =
+      (nodes(0).render(ctx), nodes(1).render(ctx)) match {
+        case (t: Title, parent: String) => renderTitle(t, parent)
+        case _ => null
+      }
+  }
 }

@@ -68,6 +68,16 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     _blogposts
   }
 
+
+  val sidebar: Sidebar =
+    root
+      .listFiles
+      .find(_.getName == "sidebar.yml")
+      .map("---\n" + Source.fromFile(_).mkString + "\n---")
+      .map(Yaml.apply)
+      .flatMap(Sidebar.apply)
+      .getOrElse(Sidebar.empty)
+
   protected lazy val blogInfo: Array[BlogPost] =
     blogposts
     .map { file =>
@@ -122,7 +132,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
     }
 
-    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()))
+    DefaultParams(docs, PageInfo(pathFromRoot), SiteInfo(baseUrl, projectTitle, Array()), sidebar)
   }
 
   private def createOutput(outDir: JFile)(op: => Unit): this.type = {

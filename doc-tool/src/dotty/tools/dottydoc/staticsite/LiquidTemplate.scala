@@ -28,5 +28,6 @@ case class LiquidTemplate(contents: String) extends ResourceFinder {
     Template.parse(contents, JEKYLL)
             .`with`(ResourceInclude(params, includes))
             .`with`(RenderReference(params))
+            .`with`(RenderTitle(params))
             .render(toJavaMap(params))
 }

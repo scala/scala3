@@ -195,6 +195,7 @@ object DottyBuild extends Build {
                                   "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
                                   "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
                                   "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
+                                  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
                                   "nl.big-o" % "liqp" % "0.6.7",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "com.github.spullara.mustache.java" % "compiler" % "0.9.3",

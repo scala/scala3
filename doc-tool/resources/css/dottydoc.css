@@ -85,7 +85,7 @@ ul.toc > li > a#home-button svg g#logo-background {
     fill: rgba(202, 68, 94, 0.45);
 }
 
-ul.toc > li > a.toggle-children {
+ul.toc > li > a {
     width: 100%;
     user-select: none;
 }
@@ -182,13 +182,16 @@ ul.index-entities > li.index-title > span {
     padding: 0 24px;
 }
 
+ul.index-entities > li.index-title:hover {
+    background-color: transparent;
+}
+
 li.index-entity > a:focus {
     text-decoration: none;
 }
 
 ul.index-entities > li:hover,
-ul.toc > li.toc-title:hover,
-ul.toc > li > a.toggle-children:hover {
+ul.toc > li > a:hover {
     background-color: rgba(0, 0, 0, 0.2);
 }
 

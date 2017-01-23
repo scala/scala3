@@ -1,0 +1,47 @@
+sidebar:
+    - title: Blog
+      url: blog/index.html
+    - title: Docs
+      url: docs/index.html
+    - title: Usage
+      subsection:
+        - title: cbt-projects
+          url: docs/usage/cbt-projects.html
+        - title: sbt-projects
+          url: docs/usage/sbt-projects.html
+        - title: Migrating
+          url: docs/usage/migrating.html
+    - title: Contributing
+      subsection:
+        - title: Eclipse
+          url: docs/contributing/eclipse.html
+        - title: Getting Started
+          url: docs/contributing/getting-started.html
+        - title: IntelliJ IDEA
+          url: docs/contributing/intellij-idea.html
+        - title: Workflow
+          url: docs/contributing/workflow.html
+    - title: Internals
+      subsection:
+        - title: Backend
+          url: docs/internals/backend.html
+        - title: Benchmarks
+          url: docs/internals/benchmarks.html
+        - title: Classpaths
+          url: docs/internals/classpaths.html
+        - title: Core Data Structrues
+          url: docs/internals/core-data-structures.html
+        - title: Contexts
+          url: docs/internals/contexts.html
+        - title: Dotc vs Scalac
+          url: docs/internals/dotc-scalac.html
+        - title: Higher-Kinded Types
+          url: docs/internals/higher-kinded-v2.html
+        - title: Overall Structure
+          url: docs/internals/overall-structure.html
+        - title: Periods
+          url: docs/internals/periods.html
+        - title: Syntax
+          url: docs/internals/syntax.html
+        - title: Type System
+          url: docs/internals/type-system.html
