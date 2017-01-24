@@ -9,6 +9,8 @@ sidebar:
           url: docs/usage/cbt-projects.html
         - title: sbt-projects
           url: docs/usage/sbt-projects.html
+        - title: Dottydoc
+          url: docs/usage/dottydoc.html
         - title: Migrating
           url: docs/usage/migrating.html
     - title: Contributing

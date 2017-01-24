@@ -17,6 +17,7 @@ import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
+import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
@@ -292,10 +293,10 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
     val defaultLayouts: Map[String, String] = Map(
       "main" -> "/_layouts/main.html",
-      "doc" -> "/_layouts/doc.html",
+      "sidebar" -> "/_layouts/sidebar.html",
       "doc-page" -> "/_layouts/doc-page.html",
       "api-page" -> "/_layouts/api-page.html",
-      "blog" -> "/_layouts/blog.html",
+      "blog-page" -> "/_layouts/blog-page.html",
       "index" -> "/_layouts/index.html"
     ).mapValues(getResource)
 
@@ -362,6 +363,7 @@ object Site {
         TablesExtension.create(),
         TaskListExtension.create(),
         AutolinkExtension.create(),
+        AnchorLinkExtension.create(),
         EmojiExtension.create(),
         YamlFrontMatterExtension.create(),
         StrikethroughExtension.create()

@@ -26,6 +26,55 @@ div.index-wrapper {
     overflow-x: hidden;
 }
 
+div#doc-page-container > h1 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3em;
+}
+
+div#doc-page-container > h1 {
+    margin: 3rem 0 0.5rem 0;
+}
+
+div#doc-page-container > h3 {
+    font-size: 1.5rem;
+}
+
+div#doc-page-container > h4 {
+    font-size: 1.25rem;
+}
+
+div#doc-page-container > h5 {
+    font-size: 1rem;
+}
+
+div#doc-page-container > h1 > a,
+div#doc-page-container > h2 > a,
+div#doc-page-container > h3 > a,
+div#doc-page-container > h4 > a,
+div#doc-page-container > h5 > a,
+div#doc-page-container > h6 > a {
+    text-decoration: none;
+    color: #373a3c;
+}
+
+div#doc-page-container > h1 > a:hover,
+div#doc-page-container > h2 > a:hover,
+div#doc-page-container > h3 > a:hover,
+div#doc-page-container > h4 > a:hover,
+div#doc-page-container > h5 > a:hover,
+div#doc-page-container > h6 > a:hover {
+    text-decoration: underline;
+}
+
+div#doc-page-container > h1 > a:focus,
+div#doc-page-container > h2 > a:focus,
+div#doc-page-container > h3 > a:focus,
+div#doc-page-container > h4 > a:focus,
+div#doc-page-container > h5 > a:focus,
+div#doc-page-container > h6 > a:focus {
+    outline: none;
+}
+
 div#content-body {
     border-left: 1px solid #e0e0e0;
     box-shadow: -3px 0px 5px -2px rgba(0,0,0,0.14);
@@ -232,7 +281,7 @@ div#doc-page-container {
 }
 
 div#doc-page-container > p + h1 {
-    margin-bottom: 40px;
+    margin-bottom: 20px;
 }
 
 div#post-footer > img#author-image {
