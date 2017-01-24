@@ -175,7 +175,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
   override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Import(expr, selectors) =>
-        def lookupImported(name: Name) = expr.tpe.member(name).symbol
+        def lookupImported(name: Name) = expr.tpe.select(name).typeSymbol
         def addImported(name: Name) = {
           // importing a name means importing both a term and a type (if they exist)
           addDependency(lookupImported(name.toTermName))

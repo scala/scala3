@@ -7,7 +7,7 @@ import java.lang.ref.WeakReference;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class ContextEscapeDetection {
+/*public abstract class ContextEscapeDetection {
     public static class TestContext{
         public TestContext(WeakReference<Contexts.Context> context, String testName) {
             this.context = context;
@@ -34,3 +34,4 @@ public abstract class ContextEscapeDetection {
         this.clearCtx();
     }
 }
+*/

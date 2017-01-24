@@ -10,11 +10,11 @@ import ast.untpd._
 import ast.{ Trees => d }
 import Parsers.Parser
 import util.SourceFile
-import core.Contexts.ContextBase
+import core.Contexts._
 import core.Flags
 
 object ModifiersParsingTest {
-  implicit val ctx = (new ContextBase).initialCtx
+  implicit val ctx: Context = (new ContextBase).initialCtx
 
   implicit def parse(code: String): Tree = {
     val (_, stats) = new Parser(new SourceFile("<meta>", code.toCharArray)).templateStatSeq()
