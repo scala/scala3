@@ -20,6 +20,6 @@ trait CommentCleaner {
       SafeTags.replaceAllIn(javadoclessComment, { mtch =>
         _root_.java.util.regex.Matcher.quoteReplacement(safeTagMarker + mtch.matched + safeTagMarker)
       })
-    markedTagComment.lines.toList map (cleanLine(_))
+    markedTagComment.lines.toList map (cleanLine)
   }
 }

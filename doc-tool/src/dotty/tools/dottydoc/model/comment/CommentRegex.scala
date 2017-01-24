@@ -11,7 +11,7 @@ object Regexes {
     * one leading whitespace and all trailing whitespace
     */
   val CleanCommentLine =
-    new Regex("""(?:\s*\*\s?)?(.*)""")
+    new Regex("""(?:\s*\*\s?\s?)?(.*)""")
 
   /** Dangerous HTML tags that should be replaced by something safer,
     * such as wiki syntax, or that should be dropped

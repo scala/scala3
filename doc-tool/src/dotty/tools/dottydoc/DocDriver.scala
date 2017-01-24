@@ -12,8 +12,8 @@ import dotc.core.Comments.ContextDoc
 import staticsite.Site
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
-  * tool. It's methods are used by the external scala and java APIs.
-  */
+ *  tool. It's methods are used by the external scala and java APIs.
+ */
 class DocDriver extends Driver {
   import _root_.java.util.{ Map => JMap }
   import model.java._

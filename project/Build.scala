@@ -55,6 +55,12 @@ object DottyBuild extends Build {
   // Compiles the documentation and static site
   lazy val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
 
+  /** Dottydoc deps */
+  lazy val dottydocDeps = SettingKey[Seq[ModuleID]](
+    "dottydocDeps",
+    "dottydoc dependencies, should be moved to a dottydoc sbt subproject eventually"
+  )
+
   override def settings: Seq[Setting[_]] = {
     super.settings ++ Seq(
       scalaVersion in Global := scalacVersion,
@@ -180,26 +186,28 @@ object DottyBuild extends Build {
       //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
+      dottydocDeps := Seq(
+        "com.vladsch.flexmark" % "flexmark" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
+        "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
+        "nl.big-o" % "liqp" % "0.6.7"
+      ),
+
       // get libraries onboard
       partestDeps := Seq(scalaCompiler,
                          "org.scala-lang" % "scala-reflect" % scalacVersion,
                          "org.scala-lang" % "scala-library" % scalacVersion % "test"),
       libraryDependencies ++= partestDeps.value,
+      libraryDependencies ++= dottydocDeps.value,
       libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-                                  dottyOrganization % "dottydoc-client" % "0.1.0",
-                                  "com.vladsch.flexmark" % "flexmark" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-autolink" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-emoji" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.11.1",
-                                  "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % "0.11.1",
-                                  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.6",
-                                  "nl.big-o" % "liqp" % "0.6.7",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
-                                  "com.github.spullara.mustache.java" % "compiler" % "0.9.3",
                                   "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
