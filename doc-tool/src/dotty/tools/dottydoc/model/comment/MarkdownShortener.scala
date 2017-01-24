@@ -14,11 +14,11 @@ class MarkdownShortener {
 
   def shorten(node: Node, maxLen: Int = 150): Node = {
     var len = 0
-    var didUnlinkListItem = false
+    var didUnlink = false
 
     def count(node: Node, length: => Int, shortenOrUnlink: Int => Unit) = {
       val remaining = math.max(maxLen - len, 0)
-      if (remaining == 0) node.unlink()
+      if (didUnlink || remaining == 0) node.unlink()
       else {
         if (length <= remaining) len += length
         else {
@@ -50,25 +50,28 @@ class MarkdownShortener {
       new VisitHandler(classOf[Image], new Visitor[Image] {
         override def visit(node: Image) = count(node, maxLen, _ => node.unlink())
       }),
+      new VisitHandler(classOf[FencedCodeBlock], new Visitor[FencedCodeBlock] {
+        override def visit(node: FencedCodeBlock) = count(node, maxLen, _ => node.unlink())
+      }),
       new VisitHandler(classOf[BulletListItem], new Visitor[BulletListItem] {
         override def visit(node: BulletListItem) = count(
           node,
-          if (didUnlinkListItem) maxLen
+          if (didUnlink) maxLen
           else node.getSegments.map(_.length).reduceLeft(_ + _),
           _ => {
             node.unlink()
-            didUnlinkListItem = true // unlink all following bullets
+            didUnlink = true // unlink all following bullets
           }
         )
       }),
       new VisitHandler(classOf[OrderedListItem], new Visitor[OrderedListItem] {
         override def visit(node: OrderedListItem) = count(
           node,
-          if (didUnlinkListItem) maxLen
+          if (didUnlink) maxLen
           else node.getSegments.map(_.length).reduceLeft(_ + _),
           _ => {
             node.unlink()
-            didUnlinkListItem = true // unlink all following bullets
+            didUnlink = true // unlink all following bullets
           }
         )
       })
