@@ -8,6 +8,8 @@ import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
 
+import model.Package
+
 import java.util.{ Map => JMap, List => JList }
 
 case class IllegalFrontMatter(message: String) extends Exception(message)
@@ -116,14 +118,14 @@ class HtmlPage(fileContents: => String, val params: Map[String, AnyRef], val inc
   lazy val pageContent = fileContents
 }
 
-class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String]) extends Page {
+class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String], docs: Map[String, Package]) extends Page {
   lazy val pageContent = fileContents
 
   override protected[this] def initFields() = {
     super.initFields()
     val md = Parser.builder(Site.markdownOptions).build.parse(_html)
     // fix markdown linking
-    MarkdownLinkVisitor(md)
+    MarkdownLinkVisitor(md, docs, params)
     _html = HtmlRenderer
       .builder(Site.markdownOptions)
       .escapeHtml(false)

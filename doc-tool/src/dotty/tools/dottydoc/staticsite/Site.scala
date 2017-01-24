@@ -85,7 +85,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       val fileContents = Source.fromFile(file).mkString
       val params = defaultParams(file, 2).withUrl(s"/blog/$year/$month/$day/$name.html").toMap
       val page =
-        if (ext == "md") new MarkdownPage(fileContents, params, includes)
+        if (ext == "md") new MarkdownPage(fileContents, params, includes, documentation)
         else new HtmlPage(fileContents, params, includes)
       BlogPost(file, page)
     }
@@ -154,8 +154,8 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
           else (".html", 0)
 
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
-        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e)
-        val page = new HtmlPage(layouts("api-page"), params.toMap, includes)
+        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e).toMap
+        val page = new HtmlPage(layouts("api-page"), params, includes)
 
         val rendered = render(page)
         val source = new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8))
@@ -180,7 +180,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
         val fileContents = Source.fromFile(asset).mkString
         val params = defaultParams(asset).withPosts(blogInfo).toMap
         val page =
-          if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes)
+          if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes, documentation)
           else new HtmlPage(fileContents, params, includes)
 
         val renderedPage = render(page)
@@ -199,7 +199,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
         val date = s"$year-$month-$day 00:00:00"
         val params = defaultParams(file, 2).withPosts(blogInfo).withDate(date).toMap
         val page =
-          if (ext == "md") new MarkdownPage(fileContents, params, includes)
+          if (ext == "md") new MarkdownPage(fileContents, params, includes, documentation)
           else new HtmlPage(fileContents, params, includes)
 
 

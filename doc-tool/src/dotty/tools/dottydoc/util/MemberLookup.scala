@@ -69,6 +69,7 @@ trait MemberLookup {
     }
 
     (querys, entity) match {
+      case (xs, NonEntity) => globalLookup
       case (x :: Nil, e: Entity with Members) =>
         localLookup(e, x)
       case (x :: _, e: Entity with Members) if x == entity.name =>

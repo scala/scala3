@@ -16,6 +16,7 @@ class PageTests extends DottyDocTest {
          |
          |great""".stripMargin,
       Map.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -35,6 +36,7 @@ class PageTests extends DottyDocTest {
          |
          |{{ content }}""".stripMargin,
        Map("content" -> "Hello, world!"),
+       Map.empty,
        Map.empty
     )
 
@@ -48,6 +50,7 @@ class PageTests extends DottyDocTest {
     val page2 = new MarkdownPage(
       """|{{ content }}""".stripMargin,
       Map("content" -> "hello"),
+      Map.empty,
       Map.empty
     )
     assert(
@@ -61,6 +64,7 @@ class PageTests extends DottyDocTest {
          |These shoes are awesome!
          |{% endif %}""".stripMargin,
       Map("product" -> Map("title" -> "Awesome Shoes").asJava),
+      Map.empty,
       Map.empty
     )
 
