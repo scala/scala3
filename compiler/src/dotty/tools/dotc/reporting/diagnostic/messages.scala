@@ -5,8 +5,7 @@ package diagnostic
 
 import dotc.core._
 import Contexts.Context, Decorators._, Symbols._, Names._, NameOps._, Types._
-import util.{SourceFile, NoSource}
-import util.{SourcePosition, NoSourcePosition}
+import util.SourcePosition
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, WARNING, INFO}
 import printing.Highlighting._
@@ -223,6 +222,8 @@ object messages {
   case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
   extends Message(8) {
     val kind = "Member Not Found"
+
+    //println(i"site = $site, decls = ${site.decls}, source = ${site.widen.typeSymbol.sourceFile}") //DEBUG
 
     val msg = {
       import core.Flags._
@@ -606,7 +607,7 @@ object messages {
            |"""
   }
 
-  case class WrongNumberOfArgs(fntpe: Type, argKind: String, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
+  case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
   extends Message(22) {
     val kind = "Syntax"
 
@@ -628,7 +629,7 @@ object messages {
     }
 
     val msg =
-      hl"""|${NoColor(msgPrefix)} ${argKind} arguments for $prettyName$expectedArgString
+      hl"""|${NoColor(msgPrefix)} type arguments for $prettyName$expectedArgString
            |expected: $expectedArgString
            |actual:   $actualArgString""".stripMargin
 
@@ -898,5 +899,107 @@ object messages {
     val kind = "Duplicate Symbol"
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
+  }
+
+  case class ExistentialTypesNoLongerSupported()(implicit ctx: Context) extends Message(34) {
+    val kind = "Syntax"
+    val msg =
+      hl"""|Existential types are no longer supported -
+           |use a wildcard or dependent type instead"""
+    val explanation =
+      hl"""|The use of existential types is no longer supported.
+           |
+           |You should use a wildcard or dependent type instead.
+           |
+           |For example:
+           |
+           |Instead of using ${"forSome"} to specify a type variable
+           |
+           |${"List[T forSome { type T }]"}
+           |
+           |Try using a wildcard type variable
+           |
+           |${"List[_]"}
+           |"""
+  }
+
+  case class UnboundWildcardType()(implicit ctx: Context) extends Message(35) {
+    val kind = "Syntax"
+    val msg = "Unbound wildcard type"
+    val explanation =
+      hl"""|The wildcard type syntax (`_`) was used where it could not be bound.
+           |Replace `_` with a non-wildcard type. If the type doesn't matter,
+           |try replacing `_` with ${"Any"}.
+           |
+           |Examples:
+           |
+           |- Parameter lists
+           |
+           |  Instead of:
+           |    ${"def foo(x: _) = ..."}
+           |
+           |  Use ${"Any"} if the type doesn't matter:
+           |    ${"def foo(x: Any) = ..."}
+           |
+           |- Type arguments
+           |
+           |  Instead of:
+           |    ${"val foo = List[_](1, 2)"}
+           |
+           |  Use:
+           |    ${"val foo = List[Int](1, 2)"}
+           |
+           |- Type bounds
+           |
+           |  Instead of:
+           |    ${"def foo[T <: _](x: T) = ..."}
+           |
+           |  Remove the bounds if the type doesn't matter:
+           |    ${"def foo[T](x: T) = ..."}
+           |
+           |- ${"val"} and ${"def"} types
+           |
+           |  Instead of:
+           |    ${"val foo: _ = 3"}
+           |
+           |  Use:
+           |    ${"val foo: Int = 3"}
+           |"""
+  }
+
+  case class DanglingThisInPath()(implicit ctx: Context) extends Message(36) {
+    val kind = "Syntax"
+    val msg = hl"""Expected an additional member selection after the keyword ${"this"}"""
+
+    val contextCode =
+      """  trait Outer {
+        |    val member: Int
+        |    type Member
+        |    trait Inner {
+        |      ...
+        |    }
+        |  }"""
+
+    val importCode =
+      """  import Outer.this.member
+        |  //               ^^^^^^^"""
+
+    val typeCode =
+      """  type T = Outer.this.Member
+        |  //                 ^^^^^^^"""
+
+    val explanation =
+      hl"""|Paths of imports and type selections must not end with the keyword ${"this"}.
+           |
+           |Maybe you forgot to select a member of ${"this"}? As an example, in the
+           |following context:
+           |${contextCode}
+           |
+           |- this is a valid import expression using a path
+           |${importCode}
+           |
+           |- this is a valid type using a path
+           |${typeCode}
+           |"""
   }
 }

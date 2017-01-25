@@ -12,7 +12,7 @@ import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types.{JavaArrayType, ErrorType, Type}
+import dotty.tools.dotc.core.Types.{JavaArrayType, UnspecifiedErrorType, Type}
 
 import scala.collection.{ mutable, immutable }
 
@@ -73,7 +73,7 @@ class DottyPrimitives(ctx: Context) {
       case JavaArrayType(el) => el
       case _ =>
         ctx.error(s"expected Array $tpe")
-        ErrorType
+        UnspecifiedErrorType
     }
 
     code match {
@@ -125,7 +125,7 @@ class DottyPrimitives(ctx: Context) {
   /** Initialize the primitive map */
   private def init: immutable.Map[Symbol, Int]  = {
 
-    implicit val ctx: Context = this.ctx
+    implicit val ctx = this.ctx
 
     import core.Symbols.defn
     val primitives = new mutable.HashMap[Symbol, Int]()

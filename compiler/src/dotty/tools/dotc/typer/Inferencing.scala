@@ -119,6 +119,18 @@ object Inferencing {
     }
   }
 
+  /** If `tree` has a PolyType, infer its type parameters by comparing with expected type `pt` */
+  def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
+    case poly: PolyType =>
+      val (poly1, tvars) = constrained(poly, tree)
+      val tree1 = tree.withType(poly1).appliedToTypeTrees(tvars)
+      tree1.tpe <:< pt
+      fullyDefinedType(tree1.tpe, "template parent", tree.pos)
+      tree1
+    case _ =>
+      tree
+  }
+
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
    *  occur in at least one formal parameter type of a prefix application.
    *  Considered prefixes are:
@@ -216,10 +228,10 @@ object Inferencing {
   def interpolateUndetVars(tree: Tree, ownedBy: Symbol)(implicit ctx: Context): Unit = {
     val constraint = ctx.typerState.constraint
     val qualifies = (tvar: TypeVar) =>
-      (tree contains tvar.owningTree) || ownedBy.exists && tvar.owner == ownedBy
+      (tree contains tvar.bindingTree) || ownedBy.exists && tvar.owner == ownedBy
     def interpolate() = Stats.track("interpolateUndetVars") {
       val tp = tree.tpe.widen
-      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
+      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.bindingTree.pos}")}")
       constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
       val vs = variances(tp, qualifies)

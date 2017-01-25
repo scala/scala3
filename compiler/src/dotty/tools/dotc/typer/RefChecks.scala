@@ -18,7 +18,6 @@ import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
 import typer.ErrorReporting._
 import DenotTransformers._
-import ValueClasses.isDerivedValueClass
 
 object RefChecks {
   import tpd._
@@ -300,7 +299,9 @@ object RefChecks {
                  !member.isAnyOverride) {
         // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
-        if (autoOverride(member))
+        // Also excluded under Scala2 mode are overrides of default methods of Java traits.
+        if (autoOverride(member) ||
+            other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
@@ -327,7 +328,8 @@ object RefChecks {
         overrideError("needs to be a stable, immutable value")
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
-      } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy)) {
+      } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
+                 !ctx.testScala2Mode("may not override a non-lazy value", member.pos)) {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
@@ -688,39 +690,6 @@ object RefChecks {
     }
   }
 
-  /** Verify classes extending AnyVal meet the requirements */
-  private def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
-    def checkValueClassMember(stat: Tree) = stat match {
-      case _: ValDef if !stat.symbol.is(ParamAccessor) =>
-        ctx.error(s"value class may not define non-parameter field", stat.pos)
-      case _: DefDef if stat.symbol.isConstructor =>
-        ctx.error(s"value class may not define secondary constructor", stat.pos)
-      case _: MemberDef | _: Import | EmptyTree =>
-      // ok
-      case _ =>
-        ctx.error(s"value class may not contain initialization statements", stat.pos)
-    }
-    if (isDerivedValueClass(clazz)) {
-      if (clazz.is(Trait))
-        ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
-      if (clazz.is(Abstract))
-        ctx.error("`abstract' modifier cannot be used with value classes", clazz.pos)
-      if (!clazz.isStatic)
-        ctx.error(s"value class may not be a ${if (clazz.owner.isTerm) "local class" else "member of another class"}", clazz.pos)
-      else {
-        val clParamAccessors = clazz.asClass.paramAccessors.filter(sym => sym.isTerm && !sym.is(Method))
-        clParamAccessors match {
-          case List(param) =>
-            if (param.is(Mutable))
-              ctx.error("value class parameter must not be a var", param.pos)
-          case _ =>
-            ctx.error("value class needs to have exactly one val parameter", clazz.pos)
-        }
-      }
-      stats.foreach(checkValueClassMember)
-    }
-  }
-
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo extends DotClass {
@@ -836,7 +805,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
       checkParents(cls)
       checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
-      checkDerivedValueClass(cls, tree.body)
       tree
     } catch {
       case ex: MergeError =>

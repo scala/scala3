@@ -19,6 +19,15 @@ class FrontEnd extends Phase {
   override def isTyper = true
   import ast.tpd
 
+  /** The contexts for compilation units that are parsed but not yet entered */
+  private var remaining: List[Context] = Nil
+
+  /** Does a source file ending with `<name>.scala` belong to a compilation unit
+   *  that is parsed but not yet entered?
+   */
+  def stillToBeEntered(name: String): Boolean =
+    remaining.exists(_.compilationUnit.toString.endsWith(name + ".scala"))
+
   def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
     try body
     catch {
@@ -42,6 +51,12 @@ class FrontEnd extends Phase {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
+  }
+
+  def enterAnnotations(implicit ctx: Context) = monitor("annotating") {
+    val unit = ctx.compilationUnit
+    ctx.typer.annotate(unit.untpdTree :: Nil)
+    typr.println("annotated: " + unit.source)
   }
 
   def typeCheck(implicit ctx: Context) = monitor("typechecking") {
@@ -69,8 +84,13 @@ class FrontEnd extends Phase {
     }
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
-    unitContexts foreach (enterSyms(_))
-    unitContexts foreach (typeCheck(_))
+    remaining = unitContexts
+    while (remaining.nonEmpty) {
+      enterSyms(remaining.head)
+      remaining = remaining.tail
+    }
+    unitContexts.foreach(enterAnnotations(_))
+    unitContexts.foreach(typeCheck(_))
     record("total trees after typer", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }

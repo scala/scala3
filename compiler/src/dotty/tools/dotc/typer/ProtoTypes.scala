@@ -40,7 +40,9 @@ object ProtoTypes {
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
       val nestedCtx = ctx.fresh.setExploreTyperState
-      isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
+      val normTp = normalize(tp, pt)(nestedCtx)
+      isCompatible(normTp, pt)(nestedCtx) ||
+        pt.isRef(defn.UnitClass) && normTp.isParameterless
     }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
@@ -250,6 +252,22 @@ object ProtoTypes {
     /** Somebody called the `tupled` method of this prototype */
     def isTupled: Boolean = myTupled.isInstanceOf[FunProto]
 
+    /** If true, the application of this prototype was canceled. */
+    private var toDrop: Boolean = false
+
+    /** Cancel the application of this prototype. This can happen for a nullary
+     *  application `f()` if `f` refers to a symbol that exists both in parameterless
+     *  form `def f` and nullary method form `def f()`. A common example for such
+     *  a method is `toString`. If in that case the type in the denotation is
+     *  parameterless, we compensate by dropping the application.
+     */
+    def markAsDropped() = {
+      assert(args.isEmpty)
+      toDrop = true
+    }
+
+    def isDropped: Boolean = toDrop
+
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
 
     def map(tm: TypeMap)(implicit ctx: Context): FunProto =
@@ -353,20 +371,23 @@ object ProtoTypes {
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
    *  @return  The added polytype, and the list of created type variables.
    */
-  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
+  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeTree]) = {
     val state = ctx.typerState
     assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
-    def newTypeVars(pt: PolyType): List[TypeVar] =
+    def newTypeVars(pt: PolyType): List[TypeTree] =
       for (n <- (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
+      yield {
+        val tt = new TypeTree().withPos(owningTree.pos)
+        tt.withType(new TypeVar(PolyParam(pt, n), state, tt, ctx.owner))
+      }
 
     val added =
       if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
-    ctx.typeComparer.addToConstraint(added, tvars)
+    ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
 

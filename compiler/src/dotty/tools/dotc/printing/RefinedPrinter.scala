@@ -113,20 +113,21 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ Text(args.map(argText), ", ") ~ ")"
-    def toTextFunction(args: List[Type]): Text =
+    def toTextFunction(args: List[Type], isImplicit: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        argStr ~ " => " ~ argText(args.last)
+        ("implicit " provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
     homogenize(tp) match {
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-        if (defn.isFunctionClass(cls)) return toTextFunction(args)
+        if (defn.isFunctionClass(cls)) return toTextFunction(args, isImplicit = false)
+        if (defn.isImplicitFunctionClass(cls)) return toTextFunction(args, isImplicit = true)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: TypeRef =>
@@ -614,14 +615,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       (sym.allOverriddenSymbols exists (_ is TypeParam))
 
   override def toText(sym: Symbol): Text = {
-    if (sym.isImport) {
-      def importString(tree: untpd.Tree) = s"import ${tree.show}"
+    if (sym.isImport)
       sym.infoOrCompleter match {
-        case info: Namer#Completer => return importString(info.original)
-        case info: ImportType => return importString(info.expr)
+        case info: Namer#Completer => return info.original.show
+        case info: ImportType => return s"import $info.expr.show"
         case _ =>
       }
-    }
     if (sym.is(ModuleClass))
       kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
     else

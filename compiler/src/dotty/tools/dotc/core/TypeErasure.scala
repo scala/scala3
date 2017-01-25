@@ -2,11 +2,14 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._
+import Flags.JavaDefined
+import NameOps._
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
+import Definitions.MaxImplementedFunctionArity
 
 /** Erased types are:
  *
@@ -38,7 +41,10 @@ object TypeErasure {
     case _: ErasedValueType =>
       true
     case tp: TypeRef =>
-      tp.symbol.isClass && tp.symbol != defn.AnyClass && tp.symbol != defn.ArrayClass
+      val sym = tp.symbol
+      sym.isClass &&
+      sym != defn.AnyClass && sym != defn.ArrayClass &&
+      !defn.isUnimplementedFunctionClass(sym) && !defn.isImplicitFunctionClass(sym)
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -51,7 +57,7 @@ object TypeErasure {
       tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
     case tp @ ClassInfo(pre, _, parents, decls, _) =>
       isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
-    case NoType | NoPrefix | WildcardType | ErrorType | SuperType(_, _) =>
+    case NoType | NoPrefix | WildcardType | _: ErrorType | SuperType(_, _) =>
       true
     case _ =>
       false
@@ -176,8 +182,13 @@ object TypeErasure {
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
-      case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
-        MethodType(Nil, defn.BoxedUnitType)
+      case einfo: MethodType =>
+        if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
+          MethodType(Nil, defn.BoxedUnitType)
+        else if (sym.isAnonymousFunction && einfo.paramTypes.length > MaxImplementedFunctionArity)
+          MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+        else
+          einfo
       case einfo =>
         einfo
     }
@@ -317,6 +328,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For a term ref p.x, the type <noprefix> # x.
    *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
+   *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
+   *   - For a typeref scala.ImplicitFunctionN, | scala.FunctionN |
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
@@ -345,6 +358,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       if (!sym.isClass) this(tp.info)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
+      else if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
+      else if (defn.isImplicitFunctionClass(sym)) apply(defn.FunctionType(sym.name.functionArity))
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
       val parent = tp.parent
@@ -387,7 +402,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
-    case NoType | NoPrefix | ErrorType | JavaArrayType(_) =>
+    case NoType | NoPrefix | _: ErrorType | JavaArrayType(_) =>
       tp
     case tp: WildcardType if wildcardOK =>
       tp
@@ -427,7 +442,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    if (underlying.exists) ErasedValueType(tref, valueErasure(underlying))
+    if (underlying.exists && !isCyclic(cls)) ErasedValueType(tref, valueErasure(underlying))
     else NoType
   }
 
@@ -481,7 +496,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           val erasedVCRef = eraseDerivedValueClassRef(tp)
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
-        normalizeClass(sym.asClass).fullName.asTypeName
+        if (defn.isImplicitFunctionClass(sym))
+          sigName(defn.FunctionType(sym.name.functionArity))
+        else
+          normalizeClass(sym.asClass).fullName.asTypeName
       case defn.ArrayOf(elem) =>
         sigName(this(tp))
       case JavaArrayType(elem) =>
@@ -495,7 +513,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case ErrorType | WildcardType =>
+      case _: ErrorType | WildcardType =>
         tpnme.WILDCARD
       case tp: WildcardType =>
         sigName(tp.optBounds)

@@ -189,9 +189,8 @@ trait TypeAssigner {
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-            if (!tpe.isError)
-              ctx.error(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
-            ErrorType
+            if (tpe.isError) tpe
+            else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
         else if (d.symbol is TypeParamAccessor)
@@ -215,17 +214,17 @@ trait TypeAssigner {
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
     } else {
-      if (!site.isErroneous) {
+      if (site.isErroneous) UnspecifiedErrorType
+      else {
         def kind = if (name.isTypeName) "type" else "value"
         def addendum =
           if (site.derivesFrom(defn.DynamicClass)) "\npossible cause: maybe a wrong Dynamic method signature?"
           else ""
-        ctx.error(
+        errorType(
           if (name == nme.CONSTRUCTOR) ex"$site does not have a constructor"
           else NotAMember(site, name, kind),
           pos)
       }
-      ErrorType
     }
   }
 
@@ -283,7 +282,9 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.This)(implicit ctx: Context) = {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
-    tree.withType(cls.thisType)
+    tree.withType(
+        if (cls.isClass) cls.thisType
+        else errorType("not a legal qualifying class for this", tree.pos))
   }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
@@ -314,7 +315,8 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
-        else wrongNumberOfArgs(fn.tpe, "", fntpe.typeParams, args, tree.pos)
+        else
+          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${ptypes.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
@@ -369,7 +371,7 @@ trait TypeAssigner {
         else {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames) || ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
-          else wrongNumberOfArgs(fn.tpe, "type", pt.typeParams, args, tree.pos)
+          else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
@@ -462,7 +464,7 @@ trait TypeAssigner {
     val ownType =
       if (hasNamedArg(args)) (tycon.tpe /: args)(refineNamed)
       else if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfArgs(tycon.tpe, "type", tparams, args, tree.pos)
+      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
     tree.withType(ownType)
   }
 

@@ -127,7 +127,7 @@ class JSCodeGen()(implicit ctx: Context) {
     /* Finally, we emit true code for the remaining class defs. */
     for (td <- allTypeDefs) {
       val sym = td.symbol
-      implicit val pos: Position = sym.pos
+      implicit val pos = sym.pos
 
       /* Do not actually emit code for primitive types nor scala.Array. */
       val isPrimitive =
@@ -203,7 +203,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genScalaClass(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos = sym.pos
 
     assert(!sym.is(Trait),
         "genScalaClass() must be called only for normal classes: "+sym)
@@ -336,7 +336,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genRawJSClassData(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos = sym.pos
 
     val classIdent = encodeClassFullNameIdent(sym)
     val superClass =
@@ -358,7 +358,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genInterface(td: TypeDef): js.ClassDef = {
     val sym = td.symbol.asClass
-    implicit val pos: Position = sym.pos
+    implicit val pos = sym.pos
 
     val classIdent = encodeClassFullNameIdent(sym)
 
@@ -408,7 +408,7 @@ class JSCodeGen()(implicit ctx: Context) {
       f <- classSym.info.decls
       if !f.is(Method) && f.isTerm
     } yield {
-      implicit val pos: Position = f.pos
+      implicit val pos = f.pos
 
       val name =
         /*if (isExposed(f)) js.StringLiteral(jsNameOf(f))
@@ -479,7 +479,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  Other (normal) methods are emitted with `genMethodBody()`.
    */
   private def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
-    implicit val pos: Position = dd.pos
+    implicit val pos = dd.pos
     val sym = dd.symbol
     val vparamss = dd.vparamss
     val rhs = dd.rhs
@@ -501,7 +501,7 @@ class JSCodeGen()(implicit ctx: Context) {
       val methodName: js.PropertyName = encodeMethodSym(sym)
 
       def jsParams = for (param <- params) yield {
-        implicit val pos: Position = param.pos
+        implicit val pos = param.pos
         js.ParamDef(encodeLocalSym(param), toIRType(param.info),
             mutable = false, rest = false)
       }
@@ -574,13 +574,13 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genMethodDef(static: Boolean, methodName: js.PropertyName,
       paramsSyms: List[Symbol], resultIRType: jstpe.Type,
       tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     ctx.debuglog("genMethod " + methodName.name)
     ctx.debuglog("")
 
     val jsParams = for (param <- paramsSyms) yield {
-      implicit val pos: Position = param.pos
+      implicit val pos = param.pos
       js.ParamDef(encodeLocalSym(param), toIRType(param.info),
           mutable = false, rest = false)
     }
@@ -621,7 +621,7 @@ class JSCodeGen()(implicit ctx: Context) {
     /* Any JavaScript expression is also a statement, but at least we get rid
      * of some pure expressions that come from our own codegen.
      */
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     tree match {
       case js.Block(stats :+ expr)  => js.Block(stats :+ exprToStat(expr))
       case _:js.Literal | js.This() => js.Skip()
@@ -644,7 +644,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  is transformed into an equivalent portion of the JS AST.
    */
   private def genStatOrExpr(tree: Tree, isStat: Boolean): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     ctx.debuglog("  " + tree)
     ctx.debuglog("")
@@ -902,7 +902,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  primitives, JS calls, etc. They are further dispatched in here.
    */
   private def genApply(tree: Apply, isStat: Boolean): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     val args = tree.args
     val sym = tree.fun.symbol
 
@@ -951,7 +951,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  irrelevant.
    */
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
     val sym = fun.symbol
 
@@ -987,7 +987,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  * regular new
    */
   private def genApplyNew(tree: Apply): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
     val ctor = fun.symbol
@@ -1023,7 +1023,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
     import scala.tools.nsc.backend.ScalaPrimitives._
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val Apply(fun, args) = tree
     val receiver = qualifierOf(fun)
@@ -1063,7 +1063,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genSimpleUnaryOp(tree: Apply, arg: Tree, code: Int): js.Tree = {
     import scala.tools.nsc.backend.ScalaPrimitives._
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val genArg = genExpr(arg)
     val resultIRType = toIRType(tree.tpe)
@@ -1118,7 +1118,7 @@ class JSCodeGen()(implicit ctx: Context) {
     }
     import OpTypes._
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val lhsIRType = toIRType(lhs.tpe)
     val rhsIRType = toIRType(rhs.tpe)
@@ -1374,7 +1374,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def genStringConcat(tree: Apply, receiver: Tree,
       args: List[Tree]): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val arg = args.head
 
@@ -1401,7 +1401,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a call to Any.## */
   private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     genModuleApplyMethod(defn.ScalaRuntimeModule.requiredMethod(nme.hash_),
         List(genExpr(receiver)))
@@ -1411,7 +1411,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genArrayOp(tree: Tree, code: Int): js.Tree = {
     import scala.tools.nsc.backend.ScalaPrimitives._
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val Apply(fun, args) = tree
     val arrayObj = qualifierOf(fun)
@@ -1462,7 +1462,7 @@ class JSCodeGen()(implicit ctx: Context) {
         // common case for which there is no side-effect nor NPE
         genArg
       case _ =>
-        implicit val pos: Position = tree.pos
+        implicit val pos = tree.pos
         /* TODO Check for a null receiver?
          * In theory, it's UB, but that decision should be left for link time.
          */
@@ -1474,7 +1474,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
     import scala.tools.nsc.backend.ScalaPrimitives._
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val source = genExpr(receiver)
 
@@ -1544,7 +1544,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen a call to the special `throw` method. */
   private def genThrow(tree: Apply, args: List[Tree]): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     val exception = args.head
     val genException = genExpr(exception)
     js.Throw {
@@ -1568,7 +1568,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  * Regular method call
    */
   private def genNormalApply(tree: Apply, isStat: Boolean): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val fun = tree.fun match {
       case fun: Ident => desugarIdent(fun).get
@@ -1616,7 +1616,7 @@ class JSCodeGen()(implicit ctx: Context) {
       superIn: Option[Symbol] = None)(
       implicit pos: Position): js.Tree = {
 
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
     val argc = args.size // meaningful only for methods that don't have varargs
@@ -1775,7 +1775,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  primitive instead.)
    */
   private def genTypeApply(tree: TypeApply): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val TypeApply(fun, targs) = tree
 
@@ -1803,7 +1803,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for a Java Seq literal. */
   private def genJavaSeqLiteral(tree: JavaSeqLiteral): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
 
     val genElems = tree.elems.map(genExpr)
     val arrayType = toReferenceType(tree.tpe).asInstanceOf[jstpe.ArrayType]
@@ -1852,7 +1852,7 @@ class JSCodeGen()(implicit ctx: Context) {
    *  available in the `body`.
    */
   private def genClosure(tree: Closure): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     val Closure(env, call, functionalInterface) = tree
 
     val envSize = env.size
@@ -1868,7 +1868,7 @@ class JSCodeGen()(implicit ctx: Context) {
     val allCaptureValues = qualifier :: env
 
     val (formalCaptures, actualCaptures) = allCaptureValues.map { value =>
-      implicit val pos: Position = value.pos
+      implicit val pos = value.pos
       val formalIdent = value match {
         case Ident(name) => freshLocalIdent(name.toString)
         case This(_)     => freshLocalIdent("this")
@@ -1988,7 +1988,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   /** Gen JS code for an isInstanceOf test (for reference types only) */
   private def genIsInstanceOf(tree: Tree, value: js.Tree, to: Type): js.Tree = {
-    implicit val pos: Position = tree.pos
+    implicit val pos = tree.pos
     val sym = to.widenDealias.typeSymbol
 
     if (sym == defn.ObjectClass) {
@@ -2242,7 +2242,7 @@ class JSCodeGen()(implicit ctx: Context) {
        * to perform the conversion to js.Array, then wrap in a Spread
        * operator.
        */
-      implicit val pos: Position = arg.pos
+      implicit val pos = arg.pos
       val jsArrayArg = genModuleApplyMethod(
           jsdefn.RuntimePackage_genTraversableOnce2jsArray,
           List(genExpr(arg)))
@@ -2259,7 +2259,7 @@ class JSCodeGen()(implicit ctx: Context) {
    */
   private def tryGenRepeatedParamAsJSArray(arg: Tree,
       handleNil: Boolean): Option[List[js.Tree]] = {
-    implicit val pos: Position = arg.pos
+    implicit val pos = arg.pos
 
     // Given a method `def foo(args: T*)`
     arg match {

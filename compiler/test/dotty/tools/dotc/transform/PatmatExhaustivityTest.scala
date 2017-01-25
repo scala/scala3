@@ -9,9 +9,9 @@ import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.TestReporter
 
 class PatmatExhaustivityTest {
-  val testsDir = "./tests/patmat"
+  val testsDir = "../tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat")
+  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat") ++ (new dotc.tests).classPath
 
   private def compileFile(file: File) = {
     val stringBuffer = new StringWriter()

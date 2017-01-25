@@ -20,6 +20,7 @@ Index
     - [Eclipse](contributing/eclipse.md) setting up dev environment
     - [Intellij-IDEA](contributing/intellij-idea.md) setting up dev environment
 * Internals document the compiler internals
+    - [Syntax Summary](internals/syntax.md)
     - [Project Structure](internals/overall-structure.md)
       of the project
     - [Backend](internals/backend.md) details on the bytecode backend

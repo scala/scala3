@@ -119,7 +119,7 @@ object Comments {
     def apply(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) =
       new UseCase(comment, code, codePos) {
         val untpdCode = {
-          val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start, EmptyFlags)
+          val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
 
           tree match {
             case tree: untpd.DefDef =>

@@ -32,15 +32,36 @@ import reporting.diagnostic.Message
 object Applications {
   import tpd._
 
+  def extractorMember(tp: Type, name: Name)(implicit ctx: Context) = {
+    def isPossibleExtractorType(tp: Type) = tp match {
+      case _: MethodType | _: PolyType => false
+      case _ => true
+    }
+    tp.member(name).suchThat(d => isPossibleExtractorType(d.info))
+  }
+
   def extractorMemberType(tp: Type, name: Name, errorPos: Position = NoPosition)(implicit ctx: Context) = {
-    val ref = tp.member(name).suchThat(_.info.isParameterless)
+    val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    else if (ref.info.isInstanceOf[PolyType])
-      errorType(i"Reference to polymorphic $ref: ${ref.info} is not allowed in extractor", errorPos)
-    else
-      ref.info.widenExpr.dealias
+    ref.info.widenExpr.dealias
   }
+
+  /** Does `tp` fit the "product match" conditions as an unapply result type
+   *  for a pattern with `numArgs` subpatterns>
+   *  This is the case of `tp` is a subtype of the Product<numArgs> class.
+   */
+  def isProductMatch(tp: Type, numArgs: Int)(implicit ctx: Context) =
+    0 <= numArgs && numArgs <= Definitions.MaxTupleArity &&
+    tp.derivesFrom(defn.ProductNType(numArgs).typeSymbol)
+
+  /** Does `tp` fit the "get match" conditions as an unapply result type?
+   *  This is the case of `tp` has a `get` member as well as a
+   *  parameterless `isDefined` member of result type `Boolean`.
+   */
+  def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
+    extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
+    extractorMemberType(tp, nme.get, errorPos).exists
 
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
@@ -61,24 +82,37 @@ object Applications {
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
 
+    val unapplyName = unapplyFn.symbol.name
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
-    // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
-    if (extractorMemberType(unapplyResult, nme.isDefined, pos) isRef defn.BooleanClass) {
-      if (getTp.exists)
-        if (unapplyFn.symbol.name == nme.unapplySeq) {
-          val seqArg = boundsToHi(getTp.elemType)
-          if (seqArg.exists) return args map Function.const(seqArg)
-        }
-        else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
-    }
-    if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-    else if (unapplyResult isRef defn.BooleanClass) Nil
-    else {
-      ctx.error(i"$unapplyResult is not a valid result type of an unapply method of an extractor", pos)
+    def fail = {
+      ctx.error(i"$unapplyResult is not a valid result type of an $unapplyName method of an extractor", pos)
       Nil
+    }
+
+    if (unapplyName == nme.unapplySeq) {
+      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+      else if (isGetMatch(unapplyResult, pos)) {
+        val seqArg = boundsToHi(getTp.elemType)
+        if (seqArg.exists) args.map(Function.const(seqArg))
+        else fail
+      }
+      else fail
+    }
+    else {
+      assert(unapplyName == nme.unapply)
+      if (isProductMatch(unapplyResult, args.length))
+        productSelectorTypes(unapplyResult)
+      else if (isGetMatch(unapplyResult, pos))
+        getUnapplySelectors(getTp, args, pos)
+      else if (unapplyResult isRef defn.BooleanClass)
+        Nil
+      else if (defn.isProductSubType(unapplyResult))
+        productSelectorTypes(unapplyResult)
+          // this will cause a "wrong number of arguments in pattern" error later on,
+          // which is better than the message in `fail`.
+      else fail
     }
   }
 
@@ -250,8 +284,37 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Splice new method reference into existing application */
     def spliceMeth(meth: Tree, app: Tree): Tree = app match {
-      case Apply(fn, args) => Apply(spliceMeth(meth, fn), args)
-      case TypeApply(fn, targs) => TypeApply(spliceMeth(meth, fn), targs)
+      case Apply(fn, args) =>
+        spliceMeth(meth, fn).appliedToArgs(args)
+      case TypeApply(fn, targs) =>
+        // Note: It is important that the type arguments `targs` are passed in new trees
+        // instead of being spliced in literally. Otherwise, a type argument to a default
+        // method could be constructed as the definition site of the type variable for
+        // that default constructor. This would interpolate type variables too early,
+        // causing lots of tests (among them tasty_unpickleScala2) to fail.
+        //
+        // The test case is in i1757.scala. Here we have a variable `s` and a method `cpy`
+        // defined like this:
+        //
+        //      var s
+        //      def cpy[X](b: List[Int] = b): B[X] = new B[X](b)
+        //
+        // The call `s.cpy()` then gets expanded to
+        //
+        //      { val $1$: B[Int] = this.s
+        //        $1$.cpy[X']($1$.cpy$default$1[X']
+        //      }
+        //
+        // A type variable gets interpolated if it does not appear in the type
+        // of the current tree and the current tree contains the variable's "definition".
+        // Previously, the polymorphic function tree to which the variable was first added
+        // was taken as the variable's definition. But that fails here because that
+        // tree was `s.cpy` but got transformed into `$1$.cpy`. We now take the type argument
+        // [X'] of the variable as its definition tree, which is more robust. But then
+        // it's crucial that the type tree is not copied directly as argument to
+        // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
+        // when typing the default argument, which is too early.
+        spliceMeth(meth, fn).appliedToTypes(targs.tpes)
       case _ => meth
     }
 
@@ -333,7 +396,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
-              addTyped(treeToArg(spliceMeth(getter withPos appPos, normalizedFun)), formal)
+              addTyped(treeToArg(spliceMeth(getter withPos normalizedFun.pos, normalizedFun)), formal)
               matchArgs(args1, formals1, n + 1)
             }
           }
@@ -498,7 +561,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success) app0.withType(ErrorType)
+        if (!success) app0.withType(UnspecifiedErrorType)
         else {
           if (!sameSeq(args, orderedArgs)) {
             // need to lift arguments to maintain evaluation order in the
@@ -591,21 +654,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(ErrorType)
+        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
-          tryEither {
-            implicit ctx => simpleApply(fun1, proto)
-          } {
-            (failedVal, failedState) =>
-              def fail = { failedState.commit(); failedVal }
-              // Try once with original prototype and once (if different) with tupled one.
-              // The reason we need to try both is that the decision whether to use tupled
-              // or not was already taken but might have to be revised when an implicit
-              // is inserted on the qualifier.
-              tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
-                if (proto eq originalProto) fail
-                else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
+          if (originalProto.isDropped) fun1
+          else
+            tryEither {
+              implicit ctx => simpleApply(fun1, proto)
+            } {
+              (failedVal, failedState) =>
+                def fail = { failedState.commit(); failedVal }
+                // Try once with original prototype and once (if different) with tupled one.
+                // The reason we need to try both is that the decision whether to use tupled
+                // or not was already taken but might have to be revised when an implicit
+                // is inserted on the qualifier.
+                tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
+                  if (proto eq originalProto) fail
+                  else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
           }
       }
     }
@@ -855,7 +920,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType ErrorType
+        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
     }
   }
 
@@ -912,9 +977,21 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
-   *  `alt2`? `alt1` and `alt2` are non-overloaded references.
+   *  `alt2`? Also used for implicits disambiguation.
+   *
+   *  @param  alt1, alt2      Non-overloaded references indicating the two choices
+   *  @param  level1, level2  If alternatives come from a comparison of two contextual
+   *                          implicit candidates, the nesting levels of the candidates.
+   *                          In all other cases the nesting levels are both 0.
+   *
+   *  An alternative A1 is "as good as" an alternative A2 if it wins or draws in a tournament
+   *  that awards one point for each of the following
+   *
+   *   - A1 is nested more deeply than A2
+   *   - The nesting levels of A1 and A2 are the same, and A1's owner derives from A2's owner
+   *   - A1's type is more specific than A2's type.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
+  def isAsGood(alt1: TermRef, alt2: TermRef, nesting1: Int = 0, nesting2: Int = 0)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -963,7 +1040,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val nestedCtx = ctx.fresh.setExploreTyperState
 
             {
-              implicit val ctx: Context = nestedCtx
+              implicit val ctx = nestedCtx
               isAsSpecificValueType(tp1, constrained(tp2).resultType)
             }
           case _ => // (3b)
@@ -1029,9 +1106,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
 
-    def winsOwner1 = isDerived(owner1, owner2)
+    def winsOwner1 = nesting1 > nesting2 || isDerived(owner1, owner2)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
-    def winsOwner2 = isDerived(owner2, owner1)
+    def winsOwner2 = nesting2 > nesting1 || isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
     overload.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
@@ -1231,7 +1308,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
-      case defn.FunctionOf(args, resultType) =>
+      case defn.FunctionOf(args, resultType, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1282,7 +1359,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             //   (p_1_1, ..., p_m_1) => r_1
             //   ...
             //   (p_1_n, ..., p_m_n) => r_n
-            val decomposedFormalsForArg: List[Option[(List[Type], Type)]] =
+            val decomposedFormalsForArg: List[Option[(List[Type], Type, Boolean)]] =
               formalsForArg.map(defn.FunctionOf.unapply)
             if (decomposedFormalsForArg.forall(_.isDefined)) {
               val formalParamTypessForArg: List[List[Type]] =

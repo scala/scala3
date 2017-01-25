@@ -2,7 +2,9 @@ package dotc
 
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
+import dotty.tools.StdLibSources
 import org.junit.{Before, Test}
+import org.junit.Assert._
 
 import java.io.{ File => JFile }
 import scala.reflect.io.Directory
@@ -84,6 +86,7 @@ class tests extends CompilerTest {
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
   val replDir       = testsDir + "repl/"
+  val javaDir       = testsDir + "pos-java-interop/"
 
   val sourceDir = "./src/"
   val dottyDir  = sourceDir + "dotty/"
@@ -96,13 +99,16 @@ class tests extends CompilerTest {
   val typerDir  = dotcDir + "typer/"
   val libDir = "../library/src/"
 
+  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
     Directory(defaultOutputDir + "scala").deleteRecursively()
     Directory(defaultOutputDir + "java").deleteRecursively()
   }
 
-  @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
+  @Test def pickle_pickleOK = compileFiles(testsDir + "pickling/", testPickling)
 // This directory doesn't exist anymore
 // @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
@@ -196,12 +202,19 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
-  val stdlibFiles = Source.fromFile("./test/dotc/scala-collections.whitelist", "UTF8").getLines()
-   .map(_.trim) // allow identation
-   .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-   .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-   .filter(_.nonEmpty)
-   .toList
+  private val stdlibFiles: List[String] = StdLibSources.whitelisted
+
+  @Test def checkWBLists = {
+    val stdlibFilesBlackListed = StdLibSources.blacklisted
+
+    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
+    assertTrue(msg, duplicates.isEmpty)
+
+    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
+    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
+    assertTrue(msg2, filesNotInStdLib.isEmpty)
+  }
 
   @Test def compileStdLib = compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
   @Test def compileMixed = compileLine(
@@ -214,11 +227,10 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
 
-  // Not a junit test anymore since it is order dependent
-  def dottyBootedLib = compileDir(libDir, ".")(allowDeepSubtypes) // note the -deep argument
-
-  // Not a junit test anymore since it is order dependent
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".")(allowDeepSubtypes) // note the -deep argument
+  @Test def dotty = {
+    dottyBootedLib
+    dottyDependsOnBootedLib
+  }
 
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
@@ -238,7 +250,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_typer = compileDir(dotcDir, "typer")// twice omitted to make tests run faster
     // error: error while loading Checking$$anon$2$,
-    // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
+    // class file 'target/scala-2.11/dotty_2.11-0.1.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
     // has location not matching its contents: contains class $anon
 
   @Test def dotc_util = compileDir(dotcDir, "util") // twice omitted to make tests run faster
@@ -260,7 +272,6 @@ class tests extends CompilerTest {
       dotcDir + "config/PathResolver.scala"
     ), List(/* "-Ylog:frontend", */ "-Xprompt") ++ staleSymbolError ++ twice)
 
-  val javaDir = "./tests/pos-java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
 
@@ -349,9 +360,10 @@ class tests extends CompilerTest {
   @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 
   @Test def tasty_bootstrap = {
-    val opt = List("-priorityclasspath", defaultOutputDir, "-Ylog-classpath")
+    val logging = if (false) List("-Ylog-classpath", "-verbose") else Nil
+    val opt = List("-priorityclasspath", defaultOutputDir) ++ logging
     // first compile dotty
-    compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict"))(allowDeepSubtypes)
+    compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ++ logging)(allowDeepSubtypes)
 
     compileDir(libDir, "dotty", "-deep" :: opt)
     compileDir(libDir, "scala", "-deep" :: opt)

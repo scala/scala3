@@ -6,7 +6,6 @@ package dotty.tools.dotc
 package util
 
 import scala.annotation.switch
-import java.lang.{ Character => JCharacter }
 import java.lang.{Character => JCharacter}
 import java.lang.Character.LETTER_NUMBER
 import java.lang.Character.LOWERCASE_LETTER
@@ -66,16 +65,16 @@ object Chars {
 
   /** Can character start an alphanumeric Scala identifier? */
   def isIdentifierStart(c: Char): Boolean =
-    (c == '_') || (c == '$') || Character.isUnicodeIdentifierStart(c)
+    (c == '_') || (c == '$') || JCharacter.isUnicodeIdentifierStart(c)
 
   /** Can character form part of an alphanumeric Scala identifier? */
   def isIdentifierPart(c: Char) =
-    (c == '$') || Character.isUnicodeIdentifierPart(c)
+    (c == '$') || JCharacter.isUnicodeIdentifierPart(c)
 
   /** Is character a math or other symbol in Unicode?  */
   def isSpecial(c: Char) = {
-    val chtp = Character.getType(c)
-    chtp == Character.MATH_SYMBOL.toInt || chtp == Character.OTHER_SYMBOL.toInt
+    val chtp = JCharacter.getType(c)
+    chtp == JCharacter.MATH_SYMBOL.toInt || chtp == JCharacter.OTHER_SYMBOL.toInt
   }
 
   private final val otherLetters = Set[Char]('\u0024', '\u005F')  // '$' and '_'

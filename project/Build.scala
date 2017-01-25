@@ -11,7 +11,7 @@ import sbt.Package.ManifestAttributes
 
 object DottyBuild extends Build {
 
-  val baseVersion = "0.1"
+  val baseVersion = "0.1.1"
   val isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
 
   val jenkinsMemLimit = List("-Xmx1500m")
@@ -96,7 +96,8 @@ object DottyBuild extends Build {
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef, `scala-library`).
+    aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, dottySbtBridgeRef,
+      `scala-library`, `scala-compiler`, `scala-reflect`, `scalap`).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -375,9 +376,11 @@ object DottyBuild extends Build {
     settings(
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "org.scala-lang" % "scala-library" % scalaVersion.value
+        "org.scala-lang" % "scala-library" % scalaVersion.value,
+        "com.novocode" % "junit-interface" % "0.11" % "test"
       )
-    )
+    ).
+    settings(publishing)
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
@@ -412,12 +415,6 @@ object DottyBuild extends Build {
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
-      version := {
-        if (isNightly)
-          "0.1.1-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
-        else
-          "0.1.1-SNAPSHOT"
-      },
       // The sources should be published with crossPaths := false since they
       // need to be compiled by the project using the bridge.
       crossPaths := false,
@@ -453,13 +450,13 @@ object DottyInjectedPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override val projectSettings = Seq(
-    scalaVersion := "0.1-SNAPSHOT",
+    scalaVersion := "0.1.1-SNAPSHOT",
     scalaOrganization := "ch.epfl.lamp",
     scalacOptions += "-language:Scala2",
     scalaBinaryVersion  := "2.11",
     autoScalaLibrary := false,
     libraryDependencies ++= Seq("org.scala-lang" % "scala-library" % "2.11.5"),
-    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % "0.1.1-SNAPSHOT" % "component").sources()
+    scalaCompilerBridgeSource := ("ch.epfl.lamp" % "dotty-sbt-bridge" % scalaVersion.value % "component").sources()
   )
 }
 """)
@@ -553,11 +550,41 @@ object DottyInjectedPlugin extends AutoPlugin {
       }
     )
 
-   lazy val `scala-library` = project
-    .settings(
-      libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
-    )
-    .settings(publishing)
+
+  // Dummy scala-library artefact. This is useful because sbt projects
+  // automatically depend on scalaOrganization.value % "scala-library" % scalaVersion.value
+  lazy val `scala-library` = project.
+    dependsOn(`dotty-library`).
+    settings(
+      crossPaths := false
+    ).
+    settings(publishing)
+
+  // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
+  // any version in any organization of scala{-library,-compiler,-reflect,p}
+  // to have organization `scalaOrganization` and version `scalaVersion`
+  // (see https://github.com/sbt/sbt/pull/2634).
+  // This means that we need to provide dummy artefacts for these projects,
+  // otherwise users will get compilation errors if they happen to transitively
+  // depend on one of these projects.
+  lazy val `scala-compiler` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq(scalaCompiler)
+    ).
+    settings(publishing)
+  lazy val `scala-reflect` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+    ).
+    settings(publishing)
+  lazy val `scalap` = project.
+    settings(
+      crossPaths := false,
+      libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
+    ).
+    settings(publishing)
 
    lazy val publishing = Seq(
      publishMavenStyle := true,

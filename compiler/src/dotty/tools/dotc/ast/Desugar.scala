@@ -7,6 +7,7 @@ import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, F
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
 import language.higherKinds
+import typer.FrontEnd
 import collection.mutable.ListBuffer
 import util.Property
 import reporting.diagnostic.messages._
@@ -24,7 +25,6 @@ object desugar {
 
   /** Names of methods that are added unconditionally to case classes */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.isDefined ||
     name == nme.copy ||
     name == nme.productArity ||
     name.isSelectorName
@@ -124,6 +124,13 @@ object desugar {
     else vdef
   }
 
+  def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean)(implicit ctx: Context) =
+    for (tpt <- tpts) yield {
+       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
+       val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
+       ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
+    }
+
   /** Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
@@ -142,16 +149,17 @@ object desugar {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
     val mods = meth.mods
     val epbuf = new ListBuffer[ValDef]
-    val tparams1 = tparams mapConserve {
-      case tparam @ TypeDef(_, ContextBounds(tbounds, cxbounds)) =>
-        for (cxbound <- cxbounds) {
-          val paramFlags: FlagSet = if (isPrimaryConstructor) PrivateLocalParamAccessor else Param
-          val epname = ctx.freshName(nme.EVIDENCE_PARAM_PREFIX).toTermName
-          epbuf += ValDef(epname, cxbound, EmptyTree).withFlags(paramFlags | Implicit)
-        }
-        cpy.TypeDef(tparam)(rhs = tbounds)
-      case tparam =>
-        tparam
+    def desugarContextBounds(rhs: Tree): Tree = rhs match {
+      case ContextBounds(tbounds, cxbounds) =>
+        epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
+        tbounds
+      case PolyTypeTree(tparams, body) =>
+        cpy.PolyTypeTree(rhs)(tparams, desugarContextBounds(body))
+      case _ =>
+        rhs
+    }
+    val tparams1 = tparams mapConserve { tparam =>
+      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
     }
 
     val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
@@ -338,10 +346,10 @@ object desugar {
       if (isCaseClass) {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
-        val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
-        val productElemMeths = for (i <- 0 until arity) yield
-          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
+        val productElemMeths =
+          for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
+          yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
         def isRepeated(tree: Tree): Boolean = tree match {
           case PostfixOp(_, nme.raw.STAR) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)
@@ -356,7 +364,7 @@ object desugar {
           if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
           else {
             def copyDefault(vparam: ValDef) =
-              makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))
+              makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
             val copyFirstParams = derivedVparamss.head.map(vparam =>
               cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
@@ -364,7 +372,7 @@ object desugar {
             DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
               .withMods(synthetic) :: Nil
           }
-        copyMeths ::: isDefinedMeth :: productElemMeths.toList
+        copyMeths ::: productElemMeths.toList
       }
       else Nil
 
@@ -552,7 +560,7 @@ object desugar {
     case VarPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
-      val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
+      val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
       val vars = getVariables(pat)
       val isMatchingTuple: Tree => Boolean = {
         case Tuple(es) => es.length == vars.length
@@ -676,11 +684,33 @@ object desugar {
     Function(param :: Nil, Block(vdefs, body))
   }
 
-  /** Add annotation with class `cls` to tree:
-   *      tree @cls
+  def makeImplicitFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
+    val params = makeImplicitParameters(formals.map(TypeTree), forPrimaryConstructor = false)
+    new ImplicitFunction(params, body)
+  }
+
+  /** Add annotation to tree:
+   *      tree @fullName
+   *
+   *  The annotation is usually represented as a TypeTree referring to the class
+   *  with the given name `fullName`. However, if the annotation matches a file name
+   *  that is still to be entered, the annotation is represented as a cascade of `Selects`
+   *  following `fullName`. This is necessary so that we avoid reading an annotation from
+   *  the classpath that is also compiled from source.
    */
-  def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(tree, untpd.New(untpd.TypeTree(cls.typeRef), Nil))
+  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context) = {
+    val parts = fullName.split('.')
+    val ttree = ctx.typerPhase match {
+      case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
+        val prefix =
+          ((Ident(nme.ROOTPKG): Tree) /: parts.init)((qual, name) =>
+            Select(qual, name.toTermName))
+        Select(prefix, parts.last.toTypeName)
+      case _ =>
+        TypeTree(ctx.requiredClass(fullName).typeRef)
+    }
+    Annotated(tree, untpd.New(ttree, Nil))
+  }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
@@ -916,7 +946,11 @@ object desugar {
         val elems = segments flatMap {
           case ts: Thicket => ts.trees.tail
           case t => Nil
+        } map {
+          case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
+          case t => t
         }
+
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
@@ -1079,6 +1113,10 @@ object desugar {
         collect(tree)
       case Tuple(trees) =>
         trees foreach collect
+      case Thicket(trees) =>
+        trees foreach collect
+      case Block(Nil, expr) =>
+        collect(expr)
       case _ =>
     }
     collect(tree)

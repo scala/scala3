@@ -4,7 +4,7 @@ package repl
 
 import java.io.{BufferedReader, File, FileReader, PrintWriter}
 import java.io.IOException
-import java.lang.{ClassLoader, System}
+import java.lang.{ClassLoader, System, Thread}
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration.Duration
 import reporting.Reporter

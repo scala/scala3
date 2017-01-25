@@ -23,7 +23,7 @@ object ErrorReporting {
 
   def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)
-    ErrorType
+    new ErrorType(msg)
   }
 
   def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
@@ -46,11 +46,17 @@ object ErrorReporting {
             errorMsg(msg, cx.outer)
         }
       } else msg
-    errorMsg(ex.show, ctx)
+
+      if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
+        em"""cyclic reference involving implicit $cycleSym
+            |This happens when the right hand-side of $cycleSym's definition involves an implicit search.
+            |To avoid the error, give $cycleSym an explicit type."""
+      else
+        errorMsg(ex.show, ctx)
   }
 
-  def wrongNumberOfArgs(fntpe: Type, kind: String, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
-    errorType(WrongNumberOfArgs(fntpe, kind, expectedArgs, actual)(ctx), pos)
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
+    errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
   class Errors(implicit ctx: Context) {
 

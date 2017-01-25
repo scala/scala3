@@ -10,7 +10,8 @@ import NameOps._
 import Decorators._
 import StdNames._
 import Annotations._
-import util.SimpleMap
+import config.Config
+import util.{SimpleMap, Property}
 import collection.mutable
 import ast.tpd._
 
@@ -67,7 +68,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists) {
             if (theMap != null && theMap.currentVariance <= 0 && !isLegalPrefix(pre)) {
               ctx.base.unsafeNonvariant = ctx.runId
-              AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+              pre match {
+                case AnnotatedType(_, ann) if ann.symbol == defn.UnsafeNonvariantAnnot => pre
+                case _ => AnnotatedType(pre, Annotation(defn.UnsafeNonvariantAnnot, Nil))
+              }
             }
             else pre
           }
@@ -85,13 +89,15 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           if (sym.isStatic) tp
           else {
             val pre1 = asSeenFrom(tp.prefix, pre, cls, theMap)
-            if (pre1.isUnsafeNonvariant)
-              pre1.member(tp.name).info match {
+            if (pre1.isUnsafeNonvariant) {
+              val safeCtx = ctx.withProperty(TypeOps.findMemberLimit, Some(()))
+              pre1.member(tp.name)(safeCtx).info match {
                 case TypeAlias(alias) =>
                   // try to follow aliases of this will avoid skolemization.
                   return alias
                 case _ =>
               }
+            }
             tp.derivedSelect(pre1)
           }
         case tp: ThisType =>
@@ -197,6 +203,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       case c :: rest =>
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
+      case Nil => // this case can happen because after erasure we do not have a top class anymore
+        assert(ctx.erasedTypes)
+        defn.ObjectClass :: Nil
     }
 
     def mergeRefined(tp1: Type, tp2: Type): Type = {
@@ -430,7 +439,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               formals = formals.updated(name, tp1.typeParamNamed(name))
           }
           normalizeToRef(tp1)
-        case ErrorType =>
+        case _: ErrorType =>
           defn.AnyType
         case AnnotatedType(tpe, _) =>
           normalizeToRef(tpe)
@@ -543,7 +552,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: String, pos: Position) = {
+  def testScala2Mode(msg: => String, pos: Position) = {
     if (scala2Mode) migrationWarning(msg, pos)
     scala2Mode
   }
@@ -551,4 +560,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
 object TypeOps {
   @sharable var track = false // !!!DEBUG
+
+  /** When a property with this key is set in a context, it limit the number
+   *  of recursive member searches. If the limit is reached, findMember returns
+   *  NoDenotation.
+   */
+  val findMemberLimit = new Property.Key[Unit]
 }

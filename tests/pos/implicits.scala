@@ -6,4 +6,9 @@ object Test {
 
   val x: X = Byte.MinValue
 
+  def foo() = {
+    implicit val x = "abc"
+    implicitly[String]
+  }
+
 }

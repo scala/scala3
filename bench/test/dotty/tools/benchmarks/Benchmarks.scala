@@ -1,5 +1,6 @@
 package dotty.tools.benchmarks
 
+import dotty.tools.StdLibSources
 import org.scalameter.Key.reports._
 import org.scalameter.PerformanceTest.OnlineRegressionReport
 import org.scalameter.api._
@@ -8,6 +9,7 @@ import org.scalameter.reporting.RegressionReporter.Tester
 import dotty.tools.dotc.CompilerTest
 
 import scala.io.Source
+import scala.reflect.io.Directory
 
 // decorator of persitor to expose info for debugging
 class DecoratorPersistor(p: Persistor) extends SerializationPersistor {
@@ -36,7 +38,7 @@ class DecoratorPersistor(p: Persistor) extends SerializationPersistor {
 }
 
 object BenchTests extends OnlineRegressionReport {
-  val outputDir = "./out/"
+  val outputDir = "../out/"
 
   val compiler = new CompilerTest {
     override val defaultOutputDir: String = outputDir
@@ -45,15 +47,10 @@ object BenchTests extends OnlineRegressionReport {
   implicit val defaultOptions = List("-d", outputDir)
   val scala2mode = List("-language:Scala2")
 
-  val dottyDir  = "../compiler/src/dotty/"
+  val dottyDir = "../compiler/src/dotty/"
+  val testDir  = "../bench/tests/"
 
-  val stdlibFiles = Source.fromFile("../compiler/test/dotc/scala-collections.whitelist", "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .map("." + _)
-    .toList
+  val stdlibFiles = StdLibSources.whitelisted
 
   def stdLib = compiler.compileList("compileStdLib", stdlibFiles, "-migration" :: scala2mode)
 
@@ -79,6 +76,17 @@ object BenchTests extends OnlineRegressionReport {
 
       measure.method("dotty-src") in {
         using(Gen.unit("test")) curve "dotty-src" in { r => dotty }
+      }
+
+      val dir = Directory(testDir)
+      val fileNames = dir.files.toArray.map(_.jfile.getName).filter(name => (name endsWith ".scala"))
+
+      for (name <- fileNames) {
+        measure.method(name) in {
+          using(Gen.unit("test")) curve "dotty" in { r =>
+            compiler.compileFile(testDir, name, extension = "")
+          }
+        }
       }
     }
 

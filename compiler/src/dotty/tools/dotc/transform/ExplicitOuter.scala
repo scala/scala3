@@ -81,21 +81,26 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
         !needsOuterAlways(cls) &&
         impl.existsSubTree(referencesOuter(cls, _)))
       ensureOuterAccessors(cls)
-    if (hasOuter(cls)) {
+
+    val clsHasOuter = hasOuter(cls)
+    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
       val newDefs = new mutable.ListBuffer[Tree]
-      if (isTrait)
-        newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
-      else {
-        val outerParamAcc = outerParamAccessor(cls)
-        newDefs += ValDef(outerParamAcc, EmptyTree)
-        newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
+
+      if (clsHasOuter) {
+        if (isTrait)
+          newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
+        else {
+          val outerParamAcc = outerParamAccessor(cls)
+          newDefs += ValDef(outerParamAcc, EmptyTree)
+          newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
+        }
       }
 
       for (parentTrait <- cls.mixins) {
         if (needsOuterIfReferenced(parentTrait)) {
           val parentTp = cls.denot.thisType.baseTypeRef(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisTransformer)
-          newDefs += DefDef(outerAccImpl, singleton(outerPrefix(parentTp)))
+          newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
       }
 
@@ -147,7 +152,8 @@ object ExplicitOuter {
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
     val target = cls.owner.enclosingClass.typeRef
     val info = if (flags.is(Method)) ExprType(target) else target
-    ctx.newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
+    ctx.withPhaseNoEarlier(ctx.explicitOuterPhase.next) // outer accessors are entered at explicitOuter + 1, should not be defined before.
+       .newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
   }
 
   /** A new param accessor for the outer field in class `cls` */
@@ -180,6 +186,7 @@ object ExplicitOuter {
   private def needsOuterAlways(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
+     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
      cls.classInfo.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
@@ -269,10 +276,30 @@ object ExplicitOuter {
           if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
         case _ =>
-          outerPrefix(tpe.underlying)
+          // Need to be careful to dealias before erasure, otherwise we lose prefixes.
+          outerPrefix(tpe.underlying(ctx.withPhaseNoLater(ctx.erasurePhase)))
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
+  }
+
+  /** It's possible (i1755.scala gives an example) that the type
+   *  given by outerPrefix contains a This-reference to a module outside
+   *  the context where that module is defined. This needs to be translated
+   *  to an access to the module object from the enclosing class or object.
+   *
+   *  This solution is a bit of a hack; it would be better to avoid
+   *  such references to the This of a module from outside the module
+   *  in the first place. I was not yet able to find out how such references
+   *  arise and how to avoid them.
+   */
+  private def fixThis(tpe: Type)(implicit ctx: Context): Type = tpe match {
+    case tpe: ThisType if tpe.cls.is(Module) && !ctx.owner.isContainedIn(tpe.cls) =>
+      fixThis(TermRef(tpe.cls.owner.thisType, tpe.cls.sourceModule.asTerm))
+    case tpe: TermRef =>
+      tpe.derivedSelect(fixThis(tpe.prefix))
+    case _ =>
+      tpe
   }
 
   def outer(implicit ctx: Context): OuterOps = new OuterOps(ctx)
@@ -313,7 +340,7 @@ object ExplicitOuter {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
           case New(_) | Super(_, _) =>
-            singleton(outerPrefix(receiver.tpe))
+            singleton(fixThis(outerPrefix(receiver.tpe)))
           case This(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
@@ -330,7 +357,7 @@ object ExplicitOuter {
     /** The path of outer accessors that references `toCls.this` starting from
      *  the context owner's this node.
      */
-    def path(toCls: Symbol, start: Tree = This(ctx.owner.enclosingClass.asClass)): Tree = try {
+    def path(toCls: Symbol, start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass)): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore

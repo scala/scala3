@@ -61,6 +61,7 @@ class Compiler {
            new PatternMatcher,      // Compile pattern matches
            new ExplicitOuter,       // Add accessors to outer classes from nested ones.
            new ExplicitSelf,        // Make references to non-trivial self types explicit as casts
+           new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter),           // Expand selections involving union types into conditionals
       List(new VCInlineMethods,     // Inlines calls to value class methods
@@ -71,6 +72,7 @@ class Compiler {
            new ElimByName,          // Expand by-name parameters and arguments
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
+           new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
            new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types

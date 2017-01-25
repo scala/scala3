@@ -32,7 +32,7 @@ object Trees {
   /** Property key for trees with documentation strings attached */
   val DocComment = new Property.Key[Comment]
 
-   @sharable private var nextId = 0 // for debugging
+  @sharable private var nextId = 0 // for debugging
 
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
@@ -113,7 +113,7 @@ object Trees {
      *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
-      if (tpe == ErrorType) assert(ctx.reporter.errorsReported)
+      if (tpe.isInstanceOf[ErrorType]) assert(ctx.reporter.errorsReported)
       withTypeUnchecked(tpe)
     }
 
@@ -890,6 +890,11 @@ object Trees {
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name))
       }
+      /** Copy Ident or Select trees */
+      def Ref(tree: RefTree)(name: Name)(implicit ctx: Context) = tree match {
+        case Ident(_) => Ident(tree)(name)
+        case Select(qual, _) => Select(tree)(qual, name)
+      }
       def This(tree: Tree)(qual: untpd.Ident): This = tree match {
         case tree: This if qual eq tree.qual => tree
         case _ => finalize(tree, untpd.This(qual))
@@ -1224,7 +1229,7 @@ object Trees {
           case AppliedTypeTree(tpt, args) =>
             this(this(x, tpt), args)
           case PolyTypeTree(tparams, body) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this(x, tparams), body)
           case ByNameTypeTree(result) =>
             this(x, result)
@@ -1237,13 +1242,13 @@ object Trees {
           case UnApply(fun, implicits, patterns) =>
             this(this(this(x, fun), implicits), patterns)
           case tree @ ValDef(name, tpt, _) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this(x, tpt), tree.rhs)
           case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
           case TypeDef(name, rhs) =>
-            implicit val ctx: Context = localCtx
+            implicit val ctx = localCtx
             this(x, rhs)
           case tree @ Template(constr, parents, self, _) =>
             this(this(this(this(x, constr), parents), self), tree.body)

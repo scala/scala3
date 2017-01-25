@@ -90,7 +90,8 @@ object JavaParsers {
       if (skipIt)
         skip()
     }
-    def errorTypeTree = TypeTree().withType(ErrorType) withPos Position(in.offset)
+
+    def errorTypeTree = TypeTree().withType(UnspecifiedErrorType) withPos Position(in.offset)
 
     // --------- tree building -----------------------------
 

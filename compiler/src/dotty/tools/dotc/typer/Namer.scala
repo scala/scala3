@@ -373,8 +373,13 @@ class Namer { typer: Typer =>
   }
 
   /** A new context that summarizes an import statement */
-  def importContext(sym: Symbol, selectors: List[Tree])(implicit ctx: Context) =
-    ctx.fresh.setImportInfo(new ImportInfo(sym, selectors))
+  def importContext(imp: Import, sym: Symbol)(implicit ctx: Context) = {
+    val impNameOpt = imp.expr match {
+      case ref: RefTree => Some(ref.name.asTermName)
+      case _            => None
+    }
+    ctx.fresh.setImportInfo(new ImportInfo(sym, imp.selectors, impNameOpt))
+  }
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
@@ -423,7 +428,7 @@ class Namer { typer: Typer =>
         setDocstring(pkg, stat)
         ctx
       case imp: Import =>
-        importContext(createSymbol(imp), imp.selectors)
+        importContext(imp, createSymbol(imp))
       case mdef: DefTree =>
         val sym = enterSymbol(createSymbol(mdef))
         setDocstring(sym, origStat)
@@ -528,17 +533,95 @@ class Namer { typer: Typer =>
       }
     }
 
-    stats foreach expand
+    stats.foreach(expand)
     mergeCompanionDefs()
     val ctxWithStats = (ctx /: stats) ((ctx, stat) => indexExpanded(stat)(ctx))
     createCompanionLinks(ctxWithStats)
     ctxWithStats
   }
 
+  /** Add all annotations of definitions in `stats` to the defined symbols */
+  def annotate(stats: List[Tree])(implicit ctx: Context): Unit = {
+    def recur(stat: Tree): Unit = stat match {
+      case pcl: PackageDef =>
+        annotate(pcl.stats)
+      case stat: untpd.MemberDef =>
+        stat.getAttachment(SymOfTree) match {
+          case Some(sym) =>
+            sym.infoOrCompleter match {
+              case info: Completer if !defn.isPredefClass(sym.owner) =>
+                // Annotate Predef methods only when they are completed;
+                // This is necessary to break a cyclic dependence between `Predef`
+                // and `deprecated` in test `compileStdLib`.
+                addAnnotations(sym, stat)(info.creationContext)
+              case _ =>
+                // Annotations were already added as part of the symbol's completion
+            }
+          case none =>
+            assert(stat.typeOpt.exists, i"no symbol for $stat")
+        }
+      case stat: untpd.Thicket =>
+        stat.trees.foreach(recur)
+      case _ =>
+    }
+
+    for (stat <- stats) recur(expanded(stat))
+  }
+
+  /** Add annotations of `stat` to `sym`.
+   *  This method can be called twice on a symbol (e.g. once
+   *  during the `annotate` phase and then again during completion).
+   *  Therefore, care needs to be taken not to add annotations again
+   *  that are already added to the symbol.
+   */
+  def addAnnotations(sym: Symbol, stat: MemberDef)(implicit ctx: Context) = {
+    // (1) The context in which an annotation of a top-level class or module is evaluated
+    // is the closest enclosing context which has the enclosing package as owner.
+    // (2) The context in which an annotation for any other symbol is evaluated is the
+    // closest enclosing context which has the owner of the class enclosing the symbol as owner.
+    // E.g in
+    //
+    //     package p
+    //     import a.b
+    //     class C {
+    //       import d.e
+    //       @ann m() ...
+    //     }
+    //
+    // `@ann` is evaluated in the context just outside `C`, where the `a.b`
+    // import is visible but the `d.e` import is forgotten. This measure is necessary
+    // in order to avoid cycles.
+    lazy val annotCtx = {
+      var target = sym.owner.lexicallyEnclosingClass
+      if (!target.is(PackageClass)) target = target.owner
+      var c = ctx
+      while (c.owner != target) c = c.outer
+      c
+    }
+    for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
+      val cls = typedAheadAnnotation(annotTree)(annotCtx)
+      if (sym.unforcedAnnotation(cls).isEmpty) {
+        val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+        sym.addAnnotation(ann)
+        if (cls == defn.InlineAnnot && sym.is(Method, butNot = Accessor))
+          sym.setFlag(Inline)
+      }
+    }
+  }
+
+  def indexAndAnnotate(stats: List[Tree])(implicit ctx: Context): Context = {
+    val localCtx = index(stats)
+    annotate(stats)
+    localCtx
+  }
+
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
     protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
+
+    /** The context with which this completer was created */
+    def creationContext = ctx
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
@@ -572,19 +655,6 @@ class Namer { typer: Typer =>
       completeInCreationContext(denot)
     }
 
-    protected def addAnnotations(denot: SymDenotation): Unit = original match {
-      case original: untpd.MemberDef =>
-        var hasInlineAnnot = false
-        for (annotTree <- untpd.modsDeco(original).mods.annotations) {
-          val cls = typedAheadAnnotation(annotTree)
-          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
-          denot.addAnnotation(ann)
-          if (cls == defn.InlineAnnot && denot.is(Method, butNot = Accessor))
-            denot.setFlag(Inline)
-        }
-      case _ =>
-    }
-
     private def addInlineInfo(denot: SymDenotation) = original match {
       case original: untpd.DefDef if denot.isInlineMethod =>
         Inliner.registerInlineInfo(
@@ -598,7 +668,10 @@ class Namer { typer: Typer =>
      *  to pick up the context at the point where the completer was created.
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
-      addAnnotations(denot)
+      original match {
+        case original: MemberDef => addAnnotations(denot.symbol, original)
+        case _ =>
+      }
       addInlineInfo(denot)
       denot.info = typeSig(denot.symbol)
       Checking.checkWellFormed(denot.symbol)
@@ -615,7 +688,7 @@ class Namer { typer: Typer =>
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
         myTypeParams = {
-          implicit val ctx: Context = nestedCtx
+          implicit val ctx = nestedCtx
           val tparams = original.rhs match {
             case PolyTypeTree(tparams, _) => tparams
             case _ => Nil
@@ -742,7 +815,7 @@ class Namer { typer: Typer =>
         ok
       }
 
-      addAnnotations(denot)
+      addAnnotations(denot.symbol, original)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -765,9 +838,10 @@ class Namer { typer: Typer =>
       // accessors, that's why the constructor needs to be completed before
       // the parent types are elaborated.
       index(constr)
+      annotate(constr :: params)
       symbolOfTree(constr).ensureCompleted()
 
-      index(rest)(inClassContext(selfInfo))
+      indexAndAnnotate(rest)(inClassContext(selfInfo))
 
       val tparamAccessors = decls.filter(_ is TypeParamAccessor).toList
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_, tparamAccessors)))
@@ -783,23 +857,23 @@ class Namer { typer: Typer =>
     }
   }
 
-  /** Typecheck tree during completion, and remember result in typedtree map */
-  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
+  /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
+  def typedAheadImpl(tree: Tree, typed: untpd.Tree => tpd.Tree)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
-        val ttree = typer.typed(tree, pt)
-        xtree.pushAttachment(TypedAhead, ttree)
+        val ttree = typed(tree)
+        xtree.putAttachment(TypedAhead, ttree)
         ttree
     }
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
+    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType)
+    typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrType))
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotation(fn)
@@ -810,7 +884,7 @@ class Namer { typer: Typer =>
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
-    index(params)
+    indexAndAnnotate(params)
     for (param <- params) typedAheadExpr(param)
   }
 
@@ -929,11 +1003,16 @@ class Namer { typer: Typer =>
           lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
         else inherited
       else {
-        if (sym is Implicit) {
-          val resStr = if (mdef.isInstanceOf[DefDef]) "result " else ""
-          ctx.error(s"${resStr}type of implicit definition needs to be given explicitly", mdef.pos)
+        def missingType(modifier: String) = {
+          ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", mdef.pos)
           sym.resetFlag(Implicit)
         }
+        if (sym is Implicit)
+          mdef match {
+            case _: DefDef => missingType("result")
+            case _: ValDef if sym.owner.isType => missingType("")
+            case _ =>
+          }
         lhsType orElse WildcardType
       }
     }
@@ -990,7 +1069,7 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    index(tparams)
+    indexAndAnnotate(tparams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
     for (tparam <- tparams) typedAheadExpr(tparam)
 

@@ -15,9 +15,10 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.Position
+import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleMap}
+import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -176,7 +177,7 @@ object Types {
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
-      case ErrorType => true
+      case _: ErrorType => true
       case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
     }
 
@@ -213,6 +214,14 @@ object Types {
     def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
       case tp: PolyType => tp.resultType.isVarArgsMethod
       case MethodType(_, paramTypes) => paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
+      case _ => false
+    }
+
+    /** Is this the type of a method with a leading empty parameter list?
+     */
+    def isNullaryMethod(implicit ctx: Context): Boolean = this match {
+      case MethodType(Nil, _) => true
+      case tp: PolyType => tp.resultType.isNullaryMethod
       case _ => false
     }
 
@@ -387,8 +396,8 @@ object Types {
         tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
-      case ErrorType =>
-        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name)
+      case err: ErrorType =>
+        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
       case _ =>
         NoDenotation
     }
@@ -453,8 +462,8 @@ object Types {
           go(tp.join)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, excluded)
-        case ErrorType =>
-          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
+        case err: ErrorType =>
+          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
       }
@@ -572,8 +581,12 @@ object Types {
 
       { val recCount = ctx.findMemberCount + 1
         ctx.findMemberCount = recCount
-        if (recCount >= Config.LogPendingFindMemberThreshold)
+        if (recCount >= Config.LogPendingFindMemberThreshold) {
           ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
+          if (ctx.property(TypeOps.findMemberLimit).isDefined &&
+              ctx.findMemberCount > Config.PendingFindMemberLimit)
+            return NoDenotation
+        }
       }
 
       //assert(ctx.findMemberCount < 20)
@@ -1210,7 +1223,7 @@ object Types {
       case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
         defn.FunctionOf(
-            formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
+          formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType, mt.isImplicit && !ctx.erasedTypes)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -1497,7 +1510,7 @@ object Types {
           (lastDefRunId != sym.defRunId) ||
           (lastDefRunId == NoRunId)
         } ||
-        (lastSymbol.infoOrCompleter == ErrorType ||
+        (lastSymbol.infoOrCompleter.isInstanceOf[ErrorType] ||
         sym.owner != lastSymbol.owner &&
         (sym.owner.derivesFrom(lastSymbol.owner) ||
          selfTypeOf(sym).derivesFrom(lastSymbol.owner) ||
@@ -2275,11 +2288,13 @@ object Types {
 
     protected def resultSignature(implicit ctx: Context) = try resultType match {
       case rtp: MethodicType => rtp.signature
-      case tp => Signature(tp, isJava = false)
+      case tp =>
+        if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
+        else Signature(tp, isJava = false)
     }
     catch {
       case ex: AssertionError =>
-        println(i"failure while taking result signture of $this: $resultType")
+        println(i"failure while taking result signature of $this: $resultType")
         throw ex
     }
 
@@ -2376,7 +2391,9 @@ object Types {
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 
-    def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], resType: Type)(implicit ctx: Context) =
+    def derivedMethodType(paramNames: List[TermName] = this.paramNames,
+                          paramTypes: List[Type] = this.paramTypes,
+                          resType: Type = this.resType)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (resType eq this.resType)) this
       else {
         val resTypeFn = (x: MethodType) => resType.subst(this, x)
@@ -2693,7 +2710,7 @@ object Types {
     protected def checkInst(implicit ctx: Context): this.type = {
       def check(tycon: Type): Unit = tycon.stripTypeVar match {
         case tycon: TypeRef if !tycon.symbol.isClass =>
-        case _: PolyParam | ErrorType | _: WildcardType =>
+        case _: PolyParam | _: ErrorType | _: WildcardType =>
         case _: PolyType =>
           assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
@@ -2862,14 +2879,14 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
-   *  @param  owningTree    The function part of the TypeApply tree tree that introduces
-   *                        the type variable.
+   *  @param  bindingTree   The TypeTree which introduces the type variable, or EmptyTree
+   *                        if the type variable does not correspond to a source term.
    *  @paran  owner         The current owner if the context where the variable was created.
    *
    *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
    *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
+  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
@@ -3251,12 +3268,19 @@ object Types {
     override def computeHash = hashSeed
   }
 
-  abstract class ErrorType extends UncachedGroundType with ValueType
+  /** A common superclass of `ErrorType` and `TryDynamicCallSite`. Instances of this
+   *  class are at the same time subtypes and supertypes of every other type.
+   */
+  abstract class FlexType extends UncachedGroundType with ValueType
 
-  object ErrorType extends ErrorType
+  class ErrorType(_msg: => Message) extends FlexType {
+    val msg = _msg
+  }
+
+  object UnspecifiedErrorType extends ErrorType("unspecified error")
 
   /* Type used to track Select nodes that could not resolve a member and their qualifier is a scala.Dynamic. */
-  object TryDynamicCallType extends ErrorType
+  object TryDynamicCallType extends FlexType
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
@@ -3378,7 +3402,7 @@ object Types {
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
-      implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
+      implicit val ctx = this.ctx
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp

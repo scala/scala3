@@ -108,3 +108,31 @@ object NestedPattern {
   val xss: List[List[String]] = ???
   val List(List(x)) = xss
 }
+
+// Tricky case (exercised by Scala parser combinators) where we use
+// both get/isEmpty and product-based pattern matching in different
+// matches on the same types.
+object ProductAndGet {
+
+  trait Result[+T]
+  case class Success[+T](in: String, x: T) extends Result[T] {
+    def isEmpty = false
+    def get: T = x
+  }
+  case class Failure[+T](in: String, msg: String) extends Result[T] {
+    def isEmpty = false
+    def get: String = msg
+  }
+
+  val r: Result[Int] = ???
+
+  r match {
+    case Success(in, x) => x
+    case Failure(in, msg) => -1
+  }
+
+  r match {
+    case Success(x) => x
+    case Failure(msg) => -1
+  }
+}

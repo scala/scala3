@@ -39,6 +39,10 @@ import dotty.tools.dotc.core.Names.TypeName
 import scala.annotation.tailrec
 
 class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
+  import Symbols.{toDenot, toClassDenot}
+    // Dotty deviation: Need to (re-)import implicit decorators here because otherwise
+    // they would be shadowed by the more deeply nested `symHelper` decorator.
+
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
@@ -140,7 +144,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val externalEqualsNumChar: Symbol = NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
   val externalEqualsNumObject: Symbol = defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   val externalEquals: Symbol = defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
-  val MaxFunctionArity: Int = Definitions.MaxFunctionArity
+  val MaxFunctionArity: Int = Definitions.MaxImplementedFunctionArity
   val FunctionClass: Array[Symbol] = defn.FunctionClassPerRun()
   val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClassPerRun()
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
@@ -206,18 +210,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
-  /* dont emit any annotations for now*/
-  def isRuntimeVisible(annot: Annotation): Boolean = {
-    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr) match {
-      case Some(retentionAnnot) =>
-        retentionAnnot.tree.find(_.symbol == AnnotationRetentionRuntimeAttr).isDefined
-      case _ =>
-        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
-        // annotation is emitted with visibility `RUNTIME`
-        // dotty bug: #389
-        true
+  def isRuntimeVisible(annot: Annotation): Boolean =
+    if (toDenot(annot.atp.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
+      retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
+    else {
+      // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
+      // annotation is emitted with visibility `RUNTIME`
+      // dotty bug: #389
+      true
     }
-  }
 
   def shouldEmitAnnotation(annot: Annotation): Boolean = {
     annot.symbol.isJavaDefined &&
@@ -227,7 +228,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def retentionPolicyOf(annot: Annotation): Symbol =
     annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-      flatMap(_.argument(0).map(_.symbol)).getOrElse(AnnotationRetentionClassAttr)
+      flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
 
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
@@ -559,7 +560,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def javaBinaryName: Name = toDenot(sym).fullNameSeparated("/") // addModuleSuffix(fullNameInternal('/'))
     def javaClassName: String = toDenot(sym).fullName.toString// addModuleSuffix(fullNameInternal('.')).toString
     def name: Name = sym.name
-    def rawname: Name = sym.name // todo ????
+    def rawname: Name = {
+      val original = toDenot(sym).initial
+      sym.name(ctx.withPhase(original.validFor.phaseId))
+    }
 
     // types
     def info: Type = toDenot(sym).info
@@ -686,8 +690,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
     } //todo is handled specially for JavaDefined symbols in scalac
 
-
-
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
 
@@ -708,7 +710,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       else Nil
 
-    def annotations: List[Annotation] = Nil
+    def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
@@ -1027,7 +1029,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case JavaArrayType(elem) => elem
       case _ =>
         ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", field.pos)
-        ErrorType
+        UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
   }

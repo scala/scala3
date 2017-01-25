@@ -96,7 +96,10 @@ object Formatting {
       case tpe: Type =>
         tpe.exists && !tpe.isErroneous
       case sym: Symbol if sym.isCompleted =>
-        sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info.exists
+        sym.info match {
+          case _: ErrorType | TypeAlias(_: ErrorType) | NoType => false
+          case _ => true
+        }
       case _ => true
     }
 

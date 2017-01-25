@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 /** Provides methods to compare types.
  */
 class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
-  implicit val ctx: Context = initctx
+  implicit val ctx = initctx
 
   val state = ctx.typerState
   import state.constraint
@@ -156,7 +156,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
-        implicit val ctx: Context = this.ctx
+        implicit val ctx = this.ctx
         tp2.info match {
           case info2: TypeAlias => isSubType(tp1, info2.alias)
           case _ => tp1 match {
@@ -260,7 +260,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           secondTry(tp1, tp2)
       }
       compareErasedValueType
-    case ErrorType =>
+    case ConstantType(v2) =>
+      tp1 match {
+        case ConstantType(v1) => v1.value == v2.value
+        case _ => secondTry(tp1, tp2)
+      }
+    case _: FlexType =>
       true
     case _ =>
       secondTry(tp1, tp2)
@@ -336,7 +341,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           false
       }
       joinOK || isSubType(tp11, tp2) && isSubType(tp12, tp2)
-    case ErrorType =>
+    case _: FlexType =>
       true
     case _ =>
       thirdTry(tp1, tp2)
@@ -370,11 +375,22 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       thirdTryNamed(tp1, tp2)
     case tp2: PolyParam =>
       def comparePolyParam =
-        (ctx.mode is Mode.TypevarsMissContext) ||
-        isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+        (ctx.mode is Mode.TypevarsMissContext) || {
+        val alwaysTrue =
+          // The following condition is carefully formulated to catch all cases
+          // where the subtype relation is true without needing to add a constraint
+          // It's tricky because we might need to either appriximate tp2 by its
+          // lower bound or else widen tp1 and check that the result is a subtype of tp2.
+          // So if the constraint is not yet frozen, we do the same comparison again
+          // with a frozen constraint, which means that we get a chance to do the
+          // widening in `fourthTry` before adding to the constraint.
+          if (frozenConstraint || alwaysFluid) isSubType(tp1, bounds(tp2).lo)
+          else isSubTypeWhenFrozen(tp1, tp2)
+        alwaysTrue || {
           if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
           else fourthTry(tp1, tp2)
         }
+      }
       comparePolyParam
     case tp2: RefinedType =>
       def compareRefinedSlow: Boolean = {
@@ -473,7 +489,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1 @ MethodType(_, formals1) =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
-            tp1.isImplicit == tp2.isImplicit && // needed?
+            (!tp1.isImplicit || tp2.isImplicit) &&  // non-implicit functions shadow implicit ones
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -541,9 +557,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/
       def comparePaths = tp2 match {
         case tp2: TermRef =>
-          tp2.info.widenExpr match {
+          tp2.info.widenExpr.dealias match {
             case tp2i: SingletonType =>
-              isSubType(tp1, tp2i) // see z1720.scala for a case where this can arise even in typer.
+              isSubType(tp1, tp2i)
+                // see z1720.scala for a case where this can arise even in typer.
+                // Also, i1753.scala, to show why the dealias above is necessary.
             case _ => false
           }
         case _ =>
@@ -750,8 +768,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
       val v = tparams.head.paramVariance
-      (v > 0 || isSubType(args2.head, args1.head)) &&
-      (v < 0 || isSubType(args1.head, args2.head))
+      def isSub(tp1: Type, tp2: Type) = tp2 match {
+        case tp2: TypeBounds =>
+          tp2.contains(tp1)
+        case _ =>
+          (v > 0 || isSubType(tp2, tp1)) &&
+          (v < 0 || isSubType(tp1, tp2))
+      }
+      isSub(args1.head, args2.head)
     } && isSubArgs(args1.tail, args2.tail, tparams)
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
@@ -996,9 +1020,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: MethodType =>
       tp2.widen match {
         case tp2: MethodType =>
-          tp1.isImplicit == tp2.isImplicit &&
-            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
-            matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
+          // implicitness is ignored when matching
+          matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+          matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
             matchesType(tp1.resultType, tp2, relaxed)

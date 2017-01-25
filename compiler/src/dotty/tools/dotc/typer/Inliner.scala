@@ -189,7 +189,7 @@ object Inliner {
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
-            implicit val ctx: Context = inlineCtx
+            implicit val ctx = inlineCtx
             ctx.withNoError(treeExpr(ctx))(makeInlineable)
           })
         }

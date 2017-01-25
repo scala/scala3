@@ -96,14 +96,24 @@ class InterceptedMethods extends MiniPhaseTransform {
         s"that means the intercepted methods set doesn't match the code")
       tree
     }
-    lazy val Select(qual, _) = tree.fun
+    lazy val qual = tree.fun match {
+      case Select(qual, _) => qual
+      case ident @ Ident(_) =>
+        ident.tpe match {
+          case TermRef(prefix: TermRef, _) =>
+            tpd.ref(prefix)
+          case TermRef(prefix: ThisType, _) =>
+            tpd.This(prefix.cls)
+        }
+
+    }
     val Any_## = this.Any_##
     val Any_!= = defn.Any_!=
     val rewrite: Tree = tree.fun.symbol match {
       case Any_## =>
-          poundPoundValue(qual)
+        poundPoundValue(qual)
       case Any_!= =>
-          qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
+        qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
         /*
         /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
@@ -121,7 +131,7 @@ class InterceptedMethods extends MiniPhaseTransform {
           //    we get a primitive form of _getClass trying to target a boxed value
           //    so we need replace that method name with Object_getClass to get correct behavior.
           //    See SI-5568.
-          qual.selectWithSig(defn.Any_getClass).appliedToNone
+        qual.selectWithSig(defn.Any_getClass).appliedToNone
       case _ =>
         tree
     }

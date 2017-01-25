@@ -22,6 +22,7 @@ import NameOps._
 import ast.tpd.Tree
 import ast.TreeTypeMap
 import Constants.Constant
+import reporting.diagnostic.Message
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -290,9 +291,11 @@ trait Symbols { this: Context =>
    */
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name) =
+  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
+    val errType = new ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
-      if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
+        if (name.isTypeName) TypeAlias(errType) else errType)
+  }
 
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
@@ -313,10 +316,7 @@ trait Symbols { this: Context =>
             newNakedSymbol[original.ThisName](original.coord)
         }
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      (originals, copies).zipped foreach {(original, copy) =>
-        copy.denot = original.denot // preliminary denotation, so that we can access symbols in subsequent transform
-      }
-      (originals, copies).zipped foreach {(original, copy) =>
+      (originals, copies).zipped foreach { (original, copy) =>
         val odenot = original.denot
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>
@@ -324,14 +324,27 @@ trait Symbols { this: Context =>
             ClassInfo(pre, copy.asClass, parents, decls.cloneScope, selfInfo)
           case oinfo => oinfo
         }
+
+        val completer = new LazyType {
+          def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+            denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
+                               // Note that this is a hack, but hack commonly used in Dotty
+                               // The same thing is done by other completers all the time
+            denot.info = ttmap1.mapType(oinfo)
+            denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
+          }
+        }
+
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = ttmap1.mapOwner(odenot.owner),
-          initFlags = odenot.flags &~ Frozen | Fresh,
-          info = ttmap1.mapType(oinfo),
+          initFlags = odenot.flags &~ (Frozen | Touched) | Fresh,
+          info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
-          annotations = odenot.annotations.mapConserve(ttmap1.apply))
+          annotations = odenot.annotations)
+
       }
+
       copies
     }
 
@@ -389,6 +402,10 @@ object Symbols {
       }
       denot
     }
+
+    /** The initial denotation of this symbol, without going through `current` */
+    final def initialDenot(implicit ctx: Context): SymDenotation =
+      lastDenot.initial
 
     private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
