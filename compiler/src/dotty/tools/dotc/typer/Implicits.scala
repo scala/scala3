@@ -380,7 +380,9 @@ trait ImplicitRunInfo { self: RunInfo =>
               EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
             } else {
               seen += t
-              iscope(t).companionRefs
+              val is = iscope(t)
+              if (!implicitScopeCache.contains(t)) incomplete += tp
+              is.companionRefs
             }
         }
 
@@ -436,10 +438,8 @@ trait ImplicitRunInfo { self: RunInfo =>
           if (ctx.typerState.ephemeral)
             record("ephemeral cache miss: implicitScope")
           else if (canCache &&
-                   ((tp eq rootTp) ||                  // first type traversed is always cached
-                    !incomplete.contains(tp) &&        // other types are cached if they are not incomplete
-                    result.companionRefs.forall(       // and all their companion refs are cached
-                      implicitScopeCache.contains)))
+                   ((tp eq rootTp) ||          // first type traversed is always cached
+                    !incomplete.contains(tp))) // other types are cached if they are not incomplete
             implicitScopeCache(tp) = result
           result
         }
