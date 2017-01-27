@@ -3,7 +3,6 @@ public class Test {
     Outer outer = new Outer();
     Outer.InnerInClass innerInClass = outer.inner();
 
-    // Does not work yet, requires https://github.com/DarkDimius/scala/pull/4
-    // Outer.InnerInObject innerInObject = new Outer.InnerInObject();
+    Outer.InnerInObject innerInObject = new Outer.InnerInObject();
   }
 }
