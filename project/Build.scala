@@ -19,7 +19,7 @@ object DottyBuild extends Build {
   val JENKINS_BUILD = "dotty.jenkins.build"
   val DRONE_MEM = "dotty.drone.mem"
 
-  val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20160322-171045-e19b30b3cd"
+  val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a"
 
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
