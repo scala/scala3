@@ -637,7 +637,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case tree: Select =>
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
         case RefinedType(parent, rname, rinfo) =>
-          rname == tree.name && tree.tpe.widen <:< rinfo || hasRefinement(parent)
+          rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
           hasRefinement(tp.underlying)
         case tp: OrType =>
