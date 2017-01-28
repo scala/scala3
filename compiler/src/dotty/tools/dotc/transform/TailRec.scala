@@ -216,18 +216,13 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
         val (prefix, call, arguments, typeArguments, symbol) = receiverArgumentsAndSymbol(tree)
         val hasConformingTargs = (typeArguments zip methTparams).forall{x => x._1.tpe <:< x._2.tpe}
-        val recv = noTailTransform(prefix)
 
         val targs = typeArguments.map(noTailTransform)
         val argumentss = arguments.map(noTailTransforms)
 
-        val recvWiden = recv.tpe.widenDealias
-
-        val receiverIsSame = enclosingClass.typeRef.widenDealias =:= recvWiden
-        val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recvWiden
-        val receiverIsThis = recv.tpe =:= thisType || recv.tpe.widen =:= thisType
-
         val isRecursiveCall = (method eq sym)
+        val recvWiden = prefix.tpe.widenDealias
+
 
         def continue = {
           val method = noTailTransform(call)
@@ -244,40 +239,50 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           continue
         }
 
-        def rewriteTailCall(recv: Tree): Tree = {
-          c.debuglog("Rewriting tail recursive call:  " + tree.pos)
-          rewrote = true
-          val receiver = noTailTransform(recv)
 
-          val callTargs: List[tpd.Tree] =
-            if (abstractOverClass) {
-              val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
-              targs ::: classTypeArgs.map(x => ref(x.typeSymbol))
-            } else targs
-
-          val method = if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef)
-          val thisPassed =
-            if (this.method.owner.isClass)
-              method.appliedTo(receiver.ensureConforms(method.tpe.widen.firstParamTypes.head))
-            else method
-
-          val res =
-            if (thisPassed.tpe.widen.isParameterless) thisPassed
-            else argumentss.foldLeft(thisPassed) {
-              (met, ar) => Apply(met, ar) // Dotty deviation no auto-detupling yet.
-            }
-          res
-        }
 
         if (isRecursiveCall) {
           if (ctx.tailPos) {
+            val receiverIsSame = enclosingClass.typeRef.widenDealias =:= recvWiden
+            val receiverIsThis = prefix.tpe =:= thisType || prefix.tpe.widen =:= thisType
+
+            def rewriteTailCall(recv: Tree): Tree = {
+              c.debuglog("Rewriting tail recursive call:  " + tree.pos)
+              rewrote = true
+              val receiver = noTailTransform(recv)
+
+              val callTargs: List[tpd.Tree] =
+                if (abstractOverClass) {
+                  val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
+                  targs ::: classTypeArgs.map(x => ref(x.typeSymbol))
+                } else targs
+
+              val method = if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef)
+              val thisPassed =
+                if (this.method.owner.isClass)
+                  method.appliedTo(receiver.ensureConforms(method.tpe.widen.firstParamTypes.head))
+                else method
+
+              val res =
+                if (thisPassed.tpe.widen.isParameterless) thisPassed
+                else argumentss.foldLeft(thisPassed) {
+                  (met, ar) => Apply(met, ar) // Dotty deviation no auto-detupling yet.
+                }
+              res
+            }
+
             if (!hasConformingTargs) fail("it changes type arguments on a polymorphic recursive call")
-            else if (recv eq EmptyTree) rewriteTailCall(This(enclosingClass.asClass))
-            else if (receiverIsSame || receiverIsThis) rewriteTailCall(recv)
-            else fail("it changes type of 'this' on a polymorphic recursive call")
+            else {
+              val recv = noTailTransform(prefix)
+              if (recv eq EmptyTree) rewriteTailCall(This(enclosingClass.asClass))
+              else if (receiverIsSame || receiverIsThis) rewriteTailCall(recv)
+              else fail("it changes type of 'this' on a polymorphic recursive call")
+            }
           }
           else fail(defaultReason)
         } else {
+          val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recvWiden
+
           if (receiverIsSuper) fail("it contains a recursive call targeting a supertype")
           else continue
         }
