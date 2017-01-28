@@ -190,7 +190,9 @@ object desugar {
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
-          ).withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
+          )
+          .withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
+          .withFlags(Synthetic)
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
         if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
       case Nil :: vparamss1 =>
