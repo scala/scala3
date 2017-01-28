@@ -567,7 +567,8 @@ object Scanners {
               nextChar()
               getOperatorRest()
             } else {
-              error(f"illegal character '\\u${ch: Int}%04x'")
+              // FIXME: Dotty deviation: f"" interpolator is not supported (#1814)
+              error("illegal character '\\u%04x'".format(ch: Int))
               nextChar()
             }
           }

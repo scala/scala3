@@ -30,7 +30,16 @@ object ImportInfo {
 class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName], val isRootImport: Boolean = false)(implicit ctx: Context) {
 
-  lazy val sym = symf
+  // Dotty deviation: we cannot use a lazy val here for the same reason
+  // that we cannot use one for `DottyPredefModuleRef`.
+  def sym = {
+    if (mySym == null) {
+      mySym = symf
+      assert(mySym != null)
+    }
+    mySym
+  }
+  private[this] var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = {

@@ -61,7 +61,7 @@ class tests extends CompilerTest {
     List("-classpath", paths)
   }
 
-  implicit val defaultOptions = noCheckOptions ++ {
+  implicit val defaultOptions: List[String] = noCheckOptions ++ {
     if (isRunByJenkins) List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef") // should be Ycheck:all, but #725
     else List("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
   } ++ checkOptions ++ classPath
