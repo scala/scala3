@@ -1039,7 +1039,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
-    }
+      val rsym = refinement.symbol
+      if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
+        ctx.error(i"polymorphic refinement $rsym without matching type in parent $tpt1 is no longer allowed", refinement.pos)    }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
