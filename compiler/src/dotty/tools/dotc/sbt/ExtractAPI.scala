@@ -6,6 +6,7 @@ import core._, core.Decorators._
 import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
 import typer.Inliner
+import typer.ErrorReporting.cyclicErrorMsg
 
 import dotty.tools.io.Path
 import java.io.PrintWriter
@@ -190,7 +191,16 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def apiClassStructure(csym: ClassSymbol): api.Structure = {
     val cinfo = csym.classInfo
 
-    val bases = linearizedAncestorTypes(cinfo)
+    val bases =
+      try linearizedAncestorTypes(cinfo)
+      catch {
+        case ex: CyclicReference =>
+          // See neg/i1750a for an example where a cyclic error can arise.
+          // The root cause in this example is an illegal "override" of an inner trait
+          ctx.error(cyclicErrorMsg(ex), csym.pos)
+          defn.ObjectType :: Nil
+       }
+
     val apiBases = bases.map(apiType)
 
     // Synthetic methods that are always present do not affect the API
