@@ -44,13 +44,13 @@ class Compiler {
       List(new FrontEnd),           // Compiler frontend: scanner, parser, namer, typer
       List(new sbt.ExtractDependencies), // Sends information on classes' dependencies to sbt via callbacks
       List(new PostTyper),          // Additional checks and cleanups after type checking
+      List(new RefChecks,           // Various checks mostly related to abstract members and overriding
+           new CheckStatic),        // Check restrictions that apply to @static members
       List(new sbt.ExtractAPI),     // Sends a representation of the API of classes to sbt via callbacks
       List(new Pickler),            // Generate TASTY info
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
-      List(new RefChecks,           // Various checks mostly related to abstract members and overriding
-           new CheckStatic,         // Check restrictions that apply to @static members
-           new ElimRepeated,        // Rewrite vararg parameters and arguments
+      List(new ElimRepeated,        // Rewrite vararg parameters and arguments
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes
