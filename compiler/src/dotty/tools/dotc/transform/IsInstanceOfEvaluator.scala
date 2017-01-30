@@ -134,11 +134,13 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
           val selClassNonFinal = selClass && !(selector.typeSymbol is Final)
           val selFinalClass    = selClass && (selector.typeSymbol is Final)
 
-          /** Check if the selector's potential type parameters will be erased, and if so warn */
+          // Check if the selector's potential type parameters will be erased, and if so warn
           val selTypeParam = tree.args.head.tpe.widen match {
             case tp @ AppliedType(_, arg :: _) =>
-              // If the type is `Array[X]` where `X` extends AnyVal
-              val anyValArray = tp.isRef(defn.ArrayClass) && arg.derivesFrom(defn.AnyValClass)
+              // If the type is `Array[X]` where `X` is a primitive value
+              // class. In the future, when we have a solid implementation of
+              // Arrays of value classes, we might be able to relax this check.
+              val anyValArray = tp.isRef(defn.ArrayClass) && arg.typeSymbol.isPrimitiveValueClass
               // param is: Any | AnyRef | java.lang.Object
               val topType = defn.ObjectType <:< arg
               // has @unchecked annotation to suppress warnings

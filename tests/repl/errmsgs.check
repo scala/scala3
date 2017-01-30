@@ -92,30 +92,4 @@ scala> { def f: Int = g; val x: Int = 1; def g: Int = 5; }
   |           `g` is a forward reference extending over the definition of `x`
 
 longer explanation available when compiling with `-explain`
-scala> def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
--- [E034] Erased Type Unchecked Warning: <console> -----------------------------
-4 |def unsafeCast[S](a: Any) = a match { case s: S => s; case _ => ??? }
-  |                                                ^
-  |      abstract type pattern is unchecked since it is eliminated by erasure
-
-longer explanation available when compiling with `-explain`
-def unsafeCast[S](a: Any): [S] => (a: Any)S
-scala> unsafeCast[String](1)
-java.lang.ClassCastException: java.lang.Integer cannot be cast to java.lang.String
-	at .<init>(<console>:6)
-	at .<clinit>(<console>)
-	at RequestResult$.<init>(<console>:3)
-	at RequestResult$.<clinit>(<console>)
-	at RequestResult$result(<console>)
-	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.jav...
-scala> class A; def unsafeCast2[S <: A](a: Any) = a match { case s: S => s; case _ => ??? }
--- [E034] Erased Type Unchecked Warning: <console> -----------------------------
-4 |class A; def unsafeCast2[S <: A](a: Any) = a match { case s: S => s; case _ => ??? }
-  |                                                               ^
-  |      abstract type pattern is unchecked since it is eliminated by erasure
-
-longer explanation available when compiling with `-explain`
-defined class A
-def unsafeCast2[S <: A](a: Any): [S <: A] => (a: Any)S
 scala> :quit
