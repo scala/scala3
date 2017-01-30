@@ -79,6 +79,9 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   def tryWithFallback[T](op: => T)(fallback: => T)(implicit ctx: Context): T = unsupported("tryWithFallBack")
 
   override def toText(printer: Printer): Text = "ImmutableTyperState"
+
+  /** A string showing the hashes of all nested mutable typerstates */
+  def hashesStr: String = ""
 }
 
 class MutableTyperState(previous: TyperState, r: Reporter, override val isCommittable: Boolean)
@@ -207,4 +210,7 @@ extends TyperState(r) {
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)
+
+  override def hashesStr: String = hashCode.toString + " -> " + previous.hashesStr
+
 }
