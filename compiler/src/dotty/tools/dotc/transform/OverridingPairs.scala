@@ -6,6 +6,7 @@ import Flags._, Symbols._, Contexts._, Types._, Scopes._, Decorators._
 import util.HashSet
 import collection.mutable
 import collection.immutable.BitSet
+import typer.ErrorReporting.cyclicErrorMsg
 import scala.annotation.tailrec
 
 /** A module that can produce a kind of iterator (`Cursor`),
@@ -122,10 +123,18 @@ object OverridingPairs {
       if (nextEntry ne null) {
         nextEntry = decls.lookupNextEntry(nextEntry)
         if (nextEntry ne null) {
-          overridden = nextEntry.sym
-          if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
-            visited += overridden
-            if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
+          try {
+            overridden = nextEntry.sym
+            if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
+              visited += overridden
+              if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
+            }
+          }
+          catch {
+            case ex: CyclicReference =>
+              // See neg/i1750a for an example where a cyclic error can arise.
+              // The root cause in this example is an illegal "override" of an inner trait
+              ctx.error(cyclicErrorMsg(ex), base.pos)
           }
         } else {
           curEntry = curEntry.prev

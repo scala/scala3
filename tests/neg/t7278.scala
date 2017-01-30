@@ -1,5 +1,5 @@
 class A { class E }
-class B extends A { class E }
+class B extends A { class EB }
 trait C { type E = Int }
 trait D { type E = String }
 trait EC { type E }

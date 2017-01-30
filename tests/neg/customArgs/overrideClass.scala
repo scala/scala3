@@ -8,8 +8,7 @@
   }
   trait FooB extends FooA {
     type A <: Ax;
-    trait Ax extends super.Ax { def xxx : Int; } // error: cyclic inheritance: trait Ax extends itself
-                                                 // (Note that inheriting a class of the same name is no longer allowed)
+    trait Ax extends super.Ax { def xxx : Int; } // error: cyclic inheritance: trait Ax extends itself) // error: class definitions cannot be overridden
     abstract class InnerB extends InnerA {
       // type B <: A;
       val a : A = doB;

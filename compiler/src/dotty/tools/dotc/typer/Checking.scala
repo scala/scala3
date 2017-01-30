@@ -338,6 +338,11 @@ object Checking {
     checkNoConflict(Final, Sealed)
     checkNoConflict(Private, Protected)
     checkNoConflict(Abstract, Override)
+    if (sym.isType && !sym.is(Deferred))
+      for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
+        fail(i"$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden")
+        sym.setFlag(Private) // break the overriding relationship by making sym Private
+      }
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
