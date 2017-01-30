@@ -6,6 +6,7 @@ import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, De
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
+import typer.Implicits._
 import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -483,6 +484,23 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tree.fallbackToText(this)
     }
   }.close // todo: override in refined printer
+
+  def toText(result: SearchResult): Text = result match {
+    case result: SearchSuccess =>
+      "SearchSuccess: " ~ toText(result.ref) ~ " via " ~ toText(result.tree)
+    case result: NonMatchingImplicit =>
+      "NoImplicitMatches"
+    case result: DivergingImplicit =>
+      "Diverging Implicit"
+    case result: ShadowedImplicit =>
+      "Shadowed Implicit"
+    case result: FailedImplicit =>
+      "Failed Implicit"
+    case result: AmbiguousImplicits =>
+      "Ambiguous Implicit: " ~ toText(result.alt1) ~ " and " ~ toText(result.alt2)
+    case _ =>
+      "?Unknown Implicit Result?"
+  }
 
   private var maxSummarized = Int.MaxValue
 
