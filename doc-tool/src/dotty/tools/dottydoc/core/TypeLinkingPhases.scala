@@ -80,18 +80,8 @@ class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
 trait TypeLinker extends MemberLookup {
   def handleEntityLink(title: String, target: Option[Entity], ent: Entity, query: String = ""): MaterializableLink =
     target match {
-      case Some(target: Package) =>
-        MaterializedLink(title, target.path.mkString("/") + "/index.html")
-      case Some(target: TypeAlias) =>
-        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
-      case Some(target: Def) =>
-        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
-      case Some(target: Val) =>
-        MaterializedLink(title, target.parent.path.mkString("/") + ".html#" + target.signature)
-      case Some(target) =>
-        MaterializedLink(title, target.path.mkString("/") + ".html")
-      case none =>
-        NoLink(title, query)
+      case Some(target) => new MaterializedLink(title, target)
+      case none => NoLink(title, query)
     }
 
   def linkReference(ent: Entity, ref: Reference, packs: Map[String, Package]): Reference = {

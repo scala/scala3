@@ -26,18 +26,18 @@ class DocASTPhase extends Phase {
   def phaseName = "docASTPhase"
 
   /** Build documentation hierarchy from existing tree */
-  def collect(tree: Tree, prev: List[String] = Nil)(implicit ctx: Context): Entity = {
+  def collect(tree: Tree)(implicit ctx: Context): Entity = {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
-    def collectList(xs: List[Tree], ps: List[String]): List[Entity] =
-      xs.map(collect(_, ps)).filter(_ != NonEntity)
+    def collectList(xs: List[Tree]): List[Entity] =
+      xs.map(collect).filter(_ != NonEntity)
 
-    def collectEntityMembers(xs: List[Tree], ps: List[String]) =
-      collectList(xs, ps).asInstanceOf[List[Entity with Members]]
+    def collectEntityMembers(xs: List[Tree]) =
+      collectList(xs).asInstanceOf[List[Entity with Members]]
 
-    def collectMembers(tree: Tree, ps: List[String] = prev)(implicit ctx: Context): List[Entity] = {
+    def collectMembers(tree: Tree)(implicit ctx: Context): List[Entity] = {
       val defs = (tree match {
-        case t: Template => collectList(t.body, ps)
+        case t: Template => collectList(t.body)
         case _ => Nil
       })
 
@@ -85,8 +85,7 @@ class DocASTPhase extends Phase {
     tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
-        val pkgPath = path(pd.symbol)
-        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st, pkgPath), pkgPath))
+        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st), path(pd.symbol)))
 
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
@@ -105,7 +104,7 @@ class DocASTPhase extends Phase {
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
         val name = o.name.show
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(o.symbol, annotations(o.symbol), name.dropRight(1), collectMembers(rhs, prev :+ name),  flags(o), path(o.symbol).init :+ name, superTypes(o))
+        ObjectImpl(o.symbol, annotations(o.symbol), name.dropRight(1), collectMembers(rhs),  flags(o), path(o.symbol).init :+ name, superTypes(o))
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
@@ -207,12 +206,17 @@ class DocASTPhase extends Phase {
       mergedPackages(packages(newPkg.name), newPkg)
     else {
       val root = packages.get(path.head)
-
-      if (root.isDefined) createAndInsert(root.get, newPkg.path.drop(1))
+      if (root.isDefined)
+        // Root ancestor of `newPkg` exists, start recursing to point of
+        // insertion. Point of insertion will be the parent package of `newPkg`.
+        //
+        // Which is the first element of `newPkg`'s path - thus we use the tail
+        // to continue traversing down the tree.
+        createAndInsert(root.get, path.tail)
       else {
         val newEmpty = EmptyPackage(List(path.head), path.head)
         packages = packages + (path.head -> newEmpty)
-        createAndInsert(newEmpty, newPkg.path.drop(1))
+        createAndInsert(newEmpty, path.tail)
       }
     }
   }
@@ -233,8 +237,9 @@ class DocASTPhase extends Phase {
 
     // (2) Set parents of entities, needed for linking
     for {
-      parent <- packages.values
-      child  <- parent.children
+      parentName <- rootPackages(packages)
+      parent = packages(parentName)
+      child  <- parent.members
     } setParent(child, to = parent)
 
     // (3) Update Doc AST in ctx.base

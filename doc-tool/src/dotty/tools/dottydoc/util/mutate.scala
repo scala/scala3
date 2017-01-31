@@ -16,9 +16,13 @@ object setters {
     case x: ObjectImpl    => x.comment = to
     case x: DefImpl       => x.comment = to
     case x: ValImpl       => x.comment = to
+    case x: TypeAliasImpl => x.comment = to
   }
 
   def setParent(ent: Entity, to: Entity): Unit = ent match {
+    case e: PackageImpl =>
+      e.parent = to
+      e.members.foreach(setParent(_, e))
     case e: ClassImpl =>
       e.parent = to
       e.members.foreach(setParent(_, e))

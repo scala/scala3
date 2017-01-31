@@ -16,7 +16,16 @@ object references {
   /** Use MaterializableLink for entities that need be picklable */
   sealed trait MaterializableLink { def title: String }
   final case class UnsetLink(title: String, query: String) extends MaterializableLink
-  final case class MaterializedLink(title: String, target: String) extends MaterializableLink
+  final case class MaterializedLink(title: String, target: String) extends MaterializableLink {
+    def this(title: String, target: Entity) = this(title, target match {
+      case target: Package =>
+        target.path.mkString("/") + "/index.html"
+      case _: TypeAlias | _: Def | _: Val =>
+        target.parent.path.mkString("/") + ".html#" + target.signature
+      case _ =>
+        target.path.mkString("/") + ".html"
+    })
+  }
   final case class NoLink(title: String, target: String) extends MaterializableLink
 
   object AndOrTypeReference {
