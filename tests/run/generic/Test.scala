@@ -3,11 +3,12 @@ import Tree._
 import List._
 import java.io._
 import Shapes._
+import SearchResult._
 
 object Test {
   import Serialization._
 
-  private var lCount, tCount = 0
+  private var lCount, tCount, sCount = 0
 
 // ------- Code that will eventually be produced by macros -------------
 
@@ -29,6 +30,11 @@ object Test {
   implicit lazy val tsInt: Serializable[Tree[Int]] = TreeSerializable[Int]
   implicit lazy val tsBoolean: Serializable[Tree[Boolean]] = TreeSerializable[Boolean]
 
+  implicit lazy val SearchResultSerializable: Serializable[SearchResult] = {
+    sCount += 1
+    RecSerializable[SearchResult, SearchResult.Shape]
+  }
+
 // ------- Test code --------------------------------------------------------
 
   /** Serialize data, then deserialize it back and check that it is the same. */
@@ -49,10 +55,18 @@ object Test {
   val data2 =
     If(IsZero(Pred(Succ(Zero))), Succ(Succ(Zero)), Pred(Pred(Zero)))
 
+  val data3 = Cons(Color.Red, Cons(Color.Green, Cons(Color.Blue, Nil)))
+
+  val data4 = Ambiguous(Success(Color.Green), Diverging)
+
   def main(args: Array[String]) = {
     sds(data1)
     assert(lCount == 1, lCount)
     sds(data2)
     assert(tCount == 2, tCount)
+    sds(data3)
+    assert(lCount == 2, lCount)
+    sds(data4)
+    assert(sCount == 1, sCount)
   }
 }
