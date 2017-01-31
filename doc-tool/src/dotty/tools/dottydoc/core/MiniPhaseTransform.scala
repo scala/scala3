@@ -22,7 +22,7 @@ object transform {
    *
    * Create a `DocMiniPhase` which overrides the relevant method:
    *
-   * ```scala
+   * ```
    * override def transformDef(implicit ctx: Context) = {
    *   case x if shouldTransform(x) => x.copy(newValue = ...)
    * }

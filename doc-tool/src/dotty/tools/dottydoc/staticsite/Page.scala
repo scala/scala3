@@ -126,6 +126,7 @@ class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val
     val md = Parser.builder(Site.markdownOptions).build.parse(_html)
     // fix markdown linking
     MarkdownLinkVisitor(md, docs, params)
+    MarkdownCodeBlockVisitor(md)
     _html = HtmlRenderer
       .builder(Site.markdownOptions)
       .escapeHtml(false)
