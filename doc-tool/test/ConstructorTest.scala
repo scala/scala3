@@ -184,28 +184,4 @@ class Constructors extends DottyDocTest {
       }
     }
   }
-
-  @Test def testJson = {
-    val actualSource =
-      """
-      |package scala
-      |
-      |trait Trait(val main: String)
-      |class Class(val main: String)
-      |case class CaseClass(main: String)
-      """.stripMargin
-
-    val source = new SourceFile ("JsonTest.scala", actualSource)
-
-    checkSources(source :: Nil) { packages =>
-      packages("scala") match {
-        case PackageImpl(_, _, _, List(cc: CaseClass, _, cls: Class, trt: Trait), _, _, _, _) =>
-          import model.json._
-          lazy val incorrectJson = s"The json generated for:\n$actualSource\n\nIs not correct"
-          assert(cc.json.contains(s""""constructors":[[{"list":[{"title":"main""""), incorrectJson)
-          assert(cls.json.contains(s""""constructors":[[{"list":[{"title":"main""""), incorrectJson)
-          assert(trt.json.contains(s""""traitParams":[{"list":[{"title":"main""""), incorrectJson)
-      }
-    }
-  }
 }

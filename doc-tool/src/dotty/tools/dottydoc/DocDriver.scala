@@ -6,7 +6,6 @@ import core.ContextDottydoc
 import dotc.core.Contexts._
 import dotc.{ Compiler, Driver }
 import model.Package
-import model.json._
 import dotc.config._
 import dotc.core.Comments.ContextDoc
 import staticsite.Site
@@ -40,29 +39,15 @@ class DocDriver extends Driver {
     ctx.docbase.packages
   }
 
-  def compiledDocsJava(args: Array[String]): JMap[String, Package] = {
-    scala.collection.JavaConverters.mapAsJavaMapConverter(compiledDocs(args)).asJava
-  }
-
-  def indexToJson(index: collection.Map[String, Package]): String =
-    index.json
-
-  def indexToJsonJava(index: JMap[String, Package]): String = {
-    import scala.collection.JavaConverters._
-    indexToJson(index.asScala)
-  }
-
   override def main(args: Array[String]): Unit = {
     implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
     val reporter = doCompile(newCompiler(ctx), filesToDocument)(ctx)
-
-    val docs = ctx.docbase.packages
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
 
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, ctx.settings.projectName.value, docs)
+      Site(siteRoot, ctx.settings.projectName.value, ctx.docbase.packages)
         .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()
