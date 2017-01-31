@@ -130,7 +130,7 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, Trait, completer)
+    newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
