@@ -11,7 +11,7 @@ import Shapes._
  */
 sealed trait SearchResult extends Enum
 
-object SearchResult extends EnumValues[SearchResult](2) {
+object SearchResult extends EnumValues[SearchResult](3) {
 
   private def $new(tag: Int, name: String) = new SearchResult {
     def enumTag = tag
@@ -46,9 +46,10 @@ object SearchResult extends EnumValues[SearchResult](2) {
     }
   }
 
-  implicit def SearchResultShape:
-    SearchResult `shaped` Sum[Success, Sum[Ambiguous, EnumValue[SearchResult]]] =
-    new (SearchResult `shaped` Sum[Success, Sum[Ambiguous, EnumValue[SearchResult]]]) {
+  type Shape = Sum[Success, Sum[Ambiguous, EnumValue[SearchResult]]]
+
+  implicit def SearchResultShape: SearchResult `unfolds` Shape =
+    new (SearchResult `shaped` Shape) {
       def toShape(x: SearchResult) = x match {
         case x: Success => Fst(x)
         case x: Ambiguous => Snd(Fst(x))
