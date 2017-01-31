@@ -306,6 +306,7 @@ pre {
 
 pre > code.language-none,
 pre > code.hljs {
+    display: block;
     padding: 10px;
     background: transparent;
 }

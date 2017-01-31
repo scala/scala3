@@ -10,12 +10,16 @@ import model.comment._
 import HtmlParsers._
 import util.syntax._
 
+/** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
-  private def parsedComment[E <: Entity](ent: E)(implicit ctx: Context): Option[Comment] =
+  private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] =
     ctx.docbase.docstring(ent.symbol).map { cmt =>
       val parsed = parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
-      if (ctx.settings.wikiSyntax.value) WikiComment(parsed, ent, cmt.pos)
-      else MarkdownComment(parsed, ent)
+
+      if (ctx.settings.wikiSyntax.value)
+        WikiComment(ent, parsed, cmt.pos).comment
+      else
+        MarkdownComment(ent, parsed, cmt.pos).comment
     }
 
   override def transformPackage(implicit ctx: Context) = { case ent: PackageImpl =>

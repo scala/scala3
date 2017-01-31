@@ -24,7 +24,6 @@ object HtmlParsers {
       val node = Parser.builder(staticsite.Site.markdownOptions)
         .build.parse(text)
 
-
       def isOuter(url: String) =
         url.startsWith("http://") ||
         url.startsWith("https://") ||
