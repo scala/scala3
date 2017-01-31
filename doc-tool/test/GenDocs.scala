@@ -9,7 +9,7 @@ object Files {
   }
 }
 
-trait LocalResources extends api.scala.Dottydoc {
+trait LocalResources extends DocDriver {
   import Files._
 
   def getFiles(file: JFile): Array[JFile] =

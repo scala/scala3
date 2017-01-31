@@ -3,8 +3,7 @@
  */
 package xsbt
 
-import xsbti.Logger
-import dotty.tools.dottydoc.api.scala.Dottydoc
+import xsbti.{ Logger, Severity }
 import java.net.URL
 
 class ScaladocInterface {
@@ -12,23 +11,13 @@ class ScaladocInterface {
     (new DottydocRunner(args, log, delegate)).run()
 }
 
-class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) extends Dottydoc {
-  def run(): Unit = getOutputFolder(args).map { outputFolder =>
-    val index     = createIndex(args)
-    val resources = getResources(args)
-    val template  = getTemplate(resources)
-
-    // FIXME: temporarily disabled until new implementation in place
-    //template.fold(writeJson(index, outputFolder)) { tpl =>
-    //  buildDocs(outputFolder, tpl, resources, index)
-    //}
-  } getOrElse {
-    delegate.log(
-      NoPosition,
-      "No output folder set for API documentation (\"-d\" parameter should be passed to the documentation tool)",
-      xsbti.Severity.Error
-    )
-  }
+class DottydocRunner(args: Array[String], log: Logger, delegate: xsbti.Reporter) {
+  def run(): Unit = delegate.log(
+    NoPosition,
+    """|The dotty sbt-bridge currently does not support doc generation directly
+       |via sbt. Please see the dotty documentation at dotty.epfl.ch""".stripMargin,
+    Severity.Error
+  )
 
   private[this] val NoPosition = new xsbti.Position {
     val line = xsbti.Maybe.nothing[Integer]
