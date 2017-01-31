@@ -7,7 +7,7 @@ import references._
 import _root_.java.util.HashMap
 import _root_.java.util.LinkedList
 
-object java {
+object JavaConverters {
   import scala.collection.JavaConverters._
   import _root_.java.util.{ Optional => JOptional, Map => JMap }
 
@@ -253,7 +253,8 @@ object java {
         "scala" -> ref
       ).asJava
 
-      case EmptyReference => ???
+      case EmptyReference =>
+        throw new IllegalStateException("Empty reference discovered while converting to Java Map")
     }
   }
 

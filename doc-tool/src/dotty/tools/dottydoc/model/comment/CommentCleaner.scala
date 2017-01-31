@@ -4,6 +4,7 @@ package comment
 
 trait CommentCleaner {
   import Regexes._
+  import java.util.regex.Matcher
 
   def clean(comment: String): List[String] = {
     def cleanLine(line: String): String = {
@@ -18,7 +19,7 @@ trait CommentCleaner {
     val javadoclessComment = JavadocTags.replaceAllIn(safeComment, { javadocReplacement(_) })
     val markedTagComment =
       SafeTags.replaceAllIn(javadoclessComment, { mtch =>
-        _root_.java.util.regex.Matcher.quoteReplacement(safeTagMarker + mtch.matched + safeTagMarker)
+        Matcher.quoteReplacement(safeTagMarker + mtch.matched + safeTagMarker)
       })
     markedTagComment.lines.toList map (cleanLine)
   }

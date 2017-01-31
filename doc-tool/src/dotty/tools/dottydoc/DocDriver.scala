@@ -14,8 +14,8 @@ import staticsite.Site
  *  tool. It's methods are used by the external scala and java APIs.
  */
 class DocDriver extends Driver {
-  import _root_.java.util.{ Map => JMap }
-  import model.java._
+  import java.util.{ Map => JMap }
+  import model.JavaConverters._
 
   override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx     = rootCtx.fresh

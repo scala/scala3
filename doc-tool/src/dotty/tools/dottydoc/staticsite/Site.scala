@@ -30,7 +30,7 @@ import scala.collection.mutable.ArrayBuffer
 case class Site(val root: JFile, val projectTitle: String, val documentation: Map[String, Package]) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
-    import model.java._
+    import model.JavaConverters._
     documentation.toJavaList
   }
 

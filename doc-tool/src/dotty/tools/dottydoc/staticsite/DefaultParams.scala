@@ -15,7 +15,7 @@ case class DefaultParams(
   sidebar: Sidebar,
   entity: Entity = NonEntity
 ) {
-  import model.java._
+  import model.JavaConverters._
 
   def toMap: Map[String, AnyRef] = Map(
     "docs" -> docs,
