@@ -542,7 +542,9 @@ object Erasure extends TypeTestsCasts{
      *  to deal with boxing and unboxing of value classes ourselves.
      */
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
-      val implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
+      val xxl = defn.isUnimplementedFunctionClass(tree.typeOpt.typeSymbol)
+      var implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
+      if (xxl) implClosure = cpy.Closure(implClosure)(tpt = TypeTree(defn.FunctionXXLType))
       implClosure.tpe match {
         case SAMType(sam) =>
           val implType = meth.tpe.widen
