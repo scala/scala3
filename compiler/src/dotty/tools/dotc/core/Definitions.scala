@@ -133,7 +133,7 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, Trait, completer)
+    newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -769,6 +769,18 @@ class Definitions {
     RootImportTypes.toSet[NamedType] ++ RootImportTypes.map(_.symbol.moduleClass.typeRef)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+
+  /** Classes that are known not to have an initializer irrespective of
+   *  whether NoInits is set. Note: FunctionXXLClass is in this set
+   *  because if it is compiled by Scala2, it does not get a NoInit flag.
+   *  But since it is introduced only at erasure, there's no chance
+   *  for augmentScala2Traits to do anything on a class that inherits it. So
+   *  it also misses an implementation class, which means that the usual scheme
+   *  of calling a superclass init in the implementation class of a Scala2
+   *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
+   *  is treated as a NoInit trait.
+   */
+  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)

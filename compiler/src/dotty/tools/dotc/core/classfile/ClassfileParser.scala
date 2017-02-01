@@ -818,7 +818,7 @@ class ClassfileParser(
           case Some(entry) =>
             val outerName = entry.outerName.stripModuleClassSuffix
             val owner = classSymbol(outerName)
-            val result = ctx.atPhaseNotLaterThanTyper { implicit ctx =>
+            val result = ctx.atPhaseNotLaterThan(ctx.typerPhase) { implicit ctx =>
               getMember(owner, innerName.toTypeName)
             }
             assert(result ne NoSymbol,

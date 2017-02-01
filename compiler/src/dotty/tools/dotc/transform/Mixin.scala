@@ -175,7 +175,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       case Some(call) =>
         if (defn.PhantomClasses.contains(baseCls)) Nil else call :: Nil
       case None =>
-        if (baseCls.is(NoInitsTrait) || defn.PhantomClasses.contains(baseCls)) Nil
+        if (baseCls.is(NoInitsTrait) || defn.NoInitClasses.contains(baseCls)) Nil
         else {
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
