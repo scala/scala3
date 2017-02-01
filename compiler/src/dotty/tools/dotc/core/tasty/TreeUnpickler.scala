@@ -733,7 +733,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         // no longer necessary.
       goto(end)
       setPos(start, tree)
-      Checking.avoidPrivateLeaks(sym, tree.pos)
+      ta.avoidPrivateLeaks(sym, tree.pos)
       tree
     }
 

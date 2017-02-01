@@ -132,6 +132,11 @@ trait TypeAssigner {
   def avoidingType(expr: Tree, bindings: List[Tree])(implicit ctx: Context): Type =
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
+  def avoidPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type =
+    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass)
+      Checking.checkNoPrivateLeaks(sym, pos)
+    else sym.info
+
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
