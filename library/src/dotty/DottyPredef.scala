@@ -9,9 +9,6 @@ import scala.collection.Seq
 object DottyPredef {
   implicit def typeTag[T]: TypeTag[T] = ???
 
-  implicit def arrayTag[T](implicit ctag: ClassTag[T]): ClassTag[Array[T]] =
-    ctag.wrap
-
   /** A fall-back implicit to compare values of any types.
    *  The compiler will restrict implicit instances of `eqAny`. An instance
    *  `eqAny[T, U]` is _valid_ if `T <: U` or `U <: T` or both `T` and `U` are

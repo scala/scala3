@@ -507,7 +507,34 @@ trait Implicits { self: Typer =>
    *                which is itself parameterized by another string,
    *                indicating where the implicit parameter is needed
    */
-  def inferImplicitArg(formal: Type, error: (String => String) => Unit, pos: Position)(implicit ctx: Context): Tree =
+  def inferImplicitArg(formal: Type, error: (String => String) => Unit, pos: Position)(implicit ctx: Context): Tree = {
+
+    /** If `formal` is of the form ClassTag[T], where `T` is a class type,
+     *  synthesize a class tag for `T`.
+   	 */
+    def synthesizedClassTag(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
+      if (formal.isRef(defn.ClassTagClass))
+        formal.argTypes match {
+          case arg :: Nil =>
+            fullyDefinedType(arg, "ClassTag argument", pos) match {
+              case defn.ArrayOf(elemTp) =>
+                val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), error, pos)
+                if (etag.isEmpty) etag else etag.select(nme.wrap)
+              case tp if hasStableErasure(tp) =>
+                ref(defn.ClassTagModule)
+                  .select(nme.apply)
+                  .appliedToType(tp)
+                  .appliedTo(clsOf(erasure(tp)))
+                  .withPos(pos)
+              case tp =>
+                EmptyTree
+            }
+          case _ =>
+            EmptyTree
+        }
+      else EmptyTree
+    }
+
     inferImplicit(formal, EmptyTree, pos) match {
       case SearchSuccess(arg, _, _, _) =>
         arg
@@ -534,24 +561,6 @@ trait Implicits { self: Typer =>
           EmptyTree
         }
     }
-
-  /** If `formal` is of the form ClassTag[T], where `T` is a class type,
-   *  synthesize a class tag for `T`.
-   */
-  def synthesizedClassTag(formal: Type, pos: Position)(implicit ctx: Context): Tree = {
-    if (formal.isRef(defn.ClassTagClass))
-      formal.argTypes match {
-        case arg :: Nil =>
-          val tp = fullyDefinedType(arg, "ClassTag argument", pos)
-          if (hasStableErasure(tp))
-            return ref(defn.ClassTagModule)
-              .select(nme.apply)
-              .appliedToType(tp)
-              .appliedTo(clsOf(erasure(tp)))
-              .withPos(pos)
-        case _ =>
-      }
-    EmptyTree
   }
 
   private def assumedCanEqual(ltp: Type, rtp: Type)(implicit ctx: Context) = {
