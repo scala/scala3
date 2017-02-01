@@ -343,6 +343,7 @@ object Checking {
         fail(i"$sym cannot have the same name as ${cls.showLocated} -- class definitions cannot be overridden")
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    avoidPrivateLeaks(sym, sym.pos)
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -411,6 +412,10 @@ object Checking {
     notPrivate.errors.foreach { case (msg, pos) => ctx.errorOrMigrationWarning(msg, pos) }
     info
   }
+
+  def avoidPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context) =
+    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass)
+      sym.info = checkNoPrivateLeaks(sym, pos)
 
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
