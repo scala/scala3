@@ -61,7 +61,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def nameString(name: Name): String = name.decode.toString
 
   override protected def simpleNameString(sym: Symbol): String = {
-    val name = sym.originalName
+    val name = if (ctx.property(XprintMode).isEmpty) sym.originalName else sym.name
     nameString(if (sym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
   }
 
