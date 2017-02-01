@@ -11,6 +11,8 @@ import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
 import HtmlParsers._
 import util.MemberLookup
 
+import dotc.util.SourceFile
+
 case class Comment (
   body:                    String,
   short:                   String,
@@ -73,7 +75,10 @@ trait MarkupConversion[T] extends MemberLookup {
   private def single(annot: String, xs: List[String], filter: Boolean = true)(implicit ctx: Context): Option[T] =
     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
       case x :: xs =>
-        if (xs.nonEmpty) dottydoc.println(s"Only allowed to have a single annotation for $annot")
+        if (xs.nonEmpty) ctx.docbase.warn(
+          s"Only allowed to have a single annotation for $annot",
+          ent.symbol.sourcePosition(pos)
+        )
         Some(x)
       case _ => None
     }

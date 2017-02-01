@@ -8,9 +8,12 @@ import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
 import java.util.{ Map => JMap, List => JList }
+import java.io.{ OutputStreamWriter, BufferedWriter }
 
-import dotc.config.Printers.dottydoc
+import io.VirtualFile
+import dotc.core.Contexts.Context
 import model.Package
+import scala.io.Codec
 
 /** When the YAML front matter cannot be parsed, this exception is thrown */
 case class IllegalFrontMatter(message: String) extends Exception(message)
@@ -34,49 +37,62 @@ trait Page {
   def path: String
 
   /** YAML front matter from the top of the file */
-  def yaml: Map[String, AnyRef] = {
-    if (_yaml eq null) initFields()
+  def yaml(implicit ctx: Context): Map[String, AnyRef] = {
+    if (_yaml eq null) initFields
     _yaml
   }
 
   /** HTML generated from page */
-  def html: String = {
-    if (_html eq null) initFields()
+  def html(implicit ctx: Context): Option[String] = {
+    if (_html eq null) initFields
     _html
   }
 
   /** First paragraph of page extracted from rendered HTML */
-  def firstParagraph: String = {
-    if (_html eq null) initFields()
+  def firstParagraph(implicit ctx: Context): String = {
+    if (_html eq null) initFields
 
-    val sb = new StringBuilder
-    var pos = 0
-    // to handle nested paragraphs in non markdown code
-    var open = 0
+    _html.map { _html =>
+      val sb = new StringBuilder
+      var pos = 0
+      // to handle nested paragraphs in non markdown code
+      var open = 0
 
-    while (pos < _html.length - 4) {
-      val str = _html.substring(pos, pos + 4)
-      val lstr = str.toLowerCase
-      sb append str.head
+      while (pos < _html.length - 4) {
+        val str = _html.substring(pos, pos + 4)
+        val lstr = str.toLowerCase
+        sb append str.head
 
-      pos += 1
-      if (lstr.contains("<p>"))
-        open += 1
-      else if (lstr == "</p>") {
-        open -= 1
-        if (open == 0) {
-          pos = Int.MaxValue
-          sb append "/p>"
+        pos += 1
+        if (lstr.contains("<p>"))
+          open += 1
+        else if (lstr == "</p>") {
+          open -= 1
+          if (open == 0) {
+            pos = Int.MaxValue
+            sb append "/p>"
+          }
         }
       }
-    }
 
-    sb.toString
+      sb.toString
+    }
+    .getOrElse("")
   }
 
+  protected def virtualFile(subSource: String): SourceFile = {
+    val virtualFile = new VirtualFile(path, path)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(subSource)
+    writer.close()
+
+    new SourceFile(virtualFile, Codec.UTF8)
+  }
+
+
   protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
-  protected[this] var _html: String = _
-  protected[this] def initFields() = {
+  protected[this] var _html: Option[String] = _
+  protected[this] def initFields(implicit ctx: Context) = {
     val md = Parser.builder(Site.markdownOptions).build.parse(content)
     val yamlCollector = new AbstractYamlFrontMatterVisitor()
     yamlCollector.visit(md)
@@ -96,7 +112,7 @@ trait Page {
     }
 
     // YAML must start with "---" and end in either "---" or "..."
-    val withoutYaml =
+    val withoutYaml = virtualFile(
       if (content.startsWith("---\n")) {
         val str =
           content.lines
@@ -108,6 +124,7 @@ trait Page {
         else str
       }
       else content
+    )
 
     // make accessible via "{{ page.title }}" in templates
     val page = Map("page" ->  _yaml.asJava)
@@ -144,16 +161,18 @@ class MarkdownPage(
   docs: Map[String, Package]
 ) extends Page {
 
-  override protected[this] def initFields() = {
-    super.initFields()
-    val md = Parser.builder(Site.markdownOptions).build.parse(_html)
-    // fix markdown linking
-    MarkdownLinkVisitor(md, docs, params)
-    MarkdownCodeBlockVisitor(md)
-    _html = HtmlRenderer
-      .builder(Site.markdownOptions)
-      .escapeHtml(false)
-      .build()
-      .render(md)
+  override protected[this] def initFields(implicit ctx: Context) = {
+    super.initFields
+    _html = _html.map { _html =>
+      val md = Parser.builder(Site.markdownOptions).build.parse(_html)
+      // fix markdown linking
+      MarkdownLinkVisitor(md, docs, params)
+      MarkdownCodeBlockVisitor(md)
+      HtmlRenderer
+        .builder(Site.markdownOptions)
+        .escapeHtml(false)
+        .build()
+        .render(md)
+    }
   }
 }

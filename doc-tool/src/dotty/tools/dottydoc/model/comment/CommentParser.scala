@@ -195,8 +195,14 @@ trait CommentParser extends util.MemberLookup {
           shortDescription        = allTags(SimpleTagKey("shortDescription"))
         )
 
-        for ((key, _) <- bodyTags)
-          dottydoc.println(s"$pos: Tag '@${key.name}' is not recognised")
+        for ((key, _) <- bodyTags) ctx.docbase.warn(
+          s"Tag '@${key.name}' is not recognised",
+          // FIXME: here the position is stretched out over the entire comment,
+          // with the point being at the very end. This ensures that the entire
+          // comment will be visible in error reporting. A more fine-grained
+          // reporting would be amazing here.
+          entity.symbol.sourcePosition(Position(pos.start, pos.end, pos.end))
+        )
 
         cmt
       }

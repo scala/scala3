@@ -124,7 +124,7 @@ class DocASTPhase extends Phase {
         ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind)
 
       case x => {
-        //dottydoc.println(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
+        ctx.docbase.debug(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
         NonEntity
       }
     }
@@ -226,7 +226,7 @@ class DocASTPhase extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     currentRun += 1
-    println(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
+    ctx.docbase.echo(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
     collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
   }
 

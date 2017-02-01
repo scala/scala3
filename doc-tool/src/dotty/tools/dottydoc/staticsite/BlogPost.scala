@@ -5,7 +5,8 @@ package staticsite
 import java.io.{ File => JFile }
 import java.util.{ List => JList, Map => JMap }
 
-import dotc.config.Printers.dottydoc
+import dotc.core.Contexts.Context
+import util.syntax._
 
 import MapOperations._
 
@@ -42,9 +43,9 @@ class BlogPost(
 
 object BlogPost {
   val extract = """(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.(md|html)""".r
-  def apply(file: JFile, page: Page): BlogPost = {
+  def apply(file: JFile, page: Page)(implicit ctx: Context): Option[BlogPost] = {
     def report(key: String, fallback: String = "") = {
-      /*dottydoc.*/println(s"couldn't find page.$key in ${file.getName}")
+      ctx.docbase.error(s"couldn't find page.$key in ${file.getName}")
       fallback
     }
 
@@ -56,6 +57,8 @@ object BlogPost {
     val excerptSep = page.yaml.getString("excerpt_separator")
     val categories = page.yaml.list("categories")
 
-    new BlogPost(title, url, date, page.html, page.firstParagraph, excerptSep, categories)
+    page.html.map { html =>
+      new BlogPost(title, url, date, html, page.firstParagraph, excerptSep, categories)
+    }
   }
 }

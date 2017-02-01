@@ -3,6 +3,7 @@ package dottydoc
 package staticsite
 
 import model.references._
+import dotc.core.Contexts.Context
 
 import liqp.tags.Tag
 import liqp.TemplateContext
@@ -10,30 +11,38 @@ import liqp.nodes.LNode
 
 import java.util.{ Map => JMap }
 import model._
+import util.syntax._
 
 object tags {
 
   sealed trait ParamConverter {
     def params: Map[String, AnyRef]
 
-    val baseurl: String =
-      params.get("site").flatMap {
-        case map: JMap[String, String] @unchecked =>
-          Some(map.get("baseurl"))
-        case _ =>
-          None
+    private[this] var _baseurl: String = _
+    def baseurl(implicit ctx: Context): String = {
+      if (_baseurl eq null) {
+        _baseurl =
+          params.get("site").flatMap {
+            case map: JMap[String, String] @unchecked =>
+              Some(map.get("baseurl"))
+            case _ =>
+              None
+          }
+          .getOrElse {
+            ctx.docbase.warn(s"missing `baseurl` in: $params")
+            ""
+          }
       }
-      .getOrElse {
-        /*dottydoc.*/println(s"missing `baseurl` in: $params")
-        ""
-      }
+      _baseurl
+    }
   }
 
   /** Renders a `MaterializableLink` into a HTML anchor tag. If the link is
     * `NoLink` it will just return a string with the link's title.
     */
-  final case class RenderLink(params: Map[String, AnyRef]) extends Tag("renderLink") with ParamConverter {
-    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(ctx) match {
+  final case class RenderLink(params: Map[String, AnyRef])(implicit ctx: Context)
+  extends Tag("renderLink") with ParamConverter {
+    override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>
         val link = map.get("scala")
         if (link.isInstanceOf[MaterializableLink] && (link ne null))
@@ -41,7 +50,7 @@ object tags {
         else if (link eq null)
           null // Option[Reference] was None
         else {
-          /*dottydoc.*/println(s"illegal argument: $link, to `renderLink` function")
+          ctx.docbase.error(s"illegal argument: $link, to `renderLink` function")
           null
         }
       case _ => null
@@ -49,13 +58,14 @@ object tags {
   }
 
 
-  private[this] def renderLink(baseurl: String, link: MaterializableLink): String = link match {
-    case MaterializedLink(title, target) =>
-      s"""<a href="$baseurl/api/$target">$title</a>"""
-    case _ => link.title
-  }
+  private[this] def renderLink(baseurl: String, link: MaterializableLink)(implicit ctx: Context): String =
+    link match {
+      case MaterializedLink(title, target) =>
+        s"""<a href="$baseurl/api/$target">$title</a>"""
+      case _ => link.title
+    }
 
-  final case class RenderReference(params: Map[String, AnyRef])
+  final case class RenderReference(params: Map[String, AnyRef])(implicit ctx: Context)
   extends Tag("renderRef") with ParamConverter {
 
     private def renderReference(ref: Reference): String = ref match {
@@ -90,31 +100,31 @@ object tags {
         s"""${ renderReference(low) }<span class="bounds"> &lt;: </span>${ renderReference(high) }"""
 
       case NamedReference(title, _, _, _) =>
-        /*dottydoc.*/println(s"received illegal named reference in rendering: $ref")
+        ctx.docbase.error(s"received illegal named reference in rendering: $ref")
         title
 
       case ConstantReference(title) => title
     }
-    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(ctx) match {
+    override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = nodes(0).render(tctx) match {
       case map: JMap[String, AnyRef] @unchecked =>
         val ref = map.get("scala")
         if (ref.isInstanceOf[Reference] && (ref ne null)) renderReference(ref.asInstanceOf[Reference])
         else if (ref eq null) null // Option[Reference] was None
         else {
-          /*dottydoc.*/println(s"illegal argument: $ref, to `renderRef` function")
+          ctx.docbase.error(s"illegal argument: $ref, to `renderRef` function")
           null
         }
       case _ => null
     }
   }
 
-  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, Include])
+  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, Include])(implicit ctx: Context)
   extends Tag("include") {
     import scala.collection.JavaConverters._
     val DefaultExtension = ".html"
 
-    override def render(ctx: TemplateContext, nodes: LNode*): AnyRef = {
-      val origInclude = asString(nodes(0).render(ctx))
+    override def render(tctx: TemplateContext, nodes: LNode*): AnyRef = {
+      val origInclude = asString(nodes(0).render(tctx))
       val incResource = origInclude match {
         case fileWithExt if fileWithExt.indexOf('.') > 0 => fileWithExt
         case file => file + DefaultExtension
@@ -123,13 +133,14 @@ object tags {
       includes
         .get(incResource)
         .map { template =>
-          if (nodes.length > 1) ctx.put(origInclude, nodes(1).render(ctx))
+          if (nodes.length > 1) tctx.put(origInclude, nodes(1).render(tctx))
 
-          LiquidTemplate(template.path, template.show)
-            .render(ctx.getVariables.asScala.toMap, includes)
+          LiquidTemplate(template.path, template.content)
+            .render(tctx.getVariables.asScala.toMap, includes)
+            .getOrElse("")
         }
         .getOrElse {
-          /*dottydoc.*/println(s"couldn't find include file '$origInclude'")
+          ctx.docbase.error(s"couldn't find include file '$origInclude'")
           ""
         }
     }
@@ -145,7 +156,8 @@ object tags {
     * The rendering currently works on depths up to 2. This means that each
     * title can have a subsection with its own titles.
     */
-  case class RenderTitle(params: Map[String, AnyRef]) extends Tag("renderTitle") with ParamConverter {
+  case class RenderTitle(params: Map[String, AnyRef])(implicit ctx: Context)
+  extends Tag("renderTitle") with ParamConverter {
     private def renderTitle(t: Title, parent: String): String = {
         if (!t.url.isDefined && t.subsection.nonEmpty) {
           val onclickFunction =
@@ -160,7 +172,7 @@ object tags {
           s"""<a href="$baseurl/$url">${t.title}</a>"""
         }
         else /*if (t.subsection.nonEmpty)*/ {
-          /*dottydoc.*/println(s"url was defined for subsection with title: ${t.title}, remove url to get toggleable entries")
+          ctx.docbase.error(s"url was defined for subsection with title: ${t.title}, remove url to get toggleable entries")
           t.title
         }
     }
