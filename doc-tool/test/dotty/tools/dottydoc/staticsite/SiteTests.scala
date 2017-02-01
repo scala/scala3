@@ -5,15 +5,16 @@ package staticsite
 import org.junit.Test
 import org.junit.Assert._
 
-class SiteTests extends DottyDocTest {
+class SiteTests extends DottyDocTest with SourceFileOps {
   import scala.collection.JavaConverters._
   val site = new Site(new java.io.File("../doc-tool/resources/"), "test-site", Map.empty)
 
   private def html(
     str: String,
+    path: String = "test-page",
     params: Map[String, AnyRef] = Map("docs" -> List.empty.asJava),
-    includes: Map[String, String] = Map.empty
-  ) = new HtmlPage(str, params, includes)
+    includes: Map[String, Include] = Map.empty
+  ) = new HtmlPage(path, stringToSource(path, str), params, includes)
 
   @Test def hasCorrectLayoutFiles = {
     assert(site.root.exists && site.root.isDirectory,

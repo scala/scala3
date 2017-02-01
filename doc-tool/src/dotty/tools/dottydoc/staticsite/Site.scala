@@ -4,7 +4,7 @@ package staticsite
 
 import java.nio.file.{ Files, FileSystems }
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.io.{ File => JFile }
+import java.io.{ File => JFile, OutputStreamWriter, BufferedWriter }
 import java.util.{ List => JList, Map => JMap, Arrays }
 import java.nio.file.Path
 import java.io.ByteArrayInputStream
@@ -23,8 +23,10 @@ import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
+import dotc.util.SourceFile
 import model.Package
-import scala.io.Source
+import scala.io.{ Codec, Source }
+import io.{ AbstractFile, VirtualFile, File }
 import scala.collection.mutable.ArrayBuffer
 
 case class Site(val root: JFile, val projectTitle: String, val documentation: Map[String, Package]) extends ResourceFinder {
@@ -69,7 +71,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     _blogposts
   }
 
-
+  /** TODO */
   val sidebar: Sidebar =
     root
       .listFiles
@@ -83,11 +85,12 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     blogposts
     .map { file =>
       val BlogPost.extract(year, month, day, name, ext) = file.getName
-      val fileContents = Source.fromFile(file).mkString
+      val sourceFile = toSourceFile(file)
       val params = defaultParams(file, 2).withUrl(s"/blog/$year/$month/$day/$name.html").toMap
       val page =
-        if (ext == "md") new MarkdownPage(fileContents, params, includes, documentation)
-        else new HtmlPage(fileContents, params, includes)
+        if (ext == "md")
+          new MarkdownPage(file.getPath, sourceFile, params, includes, documentation)
+        else new HtmlPage(file.getPath, sourceFile, params, includes)
       BlogPost(file, page)
     }
     .sortBy(_.date)
@@ -95,6 +98,15 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
   // FileSystem getter
   private[this] val fs = FileSystems.getDefault
+
+  private def stringToSourceFile(name: String, path: String, sourceCode: String): SourceFile = {
+    val virtualFile = new VirtualFile(name, path)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(sourceCode)
+    writer.close()
+
+    new SourceFile(virtualFile, Codec.UTF8)
+  }
 
   def copyStaticFiles(outDir: JFile = new JFile(root.getAbsolutePath + "/_site")): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
@@ -156,7 +168,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
 
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
         val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e).toMap
-        val page = new HtmlPage(layouts("api-page"), params, includes)
+        val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
 
         val rendered = render(page)
         val source = new ByteArrayInputStream(rendered.getBytes(StandardCharsets.UTF_8))
@@ -178,11 +190,11 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     createOutput(outDir) {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
-        val fileContents = Source.fromFile(asset).mkString
+        val sourceFile = toSourceFile(asset)
         val params = defaultParams(asset).withPosts(blogInfo).toMap
         val page =
-          if (asset.getName.endsWith(".md")) new MarkdownPage(fileContents, params, includes, documentation)
-          else new HtmlPage(fileContents, params, includes)
+          if (asset.getName.endsWith(".md")) new MarkdownPage(pathFromRoot, sourceFile, params, includes, documentation)
+          else new HtmlPage(pathFromRoot, sourceFile, params, includes)
 
         val renderedPage = render(page)
         val source = new ByteArrayInputStream(renderedPage.getBytes(StandardCharsets.UTF_8))
@@ -196,16 +208,21 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     createOutput(outDir) {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
-        val fileContents = Source.fromFile(file).mkString
+        val sourceFile = toSourceFile(file)
         val date = s"$year-$month-$day 00:00:00"
         val params = defaultParams(file, 2).withPosts(blogInfo).withDate(date).toMap
+
+        // Output target
+        val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
+
         val page =
-          if (ext == "md") new MarkdownPage(fileContents, params, includes, documentation)
-          else new HtmlPage(fileContents, params, includes)
+          if (ext == "md")
+            new MarkdownPage(target.toString, sourceFile, params, includes, documentation)
+          else
+            new HtmlPage(target.toString, sourceFile, params, includes)
 
 
         val source = new ByteArrayInputStream(render(page).getBytes(StandardCharsets.UTF_8))
-        val target = mkdirs(fs.getPath(outDir.getAbsolutePath, "blog", year, month, day, name + ".html"))
         Files.copy(source, target, REPLACE_EXISTING)
       }
     }
@@ -283,22 +300,26 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     * If the user supplies a layout that has the same name as one of the
     * defaults, the user-defined one will take precedence.
     */
-  val layouts: Map[String, String] = {
+  val layouts: Map[String, Layout] = {
     val userDefinedLayouts =
       root
       .listFiles.find(d => d.getName == "_layouts" && d.isDirectory)
       .map(collectFiles(_, f => f.endsWith(".md") || f.endsWith(".html")))
-      .getOrElse(Map.empty)
-      .map { case (k, v) => (k.substring(0, k.lastIndexOf('.')), v) }
+      .getOrElse(Array.empty[JFile])
+      .map(f => (f.getName.substring(0, f.getName.lastIndexOf('.')), Layout(f.getPath, toSourceFile(f))))
+      .toMap
 
-    val defaultLayouts: Map[String, String] = Map(
+    val defaultLayouts: Map[String, Layout] = Map(
       "main" -> "/_layouts/main.html",
       "sidebar" -> "/_layouts/sidebar.html",
       "doc-page" -> "/_layouts/doc-page.html",
       "api-page" -> "/_layouts/api-page.html",
       "blog-page" -> "/_layouts/blog-page.html",
       "index" -> "/_layouts/index.html"
-    ).mapValues(getResource)
+    ).map {
+      case (name, path) =>
+        (name, Layout(path, stringToSourceFile(name, path, getResource(path))))
+    }
 
     defaultLayouts ++ userDefinedLayouts
   }
@@ -316,29 +337,34 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
     * {% include "some-file" with { key: value } %}
     * ```
     */
-  val includes: Map[String, String] = {
+  val includes: Map[String, Include] = {
     val userDefinedIncludes =
       root
       .listFiles.find(d => d.getName == "_includes" && d.isDirectory)
       .map(collectFiles(_, f => f.endsWith(".md") || f.endsWith(".html")))
-      .getOrElse(Map.empty)
+      .getOrElse(Array.empty[JFile])
+      .map(f => (f.getName, Include(f.getPath, toSourceFile(f))))
+      .toMap
 
-    val defaultIncludes: Map[String, String] = Map(
+    val defaultIncludes: Map[String, Include] = Map(
       "header.html" -> "/_includes/header.html",
       "scala-logo.svg" -> "/_includes/scala-logo.svg",
       "toc.html" -> "/_includes/toc.html"
-    ).mapValues(getResource)
-
+    ).map {
+      case (name, path) =>
+        (name, Include(path, stringToSourceFile(name, path, getResource(path))))
+    }
 
     defaultIncludes ++ userDefinedIncludes
   }
 
-  private def collectFiles(dir: JFile, includes: String => Boolean): Map[String, String] =
+  private def toSourceFile(f: JFile): SourceFile =
+    SourceFile(AbstractFile.getFile(new File(f)), Source.fromFile(f).toArray)
+
+  private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir
     .listFiles
     .filter(f => includes(f.getName))
-    .map(f => (f.getName, Source.fromFile(f).mkString))
-    .toMap
 
   /** Render a page to html, the resulting string is the result of the complete
     * expansion of the template with all its layouts and includes.
@@ -350,7 +376,7 @@ case class Site(val root: JFile, val projectTitle: String, val documentation: Ma
       case Some(layout) =>
         import scala.collection.JavaConverters._
         val newParams = page.params ++ params ++ Map("page" -> page.yaml) ++ Map("content" -> page.html)
-        val expandedTemplate = new HtmlPage(layout, newParams, includes)
+        val expandedTemplate = new HtmlPage(layout.path, layout.content, newParams, includes)
         render(expandedTemplate, params)
     }
 }

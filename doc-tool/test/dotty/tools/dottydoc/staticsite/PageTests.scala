@@ -5,19 +5,45 @@ package staticsite
 import org.junit.Test
 import org.junit.Assert._
 
-class PageTests extends DottyDocTest {
+import model.Package
+
+class PageTests extends DottyDocTest with SourceFileOps {
   import scala.collection.JavaConverters._
 
+  private def markdownPage(
+    sourceCode: String,
+    path: String = "test-page",
+    params: Map[String, AnyRef] = Map.empty,
+    includes: Map[String, Include] = Map.empty,
+    docs: Map[String, Package] = Map.empty
+  ) = new MarkdownPage(
+    path,
+    stringToSource(path, sourceCode),
+    params,
+    includes,
+    docs
+  )
+
+  private def htmlPage(
+    sourceCode: String,
+    path: String = "test-page",
+    params: Map[String, AnyRef] = Map.empty,
+    includes: Map[String, Include] = Map.empty,
+    docs: Map[String, Package] = Map.empty
+  ) = new HtmlPage(
+    path,
+    stringToSource(path, sourceCode),
+    params,
+    includes
+  )
+
   @Test def mdHas1Key = {
-    val page = new MarkdownPage(
+    val page = markdownPage(
       """|---
          |key:
          |---
          |
-         |great""".stripMargin,
-      Map.empty,
-      Map.empty,
-      Map.empty
+         |great""".stripMargin
     )
 
     assert(
@@ -29,15 +55,13 @@ class PageTests extends DottyDocTest {
   }
 
   @Test def yamlPreservesLiquidTags = {
-    val page1 = new MarkdownPage(
+    val page1 = markdownPage(
       """|---
          |key:
          |---
          |
          |{{ content }}""".stripMargin,
-       Map("content" -> "Hello, world!"),
-       Map.empty,
-       Map.empty
+       params = Map("content" -> "Hello, world!")
     )
 
     assert(
@@ -47,11 +71,9 @@ class PageTests extends DottyDocTest {
 
     assertEquals("<p>Hello, world!</p>\n", page1.html)
 
-    val page2 = new MarkdownPage(
+    val page2 = markdownPage(
       """|{{ content }}""".stripMargin,
-      Map("content" -> "hello"),
-      Map.empty,
-      Map.empty
+      params = Map("content" -> "hello")
     )
     assert(
       page2.yaml == Map(),
@@ -59,13 +81,11 @@ class PageTests extends DottyDocTest {
     )
     assertEquals("<p>hello</p>\n", page2.html)
 
-    val page3 = new MarkdownPage(
+    val page3 = markdownPage(
       """|{% if product.title == "Awesome Shoes" %}
          |These shoes are awesome!
          |{% endif %}""".stripMargin,
-      Map("product" -> Map("title" -> "Awesome Shoes").asJava),
-      Map.empty,
-      Map.empty
+      params = Map("product" -> Map("title" -> "Awesome Shoes").asJava)
     )
 
     assertEquals(
@@ -75,20 +95,18 @@ class PageTests extends DottyDocTest {
   }
 
   @Test def simpleHtmlPage = {
-    val p1 = new HtmlPage("""<h1>{{ "hello, world!" }}</h1>""", Map.empty, Map.empty)
+    val p1 = htmlPage("""<h1>{{ "hello, world!" }}</h1>""")
     assert(p1.yaml == Map(), "non-empty yaml found")
     assertEquals("<h1>hello, world!</h1>", p1.html)
   }
 
   @Test def htmlPageHasNoYaml = {
-    val page = new HtmlPage(
+    val page = htmlPage(
       """|---
          |layout: main
          |---
          |
-         |Hello, world!""".stripMargin,
-      Map.empty,
-      Map.empty
+         |Hello, world!""".stripMargin
     )
 
     assert(!page.html.contains("---\nlayout: main\n---"),
@@ -96,14 +114,12 @@ class PageTests extends DottyDocTest {
   }
 
   @Test def illegalYamlFrontMatter = try {
-    val page = new HtmlPage(
+    val page = htmlPage(
       """|---
          |layout: main
          |
          |
-         |Hello, world!""".stripMargin,
-      Map.empty,
-      Map.empty
+         |Hello, world!""".stripMargin
     )
 
     page.html

@@ -2,35 +2,50 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import dotc.config.Printers.dottydoc
 
+import dotc.util.SourceFile
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.front.matter.AbstractYamlFrontMatterVisitor
-
-import model.Package
-
 import java.util.{ Map => JMap, List => JList }
 
+import dotc.config.Printers.dottydoc
+import model.Package
+
+/** When the YAML front matter cannot be parsed, this exception is thrown */
 case class IllegalFrontMatter(message: String) extends Exception(message)
 
 trait Page {
   import scala.collection.JavaConverters._
 
-  def includes: Map[String, String]
-  def pageContent: String
+  /** Full map of includes, from name to contents */
+  def includes: Map[String, Include]
+
+  /** `SourceFile` with contents of page */
+  def sourceFile: SourceFile
+
+  /** String containing full unexpanded content of page */
+  final lazy val content: String = new String(sourceFile.content)
+
+  /** Parameters to page */
   def params: Map[String, AnyRef]
 
+  /** Path to template */
+  def path: String
+
+  /** YAML front matter from the top of the file */
   def yaml: Map[String, AnyRef] = {
     if (_yaml eq null) initFields()
     _yaml
   }
 
+  /** HTML generated from page */
   def html: String = {
     if (_html eq null) initFields()
     _html
   }
 
+  /** First paragraph of page extracted from rendered HTML */
   def firstParagraph: String = {
     if (_html eq null) initFields()
 
@@ -62,7 +77,7 @@ trait Page {
   protected[this] var _yaml: Map[String, AnyRef /* String | JList[String] */] = _
   protected[this] var _html: String = _
   protected[this] def initFields() = {
-    val md = Parser.builder(Site.markdownOptions).build.parse(pageContent)
+    val md = Parser.builder(Site.markdownOptions).build.parse(content)
     val yamlCollector = new AbstractYamlFrontMatterVisitor()
     yamlCollector.visit(md)
 
@@ -82,21 +97,21 @@ trait Page {
 
     // YAML must start with "---" and end in either "---" or "..."
     val withoutYaml =
-      if (pageContent.startsWith("---\n")) {
+      if (content.startsWith("---\n")) {
         val str =
-          pageContent.lines
+          content.lines
           .drop(1)
           .dropWhile(line => line != "---" && line != "...")
           .drop(1).mkString("\n")
 
-        if (str.isEmpty) throw IllegalFrontMatter(pageContent)
+        if (str.isEmpty) throw IllegalFrontMatter(content)
         else str
       }
-      else pageContent
+      else content
 
     // make accessible via "{{ page.title }}" in templates
     val page = Map("page" ->  _yaml.asJava)
-    _html = LiquidTemplate(withoutYaml).render(params ++ page, includes)
+    _html = LiquidTemplate(path, withoutYaml).render(params ++ page, includes)
   }
 
   /** Takes "page" from `params` map in case this is a second expansion, and
@@ -114,12 +129,20 @@ trait Page {
     .getOrElse(newYaml)
 }
 
-class HtmlPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String]) extends Page {
-  lazy val pageContent = fileContents
-}
+class HtmlPage(
+  val path: String,
+  val sourceFile: SourceFile,
+  val params: Map[String, AnyRef],
+  val includes: Map[String, Include]
+) extends Page
 
-class MarkdownPage(fileContents: => String, val params: Map[String, AnyRef], val includes: Map[String, String], docs: Map[String, Package]) extends Page {
-  lazy val pageContent = fileContents
+class MarkdownPage(
+  val path: String,
+  val sourceFile: SourceFile,
+  val params: Map[String, AnyRef],
+  val includes: Map[String, Include],
+  docs: Map[String, Package]
+) extends Page {
 
   override protected[this] def initFields() = {
     super.initFields()

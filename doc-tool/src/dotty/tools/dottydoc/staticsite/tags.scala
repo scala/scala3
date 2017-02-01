@@ -108,7 +108,7 @@ object tags {
     }
   }
 
-  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, String])
+  case class ResourceInclude(params: Map[String, AnyRef], includes: Map[String, Include])
   extends Tag("include") {
     import scala.collection.JavaConverters._
     val DefaultExtension = ".html"
@@ -124,7 +124,9 @@ object tags {
         .get(incResource)
         .map { template =>
           if (nodes.length > 1) ctx.put(origInclude, nodes(1).render(ctx))
-          LiquidTemplate(template).render(Map.empty ++ ctx.getVariables.asScala, includes)
+
+          LiquidTemplate(template.path, template.show)
+            .render(ctx.getVariables.asScala.toMap, includes)
         }
         .getOrElse {
           /*dottydoc.*/println(s"couldn't find include file '$origInclude'")
