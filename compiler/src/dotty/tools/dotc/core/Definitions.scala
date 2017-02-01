@@ -766,6 +766,8 @@ class Definitions {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
+  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
+
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
 
