@@ -33,7 +33,6 @@ class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
 
   import dotty.tools.dotc.ast.tpd._
 
-  /** @inheritdoc */
   val phaseName = "isInstanceOfEvaluator"
 
   /** Transforms a [TypeApply](dotty.tools.dotc.ast.Trees.TypeApply) in order to

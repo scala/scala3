@@ -3,6 +3,8 @@ package dottydoc
 package core
 
 import dotc.core.Contexts.Context
+import dotc.core.Symbols.Symbol
+import dotc.core.Comments.{ Comment => CompilerComment }
 import transform.DocMiniPhase
 import model._
 import model.internal._
@@ -12,8 +14,20 @@ import util.syntax._
 
 /** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
+  private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] =
+    ctx.docbase.docstring(sym)
+    .orElse {
+      // If the symbol doesn't have a docstring, look for an overridden
+      // ancestor with a docstring
+      sym.allOverriddenSymbols.collectFirst {
+        case parentSym if ctx.docbase.docstring(parentSym).isDefined =>
+          parentSym
+      }
+      .flatMap(ctx.docbase.docstring)
+    }
+
   private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] =
-    ctx.docbase.docstring(ent.symbol).map { cmt =>
+    getComment(ent.symbol).map { cmt =>
       val parsed = parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
 
       if (ctx.settings.wikiSyntax.value)
