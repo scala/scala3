@@ -7,10 +7,13 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
+import core.Symbols._
+import core.Definitions
+import Inferencing._
 import ErrorReporting._
 
 object Dynamic {
@@ -18,7 +21,10 @@ object Dynamic {
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
 }
 
-/** Translates selection that does not typecheck according to the scala.Dynamic rules:
+/** Handles programmable member selections of `Dynamic` instances and values
+ *  with structural types. Two functionalities:
+ *
+ * 1. Translates selection that does not typecheck according to the scala.Dynamic rules:
  *    foo.bar(baz) = quux                   ~~> foo.selectDynamic(bar).update(baz, quux)
  *    foo.bar = baz                         ~~> foo.updateDynamic("bar")(baz)
  *    foo.bar(x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
@@ -26,6 +32,10 @@ object Dynamic {
  *    foo.bar                               ~~> foo.selectDynamic(bar)
  *
  *  The first matching rule of is applied.
+ *
+ * 2. Translates member selections on structural types to calls of `selectDynamic`
+ *    or `selectDynamicMethod` on a `Selectable` instance. @See handleStructural.
+ *
  */
 trait Dynamic { self: Typer with Applications =>
   import Dynamic._
@@ -99,5 +109,57 @@ trait Dynamic { self: Typer with Applications =>
       if (targs.isEmpty) select
       else untpd.TypeApply(select, targs)
     untpd.Apply(selectWithTypes, Literal(Constant(name.toString)))
+  }
+
+  /** Handle reflection-based dispatch for members of structural types.
+   *  Given `x.a`, where `x` is of (widened) type `T` and `x.a` is of type `U`:
+   *
+   *  If `U` is a value type, map `x.a` to the equivalent of:
+   *
+   *     (x: Selectable).selectDynamic(x, "a").asInstanceOf[U]
+   *
+   *  If `U` is a method type (T1,...,Tn)R, map `x.a` to the equivalent of:
+   *
+   *     (x: Selectable).selectDynamicMethod("a", CT1, ..., CTn).asInstanceOf[(T1,...,Tn) => R]
+   *
+   *  where CT1,...,CTn are the class tags representing the erasure of T1,...,Tn.
+   *
+   *  It's an error if U is neither a value nor a method type, or a dependent method
+   *  type, or of too large arity (limit is Definitions.MaxStructuralMethodArity).
+   */
+  def handleStructural(tree: Tree)(implicit ctx: Context): Tree = {
+    val Select(qual, name) = tree
+
+    def structuralCall(selectorName: TermName, formals: List[Tree]) = {
+      val selectable = adapt(qual, defn.SelectableType)
+      val scall = untpd.Apply(
+        untpd.TypedSplice(selectable.select(selectorName)),
+        (Literal(Constant(name.toString)) :: formals).map(untpd.TypedSplice(_)))
+      typed(scall)
+    }
+
+    def fail(reason: String) =
+      errorTree(tree, em"Structural access not allowed on method $name because it $reason")
+
+    tree.tpe.widen match {
+      case tpe: MethodType =>
+        if (tpe.isDependent)
+          fail(i"has a dependent method type")
+        else if (tpe.paramNames.length > Definitions.MaxStructuralMethodArity)
+          fail(i"""takes too many parameters.
+                  |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")
+        else {
+          def issueError(msgFn: String => String): Unit = ctx.error(msgFn(""), tree.pos)
+          val ctags = tpe.paramTypes.map(pt =>
+            inferImplicitArg(defn.ClassTagType.appliedTo(pt :: Nil), issueError, tree.pos.endPos))
+          structuralCall(nme.selectDynamicMethod, ctags).asInstance(tpe.toFunctionType())
+        }
+      case tpe: ValueType =>
+        structuralCall(nme.selectDynamic, Nil).asInstance(tpe)
+      case tpe: PolyType =>
+        fail("is polymorphic")
+      case tpe =>
+        fail(i"has an unsupported type: $tpe")
+    }
   }
 }

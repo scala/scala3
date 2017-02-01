@@ -1,3 +1,4 @@
+import scala.reflect.Selectable.reflectiveSelectable
 object Test {
 type Meat = {
   type IsMeat = Any
@@ -40,5 +41,5 @@ def newLion: Lion = new {
 }
 val milka = newCow
 val leo = newLion
-leo.eats(milka)  // error: no projector found
+leo.eats(milka)
 }

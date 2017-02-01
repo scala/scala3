@@ -1040,9 +1040,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
-      if (rsym.is(Method) && rsym.allOverriddenSymbols.isEmpty)
-        ctx.error(i"refinement $rsym without matching type in parent $tpt1", refinement.pos)
-    }
+      if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
+        ctx.error(i"polymorphic refinement $rsym without matching type in parent $tpt1 is no longer allowed", refinement.pos)    }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
@@ -2067,7 +2066,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               adaptInterpolated(tree.appliedToTypeTrees(typeArgs), pt, original))
           }
         case wtp =>
-          pt match {
+          if (isStructuralTermSelect(tree)) adapt(handleStructural(tree), pt)
+          else pt match {
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>

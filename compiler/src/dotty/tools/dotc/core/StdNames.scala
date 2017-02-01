@@ -481,6 +481,7 @@ object StdNames {
     val sameElements: N         = "sameElements"
     val scala_ : N              = "scala"
     val selectDynamic: N        = "selectDynamic"
+    val selectDynamicMethod: N  = "selectDynamicMethod"
     val selectOverloadedMethod: N = "selectOverloadedMethod"
     val selectTerm: N           = "selectTerm"
     val selectType: N           = "selectType"
