@@ -415,6 +415,8 @@ object Checking {
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
     def checkValueClassMember(stat: Tree) = stat match {
+      case _: TypeDef if stat.symbol.isClass =>
+        ctx.error(s"value class may not define an inner class", stat.pos)
       case _: ValDef if !stat.symbol.is(ParamAccessor) =>
         ctx.error(s"value class may not define non-parameter field", stat.pos)
       case d: DefDef if d.symbol.isConstructor =>
