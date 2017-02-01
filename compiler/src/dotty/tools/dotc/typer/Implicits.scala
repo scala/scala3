@@ -521,6 +521,8 @@ trait Implicits { self: Typer =>
                 val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), error, pos)
                 if (etag.isEmpty) etag else etag.select(nme.wrap)
               case tp if hasStableErasure(tp) =>
+                if (defn.isBottomClass(tp.typeSymbol))
+                  error(where => i"attempt to take ClassTag of undetermined type for $where")
                 ref(defn.ClassTagModule)
                   .select(nme.apply)
                   .appliedToType(tp)
