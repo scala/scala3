@@ -40,9 +40,6 @@ trait Phases {
   def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
     if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
 
-  def atPhaseNotLaterThanTyper[T](op: Context => T): T =
-    atPhaseNotLaterThan(base.typerPhase)(op)
-
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
 
