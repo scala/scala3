@@ -57,10 +57,10 @@ if [ "$1" = "test" ]; then
 
     # add all contents of $PWD to commit
     git add -A
-    git commit -m "Update gh-pages site for $GIT_HEAD"
+    git commit -m "Update gh-pages site for $GIT_HEAD" || true
 
     # push using dotty-bot to origin
-    git push https://dotty-bot:$BOT_PASS@github.com/lampepfl/dotty.git
+    git push https://dotty-bot:$BOT_PASS@github.com/lampepfl/dotty.git || true
 else
     # wrong parameter passed, should only generate docs if argument is "test"
     # to avoid multiple site gens

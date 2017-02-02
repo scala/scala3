@@ -21,6 +21,7 @@ pipeline:
   slack:
     image: plugins/slack
     channel: dotty
+    webhook: $SLACK_WEBHOOK
     when:
       branch: master
 
