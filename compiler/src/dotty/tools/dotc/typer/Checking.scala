@@ -603,12 +603,25 @@ trait Checking {
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
    *  the superclass of `cls` derived from the superclass of `parent`.
+   *
+   *  An exception is made if `cls` extends `Any`, and `parent` is a Java class
+   *  that extends `Object`. For instance, we accept code like
+   *
+   *      ... extends Any with java.io.Serializable
+   *
+   *  The standard library relies on this idiom.
    */
-  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = {
     parent match {
-      case parent: ClassSymbol if parent.is(Trait) && !cls.superClass.derivesFrom(parent.superClass) =>
-        ctx.error(em"illegal trait inheritance: super${cls.superClass} does not derive from $parent's super${parent.superClass}", pos)
+      case parent: ClassSymbol if parent is Trait =>
+        val psuper = parent.superClass
+        val csuper = cls.superClass
+        val ok = csuper.derivesFrom(psuper) ||
+          parent.is(JavaDefined) && csuper == defn.AnyClass && psuper == defn.ObjectClass
+        if (!ok)
+          ctx.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
       case _ =>
+    }
   }
 }
 
