@@ -491,7 +491,8 @@ class Namer { typer: Typer =>
         if (cdef.isClassDef) {
           classDef(name) = cdef
           cdef.attachmentOrElse(ExpandedTree, cdef) match {
-            case Thicket(cls :: mval :: (mcls @ TypeDef(_, _: Template)) :: crest) =>
+            case Thicket(cls :: mval :: (mcls @ TypeDef(mname, _: Template)) :: crest)
+            if name.moduleClassName == mname =>
               moduleDef(name) = mcls
             case _ =>
           }
@@ -505,7 +506,8 @@ class Namer { typer: Typer =>
         classDef get name.toTypeName match {
           case Some(cdef) =>
             cdef.attachmentOrElse(ExpandedTree, cdef) match {
-              case Thicket(cls :: mval :: TypeDef(_, compimpl: Template) :: crest) =>
+              case Thicket(cls :: mval :: TypeDef(mname, compimpl: Template) :: crest)
+              if name.moduleClassName == mname =>
                 val mcls1 = cpy.TypeDef(mcls)(
                     rhs = cpy.Template(impl)(body = compimpl.body ++ impl.body))
                 mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: rest))
