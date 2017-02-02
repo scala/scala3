@@ -31,8 +31,10 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   def nameRefToString(ref: NameRef): String = nameToString(tastyName(ref))
 
   def printNames() =
-    for ((name, idx) <- tastyName.contents.zipWithIndex)
-      println(f"$idx%4d: " + nameToString(name))
+    for ((name, idx) <- tastyName.contents.zipWithIndex) {
+      val index = "%4d: ".format(idx)
+      println(index + nameToString(name))
+    }
 
   def printContents(): Unit = {
     println("Names:")
@@ -47,7 +49,10 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
       import reader._
       var indent = 0
-      def newLine() = print(f"\n ${index(currentAddr) - index(startAddr)}%5d:" + " " * indent)
+      def newLine() = {
+        val length = "%5d:".format(index(currentAddr) - index(startAddr))
+        print(s"\n $length" + " " * indent)
+      }
       def printNat() = print(" " + readNat())
       def printName() = {
         val idx = readNat()
