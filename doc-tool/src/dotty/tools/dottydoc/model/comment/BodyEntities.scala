@@ -32,8 +32,8 @@ final case class Body(blocks: Seq[Block]) {
     }
     (blocks flatMap summaryInBlock).toList match {
       case Nil => None
-      case inline :: Nil => Some(Body(Seq(Paragraph(inline))))
-      case inlines => Some(Body(Seq(Paragraph(Chain(inlines)))))
+      case inl :: Nil => Some(Body(Seq(Paragraph(inl))))
+      case inls => Some(Body(Seq(Paragraph(Chain(inls)))))
     }
   }
 }

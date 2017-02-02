@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: "Benchmarks"
+---
+
 The regression benchmark infrastructure is still under construction.
 
 A preview can be found below:

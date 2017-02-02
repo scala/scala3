@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Building Dotty with Intellij IDEA"
+layout: doc-page
+title: Building Dotty with Intellij IDEA
 ---
 
 Dotty compiler support is available in the [Scala plugin nightly] starting

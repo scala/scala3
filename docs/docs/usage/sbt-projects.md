@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: doc-page
 title: "Using Dotty with sbt"
 ---
 

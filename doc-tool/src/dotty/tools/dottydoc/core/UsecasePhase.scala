@@ -16,6 +16,7 @@ class UsecasePhase extends DocMiniPhase {
     val name = d.name.show.split("\\$").head // UseCase defs get $pos appended to their names
     DefImpl(
       sym,
+      annotations(sym),
       name,
       flags(d),
       path(d.symbol).init :+ name,

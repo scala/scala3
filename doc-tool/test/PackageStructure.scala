@@ -7,7 +7,7 @@ import org.junit.Assert._
 import dotc.util.SourceFile
 import model.internal._
 
-class PackageStructure extends DottyTest {
+class PackageStructure extends DottyDocTest {
   @Test def multipleCompilationUnits = {
     val source1 = new SourceFile(
       "TraitA.scala",
@@ -29,7 +29,7 @@ class PackageStructure extends DottyTest {
 
     checkSources(source1 :: source2 :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, List(tA, tB), _, _) =>
+        case PackageImpl(_, _, _, List(tA, tB), _, _, _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
             s"trait A had name '${tA.name}' and trait B had name '${tB.name}'"
@@ -63,9 +63,10 @@ class PackageStructure extends DottyTest {
       packages("scala") match {
         case PackageImpl(
           _,
+          _,
           "scala",
-          List(PackageImpl(_, "scala.collection", List(tA, tB), _, _)),
-          _, _
+          List(PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _)),
+          _, _, _, _
         ) =>
           assert(
             tA.name == "A" && tB.name == "B",
@@ -77,7 +78,7 @@ class PackageStructure extends DottyTest {
       }
 
       packages("scala.collection") match {
-        case PackageImpl(_, "scala.collection", List(tA, tB), _, _) =>
+        case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _) =>
           assert(
             tA.name == "A" && tB.name == "B",
             s"trait A had name '${tA.name}' and trait B had name '${tB.name}'"

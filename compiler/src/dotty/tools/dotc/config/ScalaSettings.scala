@@ -101,6 +101,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val XoldPatmat = BooleanSetting("-Xoldpatmat", "Use the pre-2.10 pattern matcher. Otherwise, the 'virtualizing' pattern matcher is used in 2.10.")
   val XnoPatmatAnalysis = BooleanSetting("-Xno-patmat-analysis", "Don't perform exhaustivity/unreachability analysis. Also, ignore @switch annotation.")
   val XfullLubs = BooleanSetting("-Xfull-lubs", "Retains pre 2.10 behavior of less aggressive truncation of least upper bounds.")
+  val wikiSyntax = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc")
 
   /** -Y "Private" settings
    */
@@ -212,11 +213,18 @@ class ScalaSettings extends Settings.SettingGroup {
     "A directory containing static resources needed for the API documentation"
   )
 
-  val DocTitle = StringSetting (
-    "-Ydoc-title",
-    "title",
-    "The overall name of the Scaladoc site",
-    ""
+  val siteRoot = StringSetting(
+    "-siteroot",
+    "site root",
+    "A directory containing static files from which to generate documentation",
+    sys.props("user.dir")
+  )
+
+  val projectName = StringSetting (
+    "-project",
+    "project title",
+    "The name of the project",
+    sys.props("user.dir").split(sys.props("file.separator")).last
   )
 
   val DocVersion = StringSetting (

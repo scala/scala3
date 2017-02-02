@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: doc-page
 title: "Differences between Scalac and Dotty"
 ---
 

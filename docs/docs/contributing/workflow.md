@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Workflow"
+layout: doc-page
+title: Workflow
 ---
 
 This document details common workflow patterns when working with Dotty.
@@ -19,13 +19,14 @@ git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala
 
 From sbt:
 
-```none
+```bash
+$ sbt
 > dotc <OPTIONS> <FILE>
 ```
 
 From terminal:
 
-```none
+```bash
 $ ./bin/dotc <OPTIONS> <FILE>
 ```
 
@@ -47,7 +48,7 @@ Additional logging information can be obtained by changes some `noPrinter` to
 
 ## Running tests ##
 
-```none
+```bash
 $ sbt
 > partest --show-diff --verbose
 ```
@@ -55,7 +56,7 @@ $ sbt
 ## Running single tests ##
 To test a specific test tests/x/y.scala (for example tests/pos/t210.scala):
 
-```none
+```bash
 > partest-only-no-bootstrap --show-diff --verbose tests/partest-generated/x/y.scala
 ```
 
@@ -67,7 +68,7 @@ the way partest has been set up.
 There is no power mode for the REPL yet, but you can inspect types with the
 type stealer:
 
-```none
+```bash
 > repl
 scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
 ```

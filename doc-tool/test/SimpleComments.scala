@@ -4,7 +4,7 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-class TestSimpleComments extends DottyTest {
+class TestSimpleComments extends DottyDocTest {
 
   @Test def simpleComment = {
     val source =
@@ -25,5 +25,4 @@ class TestSimpleComments extends DottyTest {
       assertEquals(traitCmt, "<p>Hello, world!</p>")
     }
   }
-
 }

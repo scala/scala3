@@ -7,36 +7,37 @@ import core._
 import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._
 
-
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
  *
- *  +-------------+----------------------------+----------------------------+------------------+
  *  | Sel\sc      | trait                      | class                      | final class      |
- *  +-------------+----------------------------+----------------------------+------------------+
+ *  | ----------: | :------------------------: | :------------------------: | :--------------: |
  *  | trait       |               ?            |               ?            | statically known |
  *  | class       |               ?            | false if classes unrelated | statically known |
  *  | final class | false if classes unrelated | false if classes unrelated | statically known |
- *  +-------------+----------------------------+----------------------------+------------------+
  *
  *  This is a generalized solution to raising an error on unreachable match
  *  cases and warnings on other statically known results of `isInstanceOf`.
  *
  *  Steps taken:
  *
- *  1.  evalTypeApply will establish the matrix and choose the appropriate
- *      handling for the case:
- *  2.  a) Sel/sc is a value class or scrutinee is `Any`
- *      b) handleStaticallyKnown
- *      c) falseIfUnrelated with `scrutinee <:< selector`
- *      d) handleFalseUnrelated
- *      e) leave as is (aka `happens`)
- *  3.  Rewrite according to step taken in `2`
+ *  1. `evalTypeApply` will establish the matrix and choose the appropriate
+ *     handling for the case:
+ *      - Sel/sc is a value class or scrutinee is `Any`
+ *      - `handleStaticallyKnown`
+ *      - `falseIfUnrelated` with `scrutinee <:< selector`
+ *      - `handleFalseUnrelated`
+ *      - leave as is (`happens`)
+ *  2. Rewrite according to steps taken in 1
  */
 class IsInstanceOfEvaluator extends MiniPhaseTransform { thisTransformer =>
 
   import dotty.tools.dotc.ast.tpd._
 
-  def phaseName = "isInstanceOfEvaluator"
+  val phaseName = "isInstanceOfEvaluator"
+
+  /** Transforms a [TypeApply](dotty.tools.dotc.ast.Trees.TypeApply) in order to
+   *  evaluate an `isInstanceOf` check according to the rules defined above.
+   */
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val defn = ctx.definitions
 

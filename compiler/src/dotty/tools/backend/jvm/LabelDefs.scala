@@ -37,44 +37,47 @@ import StdNames.nme
 
 /**
  * Verifies that each Label DefDef has only a single address to jump back and
- * reorders them such that they are not nested and this address is a fall-through address for JVM
+ * reorders them such that they are not nested and this address is a
+ * fall-through address for the JVM.
  *
- * ei such code
- *
- *
+ * ```scala
  * <label> def foo(i: Int) = {
  *   <label> def bar = 0
  *   <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  *   dough(i)
- *   }
+ * }
  *
  * foo(100)
+ * ```
  *
- * will get rewritten to
+ * will get rewritten to:
  *
- *                                                  \
+ * ```scala
  * <label> def foo(i: Int) = dough(i)
  * <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  * <label> def bar = 2
  *   foo(100)
+ * ```
  *
- *   Proposed way to generate this pattern in backend is:
+ * Proposed way to generate this pattern in backend is:
  *
- *  foo(100)
- *  <jump foo>
- *  <label> def foo(i: Int) = dough(i)
- *  // <jump a>                           // unreachable
- *  <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
- *  // <jump a>                           // unreachable
- *  <label> def bar = 2
- *  // <jump a>                           // unreachable
- *  <asm point a>
+ * ```scala
+ * foo(100)
+ * <jump foo>
+ * <label> def foo(i: Int) = dough(i)
+ * // <jump a>                           // unreachable
+ * <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
+ * // <jump a>                           // unreachable
+ * <label> def bar = 2
+ * // <jump a>                           // unreachable
+ * <asm point a>
+ * ```
  *
- *    Unreachable jumps will be eliminated by local dead code analysis.
- *    After JVM is smart enough to remove next-line jumps
+ * Unreachable jumps will be eliminated by local dead code analysis.
+ * After JVM is smart enough to remove next-line jumps
  *
- * Note that Label DefDefs can be only nested in Block, otherwise no one would be able to call them
- * Other DefDefs are eliminated
+ * Note that Label DefDefs can be only nested in Block, otherwise no one would
+ * be able to call them Other DefDefs are eliminated
  */
 class LabelDefs extends MiniPhaseTransform {
   def phaseName: String = "labelDef"

@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Classpaths
+---
+
 When ran from the `dotty` script, this is the classloader stack:
 
 ```

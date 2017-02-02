@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Building Dotty with Eclipse"
+layout: doc-page
+title: Building Dotty with Eclipse
 ---
 
 Build setup

@@ -7,7 +7,6 @@ import dotc.core.Contexts.Context
 import dotc.core.Flags
 import dotc.core.Names._
 import dotc.core.Symbols._
-import dotc.core.Types._
 import dotc.core.Names._
 import dotc.util.Positions._
 import model.internal._
@@ -17,30 +16,25 @@ import model._
 trait MemberLookup {
   /** Performs a lookup based on the provided (pruned) query string
    *
-   *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or LinkToExternal
+   *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or
+   *  LinkToExternal
    */
-  def lookup(
-    entity: Entity,
-    packages: Map[String, Package],
-    query: String,
-    pos: Position
-  ): LinkTo = {
-    val notFound: LinkTo = Tooltip(query)
+  def lookup(entity: Entity, packages: Map[String, Package], query: String): Option[Entity] = {
+    val notFound: Option[Entity] = None
     val querys = query.split("\\.").toList
 
     /** Looks for the specified entity among `ent`'s members */
-    def localLookup(ent: Entity with Members, searchStr: String): LinkTo =
+    def localLookup(ent: Entity with Members, searchStr: String): Option[Entity] =
       ent
         .members
         .collect { case x if x.name == searchStr => x }
         .sortBy(_.path.last)
         .headOption
-        .fold(notFound)(e => LinkToEntity(e))
 
     /** Looks for an entity down in the structure, if the search list is Nil,
      *  the search stops
      */
-    def downwardLookup(ent: Entity with Members, search: List[String]): LinkTo =
+    def downwardLookup(ent: Entity with Members, search: List[String]): Option[Entity] =
       search match {
         case Nil => notFound
         case x :: Nil =>
@@ -48,7 +42,10 @@ trait MemberLookup {
         case x :: xs  =>
           ent
             .members
-            .collect { case e: Entity with Members if e.name == x => e }
+            .collect {
+              case e: Entity with Members if e.name == x => e
+              case e: Entity with Members if e.name == x.init && x.last == '$' => e
+            }
             .headOption
             .fold(notFound)(e => downwardLookup(e, xs))
       }
@@ -56,9 +53,9 @@ trait MemberLookup {
     /** Finds package with longest matching name, then does downwardLookup in
      *  the package
      */
-    def globalLookup: LinkTo = {
+    def globalLookup: Option[Entity] = {
       def longestMatch(list: List[String]): List[String] =
-        if (list == Nil) Nil
+        if (list eq Nil) Nil
         else
           packages
           .get(list.mkString("."))
@@ -72,13 +69,14 @@ trait MemberLookup {
     }
 
     (querys, entity) match {
+      case (xs, NonEntity) => globalLookup
       case (x :: Nil, e: Entity with Members) =>
         localLookup(e, x)
       case (x :: _, e: Entity with Members) if x == entity.name =>
         downwardLookup(e, querys)
       case (x :: xs, _) =>
         if (xs.nonEmpty) globalLookup
-        else lookup(entity, packages, "scala." + query, pos)
+        else lookup(entity, packages, "scala." + query)
     }
   }
 
@@ -86,7 +84,13 @@ trait MemberLookup {
     entity: Entity,
     packages: Map[String, Package],
     title: Inline,
-    pos: Position,
     query: String
-  ): EntityLink = EntityLink(title, lookup(entity, packages, query, pos))
+  ): EntityLink = {
+    val link =
+      lookup(entity, packages, query)
+      .map(LinkToEntity)
+      .getOrElse(Tooltip(query))
+
+    EntityLink(title, link)
+  }
 }

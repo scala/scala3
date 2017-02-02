@@ -3,27 +3,41 @@ package model
 
 import comment.Comment
 import references._
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
 
 object internal {
 
-  trait Impl {
+  final case class PackageImpl(
+    var symbol: Symbol,
+    var annotations: List[String],
+    var name: String,
+    var members: List[Entity],
+    var path: List[String],
+    var superTypes: List[MaterializableLink] = Nil,
+    var comment: Option[Comment] = None,
     var parent: Entity = NonEntity
+  ) extends Package
+
+  object EmptyPackage {
+    def apply(path: List[String], name: String): PackageImpl = {
+      PackageImpl(NoSymbol, Nil, name, Nil, path)
+    }
   }
 
-  final case class PackageImpl(
+  final case class TypeAliasImpl (
     symbol: Symbol,
+    annotations: List[String],
+    modifiers: List[String],
     name: String,
-    var members: List[Entity],
     path: List[String],
-    var comment: Option[Comment] = None
-  ) extends Package with Impl {
-    def children: List[Entity with Members] =
-      members.collect { case x: Entity with Members => x }
-  }
+    alias: Option[Reference],
+    var comment: Option[Comment] = None,
+    var parent: Entity = NonEntity
+  ) extends TypeAlias
 
   final case class ClassImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -31,11 +45,14 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
-  ) extends Class with Impl
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Class
 
   final case class CaseClassImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -43,11 +60,14 @@ object internal {
     typeParams: List[String] = Nil,
     constructors: List[List[ParamList]] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
-  ) extends CaseClass with Impl
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends CaseClass
 
   final case class TraitImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
@@ -55,21 +75,27 @@ object internal {
     typeParams: List[String] = Nil,
     traitParams: List[ParamList] = Nil,
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
-  ) extends Trait with Impl
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Trait
 
   final case class ObjectImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     members: List[Entity],
     modifiers: List[String],
     path: List[String],
     superTypes: List[MaterializableLink] = Nil,
-    var comment: Option[Comment] = None
-  ) extends Object with Impl
+    var comment: Option[Comment] = None,
+    var companionPath: List[String] = Nil,
+    var parent: Entity = NonEntity
+  ) extends Object
 
   final case class DefImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     modifiers: List[String],
     path: List[String],
@@ -77,18 +103,22 @@ object internal {
     typeParams: List[String] = Nil,
     paramLists: List[ParamList] = Nil,
     var comment: Option[Comment] = None,
-    implicitlyAddedFrom: Option[Reference] = None
-  ) extends Def with Impl
+    implicitlyAddedFrom: Option[Reference] = None,
+    var parent: Entity = NonEntity
+  ) extends Def
 
   final case class ValImpl(
     symbol: Symbol,
+    annotations: List[String],
     name: String,
     modifiers: List[String],
     path: List[String],
     returnValue: Reference,
+    kind: String,
     var comment: Option[Comment] = None,
-    implicitlyAddedFrom: Option[Reference] = None
-  ) extends Val with Impl
+    implicitlyAddedFrom: Option[Reference] = None,
+    var parent: Entity = NonEntity
+  ) extends Val
 
   final case class ParamListImpl(
     list: List[NamedReference],

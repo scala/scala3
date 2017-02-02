@@ -2,69 +2,19 @@ package dotty.tools.dottydoc
 package model
 package comment
 
+import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
+import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
+import com.vladsch.flexmark.parser.{ Parser => MarkdownParser }
 
 trait CommentParser extends util.MemberLookup {
   import Regexes._
   import model.internal._
-
-  case class FullComment (
-    body:                    Body,
-    authors:                 List[Body],
-    see:                     List[Body],
-    result:                  Option[Body],
-    throws:                  Map[String, Body],
-    valueParams:             Map[String, Body],
-    typeParams:              Map[String, Body],
-    version:                 Option[Body],
-    since:                   Option[Body],
-    todo:                    List[Body],
-    deprecated:              Option[Body],
-    note:                    List[Body],
-    example:                 List[Body],
-    constructor:             Option[Body],
-    group:                   Option[Body],
-    groupDesc:               Map[String, Body],
-    groupNames:              Map[String, Body],
-    groupPrio:               Map[String, Body],
-    hideImplicitConversions: List[Body],
-    shortDescription:        List[Body]
-  ) {
-
-    /**
-     * Transform this CommentParser.FullComment to a Comment using the supplied
-     * Body transformer
-     */
-    def toComment(transform: Body => String) = Comment(
-      transform(body),
-      short =
-        if (shortDescription.nonEmpty) shortDescription.map(transform).mkString
-        else body.summary.map(transform).getOrElse(""),
-      authors.map(transform),
-      see.map(transform),
-      result.map(transform),
-      throws.map { case (k, v) => (k, transform(v)) },
-      valueParams.map { case (k, v) => (k, transform(v)) },
-      typeParams.map { case (k, v) => (k, transform(v)) },
-      version.map(transform),
-      since.map(transform),
-      todo.map(transform),
-      deprecated.map(transform),
-      note.map(transform),
-      example.map(transform),
-      constructor.map(transform),
-      group.map(transform),
-      groupDesc.map { case (k, v) => (k, transform(v)) },
-      groupNames.map { case (k, v) => (k, transform(v)) },
-      groupPrio.map { case (k, v) => (k, transform(v)) },
-      hideImplicitConversions.map(transform)
-    )
-  }
 
   /** Parses a raw comment string into a `Comment` object.
    * @param packages     all packages parsed by Scaladoc tool, used for lookup
@@ -79,29 +29,29 @@ trait CommentParser extends util.MemberLookup {
     src: String,
     pos: Position,
     site: Symbol = NoSymbol
-  )(implicit ctx: Context): FullComment = {
+  )(implicit ctx: Context): ParsedComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`
-     *  instance, recursively on lines. To do so, it splits the whole comment
-     *  into main body and tag bodies, then runs the `WikiParser` on each body
-     *  before creating the comment instance.
-     *
-     * @param docBody     The body of the comment parsed until now.
-     * @param tags        All tags parsed until now.
-     * @param lastTagKey  The last parsed tag, or `None` if the tag section
-     *                    hasn't started. Lines that are not tagged are part
-     *                    of the previous tag or, if none exists, of the body.
-     * @param remaining   The lines that must still recursively be parsed.
-     * @param inCodeBlock Whether the next line is part of a code block (in
-     *                    which no tags must be read).
-     */
+      * instance, recursively on lines. To do so, it splits the whole comment
+      * into main body and tag bodies, then runs the `WikiParser` on each body
+      * before creating the comment instance.
+      *
+      * @param docBody     The body of the comment parsed until now.
+      * @param tags        All tags parsed until now.
+      * @param lastTagKey  The last parsed tag, or `None` if the tag section
+      *                    hasn't started. Lines that are not tagged are part
+      *                    of the previous tag or, if none exists, of the body.
+      * @param remaining   The lines that must still recursively be parsed.
+      * @param inCodeBlock Whether the next line is part of a code block (in
+      *                    which no tags must be read).
+      */
     def parseComment (
       docBody: StringBuilder,
       tags: Map[TagKey, List[String]],
       lastTagKey: Option[TagKey],
       remaining: List[String],
       inCodeBlock: Boolean
-    ): FullComment = remaining match {
+    ): ParsedComment = remaining match {
 
       case CodeBlockStartRegex(before, marker, after) :: ls if (!inCodeBlock) =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
@@ -194,24 +144,16 @@ trait CommentParser extends util.MemberLookup {
           case None => List.empty
         }
 
-        val stripTags=List(inheritDiagramTag, contentDiagramTag, SimpleTagKey("template"), SimpleTagKey("documentable"))
+        val stripTags = List(inheritDiagramTag, contentDiagramTag, SimpleTagKey("template"), SimpleTagKey("documentable"))
         val tagsWithoutDiagram = tags.filterNot(pair => stripTags.contains(pair._1))
 
-        val bodyTags: mutable.Map[TagKey, List[Body]] =
-          mutable.Map((tagsWithoutDiagram mapValues {tag => tag map (parseWikiAtSymbol(entity, packages, _, pos, site))}).toSeq: _*)
+        val bodyTags: mutable.Map[TagKey, List[String]] =
+          mutable.Map((tagsWithoutDiagram).toSeq: _*)
 
-        def oneTag(key: SimpleTagKey, filterEmpty: Boolean = true): Option[Body] =
-          ((bodyTags remove key): @unchecked) match {
-            case Some(r :: rs) if !(filterEmpty && r.blocks.isEmpty) =>
-              if (!rs.isEmpty) dottydoc.println(s"$pos: only one '@${key.name}' tag is allowed")
-              Some(r)
-            case _ => None
-          }
+        def allTags(key: SimpleTagKey): List[String] =
+          (bodyTags remove key).getOrElse(Nil).reverse
 
-        def allTags[B](key: SimpleTagKey): List[Body] =
-          (bodyTags remove key).getOrElse(Nil).filterNot(_.blocks.isEmpty).reverse
-
-        def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): Map[String, Body] = {
+        def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): Map[String, String] = {
           val keys: Seq[SymbolTagKey] =
             bodyTags.keys.toSeq flatMap {
               case stk: SymbolTagKey if (stk.name == key.name) => Some(stk)
@@ -220,48 +162,32 @@ trait CommentParser extends util.MemberLookup {
                 None
               case _ => None
             }
-          val pairs: Seq[(String, Body)] =
+          val pairs: Seq[(String, String)] =
             for (key <- keys) yield {
               val bs = (bodyTags remove key).get
               if (bs.length > 1)
                 dottydoc.println(s"$pos: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
               (key.symbol, bs.head)
             }
-          Map.empty[String, Body] ++ (if (filterEmpty) pairs.filterNot(_._2.blocks.isEmpty) else pairs)
+          Map.empty[String, String] ++ pairs
         }
 
-        def linkedExceptions: Map[String, Body] = {
-          val m = allSymsOneTag(SimpleTagKey("throws"), filterEmpty = false)
-
-          m.map { case (targetStr,body) =>
-            val link = lookup(entity, packages, targetStr, pos)
-            val newBody = body match {
-              case Body(List(Paragraph(Chain(content)))) =>
-                val descr = Text(" ") +: content
-                val entityLink = EntityLink(Monospace(Text(targetStr)), link)
-                Body(List(Paragraph(Chain(entityLink +: descr))))
-              case _ => body
-            }
-            (targetStr, newBody)
-          }
-        }
-
-        val cmt = FullComment(
-          body                    = parseWikiAtSymbol(entity, packages, docBody.toString, pos, site),
+        val cmt = ParsedComment(
+          body                    = docBody.toString,
           authors                 = allTags(SimpleTagKey("author")),
           see                     = allTags(SimpleTagKey("see")),
-          result                  = oneTag(SimpleTagKey("return")),
-          throws                  = linkedExceptions,
+          result                  = allTags(SimpleTagKey("return")),
+          throws                  = allSymsOneTag(SimpleTagKey("throws")),
           valueParams             = allSymsOneTag(SimpleTagKey("param")),
           typeParams              = allSymsOneTag(SimpleTagKey("tparam")),
-          version                 = oneTag(SimpleTagKey("version")),
-          since                   = oneTag(SimpleTagKey("since")),
+          version                 = allTags(SimpleTagKey("version")),
+          since                   = allTags(SimpleTagKey("since")),
           todo                    = allTags(SimpleTagKey("todo")),
-          deprecated              = oneTag(SimpleTagKey("deprecated"), filterEmpty = false),
+          deprecated              = allTags(SimpleTagKey("deprecated")),
           note                    = allTags(SimpleTagKey("note")),
           example                 = allTags(SimpleTagKey("example")),
-          constructor             = oneTag(SimpleTagKey("constructor")),
-          group                   = oneTag(SimpleTagKey("group")),
+          constructor             = allTags(SimpleTagKey("constructor")),
+          group                   = allTags(SimpleTagKey("group")),
           groupDesc               = allSymsOneTag(SimpleTagKey("groupdesc")),
           groupNames              = allSymsOneTag(SimpleTagKey("groupname")),
           groupPrio               = allSymsOneTag(SimpleTagKey("groupprio")),
@@ -269,8 +195,14 @@ trait CommentParser extends util.MemberLookup {
           shortDescription        = allTags(SimpleTagKey("shortDescription"))
         )
 
-        for ((key, _) <- bodyTags)
-          dottydoc.println(s"$pos: Tag '@${key.name}' is not recognised")
+        for ((key, _) <- bodyTags) ctx.docbase.warn(
+          s"Tag '@${key.name}' is not recognised",
+          // FIXME: here the position is stretched out over the entire comment,
+          // with the point being at the very end. This ensures that the entire
+          // comment will be visible in error reporting. A more fine-grained
+          // reporting would be amazing here.
+          entity.symbol.sourcePosition(Position(pos.start, pos.end, pos.end))
+        )
 
         cmt
       }
@@ -306,541 +238,4 @@ trait CommentParser extends util.MemberLookup {
     pos: Position,
     site: Symbol
   )(implicit ctx: Context): Body = new WikiParser(entity, packages, string, pos, site).document()
-
-  /** Original wikiparser from NSC
-    * @author Ingo Maier
-    * @author Manohar Jonnalagedda
-    * @author Gilles Dubochet
-    */
-  protected final class WikiParser(
-    entity: Entity,
-    packages: Map[String, Package],
-    val buffer: String,
-    pos: Position,
-    site: Symbol
-  )(implicit ctx: Context) extends CharReader(buffer) { wiki =>
-    var summaryParsed = false
-
-    def document(): Body = {
-      val blocks = new mutable.ListBuffer[Block]
-      while (char != endOfText)
-        blocks += block()
-      Body(blocks.toList)
-    }
-
-    /* BLOCKS */
-
-    /** {{{ block ::= code | title | hrule | listBlock | para }}} */
-    def block(): Block = {
-      if (checkSkipInitWhitespace("{{{"))
-        code()
-      else if (checkSkipInitWhitespace('='))
-        title()
-      else if (checkSkipInitWhitespace("----"))
-        hrule()
-      else if (checkList)
-        listBlock
-      else {
-        para()
-      }
-    }
-
-    /** listStyle ::= '-' spc | '1.' spc | 'I.' spc | 'i.' spc | 'A.' spc | 'a.' spc
-      * Characters used to build lists and their constructors */
-    protected val listStyles = Map[String, (Seq[Block] => Block)](
-      "- "  -> ( UnorderedList(_) ),
-      "1. " -> ( OrderedList(_,"decimal") ),
-      "I. " -> ( OrderedList(_,"upperRoman") ),
-      "i. " -> ( OrderedList(_,"lowerRoman") ),
-      "A. " -> ( OrderedList(_,"upperAlpha") ),
-      "a. " -> ( OrderedList(_,"lowerAlpha") )
-    )
-
-    /** Checks if the current line is formed with more than one space and one the listStyles */
-    def checkList =
-      (countWhitespace > 0) && (listStyles.keys exists { checkSkipInitWhitespace(_) })
-
-    /** {{{
-      * nListBlock ::= nLine { mListBlock }
-      *      nLine ::= nSpc listStyle para '\n'
-      * }}}
-      * Where n and m stand for the number of spaces. When `m > n`, a new list is nested. */
-    def listBlock(): Block = {
-
-      /** Consumes one list item block and returns it, or None if the block is
-        * not a list or a different list. */
-      def listLine(indent: Int, style: String): Option[Block] =
-        if (countWhitespace > indent && checkList)
-          Some(listBlock)
-        else if (countWhitespace != indent || !checkSkipInitWhitespace(style))
-          None
-        else {
-          jumpWhitespace()
-          jump(style)
-          val p = Paragraph(inline(isInlineEnd = false))
-          blockEnded("end of list line ")
-          Some(p)
-        }
-
-      /** Consumes all list item blocks (possibly with nested lists) of the
-        * same list and returns the list block. */
-      def listLevel(indent: Int, style: String): Block = {
-        val lines = mutable.ListBuffer.empty[Block]
-        var line: Option[Block] = listLine(indent, style)
-        while (line.isDefined) {
-          lines += line.get
-          line = listLine(indent, style)
-        }
-        val constructor = listStyles(style)
-        constructor(lines)
-      }
-
-      val indent = countWhitespace
-      val style = (listStyles.keys find { checkSkipInitWhitespace(_) }).getOrElse(listStyles.keys.head)
-      listLevel(indent, style)
-    }
-
-    def code(): Block = {
-      jumpWhitespace()
-      jump("{{{")
-      val str = readUntil("}}}")
-      if (char == endOfText)
-        reportError(pos, "unclosed code block")
-      else
-        jump("}}}")
-      blockEnded("code block")
-      Code(normalizeIndentation(str))
-    }
-
-    /** {{{ title ::= ('=' inline '=' | "==" inline "==" | ...) '\n' }}} */
-    def title(): Block = {
-      jumpWhitespace()
-      val inLevel = repeatJump('=')
-      val text = inline(check("=" * inLevel))
-      val outLevel = repeatJump('=', inLevel)
-      if (inLevel != outLevel)
-        reportError(pos, "unbalanced or unclosed heading")
-      blockEnded("heading")
-      Title(text, inLevel)
-    }
-
-    /** {{{ hrule ::= "----" { '-' } '\n' }}} */
-    def hrule(): Block = {
-      jumpWhitespace()
-      repeatJump('-')
-      blockEnded("horizontal rule")
-      HorizontalRule()
-    }
-
-    /** {{{ para ::= inline '\n' }}} */
-    def para(): Block = {
-      val p =
-        if (summaryParsed)
-          Paragraph(inline(isInlineEnd = false))
-        else {
-          val s = summary()
-          val r =
-            if (checkParaEnded()) List(s) else List(s, inline(isInlineEnd = false))
-          summaryParsed = true
-          Paragraph(Chain(r))
-        }
-      while (char == endOfLine && char != endOfText)
-        nextChar()
-      p
-    }
-
-    /* INLINES */
-
-    val OPEN_TAG = "^<([A-Za-z]+)( [^>]*)?(/?)>$".r
-    val CLOSE_TAG = "^</([A-Za-z]+)>$".r
-    private def readHTMLFrom(begin: HtmlTag): String = {
-      val list = mutable.ListBuffer.empty[String]
-      val stack = mutable.ListBuffer.empty[String]
-
-      begin.close match {
-        case Some(HtmlTag(CLOSE_TAG(s))) =>
-          stack += s
-        case _ =>
-          return ""
-      }
-
-      do {
-        val str = readUntil { char == safeTagMarker || char == endOfText }
-        nextChar()
-
-        list += str
-
-        str match {
-          case OPEN_TAG(s, _, standalone) => {
-            if (standalone != "/") {
-              stack += s
-            }
-          }
-          case CLOSE_TAG(s) => {
-            if (s == stack.last) {
-              stack.remove(stack.length-1)
-            }
-          }
-          case _ => ;
-        }
-      } while (stack.length > 0 && char != endOfText)
-
-      list mkString ""
-    }
-
-    def inline(isInlineEnd: => Boolean): Inline = {
-
-      def inline0(): Inline = {
-        if (char == safeTagMarker) {
-          val tag = htmlTag()
-          HtmlTag(tag.data + readHTMLFrom(tag))
-        }
-        else if (check("'''")) bold()
-        else if (check("''")) italic()
-        else if (check("`"))  monospace()
-        else if (check("__")) underline()
-        else if (check("^"))  superscript()
-        else if (check(",,")) subscript()
-        else if (check("[[")) link()
-        else {
-          val str = readUntil {
-            char == safeTagMarker ||
-            check("''")           ||
-            char == '`'           ||
-            check("__")           ||
-            char == '^'           ||
-            check(",,")           ||
-            check("[[")           ||
-            isInlineEnd           ||
-            checkParaEnded        ||
-            char == endOfLine
-          }
-          Text(str)
-        }
-      }
-
-      val inlines: List[Inline] = {
-        val iss = mutable.ListBuffer.empty[Inline]
-        iss += inline0()
-        while (!isInlineEnd && !checkParaEnded) {
-          val skipEndOfLine = if (char == endOfLine) {
-            nextChar()
-            true
-          } else {
-            false
-          }
-
-          val current = inline0()
-          (iss.last, current) match {
-            case (Text(t1), Text(t2)) if skipEndOfLine =>
-              iss.update(iss.length - 1, Text(t1 + endOfLine + t2))
-            case (i1, i2) if skipEndOfLine =>
-              iss ++= List(Text(endOfLine.toString), i2)
-            case _ => iss += current
-          }
-        }
-        iss.toList
-      }
-
-      inlines match {
-        case Nil => Text("")
-        case i :: Nil => i
-        case is => Chain(is)
-      }
-
-    }
-
-    def htmlTag(): HtmlTag = {
-      jump(safeTagMarker)
-      val read = readUntil(safeTagMarker)
-      if (char != endOfText) jump(safeTagMarker)
-      HtmlTag(read)
-    }
-
-    def bold(): Inline = {
-      jump("'''")
-      val i = inline(check("'''"))
-      jump("'''")
-      Bold(i)
-    }
-
-    def italic(): Inline = {
-      jump("''")
-      val i = inline(check("''"))
-      jump("''")
-      Italic(i)
-    }
-
-    def monospace(): Inline = {
-      jump("`")
-      val i = inline(check("`"))
-      jump("`")
-      Monospace(i)
-    }
-
-    def underline(): Inline = {
-      jump("__")
-      val i = inline(check("__"))
-      jump("__")
-      Underline(i)
-    }
-
-    def superscript(): Inline = {
-      jump("^")
-      val i = inline(check("^"))
-      if (jump("^")) {
-        Superscript(i)
-      } else {
-        Chain(Seq(Text("^"), i))
-      }
-    }
-
-    def subscript(): Inline = {
-      jump(",,")
-      val i = inline(check(",,"))
-      jump(",,")
-      Subscript(i)
-    }
-
-    def summary(): Inline = {
-      val i = inline(checkSentenceEnded())
-      Summary(
-        if (jump("."))
-          Chain(List(i, Text(".")))
-        else
-          i
-      )
-    }
-
-    def link(): Inline = {
-      val SchemeUri = """([a-z]+:.*)""".r
-      jump("[[")
-      val parens = 2 + repeatJump('[')
-      val stop  = "]" * parens
-      val target = readUntil { check(stop) || isWhitespaceOrNewLine(char) }
-      val title =
-        if (!check(stop)) Some({
-          jumpWhitespaceOrNewLine()
-          inline(check(stop))
-        })
-        else None
-      jump(stop)
-
-      (target, title) match {
-        case (SchemeUri(uri), optTitle) =>
-          Link(uri, optTitle getOrElse Text(uri))
-        case (qualName, optTitle) =>
-          makeEntityLink(entity, packages, optTitle getOrElse Text(target), pos, target)
-      }
-    }
-
-    /* UTILITY */
-
-    /** {{{ eol ::= { whitespace } '\n' }}} */
-    def blockEnded(blockType: String): Unit = {
-      if (char != endOfLine && char != endOfText) {
-        reportError(pos, "no additional content on same line after " + blockType)
-        jumpUntil(endOfLine)
-      }
-      while (char == endOfLine)
-        nextChar()
-    }
-
-    /**
-     *  Eliminates the (common) leading spaces in all lines, based on the first line
-     *  For indented pieces of code, it reduces the indent to the least whitespace prefix:
-     *    {{{
-     *       indented example
-     *       another indented line
-     *       if (condition)
-     *         then do something;
-     *       ^ this is the least whitespace prefix
-     *    }}}
-     */
-    def normalizeIndentation(_code: String): String = {
-
-      val code = _code.replaceAll("\\s+$", "").dropWhile(_ == '\n') // right-trim + remove all leading '\n'
-      val lines = code.split("\n")
-
-      // maxSkip - size of the longest common whitespace prefix of non-empty lines
-      val nonEmptyLines = lines.filter(_.trim.nonEmpty)
-      val maxSkip = if (nonEmptyLines.isEmpty) 0 else nonEmptyLines.map(line => line.prefixLength(_ == ' ')).min
-
-      // remove common whitespace prefix
-      lines.map(line => if (line.trim.nonEmpty) line.substring(maxSkip) else line).mkString("\n")
-    }
-
-    def checkParaEnded(): Boolean = {
-      (char == endOfText) ||
-      ((char == endOfLine) && {
-        val poff = offset
-        nextChar() // read EOL
-        val ok = {
-          checkSkipInitWhitespace(endOfLine) ||
-          checkSkipInitWhitespace('=') ||
-          checkSkipInitWhitespace("{{{") ||
-          checkList ||
-          checkSkipInitWhitespace('\u003D')
-        }
-        offset = poff
-        ok
-      })
-    }
-
-    def checkSentenceEnded(): Boolean = {
-      (char == '.') && {
-        val poff = offset
-        nextChar() // read '.'
-        val ok = char == endOfText || char == endOfLine || isWhitespace(char)
-        offset = poff
-        ok
-      }
-    }
-
-    def reportError(pos: Position, message: String) =
-      dottydoc.println(s"$pos: $message")
-  }
-
-  protected sealed class CharReader(buffer: String) { reader =>
-
-    var offset: Int = 0
-    def char: Char =
-      if (offset >= buffer.length) endOfText else buffer charAt offset
-
-    final def nextChar() =
-      offset += 1
-
-    final def check(chars: String): Boolean = {
-      val poff = offset
-      val ok = jump(chars)
-      offset = poff
-      ok
-    }
-
-    def checkSkipInitWhitespace(c: Char): Boolean = {
-      val poff = offset
-      jumpWhitespace()
-      val ok = jump(c)
-      offset = poff
-      ok
-    }
-
-    def checkSkipInitWhitespace(chars: String): Boolean = {
-      val poff = offset
-      jumpWhitespace()
-      val (ok0, chars0) =
-        if (chars.charAt(0) == ' ')
-          (offset > poff, chars substring 1)
-        else
-          (true, chars)
-      val ok = ok0 && jump(chars0)
-      offset = poff
-      ok
-    }
-
-    def countWhitespace: Int = {
-      var count = 0
-      val poff = offset
-      while (isWhitespace(char) && char != endOfText) {
-        nextChar()
-        count += 1
-      }
-      offset = poff
-      count
-    }
-
-    /* Jumpers */
-
-    /** Jumps a character and consumes it
-      * @return true only if the correct character has been jumped */
-    final def jump(ch: Char): Boolean = {
-      if (char == ch) {
-        nextChar()
-        true
-      }
-      else false
-    }
-
-    /** Jumps all the characters in chars, consuming them in the process.
-      * @return true only if the correct characters have been jumped
-      */
-    final def jump(chars: String): Boolean = {
-      var index = 0
-      while (index < chars.length && char == chars.charAt(index) && char != endOfText) {
-        nextChar()
-        index += 1
-      }
-      index == chars.length
-    }
-
-    final def repeatJump(c: Char, max: Int = Int.MaxValue): Int = {
-      var count = 0
-      while (jump(c) && count < max)
-        count += 1
-      count
-    }
-
-    final def jumpUntil(ch: Char): Int = {
-      var count = 0
-      while (char != ch && char != endOfText) {
-        nextChar()
-        count += 1
-      }
-      count
-    }
-
-    final def jumpUntil(pred: => Boolean): Int = {
-      var count = 0
-      while (!pred && char != endOfText) {
-        nextChar()
-        count += 1
-      }
-      count
-    }
-
-    def jumpWhitespace() = jumpUntil(!isWhitespace(char))
-
-    def jumpWhitespaceOrNewLine() = jumpUntil(!isWhitespaceOrNewLine(char))
-
-
-    /* Readers */
-    final def readUntil(c: Char): String = {
-      withRead {
-        while (char != c && char != endOfText) {
-          nextChar()
-        }
-      }
-    }
-
-    final def readUntil(chars: String): String = {
-      assert(chars.length > 0)
-      withRead {
-        val c = chars.charAt(0)
-        while (!check(chars) && char != endOfText) {
-          nextChar()
-          while (char != c && char != endOfText)
-            nextChar()
-        }
-      }
-    }
-
-    final def readUntil(pred: => Boolean): String = {
-      withRead {
-        while (char != endOfText && !pred) {
-          nextChar()
-        }
-      }
-    }
-
-    private def withRead(read: => Unit): String = {
-      val start = offset
-      read
-      buffer.substring(start, offset)
-    }
-
-    /* Chars classes */
-    def isWhitespace(c: Char) = c == ' ' || c == '\t'
-
-    def isWhitespaceOrNewLine(c: Char) = isWhitespace(c) || c == '\n'
-  }
 }

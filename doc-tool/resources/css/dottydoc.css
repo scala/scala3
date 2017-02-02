@@ -1,0 +1,330 @@
+html {
+    height: 100%;
+}
+body {
+    min-height: 100%;
+}
+
+div#content-wrapper {
+    min-height: 100vh;
+    padding-left: 250px;
+    transition: all 0.5s ease;
+}
+
+div#content-wrapper.toggled {
+    padding-left: 0;
+}
+
+div.index-wrapper {
+    background-color: #fafafa;
+    width: 250px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+div#doc-page-container > h1 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3em;
+}
+
+div#doc-page-container > h1 {
+    margin: 3rem 0 0.5rem 0;
+}
+
+div#doc-page-container > h3 {
+    font-size: 1.5rem;
+}
+
+div#doc-page-container > h4 {
+    font-size: 1.25rem;
+}
+
+div#doc-page-container > h5 {
+    font-size: 1rem;
+}
+
+div#entity-container h1 > a,
+div#entity-container h2 > a,
+div#entity-container h3 > a,
+div#entity-container h4 > a,
+div#entity-container h5 > a,
+div#entity-container h6 > a,
+div#doc-page-container > h1 > a,
+div#doc-page-container > h2 > a,
+div#doc-page-container > h3 > a,
+div#doc-page-container > h4 > a,
+div#doc-page-container > h5 > a,
+div#doc-page-container > h6 > a {
+    text-decoration: none;
+    color: #373a3c;
+}
+
+div#entity-container h1 > a:hover,
+div#entity-container h2 > a:hover,
+div#entity-container h3 > a:hover,
+div#entity-container h4 > a:hover,
+div#entity-container h5 > a:hover,
+div#entity-container h6 > a:hover,
+div#doc-page-container > h1 > a:hover,
+div#doc-page-container > h2 > a:hover,
+div#doc-page-container > h3 > a:hover,
+div#doc-page-container > h4 > a:hover,
+div#doc-page-container > h5 > a:hover,
+div#doc-page-container > h6 > a:hover {
+    text-decoration: underline;
+}
+
+div#entity-container h1 > a:focus,
+div#entity-container h2 > a:focus,
+div#entity-container h3 > a:focus,
+div#entity-container h4 > a:focus,
+div#entity-container h5 > a:focus,
+div#entity-container h6 > a:focus,
+div#doc-page-container > h1 > a:focus,
+div#doc-page-container > h2 > a:focus,
+div#doc-page-container > h3 > a:focus,
+div#doc-page-container > h4 > a:focus,
+div#doc-page-container > h5 > a:focus,
+div#doc-page-container > h6 > a:focus {
+    outline: none;
+}
+
+div#content-body {
+    border-left: 1px solid #e0e0e0;
+    box-shadow: -3px 0px 5px -2px rgba(0,0,0,0.14);
+    position: relative;
+    padding: 10px;
+    background-color: #f4f3f4;
+    min-height: 100vh;
+}
+
+div#menu-toggle {
+    color: #837F84;
+    outline: none;
+    padding-left: 20px;
+    padding-top: 10px;
+}
+
+div#menu-toggle:hover {
+    color: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+}
+
+ul.index-entities {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+ul.toc {
+    list-style-type: none;
+    padding-top: 18px;
+    padding-left: 0;
+}
+
+ul.toc > li:hover {
+    background-color: transparent;
+}
+
+ul.toc > li.toc-title {
+    margin-top: 1rem;
+}
+
+ul.toc > li.toc-title > a {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+ul.toc > li > a#home-button,
+ul.toc > li > a#home-button:hover {
+    text-align: center;
+    background: transparent;
+}
+
+ul.toc > li > a#home-button svg g#logo-foreground {
+    fill: rgba(202, 68, 94, 1);
+}
+
+ul.toc > li > a#home-button svg g#logo-background {
+    fill: rgba(202, 68, 94, 0.45);
+}
+
+ul.toc > li > a {
+    width: 100%;
+    user-select: none;
+}
+
+ul.toc > li,
+ul.index-entities > li {
+    line-height: 40px;
+    display: inline-block;
+    width: 100%;
+}
+
+ul.index-entities > li.index-entity:not(.entity-package) {
+    width: calc(100% + 40px);
+    transition: all 0.2s ease;
+    margin-left: -40px;
+}
+
+ul.index-entities > li.index-entity.with-companion {
+    width: calc(100% + 80px);
+    margin-left: -80px;
+}
+
+ul.index-entities > li.index-entity:hover {
+    margin-left: 0;
+}
+
+ul.toc > li.logo-li > a {
+    margin: 0;
+    padding: 0;
+    float: none;
+}
+
+li.index-entity.entity-package > a.entity-name {
+  color: #ff4081;
+  text-decoration: none;
+}
+
+ul.toc > li > a,
+ul.index-entities > li > a.entity-name {
+    font-size: 13px;
+    display: block;
+    padding: 0 0 0 24px;
+    color: rgba(0,0,0,.87);
+    background: transparent;
+    cursor: pointer;
+    float: left;
+}
+
+ul.index-entities > li > div.entity-kinds {
+    float: left;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor {
+    float: left;
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor:focus,
+ul.index-entities > li > div.entity-kinds > a.letter-anchor:hover {
+    text-decoration: none;
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.object {
+    background-color: rgb(44, 108, 141);
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.class {
+    background-color: rgb(68, 173, 125);
+}
+
+ul.index-entities > li > div.entity-kinds > a.letter-anchor.trait {
+    background-color: rgb(25, 170, 207);
+}
+
+ul.toc > li > ul.show {
+    display: block;
+    list-style-type: none;
+    font-size: 13px;
+}
+
+ul.toc > li > ul.hide {
+    display: none;
+}
+
+ul.index-entities > li.index-title > span {
+    font-size: 16px;
+    font-weight: bold;
+    color: rgba(0,0,0,.87);
+    padding: 0 24px;
+}
+
+ul.index-entities > li.index-title:hover {
+    background-color: transparent;
+}
+
+li.index-entity > a:focus {
+    text-decoration: none;
+}
+
+ul.index-entities > li:hover,
+ul.toc > li > a:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+ul.index-entities > li > a:hover,
+ul.toc > li > a:hover {
+    text-decoration: none;
+}
+
+.darken {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+div#post-title,
+div#post-footer,
+h1#doc-page-title {
+    margin-left: 20px;
+    margin-top: 10px;
+}
+
+div#post-title > h2#sub-title {
+    font-weight: 100;
+    font-size: 24px;
+}
+
+div#post-title > h3#post-date {
+    font-weight: 100;
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+div#blog-post-container,
+div#doc-page-container {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 20px;
+    padding: 30px;
+}
+
+div#doc-page-container > p + h1 {
+    margin-bottom: 20px;
+}
+
+div#post-footer > img#author-image {
+    width: 100px;
+    height: auto;
+    border-radius: 50%;
+}
+
+div#post-footer > span#post-author {
+    margin-left: 10px;
+    font-weight: 100;
+}
+
+pre {
+    padding: 0;
+    font-size: 13px;
+    background: rgba(244, 243, 244, 0.6);
+    border-radius: 2px;
+    margin-top: 20px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+pre > code.language-none,
+pre > code.hljs {
+    display: block;
+    padding: 10px;
+    background: transparent;
+}

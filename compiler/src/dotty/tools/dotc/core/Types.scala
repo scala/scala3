@@ -41,9 +41,11 @@ object Types {
 
   implicit def eqType: Eq[Type, Type] = Eq
 
-  /** The class of types.
+  /** Main class representing types.
+   *
    *  The principal subclasses and sub-objects are as follows:
    *
+   *  ```none
    *  Type -+- ProxyType --+- NamedType ----+--- TypeRef
    *        |              |                 \
    *        |              +- SingletonType-+-+- TermRef
@@ -74,6 +76,7 @@ object Types {
    *                       +- NoPrefix
    *                       +- ErrorType
    *                       +- WildcardType
+   *  ```
    *
    *  Note: please keep in sync with copy in `docs/docs/internals/type-system.md`.
    */

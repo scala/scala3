@@ -10,7 +10,7 @@ import model.internal._
 import model.references._
 import util.syntax._
 
-class UsecaseTest extends DottyTest {
+class UsecaseTest extends DottyDocTest {
   @Test def simpleUsecase = {
     val source = new SourceFile(
       "DefWithUseCase.scala",
@@ -29,7 +29,7 @@ class UsecaseTest extends DottyTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, List(trt: Trait), _, _) =>
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
 
           assert(foo.comment.isDefined, "Lost comment in transformations")
@@ -73,7 +73,7 @@ class UsecaseTest extends DottyTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, List(trt: Trait), _, _) =>
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
 
           val returnValue = foo.returnValue match {
@@ -118,7 +118,7 @@ class UsecaseTest extends DottyTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-        case PackageImpl(_, _, List(trt: Trait), _, _) =>
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
 
           val returnValue = foo.returnValue match {
@@ -166,7 +166,7 @@ class UsecaseTest extends DottyTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-      case PackageImpl(_, _, List(trt: Trait), _, _) =>
+      case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
 
         val returnValue = map.returnValue match {
@@ -209,7 +209,7 @@ class UsecaseTest extends DottyTest {
 
     checkSources(source :: Nil) { packages =>
       packages("scala") match {
-      case PackageImpl(_, _, List(trt: Trait), _, _) =>
+      case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
         assert(map.comment.isDefined, "Lost comment in transformations")
 

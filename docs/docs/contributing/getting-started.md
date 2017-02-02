@@ -1,6 +1,6 @@
 ---
-layout: default
-title: "Getting Started"
+layout: doc-page
+title: Getting Started
 ---
 
 Talks on Dotty
@@ -23,7 +23,7 @@ Compiling and Running
 ---------------------
 Start by cloning the repository:
 
-```none
+```bash
 $ git clone https://github.com/lampepfl/dotty.git
 $ cd dotty
 ```
@@ -31,7 +31,7 @@ $ cd dotty
 Dotty provides a standard sbt build: compiling, running and starting a repl can
 all be done from within sbt using
 
-```none
+```bash
 $ sbt
 > dotc tests/pos/HelloWorld.scala
 > dotr HelloWorld
@@ -50,7 +50,7 @@ there is also a bash script that can be used in the same way:
 
 Starting a REPL
 ---------------
-```none
+```bash
 $ sbt
 > repl
 Welcome to Scala.next (pre-alpha)  (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_101).
@@ -61,6 +61,6 @@ scala>
 
 or via bash:
 
-```none
+```bash
 $ ./bin/dotr
 ```

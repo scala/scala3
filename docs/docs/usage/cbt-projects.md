@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: doc-page
 title: "Using Dotty with cbt"
 ---
 
@@ -9,7 +9,7 @@ cbt comes with built-in dotty support. Follow the
 ```scala
 // build/build.scala
 import cbt._
-class Build(val context: Context) extends Dotty{
+class Build(val context: Context) extends Dotty {
   ...
 }
 ```

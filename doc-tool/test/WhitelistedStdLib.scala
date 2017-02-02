@@ -4,12 +4,10 @@ package dottydoc
 import org.junit.Test
 import org.junit.Assert._
 
-class WhitelistedStdLib extends DottyTest {
-  val files: List[String] =
-    StdLibSources.whitelisted.filterNot(_.endsWith("package.scala"))
+class TestWhitelistedCollections extends DottyDocTest {
 
   @Test def arrayHasDocumentation =
-    checkFiles(files) { packages =>
+    checkFiles(TestWhitelistedCollections.files) { packages =>
       val array =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.Array")
@@ -19,7 +17,7 @@ class WhitelistedStdLib extends DottyTest {
     }
 
   @Test def traitImmutableHasDocumentation =
-    checkFiles(files) { packages =>
+    checkFiles(TestWhitelistedCollections.files) { packages =>
       val imm =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.Immutable")
@@ -32,4 +30,10 @@ class WhitelistedStdLib extends DottyTest {
         imm.comment.map(_.body).get.length > 0,
         "Imm did not have a comment with length > 0")
     }
+}
+
+object TestWhitelistedCollections {
+  val files: List[String] =
+    StdLibSources.whitelisted
+    .filterNot(_.endsWith("package.scala"))
 }
