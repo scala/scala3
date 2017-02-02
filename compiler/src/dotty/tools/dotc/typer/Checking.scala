@@ -448,7 +448,6 @@ object Checking {
       }
       stats.foreach(checkValueClassMember)
     }
-
   }
 }
 
@@ -601,6 +600,16 @@ trait Checking {
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) =
     Checking.checkDerivedValueClass(clazz, stats)
+
+  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
+   *  the superclass of `cls` derived from the superclass of `parent`.
+   */
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit =
+    parent match {
+      case parent: ClassSymbol if parent.is(Trait) && !cls.superClass.derivesFrom(parent.superClass) =>
+        ctx.error(em"illegal trait inheritance: super${cls.superClass} does not derive from $parent's super${parent.superClass}", pos)
+      case _ =>
+  }
 }
 
 trait NoChecking extends Checking {
@@ -617,4 +626,5 @@ trait NoChecking extends Checking {
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
+  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
 }

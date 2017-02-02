@@ -1288,6 +1288,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (tree.isType) {
         val result = typedType(tree)(superCtx)
         val psym = result.tpe.typeSymbol
+        checkTraitInheritance(psym, cls, tree.pos)
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
           maybeCall(result, psym, psym.primaryConstructor.info)
         else
@@ -1295,6 +1296,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       else {
         val result = typedExpr(tree)(superCtx)
+        checkTraitInheritance(result.symbol, cls, tree.pos)
         checkParentCall(result, cls)
         result
       }
