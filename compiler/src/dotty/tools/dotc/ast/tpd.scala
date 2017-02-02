@@ -573,6 +573,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Try(tree: Tree)(expr, cases, finalizer)
   }
 
+  override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
+
   implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
