@@ -15,6 +15,7 @@ import reporting.Reporter
 import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
+import printing.XprintMode
 
 import scala.annotation.tailrec
 import scala.reflect.io.VirtualFile
@@ -95,7 +96,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val squashedPhase = ctx.squashed(prevPhase)
-    val treeString = unit.tpdTree.show
+    val treeString = unit.tpdTree.show(ctx.withProperty(XprintMode, Some(())))
 
     ctx.echo(s"result of $unit after $squashedPhase:")
 
