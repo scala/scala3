@@ -260,7 +260,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
     val owner = fns.head.owner
     val parents1 =
-      if (parents.head.classSymbol.is(Trait)) defn.ObjectType :: parents
+      if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
     val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
