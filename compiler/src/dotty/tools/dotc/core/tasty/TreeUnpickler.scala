@@ -733,11 +733,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         // no longer necessary.
       goto(end)
       setPos(start, tree)
-
-      // This is also done in PostTyper but needs to be redone here
-      if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) {
-        sym.info = Checking.checkNoPrivateLeaks(sym, tree.pos)
-      }
+      sym.info = ta.avoidPrivateLeaks(sym, tree.pos)
       tree
     }
 

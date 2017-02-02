@@ -668,13 +668,15 @@ class Namer { typer: Typer =>
      *  to pick up the context at the point where the completer was created.
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
+      val sym = denot.symbol
       original match {
-        case original: MemberDef => addAnnotations(denot.symbol, original)
+        case original: MemberDef => addAnnotations(sym, original)
         case _ =>
       }
       addInlineInfo(denot)
-      denot.info = typeSig(denot.symbol)
-      Checking.checkWellFormed(denot.symbol)
+      denot.info = typeSig(sym)
+      Checking.checkWellFormed(sym)
+      denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
   }
 
@@ -854,6 +856,7 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.setApplicableFlags(
         (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))
+      cls.info = avoidPrivateLeaks(cls, cls.pos)
     }
   }
 
