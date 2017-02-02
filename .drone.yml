@@ -18,11 +18,18 @@ pipeline:
     when:
       branch: master
 
+  gitter:
+    image: plugins/gitter
+    when:
+      branch: master
+      status: changed
+
   slack:
     image: plugins/slack
     channel: dotty
     when:
       branch: master
+      status: changed
 
 matrix:
   TEST:
