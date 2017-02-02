@@ -327,7 +327,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       (tp.paramNames, tp.paramTypes, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
         paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
-          case argtpe: SingletonType if isByName || isIdempotentExpr(arg) => argtpe
+          case argtpe: SingletonType if isIdempotentExpr(arg) => argtpe
           case argtpe =>
             val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
             val (bindingFlags, bindingType) =
