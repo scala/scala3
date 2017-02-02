@@ -498,7 +498,9 @@ class Namer { typer: Typer =>
         }
       for (mdef @ ModuleDef(name, _) <- stats if !mdef.mods.is(Flags.Package)) {
         val typName = name.toTypeName
-        val Thicket(vdef :: (mcls @ TypeDef(_, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
+        // Expansion of object is a flattened thicket with the first two elements being:
+        //    module val :: module class :: rest
+        val Thicket(vdef :: (mcls @ TypeDef(_, impl: Template)) :: rest) = expanded(mdef)
         moduleDef(typName) = mcls
         classDef get name.toTypeName match {
           case Some(cdef) =>
@@ -506,7 +508,7 @@ class Namer { typer: Typer =>
               case Thicket(cls :: mval :: TypeDef(_, compimpl: Template) :: crest) =>
                 val mcls1 = cpy.TypeDef(mcls)(
                     rhs = cpy.Template(impl)(body = compimpl.body ++ impl.body))
-                mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: Nil))
+                mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: rest))
                 moduleDef(typName) = mcls1
                 cdef.putAttachment(ExpandedTree, Thicket(cls :: crest))
               case _ =>
