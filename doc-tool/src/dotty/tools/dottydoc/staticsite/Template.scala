@@ -87,6 +87,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
       Template.parse(show, JEKYLL)
         .`with`(ResourceInclude(params, includes))
         .`with`(RenderReference(params))
+        .`with`(RenderLink(params))
         .`with`(RenderTitle(params))
         .`with`(Docstring(params))
         .render(toJavaMap(params))

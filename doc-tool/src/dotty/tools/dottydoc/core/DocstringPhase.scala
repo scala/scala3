@@ -63,4 +63,8 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
   override def transformVal(implicit ctx: Context) = { case ent: ValImpl =>
     ent.copy(comment = parsedComment(ent))
   }
+
+  override def transformTypeAlias(implicit ctx: Context) = { case ent: TypeAliasImpl =>
+    ent.copy(comment = parsedComment(ent))
+  }
 }

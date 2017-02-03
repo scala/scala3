@@ -14,7 +14,10 @@ object MarkdownLinkVisitor {
       new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
         override def visit(node: Link): Unit = {
           val url = node.getUrl
-          if (EntityLink.unapplySeq(url.toString).isDefined) {
+          if (url.endsWith(".md")) node.setUrl {
+            url.subSequence(0, url.lastIndexOf('.')).append(".html")
+          }
+          else if (EntityLink.unapplySeq(url.toString).isDefined) {
             lookup(NonEntity, docs, url.toString).foreach { ent =>
               val (path, suffix) = ent match {
                 case ent: Val => (ent.path.dropRight(1), ".html#" + ent.signature)
@@ -31,9 +34,6 @@ object MarkdownLinkVisitor {
                 case _ => ()
               }
             }
-          }
-          else if (url.endsWith(".md")) node.setUrl {
-            url.subSequence(0, url.lastIndexOf('.')).append(".html")
           }
         }
       })

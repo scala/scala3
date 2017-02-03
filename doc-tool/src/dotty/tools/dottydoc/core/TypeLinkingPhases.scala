@@ -26,6 +26,14 @@ class LinkReturnTypes extends DocMiniPhase with TypeLinker {
     val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages)
     vl.copy(returnValue = returnValue)
   }
+
+  override def transformTypeAlias(implicit ctx: Context) = { case ta: TypeAliasImpl =>
+    ta.alias.map { alias =>
+      val linkedAlias = linkReference(ta, alias, ctx.docbase.packages)
+      ta.copy(alias = Some(linkedAlias))
+    }
+    .getOrElse(ta)
+  }
 }
 
 class LinkParamListTypes extends DocMiniPhase with TypeLinker {
