@@ -24,7 +24,7 @@ trait DottyDocTest {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
       ctx.settings.classpath,
-      "../library/target/scala-2.11/dotty-library_2.11-0.1.1-SNAPSHOT.jar"
+      dotty.Jars.dottyLib
     )
     base.initialize()(ctx)
     ctx
