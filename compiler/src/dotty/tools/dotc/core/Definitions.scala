@@ -733,8 +733,8 @@ class Definitions {
 
   def isFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.Function)
   def isImplicitFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.ImplicitFunction)
-  def isUnimplementedFunctionClass(cls: Symbol) =
-    isFunctionClass(cls) && cls.name.functionArity > MaxImplementedFunctionArity
+  /** Is a class that will be erased to FunctionXXL */
+  def isXXLFunctionClass(cls: Symbol) = cls.name.functionArity > MaxImplementedFunctionArity
   def isAbstractFunctionClass(cls: Symbol) = isVarArityClass(cls, tpnme.AbstractFunction)
   def isTupleClass(cls: Symbol) = isVarArityClass(cls, tpnme.Tuple)
   def isProductClass(cls: Symbol) = isVarArityClass(cls, tpnme.Product)
