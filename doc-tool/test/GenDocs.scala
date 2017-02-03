@@ -11,6 +11,7 @@ object Files {
 
 trait LocalResources extends DocDriver {
   import Files._
+  import dotty.Jars
 
   def getFiles(file: JFile): Array[JFile] =
     if (file.isDirectory) file.listFiles.flatMap(getFiles)
@@ -21,7 +22,8 @@ trait LocalResources extends DocDriver {
     "-siteroot" +: "../docs" +:
     "-project" +: "Dotty" +:
     "-language:Scala2" +:
-    "-classpath" +: "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar:../interfaces/target/dotty-interfaces-0.1-SNAPSHOT.jar" +:
+    "-classpath" +:
+    (Jars.dottyLib + ":" + Jars.dottyInterfaces) +:
     files
 }
 

@@ -22,7 +22,7 @@ class MarkdownTests extends DottyDocTest {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
       ctx.settings.classpath,
-      "../library/target/scala-2.11/dotty-library_2.11-0.1-SNAPSHOT.jar"
+      dotty.Jars.dottyLib
     )
     base.initialize()(ctx)
     ctx
@@ -122,9 +122,9 @@ class MarkdownTests extends DottyDocTest {
       |package scala
       |
       |/** - Item1
-      |  * - Item2
-      |  * - Item3
-      |  */
+      | *  - Item2
+      | *  - Item3
+      | */
       |trait HelloWorld
       |
       |trait None
@@ -153,11 +153,11 @@ class MarkdownTests extends DottyDocTest {
       |package scala
       |
       |/** - Item1
-      |  *   - Item1a
-      |  *   - Item1b
-      |  * - Item2
-      |  * - Item3
-      |  */
+      | *    - Item1a
+      | *    - Item1b
+      | *  - Item2
+      | *  - Item3
+      | */
       |trait HelloWorld
       |
       |trait None
@@ -191,9 +191,9 @@ class MarkdownTests extends DottyDocTest {
       |package scala
       |
       |/** ```scala
-      |  * val x = 1 + 5
-      |  * ```
-      |  */
+      | *  val x = 1 + 5
+      | *  ```
+      | */
       |trait HelloWorld
       |
       |trait None
@@ -250,12 +250,12 @@ class MarkdownTests extends DottyDocTest {
       |package scala
       |
       |/** This
-      |  * ====
-      |  * is a short text [that](http://google.com) should not be more than a
-      |  * `few` lines long. This text *should* be shortened somewhere that is
-      |  * appropriate for the **ui**. Might be here, or there or somewhere
-      |  * else.
-      |  */
+      | *  ====
+      | *  is a short text [that](http://google.com) should not be more than a
+      | *  `few` lines long. This text *should* be shortened somewhere that is
+      | *  appropriate for the **ui**. Might be here, or there or somewhere
+      | *  else.
+      | */
       |trait HelloWorld
       """.stripMargin
 
@@ -282,10 +282,10 @@ class MarkdownTests extends DottyDocTest {
       |package scala
       |
       |/** This
-      |  * ====
-      |  * should quit before ![alt text](https://whatever.com/1.png "Img Text"),
-      |  * I shouldn't be visible.
-      |  */
+      | *  ====
+      | *  should quit before ![alt text](https://whatever.com/1.png "Img Text"),
+      | *  I shouldn't be visible.
+      | */
       |trait HelloWorld
       """.stripMargin
 
