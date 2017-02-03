@@ -19,6 +19,14 @@ div#entity-title > span#entity-kind {
     font-weight: 100;
 }
 
+div#entity-title span.no-left {
+    margin-left: -9px;
+}
+
+div#entity-title span.no-right {
+    margin-right: -9px;
+}
+
 div#entity-body table > tbody > tr > td {
     padding: 10px;
 }
