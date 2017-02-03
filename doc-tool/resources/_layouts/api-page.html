@@ -33,6 +33,7 @@ extraCSS:
         {% for member in entity.members %}
         <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
             <div class="member-title">
+                <span class="expand-button" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
                 <span class="member-annotations">
                     {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
                 </span>
@@ -84,8 +85,24 @@ extraCSS:
             </div><!-- end member-title -->
 
             <div class="member-body">
-                {{ member.comment.short }}
+                <div class="member-body-short" id="short-body-{{ member.signature }}">
+                    {{ member.comment.short }}
+                </div>
+                <div class="member-body-long" id ="long-body-{{ member.signature }}">
+                    {{ member.comment.body }}
+                </div>
             </div>
+            <script>
+                function toggleMemberBody(span, sig) {
+                    var shortBody = document.getElementById("short-body-" + sig);
+                    var longBody = document.getElementById("long-body-" + sig);
+
+                    shortBody.classList.toggle("toggled")
+                    longBody.classList.toggle("toggled")
+
+                    span.innerHTML = (span.innerHTML == "[+]") ?  "[-]" : "[+]";
+                }
+            </script>
         </div><!-- end member -->
         {% endfor %}
     </div>

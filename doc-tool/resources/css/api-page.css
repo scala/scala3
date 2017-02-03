@@ -83,3 +83,29 @@ div#entity-members > div.member > div.member-title span.no-left {
 div#entity-members > div.member > div.member-title span.no-right {
     margin-right: -11px;
 }
+
+div#entity-members > div.member > div.member-title > span.expand-button {
+    color: rgba(167, 161, 161, 0.5);
+}
+
+div#entity-members > div.member > div.member-title > span.expand-button:hover {
+    color: rgb(167, 161, 161);
+    cursor: pointer;
+    user-select: none;
+}
+
+div#entity-members > div.member > div.member-body {
+    margin: 5px 0 0 39px;
+}
+
+div#entity-members > div.member > div.member-body > div.member-body-short.toggled {
+    display: none;
+}
+
+div#entity-members > div.member > div.member-body > div.member-body-long {
+    display: none;
+}
+
+div#entity-members > div.member > div.member-body > div.member-body-long.toggled {
+    display: block;
+}
