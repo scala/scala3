@@ -14,9 +14,29 @@ div#entity-title {
     font-size: 2.5rem;
 }
 
+div#entity-title > span#entity-annotations,
 div#entity-title > span#entity-modifiers,
 div#entity-title > span#entity-kind {
     font-weight: 100;
+}
+
+div#entity-title > div#super-types > span.keyword {
+    font-weight: 100;
+}
+
+div#entity-title > div#super-types > span.keyword,
+div#entity-title > div#super-types > span.entity-super-type {
+    font-size: 25px;
+}
+
+div#entity-title > div#super-types> span.entity-super-type > a,
+div#entity-title > div#super-types> span.entity-super-type > a:focus {
+    text-decoration: none;
+    color: #34495e;
+}
+
+div#entity-title > div#super-types> span.entity-super-type > a:hover {
+    text-decoration: underline;
 }
 
 div#entity-title span.no-left {

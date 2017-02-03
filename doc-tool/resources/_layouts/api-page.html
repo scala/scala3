@@ -10,6 +10,9 @@ extraCSS:
 
 <div id="entity-container">
     <div id="entity-title">
+        <span id="entity-annotations">
+            {% for annot in entity.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
+        </span>
         <span id="entity-modifiers">
             {{ entity.modifiers | join: " " }}
         </span>
@@ -32,6 +35,18 @@ extraCSS:
             {% endfor %}
             <span class="no-left">]</span>
         </span>
+        {% if entity.superTypes.size > 0 %}
+        <div id="super-types">
+            {% for super in entity.superTypes %}
+            {% if forloop.first %}
+            <span class="keyword">extends</span>
+            {% else %}
+            <span class="keyword">with</span>
+            {% endif %}
+            <span class="entity-super-type">{% renderLink super %}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     {% if entity.comment.body %}
