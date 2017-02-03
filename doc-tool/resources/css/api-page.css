@@ -70,70 +70,70 @@ h1.section {
     display: none;
 }
 
-div#entity-members > div.member.protected {
+div.entity-section > div.member.protected {
     display: none;
 }
 
-div#entity-members > div.member.private {
+div.entity-section > div.member.private {
     display: none;
 }
 
-div#entity-members > div.member {
+div.entity-section > div.member {
     margin-bottom: 30px;
 }
 
-div#entity-members > div.member:last-child {
+div.entity-section > div.member:last-child {
     margin-bottom: 0px;
 }
 
-div#entity-members > div.member > div.member-title {
+div.entity-section > div.member > div.member-title {
     font-family: "Source Code Pro", sans-serif;
 }
 
-div#entity-members > div.member > div.member-title > span.member-name {
+div.entity-section > div.member > div.member-title > span.member-name {
     color: #458;
     font-weight: 600;
 }
 
-div#entity-members > div.member > div.member-title > span.member-name.implicitly-added {
+div.entity-section > div.member > div.member-title > span.member-name.implicitly-added {
     color: #019875;
 }
 
-div#entity-members > div.member > div.member-title span.keyword {
+div.entity-section > div.member > div.member-title span.keyword {
     font-weight: 600;
     margin-right: 11px;
 }
 
-div#entity-members > div.member > div.member-title span.no-left {
+div.entity-section > div.member > div.member-title span.no-left {
     margin-left: -11px;
 }
 
-div#entity-members > div.member > div.member-title span.no-right {
+div.entity-section > div.member > div.member-title span.no-right {
     margin-right: -11px;
 }
 
-div#entity-members > div.member > div.member-title > span.expand-button {
+div.entity-section > div.member > div.member-title > span.expand-button {
     color: rgba(167, 161, 161, 0.5);
 }
 
-div#entity-members > div.member > div.member-title > span.expand-button:hover {
+div.entity-section > div.member > div.member-title > span.expand-button:hover {
     color: rgb(167, 161, 161);
     cursor: pointer;
     user-select: none;
 }
 
-div#entity-members > div.member > div.member-body {
+div.entity-section > div.member > div.member-body {
     margin: 5px 0 0 39px;
 }
 
-div#entity-members > div.member > div.member-body > div.member-body-short.toggled {
+div.entity-section > div.member > div.member-body > div.member-body-short.toggled {
     display: none;
 }
 
-div#entity-members > div.member > div.member-body > div.member-body-long {
+div.entity-section > div.member > div.member-body > div.member-body-long {
     display: none;
 }
 
-div#entity-members > div.member > div.member-body > div.member-body-long.toggled {
+div.entity-section > div.member > div.member-body > div.member-body-long.toggled {
     display: block;
 }

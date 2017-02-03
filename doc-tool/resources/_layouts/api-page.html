@@ -57,7 +57,39 @@ extraCSS:
     </div>
     {% endif %}
 
-    <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">Members</h1>
+    <h1 class="section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+        Constructors
+    </h1>
+
+    <div id="entity-constructors" class="entity-section {% if entity.constructors == null or entity.constructors.size == 0 %}empty{% endif %}">
+        {% for constructor in entity.constructors %}
+            {% for plist in constructor %}
+            <div class="member">
+                <div class="member-title">
+                    <span class="member-name">{{ entity.name }}</span>
+                    <span class="no-left">(</span>
+                        {% if plist.isImplicit %}
+                        <span class="no-left keyword">implicit</span>
+                        {% endif %}
+                        {% for namedRef in plist.list %}
+                            <span class="{% if forloop.first %}no-left{% endif %}">
+                                {{ namedRef.title }}:{% if namedRef.isByName %} =&gt;{% endif %}
+                            </span>
+                            {% renderRef namedRef.ref %}
+                            {% if forloop.last != true %}
+                                <span class="no-left">, </span>
+                            {% endif %}
+                        {% endfor %}
+                    <span class="no-left">)</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    <h1 class="section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
+        Members
+    </h1>
 
     <div id="entity-members" class="entity-section {% if entity.hasVisibleMembers == false %}empty{% endif %}">
         {% for member in entity.members %}
