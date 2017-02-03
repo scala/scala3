@@ -22,6 +22,7 @@ extraCSS:
         <span id="entity-name">
             {{ entity.name }}
         </span>
+        {% if entity.typeParams.size > 0 %}
         <span id="entity-type-params">
             <span class="no-left">[</span>
             {% for param in entity.typeParams %}
@@ -35,6 +36,7 @@ extraCSS:
             {% endfor %}
             <span class="no-left">]</span>
         </span>
+        {% endif %}
         {% if entity.superTypes.size > 0 %}
         <div id="super-types">
             {% for super in entity.superTypes %}
