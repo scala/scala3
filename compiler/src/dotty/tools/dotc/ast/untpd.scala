@@ -39,6 +39,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
+  /** mods case name impl */
+  case class EnumDef(name: TypeName, impl: Template) extends MemberDef
+
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
   case class SymbolLit(str: String) extends TermTree
@@ -132,6 +135,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Inline() extends Mod(Flags.Inline)
 
     case class Type() extends Mod(Flags.EmptyFlags)
+
+    case class Enum() extends Mod(Flags.EmptyFlags)
+
+    case class EnumCase() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions

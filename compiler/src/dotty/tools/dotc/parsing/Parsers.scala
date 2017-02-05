@@ -1873,15 +1873,16 @@ object Parsers {
       mods1
     }
 
-    /** Def    ::= val PatDef
-     *           | var VarDef
-     *           | def DefDef
-     *           | type {nl} TypeDcl
-     *           | TmplDef
-     *  Dcl    ::= val ValDcl
-     *           | var ValDcl
-     *           | def DefDcl
-     *           | type {nl} TypeDcl
+    /** Def      ::= val PatDef
+     *             | var VarDef
+     *             | def DefDef
+     *             | type {nl} TypeDcl
+     *             | TmplDef
+     *  Dcl      ::= val ValDcl
+     *             | var ValDcl
+     *             | def DefDcl
+     *             | type {nl} TypeDcl
+     *  EnumCase ::= `case' (EnumClassDef | ObjectDef)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
@@ -1896,6 +1897,8 @@ object Parsers {
         defDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
       case TYPE =>
         typeDefOrDcl(start, posMods(start, mods), in.getDocComment(start))
+      case CASE =>
+        enumCase(start, mods, in.getDocComment(start))
       case _ =>
         tmplDef(start, mods)
     }
@@ -2041,8 +2044,9 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::= ([`case'] `class' | `trait') ClassDef
-     *            |  [`case'] `object' ObjectDef
+    /** TmplDef ::=  ([`case' | `enum]'] ‘class’ | [`enum'] trait’) ClassDef
+     *            |  [`case' | `enum'] `object' ObjectDef
+     *            |  `enum' EnumDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
       val docstring = in.getDocComment(start)
@@ -2057,27 +2061,37 @@ object Parsers {
           objectDef(start, posMods(start, mods | Module), docstring)
         case CASEOBJECT =>
           objectDef(start, posMods(start, mods | Case | Module), docstring)
+        case ENUM =>
+          val mods1 = addMod(mods, atPos(in.skipToken()) { Mod.Enum() })
+          in.token match {
+            case CLASS | TRAIT | OBJECT => tmplDef(start, mods1)
+            case _ => enumDef(start, mods, docstring)
+          }
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
           EmptyTree
       }
     }
 
-    /** ClassDef ::= id [ClsTypeParamClause]
-     *               [ConstrMods] ClsParamClauses TemplateOpt
+    /** ClassDef ::= id ClassConstr TemplateOpt
      */
     def classDef(start: Offset, mods: Modifiers, docstring: Option[Comment]): TypeDef = atPos(start, nameStart) {
-      val name = ident().toTypeName
-      val constr = atPos(in.lastOffset) {
-        val tparams = typeParamClauseOpt(ParamOwner.Class)
-        val cmods = constrModsOpt(name)
-        val vparamss = paramClauses(name, mods is Case)
+      classDefRest(start, mods, docstring, ident().toTypeName)
+    }
 
-        makeConstructor(tparams, vparamss).withMods(cmods)
-      }
+    def classDefRest(start: Offset, mods: Modifiers, docstring: Option[Comment], name: TypeName): TypeDef = {
+      val constr = classConstr(name, isCaseClass = mods is Case)
       val templ = templateOpt(constr)
-
       TypeDef(name, templ).withMods(mods).setComment(docstring)
+    }
+
+    /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsParamClauses
+     */
+    def classConstr(owner: Name, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
+      val tparams = typeParamClauseOpt(ParamOwner.Class)
+      val cmods = constrModsOpt(owner)
+      val vparamss = paramClauses(owner, isCaseClass)
+      makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
     /** ConstrMods        ::=  AccessModifier
@@ -2094,10 +2108,62 @@ object Parsers {
     /** ObjectDef       ::= id TemplateOpt
      */
     def objectDef(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): ModuleDef = atPos(start, nameStart) {
-      val name = ident()
-      val template = templateOpt(emptyConstructor)
+      objectDefRest(start, mods, docstring, ident())
+    }
 
+    def objectDefRest(start: Offset, mods: Modifiers, docstring: Option[Comment] = None, name: TermName): ModuleDef = {
+      val template = templateOpt(emptyConstructor)
       ModuleDef(name, template).withMods(mods).setComment(docstring)
+    }
+
+    /**  id ClassConstr [`extends' [ConstrApps]]
+     *   [nl] ‘{’ EnumCaseStats ‘}’
+     */
+    def enumDef(start: Offset, mods: Modifiers, docstring: Option[Comment] = None): EnumDef = atPos(start, nameStart) {
+      val name = ident().toTypeName
+      val constr = classConstr(name)
+      val parents =
+        if (in.token == EXTENDS) {
+          in.nextToken();
+          newLineOptWhenFollowedBy(LBRACE)
+          if (in.token == LBRACE) Nil else tokenSeparated(WITH, constrApp)
+        }
+        else Nil
+      newLineOptWhenFollowedBy(LBRACE)
+      val body = inBraces(enumCaseStats)
+      EnumDef(name, Template(constr, Nil, EmptyValDef, body))
+        .withMods(mods).setComment(in.getDocComment(start)).asInstanceOf[EnumDef]
+    }
+
+    /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
+    def enumCaseStats(): List[MemberDef] = {
+      val cases = new ListBuffer[MemberDef] += enumCaseStat()
+      while (in.token != RBRACE) {
+        acceptStatSep()
+        cases += enumCaseStat()
+      }
+      cases.toList
+    }
+
+    /** EnumCaseStat = {Annotation [nl]} {Modifier} EnumCase */
+    def enumCaseStat(): MemberDef = {
+      val start = in.offset
+      val docstring = in.getDocComment(start)
+      val mods = defAnnotsMods(modifierTokens)
+      enumCase(start, mods, docstring)
+    }
+
+    /** EnumCase = `case' (EnumClassDef | ObjectDef) */
+    def enumCase(start: Offset, mods: Modifiers, docstring: Option[Comment]): MemberDef = {
+      val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.EnumCase())) | Case
+      accept(CASE)
+      atPos(start, nameStart) {
+        val name = ident()
+        if (in.token == LBRACKET || in.token == LPAREN)
+          classDefRest(start, mods1, docstring, name.toTypeName)
+        else
+          objectDefRest(start, mods1, docstring, name)
+      }
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -2209,8 +2275,8 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
+     *                     | EnumCaseStat
      *                     | Expr1
-     *                     | super ArgumentExprs {ArgumentExprs}
      *                     |
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
@@ -2240,7 +2306,7 @@ object Parsers {
           stats ++= importClause()
         else if (isExprIntro)
           stats += expr1()
-        else if (isDefIntro(modifierTokens))
+        else if (isDefIntro(modifierTokensOrCase))
           stats += defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           exitOnError = mustStartStat

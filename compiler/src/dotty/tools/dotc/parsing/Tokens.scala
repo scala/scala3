@@ -92,6 +92,7 @@ abstract class TokensCommon {
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val INLINE = 62;           enter(INLINE, "inline")
+  //final val ENUM = 63;            enter(ENUM, "enum")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -175,6 +176,7 @@ object Tokens extends TokensCommon {
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val INLINE = 62;           enter(INLINE, "inline")
+  final val ENUM = 63;             enter(ENUM, "enum")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -227,6 +229,8 @@ object Tokens extends TokensCommon {
 
   final val modifierTokens = localModifierTokens | accessModifierTokens | BitSet(
     OVERRIDE)
+
+  final val modifierTokensOrCase = modifierTokens | BitSet(CASE)
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(
