@@ -750,12 +750,14 @@ object desugar {
           case Tuple(args) => args mapConserve assignToNamedArg
           case _ => right :: Nil
         }
-        Apply(Select(left, op.name), args)
+        val selectPos = Position(left.pos.start, op.pos.end, op.pos.start)
+        Apply(Select(left, op.name).withPos(selectPos), args)
       } else {
         val x = ctx.freshName().toTermName
+        val selectPos = Position(op.pos.start, right.pos.end, op.pos.start)
         new InfixOpBlock(
           ValDef(x, TypeTree(), left).withMods(synthetic),
-          Apply(Select(right, op.name), Ident(x)))
+          Apply(Select(right, op.name).withPos(selectPos), Ident(x).withPos(left.pos)))
       }
     }
 
