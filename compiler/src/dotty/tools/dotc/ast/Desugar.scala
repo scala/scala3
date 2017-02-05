@@ -353,7 +353,7 @@ object desugar {
           for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
           yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
         def isRepeated(tree: Tree): Boolean = tree match {
-          case PostfixOp(_, nme.raw.STAR) => true
+          case PostfixOp(_, Ident(nme.raw.STAR)) => true
           case ByNameTypeTree(tree1) => isRepeated(tree1)
           case _ => false
         }
@@ -739,23 +739,23 @@ object desugar {
 
     /** Translate infix operation expression  left op right
      */
-    def makeBinop(left: Tree, op: Name, right: Tree): Tree = {
+    def makeBinop(left: Tree, op: Ident, right: Tree): Tree = {
       def assignToNamedArg(arg: Tree) = arg match {
         case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
         case _ => arg
       }
-      if (isLeftAssoc(op)) {
+      if (isLeftAssoc(op.name)) {
         val args: List[Tree] = right match {
           case Parens(arg) => assignToNamedArg(arg) :: Nil
           case Tuple(args) => args mapConserve assignToNamedArg
           case _ => right :: Nil
         }
-        Apply(Select(left, op), args)
+        Apply(Select(left, op.name), args)
       } else {
         val x = ctx.freshName().toTermName
         new InfixOpBlock(
           ValDef(x, TypeTree(), left).withMods(synthetic),
-          Apply(Select(right, op), Ident(x)))
+          Apply(Select(right, op.name), Ident(x)))
       }
     }
 
@@ -956,25 +956,25 @@ object desugar {
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
-          if (op == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
-          else if (op == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
-          else AppliedTypeTree(Ident(op), l :: r :: Nil) // op[l, r]
+          if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
+          else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
+          else AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
         else if (ctx.mode is Mode.Pattern)
-          Apply(Ident(op), l :: r :: Nil) // op(l, r)
+          Apply(op, l :: r :: Nil) // op(l, r)
         else // l.op(r), or val x = r; l.op(x), plus handle named args specially
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
+        if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == nme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
             AppliedTypeTree(ref(seqType), t),
             New(ref(defn.RepeatedAnnotType), Nil :: Nil))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
-          Select(t, op)
+          Select(t, op.name)
         }
       case PrefixOp(op, t) =>
-        Select(t, nme.UNARY_PREFIX ++ op)
+        Select(t, nme.UNARY_PREFIX ++ op.name)
       case Parens(t) =>
         t
       case Tuple(ts) =>

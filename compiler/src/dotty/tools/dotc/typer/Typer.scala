@@ -1440,7 +1440,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
 
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(implicit ctx: Context): Tree = {
-    val untpd.PostfixOp(qual, nme.WILDCARD) = tree
+    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     var res = typed(qual, pt1)
     if (pt1.eq(AnyFunctionProto) && !defn.isFunctionClass(res.tpe.classSymbol)) {
@@ -1541,7 +1541,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree:  untpd.UnApply => typedUnApply(tree, pt)
-          case tree @ untpd.PostfixOp(qual, nme.WILDCARD) => typedAsFunction(tree, pt)
+          case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
         }

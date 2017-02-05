@@ -516,7 +516,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           argsText ~ " => " ~ toText(body)
         }
       case InfixOp(l, op, r) =>
-        val opPrec = parsing.precedence(op)
+        val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }
       case PostfixOp(l, op) =>
         changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }

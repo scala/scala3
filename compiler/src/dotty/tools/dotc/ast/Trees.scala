@@ -334,10 +334,15 @@ object Trees {
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
+
+    /** Is this a `BackquotedIdent` ? */
+    def isBackquoted: Boolean = false
   }
 
   class BackquotedIdent[-T >: Untyped] private[ast] (name: Name)
     extends Ident[T](name) {
+    override def isBackquoted: Boolean = true
+
     override def toString = s"BackquotedIdent($name)"
   }
 

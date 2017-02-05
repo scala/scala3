@@ -448,7 +448,7 @@ object JavaParsers {
       if (in.token == DOTDOTDOT) {
         in.nextToken()
         t = atPos(t.pos.start) {
-          PostfixOp(t, nme.raw.STAR)
+          PostfixOp(t, Ident(nme.raw.STAR))
         }
       }
       atPos(start, in.offset) {

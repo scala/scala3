@@ -15,9 +15,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   // ----- Tree cases that exist in untyped form only ------------------
 
   trait OpTree extends Tree {
-    def op: Name
-    override def isTerm = op.isTermName
-    override def isType = op.isTypeName
+    def op: Ident
+    override def isTerm = op.name.isTermName
+    override def isType = op.name.isTypeName
   }
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
@@ -66,9 +66,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   class WildcardFunction(placeholderParams: List[ValDef], body: Tree) extends Function(placeholderParams, body)
 
-  case class InfixOp(left: Tree, op: Name, right: Tree) extends OpTree
-  case class PostfixOp(od: Tree, op: Name) extends OpTree
-  case class PrefixOp(op: Name, od: Tree) extends OpTree
+  case class InfixOp(left: Tree, op: Ident, right: Tree) extends OpTree
+  case class PostfixOp(od: Tree, op: Ident) extends OpTree
+  case class PrefixOp(op: Ident, od: Tree) extends OpTree
   case class Parens(t: Tree) extends ProxyTree {
     def forwardTo = t
   }
@@ -357,7 +357,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  parameter, the reference will be a repeated argument.
    */
   def refOfDef(tree: MemberDef)(implicit ctx: Context) = tree match {
-    case ValDef(_, PostfixOp(_, nme.raw.STAR), _) => repeated(Ident(tree.name))
+    case ValDef(_, PostfixOp(_, Ident(nme.raw.STAR)), _) => repeated(Ident(tree.name))
     case _ => Ident(tree.name)
   }
 
@@ -409,15 +409,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
       case _ => untpd.Function(args, body).withPos(tree.pos)
     }
-    def InfixOp(tree: Tree)(left: Tree, op: Name, right: Tree) = tree match {
+    def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree) = tree match {
       case tree: InfixOp if (left eq tree.left) && (op eq tree.op) && (right eq tree.right) => tree
       case _ => untpd.InfixOp(left, op, right).withPos(tree.pos)
     }
-    def PostfixOp(tree: Tree)(od: Tree, op: Name) = tree match {
+    def PostfixOp(tree: Tree)(od: Tree, op: Ident) = tree match {
       case tree: PostfixOp if (od eq tree.od) && (op eq tree.op) => tree
       case _ => untpd.PostfixOp(od, op).withPos(tree.pos)
     }
-    def PrefixOp(tree: Tree)(op: Name, od: Tree) = tree match {
+    def PrefixOp(tree: Tree)(op: Ident, od: Tree) = tree match {
       case tree: PrefixOp if (op eq tree.op) && (od eq tree.od) => tree
       case _ => untpd.PrefixOp(op, od).withPos(tree.pos)
     }
