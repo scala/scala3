@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -x
+
+sbt compile package || exit 1
+
+for file in tests/debug/*.scala; do
+   ./bin/dotc $file || exit 1
+   ./bin/dotr -d Test&
+   ./compiler/test/debug/Gen $file > robot
+   expect robot
+
+   if [[ $? != 0 ]]; then
+      echo "debug test failed for file $file"
+      exit 1
+   fi
+done

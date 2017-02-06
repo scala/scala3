@@ -52,4 +52,5 @@ build/
 
 # Put local stuff here
 local/
+compiler/test/debug/Gen.jar
 
