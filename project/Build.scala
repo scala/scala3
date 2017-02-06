@@ -168,6 +168,24 @@ object DottyBuild extends Build {
     ).
     settings(publishing)
 
+  lazy val `dotty-bot` = project.in(file("bot")).
+    settings(sourceStructure).
+    settings(
+      libraryDependencies ++= {
+        val github4sVersion = "0.9.0"
+        val http4sVersion = "0.15.3"
+        Seq(
+          "io.circe" %% "circe-generic" % "0.6.1",
+          "ch.qos.logback" % "logback-classic" % "1.1.7",
+          "com.fortysevendeg" %% "github4s" % "0.10.0",
+          "org.http4s" %% "http4s-dsl" % http4sVersion,
+          "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+          "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+          "org.http4s" %% "http4s-circe" % http4sVersion
+        )
+      }
+    )
+
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val dottyCompilerSettings = Seq(
       // set system in/out for repl
