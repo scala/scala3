@@ -21,12 +21,12 @@ class TestScripts {
     (ret, sb.toString)
   }
 
-  private def deletePackages: Unit = {
-    def delete(path: String) = {
-      val file = new JFile(path)
-      if (file.exists) file.delete()
-    }
+  private def delete(path: String) = {
+    val file = new JFile(path)
+    if (file.exists) file.delete()
+  }
 
+  private def deletePackages: Unit = {
     try {
       for (jar <- Source.fromFile("./.packages").getLines())
         delete(jar)
@@ -87,5 +87,12 @@ class TestScripts {
     assert(
       ret == 0 && !output.contains("rebuilding"),
       s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
+  }
+
+  /** dotc script should work after deleting .packages */
+  @Test def reCreatesPackagesIfNecessary = doUnlessWindows {
+    delete("./.packages")
+    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    assert(retFirstBuild == 0, "building dotc failed")
   }
 }
