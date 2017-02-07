@@ -968,7 +968,7 @@ class Namer { typer: Typer =>
               ctx.defContext(sym).denotNamed(original)
           def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
             case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx))
+              if (idx < params.length) wildApprox(params(idx), null, Set.empty)
               else paramProto(paramss1, idx - params.length)
             case nil =>
               WildcardType
