@@ -11,7 +11,7 @@ import sbt.Package.ManifestAttributes
 
 object DottyBuild extends Build {
 
-  val scalacVersion = "2.11.5"
+  val scalacVersion = "2.11.5" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyVersion = {

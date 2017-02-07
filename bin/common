@@ -8,7 +8,7 @@ function getLastStringOnLineWith {
 }
 
 # Configuration
-SCALA_VERSION=$(getLastStringOnLineWith "scalaVersion in")
+SCALA_VERSION=$(getLastStringOnLineWith "val scalacVersion")
 SCALA_BINARY_VERSION=2.11
 SCALA_COMPILER_VERSION=$(getLastStringOnLineWith "scala-compiler")
 SBT_VERSION=$(grep "sbt.version=" "$DOTTY_ROOT/project/build.properties" | sed 's/sbt.version=//')
