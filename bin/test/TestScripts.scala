@@ -18,7 +18,9 @@ class TestScripts {
   private def executeScript(script: String): (Int, String) = {
     val sb = new StringBuilder
     val ret = Process(script) ! ProcessLogger(sb append _)
-    (ret, sb.toString)
+    val output = sb.toString
+    println(output) // For CI, otherwise "terminal inactive for 5m0s, build cancelled"
+    (ret, output)
   }
 
   private def delete(path: String) = {
