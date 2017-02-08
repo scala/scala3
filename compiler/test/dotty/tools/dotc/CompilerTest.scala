@@ -397,20 +397,25 @@ abstract class CompilerTest {
   /** Gives an error message for one line where the expected number of errors and
     * the number of compiler errors differ. */
   def compareLines(fileName: String, expectedLines: List[(Int, Int)], foundLines: List[(Int, Int)]) = {
-    expectedLines.foreach({ case (line, expNr) =>
-      foundLines.find(_._1 == line) match {
-        case Some((_, `expNr`)) => // this line is ok
-        case Some((_, foundNr)) => errorMsg(fileName, Some(line), expNr, foundNr)
-        case None               => errorMsg(fileName, Some(line), expNr, 0)
-      }
-    })
-    foundLines.foreach({ case (line, foundNr) =>
-      expectedLines.find(_._1 == line) match {
-        case Some((_, `foundNr`)) => // this line is ok
-        case Some((_, expNr))     => errorMsg(fileName, Some(line), expNr, foundNr)
-        case None                 => errorMsg(fileName, Some(line), 0,     foundNr)
-      }
-    })
+    expectedLines foreach{
+      case (line, expNr) =>
+        foundLines.find(_._1 == line) match {
+          case Some((_, `expNr`)) => // this line is ok
+          case Some((_, foundNr)) => errorMsg(fileName, Some(line), expNr, foundNr)
+          case None               =>
+            println(s"expected lines = $expectedLines%, %")
+            println(s"found lines = $foundLines%, %")
+            errorMsg(fileName, Some(line), expNr, 0)
+        }
+    }
+    foundLines foreach {
+      case (line, foundNr) =>
+        expectedLines.find(_._1 == line) match {
+          case Some((_, `foundNr`)) => // this line is ok
+          case Some((_, expNr))     => errorMsg(fileName, Some(line), expNr, foundNr)
+          case None                 => errorMsg(fileName, Some(line), 0,     foundNr)
+        }
+    }
   }
 
   // ========== PARTEST HELPERS =============
