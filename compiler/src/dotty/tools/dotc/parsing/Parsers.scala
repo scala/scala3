@@ -49,6 +49,13 @@ object Parsers {
     val Class, Type, TypeParam, Def = Value
   }
 
+  private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {
+    def +++=(x: Tree) = x match {
+      case x: Thicket => buf ++= x.trees
+      case x => buf += x
+    }
+  }
+
   /** The parse starting point depends on whether the source file is self-contained:
    *  if not, the AST will be supplemented.
    */
@@ -2061,8 +2068,9 @@ object Parsers {
         case CASEOBJECT =>
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
-          val mods1 = addMod(mods, atPos(in.skipToken()) { Mod.Enum() })
-          if (in.token == CLASS) tmplDef(start, mods1) else enumDef(start, mods)
+          val enumMod = atPos(in.skipToken()) { Mod.Enum() }
+          if (in.token == CLASS) tmplDef(start, addMod(mods, enumMod))
+          else enumDef(start, mods, enumMod)
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
           EmptyTree
@@ -2115,9 +2123,11 @@ object Parsers {
     /**  id ClassConstr [`extends' [ConstrApps]]
      *   [nl] ‘{’ EnumCaseStats ‘}’
      */
-    def enumDef(start: Offset, mods: Modifiers): EnumDef = atPos(start, nameStart) {
-      val name = ident().toTypeName
-      val constr = classConstr(name)
+    def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): Thicket = {
+      val point = nameStart
+      val modName = ident()
+      val clsName = modName.toTypeName
+      val constr = classConstr(clsName)
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken();
@@ -2125,10 +2135,17 @@ object Parsers {
           if (in.token == LBRACE) Nil else tokenSeparated(WITH, constrApp)
         }
         else Nil
+      val clsDef = atPos(start, point) {
+        TypeDef(clsName, Template(constr, parents, EmptyValDef, Nil))
+          .withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
+      }
       newLineOptWhenFollowedBy(LBRACE)
-      val body = inBraces(enumCaseStats)
-      EnumDef(name, Template(constr, Nil, EmptyValDef, body))
-        .withMods(mods).setComment(in.getDocComment(start)).asInstanceOf[EnumDef]
+      val modDef = atPos(in.offset) {
+        val body = inBraces(enumCaseStats)
+        ModuleDef(modName, Template(emptyConstructor, Nil, EmptyValDef, body))
+          .withMods(mods)
+      }
+      Thicket(clsDef :: modDef :: Nil)
     }
 
     /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
@@ -2249,7 +2266,7 @@ object Parsers {
         else if (in.token == IMPORT)
           stats ++= importClause()
         else if (in.token == AT || isTemplateIntro || isModifier)
-          stats += tmplDef(in.offset, defAnnotsMods(modifierTokens))
+          stats +++= tmplDef(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           if (in.token == CASE)
             syntaxErrorOrIncomplete("only `case class` or `case object` allowed")
@@ -2299,7 +2316,7 @@ object Parsers {
         else if (isExprIntro)
           stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
-          stats += defOrDcl(in.offset, defAnnotsMods(modifierTokens))
+          stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete("illegal start of definition")
@@ -2357,9 +2374,9 @@ object Parsers {
             val start = in.offset
             val imods = implicitMods()
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
-            else stats += localDef(start, imods)
+            else stats +++= localDef(start, imods)
           } else {
-            stats += localDef(in.offset)
+            stats +++= localDef(in.offset)
           }
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
