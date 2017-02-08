@@ -58,8 +58,11 @@ class TestREPL(script: String) extends REPL {
     val printed = out.toString
     val transcript = printed.drop(printed.indexOf(config.prompt))
     if (transcript.toString.lines.toList != script.lines.toList) {
-      println("input differs from transcript:")
+      println("input differs from transcript (copy is repl.transcript):")
       println(transcript)
+      val s = new PrintStream("repl.transcript")
+      s.print(transcript)
+      s.close()
       assert(false)
     }
   }
