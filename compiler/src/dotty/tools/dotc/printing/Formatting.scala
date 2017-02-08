@@ -213,9 +213,11 @@ object Formatting {
     * ex"disambiguate $tpe1 and $tpe2"
     * ```
     */
-  def explained2(op: Context => String)(implicit ctx: Context): String = {
+  def explained(op: Context => String)(implicit ctx: Context): String = {
     val seen = new Seen
-    op(explainCtx(seen)) ++ explanations(seen)
+    val msg = op(explainCtx(seen))
+    val addendum = explanations(seen)
+    if (addendum.isEmpty) msg else msg ++ "\n\n" ++ addendum
   }
 
   /** When getting a type mismatch it is useful to disambiguate placeholders like:
