@@ -2044,8 +2044,8 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::=  ([`case' | `enum]'] ‘class’ | [`enum'] trait’) ClassDef
-     *            |  [`case' | `enum'] `object' ObjectDef
+    /** TmplDef ::=  ([`case' | `enum]'] ‘class’ | trait’) ClassDef
+     *            |  [`case'] `object' ObjectDef
      *            |  `enum' EnumDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
@@ -2062,10 +2062,7 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           val mods1 = addMod(mods, atPos(in.skipToken()) { Mod.Enum() })
-          in.token match {
-            case CLASS | TRAIT | OBJECT => tmplDef(start, mods1)
-            case _ => enumDef(start, mods)
-          }
+          if (in.token == CLASS) tmplDef(start, mods1) else enumDef(start, mods)
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
           EmptyTree

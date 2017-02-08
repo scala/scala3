@@ -294,7 +294,10 @@ object Scanners {
         if (!sepRegions.isEmpty && sepRegions.head == lastToken)
           sepRegions = sepRegions.tail
       case ARROW =>
-        if (!sepRegions.isEmpty && sepRegions.head == lastToken)
+        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
+          sepRegions = sepRegions.tail
+      case EXTENDS =>
+        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
           sepRegions = sepRegions.tail
       case STRINGLIT =>
         if (inMultiLineInterpolation)
@@ -330,7 +333,8 @@ object Scanners {
       if (isAfterLineEnd() &&
           (canEndStatTokens contains lastToken) &&
           (canStartStatTokens contains token) &&
-          (sepRegions.isEmpty || sepRegions.head == RBRACE)) {
+          (sepRegions.isEmpty || sepRegions.head == RBRACE ||
+           sepRegions.head == ARROW && token == CASE)) {
         next copyFrom this
         //  todo: make offset line-end of previous line?
         offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset

@@ -330,15 +330,15 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
-TmplDef           ::=  ([‘case’ | `enum'] ‘class’ | [`enum'] trait’) ClassDef
-                    |  [‘case’ | `enum'] ‘object’ ObjectDef
+TmplDef           ::=  ([‘case’ | `enum'] ‘class’ | trait’) ClassDef
+                    |  [‘case’] ‘object’ ObjectDef
                     |  `enum' EnumDef
 ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  AccessModifier
                     |  Annotation {Annotation} (AccessModifier | ‘this’)
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)               
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
                        [nl] ‘{’ EnumCaseStat {semi EnumCaseStat ‘}’
 EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  `case' (EnumClassDef | ObjectDef)

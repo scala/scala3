@@ -194,7 +194,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, INLINE)
+  final val alphaKeywords = tokenRange(IF, ENUM)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -215,7 +215,7 @@ object Tokens extends TokensCommon {
 
   final val canStartBindingTokens = identifierTokens | BitSet(USCORE, LPAREN)
 
-  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, CASECLASS, CASEOBJECT)
+  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens = BitSet(DEF, VAL, VAR, TYPE)
 
