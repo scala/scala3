@@ -132,6 +132,8 @@ object StdNames {
     val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
     val DIRECT_SUFFIX: N              = "$direct"
     val LAZY_IMPLICIT_PREFIX: N       = "$lazy_implicit$"
+    val DOLLAR_VALUES: N              = "$values"
+    val DOLLAR_NEW: N                 = "$new"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -395,6 +397,7 @@ object StdNames {
     val elem: N                 = "elem"
     val emptyValDef: N          = "emptyValDef"
     val ensureAccessible : N    = "ensureAccessible"
+    val enumTag: N              = "enumTag"
     val eq: N                   = "eq"
     val equalsNumChar : N       = "equalsNumChar"
     val equalsNumNum : N        = "equalsNumNum"
@@ -474,6 +477,7 @@ object StdNames {
     val productPrefix: N        = "productPrefix"
     val readResolve: N          = "readResolve"
     val reflect : N             = "reflect"
+    val register: N             = "register"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"
     val runOrElse: N            = "runOrElse"
@@ -499,6 +503,7 @@ object StdNames {
     val staticModule : N        = "staticModule"
     val staticPackage : N       = "staticPackage"
     val synchronized_ : N       = "synchronized"
+    val tag: N                  = "tag"
     val tail: N                 = "tail"
     val `then` : N              = "then"
     val this_ : N               = "this"
@@ -523,7 +528,7 @@ object StdNames {
     val updateDynamic: N        = "updateDynamic"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
-    val values : N              = "values"
+    val values: N               = "values"
     val view_ : N               = "view"
     val wait_ : N               = "wait"
     val withFilter: N           = "withFilter"
