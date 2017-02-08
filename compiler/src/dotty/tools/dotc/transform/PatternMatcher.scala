@@ -1077,8 +1077,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
 
   trait MatchTranslator extends TreeMakers with ScalacPatternExpanders {
 
-    def isBackquoted(x: Ident) = x.isInstanceOf[BackquotedIdent]
-
     def isVarPattern(pat: Tree): Boolean = pat match {
       case x: BackquotedIdent => false
       case x: Ident => x.name.isVariableName

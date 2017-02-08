@@ -30,7 +30,7 @@ object Parsers {
   import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
 
-  case class OpInfo(operand: Tree, operator: Name, offset: Offset)
+  case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
     private var parCounts = new Array[Int](lastParen - firstParen)
@@ -414,18 +414,17 @@ object Parsers {
           "left- and right-associative operators with same precedence may not be mixed", offset)
 
     def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean): Tree = {
-      if (opStack != base && precedence(opStack.head.operator) == prec)
-        checkAssoc(opStack.head.offset, opStack.head.operator, leftAssoc)
+      if (opStack != base && precedence(opStack.head.operator.name) == prec)
+        checkAssoc(opStack.head.offset, opStack.head.operator.name, leftAssoc)
       def recur(top: Tree): Tree = {
         if (opStack == base) top
         else {
           val opInfo = opStack.head
-          val opPrec = precedence(opInfo.operator)
+          val opPrec = precedence(opInfo.operator.name)
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
-              val opPos = Position(opInfo.offset, opInfo.offset + opInfo.operator.length, opInfo.offset)
-              atPos(opPos union opInfo.operand.pos union top.pos) {
+              atPos(opInfo.operator.pos union opInfo.operand.pos union top.pos) {
                 InfixOp(opInfo.operand, opInfo.operator, top)
               }
             }
@@ -449,10 +448,9 @@ object Parsers {
       val base = opStack
       var top = first
       while (isIdent && in.name != notAnOperator) {
-        val op = if (isType) in.name.toTypeName else in.name
-        top = reduceStack(base, top, precedence(op), isLeftAssoc(op))
+        val op = if (isType) typeIdent() else termIdent()
+        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name))
         opStack = OpInfo(top, op, in.offset) :: opStack
-        ident()
         newLineOptWhenFollowing(canStartOperand)
         if (maybePostfix && !canStartOperand(in.token)) {
           val topInfo = opStack.head
@@ -870,7 +868,7 @@ object Parsers {
       val t = toplevelTyp()
       if (isIdent(nme.raw.STAR)) {
         in.nextToken()
-        atPos(startOffset(t)) { PostfixOp(t, nme.raw.STAR) }
+        atPos(startOffset(t)) { PostfixOp(t, Ident(nme.raw.STAR)) }
       } else t
     }
 
@@ -1189,11 +1187,11 @@ object Parsers {
     val prefixExpr = () =>
       if (isIdent && nme.raw.isUnary(in.name)) {
         val start = in.offset
-        val name = ident()
-        if (name == nme.raw.MINUS && isNumericLit)
+        val op = termIdent()
+        if (op.name == nme.raw.MINUS && isNumericLit)
           simpleExprRest(literal(start), canApply = true)
         else
-          atPos(start) { PrefixOp(name, simpleExpr()) }
+          atPos(start) { PrefixOp(op, simpleExpr()) }
       }
       else simpleExpr()
 
@@ -1260,7 +1258,7 @@ object Parsers {
           val app = atPos(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
         case USCORE =>
-          atPos(startOffset(t), in.skipToken()) { PostfixOp(t, nme.WILDCARD) }
+          atPos(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
           t
       }

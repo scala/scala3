@@ -78,4 +78,11 @@ scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 4 |class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                       ^^^^^^^^
   |        value `barr` is not a member of Foo(foo) - did you mean `foo.bar`?
+scala> val x: List[Int] = "foo" :: List(1)
+-- [E007] Type Mismatch Error: <console> ---------------------------------------
+4 |val x: List[Int] = "foo" :: List(1)
+  |                   ^^^^^
+  |                   found:    String($1$)
+  |                   required: Int
+  |                   
 scala> :quit
