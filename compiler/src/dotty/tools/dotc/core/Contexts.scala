@@ -306,13 +306,14 @@ object Contexts {
         sb.append(str)
       }
 
-    /** The next outer context whose tree is a template or package definition */
+    /** The next outer context whose tree is a template or package definition
+     *  Note: Currently unused
     def enclTemplate: Context = {
       var c = this
       while (c != NoContext && !c.tree.isInstanceOf[Template[_]] && !c.tree.isInstanceOf[PackageDef[_]])
         c = c.outer
       c
-    }
+    }*/
 
     /** The context for a supercall. This context is used for elaborating
      *  the parents of a class and their arguments.
