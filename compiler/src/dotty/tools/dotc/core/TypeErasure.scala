@@ -44,7 +44,7 @@ object TypeErasure {
       val sym = tp.symbol
       sym.isClass &&
       sym != defn.AnyClass && sym != defn.ArrayClass &&
-      !defn.isUnimplementedFunctionClass(sym) && !defn.isImplicitFunctionClass(sym)
+      !defn.isXXLFunctionClass(sym) && !defn.isImplicitFunctionClass(sym)
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -358,7 +358,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       if (!sym.isClass) this(tp.info)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
-      else if (defn.isUnimplementedFunctionClass(sym)) defn.FunctionXXLType
+      else if (defn.isXXLFunctionClass(sym)) defn.FunctionXXLType
       else if (defn.isImplicitFunctionClass(sym)) apply(defn.FunctionType(sym.name.functionArity))
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>

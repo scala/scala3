@@ -349,7 +349,7 @@ object Erasure extends TypeTestsCasts{
           if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.ObjectClass
-          } else if (defn.isUnimplementedFunctionClass(owner))
+          } else if (defn.isXXLFunctionClass(owner))
             defn.FunctionXXLClass
           else if (defn.isImplicitFunctionClass(owner))
             recur(defn.FunctionClass(owner.name.functionArity))
@@ -542,7 +542,7 @@ object Erasure extends TypeTestsCasts{
      *  to deal with boxing and unboxing of value classes ourselves.
      */
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
-      val xxl = defn.isUnimplementedFunctionClass(tree.typeOpt.typeSymbol)
+      val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)
       var implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
       if (xxl) implClosure = cpy.Closure(implClosure)(tpt = TypeTree(defn.FunctionXXLType))
       implClosure.tpe match {
