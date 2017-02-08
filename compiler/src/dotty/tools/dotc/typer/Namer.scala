@@ -564,7 +564,6 @@ class Namer { typer: Typer =>
               case _ =>
             }
           case _ =>
-
         }
     }
 
