@@ -192,7 +192,9 @@ object Scanners {
     /** Returns the closest docstring preceding the position supplied */
     def getDocComment(pos: Int): Option[Comment] = {
       def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
-        case x :: xs if (c.pos.end < x.pos.end && x.pos.end <= pos) => closest(x, xs)
+        case x :: xs =>
+          if (c.pos.end < x.pos.end && x.pos.end <= pos) closest(x, xs)
+          else closest(c, xs)
         case Nil => c
       }
 
