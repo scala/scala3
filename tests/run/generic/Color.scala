@@ -10,12 +10,16 @@ import Shapes._
  */
 sealed trait Color extends Enum
 
-object Color extends EnumValues[Color](3) {
+object Color {
+
+  private val $values = new EnumValues[Color]
+  def valueOf: Int => Color = $values
+  def values = $values.values
 
   private def $new(tag: Int, name: String) = new Color {
     def enumTag = tag
     override def toString = name
-    registerEnumValue(this)
+    $values.register(this)
   }
 
   val Red: Color = $new(0, "Red")
@@ -25,6 +29,6 @@ object Color extends EnumValues[Color](3) {
   implicit val ColorShape: Color `shaped` EnumValue[Color] =
     new (Color `shaped` EnumValue[Color]) {
       def toShape(x: Color) = EnumValue(x.enumTag)
-      def fromShape(x: EnumValue[Color]) = Color.value(x.tag)
+      def fromShape(x: EnumValue[Color]) = Color.valueOf(x.tag)
     }
 }

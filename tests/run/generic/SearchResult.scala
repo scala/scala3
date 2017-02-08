@@ -11,12 +11,16 @@ import Shapes._
  */
 sealed trait SearchResult extends Enum
 
-object SearchResult extends EnumValues[SearchResult](3) {
+object SearchResult extends {
+
+  private val $values = new EnumValues[SearchResult]
+  def valueOf: Int => SearchResult = $values
+  def values = $values.values
 
   private def $new(tag: Int, name: String) = new SearchResult {
     def enumTag = tag
     override def toString = name
-    registerEnumValue(this)
+    $values.register(this)
   }
 
   abstract case class Success(result: Color) extends SearchResult {
@@ -31,8 +35,8 @@ object SearchResult extends EnumValues[SearchResult](3) {
     }
   }
 
-  val Diverging = $new(1, "Diverging")
-  val NoMatch = $new(2, "NoMatch")
+  val Diverging: SearchResult = $new(1, "Diverging")
+  val NoMatch: SearchResult = $new(2, "NoMatch")
 
   abstract case class Ambiguous(alt1: SearchResult, alt2: SearchResult) extends SearchResult {
     def enumTag = 3
@@ -58,7 +62,7 @@ object SearchResult extends EnumValues[SearchResult](3) {
       def fromShape(x: Sum[Success, Sum[Ambiguous, EnumValue[SearchResult]]]): SearchResult = x match {
         case Fst(s) => s
         case Snd(Fst(a)) => a
-        case Snd(Snd(ev)) => value(ev.tag)
+        case Snd(Snd(ev)) => valueOf(ev.tag)
       }
     }
 }

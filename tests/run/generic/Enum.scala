@@ -1,6 +1,8 @@
 package generic
 
 import Shapes.Singleton
+import scala.collection.mutable.ResizableArray
+import scala.collection.immutable.Seq
 
 trait Enum {
   def enumTag: Int
@@ -8,11 +10,15 @@ trait Enum {
 
 trait FiniteEnum extends Enum
 
-abstract class EnumValues[E <: Enum](numVals: Int) {
-  private var myValues = new Array[AnyRef](numVals)
-
-  def registerEnumValue(v: E) =
-    myValues(v.enumTag) = v
-
-  def value: IndexedSeq[E] = (myValues: IndexedSeq[AnyRef]).asInstanceOf[IndexedSeq[E]]
+class EnumValues[E <: Enum] extends ResizableArray[E] {
+  private var valuesCache: Seq[E] = Nil
+  def register(v: E) = {
+    ensureSize(v.enumTag + 1)
+    array(v.enumTag) = v
+    valuesCache = null
+  }
+  def values: Seq[E] = {
+    if (valuesCache == null) valuesCache = array.filter(_ != null).toList.asInstanceOf[scala.List[E]]
+    valuesCache
+  }
 }

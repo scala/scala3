@@ -2,14 +2,14 @@ package generic
 
 import Shapes._
 
-/** enum Tree[TS] {
+/** enum Tree[T] {
  *    case True extends Tree[Boolean]
  *    case False extends Tree[Boolean]
  *    case Zero extends Tree[Int]
  *    case Succ(n: Tree[Int]) extends Tree[Int]
  *    case Pred(n: Tree[Int]) extends Tree[Int]
  *    case IsZero(n: Tree[Int]) extends Tree[Boolean]
- *    case If(cond: Boolean, thenp: Tree[T], elsep: Tree[T]) extends Tree[T]
+ *    case If(cond: Boolean, thenp: Tree[T], elsep: Tree[T])
  *  }
  */
 sealed trait Tree[TR] extends Enum
