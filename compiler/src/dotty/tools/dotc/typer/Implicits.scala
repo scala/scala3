@@ -6,7 +6,8 @@ import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
 import util.Stats.{track, record, monitored}
-import printing.Showable
+import printing.{Showable, Printer}
+import printing.Texts._
 import Contexts._
 import Types._
 import Flags._
@@ -219,14 +220,16 @@ object Implicits {
   }
 
   /** The result of an implicit search */
-  abstract class SearchResult
+  abstract class SearchResult extends Showable {
+    def toText(printer: Printer): Text = printer.toText(this)
+  }
 
   /** A successful search
    *  @param ref   The implicit reference that succeeded
    *  @param tree  The typed tree that needs to be inserted
    *  @param ctx   The context after the implicit search
    */
-  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, level: Int, tstate: TyperState) extends SearchResult {
+  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, level: Int, tstate: TyperState) extends SearchResult with Showable {
     override def toString = s"SearchSuccess($tree, $ref, $level)"
   }
 
@@ -256,7 +259,7 @@ object Implicits {
   }
 
   /** An ambiguous implicits failure */
-  class AmbiguousImplicits(alt1: TermRef, alt2: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
+  class AmbiguousImplicits(val alt1: TermRef, val alt2: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
       em"both ${err.refStr(alt1)} and ${err.refStr(alt2)} $qualify"
     override def postscript(implicit ctx: Context) =
@@ -380,7 +383,9 @@ trait ImplicitRunInfo { self: RunInfo =>
               EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
             } else {
               seen += t
-              iscope(t).companionRefs
+              val is = iscope(t)
+              if (!implicitScopeCache.contains(t)) incomplete += tp
+              is.companionRefs
             }
         }
 
@@ -436,10 +441,8 @@ trait ImplicitRunInfo { self: RunInfo =>
           if (ctx.typerState.ephemeral)
             record("ephemeral cache miss: implicitScope")
           else if (canCache &&
-                   ((tp eq rootTp) ||                  // first type traversed is always cached
-                    !incomplete.contains(tp) &&        // other types are cached if they are not incomplete
-                    result.companionRefs.forall(       // and all their companion refs are cached
-                      implicitScopeCache.contains)))
+                   ((tp eq rootTp) ||          // first type traversed is always cached
+                    !incomplete.contains(tp))) // other types are cached if they are not incomplete
             implicitScopeCache(tp) = result
           result
         }
@@ -604,6 +607,7 @@ trait Implicits { self: Typer =>
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()
+          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} ${ctx.typerState.hashesStr}")
           result
         case result: AmbiguousImplicits =>
           val deepPt = pt.deepenProto

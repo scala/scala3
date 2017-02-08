@@ -5,6 +5,7 @@ import core._
 import Texts._, ast.Trees._
 import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
+import typer.Implicits.SearchResult
 
 /** The base class of all printers
  */
@@ -94,7 +95,10 @@ abstract class Printer {
   /** Textual representation of tree */
   def toText[T >: Untyped](tree: Tree[T]): Text
 
-  /** Perform string or text-producing operation `op` so that only a
+  /** Textual representation of implicit search result */
+  def toText(result: SearchResult): Text
+
+      /** Perform string or text-producing operation `op` so that only a
    *  summarized text with given recursion depth is shown
    */
   def summarized[T](depth: Int)(op: => T): T

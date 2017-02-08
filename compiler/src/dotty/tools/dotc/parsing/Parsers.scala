@@ -1765,12 +1765,8 @@ object Parsers {
               TypeTree()  // XX-METHOD-INFER
             } else {
               accept(COLON)
-              if (in.token == ARROW) {
-                if (owner.isTypeName && !(mods is Local))
-                  syntaxError(s"${if (mods is Mutable) "`var'" else "`val'"} parameters may not be call-by-name")
-                else if (imods.hasFlags)
-                  syntaxError("implicit parameters may not be call-by-name")
-              }
+              if (in.token == ARROW && owner.isTypeName && !(mods is Local))
+                syntaxError(s"${if (mods is Mutable) "`var'" else "`val'"} parameters may not be call-by-name")
               paramType()
             }
           val default =
