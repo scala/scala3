@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._
+import Types._, Names._, NameOps._, Flags._, util.Positions._, Contexts._, Constants._
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import annotation.tailrec
 import language.higherKinds
@@ -316,7 +316,7 @@ object Trees {
     def namePos =
       if (pos.exists)
         if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
-        else Position(pos.point, pos.point + name.length, pos.point)
+        else Position(pos.point, pos.point + name.stripModuleClassSuffix.length, pos.point)
       else pos
   }
 
