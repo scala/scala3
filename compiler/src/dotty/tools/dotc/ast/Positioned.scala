@@ -123,6 +123,8 @@ abstract class Positioned extends DotClass with Product {
 
   private def unionPos(pos: Position, xs: List[_]): Position = xs match {
     case (p: Positioned) :: xs1 => unionPos(pos union p.pos, xs1)
+    case (xs0: List[_]) :: xs1 => unionPos(unionPos(pos, xs0), xs1)
+    case _ :: xs1 => unionPos(pos, xs1)
     case _ => pos
   }
 
