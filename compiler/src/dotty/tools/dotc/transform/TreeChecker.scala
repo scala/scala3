@@ -81,7 +81,7 @@ class TreeChecker extends Phase with SymTransformer {
     val sym = symd.symbol
 
     if (sym.isClass && !sym.isAbsent) {
-      val validSuperclass = sym.isPrimitiveValueClass ||  defn.syntheticCoreClasses.contains(sym) ||
+      val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
         (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists)
       if (!validSuperclass)
         printError(s"$sym has no superclass set")
