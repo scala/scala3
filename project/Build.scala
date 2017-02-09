@@ -172,12 +172,13 @@ object DottyBuild extends Build {
     settings(sourceStructure).
     settings(
       libraryDependencies ++= {
-        val github4sVersion = "0.9.0"
+        val circeVersion = "0.7.0"
         val http4sVersion = "0.15.3"
         Seq(
-          "io.circe" %% "circe-generic" % "0.6.1",
+          "com.novocode" % "junit-interface" % "0.11" % "test",
+          "io.circe" %% "circe-generic" % circeVersion,
+          "io.circe" %% "circe-parser" % circeVersion,
           "ch.qos.logback" % "logback-classic" % "1.1.7",
-          "com.fortysevendeg" %% "github4s" % "0.10.0",
           "org.http4s" %% "http4s-dsl" % http4sVersion,
           "org.http4s" %% "http4s-blaze-server" % http4sVersion,
           "org.http4s" %% "http4s-blaze-client" % http4sVersion,
