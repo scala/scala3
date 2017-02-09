@@ -10,6 +10,7 @@ import util.Chars._
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
+import scala.collection.immutable.SortedMap
 import mutable.ListBuffer
 import Utility.isNameStart
 import rewrite.Rewrites.patch
@@ -174,39 +175,15 @@ object Scanners {
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     val keepComments = ctx.settings.YkeepComments.value
 
-    /** All doc comments as encountered, each list contains doc comments from
-     *  the same block level. Starting with the deepest level and going upward
-     */
-    private[this] var docsPerBlockStack: List[List[Comment]] = List(Nil)
+    /** All doc comments kept by their end position in a `Map` */
+    private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
-    /** Adds level of nesting to docstrings */
-    def enterBlock(): Unit =
-      docsPerBlockStack = List(Nil) ::: docsPerBlockStack
-
-    /** Removes level of nesting for docstrings */
-    def exitBlock(): Unit = docsPerBlockStack = docsPerBlockStack match {
-      case x :: Nil => List(Nil)
-      case _ => docsPerBlockStack.tail
-    }
+    private[this] def addComment(comment: Comment): Unit =
+      docstringMap = docstringMap + (comment.pos.end -> comment)
 
     /** Returns the closest docstring preceding the position supplied */
-    def getDocComment(pos: Int): Option[Comment] = {
-      def closest(c: Comment, docstrings: List[Comment]): Comment = docstrings match {
-        case x :: xs =>
-          if (c.pos.end < x.pos.end && x.pos.end <= pos) closest(x, xs)
-          else closest(c, xs)
-        case Nil => c
-      }
-
-      docsPerBlockStack match {
-        case (list @ (x :: xs)) :: _ => {
-          val c = closest(x, xs)
-          docsPerBlockStack = list.dropWhile(_ != c).tail :: docsPerBlockStack.tail
-          Some(c)
-        }
-        case _ => None
-      }
-    }
+    def getDocComment(pos: Int): Option[Comment] =
+      docstringMap.to(pos).lastOption.map(_._2)
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -541,13 +518,13 @@ object Scanners {
         case ',' =>
           nextChar(); token = COMMA
         case '(' =>
-          enterBlock(); nextChar(); token = LPAREN
+          nextChar(); token = LPAREN
         case '{' =>
-          enterBlock(); nextChar(); token = LBRACE
+          nextChar(); token = LBRACE
         case ')' =>
-          exitBlock(); nextChar(); token = RPAREN
+          nextChar(); token = RPAREN
         case '}' =>
-          exitBlock(); nextChar(); token = RBRACE
+          nextChar(); token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
         case ']' =>
@@ -615,8 +592,7 @@ object Scanners {
           val pos = Position(start, charOffset, start)
           val comment = Comment(pos, flushBuf(commentBuf))
 
-          if (comment.isDocComment)
-            docsPerBlockStack = (docsPerBlockStack.head :+ comment) :: docsPerBlockStack.tail
+          if (comment.isDocComment) addComment(comment)
         }
 
         true
