@@ -8,6 +8,7 @@ import Names._, StdNames._, Contexts._, Symbols._, Flags._
 import Decorators.StringDecorator
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
+import Definitions._
 
 object NameOps {
 
@@ -231,13 +232,43 @@ object NameOps {
       }
     }
 
-    def functionArity: Int = {
-      def test(prefix: Name): Int =
-        if (name.startsWith(prefix))
-          try name.drop(prefix.length).toString.toInt
-          catch { case ex: NumberFormatException => -1 }
-        else -1
-      test(tpnme.Function) max test(tpnme.ImplicitFunction)
+    /** Is a synthetic function name
+     *    - N for FunctionN
+     *    - N for ImplicitFunctionN
+      *   - (-1) otherwise
+     */
+    def functionArity: Int =
+      functionArityFor(tpnme.Function) max functionArityFor(tpnme.ImplicitFunction)
+
+    /** Is a function name
+     *    - FunctionN for N >= 0
+     *    - ImplicitFunctionN for N >= 0
+     *    - false otherwise
+     */
+    def isFunction: Boolean = functionArity >= 0
+
+    /** Is a implicit function name
+     *    - ImplicitFunctionN for N >= 0
+     *    - false otherwise
+     */
+    def isImplicitFunction: Boolean = functionArityFor(tpnme.ImplicitFunction) >= 0
+
+    /** Is a synthetic function name
+     *    - FunctionN for N > 22
+     *    - ImplicitFunctionN for N >= 0
+     *    - false otherwise
+     */
+    def isSyntheticFunction: Boolean = {
+      functionArityFor(tpnme.Function) > MaxImplementedFunctionArity ||
+        functionArityFor(tpnme.ImplicitFunction) >= 0
+    }
+
+    /** Parsed function arity for function with some specific prefix */
+    private def functionArityFor(prefix: Name): Int = {
+      if (name.startsWith(prefix))
+        try name.toString.substring(prefix.length).toInt
+        catch { case _: NumberFormatException => -1 }
+      else -1
     }
 
     /** The name of the generic runtime operation corresponding to an array operation */

@@ -349,10 +349,8 @@ object Erasure extends TypeTestsCasts{
           if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.ObjectClass
-          } else if (defn.isXXLFunctionClass(owner))
-            defn.FunctionXXLClass
-          else if (defn.isImplicitFunctionClass(owner))
-            recur(defn.FunctionClass(owner.name.functionArity))
+          } else if (defn.isSyntheticFunctionClass(owner))
+            defn.erasedFunctionClass(owner)
           else
             owner
         recur(sym.owner)
