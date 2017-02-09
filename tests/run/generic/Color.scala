@@ -12,7 +12,7 @@ sealed trait Color extends Enum
 
 object Color {
 
-  private val $values = new EnumValues[Color]
+  private val $values = new runtime.EnumValues[Color]
   def valueOf: Int => Color = $values
   def values = $values.values
 

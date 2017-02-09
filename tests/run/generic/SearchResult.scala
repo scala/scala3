@@ -13,7 +13,7 @@ sealed trait SearchResult extends Enum
 
 object SearchResult extends {
 
-  private val $values = new EnumValues[SearchResult]
+  private val $values = new runtime.EnumValues[SearchResult]
   def valueOf: Int => SearchResult = $values
   def values = $values.values
 
