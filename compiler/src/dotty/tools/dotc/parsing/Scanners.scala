@@ -178,12 +178,21 @@ object Scanners {
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
-    private[this] def addComment(comment: Comment): Unit =
-      docstringMap = docstringMap + (comment.pos.end -> comment)
+    private[this] def addComment(comment: Comment): Unit = {
+      val lookahead = lookaheadReader
+      def nextPos: Int = (lookahead.getc(): @switch) match {
+        case ' ' | '\t' => nextPos
+        case CR | LF | FF =>
+          // if we encounter line delimitng whitespace we don't count it, since
+          // it seems not to affect positions in source
+          nextPos - 1
+        case _ => lookahead.charOffset - 1
+      }
+      docstringMap = docstringMap + (nextPos -> comment)
+    }
 
     /** Returns the closest docstring preceding the position supplied */
-    def getDocComment(pos: Int): Option[Comment] =
-      docstringMap.to(pos).lastOption.map(_._2)
+    def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
     val commentBuf = new StringBuilder
@@ -589,10 +598,12 @@ object Scanners {
       val start = lastCharOffset
       def finishComment(): Boolean = {
         if (keepComments) {
-          val pos = Position(start, charOffset, start)
+          val pos = Position(start, charOffset - 1, start)
           val comment = Comment(pos, flushBuf(commentBuf))
 
-          if (comment.isDocComment) addComment(comment)
+          if (comment.isDocComment) {
+            addComment(comment)
+          }
         }
 
         true

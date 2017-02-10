@@ -488,4 +488,34 @@ class DocstringTests extends DocstringTest {
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
     }
   }
+
+  @Test def nestedComment = {
+    val source =
+      """
+      |trait T {
+      |  /** Cheeky comment */
+      |}
+      |class C
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
+        assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
+    }
+  }
+
+  @Test def eofComment = {
+    val source =
+      """
+      |class C
+      |/** Cheeky comment */
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(c: TypeDef)) =>
+        assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
+    }
+  }
 } /* End class */
