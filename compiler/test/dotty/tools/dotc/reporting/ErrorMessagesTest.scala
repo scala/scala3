@@ -11,15 +11,22 @@ import org.junit.Assert._
 
 trait ErrorMessagesTest extends DottyTest {
 
+  ctx = freshReporter(ctx)
+
+  private def freshReporter(ctx: Context) =
+    ctx.fresh.setReporter(new CapturingReporter)
+
+
   class Report(messages: List[Message], ictx: Context) {
     def expect(f: (Context, List[Message]) => Unit): Unit = {
       f(ictx, messages)
     }
 
-    def expectNoErrors: Unit = this.isInstanceOf[FailedReport]
+    def expectNoErrors: Unit =
+      assert(this.isInstanceOf[EmptyReport], "errors found when not expected")
   }
 
-  class FailedReport extends Report(Nil, null) {
+  class EmptyReport extends Report(Nil, null) {
     override def expect(f: (Context, List[Message]) => Unit) =
       fail("""|
               |Couldn't capture errors from compiled sources, this can happen if
@@ -38,7 +45,7 @@ trait ErrorMessagesTest extends DottyTest {
 
     def toReport: Report =
       if (capturedContext eq null)
-        new FailedReport
+        new EmptyReport
       else {
         val xs = buffer.reverse.toList
         buffer.clear()
@@ -50,11 +57,6 @@ trait ErrorMessagesTest extends DottyTest {
       }
   }
 
-  ctx = freshReporter(ctx)
-
-  private def freshReporter(ctx: Context) =
-    ctx.fresh.setReporter(new CapturingReporter)
-
   def checkMessages(source: String): Report = {
     checkCompile("frontend", source) { (_,ictx) => () }
     val rep = ctx.reporter.asInstanceOf[CapturingReporter].toReport
@@ -62,7 +64,7 @@ trait ErrorMessagesTest extends DottyTest {
     rep
   }
 
-  def messageCount(expected: Int, messages: List[Message]): Unit =
+  def assertMessageCount(expected: Int, messages: List[Message]): Unit =
     assertEquals(
       expected,
       messages.length

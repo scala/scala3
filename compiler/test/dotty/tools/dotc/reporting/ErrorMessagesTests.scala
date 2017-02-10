@@ -28,7 +28,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       // Assert that we only got one error message
-      messageCount(1, messages)
+      assertMessageCount(1, messages)
 
       // Pattern match out the expected error
       val TypeMismatch(found, expected, _, _) :: Nil = messages
