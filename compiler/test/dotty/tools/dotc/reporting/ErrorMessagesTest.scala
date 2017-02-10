@@ -57,8 +57,8 @@ trait ErrorMessagesTest extends DottyTest {
       }
   }
 
-  def checkMessages(source: String): Report = {
-    checkCompile("frontend", source) { (_,ictx) => () }
+  def checkMessagesAfter(checkAfterPhase: String)(source: String): Report = {
+    checkCompile(checkAfterPhase, source) { (_,ictx) => () }
     val rep = ctx.reporter.asInstanceOf[CapturingReporter].toReport
     ctx = freshReporter(ctx)
     rep
