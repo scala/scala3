@@ -334,11 +334,18 @@ object desugar {
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
-    // a refereence to `enumClass`, with type parameters coming from the constructor
+    // a reference to `enumClass`, with type parameters coming from the constructor
     lazy val enumClassTypeRef = appliedRef(enumClassRef)
 
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
+
+    // The return type of the `apply` and `copy` methods
+    val applyResultTpt =
+      if (isEnumCase)
+        if (parents.isEmpty) enumClassTypeRef
+        else parents.head
+      else TypeTree()
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def isDefined = true
@@ -380,7 +387,7 @@ object desugar {
               cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
               cpy.ValDef(vparam)(rhs = EmptyTree))
-            DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
+            DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, applyResultTpt, creatorExpr)
               .withMods(synthetic) :: Nil
           }
 
@@ -430,15 +437,15 @@ object desugar {
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
               constr.mods.is(Private)) anyRef
+          else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-          else (constrVparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
+            (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
+              (vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods is Abstract) Nil
-          else {
-            val restpe = if (isEnumCase) enumClassTypeRef else TypeTree()
-            DefDef(nme.apply, derivedTparams, derivedVparamss, restpe, creatorExpr)
+          else
+            DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, creatorExpr)
               .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: Nil
-          }
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -505,7 +512,10 @@ object desugar {
       case _ =>
     }
 
-    flatTree(cdef1 :: companions ::: implicitWrappers)
+    val result = val flatTree(cdef1 :: companions ::: implicitWrappers)
+    //if (isEnum) println(i"enum $cdef\n --->\n$result")
+    //if (isEnumCase) println(i"enum case $cdef\n --->\n$result")
+    result
   }
 
   val AccessOrSynthetic = AccessFlags | Synthetic
