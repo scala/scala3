@@ -14,7 +14,7 @@ import dotc.Compiler
 
 import dotc.core.Phases.Phase
 
-class DottyTest extends ContextEscapeDetection{
+trait DottyTest extends ContextEscapeDetection {
 
   dotc.parsing.Scanners // initialize keywords
 

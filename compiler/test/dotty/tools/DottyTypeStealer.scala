@@ -7,14 +7,14 @@ import dotc.core.Contexts.Context
 import dotc.core.Decorators._
 import dotc.core.Types.Type
 
-object DottyTypeStealer {
+object DottyTypeStealer extends DottyTest {
   def stealType(source: String, typeStrings: String*): (Context, List[Type]) = {
     val dummyName = "x_x_x"
     val vals = typeStrings.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
     var scontext : Context = null
     var tp: List[Type] = null
-    new DottyTest().checkCompile("frontend",gatheredSource) {
+    checkCompile("frontend",gatheredSource) {
       (tree, context) =>
         implicit val ctx = context
         val findValDef: (List[ValDef], tpd.Tree) => List[ValDef] =
