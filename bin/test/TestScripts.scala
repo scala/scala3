@@ -91,9 +91,9 @@ class TestScripts {
       s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
   }
 
-  /** dotc script should work after deleting .packages */
+  /** dotc script should work after corrupting .packages */
   @Test def reCreatesPackagesIfNecessary = doUnlessWindows {
-    delete("./.packages")
+    executeScript("sed -i.old 's/2.1/2.X/' ./.packages") // That's going to replace 2.11 with 2.X1
     val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
     assert(retFirstBuild == 0, "building dotc failed")
   }
