@@ -12,11 +12,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
   // `Report`
   @Test def noErrors =
-    checkMessages("""class Foo""")
+    checkMessagesAfter("frontend")("""class Foo""")
     .expectNoErrors
 
   @Test def typeMismatch =
-    checkMessages {
+    checkMessagesAfter("frontend") {
       """
       |object Foo {
       |  def bar: String = 1
