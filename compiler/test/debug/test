@@ -2,12 +2,12 @@
 
 set -x
 
-sbt compile package || exit 1
+DIR="$( cd "$( dirname "$0" )" && pwd )"
 
 for file in tests/debug/*.scala; do
    ./bin/dotc $file || exit 1
    ./bin/dotr -d Test&
-   ./compiler/test/debug/Gen $file > robot
+   $DIR/Gen $file > robot
    expect robot
 
    if [[ $? != 0 ]]; then
@@ -15,3 +15,4 @@ for file in tests/debug/*.scala; do
       exit 1
    fi
 done
+
