@@ -17,16 +17,18 @@ class TestScripts {
 
   private def executeScript(script: String): (Int, String) = {
     val sb = new StringBuilder
-    val ret = Process(script) ! ProcessLogger(sb append _)
-    (ret, sb.toString)
+    val ret = Process(script) ! ProcessLogger { line => println(line); sb.append(line) }
+    val output = sb.toString
+    println(output) // For CI, otherwise "terminal inactive for 5m0s, build cancelled"
+    (ret, output)
+  }
+
+  private def delete(path: String) = {
+    val file = new JFile(path)
+    if (file.exists) file.delete()
   }
 
   private def deletePackages: Unit = {
-    def delete(path: String) = {
-      val file = new JFile(path)
-      if (file.exists) file.delete()
-    }
-
     try {
       for (jar <- Source.fromFile("./.packages").getLines())
         delete(jar)
@@ -87,5 +89,12 @@ class TestScripts {
     assert(
       ret == 0 && !output.contains("rebuilding"),
       s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
+  }
+
+  /** dotc script should work after corrupting .packages */
+  @Test def reCreatesPackagesIfNecessary = doUnlessWindows {
+    executeScript("sed -i.old 's/2.1/2.X/' ./.packages") // That's going to replace 2.11 with 2.X1
+    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    assert(retFirstBuild == 0, "building dotc failed")
   }
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # This script is used for running compiler standalone(outside of sbt)
 # it's based on miniboxing script and paulp's launcher script
 
@@ -10,10 +11,10 @@ fi
 DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
 DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
 
-source $DOTTY_ROOT/bin/common
+source "$DOTTY_ROOT/bin/common"
 
 # dotc.build test places bootstrapped jar here
-DOTTY_JAR=$DOTTY_ROOT/dotty.jar
+DOTTY_JAR="$DOTTY_ROOT/dotty.jar"
 
 CompilerMain=dotty.tools.dotc.Main
 FromTasty=dotty.tools.dotc.FromTasty
@@ -29,13 +30,13 @@ then
 fi
 
 ifdebug () {
-  [[ -n $debug ]] && eval "$@"
+  [[ -n "$debug" ]] && eval "$@"
 }
 echoErr () {
   echo >&2 "$@"
 }
 dlog () {
-  [[ -n $debug ]] && echoErr "$@"
+  [[ -n "$debug" ]] && echoErr "$@"
 }
 
 die() {
@@ -52,7 +53,7 @@ echoErr ""
 execCommand () {
   ifdebug echoArgs "$@"
   ignore="$(cat "$HOME/.scala_ignore_crashes" 2>/dev/null)"
-  if [[ $ignore == "true" ]]; then
+  if [[ "$ignore" == "true" ]]; then
     "$@" 2>&1 | scala-crash-filter
   else
     $@
@@ -62,11 +63,11 @@ execCommand () {
 # restore stty settings (echo in particular)
 restoreSttySettings () {
   dlog "" && dlog "[restore stty] $saved_stty"
-  stty $saved_stty && saved_stty=""
+  stty "$saved_stty" && saved_stty=""
 }
 
 onExit () {
-  [[ -n $saved_stty ]] && restoreSttySettings
+  [[ -n "$saved_stty" ]] && restoreSttySettings
   exit $scala_exit_status
 }
 
@@ -103,7 +104,7 @@ addResidual () {
 }
 
 onExit() {
-  [[ -n $saved_stty ]] && restoreSttySettings
+  [[ -n "$saved_stty" ]] && restoreSttySettings
   exit $scala_exit_status
 }
 
@@ -113,8 +114,8 @@ trap onExit INT
 # If using the boot classpath, also pass an empty classpath
 # to java to suppress "." from materializing.
 classpathArgs () {
-  if [[ "true" == $bootstrapped ]]; then
-    check_jar "dotty-bootstrapped" $DOTTY_JAR "target" 'build_jar "test:runMain dotc.build" target' &> /dev/null
+  if [[ "true" == "$bootstrapped" ]]; then
+    check_jar "dotty-bootstrapped" "$DOTTY_JAR" "target" 'build_jar "test:runMain dotc.build" target' &> /dev/null
     toolchain="$DOTTY_JAR:$DOTTY_LIB_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
   else
     toolchain="$SCALA_LIBRARY_JAR:$DOTTY_LIB_JAR:$SCALA_REFLECT_JAR:$SCALA_COMPILER_JAR:$SBT_INTERFACE_JAR"
@@ -129,7 +130,7 @@ classpathArgs () {
       format=windows
     fi
 
-    if [[ -n $bootcp ]]; then
+    if [[ -n "$bootcp" ]]; then
       boot_classpath="$(cygpath --path --$format "$toolchain:$bcpJars")"
       classpath="$(cygpath --path --$format "$cpJars")"
       cpArgs="-Xbootclasspath/a:$boot_classpath -classpath $classpath"
@@ -138,7 +139,7 @@ classpathArgs () {
       cpArgs="-classpath $classpath"
     fi
   else
-    if [[ -n $bootcp ]]; then
+    if [[ -n "$bootcp" ]]; then
       cpArgs="-Xbootclasspath/a:$toolchain:$bcpJars -classpath $cpJars"
     else
       cpArgs="-classpath $toolchain:$cpJars"
@@ -159,7 +160,7 @@ require_arg () {
 }
 
 
-main_class=$CompilerMain
+main_class="$CompilerMain"
 
 while [[ $# -gt 0 ]]; do
 case "$1" in
@@ -172,11 +173,11 @@ case "$1" in
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
-        -repl) main_class=$ReplMain && shift ;;
-        -tasty) main_class=$FromTasty && shift ;;
-     -compile) main_class=$CompilerMain && shift ;;
-         -run) main_class=$ReplMain && shift ;;
-         -fsc) main_class=$FscMain && shift ;;
+        -repl) main_class="$ReplMain" && shift ;;
+       -tasty) main_class="$FromTasty" && shift ;;
+     -compile) main_class="$CompilerMain" && shift ;;
+         -run) main_class="$ReplMain" && shift ;;
+         -fsc) main_class="$FscMain" && shift ;;
       -bootcp) bootcp=true && shift ;;
    -nobootcp) unset bootcp && shift ;;
       -colors) colors=true && shift ;;
