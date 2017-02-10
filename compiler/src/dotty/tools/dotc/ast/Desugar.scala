@@ -512,7 +512,7 @@ object desugar {
       case _ =>
     }
 
-    val result = val flatTree(cdef1 :: companions ::: implicitWrappers)
+    val result = flatTree(cdef1 :: companions ::: implicitWrappers)
     //if (isEnum) println(i"enum $cdef\n --->\n$result")
     //if (isEnumCase) println(i"enum case $cdef\n --->\n$result")
     result
