@@ -450,13 +450,22 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred | Final | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
-    Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrBaseTypeArg | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
-    Inline | LazyOrTrait | SuperAccessorOrScala2x | SelfNameOrImplClass
+    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor |
+    Scala2ExistentialCommon | Mutable.toCommonFlags | InSuperCall | Touched | JavaStatic |
+    CovariantOrOuter | ContravariantOrLabel | ExpandedName | CaseAccessorOrBaseTypeArg |
+    Fresh | Frozen | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    SuperAccessorOrScala2x | Inline
+
+  /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
+   *  class or object, when the class file defining the symbol is loaded (which
+   *  is generally before the symbol is completed
+   */
+  final val AfterLoadFlags =
+    FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
+  assert(AfterLoadFlags.isTermFlags && AfterLoadFlags.isTypeFlags)
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method
