@@ -40,9 +40,9 @@ ERROR_LOG=error.log
 trap onTerminate SIGTERM
 
 onTerminate() {
-  if [ -f $ERROR_LOG ]; then
-    cat $ERROR_LOG
-    rm -f $ERROR_LOG
+  if [ -f "$ERROR_LOG" ]; then
+    cat "$ERROR_LOG"
+    rm -f "$ERROR_LOG"
   fi
   exit 1 # $? is lost from subprocess in command substitution.
 }
@@ -52,7 +52,7 @@ function build_jar {
     #   build_jar package path/to/jar/dir ['/some/sed/command']
     #
     #   Last arg is optional
-    cd $DOTTY_ROOT >& /dev/null
+    cd "$DOTTY_ROOT" >& /dev/null
     local build_output=$(sbt "$1" || (echo "failed to run: sbt $1" >> $ERROR_LOG; kill -SIGTERM $$))
     local jar=$(echo $build_output | sed -n 's/.*Packaging //g; s/ \.\.\..*//g; /^\/.*/p')
 
@@ -68,14 +68,14 @@ function build_jar {
 
     cd - >& /dev/null
 
-    echo $jar
+    echo "$jar"
 }
 
 function update_packages {
-    echo "$INTERFACES_JAR" >  $DOTTY_ROOT/.packages
-    echo "$MAIN_JAR"       >> $DOTTY_ROOT/.packages
-    echo "$DOTTY_LIB_JAR"  >> $DOTTY_ROOT/.packages
-    echo "$TEST_JAR"       >> $DOTTY_ROOT/.packages
+    echo "$INTERFACES_JAR" >  "$DOTTY_ROOT/.packages"
+    echo "$MAIN_JAR"       >> "$DOTTY_ROOT/.packages"
+    echo "$DOTTY_LIB_JAR"  >> "$DOTTY_ROOT/.packages"
+    echo "$TEST_JAR"       >> "$DOTTY_ROOT/.packages"
 }
 
 function build_all {
@@ -124,17 +124,17 @@ function check_jar {
     local new_files="$(find "$DOTTY_ROOT/$3" \( -iname "*.scala" -o -iname "*.java" \) -newer "$2")"
     if [ ! -z "$new_files" ]; then
         printf "New files detected in $1, rebuilding..."
-        rm $2
+        rm "$2"
         eval "$4"
         printf "done\n"
         update_packages
     fi
 }
 
-check_jar "dotty-interfaces" $INTERFACES_JAR "interfaces/src" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
-check_jar "dotty-compiler"   $MAIN_JAR       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-library"    $DOTTY_LIB_JAR  "library/src"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
-check_jar "dotty-tests"      $TEST_JAR       "compiler/test"  'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
+check_jar "dotty-interfaces" "$INTERFACES_JAR" "interfaces/src" 'INTERFACES_JAR=$(build_jar dotty-interfaces/package interfaces/target)'
+check_jar "dotty-compiler"   "$MAIN_JAR"       "compiler/src"   'MAIN_JAR=$(build_jar dotty-compiler/package compiler/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-library"    "$DOTTY_LIB_JAR"  "library/src"    'DOTTY_LIB_JAR=$(build_jar dotty-library/package library/target/scala-$SCALA_BINARY_VERSION)'
+check_jar "dotty-tests"      "$TEST_JAR"       "compiler/test"  'TEST_JAR=$(build_jar dotty-compiler/test:package compiler/target/scala-$SCALA_BINARY_VERSION /dotty.*-tests\.jar/p)'
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]; then
