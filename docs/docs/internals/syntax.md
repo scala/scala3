@@ -339,7 +339,7 @@ ConstrMods        ::=  AccessModifier
                     |  Annotation {Annotation} (AccessModifier | ‘this’)
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
-                       [nl] ‘{’ EnumCaseStat {semi EnumCaseStat ‘}’
+                       [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’
 EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  `case' (EnumClassDef | ObjectDef)
 EnumClassDef      ::=  id [ClsTpeParamClause | ClsParamClause]                  ClassDef(mods, name, tparams, templ)
