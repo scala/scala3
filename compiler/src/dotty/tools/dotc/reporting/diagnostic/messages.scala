@@ -1002,4 +1002,36 @@ object messages {
            |${typeCode}
            |"""
   }
+
+  case class OverridesNothing(member: Symbol)(implicit ctx: Context)
+  extends Message(37) {
+    val kind = "Reference"
+    val msg = hl"""${member} overrides nothing"""
+
+    val explanation =
+      hl"""|There must be a field or method with the name `${member.name}` in a super
+           |class of `${member.owner}` to override it. Did you misspell it?
+           |Are you extending the right classes?
+           |"""
+  }
+
+  case class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(implicit ctx: Context)
+  extends Message(38) {
+    val kind = "Reference"
+    val msg = hl"""${member} has a different signature than the overridden declaration"""
+
+    val existingDecl = existing.map(_.showDcl).mkString("  \n")
+
+    val explanation =
+      hl"""|There must be a non-final field or method with the name `${member.name}` and the
+           |same parameter list in a super class of `${member.owner}` to override it.
+           |
+           |  ${member.showDcl}
+           |
+           |The super classes of `${member.owner}` contain the following members
+           |named `${member.name}`:
+           |  ${existingDecl}
+           |"""
+  }
+
 }
