@@ -57,10 +57,10 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertMessageCount(1, messages)
       val OverridesNothing(member) :: Nil = messages
-      assertEquals("bar", member.name.toString)
+      assertEquals("bar", member.name.show)
     }
 
-  @Test def overridesNothingDifferntSignature =
+  @Test def overridesNothingDifferentSignature =
     checkMessagesAfter("refchecks") {
       """
         |class Bar {
@@ -80,9 +80,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val OverridesNothingButNameExists(member, sameName) :: Nil = messages
       // check expected context data
-      assertEquals("bar", member.name.toString)
+      assertEquals("bar", member.name.show)
       assertEquals(3, sameName.size)
-      assert(sameName.forall(_.symbol.name.toString == "bar"),
+      assert(sameName.forall(_.symbol.name.show == "bar"),
         "at least one method had an unexpected name")
     }
 }
