@@ -21,6 +21,9 @@ import DenotTransformers._
 
 object RefChecks {
   import tpd._
+  import reporting.diagnostic.Message
+  import reporting.diagnostic.messages._
+
 
   private def isDefaultGetter(name: Name): Boolean =
     name.isTermName && name.asTermName.defaultGetterIndex >= 0
@@ -622,15 +625,12 @@ object RefChecks {
       if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
         // for (bc <- clazz.info.baseClasses.tail) Console.println("" + bc + " has " + bc.info.decl(member.name) + ":" + bc.info.decl(member.name).tpe);//DEBUG
 
-        val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz && !alt.is(Final))
-        def issueError(suffix: String) =
-          ctx.error(i"$member overrides nothing$suffix", member.pos)
+        val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {
           case Nil =>
-            issueError("")
+            ctx.error(OverridesNothing(member), member.pos)
           case ms =>
-            val superSigs = ms.map(_.showDcl).mkString("\n")
-            issueError(s".\nNote: the super classes of ${member.owner} contain the following, non final members named ${member.name}:\n${superSigs}")
+            ctx.error(OverridesNothingButNameExists(member, ms), member.pos)
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
