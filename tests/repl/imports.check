@@ -11,7 +11,7 @@ scala> buf += xs
 11 |buf += xs
    |       ^^
    |       found:    scala.collection.immutable.List[Int](o.xs)
-   |       required: String
+   |       required: Int
    |       
 scala> buf ++= xs
 val res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)

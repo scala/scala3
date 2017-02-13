@@ -683,7 +683,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *     { val xs = es; e' = e' + args }
      */
-    def typedOpAssign: Tree = track("typedOpAssign") {
+    def typedOpAssign(implicit ctx: Context): Tree = track("typedOpAssign") {
       val Apply(Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
