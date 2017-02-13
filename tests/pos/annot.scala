@@ -24,5 +24,6 @@ class Test {
 
   class C extends A @uncheckedVariance () with B @uncheckedVariance { val x = 10 }
 
+  val f: (Int => Int) @uncheckedVariance = ???
 }
 

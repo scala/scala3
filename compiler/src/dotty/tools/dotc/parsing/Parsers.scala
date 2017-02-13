@@ -713,7 +713,11 @@ object Parsers {
                 if (t.isInstanceOf[ByNameTypeTree])
                   syntaxError(ByNameParameterNotSupported())
               val tuple = atPos(start) { makeTupleOrParens(ts) }
-              infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
+              infixTypeRest(
+                refinedTypeRest(
+                  withTypeRest(
+                    annotTypeRest(
+                      simpleTypeRest(tuple)))))
             }
           }
         }
