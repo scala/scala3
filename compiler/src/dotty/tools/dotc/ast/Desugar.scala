@@ -297,7 +297,11 @@ object desugar {
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
     val originalTparams =
-      if (isEnumCase && parents.isEmpty) reconstitutedEnumTypeParams(cdef.pos.startPos)
+      if (isEnumCase && parents.isEmpty) {
+        if (constr1.tparams.nonEmpty)
+          ctx.error(em"case with type parameters needs extends clause", constr1.tparams.head.pos)
+        reconstitutedEnumTypeParams(cdef.pos.startPos)
+      }
       else constr1.tparams
     val originalVparamss = constr1.vparamss
     val constrTparams = originalTparams.map(toDefParam)
