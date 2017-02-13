@@ -769,7 +769,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       cls.setApplicableFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
-      def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree]): (List[Tree], List[Tree]) =
+      def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
         (tparams, stats) match {
           case (tparam :: tparams1, (alias: TypeDef) :: stats1)
           if tparam.name == alias.name.expandedName(cls) =>
