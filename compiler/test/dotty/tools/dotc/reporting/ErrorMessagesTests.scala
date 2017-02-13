@@ -89,9 +89,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter("refchecks") {
       """
         |object Forward {
-        |  a.toInt
-        |  val b = 2
-        |  val a = BigDecimal("4")
+        |  def block = {
+        |    a.toInt
+        |    val b = 2
+        |    val a = BigDecimal("4")
+        |  }
         |}
       """.stripMargin
     }
