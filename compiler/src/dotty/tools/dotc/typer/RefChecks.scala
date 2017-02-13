@@ -767,6 +767,7 @@ import RefChecks._
 class RefChecks extends MiniPhase { thisTransformer =>
 
   import tpd._
+  import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
 
   override def phaseName: String = "refchecks"
 
