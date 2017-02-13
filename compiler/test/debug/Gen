@@ -1,0 +1,13 @@
+#! /usr/bin/env bash
+
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+
+SOURCE=$DIR/Gen.scala
+CLASS=./Gen.class
+
+if [ ! -e $CLASS ] || [ $SOURCE -nt $CLASS ]; then
+  ./bin/dotc $DIR/Gen.scala
+fi
+
+./bin/dotr Gen $@
+

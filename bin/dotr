@@ -8,6 +8,10 @@ fi
 DOTTY_ROOT="$(dirname "$DOTTY_ROOT")"
 DOTTY_ROOT="$( cd "$DOTTY_ROOT" >& /dev/null && pwd )/.."  # absolute
 
+# debug
+DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
+DEBUG=
+
 # Load common functions and variables
 source "$DOTTY_ROOT"/bin/common
 
@@ -24,9 +28,20 @@ function runMain {
         echo "java bin not detected - please specify with \$JAVA_BIN or install java to a default location"
         exit 1
     else
-        eval "$jbin $CLASS_PATH $@"
+        eval "$jbin $DEBUG $CLASS_PATH $@"
     fi
 }
+
+# parse command line params -d to enable debugging
+while getopts "dx" opt; do
+ case "$opt" in
+    d)
+      DEBUG="$DEBUG_STR"
+      ;;
+  esac
+done
+
+shift $((OPTIND-1))
 
 first_arg="$1"
 
