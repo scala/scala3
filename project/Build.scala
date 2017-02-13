@@ -4,6 +4,7 @@ import complete.DefaultParsers._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
 import scala.reflect.io.Path
+import sbtassembly.AssemblyKeys.assembly
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -172,6 +173,10 @@ object DottyBuild extends Build {
     settings(sourceStructure).
     settings(
       resourceDirectory in Test := baseDirectory.value / "test" / "resources",
+
+      // specify main and ignore tests when assembling
+      mainClass in assembly := Some("dotty.tools.bot.Main"),
+      test in assembly := {},
 
       libraryDependencies ++= {
         val circeVersion = "0.7.0"
