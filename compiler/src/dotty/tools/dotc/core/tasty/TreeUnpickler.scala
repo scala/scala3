@@ -554,7 +554,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             val end = readEnd()
             val tp = readType()
             val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-            annots += Annotation.deferredSymAndTree(tp.typeSymbol, _ => lazyAnnotTree.complete)
+            annots += Annotation.deferredSymAndTree(tp.typeSymbol, implicit ctx => lazyAnnotTree.complete)
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
