@@ -378,7 +378,7 @@ class Namer { typer: Typer =>
       case ref: RefTree => Some(ref.name.asTermName)
       case _            => None
     }
-    ctx.fresh.setImportInfo(new ImportInfo(sym, imp.selectors, impNameOpt))
+    ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
   }
 
   /** A new context for the interior of a class */

@@ -13,9 +13,9 @@ object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
   def rootImport(refFn: () => TermRef)(implicit ctx: Context) = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
-    def expr = tpd.Ident(refFn())
-    def imp = tpd.Import(expr, selectors)
-    new ImportInfo(imp.symbol, selectors, None, isRootImport = true)
+    def expr(implicit ctx: Context) = tpd.Ident(refFn())
+    def imp(implicit ctx: Context) = tpd.Import(expr, selectors)
+    new ImportInfo(implicit ctx => imp.symbol, selectors, None, isRootImport = true)
   }
 }
 
@@ -27,14 +27,14 @@ object ImportInfo {
  *  @param   isRootImport true if this is one of the implicit imports of scala, java.lang,
  *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree],
+class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName], val isRootImport: Boolean = false)(implicit ctx: Context) {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
-  def sym = {
+  def sym(implicit ctx: Context) = {
     if (mySym == null) {
-      mySym = symf
+      mySym = symf(ctx)
       assert(mySym != null)
     }
     mySym
