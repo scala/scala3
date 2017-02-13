@@ -117,11 +117,17 @@ object Annotations {
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(sym: => Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symf: Context => Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
-        lazy val symf = sym
+        private[this] var mySym: Symbol = _
 
-        override def symbol(implicit ctx: Context): Symbol = symf
+        override def symbol(implicit ctx: Context): Symbol = {
+          if (mySym == null) {
+            mySym = symf(ctx)
+            assert(mySym != null)
+          }
+          mySym
+        }
         def complete(implicit ctx: Context) = treeFn(ctx)
       }
 
