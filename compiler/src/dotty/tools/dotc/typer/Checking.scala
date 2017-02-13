@@ -448,7 +448,6 @@ object Checking {
       }
       stats.foreach(checkValueClassMember)
     }
-
   }
 }
 
@@ -601,6 +600,31 @@ trait Checking {
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) =
     Checking.checkDerivedValueClass(clazz, stats)
+
+  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
+   *  the superclass of `cls` derived from the superclass of `parent`.
+   *
+   *  An exception is made if `cls` extends `Any`, and `parent` is `java.io.Serializable`
+   *  or `java.lang.Comparable`. These two classes are treated by Scala as universal
+   *  traits. E.g. the following is OK:
+   *
+   *      ... extends Any with java.io.Serializable
+   *
+   *  The standard library relies on this idiom.
+   */
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = {
+    parent match {
+      case parent: ClassSymbol if parent is Trait =>
+        val psuper = parent.superClass
+        val csuper = cls.superClass
+        val ok = csuper.derivesFrom(psuper) ||
+          parent.is(JavaDefined) && csuper == defn.AnyClass &&
+          (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
+        if (!ok)
+          ctx.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
+      case _ =>
+    }
+  }
 }
 
 trait NoChecking extends Checking {
@@ -617,4 +641,5 @@ trait NoChecking extends Checking {
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
+  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
 }

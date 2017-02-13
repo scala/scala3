@@ -476,7 +476,7 @@ class Definitions {
   lazy val BoxedNumberClass          = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass            = ctx.requiredClass("java.lang.Throwable")
   lazy val ClassCastExceptionClass   = ctx.requiredClass("java.lang.ClassCastException")
-  lazy val JavaSerializableClass     = ctx.requiredClass("java.lang.Serializable")
+  lazy val JavaSerializableClass     = ctx.requiredClass("java.io.Serializable")
   lazy val ComparableClass           = ctx.requiredClass("java.lang.Comparable")
 
   // in scalac modified to have Any as parent
