@@ -1,13 +1,20 @@
 import cbt._
-class Build(val context: Context) extends Dotty{
-  override def dottyDependency = DirectoryDependency( projectDirectory ++ "/../compiler" )
-  override def sources = Seq( "dotty", "scala", "scalaShadowing" ).map(
-    f => projectDirectory ++ ( "/../library/src/" + f )
+class Build(val context: Context) extends PackageJars{
+  override def sources = Seq(
+    projectDirectory ++ "/../library/src/scala"
   )
-  def scalaV = "2.11.5"
-  override def dependencies =
-    Resolver( mavenCentral, sonatypeReleases ).bind(
-      "org.scala-lang" % "scala-reflect" % scalaV,
-      "org.scala-lang" % "scala-library" % scalaV
-    )
+  override def sourceFileFilter(file: java.io.File): Boolean = file.toString.endsWith(".java")
+  /**
+  This seperate build is needed because dotc does not compile .java files.
+  No longer needed as soon as cbt's dotty support uses zinc.
+  */
+  val libraryBootstrappedScala = DirectoryDependency(
+    projectDirectory ++ "/../library-bootstrapped-scala"
+  ).build
+  override def dependencies = libraryBootstrappedScala.dependencies
+  override def exportedClasspath = libraryBootstrappedScala.exportedClasspath ++ super.exportedClasspath
+
+  def groupId: String = "ch.epfl.lamp"
+  def name: String = "dotty-library"
+  def version: String = Dotty.version
 }

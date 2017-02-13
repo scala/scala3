@@ -1,7 +1,8 @@
 import cbt._
-class Build(val context: Context) extends BaseBuild{
+class Build(val context: Context) extends Dotty{
+  override def dottyDependency = DirectoryDependency( projectDirectory ++ "/../compiler" )
   override def sources = Seq( "dotty", "scala", "scalaShadowing" ).map(
-    f => projectDirectory ++ ( "/src/" + f )
+    f => projectDirectory ++ ( "/../library/src/" + f )
   )
   override def dependencies =
     // copy dependencies from maven ;)
