@@ -8,6 +8,7 @@ import org.http4s.headers.Authorization
 import cats.syntax.applicative._
 import scalaz.concurrent.Task
 import scala.util.control.NonFatal
+import scala.Function.tupled
 
 import io.circe._
 import io.circe.generic.auto._
@@ -85,34 +86,32 @@ trait PullRequestService {
 
   /** Partitions invalid and valid commits */
   def checkCLA(xs: List[Commit], httpClient: Client): Task[List[CommitStatus]] = {
-    def checkUser(user: String, commit: Commit): Task[CommitStatus] = {
+    def checkUser(user: String): Task[Commit => CommitStatus] = {
       val claStatus = for {
         endpoint <- toUri(claUrl(user))
         claReq   <- getRequest(endpoint).pure[Task]
         claRes   <- httpClient.expect(claReq)(jsonOf[CLASignature])
-        res = if (claRes.signed) Valid(user, commit) else Invalid(user, commit)
-      } yield res
+      } yield { (commit: Commit) =>
+        if (claRes.signed) Valid(user, commit)
+        else Invalid(user, commit)
+      }
 
       claStatus.handleWith {
         case NonFatal(e) =>
           println(e)
-          Task.now(CLAServiceDown(user, commit))
+          Task.now((commit: Commit) => CLAServiceDown(user, commit))
       }
     }
 
-    def checkCommit(commit: Commit, author: Author): Task[CommitStatus] =
-      author.login.map(checkUser(_, commit)).getOrElse(Task.now(MissingUser(commit)))
+    def checkCommit(author: Author, commit: List[Commit]): Task[List[CommitStatus]] =
+      author.login.map(checkUser)
+        .getOrElse(Task.now(MissingUser))
+        .map(f => commit.map(f))
 
     Task.gatherUnordered {
-      xs.flatMap {
-        case c @ Commit(_, author, commiter, _) =>
-          if (author == commiter) List(checkCommit(c, author))
-          else List(
-            checkCommit(c, author),
-            checkCommit(c, commiter)
-          )
-      }
-    }
+      val groupedByAuthor: Map[Author, List[Commit]] = xs.groupBy(_.author)
+      groupedByAuthor.map(tupled(checkCommit)).toList
+    }.map(_.flatten)
   }
 
   def sendStatuses(xs: List[CommitStatus], httpClient: Client): Task[List[StatusResponse]] = {
@@ -176,15 +175,15 @@ trait PullRequestService {
 
     for {
       // First get all the commits from the PR
-      commits <- getCommits(issue.number, httpClient)
+      commits  <- getCommits(issue.number, httpClient)
 
       // Then check the CLA of each commit for both author and committer
-      statuses   <- checkCLA(commits, httpClient)
+      statuses <- checkCLA(commits, httpClient)
 
       // Send statuses to Github and exit
-      _          <- sendStatuses(statuses, httpClient)
-      _          <- shutdownClient(httpClient).pure[Task]
-      resp       <- Ok("All statuses checked")
+      _        <- sendStatuses(statuses, httpClient)
+      _        <- shutdownClient(httpClient).pure[Task]
+      resp     <- Ok("All statuses checked")
     } yield resp
   }
 }
