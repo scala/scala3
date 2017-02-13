@@ -805,16 +805,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  whereas overloaded variants need to have a conforming variant.
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
-      val genericProto = new UnapplyFunProto(WildcardType, this)
-      def specificProto = new UnapplyFunProto(selType, this)
       // try first for non-overloaded, then for overloaded ocurrences
       def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
-        tryEither {
-          implicit ctx => typedExpr(untpd.Select(qual, name), specificProto)
+        tryEither { implicit ctx =>
+          val specificProto = new UnapplyFunProto(selType, this)
+          typedExpr(untpd.Select(qual, name), specificProto)
         } {
           (sel, _) =>
-            tryEither {
-              implicit ctx => typedExpr(untpd.Select(qual, name), genericProto)
+            tryEither { implicit ctx =>
+              val genericProto = new UnapplyFunProto(WildcardType, this)
+              typedExpr(untpd.Select(qual, name), genericProto)
             } {
               (_, _) => fallBack(sel)
             }
