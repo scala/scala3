@@ -171,6 +171,8 @@ object DottyBuild extends Build {
   lazy val `dotty-bot` = project.in(file("bot")).
     settings(sourceStructure).
     settings(
+      resourceDirectory in Test := baseDirectory.value / "test" / "resources",
+
       libraryDependencies ++= {
         val circeVersion = "0.7.0"
         val http4sVersion = "0.15.3"
