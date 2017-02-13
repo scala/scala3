@@ -4,6 +4,7 @@ import complete.DefaultParsers._
 import java.io.{ RandomAccessFile, File }
 import java.nio.channels.FileLock
 import scala.reflect.io.Path
+import sbtassembly.AssemblyKeys.assembly
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -167,6 +168,31 @@ object DottyBuild extends Build {
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     ).
     settings(publishing)
+
+  lazy val `dotty-bot` = project.in(file("bot")).
+    settings(sourceStructure).
+    settings(
+      resourceDirectory in Test := baseDirectory.value / "test" / "resources",
+
+      // specify main and ignore tests when assembling
+      mainClass in assembly := Some("dotty.tools.bot.Main"),
+      test in assembly := {},
+
+      libraryDependencies ++= {
+        val circeVersion = "0.7.0"
+        val http4sVersion = "0.15.3"
+        Seq(
+          "com.novocode" % "junit-interface" % "0.11" % "test",
+          "io.circe" %% "circe-generic" % circeVersion,
+          "io.circe" %% "circe-parser" % circeVersion,
+          "ch.qos.logback" % "logback-classic" % "1.1.7",
+          "org.http4s" %% "http4s-dsl" % http4sVersion,
+          "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+          "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+          "org.http4s" %% "http4s-circe" % http4sVersion
+        )
+      }
+    )
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val dottyCompilerSettings = Seq(
