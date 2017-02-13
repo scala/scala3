@@ -55,6 +55,7 @@ object JavaConverters {
       "comment"  -> ent.comment.map(_.asJava).asJava,
       "superTypes" -> ent.superTypes,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "signature" -> ent.signature
     ) ++ extras).asJava
   }
@@ -74,6 +75,7 @@ object JavaConverters {
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "hasCompanion" -> ent.hasCompanion,
       "companionPath" -> ent.companionPath.asJava,
       "signature" -> ent.signature
@@ -95,6 +97,7 @@ object JavaConverters {
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "hasCompanion" -> ent.hasCompanion,
       "companionPath" -> ent.companionPath.asJava,
       "signature" -> ent.signature
@@ -115,6 +118,7 @@ object JavaConverters {
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "hasCompanion" -> ent.hasCompanion,
       "companionPath" -> ent.companionPath.asJava,
       "signature" -> ent.signature
@@ -134,6 +138,7 @@ object JavaConverters {
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "hasVisibleMembers" -> ent.hasVisibleMembers,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "hasCompanion" -> ent.hasCompanion,
       "companionPath" -> ent.companionPath.asJava,
       "signature" -> ent.signature
@@ -152,6 +157,7 @@ object JavaConverters {
       "paramLists"          -> ent.paramLists.map(_.asJava).asJava,
       "comment"             -> ent.comment.map(_.asJava).asJava,
       "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "signature" -> ent.signature
@@ -168,6 +174,7 @@ object JavaConverters {
       "returnValue" -> ent.returnValue.asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
       "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "signature" -> ent.signature
@@ -183,6 +190,7 @@ object JavaConverters {
       "path" -> ent.path.asJava,
       "alias" -> ent.alias.map(_.asJava).asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "isPrivate" -> ent.isPrivate,
       "isProtected" -> ent.isProtected,
       "signature" -> ent.signature
