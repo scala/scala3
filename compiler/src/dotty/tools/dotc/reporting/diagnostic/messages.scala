@@ -1034,4 +1034,23 @@ object messages {
            |"""
   }
 
+  case class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(implicit ctx: Context)
+  extends Message(39) {
+    val kind = "Reference"
+    val msg = hl"`${definition.name}` is a forward reference extending over the definition of `${value.name}`"
+
+    val explanation =
+      hl"""|`${definition.name}` is used before you define it, and the definition of `${value.name}`
+           |appears between that use and the definition of `${definition.name}`.
+           |
+           |Forward references are allowed only, if there are no value definitions between
+           |the reference and the referred method definition.
+           |
+           |Define `${definition.name}` before it is used,
+           |or move the definition of `${value.name}` so it does not appear between
+           |the declartion of `${definition.name}` and its use,
+           |or define `${value.name}` as lazy.
+           |""".stripMargin
+  }
+
 }
