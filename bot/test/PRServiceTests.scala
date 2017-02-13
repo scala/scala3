@@ -21,7 +21,6 @@ class PRServiceTests extends PullRequestService {
       .map(_.mkString)
       .getOrElse(throw new Exception(s"resource not found: $r"))
 
-
   @Test def canUnmarshalIssueJson = {
     val json = getResource("/test-pr.json")
     val issue: Issue = decode[Issue](json) match {

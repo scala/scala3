@@ -5,6 +5,7 @@ import org.http4s.client.blaze._
 import org.http4s.client.Client
 import org.http4s.headers.Authorization
 
+import cats.syntax.applicative._
 import scalaz.concurrent.Task
 import scala.util.control.NonFatal
 
@@ -16,6 +17,15 @@ import org.http4s.dsl._
 import org.http4s.util._
 
 import model.Github._
+
+object TaskIsApplicative {
+  implicit val taskIsApplicative = new cats.Applicative[Task] {
+    def pure[A](x: A): Task[A] = Task.now(x)
+    def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
+      for(f <- ff; a <- fa) yield f(a)
+  }
+}
+import TaskIsApplicative._
 
 trait PullRequestService {
 
@@ -55,17 +65,14 @@ trait PullRequestService {
   def toUri(url: String): Task[Uri] =
     Uri.fromString(url).fold(Task.fail, Task.now)
 
-  def getRequest(endpoint: Uri): Task[Request] = Task.now {
+  def getRequest(endpoint: Uri): Request =
     Request(uri = endpoint, method = Method.GET).putHeaders(authHeader)
-  }
 
-  def postRequest(endpoint: Uri): Task[Request] = Task.now {
+  def postRequest(endpoint: Uri): Request =
     Request(uri = endpoint, method = Method.POST).putHeaders(authHeader)
-  }
 
-  def shutdownClient(client: Client): Task[Unit] = Task.now {
+  def shutdownClient(client: Client): Unit =
     client.shutdownNow()
-  }
 
   sealed trait CommitStatus {
     def commit: Commit
@@ -81,7 +88,7 @@ trait PullRequestService {
     def checkUser(user: String, commit: Commit): Task[CommitStatus] = {
       val claStatus = for {
         endpoint <- toUri(claUrl(user))
-        claReq   <- getRequest(endpoint)
+        claReq   <- getRequest(endpoint).pure[Task]
         claRes   <- httpClient.expect(claReq)(jsonOf[CLASignature])
         res = if (claRes.signed) Valid(user, commit) else Invalid(user, commit)
       } yield res
@@ -127,7 +134,7 @@ trait PullRequestService {
 
       for {
         endpoint <- toUri(statusUrl(cm.commit.sha))
-        req      <- postRequest(endpoint).map(_.withBody(stat.asJson))
+        req      <- postRequest(endpoint).withBody(stat.asJson).pure[Task]
         res      <- httpClient.expect(req)(jsonOf[StatusResponse])
       } yield res
     }
@@ -152,7 +159,7 @@ trait PullRequestService {
     def makeRequest(url: String): Task[List[Commit]] =
       for {
         endpoint <- toUri(url)
-        req <- getRequest(endpoint)
+        req <- getRequest(endpoint).pure[Task]
         res <- httpClient.fetch(req){ res =>
           val link = CaseInsensitiveString("Link")
           val next = findNext(res.headers.get(link)).map(makeRequest).getOrElse(Task.now(Nil))
@@ -176,7 +183,7 @@ trait PullRequestService {
 
       // Send statuses to Github and exit
       _          <- sendStatuses(statuses, httpClient)
-      _          <- shutdownClient(httpClient)
+      _          <- shutdownClient(httpClient).pure[Task]
       resp       <- Ok("All statuses checked")
     } yield resp
   }
