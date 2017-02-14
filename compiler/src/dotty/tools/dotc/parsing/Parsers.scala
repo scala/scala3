@@ -110,7 +110,8 @@ object Parsers {
       */
     def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
-        syntaxError(msg, Position(offset))
+        val length = if (in.name != null) in.name.show.length else 0
+        syntaxError(msg, Position(offset, offset + length))
         lastErrorOffset = in.offset
       }
 
@@ -249,11 +250,6 @@ object Parsers {
         lastErrorOffset = in.offset
       } // DEBUG
 
-    private def expectedMsg(token: Int): String =
-      expectedMessage(showToken(token))
-    private def expectedMessage(what: String): String =
-      s"$what expected but ${showToken(in.token)} found"
-
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
       *
@@ -262,7 +258,7 @@ object Parsers {
     def accept(token: Int): Int = {
       val offset = in.offset
       if (in.token != token) {
-        syntaxErrorOrIncomplete(expectedMsg(token))
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token, in.name))
       }
       if (in.token == token) in.nextToken()
       offset
@@ -474,7 +470,7 @@ object Parsers {
         in.nextToken()
         name
       } else {
-        syntaxErrorOrIncomplete(expectedMsg(IDENTIFIER))
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(IDENTIFIER, in.token, in.name))
         nme.ERROR
       }
 
@@ -1055,7 +1051,7 @@ object Parsers {
             case Block(Nil, EmptyTree) =>
               assert(handlerStart != -1)
               syntaxError(
-                new EmptyCatchBlock(body),
+                EmptyCatchBlock(body),
                 Position(handlerStart, endOffset(handler))
               )
             case _ =>

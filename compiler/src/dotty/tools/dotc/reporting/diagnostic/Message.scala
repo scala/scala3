@@ -119,6 +119,8 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
 class NoExplanation(val msg: String) extends Message(NoExplanation.ID) {
   val explanation = ""
   val kind = ""
+
+  override def toString(): String = s"NoExplanation($msg)"
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error

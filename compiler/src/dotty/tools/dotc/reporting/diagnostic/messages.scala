@@ -4,10 +4,17 @@ package reporting
 package diagnostic
 
 import dotc.core._
-import Contexts.Context, Decorators._, Symbols._, Names._, NameOps._, Types._
+import Contexts.Context
+import Decorators._
+import Symbols._
+import Names._
+import NameOps._
+import Types._
 import util.SourcePosition
 import config.Settings.Setting
-import interfaces.Diagnostic.{ERROR, WARNING, INFO}
+import interfaces.Diagnostic.{ERROR, INFO, WARNING}
+import dotc.parsing.Scanners.Token
+import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 
@@ -1051,6 +1058,32 @@ object messages {
            |the declartion of `${definition.name}` and its use,
            |or define `${value.name}` as lazy.
            |""".stripMargin
+  }
+
+  case class ExpectedTokenButFound(expected: Token, found: Token, foundName: TermName)(implicit ctx: Context)
+  extends Message(40) {
+    val kind = "Syntax"
+
+    private val expectedText =
+      if (Tokens.isIdentifier(expected)) "an identifier"
+      else Tokens.showToken(expected)
+
+    private val foundText =
+      if (foundName != null) hl"`${foundName.show}`"
+      else Tokens.showToken(found)
+
+    val msg = hl"""${expectedText} expected, but ${foundText} found"""
+
+    private val ifKeyword =
+      if (Tokens.isIdentifier(expected) && Tokens.isKeyword(found))
+        s"""
+           |If you necessarily want to use $foundText as identifier, you may put it in backticks.""".stripMargin
+      else
+        ""
+
+    val explanation =
+      s"""|The text ${foundText} may not occur at that position, the compiler expected ${expectedText}.$ifKeyword
+          |""".stripMargin
   }
 
 }
