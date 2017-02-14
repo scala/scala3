@@ -559,7 +559,7 @@ object desugar {
    *  ValDef or DefDef.
    */
   def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(implicit ctx: Context): Tree = pat match {
-    case VarPattern(named, tpt) =>
+    case IdPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
       val rhsUnchecked = makeAnnotated("scala.unchecked", rhs)
@@ -816,7 +816,7 @@ object desugar {
        *  Otherwise this gives { case pat => body }
        */
       def makeLambda(pat: Tree, body: Tree): Tree = pat match {
-        case VarPattern(named, tpt) =>
+        case IdPattern(named, tpt) =>
           Function(derivedValDef(pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, unchecked = false)
@@ -898,7 +898,9 @@ object desugar {
       }
 
       def isIrrefutableGenFrom(gen: GenFrom): Boolean =
-        gen.isInstanceOf[IrrefutableGenFrom] || isIrrefutable(gen.pat, gen.expr)
+        gen.isInstanceOf[IrrefutableGenFrom] ||
+        IdPattern.unapply(gen.pat).isDefined ||
+        isIrrefutable(gen.pat, gen.expr)
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1062,9 +1064,9 @@ object desugar {
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 
- /** If tree is a variable pattern, return its name and type, otherwise return None.
+ /** If tree is of the form `id` or `id: T`, return its name and type, otherwise return None.
    */
-  private object VarPattern {
+  private object IdPattern {
     def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
       case id: Ident => Some(id, TypeTree())
       case Typed(id: Ident, tpt) => Some((id, tpt))
