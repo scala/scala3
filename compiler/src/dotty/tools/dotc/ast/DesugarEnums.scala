@@ -34,7 +34,8 @@ object DesugarEnums {
   }
 
   /** Type parameters reconstituted from the constructor
-   *  of the `enum' class corresponding to an enum case
+   *  of the `enum' class corresponding to an enum case.
+   *  The variance is the same as the corresponding type parameter of the enum class.
    */
   def reconstitutedEnumTypeParams(pos: Position)(implicit ctx: Context) = {
     val tparams = enumClass.primaryConstructor.info match {
@@ -43,11 +44,11 @@ object DesugarEnums {
       case _ =>
         Nil
     }
-    for (tparam <- tparams) yield {
+    (tparams, enumClass.typeParams).zipped.map { (tparam, ecTparam) =>
       val tbounds = new DerivedFromParamTree
       tbounds.pushAttachment(OriginalSymbol, tparam)
       TypeDef(tparam.name, tbounds)
-        .withFlags(Param | PrivateLocal).withPos(pos)
+        .withFlags(Param | PrivateLocal | ecTparam.flags & VarianceFlags).withPos(pos)
     }
   }
 
@@ -64,7 +65,8 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
-   *   def valueOf: Int => E = $values
+   *   def valueOf = $values.fromInt
+   *   def withName = $values.fromName
    *   def values = $values.values
 	 *
    *   private def $new(tag: Int, name: String) = new E {
@@ -74,32 +76,32 @@ object DesugarEnums {
    *   }
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
-    val valsRef = Ident(nme.DOLLAR_VALUES)
+    def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
+    def enumDefDef(name: String, select: String) =
+      DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
     def param(name: TermName, typ: Type) =
       ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
              New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
         .withFlags(Private)
-    val valueOfDef =
-      DefDef(nme.valueOf, Nil, Nil,
-          TypeTree(defn.FunctionOf(defn.IntType :: Nil, enumClass.typeRef)), valsRef)
-    val valuesDef =
-      DefDef(nme.values, Nil, Nil, TypeTree(), Select(valsRef, nme.values))
+    val valueOfDef = enumDefDef("valueOf", "fromInt")
+    val withNameDef = enumDefDef("withName", "fromName")
+    val valuesDef = enumDefDef("values", "values")
     val enumTagDef =
       DefDef(nme.enumTag, Nil, Nil, TypeTree(), Ident(nme.tag))
     val toStringDef =
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
     val registerStat =
-      Apply(Select(valsRef, nme.register), This(EmptyTypeIdent) :: Nil)
+      Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
     def creator = New(Template(emptyConstructor, enumClassRef :: Nil, EmptyValDef,
         List(enumTagDef, toStringDef, registerStat)))
     val newDef =
       DefDef(nme.DOLLAR_NEW, Nil,
           List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
           TypeTree(), creator)
-    List(privateValuesDef, valueOfDef, valuesDef, newDef)
+    List(privateValuesDef, valueOfDef, withNameDef, valuesDef, newDef)
   }
 
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {

@@ -477,7 +477,6 @@ object StdNames {
     val productPrefix: N        = "productPrefix"
     val readResolve: N          = "readResolve"
     val reflect : N             = "reflect"
-    val register: N             = "register"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"
     val runOrElse: N            = "runOrElse"

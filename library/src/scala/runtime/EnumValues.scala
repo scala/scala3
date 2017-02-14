@@ -1,18 +1,21 @@
 package scala.runtime
 
-import scala.collection.immutable.Seq
-import scala.collection.mutable.ResizableArray
+import scala.collection.immutable.Map
 
-class EnumValues[E <: Enum] extends ResizableArray[E] {
-  private var valuesCache: List[E] = Nil
+class EnumValues[E <: Enum] {
+  private var myMap: Map[Int, E] = Map()
+  private var fromNameCache: Map[String, E] = null
+
   def register(v: E) = {
-    ensureSize(v.enumTag + 1)
-    size0 = size0 max (v.enumTag + 1)
-    array(v.enumTag) = v
-    valuesCache = null
+    require(!myMap.contains(v.enumTag))
+    myMap = myMap.updated(v.enumTag, v)
+    fromNameCache = null
   }
-  def values: Seq[E] = {
-    if (valuesCache == null) valuesCache = array.filter(_ != null).toList.asInstanceOf[scala.List[E]]
-    valuesCache
+
+  def fromInt: Map[Int, E] = myMap
+  def fromName: Map[String, E] = {
+    if (fromNameCache == null) fromNameCache = myMap.values.map(v => v.toString -> v).toMap
+    fromNameCache
   }
+  def values: Iterable[E] = myMap.values
 }

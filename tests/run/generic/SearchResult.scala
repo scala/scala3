@@ -14,7 +14,8 @@ sealed trait SearchResult extends Enum
 object SearchResult extends {
 
   private val $values = new runtime.EnumValues[SearchResult]
-  def valueOf: Int => SearchResult = $values
+  def valueOf = $values.fromInt
+  def withName = $values.fromName
   def values = $values.values
 
   private def $new(tag: Int, name: String) = new SearchResult {
