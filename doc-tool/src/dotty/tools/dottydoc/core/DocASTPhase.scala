@@ -226,7 +226,7 @@ class DocASTPhase extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     currentRun += 1
-    ctx.docbase.echo(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
+    ctx.echo(s"Compiling ($currentRun/$totalRuns): ${ctx.compilationUnit.source.file.name}")
     collect(ctx.compilationUnit.tpdTree) // Will put packages in `packages` var
   }
 
@@ -237,8 +237,7 @@ class DocASTPhase extends Phase {
 
     // (2) Set parents of entities, needed for linking
     for {
-      parentName <- rootPackages(packages)
-      parent = packages(parentName)
+      parent <- rootPackages(packages)
       child  <- parent.members
     } setParent(child, to = parent)
 

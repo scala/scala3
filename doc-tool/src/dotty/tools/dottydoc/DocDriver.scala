@@ -9,6 +9,7 @@ import model.Package
 import dotc.config._
 import dotc.core.Comments.ContextDoc
 import staticsite.Site
+import dotc.printing.Highlighting._
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
  *  tool. It's methods are used by the external scala and java APIs.
@@ -43,16 +44,18 @@ class DocDriver extends Driver {
     implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
     val reporter = doCompile(newCompiler(ctx), filesToDocument)(ctx)
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
+    val projectName = ctx.settings.projectName.value
 
     if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, ctx.settings.projectName.value, ctx.docbase.packages)
+      Site(siteRoot, projectName, ctx.docbase.packages)
         .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()
         .generateBlog()
 
+      ctx.docbase.printSummary()
       System.exit(if (reporter.hasErrors) 1 else 0)
     }
   }

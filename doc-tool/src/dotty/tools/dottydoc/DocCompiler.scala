@@ -32,6 +32,7 @@ class DocCompiler extends Compiler {
                                 new LinkSuperTypes,
                                 new LinkCompanions,
                                 new AlternateConstructors,
-                                new SortMembers))
+                                new SortMembers)),
+    List(new StatisticsPhase)
   )
 }

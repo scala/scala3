@@ -45,15 +45,15 @@ object transform {
    * -------------------------
    * To delete a node in the AST, simply return `NonEntity` from transforming method
    */
-  abstract class DocMiniTransformations(transformations: List[DocMiniPhase]) extends Phase {
+  trait DocMiniTransformations extends Phase {
+    def transformations: List[DocMiniPhase]
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       for {
-        rootName    <- rootPackages(ctx.docbase.packages)
-        pack        =  ctx.docbase.packages(rootName)
+        pack <- rootPackages(ctx.docbase.packages)
         transformed =  performPackageTransform(pack)
-      } yield ctx.docbase.packagesMutable(rootName) = transformed
-      super.runOn(units)
+      } yield ctx.docbase.packagesMutable(pack.name) = transformed
+      units
     }
 
     private def performPackageTransform(pack: Package)(implicit ctx: Context): Package = {
@@ -197,8 +197,9 @@ object transform {
 
   object DocMiniTransformations {
     private var previousPhase = 0
-    def apply(transformations: DocMiniPhase*) =
-      new DocMiniTransformations(transformations.toList) {
+    def apply(miniPhases: DocMiniPhase*) =
+      new DocMiniTransformations {
+        val transformations = miniPhases.toList
         val packages = Map.empty[String, Package]
 
         def phaseName = s"MiniTransformation${ previousPhase += 1 }"

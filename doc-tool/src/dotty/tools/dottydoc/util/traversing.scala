@@ -24,7 +24,7 @@ object traversing {
   }
 
 
-  def rootPackages(pkgs: Map[String, Package]): List[String] = {
+  def rootPackages(pkgs: Map[String, Package]): List[Package] = {
     var currentDepth = Int.MaxValue
     var packs = List.empty[String]
 
@@ -38,6 +38,6 @@ object traversing {
           key :: packs
         } else packs
     }
-    packs
+    packs.map(pkgs.apply)
   }
 }
