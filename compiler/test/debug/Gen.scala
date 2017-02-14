@@ -19,7 +19,7 @@ import scala.collection.mutable.ListBuffer
 
 object Gen {
   val MainObject = "Test"
-  val CommandWait = 0.5
+  val CommandWait = 1
 
   sealed trait Tree
 
