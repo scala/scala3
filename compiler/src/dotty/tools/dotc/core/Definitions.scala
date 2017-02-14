@@ -527,6 +527,8 @@ class Definitions {
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
 
+  lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
+
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
   def AnnotationClass(implicit ctx: Context) = AnnotationType.symbol.asClass

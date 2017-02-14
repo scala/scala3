@@ -351,6 +351,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val ownType =
       if (rawType.exists)
         ensureAccessible(rawType, superAccess = false, tree.pos)
+      else if (name == nme._scope) {
+        // gross hack to support current xml literals.
+        // awaiting a better implicits based solution for library-supported xml
+        return ref(defn.XMLTopScopeModuleRef)
+      }
       else
         errorType(new MissingIdent(tree, kind, name.show), tree.pos)
 

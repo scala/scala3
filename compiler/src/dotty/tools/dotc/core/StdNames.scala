@@ -533,6 +533,7 @@ object StdNames {
     val nullRuntimeClass: N     = "scala.runtime.Null$"
 
     val synthSwitch: N          = "$synthSwitch"
+    val _scope: N               = "$scope"
 
     // unencoded operators
     object raw {
