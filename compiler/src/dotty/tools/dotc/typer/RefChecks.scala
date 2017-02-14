@@ -767,6 +767,7 @@ import RefChecks._
 class RefChecks extends MiniPhase { thisTransformer =>
 
   import tpd._
+  import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
 
   override def phaseName: String = "refchecks"
 
@@ -789,8 +790,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       if (sym.exists && sym.owner.isTerm && !sym.is(Lazy))
         currentLevel.levelAndIndex.get(sym) match {
           case Some((level, symIdx)) if symIdx < level.maxIndex =>
-            ctx.debuglog("refsym = " + level.refSym)
-            ctx.error(s"forward reference extends over definition of $sym", level.refPos)
+            ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
           case _ =>
         }
       tree

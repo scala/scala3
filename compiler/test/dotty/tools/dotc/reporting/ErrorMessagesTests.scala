@@ -4,7 +4,6 @@ package reporting
 
 import core.Contexts.Context
 import diagnostic.messages._
-
 import org.junit.Assert._
 import org.junit.Test
 
@@ -85,4 +84,27 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assert(sameName.forall(_.symbol.name.show == "bar"),
         "at least one method had an unexpected name")
     }
+
+  @Test def forwardReference =
+    checkMessagesAfter("refchecks") {
+      """
+        |object Forward {
+        |  def block = {
+        |    a.toInt
+        |    val b = 2
+        |    val a = BigDecimal("4")
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
+
+        assertMessageCount(1, messages)
+        val ForwardReferenceExtendsOverDefinition(value, definition) :: Nil = messages
+        assertEquals("value b", value.show)
+        assertEquals("value a", definition.show)
+      }
+
 }
