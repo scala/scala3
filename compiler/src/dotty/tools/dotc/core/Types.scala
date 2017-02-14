@@ -2603,7 +2603,7 @@ object Types {
             case t => mapOver(t)
           }
         }
-        PolyType(paramNames ++ that.paramNames)(
+        PolyType(paramNames ++ that.paramNames, variances ++ that.variances)(
           x => this.paramBounds.mapConserve(_.subst(this, x).bounds) ++
                that.paramBounds.mapConserve(shift(_).subst(that, x).bounds),
           x => shift(that.resultType).subst(that, x).subst(this, x))
@@ -2634,11 +2634,10 @@ object Types {
   }
 
   object PolyType {
-    def apply(paramNames: List[TypeName], variances: List[Int] = Nil)(
+    def apply(paramNames: List[TypeName], variances: List[Int])(
         paramBoundsExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
-      val vs = if (variances.isEmpty) paramNames.map(alwaysZero) else variances
-      unique(new PolyType(paramNames, vs)(paramBoundsExp, resultTypeExp))
+      unique(new PolyType(paramNames, variances)(paramBoundsExp, resultTypeExp))
     }
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =

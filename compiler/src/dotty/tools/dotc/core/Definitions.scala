@@ -9,6 +9,7 @@ import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
+import util.common.alwaysZero
 import scala.reflect.api.{ Universe => ApiUniverse }
 
 object Definitions {
@@ -152,7 +153,7 @@ class Definitions {
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
     val tparamBounds = tparamNames map (_ => TypeBounds.empty)
-    val ptype = PolyType(tparamNames)(_ => tparamBounds, resultTypeFn)
+    val ptype = PolyType(tparamNames, tparamNames.map(alwaysZero))(_ => tparamBounds, resultTypeFn)
     enterMethod(cls, name, ptype, flags)
   }
 

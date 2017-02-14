@@ -101,6 +101,7 @@ trait FullParameterization {
     }
     val ctparams = if (abstractOverClass) clazz.typeParams else Nil
     val ctnames = ctparams.map(_.name.unexpandedName)
+    val ctvariances = ctparams.map(_.variance)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
@@ -122,14 +123,14 @@ trait FullParameterization {
 
     info match {
       case info: PolyType =>
-        PolyType(info.paramNames ++ ctnames)(
+        PolyType(info.paramNames ++ ctnames, info.variances ++ ctvariances)(
           pt =>
             (info.paramBounds.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
         if (ctparams.isEmpty) resultType(identity)
-        else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
+        else PolyType(ctnames, ctvariances)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
   }
 
