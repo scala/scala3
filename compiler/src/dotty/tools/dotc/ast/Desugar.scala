@@ -391,7 +391,7 @@ object desugar {
               cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
               cpy.ValDef(vparam)(rhs = EmptyTree))
-            DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, applyResultTpt, creatorExpr)
+            DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
               .withMods(synthetic) :: Nil
           }
 
