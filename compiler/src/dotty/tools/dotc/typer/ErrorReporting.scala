@@ -111,11 +111,23 @@ object ErrorReporting {
       errorTree(tree, typeMismatchMsg(normalize(tree.tpe, pt), pt, implicitFailure.postscript))
 
     /** A subtype log explaining why `found` does not conform to `expected` */
-    def whyNoMatchStr(found: Type, expected: Type) =
-      if (ctx.settings.explaintypes.value)
+    def whyNoMatchStr(found: Type, expected: Type) = {
+      def dropJavaMethod(tp: Type): Type = tp match {
+        case tp: PolyType =>
+          tp.derivedPolyType(resType = dropJavaMethod(tp.resultType))
+        case tp: JavaMethodType =>
+          MethodType(tp.paramNames, tp.paramTypes, dropJavaMethod(tp.resultType))
+        case tp => tp
+      }
+      val found1 = dropJavaMethod(found)
+      val expected1 = dropJavaMethod(expected)
+      if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
+        "\n (Note that Scala's and Java's representation of this type differs)"
+      else if (ctx.settings.explaintypes.value)
         "\n" + ctx.typerState.show + "\n" + TypeComparer.explained((found <:< expected)(_))
       else
         ""
+    }
 
     def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
       // replace constrained polyparams and their typevars by their bounds where possible
