@@ -806,7 +806,7 @@ class ClassfileParser(
     def classSymbol(externalName: Name)(implicit ctx: Context): Symbol = {
       /** Return the symbol of `innerName`, having the given `externalName`. */
       def innerSymbol(externalName: Name, innerName: Name, static: Boolean): Symbol = {
-        def getMember(sym: Symbol, name: Name): Symbol =
+        def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
           if (static)
             if (sym == classRoot.symbol) staticScope.lookup(name)
             else sym.companionModule.info.member(name).symbol
