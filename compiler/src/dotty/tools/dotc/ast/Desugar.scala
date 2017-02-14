@@ -344,13 +344,6 @@ object desugar {
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
 
-    // The return type of the `apply` and `copy` methods
-    val applyResultTpt =
-      if (isEnumCase)
-        if (parents.isEmpty) enumClassTypeRef
-        else parents.head
-      else TypeTree()
-
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def isDefined = true
     //     def productArity = N
@@ -436,6 +429,13 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
+        // The return type of the `apply` method
+        val applyResultTpt =
+          if (isEnumCase)
+            if (parents.isEmpty) enumClassTypeRef
+            else parents.reduceLeft(AndTypeTree)
+          else TypeTree()
+
         val parent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
