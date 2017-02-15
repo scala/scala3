@@ -17,7 +17,7 @@ abstract class TokensCommon {
 
   def showToken(token: Int) = {
     val str = tokenString(token)
-    if (keywords contains token) s"'$str'" else str
+    if (isKeyword(token)) s"'$str'" else str
   }
 
   val tokenString, debugString = new Array[String](maxToken + 1)
@@ -113,6 +113,8 @@ abstract class TokensCommon {
   //final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%") // TODO: deprecate
 
   val keywords: TokenSet
+
+  def isKeyword(token: Token): Boolean = keywords contains token
 
   /** parentheses */
   final val LPAREN = 90;           enter(LPAREN, "'('")

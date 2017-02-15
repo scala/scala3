@@ -65,7 +65,7 @@ trait ErrorMessagesTest extends DottyTest {
   }
 
   def assertMessageCount(expected: Int, messages: List[Message]): Unit =
-    assertEquals(
+    assertEquals(messages.mkString,
       expected,
       messages.length
     )

@@ -4,6 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import diagnostic.messages._
+import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
 import org.junit.Test
 
@@ -107,4 +108,32 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("value a", definition.show)
       }
 
+  @Test def unexpectedToken =
+    checkMessagesAfter("frontend") {
+      """
+        |object Forward {
+        |  def val = "ds"
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val ExpectedTokenButFound(expected, found, foundName) :: Nil = messages
+      assertEquals(Tokens.IDENTIFIER, expected)
+      assertEquals(Tokens.VAL, found)
+      assertEquals("val", foundName.show)
+    }
+
+  @Test def expectedToken =
+    checkMessagesAfter("frontend") {
+      """
+        |object Forward {
+        |  def `val` = "ds"
+        |}
+      """.stripMargin
+    }
+    .expectNoErrors
 }
