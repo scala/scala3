@@ -136,4 +136,27 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """.stripMargin
     }
     .expectNoErrors
+
+  @Test def leftAndRightAssociative =
+    checkMessagesAfter("frontend") {
+      """
+        |object Ops {
+        |  case class I(j: Int) {
+        |    def +-(i: Int) = i
+        |    def +:(i: Int) = i
+        |  }
+        |  val v = I(1) +- I(4) +: I(4)
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc) :: Nil = messages
+      assertEquals("+-", op1.show)
+      assertEquals("+:", op2.show)
+      assertFalse(op2LeftAssoc)
+    }
 }
