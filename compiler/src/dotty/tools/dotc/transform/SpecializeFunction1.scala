@@ -105,10 +105,12 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
             ctx.requiredClassRef(functionPkg ++ specializedName(functionName ++ arity, args, ret))
           }
           val specializedMethodName = specializedName(nme.apply, args, ret)
-          val specializedApply = ctx.owner.info.decls.lookup(specializedMethodName).asTerm
+          val specializedApply = ctx.owner.info.decls.lookup(specializedMethodName)
 
-          orig -> (specializedParent, specializedApply)
-        }).toMap
+          if (specializedApply.exists)
+            Some(orig -> (specializedParent, specializedApply.asTerm))
+          else None
+        }).flatten.toMap
 
         val body0 = tmpl.body.foldRight(List.empty[Tree]) {
           case (tree: DefDef, acc) if tree.name == nme.apply => {
@@ -140,9 +142,15 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
           }
           case (tree, acc) => tree :: acc
         }
-        val parents = symbolMap.map { case (_, (parent, _)) => parent }
 
-        cpy.Template(tmpl)(parents = parents.toList, body = body0)
+        val specializedParents = tree.parents.map { t =>
+          symbolMap
+            .get(t.symbol)
+            .map { case (newSym, _) => newSym }
+            .getOrElse(t)
+        }
+
+        cpy.Template(tmpl)(parents = specializedParents, body = body0)
       }
       case _ => tree
     }
