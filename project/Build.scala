@@ -105,7 +105,12 @@ object DottyBuild extends Build {
       (dottyOrganization % "dotty-sbt-bridge" % scalaVersion.value % "component").sources(),
 
     // sbt gets very unhappy if two projects use the same target
-    target := baseDirectory.value / ".." / "out" / name.value
+    target := baseDirectory.value / ".." / "out" / name.value,
+
+    // The non-bootstrapped dotty-library is not necessary when bootstrapping dotty
+    autoScalaLibrary := false,
+    // ...but scala-library is
+    libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
   )
 
   /** Projects -------------------------------------------------------------- */
