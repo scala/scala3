@@ -1,231 +1,136 @@
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package transform
 
 import TreeTransforms.{ MiniPhaseTransform, TransformerInfo }
-import core._
+import ast.Trees._, ast.tpd, core._
 import Contexts.Context, Types._, Decorators._, Symbols._, DenotTransformers._
-import Denotations._, SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
-import ast.tpd
+import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
 
-class SpecializeFunctions extends MiniPhaseTransform with DenotTransformer {
+import scala.collection.mutable
+
+/** Specializes classes that inherit from `FunctionN` where there exists a
+ *  specialized form.
+ */
+class SpecializeFunctions extends MiniPhaseTransform with InfoTransformer {
   import ast.tpd._
+  val phaseName = "specializeFunctions"
 
-  val phaseName = "specializeFunction1"
+  /** Transforms the type to include decls for specialized applys and replace
+   *  the class parents with specialized versions.
+   */
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+    case tp: ClassInfo if !sym.is(Flags.Package) => {
+      var newApplys: List[Symbol] = Nil
 
-  // Setup ---------------------------------------------------------------------
-  private[this] val functionName = "JFunction".toTermName
-  private[this] val functionPkg  = "scala.compat.java8.".toTermName
-  private[this] var argTypes: Set[Symbol] = _
-  private[this] var retTypes: Set[Symbol] = _
+      val newParents = tp.parents.mapConserve { parent =>
+        if (defn.isPlainFunctionClass(parent.symbol)) {
+          val typeParams = tp.typeRef.baseArgTypes(parent.classSymbol)
+          val interface = specInterface(typeParams)
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    retTypes = Set(defn.UnitClass,
-                   defn.BooleanClass,
-                   defn.IntClass,
-                   defn.FloatClass,
-                   defn.LongClass,
-                   defn.DoubleClass,
-                   /* only for Function0: */
-                   defn.ByteClass,
-                   defn.ShortClass,
-                   defn.CharClass)
+          if (interface.exists) {
+            val specializedApply: Symbol = {
+              val specializedMethodName = specializedName(nme.apply, typeParams)
+              ctx.newSymbol(
+                sym,
+                specializedMethodName,
+                Flags.Override | Flags.Method,
+                interface.info.decls.lookup(specializedMethodName).info
+              )
+            }
 
-    argTypes = Set(defn.IntClass,
-                   defn.LongClass,
-                   defn.DoubleClass,
-                   /* only for Function1: */
-                   defn.FloatClass)
-    this
+            newApplys = specializedApply :: newApplys
+            interface.typeRef
+          }
+          else parent
+        }
+        else parent
+      }
+
+      def newDecls = newApplys.foldLeft(tp.decls.cloneScope) {
+        (scope, sym) => scope.enter(sym); scope
+      }
+
+      if (newApplys eq Nil) tp
+      else tp.derivedClassInfo(classParents = newParents, decls = newDecls)
+    }
+
+    case _ => tp
   }
 
-  // Transformations -----------------------------------------------------------
-
-  /** Transforms all classes extending `Function1[-T1, +R]` so that
-    * they instead extend the specialized version `JFunction$mp...`
-    */
-  def transform(ref: SingleDenotation)(implicit ctx: Context) = ref match {
-    case cref @ ShouldTransformDenot(targets) => {
-      val specializedSymbols: Map[Symbol, (Symbol, Symbol)] = (for (SpecializationTarget(target, args, ret, original) <- targets) yield {
-        val arity = args.length
-        val specializedParent = ctx.getClassIfDefined {
-          functionPkg ++ specializedName(functionName ++ arity, args, ret)
-        }
-
-        val specializedApply: Symbol = {
-          val specializedMethodName = specializedName(nme.apply, args, ret)
-          ctx.newSymbol(
-            cref.symbol,
-            specializedMethodName,
-            Flags.Override | Flags.Method,
-            specializedParent.info.decls.lookup(specializedMethodName).info
+  /** Transforms the `Template` of the classes to contain forwarders from the
+   *  generic applys to the specialized ones. Also replaces parents of the
+   *  class on the tree level and inserts the specialized applys in the
+   *  template body.
+   */
+  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
+    val buf = new mutable.ListBuffer[Tree]
+    val newBody = tree.body.mapConserve {
+      case dt: DefDef if dt.name == nme.apply && dt.vparamss.length == 1 => {
+        val specializedApply = ctx.owner.info.decls.lookup {
+          specializedName(
+            nme.apply,
+            dt.vparamss.head.map(_.symbol.info) :+ dt.tpe.widen.finalResultType
           )
         }
 
-        original -> (specializedParent, specializedApply)
-      }).toMap
+        if (specializedApply.exists) {
+          val apply = specializedApply.asTerm
+          val specializedDecl =
+            polyDefDef(apply, trefs => vrefss => {
+              dt.rhs
+                .changeOwner(dt.symbol, apply)
+                .subst(dt.vparamss.flatten.map(_.symbol), vrefss.flatten.map(_.symbol))
+            })
 
-      def specializeApplys(scope: Scope): Scope = {
-        val alteredScope = scope.cloneScope
-        specializedSymbols.values.foreach { case (_, apply) =>
-          alteredScope.enter(apply)
-        }
-        alteredScope
+          buf += specializedDecl
+
+          // create a forwarding to the specialized apply
+          cpy.DefDef(dt)(rhs = {
+            tpd
+            .ref(apply)
+            .appliedToArgs(dt.vparamss.head.map(vparam => ref(vparam.symbol)))
+          })
+        } else dt
       }
-
-      def replace(in: List[TypeRef]): List[TypeRef] =
-        in.map { tref =>
-          val sym = tref.symbol
-          specializedSymbols.get(sym).map { case (specializedParent, _) =>
-            specializedParent.typeRef
-          }
-          .getOrElse(tref)
-        }
-
-      val ClassInfo(prefix, cls, parents, decls, info) = cref.classInfo
-      val newParents = replace(parents)
-      val newInfo = ClassInfo(prefix, cls, newParents, specializeApplys(decls), info)
-      cref.copySymDenotation(info = newInfo)
+      case x => x
     }
-    case _ => ref
+
+    val newParents = tree.parents.mapConserve { parent =>
+        if (defn.isPlainFunctionClass(parent.symbol)) {
+          val typeParams = tree.tpe.baseArgTypes(parent.symbol)
+          val interface = specInterface(typeParams)
+
+          if (interface.exists) TypeTree(interface.info)
+          else parent
+        }
+        else parent
+    }
+
+    cpy.Template(tree)(parents = newParents, body = buf.toList ++ newBody)
   }
 
-  /** Transform the class definition's `Template`:
-    *
-    * - change the tree to have the correct parent
-    * - add the specialized apply method to the template body
-    * - forward the old `apply` to the specialized version
-    */
-  override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) =
+  /** Dispatch to specialized `apply`s in user code when available */
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
     tree match {
-      case tmpl @ ShouldTransformTree(targets) => {
-        val symbolMap = (for ((tree, SpecializationTarget(target, args, ret, orig)) <- targets) yield {
-          val arity = args.length
-          val specializedParent = TypeTree {
-            ctx.requiredClassRef(functionPkg ++ specializedName(functionName ++ arity, args, ret))
-          }
-          val specializedMethodName = specializedName(nme.apply, args, ret)
-          val specializedApply = ctx.owner.info.decls.lookup(specializedMethodName)
+      case Apply(select @ Select(id, nme.apply), args) => {
+        val params = args.map(_.tpe) :+ tree.tpe
+        val specializedApply = specializedName(nme.apply, params)
 
-          if (specializedApply.exists)
-            Some(orig -> (specializedParent, specializedApply.asTerm))
-          else None
-        }).flatten.toMap
-
-        val body0 = tmpl.body.foldRight(List.empty[Tree]) {
-          case (tree: DefDef, acc) if tree.name == nme.apply => {
-            val inheritedFrom =
-              tree.symbol.allOverriddenSymbols
-              .map(_.owner)
-              .map(symbolMap.get)
-              .flatten
-              .toList
-              .headOption
-
-            inheritedFrom.map { case (parent, apply) =>
-              val forwardingBody = tpd
-                .ref(apply)
-                .appliedToArgs(tree.vparamss.head.map(vparam => ref(vparam.symbol)))
-
-              val applyWithForwarding = cpy.DefDef(tree)(rhs = forwardingBody)
-
-              val specializedApplyDefDef =
-                polyDefDef(apply, trefs => vrefss => {
-                  tree.rhs
-                    .changeOwner(tree.symbol, apply)
-                    .subst(tree.vparamss.flatten.map(_.symbol), vrefss.flatten.map(_.symbol))
-                })
-
-              applyWithForwarding :: specializedApplyDefDef :: acc
-            }
-            .getOrElse(tree :: acc)
-          }
-          case (tree, acc) => tree :: acc
-        }
-
-        val specializedParents = tree.parents.map { t =>
-          symbolMap
-            .get(t.symbol)
-            .map { case (newSym, _) => newSym }
-            .getOrElse(t)
-        }
-
-        cpy.Template(tmpl)(parents = specializedParents, body = body0)
-      }
-      case _ => tree
-    }
-
-  /** Dispatch to specialized `apply`s in user code */
-  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) = {
-    import ast.Trees._
-    tree match {
-      case Apply(select @ Select(id, nme.apply), arg :: Nil) =>
-        val params = List(arg.tpe, tree.tpe)
-        val specializedApply = nme.apply.specializedFor(params, params.map(_.typeSymbol.name), Nil, Nil)
-        val hasOverridenSpecializedApply = id.tpe.decls.iterator.exists { sym =>
-          sym.is(Flags.Override) && (sym.name eq specializedApply)
-        }
-
-        if (hasOverridenSpecializedApply) tpd.Apply(tpd.Select(id, specializedApply), arg :: Nil)
+        if (tree.fun.symbol.owner.info.member(specializedApply).exists)
+          tpd.Apply(tpd.Select(id, specializedApply), args)
         else tree
+      }
       case _ => tree
     }
-  }
 
-  private def specializedName(name: Name, args: List[Type], ret: Type)(implicit ctx: Context): Name = {
-    val typeParams = args :+ ret
-    name.specializedFor(typeParams, typeParams.map(_.typeSymbol.name), Nil, Nil)
-  }
+  @inline private def specializedName(name: Name, args: List[Type])(implicit ctx: Context) =
+    name.specializedFor(args, args.map(_.typeSymbol.name), Nil, Nil)
 
-  // Extractors ----------------------------------------------------------------
-  private object ShouldTransformDenot {
-    def unapply(cref: ClassDenotation)(implicit ctx: Context): Option[Seq[SpecializationTarget]] =
-      if (!cref.classParents.map(_.symbol).exists(defn.isPlainFunctionClass)) None
-      else Some(getSpecTargets(cref.typeRef))
-  }
+  @inline private def specInterface(typeParams: List[Type])(implicit ctx: Context) = {
+    val specName =
+      ("JFunction".toTermName ++ (typeParams.length - 1))
+      .specializedFor(typeParams, typeParams.map(_.typeSymbol.name), Nil, Nil)
 
-  private object ShouldTransformTree {
-    def unapply(tree: Template)(implicit ctx: Context): Option[Seq[(Tree, SpecializationTarget)]] = {
-      val treeToTargets = tree.parents
-        .map(t => (t, getSpecTargets(t.tpe)))
-        .filter(_._2.nonEmpty)
-        .map { case (t, xs) => (t, xs.head) }
-
-      if (treeToTargets.isEmpty) None else Some(treeToTargets)
-    }
-  }
-
-  private case class SpecializationTarget(target: Symbol,
-                                          params: List[Type],
-                                          ret: Type,
-                                          original: Symbol)
-
-  /** Gets all valid specialization targets on `tpe`, allowing multiple
-   *  implementations of FunctionX traits
-   */
-  private def getSpecTargets(tpe: Type)(implicit ctx: Context): List[SpecializationTarget] = {
-    val functionParents =
-      tpe.classSymbols.iterator
-        .flatMap(_.baseClasses)
-        .filter(defn.isPlainFunctionClass)
-
-    val tpeCls = tpe.widenDealias
-    functionParents.map { sym =>
-      val typeParams = tpeCls.baseArgTypes(sym)
-      val args = typeParams.init
-      val ret = typeParams.last
-
-      val interfaceName =
-        (functionName ++ args.length)
-        .specializedFor(typeParams, typeParams.map(_.typeSymbol.name), Nil, Nil)
-
-      val interface = ctx.getClassIfDefined(functionPkg ++ interfaceName)
-
-      if (interface.exists) Some {
-        SpecializationTarget(interface, args, ret, sym)
-      }
-      else None
-    }
-    .flatten.toList
+    ctx.getClassIfDefined("scala.compat.java8.".toTermName ++ specName)
   }
 }
