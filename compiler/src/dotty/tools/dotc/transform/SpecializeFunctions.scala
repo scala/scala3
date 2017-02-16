@@ -8,7 +8,7 @@ import Contexts.Context, Types._, Decorators._, Symbols._, DenotTransformers._
 import Denotations._, SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
 import ast.tpd
 
-class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
+class SpecializeFunctions extends MiniPhaseTransform with DenotTransformer {
   import ast.tpd._
 
   val phaseName = "specializeFunction1"
@@ -180,7 +180,7 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
   // Extractors ----------------------------------------------------------------
   private object ShouldTransformDenot {
     def unapply(cref: ClassDenotation)(implicit ctx: Context): Option[Seq[SpecializationTarget]] =
-      if (!cref.classParents.map(_.symbol).exists(defn.isFunctionClass)) None
+      if (!cref.classParents.map(_.symbol).exists(defn.isPlainFunctionClass)) None
       else Some(getSpecTargets(cref.typeRef))
   }
 
@@ -207,7 +207,7 @@ class SpecializeFunction1 extends MiniPhaseTransform with DenotTransformer {
     val functionParents =
       tpe.classSymbols.iterator
         .flatMap(_.baseClasses)
-        .filter(defn.isFunctionClass)
+        .filter(defn.isPlainFunctionClass)
 
     val tpeCls = tpe.widenDealias
     functionParents.map { sym =>

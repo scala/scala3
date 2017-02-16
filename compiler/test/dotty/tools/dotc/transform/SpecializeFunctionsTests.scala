@@ -7,7 +7,7 @@ import org.junit.Test
 
 import dotty.tools.backend.jvm.DottyBytecodeTest
 
-class SpecializeFunction1Tests extends DottyBytecodeTest {
+class SpecializeFunctionsTests extends DottyBytecodeTest {
 
   import dotty.tools.backend.jvm.ASMConverters._
   import dotty.tools.backend.jvm.AsmNode._
@@ -89,6 +89,5 @@ class SpecializeFunction1Tests extends DottyBytecodeTest {
         }
         .getOrElse(assert(false, "Could not find constructor for object `Test`"))
     }
-
   }
 }

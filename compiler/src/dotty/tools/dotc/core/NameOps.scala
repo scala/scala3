@@ -177,12 +177,16 @@ object NameOps {
         if (n == 0) -1 else n
       }
 
-    /** Is a function name
+    /** Is any function name that satisfies
      *    - FunctionN for N >= 0
      *    - ImplicitFunctionN for N >= 1
-     *    - false otherwise
      */
     def isFunction: Boolean = functionArity >= 0
+
+    /** Is a function name
+     *    - FunctionN for N >= 0
+     */
+    def isPlainFunction: Boolean = functionArityFor(tpnme.Function) >= 0
 
     /** Is a implicit function name
      *    - ImplicitFunctionN for N >= 1
