@@ -24,7 +24,7 @@ Compiling and Running
 Start by cloning the repository:
 
 ```bash
-$ git clone https://github.com/lampepfl/dotty.git
+$ git clone --recursive https://github.com/lampepfl/dotty.git
 $ cd dotty
 ```
 

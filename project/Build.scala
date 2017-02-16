@@ -31,8 +31,6 @@ object Build {
   val JENKINS_BUILD = "dotty.jenkins.build"
   val DRONE_MEM = "dotty.drone.mem"
 
-  val scalaCompiler = "me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a"
-
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
@@ -243,6 +241,26 @@ object Build {
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val dottyCompilerSettings = Seq(
 
+      // The scala-backend folder is a git submodule that contains a fork of the Scala 2.11
+      // compiler developed at https://github.com/lampepfl/scala/tree/sharing-backend.
+      // We do not compile the whole submodule, only the part of the Scala 2.11 GenBCode backend
+      // that we reuse for dotty.
+      // See http://dotty.epfl.ch/docs/contributing/backend.html for more information.
+      unmanagedSourceDirectories in Compile ++= {
+        val backendDir = baseDirectory.value / ".." / "scala-backend" / "src" / "compiler" / "scala" / "tools" / "nsc" / "backend"
+        val allScalaFiles = GlobFilter("*.scala")
+
+        // NOTE: Keep these exclusions synchronized with the ones in the tests (CompilationTests.scala)
+        ((backendDir *
+          (allScalaFiles - "JavaPlatform.scala" - "Platform.scala" - "ScalaPrimitives.scala")) +++
+         (backendDir / "jvm") *
+          (allScalaFiles - "BCodeICodeCommon.scala" - "GenASM.scala" - "GenBCode.scala" - "ScalacBackendInterface.scala")
+        ).get
+      },
+
+      // Used by the backend
+      libraryDependencies += "org.scala-lang.modules" % "scala-asm" % "5.1.0-scala-2",
+
       // set system in/out for repl
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
@@ -261,8 +279,7 @@ object Build {
 
       // get libraries onboard
       resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
-      libraryDependencies ++= Seq(scalaCompiler,
-                                  "org.scala-sbt" % "interface" % sbtVersion.value,
+      libraryDependencies ++= Seq("org.scala-sbt" % "interface" % sbtVersion.value,
                                   "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "com.novocode" % "junit-interface" % "0.11" % "test",
                                   "org.scala-lang" % "scala-reflect" % scalacVersion,
@@ -394,10 +411,10 @@ object Build {
           if path.contains("scala-library") ||
             // FIXME: currently needed for tests referencing scalac internals
             path.contains("scala-reflect") ||
-            // FIXME: currently needed for tests referencing scalac internals
-            path.contains("scala-compile") ||
             // FIXME: should go away when xml literal parsing is removed
             path.contains("scala-xml") ||
+            // used for tests that compile dotty
+            path.contains("scala-asm") ||
             // needed for the xsbti interface
             path.contains("org.scala-sbt/interface/")
         } yield "-Xbootclasspath/p:" + path
@@ -631,10 +648,7 @@ object DottyInjectedPlugin extends AutoPlugin {
 
       baseDirectory in (Test,run) := (baseDirectory in `dotty-compiler`).value,
 
-      libraryDependencies ++= Seq(
-        scalaCompiler % Test,
-        "com.storm-enroute" %% "scalameter" % "0.6" % Test
-      ),
+      libraryDependencies += "com.storm-enroute" %% "scalameter" % "0.6" % Test,
 
       fork in Test := true,
       parallelExecution in Test := false,
@@ -686,8 +700,7 @@ object DottyInjectedPlugin extends AutoPlugin {
   // depend on one of these projects.
   lazy val `scala-compiler` = project.
     settings(
-      crossPaths := false,
-      libraryDependencies := Seq(scalaCompiler)
+      crossPaths := false
     ).
     settings(publishing)
   lazy val `scala-reflect` = project.

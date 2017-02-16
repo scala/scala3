@@ -9,7 +9,7 @@ This document details common workflow patterns when working with Dotty.
 
 ```bash
 # Start by cloning the repository:
-git clone https://github.com/lampepfl/dotty.git
+git clone --recursive https://github.com/lampepfl/dotty.git
 cd dotty
 # Clone dotty-compatible stdlib. Needed for running the test suite.
 git clone -b dotty-library https://github.com/DarkDimius/scala.git scala-scala

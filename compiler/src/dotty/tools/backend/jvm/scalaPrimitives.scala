@@ -37,7 +37,7 @@ import core.Symbols.{Symbol, NoSymbol}
  * Inspired from the `scalac` compiler.
  */
 class DottyPrimitives(ctx: Context) {
-  import scala.tools.nsc.backend.ScalaPrimitives._
+  import scala.tools.nsc.backend.ScalaPrimitivesOps._
 
   private lazy val primitives: immutable.Map[Symbol, Int] = init
 
