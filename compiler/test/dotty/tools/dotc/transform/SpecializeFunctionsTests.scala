@@ -90,4 +90,34 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
         .getOrElse(assert(false, "Could not find constructor for object `Test`"))
     }
   }
+
+  @Test def specializeFunction2 = {
+    val source =
+      """|class Func2 extends Function2[Int, Int, Int] {
+         |    def apply(i: Int, j: Int): Int = i + j
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      import scala.collection.JavaConverters._
+      val clsIn = dir.lookupName("Func2.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      assert(clsNode.name == "Func2", s"inspecting wrong class: ${clsNode.name}")
+      val methods = clsNode.methods.asScala
+
+      val apps = methods
+        .collect {
+          case m if m.name == "apply$mcIII$sp" => m
+          case m if m.name == "apply" => m
+        }
+        .map(_.name)
+        .toList
+
+      assert(
+        apps.length == 3,
+        s"Wrong number of specialized applys, actual length: ${apps.length} - $apps"
+      )
+      assert(apps.contains("apply"), "Func3 did not contain `apply` forwarder method")
+      assert(apps.contains("apply$mcIII$sp"), "Func3 did not contain specialized apply")
+    }
+  }
 }
