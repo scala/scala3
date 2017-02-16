@@ -126,6 +126,8 @@ object DottyBuild extends Build {
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
+      triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
+
       addCommandAlias("run", "dotty-compiler/run") ++
       addCommandAlias(
         "partest",
