@@ -4,10 +4,8 @@ package reporting
 
 import org.junit.Assert._
 import org.junit.Test
-
 import core.Contexts._
-
-import diagnostic.{ Message, MessageContainer, ExtendMessage }
+import diagnostic.{ErrorMessageID, ExtendMessage, Message, MessageContainer}
 
 class TestMessageLaziness extends DottyTest {
   ctx = ctx.fresh.setReporter(new NonchalantReporter)
@@ -19,7 +17,7 @@ class TestMessageLaziness extends DottyTest {
     override def report(m: MessageContainer)(implicit ctx: Context) = ()
   }
 
-  case class LazyError() extends Message(1000) {
+  case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {
     throw new Error("Didn't stay lazy.")
 
     val kind = "Test"
