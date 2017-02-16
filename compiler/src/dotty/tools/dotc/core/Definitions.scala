@@ -736,11 +736,16 @@ class Definitions {
   def isBottomType(tp: Type) =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
-  /** Is a function class.
+  /** Is any function class that satisfies:
    *   - FunctionN for N >= 0
    *   - ImplicitFunctionN for N >= 0
    */
   def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
+
+  /** Is a function class where
+   *    - FunctionN for N >= 0
+   */
+  def isPlainFunctionClass(cls: Symbol) = scalaClassName(cls).isPlainFunction
 
   /** Is an implicit function class.
    *   - ImplicitFunctionN for N >= 0

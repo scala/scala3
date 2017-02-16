@@ -66,7 +66,7 @@ class Compiler {
            new ShortcutImplicits,   // Allow implicit functions without creating closures
            new CrossCastAnd,        // Normalize selections involving intersection types.
            new Splitter,           // Expand selections involving union types into conditionals
-           new SpecializeFunction1), // Specialized Function1 by replacing super with specialized super
+           new SpecializeFunctions), // Specialized Function1 by replacing super with specialized super
       List(new VCInlineMethods,     // Inlines calls to value class methods
            new IsInstanceOfEvaluator, // Issues warnings when unreachable statements are present in match/if expressions
            new SeqLiterals,         // Express vararg arguments as arrays
