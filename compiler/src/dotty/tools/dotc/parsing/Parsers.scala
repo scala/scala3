@@ -404,13 +404,13 @@ object Parsers {
 
     var opStack: List[OpInfo] = Nil
 
-    def checkAssoc(offset: Int, op: Name, leftAssoc: Boolean, op2: Name) =
-      if (isLeftAssoc(op) != leftAssoc)
-        syntaxError(MixedLeftAndRightAssociativeOps(op, op2, leftAssoc), offset)
+    def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
+      if (isLeftAssoc(op1) != op2LeftAssoc)
+        syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
     def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
-        checkAssoc(opStack.head.offset, opStack.head.operator.name, leftAssoc, op2)
+        checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree = {
         if (opStack == base) top
         else {
