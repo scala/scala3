@@ -22,6 +22,7 @@ import ScalaCompilerForUnitTesting.ExtractedSourceDependencies
  * source code using Scala compiler.
  */
 class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
+  import scala.language.reflectiveCalls
 
   /**
    * Compiles given source code using Scala compiler and returns API representation

@@ -93,19 +93,15 @@ object CompilerCommand extends DotClass {
 
     def shouldStopWithInfo = {
       import settings._
-      Set(help, Xhelp, Yhelp, showPlugins, showPhases) exists (_.value)
+      Set(help, Xhelp, Yhelp) exists (_.value)
     }
 
     def infoMessage: String = {
       import settings._
-      if (help.value)               usageMessage
-      else if (Xhelp.value)         xusageMessage
-      else if (Yhelp.value)         yusageMessage
-//    else if (showPlugins.value)   global.pluginDescriptions
-//    else if (showPhases.value)    global.phaseDescriptions + (
-//      if (debug.value) "\n" + global.phaseFlagDescriptions else ""
-//    )
-      else                          ""
+      if (help.value) usageMessage
+      else if (Xhelp.value) xusageMessage
+      else if (Yhelp.value) yusageMessage
+      else ""
     }
 
     if (summary.errors.nonEmpty) {
