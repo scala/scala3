@@ -361,12 +361,34 @@ class Namer { typer: Typer =>
     }
   }
 
+  /** Flatten nested thicket inside thicket during multi-level expansion */
+  def flatten(tree: Tree): Tree = tree match {
+    case EmptyTree => EmptyTree
+    case thicket: Thicket =>
+      val trees = thicket.trees.flatMap { tree =>
+        flatten(tree) match {
+          case stats: Thicket => stats.trees
+          case tree => List(tree)
+        }
+      }
+      Thicket(trees)
+    case _ => tree
+  }
+
   /** Expand tree and store in `expandedTree` */
   def expand(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case mdef: DefTree =>
-      val expanded = desugar.defTree(mdef)
+      // expand possible annotation macros
+      val macroExpanded = if (ctx.macrosEnabled) macros.expandAnnotMacro(mdef) else mdef
+
+      // transform macro definitions
+      val macrosTransformed = if (ctx.macrosEnabled) macros.transform(macroExpanded) else macroExpanded
+
+      // desugaring must come last -- due to constraints in desugaring ClassDef
+      val expanded = desugar.defTree(macrosTransformed)
       typr.println(i"Expansion: $mdef expands to $expanded")
-      if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, expanded)
+
+      if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, flatten(expanded))
     case _ =>
   }
 

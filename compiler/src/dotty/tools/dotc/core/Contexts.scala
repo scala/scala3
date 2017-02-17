@@ -583,10 +583,34 @@ object Contexts {
     def initialize()(implicit ctx: Context): Unit = {
       _platform = newPlatform
       definitions.init()
+      initMacrosEnabled
     }
 
     def squashed(p: Phase): Phase = {
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
+    }
+
+    /** ClassLoader for loading class accessible from -classpath */
+    var _classloader: ClassLoader = null
+    def classloader(implicit ctx: Context): ClassLoader =
+      if (_classloader != null) _classloader else initClassloader
+    private def initClassloader(implicit ctx: Context): ClassLoader = {
+      val classpath = platform.classPath.asURLs.toArray
+      _classloader = new java.net.URLClassLoader(classpath, getClass.getClassLoader)
+      _classloader
+    }
+
+    /** Are macros enabled? */
+    private var _macrosEnabled: Boolean = false
+    def macrosEnabled: Boolean = _macrosEnabled
+    private def initMacrosEnabled(implicit ctx: Context) = {
+      _macrosEnabled = try {
+        Class.forName("scala.meta.eden.package", false, classloader)
+        true
+      } catch {
+        case _: ClassNotFoundException =>
+          false
+      }
     }
   }
 

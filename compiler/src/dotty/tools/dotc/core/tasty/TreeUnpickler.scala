@@ -543,6 +543,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           case DEFAULTparameterized => addFlag(DefaultParameterized)
           case INSUPERCALL => addFlag(InSuperCall)
           case STABLE => addFlag(Stable)
+          case MACRO => addFlag(Macro)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readType().typeSymbol
