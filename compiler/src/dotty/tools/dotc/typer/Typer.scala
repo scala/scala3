@@ -1885,7 +1885,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             def implicitArgError(msg: String => String) =
               errors += (() => msg(em"parameter $pname of $methodStr"))
             if (errors.nonEmpty) EmptyTree
-            else inferImplicitArg(formal.widenExpr, implicitArgError, tree.pos.endPos)
+            else inferImplicitArg(formal, implicitArgError, tree.pos.endPos)
           }
           if (errors.nonEmpty) {
             // If there are several arguments, some arguments might already

@@ -130,6 +130,7 @@ object StdNames {
     val COMPANION_CLASS_METHOD: N     = "companion$class"
     val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
     val DIRECT_SUFFIX: N              = "$direct"
+    val LAZY_IMPLICIT_PREFIX: N       = "$lazy_implicit$"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
