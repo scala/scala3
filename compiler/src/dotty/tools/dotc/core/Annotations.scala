@@ -122,7 +122,7 @@ object Annotations {
         private[this] var mySym: Symbol = _
 
         override def symbol(implicit ctx: Context): Symbol = {
-          if (mySym == null) {
+          if (mySym == null || mySym.defRunId != ctx.runId) {
             mySym = symf(ctx)
             assert(mySym != null)
           }
