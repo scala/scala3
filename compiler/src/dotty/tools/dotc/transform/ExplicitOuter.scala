@@ -364,7 +364,7 @@ object ExplicitOuter {
      */
     def path(toCls: Symbol,
              start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass),
-             outOfContext: Boolean = true): Tree = try {
+             outOfContext: Boolean = false): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
