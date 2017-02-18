@@ -789,7 +789,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       val sym = tree.symbol
       if (sym.exists && sym.owner.isTerm && !sym.is(Lazy))
         currentLevel.levelAndIndex.get(sym) match {
-          case Some((level, symIdx)) if symIdx < level.maxIndex =>
+          case Some((level, symIdx)) if symIdx <= level.maxIndex =>
             ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym), level.refPos)
           case _ =>
         }
