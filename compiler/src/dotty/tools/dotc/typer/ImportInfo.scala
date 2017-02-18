@@ -5,6 +5,7 @@ package typer
 import ast.{tpd, untpd}
 import ast.Trees._
 import core._
+import printing.{Printer, Showable}
 import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
 import Decorators.StringInterpolators
@@ -28,7 +29,7 @@ object ImportInfo {
  *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
-                 symNameOpt: Option[TermName], val isRootImport: Boolean = false)(implicit ctx: Context) {
+                 symNameOpt: Option[TermName], val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
@@ -91,7 +92,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   }
 
   /** The implicit references imported by this import clause */
-  def importedImplicits: List[TermRef] = {
+  def importedImplicits(implicit ctx: Context): List[TermRef] = {
     val pre = site
     if (isWildcardImport) {
       val refs = pre.implicitMembers
@@ -115,23 +116,21 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
    *      override import Predef.{any2stringAdd => _, StringAdd => _, _} // disables String +
    *      override import java.lang.{}                                   // disables all imports
    */
-  lazy val unimported: Symbol = {
-    lazy val sym = site.termSymbol
-    def maybeShadowsRoot = symNameOpt match {
-      case Some(symName) => defn.ShadowableImportNames.contains(symName)
-      case None => false
+  def unimported(implicit ctx: Context): Symbol = {
+    if (myUnimported == null) {
+      lazy val sym = site.termSymbol
+      def maybeShadowsRoot = symNameOpt match {
+        case Some(symName) => defn.ShadowableImportNames.contains(symName)
+        case None => false
+      }
+      myUnimported =
+        if (maybeShadowsRoot && defn.RootImportTypes.exists(_.symbol == sym)) sym
+        else NoSymbol
+      assert(myUnimported != null)
     }
-    if (maybeShadowsRoot && defn.RootImportTypes.exists(_.symbol == sym)) sym
-    else NoSymbol
+    myUnimported
   }
+  private[this] var myUnimported: Symbol = _
 
-  override def toString = {
-    val siteStr = site.show
-    val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
-    val selectorStr = selectors match {
-      case Ident(name) :: Nil => name.show
-      case _ => "{...}"
-    }
-    i"import $exprStr.$selectorStr"
-  }
+  def toText(printer: Printer) = printer.toText(this)
 }

@@ -7,6 +7,7 @@ import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annot
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import typer.Implicits._
+import typer.ImportInfo
 import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
@@ -501,6 +502,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ =>
       "?Unknown Implicit Result?"
   }
+
+  def toText(importInfo: ImportInfo): Text = {
+    val siteStr = importInfo.site.show
+    val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
+    val selectorStr = importInfo.selectors match {
+      case Ident(name) :: Nil => name.show
+      case _ => "{...}"
+    }
+    s"import $exprStr.$selectorStr"
+  }
+
 
   private var maxSummarized = Int.MaxValue
 

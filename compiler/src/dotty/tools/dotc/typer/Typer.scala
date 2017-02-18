@@ -145,7 +145,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        */
       def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
         if (prec == wildImport || prec == namedImport) {
-          ex"""imported$qualifier by ${hl"${whereFound.importInfo.toString}"}"""
+          ex"""imported$qualifier by ${hl"${whereFound.importInfo}"}"""
         } else
           ex"""defined$qualifier in ${hl"${whereFound.owner.toString}"}"""
 
