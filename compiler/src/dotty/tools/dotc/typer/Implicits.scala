@@ -549,11 +549,8 @@ trait Implicits { self: Typer =>
      */
     def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
       val lctx = ctx.fresh
-      ctx.property(DelayedImplicit) match {
-        case Some(delayedRef) =>
-          lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
-        case None =>
-      }
+      for (delayedRef <- ctx.property(DelayedImplicit))
+        lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
       lctx.setProperty(DelayedImplicit, lazyImplicit.termRef)
     }
 
