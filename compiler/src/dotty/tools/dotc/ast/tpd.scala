@@ -933,10 +933,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
-  /** A context derived form `ctx` that records `call` as innermost enclosing
-   *  call for which the inlined version is currently processed.
-   */
-  def inlineContext(call: Tree)(implicit ctx: Context): Context =
+  override def inlineContext(call: Tree)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
 
   /** All enclosing calls that are currently inlined, from innermost to outermost */

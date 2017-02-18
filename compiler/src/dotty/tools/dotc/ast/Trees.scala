@@ -1077,6 +1077,13 @@ object Trees {
     /** Hook to indicate that a transform of some subtree should be skipped */
     protected def skipTransform(tree: Tree)(implicit ctx: Context): Boolean = false
 
+    /** For untyped trees, this is just the identity.
+     *  For typed trees, a context derived form `ctx` that records `call` as the
+     *  innermost enclosing call for which the inlined version is currently
+     *  processed.
+     */
+    protected def inlineContext(call: Tree)(implicit ctx: Context): Context = ctx
+
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
 
       def transform(tree: Tree)(implicit ctx: Context): Tree =
@@ -1121,7 +1128,7 @@ object Trees {
           case SeqLiteral(elems, elemtpt) =>
             cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
           case Inlined(call, bindings, expansion) =>
-            cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion))
+            cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(inlineContext(call)))
           case TypeTree() =>
             tree
           case SingletonTypeTree(ref) =>
@@ -1225,7 +1232,7 @@ object Trees {
           case SeqLiteral(elems, elemtpt) =>
             this(this(x, elems), elemtpt)
           case Inlined(call, bindings, expansion) =>
-            this(this(x, bindings), expansion)
+            this(this(x, bindings), expansion)(inlineContext(call))
           case TypeTree() =>
             x
           case SingletonTypeTree(ref) =>
