@@ -60,7 +60,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   /** Convert a selection of the form `qual.C_<OUTER>` to an outer path from `qual` to `C` */
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
     if (tree.name.isOuterSelect)
-      outer.path(tree.tpe.widen.classSymbol, tree.qualifier).ensureConforms(tree.tpe)
+      outer.path(tree.tpe.widen.classSymbol, tree.qualifier, outOfContext = true).ensureConforms(tree.tpe)
     else tree
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
@@ -355,14 +355,21 @@ object ExplicitOuter {
     }
 
     /** The path of outer accessors that references `toCls.this` starting from
-     *  the context owner's this node.
+     *  node `start`, which defaults to the context owner's this node.
+     *  @param  outOfContext  When true, we take the `path` in code that has been inlined
+     *                        from somewhere else. In that case, we need to stop not
+     *                        just when `toCls` is reached exactly, but also in any superclass
+     *                        of `treeCls`. This compensates the `asSeenFrom` logic
+     *                        used to compute this-proxies in Inliner.
      */
-    def path(toCls: Symbol, start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass)): Tree = try {
+    def path(toCls: Symbol,
+             start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass),
+             outOfContext: Boolean = true): Tree = try {
       def loop(tree: Tree): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
         ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")
-        if (treeCls == toCls) tree
+        if (treeCls == toCls || outOfContext && toCls.derivesFrom(treeCls)) tree
         else {
           val acc = outerAccessor(treeCls.asClass)(outerAccessorCtx)
           assert(acc.exists,
