@@ -523,24 +523,31 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         // special case for an abstract type that comes with a class tag
-        tpt1.tpe.dealias match {
-          case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
-            inferImplicit(defn.ClassTagType.appliedTo(tref),
-               EmptyTree, tpt1.pos)(ctx.retractMode(Mode.Pattern)) match {
-              case SearchSuccess(arg, _, _, _) =>
-                return typed(untpd.Apply(untpd.TypedSplice(arg), tree.expr), pt)
-              case _ =>
-            }
-          case _ =>
-            if (!ctx.isAfterTyper) tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
-        }
-        ascription(tpt1, isWildcard = true)
+        if (!ctx.isAfterTyper) tpt1.tpe.<:<(pt)(ctx.addMode(Mode.GADTflexible))
+        tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
       cases(
         ifPat = handlePattern,
         ifExpr = ascription(typedTpt, isWildcard = false),
         wildName = nme.WILDCARD)
     }
+  }
+
+  /** For a typed tree `e: T`, if `T` is an abstract type for which an implicit class tag `ctag`
+   *  exists, rewrite to `ctag(e)`.
+   *  @pre We are in pattern-matching mode (Mode.Pattern)
+   */
+  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context) = tree.tpt.tpe.dealias match {
+    case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
+      require(ctx.mode.is(Mode.Pattern))
+      inferImplicit(defn.ClassTagType.appliedTo(tref),
+                    EmptyTree, tree.tpt.pos)(ctx.retractMode(Mode.Pattern)) match {
+        case SearchSuccess(clsTag, _, _, _) =>
+          typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
+        case _ =>
+          tree
+      }
+    case _ => tree
   }
 
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = track("typedNamedArg") {
@@ -1121,15 +1128,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
     val body1 = typed(tree.body, pt1)
-    typr.println(i"typed bind $tree pt = $pt1 bodytpe = ${body1.tpe}")
     body1 match {
-      case UnApply(fn, Nil, arg :: Nil) if tree.body.isInstanceOf[untpd.Typed] =>
-        // A typed pattern `x @ (_: T)` with an implicit `ctag: ClassTag[T]`
-        // was rewritten to `x @ ctag(_)`.
-        // Rewrite further to `ctag(x @ _)`
-        assert(fn.symbol.owner == defn.ClassTagClass)
+      case UnApply(fn, Nil, arg :: Nil) if fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
+        // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
+        // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
+        // Rewrite further to `ctag(x @ e)`
         tpd.cpy.UnApply(body1)(fn, Nil,
-            typed(untpd.Bind(tree.name, arg).withPos(tree.pos), arg.tpe) :: Nil)
+            typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>
         val sym = newPatternBoundSym(tree.name, body1.tpe, tree.pos)
         assignType(cpy.Bind(tree)(tree.name, body1), sym)
