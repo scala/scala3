@@ -402,7 +402,12 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
 
     // All needed this-proxies, sorted by nesting depth of the classes they represent (innermost first)
-    val accessedSelfSyms = thisProxy.values.toList.map(_.symbol).sortBy(-outerLevel(_))
+    val accessedSelfSyms =
+      thisProxy.toList.sortBy {
+        case (cls, proxy) => -outerLevel(cls)
+      } map {
+        case (cls, proxy) => proxy.symbol
+      }
 
     // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
     var lastSelf: Symbol = NoSymbol
