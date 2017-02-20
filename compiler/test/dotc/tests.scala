@@ -180,8 +180,6 @@ class tests extends CompilerTest {
 
   val negCustomArgs = negDir + "customArgs/"
 
-  @Test def neg_cli_error = compileFile(negCustomArgs, "cliError", List("-thisOptionDoesNotExist"))
-
   @Test def neg_typers() = compileFile(negCustomArgs, "typers")(allowDoubleBindings)
   @Test def neg_overrideClass = compileFile(negCustomArgs, "overrideClass", scala2mode)
   @Test def neg_autoTupling = compileFile(negCustomArgs, "autoTuplingTest", args = "-language:noAutoTupling" :: Nil)

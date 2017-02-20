@@ -44,10 +44,14 @@ object Settings {
   case class ArgsSummary(
     sstate: SettingsState,
     arguments: List[String],
-    errors: List[String]) {
+    errors: List[String],
+    warnings: List[String]) {
 
     def fail(msg: String) =
-      ArgsSummary(sstate, arguments, errors :+ msg)
+      ArgsSummary(sstate, arguments.tail, errors :+ msg, warnings)
+
+    def warn(msg: String) =
+      ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
   }
 
   case class Setting[T: ClassTag] private[Settings] (
@@ -106,11 +110,11 @@ object Settings {
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
-      val ArgsSummary(sstate, arg :: args, errors) = state
+      val ArgsSummary(sstate, arg :: args, errors, warnings) = state
       def update(value: Any, args: List[String]) =
-        ArgsSummary(updateIn(sstate, value), args, errors)
+        ArgsSummary(updateIn(sstate, value), args, errors, warnings)
       def fail(msg: String, args: List[String]) =
-        ArgsSummary(sstate, args, errors :+ msg)
+        ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
         fail(s"missing argument for option $name", args)
       def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
@@ -206,7 +210,7 @@ object Settings {
      *  to get their arguments.
      */
     protected def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
-      def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors)
+      def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match {
         case Nil =>
           checkDependencies(stateWithArgs(skipped))
@@ -219,7 +223,7 @@ object Settings {
               if (state1 ne state) processArguments(state1, processAll, skipped)
               else loop(settings1)
             case Nil =>
-              state.fail(s"bad option: '$x'")
+              processArguments(state.warn(s"bad option '$x' was ignored"), processAll, skipped)
           }
           loop(allSettings.toList)
         case arg :: args =>
@@ -229,7 +233,7 @@ object Settings {
     }
 
     def processArguments(arguments: List[String], processAll: Boolean)(implicit ctx: Context): ArgsSummary =
-      processArguments(ArgsSummary(ctx.sstate, arguments, Nil), processAll, Nil)
+      processArguments(ArgsSummary(ctx.sstate, arguments, Nil, Nil), processAll, Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] = {
       val setting = settingf(_allSettings.length)

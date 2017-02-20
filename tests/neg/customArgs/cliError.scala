@@ -1,2 +1,0 @@
-// nopos-error
-object Test

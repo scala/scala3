@@ -26,8 +26,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val explain = BooleanSetting("-explain", "Explain errors in more detail.")
   val feature = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.")
   val help = BooleanSetting("-help", "Print a synopsis of standard options")
-  // FIXME: `-nowarn` is not used in the compiler, but sbt passes this as an option
-  val nowarn = BooleanSetting("-nowarn", "Generate no warnings.")
   val color = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/)
   val target = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
     List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"), "jvm-1.8")
