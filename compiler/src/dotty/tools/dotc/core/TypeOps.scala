@@ -401,12 +401,12 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to match {
       case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
         for (pref <- prefs) {
-          def forward(): Unit =
+          def forward()(implicit ctx: Context): Unit =
             for (argSym <- pref.decls)
               if (argSym is BaseTypeArg)
                 forwardRef(argSym, from, to, cls, decls)
           pref.info match {
-            case info: TempClassInfo => info.addSuspension(forward)
+            case info: TempClassInfo => info.addSuspension(implicit ctx => forward())
             case _ => forward()
           }
         }
