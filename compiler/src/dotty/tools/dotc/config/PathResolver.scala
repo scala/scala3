@@ -144,7 +144,7 @@ object PathResolver {
     }
     else {
       implicit val ctx = (new ContextBase).initialCtx
-      val ArgsSummary(sstate, rest, errors) =
+      val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
       val pr = new PathResolver()(ctx.fresh.setSettings(sstate))

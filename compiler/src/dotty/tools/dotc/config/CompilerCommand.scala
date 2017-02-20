@@ -104,6 +104,9 @@ object CompilerCommand extends DotClass {
       else ""
     }
 
+    // Print all warnings encountered during arguments parsing
+    summary.warnings.foreach(ctx.warning(_))
+
     if (summary.errors.nonEmpty) {
       summary.errors foreach (ctx.error(_))
       ctx.echo("  dotc -help  gives more information")
