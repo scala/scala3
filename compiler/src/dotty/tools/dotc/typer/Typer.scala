@@ -2003,20 +2003,29 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         return tpd.Block(adapt(tree, WildcardType) :: Nil, Literal(Constant(())))
-      // convert function literal to SAM closure
       tree match {
-        case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
-        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
-          pt match {
-            case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType() =>
-              // was ... && isFullyDefined(pt, ForceDegree.noBottom)
-              // but this prevents case blocks from implementing polymorphic partial functions,
-              // since we do not know the result parameter a priori. Have to wait until the
-              // body is typechecked.
-              return cpy.Closure(tree)(Nil, id, TypeTree(pt)).withType(pt)
-            case _ =>
-          }
+        case Closure(Nil, id @ Ident(nme.ANON_FUN), _) =>
+          val adaptToPrototype =
+            if (defn.isFunctionType(pt)) {
+              // convert implicit function to function
+              !defn.isImplicitFunctionType(pt) && defn.isImplicitFunctionType(wtp)
+            } else {
+              // convert function literal to SAM closure
+              defn.isFunctionType(wtp) && {
+                pt match {
+                  case SAMType(meth)
+                    if wtp <:< meth.info.toFunctionType() =>
+                    // was ... && isFullyDefined(pt, ForceDegree.noBottom)
+                    // but this prevents case blocks from implementing polymorphic partial functions,
+                    // since we do not know the result parameter a priori. Have to wait until the
+                    // body is typechecked.
+                    true
+                  case _ => false
+                }
+              }
+            }
+          if (adaptToPrototype)
+            return cpy.Closure(tree)(Nil, id, TypeTree(pt)).withType(pt)
         case _ =>
       }
       // try an implicit conversion

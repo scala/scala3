@@ -104,7 +104,7 @@ class Definitions {
    *
    *  ImplicitFunctionN traits follow this template:
    *
-   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object with FunctionN[T0,...,T{N-1}, R] {
+   *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    */
@@ -113,27 +113,16 @@ class Definitions {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val decls = newScope
-        val arity = name.functionArity
         val argParams =
-          for (i <- List.range(0, arity)) yield
-            enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls)
-        val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls)
-        val (methodType, parentTraits) =
-          if (name.startsWith(tpnme.ImplicitFunction)) {
-            val superTrait =
-              FunctionType(arity).appliedTo(argParams.map(_.typeRef) ::: resParam.typeRef :: Nil)
-            (ImplicitMethodType, ctx.normalizeToClassRefs(superTrait :: Nil, cls, decls))
-          }
-          else (MethodType, Nil)
-        val applyMeth =
-          decls.enter(
-            newMethod(cls, nme.apply,
-              methodType(argParams.map(_.typeRef), resParam.typeRef), Deferred))
-        denot.info =
-          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
+          for (i <- List.range(0, name.functionArity)) yield
+            enterTypeParam(cls, name ++ "$T" ++ i.toString, Contravariant, decls).typeRef
+        val resParam = enterTypeParam(cls, name ++ "$R", Covariant, decls).typeRef
+        val methodType = if (name.isImplicitFunction) ImplicitMethodType else MethodType
+        decls.enter(newMethod(cls, nme.apply, methodType(argParams, resParam), Deferred))
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
+    newClassSymbol(ScalaPackageClass, name, NoInitsTrait, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -822,7 +811,7 @@ class Definitions {
    *  trait gets screwed up. Therefore, it is mandatory that FunctionXXL
    *  is treated as a NoInit trait.
    */
-  lazy val NoInitClasses = PhantomClasses + FunctionXXLClass
+  def isNoInitClass(cls: Symbol) = PhantomClasses.contains(cls) || (cls eq FunctionXXLClass) || isFunctionClass(cls)
 
   def isPolymorphicAfterErasure(sym: Symbol) =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
