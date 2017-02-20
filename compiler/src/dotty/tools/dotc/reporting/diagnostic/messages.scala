@@ -17,6 +17,7 @@ import dotc.parsing.Scanners.Token
 import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
+import ErrorMessageID._
 
 object messages {
 
@@ -94,8 +95,8 @@ object messages {
 
 
   // Syntax Errors ---------------------------------------------------------- //
-  abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: Int)(implicit ctx: Context)
-  extends Message(errNo) {
+  abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(implicit ctx: Context)
+  extends Message(EmptyCatchOrFinallyBlockID) {
     val explanation = {
       val tryString = tryBody match {
         case Block(Nil, untpd.EmptyTree) => "{}"
@@ -131,7 +132,7 @@ object messages {
   }
 
   case class EmptyCatchBlock(tryBody: untpd.Tree)(implicit ctx: Context)
-  extends EmptyCatchOrFinallyBlock(tryBody, 1) {
+ extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|The ${"catch"} block does not contain a valid expression, try
@@ -139,7 +140,7 @@ object messages {
   }
 
   case class EmptyCatchAndFinallyBlock(tryBody: untpd.Tree)(implicit ctx: Context)
-  extends EmptyCatchOrFinallyBlock(tryBody, 2) {
+  extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchAndFinallyBlockID) {
     val kind = "Syntax"
     val msg =
       hl"""|A ${"try"} without ${"catch"} or ${"finally"} is equivalent to putting
@@ -147,7 +148,7 @@ object messages {
   }
 
   case class DeprecatedWithOperator()(implicit ctx: Context)
-  extends Message(3) {
+  extends Message(DeprecatedWithOperatorID) {
     val kind = "Syntax"
     val msg =
       hl"""${"with"} as a type operator has been deprecated; use `&' instead"""
@@ -158,7 +159,7 @@ object messages {
   }
 
   case class CaseClassMissingParamList(cdef: untpd.TypeDef)(implicit ctx: Context)
-  extends Message(4) {
+  extends Message(CaseClassMissingParamListID) {
     val kind = "Syntax"
     val msg =
       hl"""|A ${"case class"} must have at least one parameter list"""
@@ -172,7 +173,7 @@ object messages {
 
   // Type Errors ------------------------------------------------------------ //
   case class DuplicateBind(bind: untpd.Bind, tree: untpd.CaseDef)(implicit ctx: Context)
-  extends Message(5) {
+  extends Message(DuplicateBindID) {
     val kind = "Naming"
     val msg = em"duplicate pattern variable: `${bind.name}`"
 
@@ -199,7 +200,7 @@ object messages {
   }
 
   case class MissingIdent(tree: untpd.Ident, treeKind: String, name: String)(implicit ctx: Context)
-  extends Message(6) {
+  extends Message(MissingIdentID) {
     val kind = "Unbound Identifier"
     val msg = em"not found: $treeKind$name"
 
@@ -212,7 +213,7 @@ object messages {
   }
 
   case class TypeMismatch(found: Type, expected: Type, whyNoMatch: String = "", implicitFailure: String = "")(implicit ctx: Context)
-  extends Message(7) {
+  extends Message(TypeMismatchID) {
     val kind = "Type Mismatch"
     val msg = {
       val (where, printCtx) = Formatting.disambiguateTypes(found, expected)
@@ -227,7 +228,7 @@ object messages {
   }
 
   case class NotAMember(site: Type, name: Name, selected: String)(implicit ctx: Context)
-  extends Message(8) {
+  extends Message(NotAMemberID) {
     val kind = "Member Not Found"
 
     //println(i"site = $site, decls = ${site.decls}, source = ${site.widen.typeSymbol.sourceFile}") //DEBUG
@@ -293,7 +294,7 @@ object messages {
   }
 
   case class EarlyDefinitionsNotSupported()(implicit ctx: Context)
-  extends Message(9) {
+  extends Message(EarlyDefinitionsNotSupportedID) {
     val kind = "Syntax"
     val msg = "early definitions are not supported; use trait parameters instead"
 
@@ -339,7 +340,7 @@ object messages {
   }
 
   case class TopLevelImplicitClass(cdef: untpd.TypeDef)(implicit ctx: Context)
-  extends Message(10) {
+  extends Message(TopLevelImplicitClassID) {
     val kind = "Syntax"
     val msg = hl"""An ${"implicit class"} may not be top-level"""
 
@@ -369,7 +370,7 @@ object messages {
   }
 
   case class ImplicitCaseClass(cdef: untpd.TypeDef)(implicit ctx: Context)
-  extends Message(11) {
+  extends Message(ImplicitCaseClassID) {
     val kind = "Syntax"
     val msg = hl"""A ${"case class"} may not be defined as ${"implicit"}"""
 
@@ -382,7 +383,7 @@ object messages {
   }
 
   case class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(implicit ctx: Context)
-  extends Message(12) {
+  extends Message(ObjectMayNotHaveSelfTypeID) {
     val kind = "Syntax"
     val msg = hl"""${"object"}s must not have a self ${"type"}"""
 
@@ -400,7 +401,7 @@ object messages {
   }
 
   case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
-  extends Message(13) {
+  extends Message(TupleTooLongID) {
     import Definitions.MaxTupleArity
     val kind = "Syntax"
     val msg = hl"""A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
@@ -416,7 +417,7 @@ object messages {
   }
 
   case class RepeatedModifier(modifier: String)(implicit ctx:Context)
-  extends Message(14) {
+  extends Message(RepeatedModifierID) {
     val kind = "Syntax"
     val msg = hl"""repeated modifier $modifier"""
 
@@ -438,7 +439,7 @@ object messages {
   }
 
   case class InterpolatedStringError()(implicit ctx:Context)
-  extends Message(15) {
+  extends Message(InterpolatedStringErrorID) {
     val kind = "Syntax"
     val msg = "error in interpolated string: identifier or block expected"
     val explanation = {
@@ -456,7 +457,7 @@ object messages {
   }
 
   case class UnboundPlaceholderParameter()(implicit ctx:Context)
-  extends Message(16) {
+  extends Message(UnboundPlaceholderParameterID) {
     val kind = "Syntax"
     val msg = "unbound placeholder parameter; incorrect use of `_`"
     val explanation =
@@ -489,7 +490,7 @@ object messages {
   }
 
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
-  extends Message(17) {
+  extends Message(IllegalStartSimpleExprID) {
     val kind = "Syntax"
     val msg = "illegal start of simple expression"
     val explanation = {
@@ -507,7 +508,8 @@ object messages {
     }
   }
 
-  case class MissingReturnType()(implicit ctx:Context) extends Message(18) {
+  case class MissingReturnType()(implicit ctx:Context)
+  extends Message(MissingReturnTypeID) {
     val kind = "Syntax"
     val msg = "missing return type"
     val explanation =
@@ -519,7 +521,7 @@ object messages {
   }
 
   case class YieldOrDoExpectedInForComprehension()(implicit ctx: Context)
-  extends Message(19) {
+  extends Message(YieldOrDoExpectedInForComprehensionID) {
     val kind = "Syntax"
     val msg = hl"${"yield"} or ${"do"} expected"
 
@@ -552,7 +554,7 @@ object messages {
   }
 
   case class ProperDefinitionNotFound()(implicit ctx: Context)
-  extends Message(20) {
+  extends Message(ProperDefinitionNotFoundID) {
     val kind = "Definition Not Found"
     val msg = hl"""Proper definition was not found in ${"@usecase"}"""
 
@@ -591,7 +593,7 @@ object messages {
   }
 
   case class ByNameParameterNotSupported()(implicit ctx: Context)
-  extends Message(21) {
+  extends Message(ByNameParameterNotSupportedID) {
     val kind = "Syntax"
     val msg = "By-name parameter type not allowed here."
 
@@ -615,7 +617,7 @@ object messages {
   }
 
   case class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree])(implicit ctx: Context)
-  extends Message(22) {
+  extends Message(WrongNumberOfTypeArgsID) {
     val kind = "Syntax"
 
     private val expectedCount = expectedArgs.length
@@ -661,7 +663,7 @@ object messages {
   }
 
   case class IllegalVariableInPatternAlternative()(implicit ctx: Context)
-  extends Message(23) {
+  extends Message(IllegalVariableInPatternAlternativeID) {
     val kind = "Syntax"
     val msg = "Variables are not allowed in alternative patterns"
     val explanation = {
@@ -690,7 +692,7 @@ object messages {
   }
 
   case class TypeParamsTypeExpected(mods: untpd.Modifiers, identifier: TermName)(implicit ctx: Context)
-  extends Message(24) {
+  extends Message(TypeParamsTypeExpectedID) {
     val kind = "Syntax"
     val msg = hl"""Expected ${"type"} keyword for type parameter $identifier"""
     val explanation =
@@ -703,7 +705,7 @@ object messages {
   }
 
   case class IdentifierExpected(identifier: String)(implicit ctx: Context)
-  extends Message(25) {
+  extends Message(IdentifierExpectedID) {
     val kind = "Syntax"
     val msg = "identifier expected"
     val explanation = {
@@ -724,7 +726,7 @@ object messages {
   }
 
   case class AuxConstructorNeedsNonImplicitParameter()(implicit ctx:Context)
-  extends Message(26) {
+  extends Message(AuxConstructorNeedsNonImplicitParameterID) {
     val kind = "Syntax"
     val msg = "auxiliary constructor needs non-implicit parameter list"
     val explanation =
@@ -739,7 +741,8 @@ object messages {
            |"""
   }
 
-  case class IncorrectRepeatedParameterSyntax()(implicit ctx: Context) extends Message(27) {
+  case class IncorrectRepeatedParameterSyntax()(implicit ctx: Context)
+  extends Message(IncorrectRepeatedParameterSyntaxID) {
     val kind = "Syntax"
     val msg = "'*' expected"
     val explanation =
@@ -765,7 +768,8 @@ object messages {
            |""".stripMargin
   }
 
-  case class IllegalLiteral()(implicit ctx: Context) extends Message(28) {
+  case class IllegalLiteral()(implicit ctx: Context)
+  extends Message(IllegalLiteralID) {
     val kind = "Syntax"
     val msg = "illegal literal"
     val explanation =
@@ -780,7 +784,7 @@ object messages {
   }
 
   case class PatternMatchExhaustivity(uncovered: String)(implicit ctx: Context)
-  extends Message(29) {
+  extends Message(PatternMatchExhaustivityID) {
     val kind = "Pattern Match Exhaustivity"
     val msg =
       hl"""|match may not be exhaustive.
@@ -792,14 +796,14 @@ object messages {
   }
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
-  extends Message(30) {
+  extends Message(MatchCaseUnreachableID) {
     val kind = s"""Match ${hl"case"} Unreachable"""
     val msg = "unreachable code"
     val explanation = ""
   }
 
   case class SeqWildcardPatternPos()(implicit ctx: Context)
-  extends Message(31) {
+  extends Message(SeqWildcardPatternPosID) {
     val kind = "Syntax"
     val msg = "`_*' can be used only for last argument"
     val explanation = {
@@ -822,7 +826,8 @@ object messages {
     }
   }
 
-  case class IllegalStartOfSimplePattern()(implicit ctx: Context) extends Message(32) {
+  case class IllegalStartOfSimplePattern()(implicit ctx: Context)
+  extends Message(IllegalStartOfSimplePatternID) {
     val kind = "Syntax"
     val msg = "illegal start of simple pattern"
     val explanation = {
@@ -902,13 +907,14 @@ object messages {
   }
 
   case class PkgDuplicateSymbol(existing: Symbol)(implicit ctx: Context)
-  extends Message(33) {
+  extends Message(PkgDuplicateSymbolID) {
     val kind = "Duplicate Symbol"
     val msg = hl"trying to define package with same name as `$existing`"
     val explanation = ""
   }
 
-  case class ExistentialTypesNoLongerSupported()(implicit ctx: Context) extends Message(34) {
+  case class ExistentialTypesNoLongerSupported()(implicit ctx: Context)
+  extends Message(ExistentialTypesNoLongerSupportedID) {
     val kind = "Syntax"
     val msg =
       hl"""|Existential types are no longer supported -
@@ -930,7 +936,8 @@ object messages {
            |"""
   }
 
-  case class UnboundWildcardType()(implicit ctx: Context) extends Message(35) {
+  case class UnboundWildcardType()(implicit ctx: Context)
+  extends Message(UnboundWildcardTypeID) {
     val kind = "Syntax"
     val msg = "Unbound wildcard type"
     val explanation =
@@ -974,7 +981,7 @@ object messages {
            |"""
   }
 
-  case class DanglingThisInPath()(implicit ctx: Context) extends Message(36) {
+  case class DanglingThisInPath()(implicit ctx: Context) extends Message(DanglingThisInPathID) {
     val kind = "Syntax"
     val msg = hl"""Expected an additional member selection after the keyword ${"this"}"""
 
@@ -1011,7 +1018,7 @@ object messages {
   }
 
   case class OverridesNothing(member: Symbol)(implicit ctx: Context)
-  extends Message(37) {
+  extends Message(OverridesNothingID) {
     val kind = "Reference"
     val msg = hl"""${member} overrides nothing"""
 
@@ -1023,7 +1030,7 @@ object messages {
   }
 
   case class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(implicit ctx: Context)
-  extends Message(38) {
+  extends Message(OverridesNothingButNameExistsID) {
     val kind = "Reference"
     val msg = hl"""${member} has a different signature than the overridden declaration"""
 
@@ -1042,7 +1049,7 @@ object messages {
   }
 
   case class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(implicit ctx: Context)
-  extends Message(39) {
+  extends Message(ForwardReferenceExtendsOverDefinitionID) {
     val kind = "Reference"
     val msg = hl"`${definition.name}` is a forward reference extending over the definition of `${value.name}`"
 
@@ -1061,7 +1068,7 @@ object messages {
   }
 
   case class ExpectedTokenButFound(expected: Token, found: Token, foundName: TermName)(implicit ctx: Context)
-  extends Message(40) {
+  extends Message(ExpectedTokenButFoundID) {
     val kind = "Syntax"
 
     private val expectedText =

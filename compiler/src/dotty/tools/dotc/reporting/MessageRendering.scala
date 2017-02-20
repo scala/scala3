@@ -5,7 +5,7 @@ package reporting
 import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
-import diagnostic.{Message, MessageContainer, NoExplanation}
+import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
 import diagnostic.messages._
 import util.SourcePosition
 
@@ -95,9 +95,10 @@ trait MessageRendering {
     if (pos.exists) Blue({
       val file = pos.source.file.toString
       val errId =
-        if (message.errorId != NoExplanation.ID)
-          s"[E${"0" * (3 - message.errorId.toString.length) + message.errorId}] "
-        else ""
+        if (message.errorId ne ErrorMessageID.NoExplanationID) {
+          val errorNumber = message.errorId.errorNumber()
+          s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
+        } else ""
       val kind =
         if (message.kind == "") diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
