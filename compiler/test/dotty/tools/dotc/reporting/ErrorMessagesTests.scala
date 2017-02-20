@@ -159,4 +159,43 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("+:", op2.show)
       assertFalse(op2LeftAssoc)
     }
+
+  @Test def cantInstantiateAbstract =
+    checkMessagesAfter("refchecks") {
+      """
+        |object Scope {
+        |  abstract class Concept
+        |  new Concept()
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
+      assertEquals("Concept", cls.name.show)
+      assertFalse("expected class", isTrait)
+    }
+
+  @Test def cantInstantiateTrait =
+    checkMessagesAfter("refchecks") {
+      """
+        |object Scope {
+        |  trait Concept
+        |  new Concept()
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
+      assertEquals("Concept", cls.name.show)
+      assertTrue("expected trait", isTrait)
+    }
+
 }

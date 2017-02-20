@@ -29,6 +29,7 @@ import ErrorReporting.{err, errorType}
 import config.Printers.typr
 import collection.mutable
 import SymDenotations.NoCompleter
+import dotty.tools.dotc.reporting.diagnostic.messages.CantInstantiateAbstractClassOrTrait
 import dotty.tools.dotc.transform.ValueClasses._
 
 object Checking {
@@ -103,7 +104,7 @@ object Checking {
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.is(AbstractOrTrait))
-          ctx.error(em"$cls is abstract; cannot be instantiated", pos)
+          ctx.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), pos)
         if (!cls.is(Module)) {
           // Create a synthetic singleton type instance, and check whether
           // it conforms to the self type of the class as seen from that instance.

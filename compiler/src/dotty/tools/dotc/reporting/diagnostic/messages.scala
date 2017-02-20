@@ -1127,4 +1127,12 @@ object messages {
           |""".stripMargin
   }
 
+  case class CantInstantiateAbstractClassOrTrait(cls: Symbol, isTrait: Boolean)(implicit ctx: Context)
+  extends Message(CantInstantiateAbstractClassOrTraitID) {
+    val kind = "Usage"
+    private val traitOrAbstract = if (isTrait) hl"a trait" else hl"abstract"
+    val msg = hl"""${cls.name} is ${traitOrAbstract}; it cannot be instantiated"""
+    val explanation = ""
+  }
+
 }
