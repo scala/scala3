@@ -1093,4 +1093,38 @@ object messages {
           |""".stripMargin
   }
 
+  case class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(implicit ctx: Context)
+  extends Message(MixedLeftAndRightAssociativeOpsID) {
+    val kind = "Syntax"
+    val op1Asso = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"
+    val op2Asso = if (op2LeftAssoc) "which is left-associative" else "which is right-associative"
+    val msg = s"`${op1}` (${op1Asso}) and `${op2}` ($op2Asso) have same precedence and may not be mixed"
+    val explanation =
+      s"""|The operators ${op1} and ${op2} are used as infix operators in the same expression,
+          |but they bind to different sides:
+          |${op1} is applied to the operand to its ${if (op2LeftAssoc) "right" else "left"}
+          |${op2} is applied to the operand to its ${if (op2LeftAssoc) "left" else "right"}
+          |As both have the same precedence the compiler can't decide which to apply first.
+          |
+          |You may use parenthesis to make the application order explicit,
+          |or use method application syntax `operand1.${op1}(operand2)`.
+          |
+          |Operators ending in a colon `:` are right-associative. All other operators are left-associative.
+          |
+          |Infix operator precedence is determined by the operator's first character. Characters are listed
+          |below in increasing order of precedence, with characters on the same line having the same precedence.
+          |  (all letters)
+          |  |
+          |  ^
+          |  &
+          |  = !
+          |  < >
+          |  :
+          |  + -
+          |  * / %
+          |  (all other special characters)
+          |Operators starting with a letter have lowest precedence, followed by operators starting with `|`, etc.
+          |""".stripMargin
+  }
+
 }

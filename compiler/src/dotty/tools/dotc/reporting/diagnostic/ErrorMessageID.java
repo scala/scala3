@@ -48,7 +48,8 @@ public enum ErrorMessageID {
     OverridesNothingID,
     OverridesNothingButNameExistsID,
     ForwardReferenceExtendsOverDefinitionID,
-    ExpectedTokenButFoundID;
+    ExpectedTokenButFoundID,
+    MixedLeftAndRightAssociativeOpsID;
 
     public int errorNumber() {
         return ordinal() - 2;

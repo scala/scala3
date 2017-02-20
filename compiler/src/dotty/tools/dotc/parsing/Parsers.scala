@@ -404,14 +404,13 @@ object Parsers {
 
     var opStack: List[OpInfo] = Nil
 
-    def checkAssoc(offset: Int, op: Name, leftAssoc: Boolean) =
-      if (isLeftAssoc(op) != leftAssoc)
-        syntaxError(
-          "left- and right-associative operators with same precedence may not be mixed", offset)
+    def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
+      if (isLeftAssoc(op1) != op2LeftAssoc)
+        syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
-    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean): Tree = {
+    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
-        checkAssoc(opStack.head.offset, opStack.head.operator.name, leftAssoc)
+        checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree = {
         if (opStack == base) top
         else {
@@ -445,20 +444,20 @@ object Parsers {
       var top = first
       while (isIdent && in.name != notAnOperator) {
         val op = if (isType) typeIdent() else termIdent()
-        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name))
+        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name)
         opStack = OpInfo(top, op, in.offset) :: opStack
         newLineOptWhenFollowing(canStartOperand)
         if (maybePostfix && !canStartOperand(in.token)) {
           val topInfo = opStack.head
           opStack = opStack.tail
-          val od = reduceStack(base, topInfo.operand, 0, true)
+          val od = reduceStack(base, topInfo.operand, 0, true, in.name)
           return atPos(startOffset(od), topInfo.offset) {
             PostfixOp(od, topInfo.operator)
           }
         }
         top = operand()
       }
-      reduceStack(base, top, 0, true)
+      reduceStack(base, top, 0, true, in.name)
     }
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
