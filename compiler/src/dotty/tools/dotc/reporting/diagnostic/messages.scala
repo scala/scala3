@@ -1094,7 +1094,7 @@ object messages {
   }
 
   case class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(implicit ctx: Context)
-    extends Message(41) {
+  extends Message(MixedLeftAndRightAssociativeOpsID) {
     val kind = "Syntax"
     val op1Asso = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"
     val op2Asso = if (op2LeftAssoc) "which is left-associative" else "which is right-associative"
