@@ -58,6 +58,7 @@ class Compiler {
            new ByNameClosures,      // Expand arguments to by-name parameters to closures
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
+           new SpecializedApplyMethods, // Adds specialized methods to FunctionN
            new ClassOf),            // Expand `Predef.classOf` calls.
       List(new TryCatchPatterns,    // Compile cases in try/catch
            new PatternMatcher,      // Compile pattern matches

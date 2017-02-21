@@ -11,21 +11,8 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
 
   import dotty.tools.backend.jvm.ASMConverters._
   import dotty.tools.backend.jvm.AsmNode._
-
-  protected def checkForBoxing(ins: List[Instruction], source: String): Unit = ins.foreach {
-    case Invoke(op, owner, name, desc, itf) =>
-      def error =
-        s"""|----------------------------------
-            |${ins.mkString("\n")}
-            |----------------------------------
-            |From code:
-            |$source
-            |----------------------------------""".stripMargin
-
-      assert(!owner.toLowerCase.contains("box"), s"Boxing instruction discovered in:\n$error")
-      assert(!name.toLowerCase.contains("box"), s"Boxing instruction discovered in:\n$error")
-    case _ => ()
-  }
+  import scala.collection.JavaConverters._
+  import scala.tools.asm.tree.MethodNode
 
   @Test def specializeParentIntToInt = {
     val source = """
@@ -35,14 +22,8 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      import scala.collection.JavaConverters._
-      val clsIn = dir.lookupName("Foo.class", directory = false).input
-      val clsNode = loadClassNode(clsIn)
-      assert(clsNode.name == "Foo", s"inspecting wrong class: ${clsNode.name}")
-      val methods = clsNode.methods.asScala
-
-      val applys = methods
-        .collect {
+      val applys =
+        findClass("Foo", dir).methods.asScala.collect {
           case m if m.name == "apply$mcII$sp" => m
           case m if m.name == "apply" => m
         }
@@ -55,57 +36,20 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
         applys.length == 3,
         s"Wrong number of specialized applys, actual length: ${applys.length} $applys"
       )
-      assert(
-        applys.contains("apply"),
-        "Foo did not contain `apply` forwarder method"
-      )
-      assert(
-        applys.contains("apply$mcII$sp"),
-        "Foo did not contain specialized apply"
-      )
+      assert(applys.contains("apply"), "Foo did not contain `apply` forwarder method")
+      assert(applys.contains("apply$mcII$sp"), "Foo did not contain specialized apply")
     }
   }
 
-  @Test def checkBoxingIntToInt = {
-    val source =
-      """|object Test {
-         |  class Func1 extends Function1[Int, Int] {
-         |    def apply(i: Int) = i + 1
-         |  }
-         |
-         |  (new Func1)(1)
-         |}""".stripMargin
-
-    checkBCode(source) { dir =>
-      import scala.collection.JavaConverters._
-      val clsIn = dir.lookupName("Test$.class", directory = false).input
-      val clsNode = loadClassNode(clsIn)
-      assert(clsNode.name == "Test$", s"inspecting wrong class: ${clsNode.name}")
-
-      clsNode.methods.asScala
-        .find(_.name == "<init>")
-        .map { m =>
-          checkForBoxing(instructionsFromMethod(m), source)
-        }
-        .getOrElse(assert(false, "Could not find constructor for object `Test`"))
-    }
-  }
-
-  @Test def specializeFunction2 = {
+  @Test def specializeFunction2Applys = {
     val source =
       """|class Func2 extends Function2[Int, Int, Int] {
          |    def apply(i: Int, j: Int): Int = i + j
          |}""".stripMargin
 
     checkBCode(source) { dir =>
-      import scala.collection.JavaConverters._
-      val clsIn = dir.lookupName("Func2.class", directory = false).input
-      val clsNode = loadClassNode(clsIn)
-      assert(clsNode.name == "Func2", s"inspecting wrong class: ${clsNode.name}")
-      val methods = clsNode.methods.asScala
-
-      val apps = methods
-        .collect {
+      val apps =
+        findClass("Func2", dir).methods.asScala.collect {
           case m if m.name == "apply$mcIII$sp" => m
           case m if m.name == "apply" => m
         }
@@ -118,6 +62,81 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
       )
       assert(apps.contains("apply"), "Func3 did not contain `apply` forwarder method")
       assert(apps.contains("apply$mcIII$sp"), "Func3 did not contain specialized apply")
+    }
+  }
+
+  @Test def noBoxingSpecFunction0 = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func0 extends Function0[Int] {
+         |    def apply() = 1337
+         |  }
+         |
+         |  (new Func0: Function0[Int])()
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def boxingFunction1 = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func1 extends Function1[Char, Int] {
+         |    def apply(c: Char) = c.toInt
+         |  }
+         |
+         |  (new Func1: Function1[Char, Int])('c')
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def noBoxingSpecFunction1 = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func1 extends Function1[Int, Int] {
+         |    def apply(i: Int) = i + 1
+         |  }
+         |
+         |  (new Func1: Function1[Int, Int])(1)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def noBoxingSpecFunction2 = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func2 extends Function2[Int, Int, Int] {
+         |    def apply(i: Int, j: Int) = i + j
+         |  }
+         |
+         |  (new Func2: Function2[Int, Int, Int])(1300, 37)
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertNoBoxing("<init>", findClass("Test$", dir).methods)
+    }
+  }
+
+  @Test def boxingFunction2 = {
+    implicit val source: String =
+      """|object Test {
+         |  class Func2 extends Function2[Char, Char, Char] {
+         |    def apply(c1: Char, c2: Char) = c1
+         |  }
+         |
+         |  (new Func2: Function2[Char, Char, Char])('c', 'd')
+         |}""".stripMargin
+
+    checkBCode(source) { dir =>
+      assertBoxing("<init>", findClass("Test$", dir).methods)
     }
   }
 }
