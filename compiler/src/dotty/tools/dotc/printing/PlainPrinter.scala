@@ -177,7 +177,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           varianceString(variance) ~ name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~ Text((tp.variances, tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
-          "] => " ~ toTextGlobal(tp.resultType)
+          "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
+          toTextGlobal(tp.resultType)
         }
       case tp: PolyParam =>
         polyParamNameString(tp) ~ polyHash(tp.binder)

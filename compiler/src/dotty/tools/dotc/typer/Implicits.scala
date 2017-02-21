@@ -220,7 +220,7 @@ object Implicits {
   }
 
   /** The result of an implicit search */
-  abstract class SearchResult extends Showable {
+  sealed abstract class SearchResult extends Showable {
     def toText(printer: Printer): Text = printer.toText(this)
   }
 
