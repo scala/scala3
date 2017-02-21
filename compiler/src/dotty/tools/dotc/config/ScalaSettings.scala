@@ -44,6 +44,7 @@ class ScalaSettings extends Settings.SettingGroup {
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")
+  val emitTasty = BooleanSetting("-XemitTasty", "Generate tasty in separate *.tasty file.")
   val noForwarders = BooleanSetting("-Xno-forwarders", "Do not generate static forwarders in mirror classes.")
   val XminImplicitSearchDepth = IntSetting("-Xmin-implicit-search-depth", "Set number of levels of implicit searches undertaken before checking for divergence.", 5)
   val xmaxInlines = IntSetting("-Xmax-inlines", "Maximal number of successive inlines", 32)

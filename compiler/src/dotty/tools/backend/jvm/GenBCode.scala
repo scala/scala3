@@ -1,19 +1,18 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.ast.Trees.{ValDef, PackageDef}
+import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Names.TypeName
 
 import scala.collection.mutable
-import scala.tools.asm.{CustomAttr, ClassVisitor, MethodVisitor, FieldVisitor}
+import scala.tools.asm.{ClassVisitor, CustomAttr, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.Settings
 import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
-
 import dotty.tools.dotc.interfaces
 import java.util.Optional
 
@@ -27,14 +26,15 @@ import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
-import java.io.{ File => JFile }
+import java.io.{FileOutputStream, File => JFile}
+
 import scala.tools.asm
 import scala.tools.asm.tree._
-import dotty.tools.dotc.util.{Positions, DotClass}
+import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
-import scala.reflect.io.{Directory, PlainDirectory, AbstractFile}
 
+import scala.reflect.io.{AbstractFile, Directory, PlainDirectory}
 import scala.tools.nsc.backend.jvm.opt.LocalOpt
 
 class GenBCode extends Phase {
@@ -205,7 +205,15 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         if (claszSymbol.isClass) // @DarkDimius is this test needed here?
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
             val dataAttr = new CustomAttr(nme.TASTYATTR.toString, binary)
-            (if (mirrorC ne null) mirrorC else plainC).visitAttribute(dataAttr)
+            val store = if (mirrorC ne null) mirrorC else plainC
+            store.visitAttribute(dataAttr)
+            if (ctx.settings.emitTasty.value) {
+              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty").file
+              val fos = new FileOutputStream(outTastyFile, false)
+              fos.write(binary)
+              fos.close()
+
+            }
           }
 
         // -------------- bean info class, if needed --------------
