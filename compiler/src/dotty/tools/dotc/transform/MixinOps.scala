@@ -40,6 +40,12 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
   def isCurrent(sym: Symbol) =
     ctx.atPhase(thisTransform) { implicit ctx =>
       cls.info.member(sym.name).hasAltWith(_.symbol == sym)
+      // this is a hot spot, where we spend several seconds while compiling stdlib
+      // unfortunately it will discard and recompute all the member chaches,
+      // both making itself slow and slowing down anything that runs after it
+      // because resolveSuper uses hacks with explicit adding to scopes through .enter
+      // this cannot be fixed by a smarter caching strategy. With current implementation
+      // we HAVE to discard caches here for correctness
     }
 
   /** Does `method` need a forwarder to in  class `cls`
@@ -53,8 +59,8 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    isCurrent(meth) &&
-    (needsDisambiguation || hasNonInterfaceDefinition || meth.owner.is(Scala2x))
+    (meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ) &&
+    isCurrent(meth)
   }
 
   /** Get `sym` of the method that needs a forwarder
