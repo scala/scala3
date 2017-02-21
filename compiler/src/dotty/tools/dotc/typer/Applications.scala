@@ -1374,7 +1374,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 if (isUniform(ps)(ctx.typeComparer.isSameTypeWhenFrozen(_, _))) ps.head
                 else WildcardType)
               val commonFormal = defn.FunctionOf(commonParamTypes, WildcardType)
-              println(i"pretype arg $arg with expected type $commonFormal")
+              overload.println(i"pretype arg $arg with expected type $commonFormal")
               pt.typedArg(arg, commonFormal)
             }
           }
