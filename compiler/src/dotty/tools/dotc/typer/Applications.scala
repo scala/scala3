@@ -1227,6 +1227,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
         defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
+      case Match(EmptyTree, _) =>
+        defn.PartialFunctionType.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
       case _ =>
         defn.NothingType
     }
@@ -1270,8 +1272,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
           alts filter (alt => sizeFits(alt, alt.widen))
 
+        def isFunArg(arg: untpd.Tree) = arg match {
+          case untpd.Function(_, _) | Match(EmptyTree, _) => true
+          case _ => false
+        }
+
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
-          if (normArgs exists (_.isInstanceOf[untpd.Function]))
+          if (normArgs exists isFunArg)
             if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
             else narrowByTypes(alts, normArgs map typeShape, resultType)
           else
