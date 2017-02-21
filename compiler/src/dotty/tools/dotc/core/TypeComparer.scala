@@ -489,7 +489,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp1 @ MethodType(_, formals1) =>
           (tp1.signature consistentParams tp2.signature) &&
             matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
-            (!tp1.isImplicit || tp2.isImplicit) &&  // non-implicit functions shadow implicit ones
+            (tp1.isImplicit == tp2.isImplicit) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false

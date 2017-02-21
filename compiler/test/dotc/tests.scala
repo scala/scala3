@@ -196,6 +196,7 @@ class tests extends CompilerTest {
   @Test def neg_nopredef = compileFile(negCustomArgs, "nopredef", List("-Yno-predef"))
   @Test def neg_noimports = compileFile(negCustomArgs, "noimports", List("-Yno-imports"))
   @Test def neg_noimpots2 = compileFile(negCustomArgs, "noimports2", List("-Yno-imports"))
+  @Test def neg_i2002 = compileFile(negCustomArgs, "i2002", Nil)
 
   @Test def run_all = runFiles(runDir)
 
