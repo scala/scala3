@@ -342,7 +342,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def followOuterLinks(t: Tree)(implicit ctx: Context) = t match {
     case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
-      new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
+      new ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.widen.classSymbol)
     case t =>
       t
   }

@@ -440,10 +440,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           singleton(clazz.thisType)
         else if (ctx.owner.isConstructor)
           outerParam.get(ctx.owner) match {
-            case Some(param) => outer.path(clazz, Ident(param.termRef))
-            case _ => outer.path(clazz)
+            case Some(param) => outer.path(start = Ident(param.termRef), toCls = clazz)
+            case _ => outer.path(toCls = clazz)
           }
-        else outer.path(clazz)
+        else outer.path(toCls = clazz)
       transformFollowingDeep(qual.select(sym))
     }
 

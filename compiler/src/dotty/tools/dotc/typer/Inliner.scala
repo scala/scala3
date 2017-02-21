@@ -396,24 +396,29 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
 
     // The name of the outer selector that computes the rhs of `selfSym`
-    def outerSelector(selfSym: Symbol): TermName = classOf(selfSym).name.toTermName ++ nme.OUTER_SELECT
+    def outerSelector(n: Int): TermName = n.toString.toTermName ++ nme.OUTER_SELECT
 
     // The total nesting depth of the class represented by `selfSym`.
     def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
 
-    // All needed this-proxies, sorted by nesting depth of the classes they represent (innermost first)
-    val accessedSelfSyms = thisProxy.values.toList.map(_.symbol).sortBy(-outerLevel(_))
+    // All needed this-proxies, paired-with and sorted-by nesting depth of
+    // the classes they represent (innermost first)
+    val sortedProxies = thisProxy.toList.map {
+      case (cls, proxy) => (outerLevel(cls), proxy.symbol)
+    } sortBy (-_._1)
 
     // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
     var lastSelf: Symbol = NoSymbol
-    for (selfSym <- accessedSelfSyms) {
+    var lastLevel: Int = 0
+    for ((level, selfSym) <- sortedProxies) {
       val rhs =
         if (!lastSelf.exists)
           prefix
         else
-          untpd.Select(ref(lastSelf), outerSelector(selfSym)).withType(selfSym.info)
+          untpd.Select(ref(lastSelf), outerSelector(lastLevel - level)).withType(selfSym.info)
       bindingsBuf += ValDef(selfSym.asTerm, rhs)
       lastSelf = selfSym
+      lastLevel = level
     }
 
     // The type map to apply to the inlined tree. This maps references to this-types

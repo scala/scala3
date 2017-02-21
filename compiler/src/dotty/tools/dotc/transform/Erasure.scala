@@ -415,7 +415,7 @@ object Erasure extends TypeTestsCasts{
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
         ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
-        outer.path(tree.symbol)
+        outer.path(toCls = tree.symbol)
       }
 
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {

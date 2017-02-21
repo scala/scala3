@@ -271,6 +271,13 @@ object NameOps {
       else -1
     }
 
+
+    /** The number of hops specified in an outer-select name */
+    def outerSelectHops: Int = {
+      require(isOuterSelect)
+      name.dropRight(nme.OUTER_SELECT.length).toString.toInt
+    }
+
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {
       case nme.apply => nme.array_apply
