@@ -992,9 +992,9 @@ class Definitions {
   lazy val ScalaNumericValueTypeList = List(
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
-  private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
-  private lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedTypes(t.name))
+  lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
+  lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
+  lazy val ScalaBoxedTypes = ScalaValueTypes map (t => boxedTypes(t.name))
 
   val ScalaNumericValueClasses = new PerRun[collection.Set[Symbol]](implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses        = new PerRun[collection.Set[Symbol]](implicit ctx => ScalaValueTypes.map(_.symbol))
