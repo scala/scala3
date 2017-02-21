@@ -274,15 +274,46 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
+<<<<<<< HEAD
     def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
+=======
+    private def typeToTag(tp: Types.Type)(implicit ctx: Context): Name =
+      tp.classSymbol match {
+        case t if t eq defn.IntClass     => nme.specializedTypeNames.Int
+        case t if t eq defn.BooleanClass => nme.specializedTypeNames.Boolean
+        case t if t eq defn.ByteClass    => nme.specializedTypeNames.Byte
+        case t if t eq defn.LongClass    => nme.specializedTypeNames.Long
+        case t if t eq defn.ShortClass   => nme.specializedTypeNames.Short
+        case t if t eq defn.FloatClass   => nme.specializedTypeNames.Float
+        case t if t eq defn.UnitClass    => nme.specializedTypeNames.Void
+        case t if t eq defn.DoubleClass  => nme.specializedTypeNames.Double
+        case t if t eq defn.CharClass    => nme.specializedTypeNames.Char
+        case _                           => nme.specializedTypeNames.Object
+      }
+>>>>>>> Fix ordering of specialized names and type parameterized apply
 
-      val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
-      val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
+    /** This method is to be used on **type parameters** from a class, since
+     *  this method does sorting based on their names
+     */
+    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): name.ThisName = {
+      val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
+      val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
 
       likeSpacedN(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
+
+    /** Use for specializing function names ONLY and use it if you are **not**
+     *  creating specialized name from type parameters. The order of names will
+     *  be:
+     *
+     *  `<return type><first type><second type><...>`
+     */
+    def specializedFunction(ret: Types.Type, args: List[Types.Type])(implicit ctx: Context): name.ThisName =
+      name ++ nme.specializedTypeNames.prefix ++
+      nme.specializedTypeNames.separator ++ typeToTag(ret) ++
+      args.map(typeToTag).fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix
 
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(using Context): TermName = termName(compactify(name.toString))
