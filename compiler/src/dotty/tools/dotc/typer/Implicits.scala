@@ -544,7 +544,7 @@ trait Implicits { self: Typer =>
     }
 
     /** The context to be used when resolving a by-name implicit argument.
-     *  This makes any implicit stored under `DelayedIplicit` visible and
+     *  This makes any implicit stored under `DelayedImplicit` visible and
      *  stores in turn the given `lazyImplicit` as new `DelayedImplicit`.
      */
     def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
@@ -555,8 +555,8 @@ trait Implicits { self: Typer =>
     }
 
     /** formalValue: The value type for which an implicit is searched
-     *  lazyIplicit: An implicit symbol to install for nested by-name resolutions
-     *  argCtx     : The context to be used for searching the implicit argument
+     *  lazyImplicit: An implicit symbol to install for nested by-name resolutions
+     *  argCtx      : The context to be used for searching the implicit argument
      */
     val (formalValue, lazyImplicit, argCtx) = formal match {
       case ExprType(fv) =>
