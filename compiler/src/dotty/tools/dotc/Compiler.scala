@@ -60,6 +60,7 @@ class Compiler {
            new LiftTry,             // Put try expressions that might execute on non-empty stacks into their own methods
            new HoistSuperArgs,      // Hoist complex arguments of supercalls to enclosing scope
            new ClassOf,            // Expand `Predef.classOf` calls.
+           new SpecializedApplyMethods, // Adds specialized methods to FunctionN
            new RefChecks),           // Various checks mostly related to abstract members and overriding
       List(new TryCatchPatterns,    // Compile cases in try/catch
            new PatternMatcher,      // Compile pattern matches
