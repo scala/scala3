@@ -3088,14 +3088,14 @@ object Types {
      *  be no longer temporary. These actions will be performed once `cls` gets a real
      *  ClassInfo.
      */
-    private var suspensions: List[() => Unit] = Nil
+    private var suspensions: List[Context => Unit] = Nil
 
-    def addSuspension(suspension: () => Unit): Unit = suspensions ::= suspension
+    def addSuspension(suspension: Context => Unit): Unit = suspensions ::= suspension
 
     /** Install classinfo with known parents in `denot` and resume all suspensions */
     def finalize(denot: SymDenotation, parents: List[TypeRef])(implicit ctx: Context) = {
       denot.info = derivedClassInfo(classParents = parents)
-      suspensions.foreach(_())
+      suspensions.foreach(_(ctx))
     }
   }
 

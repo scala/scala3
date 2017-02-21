@@ -24,6 +24,7 @@ import language.implicitConversions
 import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>
+  import NamerContextOps._
 
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
@@ -119,22 +120,25 @@ trait NamerContextOps { this: Context =>
     else monotpe
   }
 
+  /** Add moduleClass or sourceModule functionality to completer
+   *  for a module or module class
+   */
+  def adjustModuleCompleter(completer: LazyType, name: Name) = {
+    val scope = this.effectiveScope
+    if (name.isTermName)
+      completer withModuleClass (implicit ctx => findModuleBuddy(name.moduleClassName, scope))
+    else
+      completer withSourceModule (implicit ctx => findModuleBuddy(name.sourceModuleName, scope))
+  }
+}
+
+object NamerContextOps {
   /** Find moduleClass/sourceModule in effective scope */
-  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
-    val scope = effectiveScope
+  private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
     val it = scope.lookupAll(name).filter(_ is Module)
     assert(it.hasNext, s"no companion $name in $scope")
     it.next
   }
-
-  /** Add moduleClass or sourceModule functionality to completer
-   *  for a module or module class
-   */
-  def adjustModuleCompleter(completer: LazyType, name: Name) =
-    if (name.isTermName)
-      completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
-    else
-      completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
 }
 
 /** This class creates symbols from definitions and imports and gives them
@@ -378,7 +382,7 @@ class Namer { typer: Typer =>
       case ref: RefTree => Some(ref.name.asTermName)
       case _            => None
     }
-    ctx.fresh.setImportInfo(new ImportInfo(sym, imp.selectors, impNameOpt))
+    ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
   }
 
   /** A new context for the interior of a class */

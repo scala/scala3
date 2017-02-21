@@ -932,9 +932,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def deferredAnnot(end: Int)(implicit ctx: Context): Annotation = {
     val start = readIndex
     val atp = readTypeRef()
+    val phase = ctx.phase
     Annotation.deferred(
-      atp.typeSymbol, implicit ctx1 =>
-        atReadPos(start, () => readAnnotationContents(end)(ctx1.withPhase(ctx.phase))))
+      atp.typeSymbol, implicit ctx =>
+        atReadPos(start, () => readAnnotationContents(end)(ctx.withPhase(phase))))
   }
 
   /* Read an abstract syntax tree */

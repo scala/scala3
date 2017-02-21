@@ -554,7 +554,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             val end = readEnd()
             val tp = readType()
             val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-            annots += Annotation.deferredSymAndTree(tp.typeSymbol, _ => lazyAnnotTree.complete)
+            annots += Annotation.deferredSymAndTree(
+              implicit ctx => tp.typeSymbol,
+              implicit ctx => lazyAnnotTree.complete)
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
@@ -769,7 +771,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       cls.setApplicableFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
-      def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree]): (List[Tree], List[Tree]) =
+      def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
         (tparams, stats) match {
           case (tparam :: tparams1, (alias: TypeDef) :: stats1)
           if tparam.name == alias.name.expandedName(cls) =>
