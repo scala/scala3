@@ -27,7 +27,7 @@ import transform.TypeUtils._
 object Inliner {
   import tpd._
 
-  /** Adds accessors accessors for all non-public term members accessed
+  /** Adds accessors for all non-public term members accessed
    *  from `tree`. Non-public type members are currently left as they are.
    *  This means that references to a private type will lead to typing failures
    *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
@@ -190,7 +190,8 @@ object Inliner {
           val inlineCtx = ctx
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
-            ctx.withNoError(treeExpr(ctx))(makeInlineable)
+            val body = treeExpr(ctx)
+            if (ctx.reporter.hasErrors) body else makeInlineable(body)
           })
         }
     }
@@ -233,8 +234,10 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value)
-      new Inliner(tree, bodyToInline(tree.symbol)).inlined(pt)
+    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value) {
+      val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+      if (ctx.reporter.hasErrors) tree else new Inliner(tree, body).inlined(pt)
+    }
     else errorTree(
       tree,
       i"""|Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
