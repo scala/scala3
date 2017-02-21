@@ -28,11 +28,11 @@ object Test {
   m.map1({ case (k, v) => k - 1 }: PartialFunction[(Int, String), Int])
   m.map2({ case (k, v) => k - 1 }: PartialFunction[(Int, String), Int])
 
-  // These ones did not work before, still don't work in dotty:
-  //m.map1 { case (k, v) => k }
-  //val r = m.map1 { case (k, v) => (k, k*10) }
-  //val rt: MyMap[Int, Int] = r
-  //m.foo { case (k, v) => k - 1 }
+  // These ones did not work before:
+  m.map1 { case (k, v) => k }
+  val r = m.map1 { case (k, v) => (k, k*10) }
+  val rt: MyMap[Int, Int] = r
+  m.foo { case (k, v) => k - 1 }
 
   // Used to be ambiguous but overload resolution now favors PartialFunction
   def h[R](pf: Function2[Int, String, R]): Unit = ()
