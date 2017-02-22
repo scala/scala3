@@ -7,8 +7,8 @@ import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
 
 import scala.collection.mutable
 
-case class CallInfoWithContext(call: TermRef, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)
-    (val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
+class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type], val outerTargs: OuterTargs)(
+    val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
 
@@ -32,4 +32,19 @@ case class CallInfoWithContext(call: TermRef, targs: List[Type], argumentsPassed
 
   def isOnJavaAllocatedType: Boolean = call.prefix.isInstanceOf[JavaAllocatedType]
 
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case obj: CallInfoWithContext =>
+      call == obj.call && targs == obj.targs && argumentsPassed == obj.argumentsPassed && outerTargs == obj.outerTargs
+    case _ => false
+  }
+
+  override def hashCode(): Int = java.util.Objects.hash(call, targs, argumentsPassed, outerTargs.mp)
+
+}
+
+object CallInfoWithContext {
+  def apply(call: TermRef, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)(
+      parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) = {
+    new CallInfoWithContext(call, targs, argumentsPassed, outerTargs)(parent, callee)
+  }
 }
