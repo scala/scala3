@@ -165,7 +165,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
         if (tp1.termSymbol.is(Module)) {
           addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
-        } else if (tp1.typeSymbol.is(Module, Package)) {
+        } else if (tp1.typeSymbol.is(Module, butNot = Package)) {
           val t = ref(tp1.typeSymbol).tpe
           addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
         }
