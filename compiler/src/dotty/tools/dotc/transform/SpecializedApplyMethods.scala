@@ -44,7 +44,7 @@ class SpecializedApplyMethods extends MiniPhaseTransform with InfoTransformer {
       t1 <- List(IntType, LongType, FloatType, DoubleType)
     } yield specApply(func1, List(t1), r)
 
-    func2 = defn.FunctionClass(2)
+    func2 = FunctionClass(2)
     func2Applys = for {
       r  <- List(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
       t1 <- List(IntType, LongType, DoubleType)
@@ -54,7 +54,7 @@ class SpecializedApplyMethods extends MiniPhaseTransform with InfoTransformer {
 
   /** Add symbols for specialized methods to FunctionN */
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp: ClassInfo if defn.isFunctionClass(sym) => {
+    case tp: ClassInfo if defn.isPlainFunctionClass(sym) => {
       init()
       val newDecls = sym.name.functionArity match {
         case 0 => func0Applys.foldLeft(tp.decls.cloneScope) {
