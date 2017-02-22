@@ -469,7 +469,13 @@ object desugar {
       val originalVparams = constr1.vparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparams.next.mods))
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
-      val vparamAccessors = derivedVparamss.flatten.map(_.withMods(originalVparams.next.mods | caseAccessor))
+      val vparamAccessors = derivedVparamss match {
+        case first :: rest =>
+          first.map(_.withMods(originalVparams.next.mods | caseAccessor)) ++
+          rest.flatten.map(_.withMods(originalVparams.next.mods))
+        case _ =>
+          Nil
+      }
       cpy.TypeDef(cdef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, self1,
