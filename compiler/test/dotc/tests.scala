@@ -2,6 +2,7 @@ package dotc
 
 import dotty.Jars
 import dotty.tools.dotc.CompilerTest
+import dotty.tools.StdLibSources
 import org.junit.{Before, Test}
 import org.junit.Assert._
 
@@ -76,8 +77,11 @@ class tests extends CompilerTest {
   val explicitUTF8 = List("-encoding", "UTF8")
   val explicitUTF16 = List("-encoding", "UTF16")
 
+  val stdlibMode    = List("-migration", "-Yno-inline", "-language:Scala2")
+  val linkStdlibMode = "-Ylink-stdlib" :: stdlibMode
+
   val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
-  val linkDCEwithVis = "-link-vis" :: linkDCE
+  val linkVis = List("-link-vis", "-Ylog:callGraph")
 
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
@@ -204,42 +208,25 @@ class tests extends CompilerTest {
 
   @Test def run_all = runFiles(runDir)
 
-  // Test callgraph DCE
-  @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
-  @Test def link_dce_vis_all = runFiles(linkDCEDir, linkDCEwithVis)
-
-  // Test callgraph DCE on code that uses stdlib (not DCEed)
-  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
-  @Test def link_dce_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCE)
-
-  @org.junit.Ignore("Can't run while link-dce-stdlib contains stdlib overwrites.")
-  @Test def link_dce_vis_precompiled_stdlib_all = runFiles(linkDCEWithStdlibDir, linkDCEwithVis)
-
-  // Test callgraph DCE on code that use DCEed stdlib
-  @Test def link_dce_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)
-
-  @org.junit.Ignore("Too long to run in CI")
-  @Test def link_dce_vis_stdlib_all =
-    runFiles(linkDCEWithStdlibDir, scala2mode ::: linkDCEwithVis, stdlibFiles = linkDCEStdlibFiles)
-
-  def loadList(path: String) = Source.fromFile(path, "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .toList
-
-  private def stdlibWhitelistFile = "./test/dotc/scala-collections.whitelist"
-  private def stdlibBlackFile = "./test/dotc/scala-collections.blacklist"
-
   private val stdlibFiles: List[String] = StdLibSources.whitelisted
-  private val dottyStdlibFiles: List[String] = loadList("./test/dotc/dotty-library.whitelist")
+  private val dottyStdlibFiles: List[String] = StdLibSources.loadList("./test/dotc/dotty-library.whitelist", "../library/src/")
   private val linkDCEStdlibFiles: List[String] = dottyStdlibFiles ::: stdlibFiles
+
+  @Test def checkWBLists = {
+    val stdlibFilesBlackListed = StdLibSources.blacklisted
+
+    val duplicates = stdlibFilesBlackListed.groupBy(x => x).filter(_._2.size > 1).filter(_._2.size > 1)
+    val msg = duplicates.map(x => s"'${x._1}' appears ${x._2.size} times").mkString(s"Duplicate entries in ${StdLibSources.blacklistFile}:\n", "\n", "\n")
+    assertTrue(msg, duplicates.isEmpty)
+
+    val filesNotInStdLib = stdlibFilesBlackListed.toSet -- StdLibSources.all
+    val msg2 = filesNotInStdLib.map(x => s"'$x'").mkString(s"Entries in ${StdLibSources.blacklistFile} where not found:\n", "\n", "\n")
+    assertTrue(msg2, filesNotInStdLib.isEmpty)
+  }
 
   @Test def compileStdLib =
     if (!generatePartestFiles)
-      compileList("compileStdLib", stdlibFiles, "-migration" :: "-Yno-inline" :: scala2mode)
+      compileList("compileStdLib", stdlibFiles, stdlibMode)
   @Test def compileMixed = compileLine(
       """../tests/pos/B.scala
         |../scala-scala/src/library/scala/collection/immutable/Seq.scala
@@ -254,6 +241,18 @@ class tests extends CompilerTest {
       """../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
         |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
         |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
+
+  // Test callgraph DCE
+  @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
+  @Test def link_dce_vis_all = runFiles(linkDCEDir, linkVis)
+
+  // Test callgraph DCE on code that use DCEed stdlib
+  @Test def link_dce_stdlib_all(): Unit =
+  runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
+
+  @org.junit.Ignore("Too long to run in CI")
+  @Test def link_dce_vis_stdlib_all(): Unit =
+    runFiles(linkDCEWithStdlibDir,  linkStdlibMode ::: linkVis, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
 
   @Test def dotty = {
     dottyBootedLib

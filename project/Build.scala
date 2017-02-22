@@ -36,7 +36,7 @@ object Build {
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
-    // "-agentpath:/Applications/YourKit_Java_Profiler_2015_build_15074.app/Contents/Resources/bin/mac/libyjpagent.jnilib",
+    // "-agentpath:/Applications/YourKit_Java_Profiler_2015_build_15052.app/Contents/Resources/bin/mac/libyjpagent.jnilib",
     // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
@@ -153,21 +153,6 @@ object Build {
         "partest-only-no-bootstrap",
         ";dotty-compiler/lockPartestFile" +
         ";dotty-compiler/test:test-only dotc.tests" +
-        ";dotty-compiler/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-stdlib-only",
-        ";packageAll" +
-        ";dotty-compiler/test:runMain dotc.build" +
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.stdlibTests" +
-        ";dotty-compiler/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-stdlib-only-no-bootstrap",
-        ";packageAll" +
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.stdlibTests" +
         ";dotty-compiler/runPartestRunner"
       )
     ).
