@@ -14,6 +14,7 @@ import util.syntax._
 
 /** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
+
   private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] =
     ctx.docbase.docstring(sym)
     .orElse {

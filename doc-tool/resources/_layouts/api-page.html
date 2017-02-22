@@ -95,7 +95,7 @@ extraCSS:
         {% for member in entity.members %}
         <div id="{{ member.signature }}" class="member {% if member.isPrivate %}private{% elsif member.isProtected %}protected{% endif %}">
             <div class="member-title">
-                <span class="expand-button" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
+                <span class="expand-button {% if member.hasShortenedDocstring == false %}invisible{% endif %}" onclick="toggleMemberBody(this, '{{ member.signature }}');">[+]</span>
                 <span class="member-annotations">
                     {% for annot in member.annotations %}@{{ annot | split: '.' | last }} {% endfor %}
                 </span>

@@ -56,6 +56,9 @@ object DottyBuild extends Build {
   // Compiles the documentation and static site
   lazy val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
 
+  // Shorthand for compiling a docs site
+  lazy val dottydoc = inputKey[Unit]("run dottydoc")
+
   /** Dottydoc deps */
   lazy val dottydocDeps = SettingKey[Seq[ModuleID]](
     "dottydocDeps",
@@ -271,6 +274,15 @@ object DottyBuild extends Build {
         (runMain in Compile).toTask(
           s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
         )
+      }.evaluated,
+
+      dottydoc := Def.inputTaskDyn {
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        val dottyLib = packageAll.value("dotty-library")
+        val dottyInterfaces = packageAll.value("dotty-interfaces")
+        val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+        val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
+        (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
       }.evaluated,
 
       // Override run to be able to run compiled classfiles

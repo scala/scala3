@@ -122,6 +122,11 @@ div.entity-section > div.member > div.member-title > span.expand-button:hover {
     user-select: none;
 }
 
+div.entity-section > div.member > div.member-title > span.expand-button.invisible,
+div.entity-section > div.member > div.member-title > span.expand-button.invisible:hover {
+    color: transparent;
+}
+
 div.entity-section > div.member > div.member-body {
     margin: 5px 0 0 39px;
 }
