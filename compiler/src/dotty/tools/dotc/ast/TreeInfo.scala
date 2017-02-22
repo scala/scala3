@@ -281,12 +281,19 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
-  def isFunctionWithUnknownParamType(tree: Tree) = tree match {
+  /** Is this a function literal (either a lambda or a case-block) with an
+   *  unknown parameter type?
+   *
+   *  @param idx  If a non-negative value is given, only the specific parameter
+   *              at that index is tested, otherwise all parameters are tested.
+   */
+  def isFunctionWithUnknownParamType(tree: Tree, idx: Int = -1): Boolean = tree match {
     case Function(args, _) =>
-      args.exists {
+      val hasUnknownParamType: Tree => Boolean = {
         case ValDef(_, tpt, _) => tpt.isEmpty
         case _ => false
       }
+      if (idx >= 0) hasUnknownParamType(args(idx)) else args.exists(hasUnknownParamType)
     case Match(EmptyTree, _) =>
       true
     case _ => false

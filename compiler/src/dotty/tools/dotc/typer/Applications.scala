@@ -1273,7 +1273,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           alts filter (alt => sizeFits(alt, alt.widen))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
-          if (normArgs exists untpd.isFunctionWithUnknownParamType)
+          if (normArgs exists (untpd.isFunctionWithUnknownParamType(_)))
             if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
             else narrowByTypes(alts, normArgs map typeShape, resultType)
           else
@@ -1366,8 +1366,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val formalParamTypessForArg: List[List[Type]] =
               decomposedFormalsForArg.map(_.get._1)
             if (isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
-              val commonParamTypes = formalParamTypessForArg.transpose
-                .map(ps => ps.reduceLeft(_ | _))
+              val commonParamTypes = formalParamTypessForArg
+                .transpose
+                .zipWithIndex
+                .map {
+                  case (ps, idx) =>
+                    if (untpd.isFunctionWithUnknownParamType(arg, idx))
+                      ps.reduceLeft(_ | _)
+                    else
+                      WildcardType
+                }
               val commonFormal = defn.FunctionOf(commonParamTypes, WildcardType)
               overload.println(i"pretype arg $arg with expected type $commonFormal")
               pt.typedArg(arg, commonFormal)
