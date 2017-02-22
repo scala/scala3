@@ -276,14 +276,13 @@ object DottyBuild extends Build {
       // Override run to be able to run compiled classfiles
       dotr := {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val java: String = Process("which" :: "java" :: Nil) !!
-        val scalaLib = (dependencyClasspath in Runtime, packageAll)
-          .map { (attList, _) =>
-            attList
-              .map(_.data.getAbsolutePath)
-              .find(_.contains("scala-library"))
-              .toList.mkString(":")
-          }.value
+        val java: String = Process("which" :: "java" :: Nil).!!
+        val attList = (dependencyClasspath in Runtime).value
+        val _  = packageAll.value
+        val scalaLib = attList
+          .map(_.data.getAbsolutePath)
+          .find(_.contains("scala-library"))
+          .toList.mkString(":")
 
         if (java == "")
           println("Couldn't find java executable on path, please install java to a default location")
@@ -291,7 +290,7 @@ object DottyBuild extends Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else {
           val dottyLib = packageAll.value("dotty-library")
-          s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""" !
+          s"""$java -classpath .:$dottyLib:$scalaLib ${args.mkString(" ")}""".!
         }
       },
       run := Def.inputTaskDyn {
@@ -327,7 +326,7 @@ object DottyBuild extends Build {
         partestLockFile.createNewFile
         partestLockFile.deleteOnExit
       },
-      runPartestRunner <<= Def.inputTaskDyn {
+      runPartestRunner := Def.inputTaskDyn {
         // Magic! This is both an input task and a dynamic task. Apparently
         // command line arguments get passed to the last task in an aliased
         // sequence (see partest alias below), so this works.
@@ -341,7 +340,7 @@ object DottyBuild extends Build {
           s"""-dottyJars ${jars.length + 2} dotty.jar dotty-lib.jar ${jars.mkString(" ")}"""
         // Provide the jars required on the classpath of run tests
         runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
-      },
+      }.evaluated,
 
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
@@ -386,7 +385,10 @@ object DottyBuild extends Build {
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
       // packageAll should always be run before tests
-      javaOptions <++= (dependencyClasspath in Runtime, packageAll) map { (attList, pA) =>
+      javaOptions ++= {
+        val attList = (dependencyClasspath in Runtime).value
+        val pA = packageAll.value
+
         // put needed dependencies on classpath:
         val path = for {
           file <- attList.map(_.data)
@@ -632,7 +634,7 @@ object DottyInjectedPlugin extends AutoPlugin {
       /* Make sure jsDependencyManifest runs after compile, otherwise compile
        * might remove the entire directory afterwards.
        */
-      jsDependencyManifest <<= jsDependencyManifest.dependsOn(compile)
+      jsDependencyManifest := jsDependencyManifest.dependsOn(compile).value
     )))
 
   lazy val `dotty-bench` = project.in(file("bench")).
@@ -652,7 +654,10 @@ object DottyInjectedPlugin extends AutoPlugin {
       parallelExecution in Test := false,
 
       // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+      javaOptions ++= {
+        val attList = (dependencyClasspath in Runtime).value
+        val bin = (packageBin in Compile).value
+
         // put the Scala {library, reflect, compiler} in the classpath
         val path = for {
           file <- attList.map(_.data)
