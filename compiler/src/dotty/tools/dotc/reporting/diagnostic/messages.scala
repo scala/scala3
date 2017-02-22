@@ -1062,7 +1062,7 @@ object messages {
            |
            |Define `${definition.name}` before it is used,
            |or move the definition of `${value.name}` so it does not appear between
-           |the declartion of `${definition.name}` and its use,
+           |the declaration of `${definition.name}` and its use,
            |or define `${value.name}` as lazy.
            |""".stripMargin
   }
