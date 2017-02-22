@@ -1001,7 +1001,7 @@ object Parsers {
 
         val t = expr1(location)
         if (in.token == ARROW) {
-          placeholderParams = Nil
+          placeholderParams = Nil // don't interprete `_' to the left of `=>` as a placeholder
           wrapPlaceholders(closureRest(start, location, convertToParams(t)))
         }
         else if (isWildcard(t)) {
