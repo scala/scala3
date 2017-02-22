@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{ClassInfo, DeepTypeMap, HKApply, NoPrefix, RefinedType, TermType, Type, TypeAlias, TypeRef}
 import dotty.tools.dotc.transform.linker.types.ClosureType
 
-class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx: Context) extends DeepTypeMap()(ctx) {
+class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx1: Context) extends DeepTypeMap()(ctx1) {
 
   def apply(tp: Type): Type = {
     lazy val substitution = substMap.mp.getOrElse(tp.typeSymbol.owner, Nil)
