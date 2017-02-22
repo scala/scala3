@@ -69,7 +69,7 @@ class CallGraphChecks extends MiniPhaseTransform {
               else if (actual > bound)
                 ctx.error(s"Too many $name: expected at most $bound but was $actual", lit.pos)
               // else if (actual < bound / 1.2)
-              //  ctx.error(s"Bound is not tight for $name: bound is $bound and actually have $actual", lit.pos)
+              //   ctx.error(s"Bound is not tight for $name: bound is $bound and actually have $actual", lit.pos)
             case Some(arg) => ctx.error("Argument must be a literal integer", arg.pos)
             case _ => assert(false)
           }
@@ -83,18 +83,5 @@ class CallGraphChecks extends MiniPhaseTransform {
 
     tree
   }
-
-  //  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-  //    val sym = tree.symbol
-  //    if (keepAsNew(sym) || callGraph.isReachableClass(sym) || callGraph.isReachableClassOf(sym)) tree
-  //    else tpd.EmptyTree
-  //  }
-
-  // TODO
-  //  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-  //    val tpe = tree.tpe
-  //    if (!tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
-  //    else exception.ensureConforms(tpe)
-  //  }
 
 }

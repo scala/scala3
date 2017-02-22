@@ -33,15 +33,6 @@ case class CallGraph(entryPoints: Map[CallInfoWithContext, Int], reachableMethod
 
     lazy val reachableDefs = reachableMethods.map(_.callSymbol)
 
-    /*val filter = scala.io.Source.fromFile("trace-filtered").getLines().toList
-    /val filterUnMangled = filter.map(x => x.replace("::", ".").replace("$class", "")).toSet
-
-    def fil(x: Symbol) =
-      filterUnMangled.contains(x.fullName.toString)
-
-    val liveDefs = reachableDefs.filter{x => fil(x)}     */
-
-
     lazy val reachableSpecs: Set[(Symbol, List[Type])] = reachableMethods.flatMap { x =>
       val clas = x.callSymbol.maybeOwner.info.widen.classSymbol
       val meth = x.callSymbol

@@ -28,20 +28,6 @@ class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx1: Context) extend
       case tp: HKApply => mapOver(tp)
       case _ if tp.typeSymbol.exists && substitution.nonEmpty =>
         var typ = tp
-        /*val id = tp.typeSymbol.owner.info match {
-          case t: PolyType =>
-            t.paramNames.indexOf(tp.typeSymbol.name)
-          case t: ClassInfo =>
-            var typ = tp
-            var id = t.typeParams.indexOf(typ.typeSymbol)
-            while (id < 0 && (tp.typeSymbol.info.typeSymbol ne tp.typeSymbol)) {
-              typ = tp.typeSymbol.info
-              id = t.typeParams.indexOf(typ.typeSymbol)
-            }
-            id
-          case _ =>
-            -2
-        } */
         var id = substitution.find(x => x._1 == tp.typeSymbol.name)
         var limit = 30
         var stack: List[Type] = Nil
@@ -52,7 +38,6 @@ class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx1: Context) extend
           limit -= 1
         }
 
-        // assert(id.isDefined)
         if (id.isDefined) {
           val t = termTypeIfNeed(id.get._2.stripTypeVar)
           if (!(t =:= typ))

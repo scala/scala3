@@ -181,10 +181,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         case t: RefinedType =>
           val member = t.parent.member(t.refinedName).symbol
           val parent = member.owner
-          // val tparams = parent.info.typeParams
-          // val id = tparams.indexOf(member)
-          // assert(id >= 0) // TODO: IS this code needed at all?
-
           val nList = x.add(parent, t.refinedName, t.refinedInfo)
           apply(nList, t.parent)
         case t: ClosureType =>
@@ -270,7 +266,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         parentRefinements(propagateTargs(receiver)) ++ caller.outerTargs ++ tpamsOuter
       } else {
         parentRefinements(propagateTargs(receiver)) ++ new OuterTargs(caller.outerTargs.mp.filter(x => calleeSymbol.isProperlyContainedIn(x._1)))
-        // todo: Is AsSeenFrom ever needed for outerTags?
       }
 
     // if typearg of callee is a typeparam of caller, propagate typearg from caller to callee
@@ -297,7 +292,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val closureT = new ClosureType(x.meth, utpe, x.implementedMethod, outer)
         addReachableType(new TypeWithContext(closureT, outer), caller)
         closureT
-      case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>  // todo: we could also handle outer arguments
+      case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
         val id = caller.call.termSymbol.info.paramNamess.flatten.indexWhere(_ == x.symbol.name)
         caller.argumentsPassed(id)
       case x => propagateTargs(x)
@@ -392,10 +387,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val to = propagateTargs(targs.head)
         addCast(from, to)
         Nil
-      // TODO: handle == and !=
-      case _ if defn.ObjectMethods.contains(calleeSymbol) || defn.AnyMethods.contains(calleeSymbol) =>
-        // TODO: only for paper
-        Nil
+      case _ if defn.ObjectMethods.contains(calleeSymbol) || defn.AnyMethods.contains(calleeSymbol) => Nil
       case NoPrefix =>  // inner method
         assert(calleeSymbol.is(ParamAccessor) || calleeSymbol.owner.is(Method) || calleeSymbol.owner.isLocalDummy)
         CallInfoWithContext(TermRef.withFixedSym(caller.call.normalizedPrefix, calleeSymbol.name, calleeSymbol), targs, args, outerTargs)(someCaller, someCallee) :: Nil

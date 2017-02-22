@@ -69,19 +69,6 @@ class DeadCodeElimination extends MiniPhaseTransform {
     }
   }
 
-//  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-//    val sym = tree.symbol
-//    if (keepAsNew(sym) || callGraph.isReachableClass(sym) || callGraph.isReachableClassOf(sym)) tree
-//    else tpd.EmptyTree
-//  }
-
-  // TODO
-//  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-//    val tpe = tree.tpe
-//    if (!tpe.widenDealias.isInstanceOf[MethodicType] && tree.fun.symbol.isPrimaryConstructor) tree
-//    else exception.ensureConforms(tpe)
-//  }
-
   private def keepAsNew(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.initial.validFor.firstPhaseId > buildCallGraphPhase.period.phaseId
 }

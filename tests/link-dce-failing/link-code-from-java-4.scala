@@ -24,7 +24,6 @@ object Test {
     throw new Exception("Expected DCE")
   } catch {
     case dce: dotty.runtime.DeadCodeEliminated =>
-    // TODO: check stack trace to see if the DCE was in the fist call of expr
   }
 
   @internal.link.AssertNotReachable
