@@ -993,20 +993,22 @@ object Parsers {
       else {
         val saved = placeholderParams
         placeholderParams = Nil
+
+        def wrapPlaceholders(t: Tree) = try
+          if (placeholderParams.isEmpty) t
+          else new WildcardFunction(placeholderParams.reverse, t)
+        finally placeholderParams = saved
+
         val t = expr1(location)
         if (in.token == ARROW) {
-          placeholderParams = saved
-          closureRest(start, location, convertToParams(t))
+          placeholderParams = Nil
+          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
         }
         else if (isWildcard(t)) {
           placeholderParams = placeholderParams ::: saved
           t
         }
-        else
-          try
-            if (placeholderParams.isEmpty) t
-            else new WildcardFunction(placeholderParams.reverse, t)
-          finally placeholderParams = saved
+        else wrapPlaceholders(t)
       }
     }
 
