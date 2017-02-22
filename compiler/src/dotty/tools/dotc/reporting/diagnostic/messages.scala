@@ -1132,7 +1132,18 @@ object messages {
     val kind = "Usage"
     private val traitOrAbstract = if (isTrait) hl"a trait" else hl"abstract"
     val msg = hl"""${cls.name} is ${traitOrAbstract}; it cannot be instantiated"""
-    val explanation = ""
+    val explanation =
+      hl"""|Abstract classes and traits need to be extended by a concrete class or object
+           |to make their functionality accessible.
+           |
+           |You may want to create an anonymous class extending ${cls.name} with
+           |  ${s"class ${cls.name} { }"}
+           |  
+           |or add a companion object with
+           |  ${s"object ${cls.name} extends ${cls.name}"}
+           |
+           |You need to implement any abstract members in both cases.
+           |""".stripMargin
   }
 
 }
