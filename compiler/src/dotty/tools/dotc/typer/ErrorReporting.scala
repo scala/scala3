@@ -40,12 +40,12 @@ object ErrorReporting {
         }
       } else msg
 
-      if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-        em"""cyclic reference involving implicit $cycleSym
+    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
+      em"""cyclic reference involving implicit $cycleSym
             |This happens when the right hand-side of $cycleSym's definition involves an implicit search.
             |To avoid the error, give $cycleSym an explicit type."""
-      else
-        errorMsg(ex.show, ctx)
+    else
+      errorMsg(ex.show, ctx)
   }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
