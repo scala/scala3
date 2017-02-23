@@ -287,6 +287,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         case ValDef(_, tpt, _) => tpt.isEmpty
         case _ => false
       }
+    case Match(EmptyTree, _) =>
+      true
     case _ => false
   }
 
