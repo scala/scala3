@@ -51,6 +51,7 @@ public enum ErrorMessageID {
     ExpectedTokenButFoundID,
     MixedLeftAndRightAssociativeOpsID,
     CantInstantiateAbstractClassOrTraitID,
+    AnnotatedPrimaryConstructorRequiresModifierOrThisID,
     ;
 
     public int errorNumber() {

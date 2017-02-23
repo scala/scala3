@@ -1607,6 +1607,7 @@ object Parsers {
      *  LocalModifier  ::= abstract | final | sealed | implicit | lazy
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
+      @tailrec
       def loop(mods: Modifiers): Modifiers = {
         if (allowed contains in.token) {
           val isAccessMod = accessModifierTokens contains in.token
@@ -2057,7 +2058,7 @@ object Parsers {
       val name = ident().toTypeName
       val constr = atPos(in.lastOffset) {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
-        val cmods = constrModsOpt()
+        val cmods = constrModsOpt(name)
         val vparamss = paramClauses(name, mods is Case)
 
         makeConstructor(tparams, vparamss).withMods(cmods)
@@ -2070,11 +2071,11 @@ object Parsers {
     /** ConstrMods        ::=  AccessModifier
      *                      |  Annotation {Annotation} (AccessModifier | `this')
      */
-    def constrModsOpt(): Modifiers = {
+    def constrModsOpt(owner: Name): Modifiers = {
       val mods = modifiers(accessModifierTokens, annotsAsMods())
       if (mods.hasAnnotations && !mods.hasFlags)
         if (in.token == THIS) in.nextToken()
-        else syntaxError("`private', `protected', or `this' expected")
+        else syntaxError(AnnotatedPrimaryConstructorRequiresModifierOrThis(owner))
       mods
     }
 
