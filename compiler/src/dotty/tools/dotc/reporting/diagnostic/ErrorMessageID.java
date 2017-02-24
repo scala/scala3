@@ -51,6 +51,9 @@ public enum ErrorMessageID {
     ExpectedTokenButFoundID,
     MixedLeftAndRightAssociativeOpsID,
     CantInstantiateAbstractClassOrTraitID,
+    OverloadedOrRecursiveMethodNeedsResultTypeID,
+    RecursiveValueNeedsResultTypeID,
+    CyclicReferenceInvolvingImplicitID,
     ;
 
     public int errorNumber() {

@@ -1146,4 +1146,32 @@ object messages {
            |""".stripMargin
   }
 
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""overloaded or recursive method ${tree} needs result type"""
+    val explanation =
+      hl"""""".stripMargin
+  }
+
+  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+    extends Message(RecursiveValueNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""recursive value ${tree.name} needs type"""
+    val explanation =
+      hl"""""".stripMargin
+  }
+
+  case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
+    extends Message(CyclicReferenceInvolvingImplicitID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving implicit $cycleSym"""
+    val explanation =
+      hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
+           |To avoid the error, give $cycleSym an explicit type.
+           |""".stripMargin
+  }
+
+
+
 }

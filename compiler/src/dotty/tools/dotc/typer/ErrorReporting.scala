@@ -28,22 +28,20 @@ object ErrorReporting {
 
   def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
     val cycleSym = ex.denot.symbol
-    def errorMsg(msg: String, cx: Context): String =
+    def errorMsg(msg: String, cx: Context): Message =
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
           case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            em"overloaded or recursive method ${tree.name} needs result type"
+            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
           case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-            em"recursive value ${tree.name} needs type"
+            RecursiveValueNeedsResultType(tree.name)
           case _ =>
             errorMsg(msg, cx.outer)
         }
       } else msg
 
     if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-      em"""cyclic reference involving implicit $cycleSym
-            |This happens when the right hand-side of $cycleSym's definition involves an implicit search.
-            |To avoid the error, give $cycleSym an explicit type."""
+      CyclicReferenceInvolvingImplicit(cycleSym)
     else
       errorMsg(ex.show, ctx)
   }
