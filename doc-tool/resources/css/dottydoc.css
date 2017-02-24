@@ -328,3 +328,9 @@ pre > code.hljs {
     padding: 10px;
     background: transparent;
 }
+
+blockquote {
+    padding: 0 1em;
+    color: #777;
+    border-left: 0.25em solid #ddd;
+}
