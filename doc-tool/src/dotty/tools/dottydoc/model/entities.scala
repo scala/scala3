@@ -108,7 +108,7 @@ trait Package extends Entity with Members with SuperTypes {
   val kind = "package"
 }
 
-trait TypeAlias extends Entity with Modifiers {
+trait TypeAlias extends Entity with Modifiers with TypeParams {
   val kind = "type"
   def alias: Option[Reference]
   def isAbstract: Boolean = !alias.isDefined
