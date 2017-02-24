@@ -31,28 +31,21 @@ object ErrorReporting {
     def errorMsg(msg: String, cx: Context): String =
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
-          case tree: untpd.ValOrDefDef =>
-              // Dotty deviation: Was Trees.ValOrDefDef[_], but this gives ValOrDefDef[Nothing] instead of
-              // ValOrDefDel[Null]. Scala handles it, but it looks accidental because bounds propagation
-              // fails if the parameter is invariant or cotravariant.
-              // See test pending/pos/boundspropagation.scala
-            val treeSym = ctx.symOfContextTree(tree)
-            if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
-              val result = if (cycleSym is Method) " result" else ""
-              em"overloaded or recursive $cycleSym needs$result type"
-            }
-            else errorMsg(msg, cx.outer)
+          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
+            em"overloaded or recursive method ${tree.name} needs result type"
+          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
+            em"recursive value ${tree.name} needs type"
           case _ =>
             errorMsg(msg, cx.outer)
         }
       } else msg
 
-      if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-        em"""cyclic reference involving implicit $cycleSym
+    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
+      em"""cyclic reference involving implicit $cycleSym
             |This happens when the right hand-side of $cycleSym's definition involves an implicit search.
             |To avoid the error, give $cycleSym an explicit type."""
-      else
-        errorMsg(ex.show, ctx)
+    else
+      errorMsg(ex.show, ctx)
   }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
