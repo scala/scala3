@@ -29,12 +29,18 @@ import reporting.diagnostic.MessageContainer
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
+import util.Property
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 
 /** Implicit resolution */
 object Implicits {
+
+  /** A reference to an implicit value to be made visible on the next nested call to
+   *  inferImplicitArg with a by-name expected type.
+   */
+  val DelayedImplicit = new Property.Key[TermRef]
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
   case class Candidate(ref: TermRef, level: Int)
@@ -202,7 +208,7 @@ object Implicits {
     }
 
     override def toString = {
-      val own = s"(implicits: ${refs mkString ","})"
+      val own = i"(implicits: $refs%, %)"
       if (isOuterMost) own else own + "\n " + outerImplicits
     }
 
@@ -537,27 +543,56 @@ trait Implicits { self: Typer =>
       else EmptyTree
     }
 
-    inferImplicit(formal, EmptyTree, pos) match {
+    /** The context to be used when resolving a by-name implicit argument.
+     *  This makes any implicit stored under `DelayedImplicit` visible and
+     *  stores in turn the given `lazyImplicit` as new `DelayedImplicit`.
+     */
+    def lazyImplicitCtx(lazyImplicit: Symbol): Context = {
+      val lctx = ctx.fresh
+      for (delayedRef <- ctx.property(DelayedImplicit))
+        lctx.setImplicits(new ContextualImplicits(delayedRef :: Nil, ctx.implicits)(ctx))
+      lctx.setProperty(DelayedImplicit, lazyImplicit.termRef)
+    }
+
+    /** formalValue: The value type for which an implicit is searched
+     *  lazyImplicit: An implicit symbol to install for nested by-name resolutions
+     *  argCtx      : The context to be used for searching the implicit argument
+     */
+    val (formalValue, lazyImplicit, argCtx) = formal match {
+      case ExprType(fv) =>
+        val lazyImplicit = ctx.newLazyImplicit(fv)
+        (fv, lazyImplicit, lazyImplicitCtx(lazyImplicit))
+      case _ => (formal, NoSymbol, ctx)
+    }
+
+    inferImplicit(formalValue, EmptyTree, pos)(argCtx) match {
       case SearchSuccess(arg, _, _, _) =>
-        arg
+        def refersToLazyImplicit = arg.existsSubTree {
+          case id: Ident => id.symbol == lazyImplicit
+          case _ => false
+        }
+        if (lazyImplicit.exists && refersToLazyImplicit)
+          Block(ValDef(lazyImplicit.asTerm, arg).withPos(pos) :: Nil, ref(lazyImplicit))
+        else
+          arg
       case ambi: AmbiguousImplicits =>
         error(where => s"ambiguous implicits: ${ambi.explanation} of $where")
         EmptyTree
       case failure: SearchFailure =>
-        val arg = synthesizedClassTag(formal, pos)
+        val arg = synthesizedClassTag(formalValue, pos)
         if (!arg.isEmpty) arg
         else {
           var msgFn = (where: String) =>
             em"no implicit argument of type $formal found for $where" + failure.postscript
           for {
-            notFound <- formal.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
+            notFound <- formalValue.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
             Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
           } {
             msgFn = where =>
               err.implicitNotFoundString(
                 raw,
-                formal.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-                formal.argInfos)
+                formalValue.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+                formalValue.argInfos)
           }
           error(msgFn)
           EmptyTree

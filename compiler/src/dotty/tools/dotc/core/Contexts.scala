@@ -202,7 +202,7 @@ object Contexts {
     private[core] var pendingMemberSearches: List[Name] = Nil
 
     /** The new implicit references that are introduced by this scope */
-    private var implicitsCache: ContextualImplicits = null
+    protected var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {
       if (implicitsCache == null )
         implicitsCache = {
@@ -469,6 +469,7 @@ object Contexts {
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
+    def setImplicits(implicits: ContextualImplicits): this.type = { this.implicitsCache = implicits; this }
     def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
