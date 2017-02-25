@@ -12,9 +12,7 @@ class Row {
   override def toString = cells.mkString("Row(", ", ", ")")
 }
 
-class Cell(elem: String) {
-  override def toString = s"Cell($elem)"
-}
+case class Cell(elem: String)
 
 object Test {
 
@@ -36,12 +34,12 @@ object Test {
   val data =
     table {
       row {
-        cell("A1")
-        cell("B1")
+        cell("top left")
+        cell("top right")
       }
       row {
-        cell("A2")
-        cell("B2")
+        cell("botttom left")
+        cell("bottom right")
       }
     }
 

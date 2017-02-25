@@ -1,1 +1,1 @@
-Table(Row(Cell(A1), Cell(B1)), Row(Cell(A2), Cell(B2)))
+Table(Row(Cell(top left), Cell(top right)), Row(Cell(botttom left), Cell(bottom right)))
