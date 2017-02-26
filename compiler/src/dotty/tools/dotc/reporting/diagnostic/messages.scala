@@ -1138,7 +1138,7 @@ object messages {
            |
            |You may want to create an anonymous class extending ${cls.name} with
            |  ${s"class ${cls.name} { }"}
-           |  
+           |
            |or add a companion object with
            |  ${s"object ${cls.name} extends ${cls.name}"}
            |
