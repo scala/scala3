@@ -62,14 +62,9 @@ object ProtoTypes {
             true
         }
       case _: ValueTypeOrProto if !disregardProto(pt) =>
-        mt match {
-          case mt: MethodType =>
-            mt.isDependent || isCompatible(normalize(mt, pt), pt)
-          case _ =>
-            isCompatible(mt, pt)
-        }
-      case _: WildcardType =>
-        isCompatible(mt, pt)
+        isCompatible(normalize(mt, pt), pt)
+      case pt: WildcardType if pt.optBounds.exists =>
+        isCompatible(normalize(mt, pt), pt)
       case _ =>
         true
     }
@@ -421,12 +416,12 @@ object ProtoTypes {
           if (mt.isDependent) tp
           else {
             val rt = normalize(mt.resultType, pt)
-          pt match {
-            case pt: IgnoredProto  => mt
-            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
-            case _ =>
-              val ft = defn.FunctionOf(mt.paramTypes, rt)
-              if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+            pt match {
+              case pt: IgnoredProto  => mt
+              case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+              case _ =>
+                val ft = defn.FunctionOf(mt.paramTypes, rt)
+                if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
             }
           }
       case et: ExprType => et.resultType
