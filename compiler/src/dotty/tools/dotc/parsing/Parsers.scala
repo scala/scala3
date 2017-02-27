@@ -2075,7 +2075,7 @@ object Parsers {
       val mods = modifiers(accessModifierTokens, annotsAsMods())
       if (mods.hasAnnotations && !mods.hasFlags)
         if (in.token == THIS) in.nextToken()
-        else syntaxError(AnnotatedPrimaryConstructorRequiresModifierOrThis(owner))
+        else syntaxError(AnnotatedPrimaryConstructorRequiresModifierOrThis(owner), mods.annotations.last.pos)
       mods
     }
 
