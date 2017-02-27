@@ -75,6 +75,21 @@ object Config {
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 
+  /** If this flag is set, and we compute `T1 { X = S1 }` & `T2 { X = S2 }`,
+   *  try to align the refinements by computing `S1 =:= S2` (which might instantiate type parameters).
+   *  This rule is contentious because it cuts the constraint set. Also, it is
+   *  currently unsound because `&` gets called in computations on a constraint
+   *  itself. If the `=:=` test generates a new constraint, that constraint is then
+   *  out of sync with with the constraint on which the computation is performed.
+   *  The constraint resulting from `=:=` ends up to be thrown away whereas
+   *  its result is used, which is unsound. So if we want to turn this flag on
+   *  permanently instead of just for debugging, we have to refactor occurrences
+   *  of `&` in `OrderedConstraint` so that they take the `=:=` result into account.
+   *
+   *  For more info, see the comment in `TypeComparer#distributeAnd`.
+   */
+  final val alignArgsInAnd = false
+
   /** If this flag is set, higher-kinded applications are checked for validity
    */
   final val checkHKApplications = false
