@@ -213,16 +213,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     protected def init() = methType match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
-        if (!methType.isDependent) {
-          val savedConstraint = ctx.typerState.constraint
-          if (!constrainResult(methType.resultType, resultType))
-            if (ctx.typerState.isCommittable)
-              // defer the problem until after the application;
-              // it might be healed by an implicit conversion
-              assert(ctx.typerState.constraint eq savedConstraint)
-            else
-              fail(err.typeMismatchMsg(methType.resultType, resultType))
-        }
+        val savedConstraint = ctx.typerState.constraint
+        if (!constrainResult(methType.resultTypeApprox, resultType))
+          if (ctx.typerState.isCommittable)
+            // defer the problem until after the application;
+            // it might be healed by an implicit conversion
+            assert(ctx.typerState.constraint eq savedConstraint)
+          else
+            fail(err.typeMismatchMsg(methType.resultType, resultType))
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramTypes, 0)
       case _ =>
@@ -1100,10 +1098,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Drop any implicit parameter section */
     def stripImplicit(tp: Type): Type = tp match {
-      case mt: ImplicitMethodType if !mt.isDependent =>
-        mt.resultType
-          // todo: make sure implicit method types are not dependent?
-          // but check test case in /tests/pos/depmet_implicit_chaining_zw.scala
+      case mt: ImplicitMethodType =>
+        mt.resultTypeApprox
       case pt: PolyType =>
         pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
       case _ =>

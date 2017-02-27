@@ -1686,7 +1686,10 @@ object Types {
           }
         else newLikeThis(prefix)
       }
-      else newLikeThis(prefix)
+      else prefix match {
+        case _: WildcardType => WildcardType
+        case _ => newLikeThis(prefix)
+      }
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
@@ -2390,6 +2393,12 @@ object Types {
      *  which cannot be eliminated by de-aliasing?
      */
     def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
+
+    /** The result type where every reference to a parameter is replaced by a Wildcard
+     */
+    def resultTypeApprox(implicit ctx: Context): Type =
+      if (isDependent) resultType.substParams(this, paramTypes.map(Function.const(WildcardType)))
+      else resultType
 
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)

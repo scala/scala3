@@ -57,7 +57,7 @@ object ProtoTypes {
       case pt: FunProto =>
         mt match {
           case mt: MethodType =>
-            mt.isDependent || constrainResult(mt.resultType, pt.resultType)
+            constrainResult(mt.resultTypeApprox, pt.resultType)
           case _ =>
             true
         }
@@ -408,22 +408,18 @@ object ProtoTypes {
     tp.widenSingleton match {
       case poly: PolyType => normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicit)
-          if (mt.isDependent)
-            mt.resultType.substParams(mt, mt.paramTypes.map(Function.const(WildcardType)))
-          else mt.resultType
-        else
-          if (mt.isDependent) tp
-          else {
-            val rt = normalize(mt.resultType, pt)
-            pt match {
-              case pt: IgnoredProto  => mt
-              case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
-              case _ =>
-                val ft = defn.FunctionOf(mt.paramTypes, rt)
-                if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
-            }
+        if (mt.isImplicit) mt.resultTypeApprox
+        else if (mt.isDependent) tp
+        else {
+          val rt = normalize(mt.resultType, pt)
+          pt match {
+            case pt: IgnoredProto  => mt
+            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+            case _ =>
+              val ft = defn.FunctionOf(mt.paramTypes, rt)
+              if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
           }
+        }
       case et: ExprType => et.resultType
       case _ => tp
     }
