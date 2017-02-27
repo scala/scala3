@@ -450,7 +450,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def typedArg(arg: Arg, formal: Type): Arg = arg
     def addArg(arg: TypedArg, formal: Type) =
-      ok = ok & isCompatible(argType(arg, formal), formal)
+      ok = ok & {
+        argType(arg, formal) match {
+          case ref: TermRef if ref.denot.isOverloaded =>
+            // in this case we could not resolve overloading because no alternative
+            // matches expected type
+            false
+          case argtpe =>
+            isCompatible(argtpe, formal)
+        }
+      }
     def makeVarArg(n: Int, elemFormal: Type) = {}
     def fail(msg: => Message, arg: Arg) =
       ok = false
