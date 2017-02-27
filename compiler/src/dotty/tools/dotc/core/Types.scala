@@ -2066,6 +2066,9 @@ object Types {
    */
   abstract case class RefinedType(parent: Type, refinedName: Name, refinedInfo: Type) extends RefinedOrRecType {
 
+    if (refinedName.isTermName) assert(refinedInfo.isInstanceOf[TermType])
+    else assert(refinedInfo.isInstanceOf[TypeType])
+
     override def underlying(implicit ctx: Context) = parent
 
     private def badInst =
