@@ -1,7 +1,5 @@
 enum Color {
-  case Red
-  case Green
-  case Blue
+  case Red, Green, Blue
 }
 
 object Test {

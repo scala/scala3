@@ -2149,8 +2149,8 @@ object Parsers {
     }
 
     /** EnumCaseStats = EnumCaseStat {semi EnumCaseStat */
-    def enumCaseStats(): List[MemberDef] = {
-      val cases = new ListBuffer[MemberDef] += enumCaseStat()
+    def enumCaseStats(): List[DefTree] = {
+      val cases = new ListBuffer[DefTree] += enumCaseStat()
       while (in.token != RBRACE) {
         acceptStatSep()
         cases += enumCaseStat()
@@ -2159,19 +2159,24 @@ object Parsers {
     }
 
     /** EnumCaseStat = {Annotation [nl]} {Modifier} EnumCase */
-    def enumCaseStat(): MemberDef =
+    def enumCaseStat(): DefTree =
       enumCase(in.offset, defAnnotsMods(modifierTokens))
 
     /** EnumCase = `case' (EnumClassDef | ObjectDef) */
-    def enumCase(start: Offset, mods: Modifiers): MemberDef = {
+    def enumCase(start: Offset, mods: Modifiers): DefTree = {
       val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.EnumCase())) | Case
       accept(CASE)
       atPos(start, nameStart) {
-        val name = ident()
+        val id = termIdent()
         if (in.token == LBRACKET || in.token == LPAREN)
-          classDefRest(start, mods1, name.toTypeName)
+          classDefRest(start, mods1, id.name.toTypeName)
+        else if (in.token == COMMA) {
+          in.nextToken()
+          val ids = commaSeparated(termIdent)
+          PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
+        }
         else
-          objectDefRest(start, mods1, name)
+          objectDefRest(start, mods1, id.name.asTermName)
       }
     }
 

@@ -576,11 +576,23 @@ object desugar {
   /**     val p1, ..., pN: T = E
    *  ==>
    *      makePatDef[[val p1: T1 = E]]; ...; makePatDef[[val pN: TN = E]]
+   *
+   *      case e1, ..., eN
+   *  ==>
+   *      expandSimpleEnumCase([case e1]); ...; expandSimpleEnumCase([case eN])
    */
-  def patDef(pdef: PatDef)(implicit ctx: Context): Tree = {
+  def patDef(pdef: PatDef)(implicit ctx: Context): Tree = flatTree {
     val PatDef(mods, pats, tpt, rhs) = pdef
-    val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-    flatTree(pats1 map (makePatDef(pdef, mods, _, rhs)))
+    if (mods.hasMod[Mod.EnumCase] && enumCaseIsLegal(pdef))
+      pats map {
+        case id: Ident =>
+          expandSimpleEnumCase(id.name.asTermName, mods,
+            Position(pdef.pos.start, id.pos.end, id.pos.start))
+    }
+    else {
+      val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
+      pats1 map (makePatDef(pdef, mods, _, rhs))
+    }
   }
 
   /** If `pat` is a variable pattern,

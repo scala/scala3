@@ -341,7 +341,7 @@ ObjectDef         ::=  id TemplateOpt                                           
 EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
                        [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’
 EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
-EnumCase          ::=  `case' (EnumClassDef | ObjectDef)
+EnumCase          ::=  `case' (EnumClassDef | ObjectDef | ids)
 EnumClassDef      ::=  id [ClsTpeParamClause | ClsParamClause]                  ClassDef(mods, name, tparams, templ)
                        ClsParamClauses TemplateOpt
 TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]

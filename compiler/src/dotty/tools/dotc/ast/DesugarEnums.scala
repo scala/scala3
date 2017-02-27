@@ -24,14 +24,15 @@ object DesugarEnums {
     result
   }
 
-  def isLegalEnumCase(tree: MemberDef)(implicit ctx: Context): Boolean = {
-    tree.mods.hasMod[Mod.EnumCase] &&
-    (  ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
+  def isLegalEnumCase(tree: MemberDef)(implicit ctx: Context): Boolean =
+    tree.mods.hasMod[Mod.EnumCase] && enumCaseIsLegal(tree)
+
+  def enumCaseIsLegal(tree: Tree)(implicit ctx: Context): Boolean = (
+    ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
     || { ctx.error(em"case not allowed here, since owner ${ctx.owner} is not an `enum' object", tree.pos)
          false
        }
     )
-  }
 
   /** Type parameters reconstituted from the constructor
    *  of the `enum' class corresponding to an enum case.
@@ -104,23 +105,25 @@ object DesugarEnums {
     List(privateValuesDef, valueOfDef, withNameDef, valuesDef, newDef)
   }
 
-  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
-    def nameLit = Literal(Constant(name.toString))
-    if (impl.parents.isEmpty) {
-      if (reconstitutedEnumTypeParams(pos).nonEmpty)
-        ctx.error(i"illegal enum value of generic $enumClass: an explicit `extends' clause is needed", pos)
-      val tag = nextEnumTag
-      val prefix = if (tag == 0) enumScaffolding else Nil
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), nameLit))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
-      flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
-    } else {
+  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
+    if (impl.parents.isEmpty)
+      expandSimpleEnumCase(name, mods, pos)
+    else {
       def toStringMeth =
-        DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), nameLit)
+        DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
           .withFlags(Override)
       val impl1 = cpy.Template(impl)(body =
         impl.body ++ List(enumTagMeth, toStringMeth))
       ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final).withPos(pos)
     }
+
+  def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
+    if (reconstitutedEnumTypeParams(pos).nonEmpty)
+      ctx.error(i"illegal enum value of generic $enumClass: an explicit `extends' clause is needed", pos)
+    val tag = nextEnumTag
+    val prefix = if (tag == 0) enumScaffolding else Nil
+    val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+    val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
+    flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
   }
 }
