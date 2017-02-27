@@ -1,5 +1,4 @@
 object Sessions {
-  def ?[T <: AnyRef](implicit w: T): w.type = w
 
   // session states
   sealed case class Stop()
@@ -18,7 +17,7 @@ object Sessions {
 
   // friendly interface to the theory
   def runSession[S, D: Session[S]#HasDual](session: S, dual: D) =
-    ?[Session[S]#HasDual[D]].run(session, dual)
+    implicitly[Session[S]#HasDual[D]].run(session, dual)
 
   // facts in the theory:
 

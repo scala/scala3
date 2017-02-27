@@ -1,3 +1,4 @@
+// Disabled because we now get an unsafe instantiation error
 object Sessions {
   trait Session {
     type Dual <: Session
@@ -40,5 +41,5 @@ object Sessions {
     In{z: Int => System.out.println(z)
     Stop()}}))
 
-  def myRun = addServer run addClient
+  def myRun = addServer run addClient // error: unsafe instantiation
 }
