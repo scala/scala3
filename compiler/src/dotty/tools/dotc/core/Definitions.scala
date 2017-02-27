@@ -906,13 +906,6 @@ class Definitions {
   /** The type of the boxed class corresponding to primitive value type `tp`. */
   def boxedType(tp: Type)(implicit ctx: Context): TypeRef = boxedTypes(scalaClassName(tp))
 
-  def wrapArrayMethodName(elemtp: Type): TermName = {
-    val cls = elemtp.classSymbol
-    if (cls.isPrimitiveValueClass) nme.wrapXArray(cls.name)
-    else if (cls.derivesFrom(ObjectClass) && !cls.isPhantomClass) nme.wrapRefArray
-    else nme.genericWrapArray
-  }
-
   type PrimitiveClassEnc = Int
 
   val ByteEnc = 2
