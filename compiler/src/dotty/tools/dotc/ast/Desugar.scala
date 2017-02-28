@@ -296,11 +296,16 @@ object desugar {
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
+    lazy val reconstitutedTypeParams = reconstitutedEnumTypeParams(cdef.pos.startPos)
+
     val originalTparams =
       if (isEnumCase && parents.isEmpty) {
-        if (constr1.tparams.nonEmpty)
-          ctx.error(em"case with type parameters needs extends clause", constr1.tparams.head.pos)
-        reconstitutedEnumTypeParams(cdef.pos.startPos)
+        if (constr1.tparams.nonEmpty) {
+          if (reconstitutedTypeParams.nonEmpty)
+            ctx.error(em"case with type parameters needs extends clause", constr1.tparams.head.pos)
+          constr1.tparams
+        }
+        else reconstitutedTypeParams
       }
       else constr1.tparams
     val originalVparamss = constr1.vparamss
@@ -339,7 +344,9 @@ object desugar {
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
     // a reference to `enumClass`, with type parameters coming from the constructor
-    lazy val enumClassTypeRef = appliedRef(enumClassRef)
+    lazy val enumClassTypeRef =
+      if (reconstitutedTypeParams.isEmpty) enumClassRef
+      else appliedRef(enumClassRef)
 
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
@@ -516,10 +523,7 @@ object desugar {
       case _ =>
     }
 
-    val result = flatTree(cdef1 :: companions ::: implicitWrappers)
-    //if (isEnum) println(i"enum $cdef\n --->\n$result")
-    //if (isEnumCase) println(i"enum case $cdef\n --->\n$result")
-    result
+    flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
   val AccessOrSynthetic = AccessFlags | Synthetic

@@ -14,14 +14,17 @@ object DesugarEnums {
   import untpd._
   import desugar.DerivedFromParamTree
 
-  val EnumCaseCount = new Property.Key[Int]
+  /** Attachment containing: The number of enum cases seen so far, and whether a
+   *  simple enum case was already seen.
+   */
+  val EnumCaseCount = new Property.Key[(Int, Boolean)]
 
   def enumClass(implicit ctx: Context) = ctx.owner.linkedClass
 
-  def nextEnumTag(implicit ctx: Context): Int = {
-    val result = ctx.tree.removeAttachment(EnumCaseCount).getOrElse(0)
-    ctx.tree.pushAttachment(EnumCaseCount, result + 1)
-    result
+  def nextEnumTag(isSimpleCase: Boolean)(implicit ctx: Context): (Int, Boolean) = {
+    val (count, simpleSeen) = ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, false))
+    ctx.tree.pushAttachment(EnumCaseCount, (count + 1, simpleSeen | isSimpleCase))
+    (count, simpleSeen)
   }
 
   def isLegalEnumCase(tree: MemberDef)(implicit ctx: Context): Boolean =
@@ -54,7 +57,8 @@ object DesugarEnums {
   }
 
   def enumTagMeth(implicit ctx: Context) =
-    DefDef(nme.enumTag, Nil, Nil, TypeTree(), Literal(Constant(nextEnumTag)))
+    DefDef(nme.enumTag, Nil, Nil, TypeTree(),
+        Literal(Constant(nextEnumTag(isSimpleCase = false)._1)))
 
   def enumClassRef(implicit ctx: Context) = TypeTree(enumClass.typeRef)
 
@@ -120,8 +124,8 @@ object DesugarEnums {
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
     if (reconstitutedEnumTypeParams(pos).nonEmpty)
       ctx.error(i"illegal enum value of generic $enumClass: an explicit `extends' clause is needed", pos)
-    val tag = nextEnumTag
-    val prefix = if (tag == 0) enumScaffolding else Nil
+    val (tag, simpleSeen) = nextEnumTag(isSimpleCase = true)
+    val prefix = if (simpleSeen) Nil else enumScaffolding
     val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
     val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final).withPos(pos)
     flatTree(prefix ::: vdef :: Nil).withPos(pos.startPos)
