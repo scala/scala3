@@ -554,7 +554,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             case call: PolyType =>
               def erasedBounds(tp: TypeBounds): Type = tp.hi match {
                 case RefinedType(parent, refinedName, refinedInfo: TypeBounds) =>
-                  RefinedType(parent, refinedName, erasedBounds(refinedInfo))
+                  RefinedType(parent, refinedName, TypeAlias(erasedBounds(refinedInfo)))
                 case t => t
               }
               call.paramBounds.map(erasedBounds)
