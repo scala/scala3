@@ -134,11 +134,24 @@ extraCSS:
                     {% endfor %}
                 {% endif %}
 
-                {% if member.kind == "type" and member.alias != null %}
+                {% if member.kind == "type" %}
+                {% for tparam in member.typeParams %}
+                    {% if forloop.first %}
+                        <span class="no-left">[</span>
+                    {% endif %}
+                    {% if forloop.last %}
+                        <span class="no-left">{{ tparam }}</span>
+                        <span class="no-left">]</span>
+                    {% else %}
+                        <span class="no-left">{{ tparam }}, </span>
+                    {% endif %}
+                {% endfor %}
+                {% if member.alias != null %}
                 <span class="type-alias">
                     <span class="equals"> = </span>
                     {% renderRef member.alias %}
                 </span>
+                {% endif %}
                 {% endif %}
 
                 {% if member.returnValue %}

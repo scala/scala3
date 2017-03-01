@@ -92,6 +92,7 @@ object transform {
             t.name,
             t.path,
             t.alias,
+            t.typeParams,
             t.comment,
             t.parent
           )

@@ -189,6 +189,7 @@ object JavaConverters {
       "name" -> ent.name,
       "path" -> ent.path.asJava,
       "alias" -> ent.alias.map(_.asJava).asJava,
+      "typeParams" -> ent.typeParams.asJava,
       "comment" -> ent.comment.map(_.asJava).asJava,
       "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "isPrivate" -> ent.isPrivate,

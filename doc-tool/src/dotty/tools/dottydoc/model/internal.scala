@@ -31,6 +31,7 @@ object internal {
     name: String,
     path: List[String],
     alias: Option[Reference],
+    typeParams: List[String] = Nil,
     var comment: Option[Comment] = None,
     var parent: Entity = NonEntity
   ) extends TypeAlias

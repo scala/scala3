@@ -5,9 +5,12 @@ package reporting
 import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
+import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
 import diagnostic.messages._
 import util.SourcePosition
+import util.Chars.{ LF, CR, FF, SU }
+import scala.annotation.switch
 
 import scala.collection.mutable
 
@@ -38,20 +41,37 @@ trait MessageRendering {
     */
   def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], List[String], Int) = {
     var maxLen = Int.MinValue
-    def render(xs: List[Int]) =
-      xs.map(pos.source.offsetToLine(_))
-        .map { lineNbr =>
-          val prefix = s"${lineNbr + 1} |"
-          maxLen = math.max(maxLen, prefix.length)
-          (prefix, pos.lineContent(lineNbr).stripLineEnd)
-        }
-        .map { case (prefix, line) =>
-          val lnum = Red(" " * math.max(0, maxLen - prefix.length) + prefix)
-          hl"$lnum$line"
-        }
+    def render(offsetAndLine: (Int, String)): String = {
+      val (offset, line) = offsetAndLine
+      val lineNbr = pos.source.offsetToLine(offset)
+      val prefix = s"${lineNbr + 1} |"
+      maxLen = math.max(maxLen, prefix.length)
+      val lnum = Red(" " * math.max(0, maxLen - prefix.length) + prefix).show
+      lnum + line.stripLineEnd
+    }
 
+    def linesFrom(arr: Array[Char]): List[String] = {
+      def pred(c: Char) = (c: @switch) match {
+        case LF | CR | FF | SU => true
+        case _ => false
+      }
+      val (line, rest0) = arr.span(!pred(_))
+      val (_, rest) = rest0.span(pred)
+      new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
+    }
+
+    val syntax =
+      if (ctx.settings.color.value != "never")
+        SyntaxHighlighting(pos.linesSlice).toArray
+      else pos.linesSlice
+    val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
-    (render(before), render(after), maxLen)
+
+    (
+      before.zip(lines).map(render),
+      after.zip(lines.drop(before.length)).map(render),
+      maxLen
+    )
   }
 
   /** The column markers aligned under the error */

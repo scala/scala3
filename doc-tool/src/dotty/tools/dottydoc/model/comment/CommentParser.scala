@@ -6,6 +6,7 @@ import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators._
 import scala.collection.mutable
 import dotty.tools.dotc.config.Printers.dottydoc
 import scala.util.matching.Regex
@@ -196,7 +197,7 @@ trait CommentParser extends util.MemberLookup {
         )
 
         for ((key, _) <- bodyTags) ctx.docbase.warn(
-          s"Tag '@${key.name}' is not recognised",
+          hl"Tag '${"@" + key.name}' is not recognised",
           // FIXME: here the position is stretched out over the entire comment,
           // with the point being at the very end. This ensures that the entire
           // comment will be visible in error reporting. A more fine-grained

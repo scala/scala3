@@ -12,8 +12,13 @@ extends interfaces.SourcePosition {
   def lineContent: String = source.lineContent(point)
 
   def point: Int = pos.point
+
   /** The line of the position, starting at 0 */
   def line: Int = source.offsetToLine(point)
+
+  /** Extracts the lines from the underlying source file as `Array[Char]`*/
+  def linesSlice: Array[Char] =
+    source.content.slice(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
   def lines: List[Int] =
@@ -24,9 +29,6 @@ extends interfaces.SourcePosition {
 
   def lineOffsets: List[Int] =
     lines.map(source.lineToOffset(_))
-
-  def lineContent(lineNumber: Int): String =
-    source.lineContent(source.lineToOffset(lineNumber))
 
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)
