@@ -56,7 +56,7 @@ object Analysis {
     "scala.runtime.BoxesRunTime.unboxToChar",
     "scala.runtime.BoxesRunTime.unboxToFloat"
   )
-
+  
   def effectsDontEscape(t: Tree)(implicit ctx: Context) = {
     t match {
       case Apply(fun, args) if fun.symbol.isConstructor && constructorWhiteList.contains(fun.symbol.owner.fullName.toString) =>

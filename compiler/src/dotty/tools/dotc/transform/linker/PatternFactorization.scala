@@ -25,7 +25,7 @@ import TreeTransforms._
 trait PatternFactorization extends MiniPhaseTransform {
   import dotty.tools.dotc.ast.tpd._
 
-  protected def asInnerMatchIfNeeded(caseDefs: List[CaseDef], fallbackOpt: Option[Tree])(implicit ctx: Context, info: TransformerInfo): CaseDef
+  protected def asInnerMatchIfNeeded(selectorSym: Symbol, caseDefs: List[CaseDef], fallbackOpt: Option[Tree])(implicit ctx: Context, info: TransformerInfo): CaseDef
   protected def factorized(cases: List[CaseDef])(implicit ctx: Context, info: TransformerInfo): (List[List[CaseDef]], List[CaseDef])
   protected def shouldSwap(case1: CaseDef, case2: CaseDef)(implicit ctx: Context): Boolean
 
@@ -63,7 +63,7 @@ trait PatternFactorization extends MiniPhaseTransform {
         Apply(Ident(fallbackDefDef.symbol.termRef), Nil)
       }
 
-      val newFactoredCases = factoredCases.map(asInnerMatchIfNeeded(_, fallbackOpt))
+      val newFactoredCases = factoredCases.map(asInnerMatchIfNeeded(selectorSym, _, fallbackOpt))
 
       val fallbackCaseOpt = fallbackOpt.map { fallback =>
         CaseDef(Underscore(fallback.symbol.info), EmptyTree, fallback)

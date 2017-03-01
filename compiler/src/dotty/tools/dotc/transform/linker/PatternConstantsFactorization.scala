@@ -110,4 +110,5 @@ class PatternConstantsFactorization extends PatternFactorization {
     val innerMatch = transformFollowing(Match(selector, cases))
     CaseDef(pattern, EmptyTree, innerMatch)
   }
+
 }
