@@ -354,14 +354,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     updateEntry(p1, p1Bounds).replace(p2, p1)
   }
 
-  def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This = {
-    val oldBounds @ TypeBounds(lo, hi) = nonParamBounds(param)
-    val newBounds =
-      if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
-      else oldBounds.derivedTypeBounds(lo | bound, hi)
-    updateEntry(param, newBounds)
-  }
-
 // ---------- Removals ------------------------------------------------------------
 
   /** A new constraint which is derived from this constraint by removing

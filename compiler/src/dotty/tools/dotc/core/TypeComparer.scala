@@ -1315,7 +1315,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }` rwrite to
           // `T1 & T2 { X B }` where `B` is the conjunction of the bounds of `X` in `T1` and `T2`.
           //
-          // However, if `Config.alignArgsInAnd` is set, and both aliases `X = Si` are
+          // However, if `homogenizeArgs` is set, and both aliases `X = Si` are
           // nonvariant, and `S1 =:= S2` (possibly by instantiating type parameters),
           // rewrite instead to `T1 & T2 { X = S1 }`. This rule is contentious because
           // it cuts the constraint set. On the other hand, without it we would replace
@@ -1329,7 +1329,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             case tp: TypeAlias => tp.variance == 0
             case _ => false
           }
-          if (Config.alignArgsInAnd &&
+          if (homogenizeArgs &&
               isNonvariantAlias(rinfo1) && isNonvariantAlias(rinfo2))
             isSameType(rinfo1, rinfo2)
 
