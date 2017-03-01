@@ -6,6 +6,7 @@ import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
 import core.Contexts.Context
+import util.Chars.{ LF, FF, CR, SU }
 import Highlighting.{Highlight, HighlightBuffer}
 
 /** This object provides functions for syntax highlighting in the REPL */
@@ -26,7 +27,7 @@ object SyntaxHighlighting {
   private def valDef(str: String) = ValDefColor + str + NoColor
   private def operator(str: String) = TypeColor + str + NoColor
   private def annotation(str: String) =
-    if (str.trim == "@") str else AnnotationColor + str + NoColor
+    if (str.trim == "@") str else { AnnotationColor + str + NoColor }
   private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
@@ -152,7 +153,11 @@ object SyntaxHighlighting {
       var open = 1
       while (open > 0 && remaining.nonEmpty) {
         curr = takeChar()
-        newBuf += curr
+        if (curr == '@') {
+          appendWhile('@', !typeEnders.contains(_), annotation)
+          newBuf append CommentColor
+        }
+        else newBuf += curr
 
         if (curr == '*' && remaining.nonEmpty) {
           curr = takeChar()
@@ -162,6 +167,11 @@ object SyntaxHighlighting {
           curr = takeChar()
           newBuf += curr
           if (curr == '*') open += 1
+        }
+
+        (curr: @switch) match {
+          case LF | FF | CR | SU => newBuf append CommentColor
+          case _ => ()
         }
       }
       prev = curr
@@ -235,6 +245,11 @@ object SyntaxHighlighting {
         } else {
           newBuf += curr
           closing = 0
+        }
+
+        (curr: @switch) match {
+          case LF | FF | CR | SU => newBuf append LiteralColor
+          case _ => ()
         }
       }
       newBuf append NoColor
