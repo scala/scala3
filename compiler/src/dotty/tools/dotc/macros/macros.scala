@@ -101,7 +101,7 @@ package object macros {
   /** Transform macro definitions in class definition
    *
    *  @param tree  the tree that may contain macro definition, the tree may be a thicket
-   *  @returns     the transformed tree
+   *  @return      the transformed tree
    *
    *  @note:  The returned tree NEEDs desugaring
    *
