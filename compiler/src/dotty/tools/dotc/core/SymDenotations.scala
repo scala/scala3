@@ -1040,7 +1040,7 @@ object SymDenotations {
      *  pre: `this.owner` is in the base class sequence of `base`.
      */
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
-      def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
+      @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
           val sym = matchingDecl(bcs.head, base.thisType)
             .suchThat(alt => !(alt is Deferred)).symbol
@@ -1056,7 +1056,7 @@ object SymDenotations {
      *  (2) it is abstract override and its super symbol in `base` is
      *      nonexistent or incomplete.
      */
-    final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
+    @tailrec final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
       (this is Deferred) ||
       (this is AbsOverride) && {
         val supersym = superSymbolIn(base)

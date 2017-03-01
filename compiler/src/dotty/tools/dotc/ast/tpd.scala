@@ -607,7 +607,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  owner to `to`, and continue until a non-weak owner is reached.
      */
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree = {
-      def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): ThisTree = {
+      @tailrec def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): ThisTree = {
         if (from.isWeakOwner && !from.owner.isClass)
           loop(from.owner, from :: froms, to :: tos)
         else {

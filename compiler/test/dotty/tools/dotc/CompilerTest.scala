@@ -500,12 +500,12 @@ abstract class CompilerTest {
     * that aren't in extensionsToCopy. */
   private def recCopyFiles(sourceFile: Path, dest: Path): Unit = {
 
-    def copyfile(file: SFile, bytewise: Boolean): Unit = {
+    @tailrec def copyfile(file: SFile, bytewise: Boolean): Unit = {
       if (bytewise) {
         val in = file.inputStream()
         val out = SFile(dest).outputStream()
         val buffer = new Array[Byte](1024)
-        def loop(available: Int):Unit = {
+        @tailrec def loop(available: Int):Unit = {
           if (available < 0) {()}
           else {
             out.write(buffer, 0, available)

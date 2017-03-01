@@ -16,7 +16,9 @@ import SymUtils._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
 import util.Property
+
 import collection.mutable
+import scala.annotation.tailrec
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -367,7 +369,7 @@ object ExplicitOuter {
     def path(start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass),
              toCls: Symbol = NoSymbol,
              count: Int = -1): Tree = try {
-      def loop(tree: Tree, count: Int): Tree = {
+      @tailrec def loop(tree: Tree, count: Int): Tree = {
         val treeCls = tree.tpe.widen.classSymbol
         val outerAccessorCtx = ctx.withPhaseNoLater(ctx.lambdaLiftPhase) // lambdalift mangles local class names, which means we cannot reliably find outer acessors anymore
         ctx.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${outerAccName(treeCls.asClass)(outerAccessorCtx)} in $treeCls")

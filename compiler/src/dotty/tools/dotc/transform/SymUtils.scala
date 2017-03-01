@@ -12,7 +12,9 @@ import StdNames._
 import NameOps._
 import Flags._
 import Annotations._
+
 import language.implicitConversions
+import scala.annotation.tailrec
 
 object SymUtils {
   implicit def decorateSymbol(sym: Symbol): SymUtils = new SymUtils(sym)
@@ -59,14 +61,14 @@ class SymUtils(val self: Symbol) extends AnyVal {
   }
 
   /** The closest enclosing method or class of this symbol */
-  final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
+  @tailrec final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
     if (self.is(Method, butNot = Label) || self.isClass) self
     else if (self.exists) self.owner.enclosingMethodOrClass
     else NoSymbol
 
   /** Apply symbol/symbol substitution to this symbol */
   def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
-    def loop(from: List[Symbol], to: List[Symbol]): Symbol =
+    @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
       if (from.isEmpty) self
       else if (self eq from.head) to.head
       else loop(from.tail, to.tail)
