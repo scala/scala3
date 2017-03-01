@@ -2394,12 +2394,6 @@ object Types {
      */
     def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
 
-    /** The result type where every reference to a parameter is replaced by a Wildcard
-     */
-    def resultTypeApprox(implicit ctx: Context): Type =
-      if (isDependent) resultType.substParams(this, paramTypes.map(Function.const(WildcardType)))
-      else resultType
-
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 

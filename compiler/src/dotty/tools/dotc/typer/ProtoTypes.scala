@@ -57,7 +57,7 @@ object ProtoTypes {
       case pt: FunProto =>
         mt match {
           case mt: MethodType =>
-            constrainResult(mt.resultTypeApprox, pt.resultType)
+            constrainResult(resultTypeApprox(mt), pt.resultType)
           case _ =>
             true
         }
@@ -389,6 +389,26 @@ object ProtoTypes {
   /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
   def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
 
+  /** Create a new polyparam that represents a dependent method parameter singleton */
+  def newDepPolyParam(tp: Type)(implicit ctx: Context): PolyParam = {
+    val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil, 0 :: Nil)(
+        pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
+        pt => defn.AnyType)
+    ctx.typeComparer.addToConstraint(poly, Nil)
+    PolyParam(poly, 0)
+  }
+
+  /** The result type of `mt`, where all references to parameters of `mt` are
+   *  replaced by either wildcards (if typevarsMissContext) or polyparams.
+   */
+  def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
+    if (mt.isDependent) {
+      def replacement(tp: Type) =
+        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepPolyParam(tp)
+      mt.resultType.substParams(mt, mt.paramTypes.map(replacement))
+    }
+    else mt.resultType
+
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
    *   - skips implicit parameters; if result type depends on implicit parameter,
@@ -408,7 +428,7 @@ object ProtoTypes {
     tp.widenSingleton match {
       case poly: PolyType => normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
-        if (mt.isImplicit) mt.resultTypeApprox
+        if (mt.isImplicit) resultTypeApprox(mt)
         else if (mt.isDependent) tp
         else {
           val rt = normalize(mt.resultType, pt)

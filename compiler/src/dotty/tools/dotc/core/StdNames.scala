@@ -97,6 +97,7 @@ object StdNames {
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
     val EVIDENCE_PARAM_PREFIX: N      = "evidence$"
+    val DEP_PARAM_PREFIX              = "<param>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = "$$"
     val IMPL_CLASS_SUFFIX: N          = "$class"

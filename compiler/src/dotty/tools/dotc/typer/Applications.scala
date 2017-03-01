@@ -213,8 +213,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     protected def init() = methType match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
+        val resultApprox = resultTypeApprox(methType)
         val savedConstraint = ctx.typerState.constraint
-        if (!constrainResult(methType.resultTypeApprox, resultType))
+        if (!constrainResult(resultApprox, resultType))
           if (ctx.typerState.isCommittable)
             // defer the problem until after the application;
             // it might be healed by an implicit conversion
@@ -1099,7 +1100,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Drop any implicit parameter section */
     def stripImplicit(tp: Type): Type = tp match {
       case mt: ImplicitMethodType =>
-        mt.resultTypeApprox
+        resultTypeApprox(mt)
       case pt: PolyType =>
         pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
       case _ =>
