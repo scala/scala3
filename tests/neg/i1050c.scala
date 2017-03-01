@@ -27,7 +27,8 @@ object Tiark4 {
     v.brand("boom!")
 }
 object V { // error: cannot be instantiated
-  type Y >: Any <: Nothing  // error: only classes can have declared but undefined members
+  type Y >: Any <: Nothing  // old-error: only classes can have declared but undefined members
+  type Z
 }
 object Tiark5 {
     trait A { type L <: Nothing }

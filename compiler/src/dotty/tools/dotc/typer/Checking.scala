@@ -327,7 +327,7 @@ object Checking {
       if (!sym.is(Deferred))
         fail(i"`@native' members may not have implementation")
     }
-    else if (sym.is(Deferred, butNot = Param) && !sym.isSelfSym) {
+    else if (sym.is(Deferred, butNot = Param) && !sym.isType && !sym.isSelfSym) {
       if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)
         fail(i"only classes can have declared but undefined members$varNote")
       checkWithDeferred(Private)
