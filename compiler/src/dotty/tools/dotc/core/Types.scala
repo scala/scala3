@@ -153,16 +153,16 @@ object Types {
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
     final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = {
-      def loop(tp: Type) = tp match {
+      def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls) else tp.superType.derivesFrom(cls)
+          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType): @tailrec
         case tp: TypeProxy =>
-          tp.underlying.derivesFrom(cls)
+          loop(tp.underlying): @tailrec
         case tp: AndType =>
-          tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
+          loop(tp.tp1) || loop(tp.tp2): @tailrec
         case tp: OrType =>
-          tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+          loop(tp.tp1) && loop(tp.tp2): @tailrec
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -1011,7 +1011,7 @@ object Types {
           }
           else NoType
         case SkolemType(tp) =>
-          tp.lookupRefined(name)
+          loop(tp)
         case pre: WildcardType =>
           WildcardType
         case pre: TypeRef =>
