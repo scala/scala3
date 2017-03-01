@@ -793,7 +793,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
 
     override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
       checkDeprecatedOvers(tree)
-      if (tree.symbol is Macro) EmptyTree else tree
+      tree
     }
 
     override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = try {
