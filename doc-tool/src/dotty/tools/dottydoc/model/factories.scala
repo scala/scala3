@@ -4,7 +4,8 @@ package model
 import comment._
 import references._
 import dotty.tools.dotc
-import dotc.core.Types._
+import dotc.core.Types
+import Types._
 import dotc.core.TypeApplications._
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.{ Symbol, ClassSymbol }
@@ -105,17 +106,8 @@ object factories {
       case ci: ClassInfo =>
         typeRef(ci.cls.name.show, query = ci.typeSymbol.showFullName)
 
-      case tl: PolyType => {
-        // FIXME: should be handled correctly
-        // example, in `Option`:
-        //
-        // ```scala
-        // def companion: GenericCompanion[collection.Iterable]
-        // ```
-        //
-        // Becomes: def companion: [+X0] -> collection.Iterable[X0]
-        typeRef(tl.show + " (not handled)")
-      }
+      case tl: PolyType =>
+        expandTpe(tl.resType)
 
       case OrType(left, right) =>
         OrTypeReference(expandTpe(left), expandTpe(right))
@@ -148,6 +140,8 @@ object factories {
             prefix + tp.name.show.split("\\$").last
           }
           .toList
+      case tp: Types.TypeAlias =>
+        typeParams(tp.alias.typeSymbol)
       case _ =>
         Nil
     }

@@ -4,7 +4,7 @@ package dotc
 
 import org.junit.Test
 import org.junit.Assert._
-import dotty.tools.dotc.interfaces.{CompilerCallback, SourceFile}
+import interfaces.{CompilerCallback, SourceFile}
 import reporting._
 import reporting.diagnostic.MessageContainer
 import core.Contexts._

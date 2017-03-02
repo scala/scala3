@@ -198,13 +198,10 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertTrue("expected trait", isTrait)
     }
 
-  @Test def cantInstantiateTrait =
-    checkMessagesAfter("refchecks") {
+  @Test def constructorModifier =
+    checkMessagesAfter("frontend") {
       """
-        |object Scope {
-        |  trait Concept
-        |  new Concept()
-        |}
+        |class AnotherClass @deprecated ()
       """.stripMargin
     }
     .expect { (ictx, messages) =>
@@ -212,9 +209,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(1, messages)
-      val CantInstantiateAbstractClassOrTrait(cls, isTrait) :: Nil = messages
-      assertEquals("Concept", cls.name.show)
-      assertTrue("expected trait", isTrait)
+      val AnnotatedPrimaryConstructorRequiresModifierOrThis(cls) :: Nil = messages
+      assertEquals("AnotherClass", cls.show)
     }
-
 }

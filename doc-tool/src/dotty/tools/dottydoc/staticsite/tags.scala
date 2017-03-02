@@ -180,6 +180,7 @@ object tags {
     override def render(ctx: TemplateContext, nodes: LNode*): AnyRef =
       (nodes(0).render(ctx), nodes(1).render(ctx)) match {
         case (t: Title, parent: String) => renderTitle(t, parent)
+        case (t: Title, _) => renderTitle(t, "./") // file is in top dir
         case _ => null
       }
   }

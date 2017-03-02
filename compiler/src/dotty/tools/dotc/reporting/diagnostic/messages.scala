@@ -1151,7 +1151,9 @@ object messages {
     val kind = "Syntax"
     val msg = hl"""overloaded or recursive method ${tree} needs result type"""
     val explanation =
-      hl"""""".stripMargin
+      hl"""
+          |
+        """.stripMargin
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1172,6 +1174,18 @@ object messages {
            |""".stripMargin
   }
 
-
-
+  case class AnnotatedPrimaryConstructorRequiresModifierOrThis(cls: Name)(implicit ctx: Context)
+    extends Message(AnnotatedPrimaryConstructorRequiresModifierOrThisID) {
+    val kind = "Syntax"
+    val msg = hl"""${"private"}, ${"protected"}, or ${"this"} expected for annotated primary constructor"""
+    val explanation =
+      hl"""|When using annotations with a primary constructor of a class,
+           |the annotation must be followed by an access modifier
+           |(${"private"} or ${"protected"}) or ${"this"}.
+           |
+           |For example:
+           |  ${"class Sample @deprecated this(param: Parameter) { ..."}
+           |                           ^^^^
+           |""".stripMargin
+  }
 }
