@@ -187,7 +187,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *      class A extends C[A] with D
    *      class B extends C[B] with D with E
    *
-   *  we approximate `A | B` by `C[A | B] with D`
+   *  we approximate `A | B` by `C[A | B] & D`
    */
   def orDominator(tp: Type): Type = {
 

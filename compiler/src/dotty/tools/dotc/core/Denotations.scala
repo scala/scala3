@@ -154,7 +154,7 @@ object Denotations {
 
     /** The unique alternative of this denotation that satisfies the predicate `p`,
      *  or NoDenotation if no satisfying alternative exists.
-     *  @throws TypeError if there is at more than one alternative that satisfies `p`.
+     *  @throws TypeError if there is more than one alternative that satisfies `p`.
      */
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
 

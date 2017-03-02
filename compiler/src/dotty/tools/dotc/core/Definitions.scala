@@ -516,6 +516,8 @@ class Definitions {
     def Product_productArity(implicit ctx: Context) = Product_productArityR.symbol
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
+  lazy val CoherentType: TypeRef                = ctx.requiredClassRef("scala.typeclass.Coherent")
+  def CoherentClass(implicit ctx: Context) = CoherentType.symbol.asClass
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
