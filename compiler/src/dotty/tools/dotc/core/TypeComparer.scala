@@ -1312,7 +1312,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp1: RefinedType =>
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }` rwrite to
+          // Given two refinements `T1 { X = S1 }` and `T2 { X = S2 }` rewrite to
           // `T1 & T2 { X B }` where `B` is the conjunction of the bounds of `X` in `T1` and `T2`.
           //
           // However, if `homogenizeArgs` is set, and both aliases `X = Si` are
