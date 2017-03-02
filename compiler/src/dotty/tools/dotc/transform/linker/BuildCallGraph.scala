@@ -2,12 +2,12 @@ package dotty.tools.dotc.transform.linker
 
 import dotty.tools.backend.jvm.CollectEntryPoints
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.transform.linker.callgraph.{CallGraph, CallGraphBuilder, GraphVisualization}
-import dotty.tools.dotc.transform.linker.summaries.CallInfo
+import dotty.tools.dotc.transform.linker.callgraph._
 
 object BuildCallGraph {
   def isPhaseRequired(implicit ctx: Context): Boolean =
@@ -40,6 +40,14 @@ class BuildCallGraph extends Phase {
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
 
     val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit)
+
+    lazy val scalaApp = ctx.requiredClass("scala.App".toTypeName)
+    lazy val scalaUtilPropertiesTrait = ctx.requiredClass("scala.util.PropertiesTrait".toTypeName)
+    def isEntryPoint(s: Symbol): Boolean = {
+      def filteredMain = (s.owner eq scalaApp) || (s.owner eq scalaUtilPropertiesTrait)
+      ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s) && !filteredMain) || // Java main method
+        (s.is(Method) && s.hasAnnotation(defn.EntryPointAnnot)) // Explicit entry point
+    }
 
     var entryPointId = 0
     for (x <- collectedSummaries.valuesIterator) {
@@ -134,10 +142,5 @@ class BuildCallGraph extends Phase {
 
     }
     runOnce = false
-  }
-
-  private def isEntryPoint(s: Symbol)(implicit ctx: Context): Boolean = {
-    ((s.name eq nme.main) /* for speed */  && s.is(Method) && CollectEntryPoints.isJavaMainMethod(s)) || // Java main method
-      (s.is(Method) && s.hasAnnotation(defn.EntryPointAnnot)) // Explicit entry point
   }
 }

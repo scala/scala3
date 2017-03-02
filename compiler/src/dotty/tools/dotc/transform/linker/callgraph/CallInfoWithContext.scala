@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types.{TermRef, Type}
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
 import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
 
@@ -40,6 +40,7 @@ class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argument
 
   override def hashCode(): Int = java.util.Objects.hash(call, targs, argumentsPassed, outerTargs.mp)
 
+  override def toString(): String = s"CallInfoWithContext($call, $targs, $argumentsPassed, $outerTargs, $parent, $callee)"
 }
 
 object CallInfoWithContext {

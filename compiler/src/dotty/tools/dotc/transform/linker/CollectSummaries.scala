@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TreeGen
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.OuterTargs
 import dotty.tools.dotc.transform.linker.summaries._
@@ -319,7 +320,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
           case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
           case Typed(expr: SeqLiteral, tpt) if x.tpe.isRepeatedParam =>
-            wrapArrayTermRef(defn.wrapArrayMethodName(expr.elemtpt.tpe)).widenDealias.finalResultType
+            wrapArrayTermRef(TreeGen.wrapArrayMethodName(expr.elemtpt.tpe)).widenDealias.finalResultType
           case Typed(expr, _) => argType(expr)
           case _ =>
             x.tpe match {
@@ -348,7 +349,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             }
 
             getVarArgTypes(fun.tpe.widenDealias).map { tp =>
-              val wrapArrayName = defn.wrapArrayMethodName(tp)
+              val wrapArrayName = TreeGen.wrapArrayMethodName(tp)
               val targs = if (wrapArrayName == nme.wrapRefArray || wrapArrayName == nme.genericWrapArray) List(tp) else Nil
               val args = List(defn.ArrayOf(tp))
               CallInfo(wrapArrayTermRef(wrapArrayName), targs, args, someThisCallInfo)

@@ -1,12 +1,10 @@
 package dotty.tools.dotc.transform.linker.callgraph
 
-import java.io.File
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameOps.SuperAccessorName
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
@@ -14,7 +12,6 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
-import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.util.WorkList
 
 import scala.annotation.tailrec
