@@ -1331,7 +1331,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           if (homogenizeArgs &&
               isNonvariantAlias(rinfo1) && isNonvariantAlias(rinfo2))
-            isSameType(rinfo1, rinfo2)
+            isSameType(rinfo1, rinfo2) // establish new constraint
 
           tp1.derivedRefinedType(parent, tp1.refinedName, rinfo1 & rinfo2)
         case _ =>

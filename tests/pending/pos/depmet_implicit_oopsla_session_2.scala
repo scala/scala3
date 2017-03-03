@@ -1,4 +1,10 @@
+// Fails on line 70 with: no implicit argument of type Sessions.Session[
+//   |  Sessions.In[Int, Sessions.In[Int, Sessions.Out[Int, Sessions.Stop]]]^
+//   |]#HasDual[Sessions.Out[Int, Sessions.Out[Int, Sessions.In[Int, Sessions.Stop]]]^
+//   |  ] found for parameter evidence$1 of method runSession in object Sessions
+// This could be related to existential types (the # essentially boils down to one).
 object Sessions {
+  def ?[T <: AnyRef](implicit w: T): w.type = w
 
   // session states
   sealed case class Stop()
@@ -17,7 +23,7 @@ object Sessions {
 
   // friendly interface to the theory
   def runSession[S, D: Session[S]#HasDual](session: S, dual: D) =
-    implicitly[Session[S]#HasDual[D]].run(session, dual)
+    ?[Session[S]#HasDual[D]].run(session, dual)
 
   // facts in the theory:
 
