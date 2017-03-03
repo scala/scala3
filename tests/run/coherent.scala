@@ -23,3 +23,12 @@ object Test {
     f(1)
   }
 }
+
+trait DL extends scala.typeclass.Coherent
+trait TL extends DL
+trait CL extends DL
+
+object Driving {
+  def drive(implicit dl: DL) = ()
+  def f(implicit tl: TL, cl: CL) = drive
+}
