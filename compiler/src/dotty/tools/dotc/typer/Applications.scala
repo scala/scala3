@@ -1384,7 +1384,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 else WildcardType)
               val commonFormal = defn.FunctionOf(commonParamTypes, WildcardType)
               overload.println(i"pretype arg $arg with expected type $commonFormal")
-              pt.typedArg(arg, commonFormal)
+              pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
             }
           }
         }

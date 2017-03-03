@@ -2023,7 +2023,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // try an implicit conversion
       inferView(tree, pt) match {
         case SearchSuccess(inferred, _, _, _) =>
-          adapt(inferred, pt)
+          adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
         case failure: SearchFailure =>
           if (pt.isInstanceOf[ProtoType] && !failure.isInstanceOf[AmbiguousImplicits]) tree
           else err.typeMismatch(tree, pt, failure)
