@@ -212,4 +212,62 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val AnnotatedPrimaryConstructorRequiresModifierOrThis(cls) :: Nil = messages
       assertEquals("AnotherClass", cls.show)
     }
+
+  @Test def overloadedMethodNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  def foo(i: Int) = foo(i.toString)
+        |  def foo(s: String) = s
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("foo", tree.show)
+    }
+
+  @Test def recursiveValueNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  lazy val i = i + 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val RecursiveValueNeedsResultType(tree) :: Nil = messages
+      assertEquals("i", tree.show)
+    }
+
+  @Test def cyclicReferenceInvolvingImplicit =
+    checkMessagesAfter("frontend") {
+      """
+        |object implicitDefs {
+        |  def foo(implicit x: String) = 1
+        |  def bar() = {
+        |    implicit val x = foo
+        |    x
+        |  }
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CyclicReferenceInvolvingImplicit(tree) :: Nil = messages
+      assertEquals("x", tree.name.show)
+    }
+
+
 }
