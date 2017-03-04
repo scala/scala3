@@ -23,7 +23,8 @@ object CallGraphBuilder {
   final val AnalyseArgs = 3
 }
 
-class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int, specLimit: Int)(implicit ctx: Context) {
+class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int, specLimit: Int,
+    withJavaCallGraph: Boolean)(implicit ctx: Context) {
   import CallGraphBuilder._
   import tpd._
 
@@ -509,7 +510,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
-          if (!method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
+          if (withJavaCallGraph && !method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
             // Add all possible calls from java to object passed as parameters.
             outerMethods += method.callSymbol
             processCallsFromJava(method, instantiatedTypes)

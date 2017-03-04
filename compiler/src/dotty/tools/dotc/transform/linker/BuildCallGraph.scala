@@ -10,6 +10,9 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.linker.callgraph._
 
 object BuildCallGraph {
+  def withJavaCallGraph(implicit ctx: Context): Boolean =
+    ctx.settings.linkJavaConservative.value
+
   def isPhaseRequired(implicit ctx: Context): Boolean =
     DeadCodeElimination.isPhaseRequired || CallGraphChecks.isPhaseRequired || ctx.settings.linkVis.value
 
@@ -20,8 +23,7 @@ object BuildCallGraph {
 }
 
 class BuildCallGraph extends Phase {
-
-  import CallGraphBuilder._
+  import BuildCallGraph._
 
   private var callGraph: CallGraph = _
 
@@ -39,7 +41,7 @@ class BuildCallGraph extends Phase {
 
     val collectedSummaries = ctx.summariesPhase.asInstanceOf[CollectSummaries].methodSummaries
 
-    val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit)
+    val callGraphBuilder = new CallGraphBuilder(collectedSummaries, mode, specLimit, withJavaCallGraph)
 
     lazy val scalaApp = ctx.requiredClass("scala.App".toTypeName)
     lazy val scalaUtilPropertiesTrait = ctx.requiredClass("scala.util.PropertiesTrait".toTypeName)
@@ -121,7 +123,7 @@ class BuildCallGraph extends Phase {
   private var runOnce = true
   def run(implicit ctx: Context): Unit = {
     if (runOnce && BuildCallGraph.isPhaseRequired) {
-      val mode = AnalyseArgs
+      val mode = CallGraphBuilder.AnalyseArgs
       val specLimit = 15
 
       ctx.log(s"\n\t\t\tType & Arg flow analisys")

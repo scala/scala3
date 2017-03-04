@@ -80,8 +80,7 @@ class tests extends CompilerTest {
   val stdlibMode    = List("-migration", "-Yno-inline", "-language:Scala2")
   val linkStdlibMode = "-Ylink-stdlib" :: stdlibMode
 
-  val linkDCE = List("-link-dce", "-Ylink-dce-checks", "-Ylog:callGraph")
-  val linkVis = List("-link-vis", "-Ylog:callGraph")
+  val linkDCE = List("-link-dce", "-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph")
 
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
@@ -244,15 +243,10 @@ class tests extends CompilerTest {
 
   // Test callgraph DCE
   @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
-  @Test def link_dce_vis_all = runFiles(linkDCEDir, linkDCE ::: linkVis)
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
-
-  @org.junit.Ignore("Too long to run in CI")
-  @Test def link_dce_vis_stdlib_all(): Unit =
-    runFiles(linkDCEWithStdlibDir,  linkStdlibMode ::: linkDCE ::: linkVis, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
 
   @Test def dotty = {
     dottyBootedLib

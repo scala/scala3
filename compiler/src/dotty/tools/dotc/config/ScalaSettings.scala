@@ -43,6 +43,7 @@ class ScalaSettings extends Settings.SettingGroup {
 
   val linkDCE = BooleanSetting("-link-dce", "Enable dead code elimination.")
   val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
+  val linkJavaConservative = BooleanSetting("-link-java-conservative", "Compute call graph for java methods.")
 
   /** -X "Advanced" settings
    */
