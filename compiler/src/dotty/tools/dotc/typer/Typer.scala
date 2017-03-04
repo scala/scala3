@@ -1064,23 +1064,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     else {
       var args = tree.args
-      val args1 =
-        if (hasNamedArg(args)) typedNamedArgs(args)
-        else {
-          if (args.length != tparams.length) {
-            wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
-            args = args.take(tparams.length)
-          }
-          def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
-            val (desugaredArg, argPt) =
-              if (ctx.mode is Mode.Pattern)
-                (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
-              else
-                (arg, WildcardType)
-            typed(desugaredArg, argPt)
-          }
-          args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+      val args1 = {
+        if (args.length != tparams.length) {
+          wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
+          args = args.take(tparams.length)
         }
+        def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
+          val (desugaredArg, argPt) =
+            if (ctx.mode is Mode.Pattern)
+              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
+            else
+              (arg, WildcardType)
+          typed(desugaredArg, argPt)
+        }
+        args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+      }
       // check that arguments conform to bounds is done in phase PostTyper
       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
     }

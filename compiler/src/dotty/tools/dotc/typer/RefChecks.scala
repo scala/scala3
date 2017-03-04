@@ -241,8 +241,6 @@ object RefChecks {
           isDefaultGetter(member.name) || // default getters are not checked for compatibility
           memberTp.overrides(otherTp)
 
-      def domain(sym: Symbol): Set[Name] = sym.info.namedTypeParams.map(_.name)
-
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
       // return if we already checked this combination elsewhere
@@ -344,9 +342,6 @@ object RefChecks {
         overrideError("cannot be used here - only term macros can override term macros")
       } else if (!compatibleTypes) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
-      } else if (member.isType && domain(member) != domain(other)) {
-        overrideError("has different named type parameters: "+
-             i"[${domain(member).toList}%, %] instead of [${domain(other).toList}%, %]")
       } else {
         checkOverrideDeprecated()
       }

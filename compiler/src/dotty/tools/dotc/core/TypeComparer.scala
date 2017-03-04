@@ -1264,22 +1264,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
   }
 
-  /** `op(tp1, tp2)` unless `tp1` and `tp2` are type-constructors with at least
-   *  some unnamed type parameters.
+  /** `op(tp1, tp2)` unless `tp1` and `tp2` are type-constructors.
    *  In the latter case, combine `tp1` and `tp2` under a type lambda like this:
    *
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
-   *
-   *  Note: There is a tension between named and positional parameters here, which
-   *  is impossible to resolve completely. Say you have
-   *
-   *    C[type T], D[type U]
-   *
-   *  Then do you expand `C & D` to `[T] -> C[T] & D[T]` or not? Under the named
-   *  type parameter interpretation, this would be wrong whereas under the traditional
-   *  higher-kinded interpretation this would be required. The problem arises from
-   *  allowing both interpretations. A possible remedy is to be somehow stricter
-   *  in where we allow which interpretation.
    */
   private def liftIfHK(tp1: Type, tp2: Type, op: (Type, Type) => Type, original: (Type, Type) => Type) = {
     val tparams1 = tp1.typeParams

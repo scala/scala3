@@ -753,11 +753,10 @@ class Namer { typer: Typer =>
       /* Check parent type tree `parent` for the following well-formedness conditions:
        * (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
        * (2) If may not derive from itself
-       * (3) Overriding type parameters must be correctly forwarded. (@see checkTypeParamOverride)
-       * (4) The class is not final
-       * (5) If the class is sealed, it is defined in the same compilation unit as the current class
+       * (3) The class is not final
+       * (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
-      def checkedParentType(parent: untpd.Tree, paramAccessors: List[Symbol]): Type = {
+      def checkedParentType(parent: untpd.Tree): Type = {
         val ptype = parentType(parent)(ctx.superCallContext)
         if (cls.isRefinementClass) ptype
         else {
@@ -772,8 +771,6 @@ class Namer { typer: Typer =>
             ctx.error(i"cyclic inheritance: $cls extends itself$addendum", parent.pos)
             defn.ObjectType
           }
-          else if (!paramAccessors.forall(checkTypeParamOverride(pt, _)))
-            defn.ObjectType
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
@@ -785,47 +782,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      /* Check that every parameter with the same name as a visible named parameter in the parent
-       * class satisfies the following two conditions:
-       *  (1) The overriding parameter is also named (i.e. not local/name mangled).
-       *  (2) The overriding parameter is passed on directly to the parent parameter, or the
-       *      parent parameter is not fully defined.
-       * @return true if conditions are satisfied, false otherwise.
-       */
-      def checkTypeParamOverride(parent: Type, paramAccessor: Symbol): Boolean = {
-        var ok = true
-        val pname = paramAccessor.name
-
-        def illegal(how: String): Unit = {
-          ctx.error(em"Illegal override of public type parameter $pname in $parent$how", paramAccessor.pos)
-          ok = false
-        }
-
-        def checkAlias(tp: Type): Unit = tp match {
-          case tp: RefinedType =>
-            if (tp.refinedName == pname)
-              tp.refinedInfo match {
-                case TypeAlias(alias) =>
-                  alias match {
-                    case TypeRef(pre, name1) if name1 == pname && (pre =:= cls.thisType) =>
-                      // OK, parameter is passed on directly
-                    case _ =>
-                      illegal(em".\nParameter is both redeclared and instantiated with $alias.")
-                  }
-                case _ => // OK, argument is not fully defined
-              }
-            else checkAlias(tp.parent)
-          case _ =>
-        }
-        if (parent.nonPrivateMember(paramAccessor.name).symbol.is(Param))
-          if (paramAccessor is Private)
-            illegal("\nwith private parameter. Parameter definition needs to be prefixed with `type'.")
-          else
-            checkAlias(parent)
-        ok
-      }
-
-      addAnnotations(denot.symbol, original)
+     addAnnotations(denot.symbol, original)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -853,8 +810,7 @@ class Namer { typer: Typer =>
 
       indexAndAnnotate(rest)(inClassContext(selfInfo))
 
-      val tparamAccessors = decls.filter(_ is TypeParamAccessor).toList
-      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_, tparamAccessors)))
+      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)))
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
       typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
 

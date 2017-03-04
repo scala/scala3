@@ -253,9 +253,6 @@ trait ConstraintHandling {
     if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
       inst = ctx.harmonizeUnion(inst)
 
-    // 3. If instance is from below, and upper bound has open named parameters
-    //    make sure the instance has all named parameters of the bound.
-    if (fromBelow) inst = inst.widenToNamedTypeParams(param.namedTypeParams)
     inst
   }
 
