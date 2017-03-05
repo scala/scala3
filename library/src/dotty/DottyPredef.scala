@@ -1,14 +1,11 @@
 package dotty
 
-import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.ClassTag
 import scala.Predef.???
 import scala.collection.Seq
 
 /** unimplemented implicit for TypeTag */
 object DottyPredef {
-  implicit def typeTag[T]: TypeTag[T] = ???
-
   /** A fall-back implicit to compare values of any types.
    *  The compiler will restrict implicit instances of `eqAny`. An instance
    *  `eqAny[T, U]` is _valid_ if `T <: U` or `U <: T` or both `T` and `U` are
