@@ -246,67 +246,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => Nil
   }
 
-  /** The named type parameters declared or inherited by this type.
-   *  These are all uninstantiated named type parameters of this type or one
-   *  of its base types.
-   */
-  final def namedTypeParams(implicit ctx: Context): Set[TypeSymbol] = self match {
-    case self: ClassInfo =>
-      self.cls.namedTypeParams
-    case self: RefinedType =>
-      self.parent.namedTypeParams.filterNot(_.name == self.refinedName)
-    case self: SingletonType =>
-      Set()
-    case self: TypeProxy =>
-      self.underlying.namedTypeParams
-    case _ =>
-      Set()
-  }
-
-  /** The smallest supertype of this type that instantiated none of the named type parameters
-   *  in `params`. That is, for each named type parameter `p` in `params`, either there is
-   *  no type field named `p` in this type, or `p` is a named type parameter of this type.
-   *  The first case is important for the recursive case of AndTypes, because some of their operands might
-   *  be missing the named parameter altogether, but the AndType as a whole can still
-   *  contain it.
-   */
-  final def widenToNamedTypeParams(params: Set[TypeSymbol])(implicit ctx: Context): Type = {
-
-    /** Is widening not needed for `tp`? */
-    def isOK(tp: Type) = {
-      val ownParams = tp.namedTypeParams
-      def isMissingOrOpen(param: TypeSymbol) = {
-        val ownParam = tp.nonPrivateMember(param.name).symbol
-        !ownParam.exists || ownParams.contains(ownParam.asType)
-      }
-      params.forall(isMissingOrOpen)
-    }
-
-    /** Widen type by forming the intersection of its widened parents */
-    def widenToParents(tp: Type) = {
-      val parents = tp.parents.map(p =>
-        tp.baseTypeWithArgs(p.symbol).widenToNamedTypeParams(params))
-      parents.reduceLeft(ctx.typeComparer.andType(_, _))
-    }
-
-    if (isOK(self)) self
-    else self match {
-      case self @ AppliedType(tycon, args) if !isOK(tycon) =>
-        widenToParents(self)
-      case self: TypeRef if self.symbol.isClass =>
-        widenToParents(self)
-      case self: RefinedType =>
-        val parent1 = self.parent.widenToNamedTypeParams(params)
-        if (params.exists(_.name == self.refinedName)) parent1
-        else self.derivedRefinedType(parent1, self.refinedName, self.refinedInfo)
-      case self: TypeProxy =>
-        self.superType.widenToNamedTypeParams(params)
-      case self: AndOrType =>
-        self.derivedAndOrType(
-          self.tp1.widenToNamedTypeParams(params), self.tp2.widenToNamedTypeParams(params))
-    }
-  }
-
   /** Is self type higher-kinded (i.e. of kind != "*")? */
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK

@@ -1086,9 +1086,6 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
-    /** The named type parameters declared or inherited by this symbol */
-    def namedTypeParams(implicit ctx: Context): Set[TypeSymbol] = Set()
-
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
@@ -1226,11 +1223,9 @@ object SymDenotations {
     /** TODO: Document why caches are supposedly safe to use */
     private[this] var myTypeParams: List[TypeSymbol] = _
 
-    private[this] var myNamedTypeParams: Set[TypeSymbol] = _
-
     /** The type parameters in this class, in the order they appear in the current
      *  scope `decls`. This might be temporarily the incorrect order when
-     *  reading Scala2 pickled info. The problem is fixed by `updateTypeParams`
+     *  reading Scala2 pickled info. The problem is fixed by `ensureTypeParamsInCorrectOrder`,
      *  which is called once an unpickled symbol has been completed.
      */
     private def typeParamsFromDecls(implicit ctx: Context) =
@@ -1251,16 +1246,6 @@ object SymDenotations {
             }
           }
       myTypeParams
-    }
-
-    /** The named type parameters declared or inherited by this class */
-    override final def namedTypeParams(implicit ctx: Context): Set[TypeSymbol] = {
-      def computeNamedTypeParams: Set[TypeSymbol] =
-        if (ctx.erasedTypes || is(Module)) Set() // fast return for modules to avoid scanning package decls
-        else memberNames(abstractTypeNameFilter).map(name =>
-          info.member(name).symbol.asType).filter(_.is(TypeParam, butNot = ExpandedName)).toSet
-      if (myNamedTypeParams == null) myNamedTypeParams = computeNamedTypeParams
-      myNamedTypeParams
     }
 
     override protected[dotc] final def info_=(tp: Type) = {

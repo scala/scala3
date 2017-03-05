@@ -126,7 +126,7 @@ InfixType         ::=  RefinedType {id [nl] RefinedType}                        
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
-SimpleType        ::=  SimpleType (TypeArgs | NamedTypeArgs)                    AppliedTypeTree(t, args)
+SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
                     |  Path ‘.’ ‘type’                                          SingletonTypeTree(p)
@@ -240,7 +240,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 ### Type and Value Parameters
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [{Modifier} type] [‘+’ | ‘-’]               TypeDef(Modifiers, name, tparams, bounds)
+ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                   TypeDef(Modifiers, name, tparams, bounds)
                        id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
 
 DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’

@@ -549,13 +549,7 @@ object Types {
 
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
-        if (d.exists)
-          if ((pre eq tp) && d.symbol.is(NamedTypeParam) && (d.symbol.owner eq tp.cls))
-            // If we look for a named type parameter `P` in `C.this.P`, looking up
-            // the fully applied self type of `C` will give as an info the alias type
-            // `P = this.P`. We need to return a denotation with the underlying bounds instead.
-            d.symbol.denot
-          else d
+        if (d.exists) d
         else
           // There is a special case to handle:
           //   trait Super { this: Sub => private class Inner {} println(this.Inner) }

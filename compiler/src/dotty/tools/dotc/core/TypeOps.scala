@@ -428,16 +428,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp: TypeRef =>
           tp
         case tp @ RefinedType(tp1, name: TypeName, rinfo) =>
-          rinfo match {
-            case TypeAlias(TypeRef(pre, name1)) if name1 == name && (pre =:= cls.thisType) =>
-              // Don't record refinements of the form X = this.X (These can arise using named parameters).
-              typr.println(s"dropping refinement $tp")
-            case _ =>
-              val prevInfo = refinements(name)
-              refinements = refinements.updated(name,
-                if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
-              formals = formals.updated(name, tp1.typeParamNamed(name))
-          }
+          val prevInfo = refinements(name)
+          refinements = refinements.updated(name,
+            if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
+          formals = formals.updated(name, tp1.typeParamNamed(name))
           normalizeToRef(tp1)
         case _: ErrorType =>
           defn.AnyType

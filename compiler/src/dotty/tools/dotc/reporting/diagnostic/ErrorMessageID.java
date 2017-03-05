@@ -32,7 +32,6 @@ public enum ErrorMessageID {
     ByNameParameterNotSupportedID,
     WrongNumberOfTypeArgsID,
     IllegalVariableInPatternAlternativeID,
-    TypeParamsTypeExpectedID,
     IdentifierExpectedID,
     AuxConstructorNeedsNonImplicitParameterID,
     IncorrectRepeatedParameterSyntaxID,
