@@ -1,29 +1,64 @@
+html, body {
+    overflow-x: hidden;
+}
+
 html {
     height: 100%;
 }
+
 body {
     min-height: 100%;
 }
 
 div#content-wrapper {
     min-height: 100vh;
-    padding-left: 250px;
-    transition: all 0.5s ease;
+    padding-left: 300px;
+    -webkit-transition: all .25s ease-out;
+         -o-transition: all .25s ease-out;
+            transition: all .25s ease-out;
 }
 
-div#content-wrapper.toggled {
-    padding-left: 0;
-}
+div#content-wrapper.toggled { }
 
 div.index-wrapper {
     background-color: #fafafa;
-    width: 250px;
     position: fixed;
     top: 0;
     left: 0;
+    width: 300px;
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+@media screen and (max-width: 767px) {
+
+    div#content-wrapper {
+        padding-left: 0;
+    }
+
+    div#content-body {
+        position: relative;
+        left: 0;
+        -webkit-transition: all .25s ease-out;
+             -o-transition: all .25s ease-out;
+                transition: all .25s ease-out;
+    }
+
+    div.index-wrapper {
+        position: absolute;
+        top: 0;
+        width: 50%; /** 6 column width */
+    }
+
+    div#content-wrapper.toggled div#content-body {
+        left: 50%; /** 6 columns width offset */
+    }
+
+    div#content-wrapper.toggled div.index-wrapper {
+        left: 0;
+    }
+
 }
 
 div#doc-page-container > h1 {
@@ -95,7 +130,7 @@ div#doc-page-container > h6 > a:focus {
 
 div#content-body {
     border-left: 1px solid #e0e0e0;
-    box-shadow: -3px 0px 5px -2px rgba(0,0,0,0.14);
+    box-shadow: -3px 0 5px -2px rgba(0,0,0,0.14);
     position: relative;
     padding: 10px;
     background-color: #f4f3f4;
