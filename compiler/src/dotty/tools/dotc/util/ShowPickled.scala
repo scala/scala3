@@ -5,8 +5,6 @@ import java.io.{File, FileInputStream, PrintStream}
 import java.lang.Long.toHexString
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
-import scala.reflect.internal.Flags
-import scala.reflect.internal.pickling.PickleFormat
 import core.unpickleScala2.PickleBuffer
 import core.Names._
 
