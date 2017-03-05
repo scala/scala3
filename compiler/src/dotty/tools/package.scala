@@ -2,9 +2,6 @@ package dotty
 import scala.annotation.Annotation
 
 package object tools {
-  type FatalError = scala.reflect.internal.FatalError
-  val FatalError = scala.reflect.internal.FatalError
-
   class sharable extends Annotation
   class unshared extends Annotation
 
