@@ -12,8 +12,6 @@ import NameOps._
 import ast._
 import ast.Trees._
 
-import scala.reflect.internal.util.Collections
-
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
  *  `$this` parameter and type parameters of the class become additional type
@@ -234,8 +232,8 @@ trait FullParameterization {
       fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
-      val args = Collections.map2(originalDef.vparamss, fun.tpe.paramTypess)((vparams, paramTypes) =>
-        Collections.map2(vparams, paramTypes)((vparam, paramType) => {
+      val args = (originalDef.vparamss, fun.tpe.paramTypess).zipped.map((vparams, paramTypes) =>
+        (vparams, paramTypes).zipped.map((vparam, paramType) => {
           assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
           ref(vparam.symbol).ensureConforms(paramType)
         })
