@@ -86,7 +86,7 @@ scala> val x: List[Int] = "foo" :: List(1)
   |                   required: Int
   |                   
 scala> { def f: Int = g; val x: Int = 1; def g: Int = 5; }
--- [E039] Reference Error: <console> -------------------------------------------
+-- [E038] Reference Error: <console> -------------------------------------------
 5 |{ def f: Int = g; val x: Int = 1; def g: Int = 5; }
   |               ^
   |           `g` is a forward reference extending over the definition of `x`
