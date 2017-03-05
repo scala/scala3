@@ -6,7 +6,7 @@ import core.Contexts.Context
 import diagnostic.messages._
 import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Ignore, Test}
 
 class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
@@ -227,8 +227,25 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      val OverloadedMethodNeedsResultType(tree) :: Nil = messages
       assertEquals("foo", tree.show)
+    }
+
+  @Test @Ignore def recursiveMethodNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  def i = i + 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val RecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("i", tree.show)
     }
 
   @Test def recursiveValueNeedsReturnType =
@@ -246,6 +263,24 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val RecursiveValueNeedsResultType(tree) :: Nil = messages
       assertEquals("i", tree.show)
+    }
+
+  @Test def cyclicReferenceInvolving =
+    checkMessagesAfter("frontend") {
+      """
+        |class A {
+        |  val x: T = ???
+        |  type T <: x.type // error: cyclic reference involving value x
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CyclicReferenceInvolving(denot) :: Nil = messages
+      assertEquals("value x", denot.show)
     }
 
   @Test def cyclicReferenceInvolvingImplicit =

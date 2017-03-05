@@ -52,8 +52,10 @@ public enum ErrorMessageID {
     MixedLeftAndRightAssociativeOpsID,
     CantInstantiateAbstractClassOrTraitID,
     AnnotatedPrimaryConstructorRequiresModifierOrThisID,
-    OverloadedOrRecursiveMethodNeedsResultTypeID,
+    OverloadedMethodNeedsResultTypeID,
+    RecursiveMethodNeedsResultTypeID,
     RecursiveValueNeedsResultTypeID,
+    CyclicReferenceInvolvingID,
     CyclicReferenceInvolvingImplicitID,
     ;
 

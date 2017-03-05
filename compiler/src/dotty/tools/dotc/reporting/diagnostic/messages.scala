@@ -18,6 +18,7 @@ import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
 
@@ -1161,13 +1162,22 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
-  extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
+  case class OverloadedMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(OverloadedMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${tree} needs result type"""
+    val msg = hl"""overloaded method ${tree} needs result type"""
     val explanation =
       hl"""|${tree} is overloaded and at least one definition of it calls another.
            |You need to specify the calling method's return type.
+         """.stripMargin
+  }
+
+  case class RecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(RecursiveMethodNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""recursive method ${tree} needs result type"""
+    val explanation =
+      hl"""|The definition of `${tree.name}` is recursive and you need to specify its type.
          """.stripMargin
   }
 
@@ -1178,6 +1188,16 @@ object messages {
     val explanation =
       hl"""|The definition of `${tree.name}` is recursive and you need to specify its type.
          """.stripMargin
+  }
+
+  case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
+  extends Message(CyclicReferenceInvolvingID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving $denot"""
+    val explanation =
+      hl"""|$denot is declared as part of a cycle which makes it impossible for the
+           |compiler to decide upon ${denot.name}'s type.
+           |""".stripMargin
   }
 
   case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)

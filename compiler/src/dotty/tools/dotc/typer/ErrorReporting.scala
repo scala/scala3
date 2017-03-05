@@ -28,11 +28,14 @@ object ErrorReporting {
 
   def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
     val cycleSym = ex.denot.symbol
-    def errorMsg(msg: String, cx: Context): Message =
+    def errorMsg(msg: Message, cx: Context): Message =
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
           case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
+            // TODO: analysis if tree is an overloaded method (or directly recursive)
+            val overloaded = true
+            if (overloaded) OverloadedMethodNeedsResultType(tree.name)
+            else RecursiveMethodNeedsResultType(tree.name)
           case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
             RecursiveValueNeedsResultType(tree.name)
           case _ =>
@@ -43,7 +46,7 @@ object ErrorReporting {
     if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
       CyclicReferenceInvolvingImplicit(cycleSym)
     else
-      errorMsg(ex.show, ctx)
+      errorMsg(ex.toMessage, ctx)
   }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
