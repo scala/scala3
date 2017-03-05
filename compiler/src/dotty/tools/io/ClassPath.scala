@@ -8,7 +8,7 @@ package io
 
 import java.net.URL
 import scala.collection.{ mutable, immutable }
-import scala.reflect.internal.util.StringOps.splitWhere
+import dotc.core.Decorators.StringDecorator
 import File.pathSeparator
 import java.net.MalformedURLException
 import Jar.isJarOrZip
@@ -238,7 +238,7 @@ abstract class ClassPath {
    * Does not support nested classes on .NET
    */
   def findClass(name: String): Option[AnyClassRep] =
-    splitWhere(name, _ == '.', true) match {
+    name.splitWhere(_ == '.', doDropIndex = true) match {
       case Some((pkg, rest)) =>
         val rep = packages find (_.name == pkg) flatMap (_ findClass rest)
         rep map {

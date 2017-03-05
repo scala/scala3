@@ -5,12 +5,12 @@ package parsing
 import scala.collection.mutable
 import scala.xml.{ EntityRef, Text }
 import core._
+import Decorators._
 import Flags.Mutable
 import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Positions._
 import Parsers.Parser
-import scala.reflect.internal.util.StringOps.splitWhere
 import scala.language.implicitConversions
 
 /** This class builds instance of `Tree` that represent XML.
@@ -171,7 +171,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
-  def splitPrefix(name: String): (Option[String], String) = splitWhere(name, _ == ':', true) match {
+  def splitPrefix(name: String): (Option[String], String) = name.splitWhere(_ == ':', doDropIndex = true) match {
     case Some((pre, rest))  => (Some(pre), rest)
     case _                  => (None, name)
   }
