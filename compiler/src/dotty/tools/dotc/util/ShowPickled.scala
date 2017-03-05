@@ -9,7 +9,7 @@ import core.unpickleScala2.PickleBuffer
 import core.Names._
 
 object ShowPickled {
-  import PickleFormat._
+  import core.unpickleScala2.PickleFormat._
 
   case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]) {
     def isName = tag == TERMname || tag == TYPEname
