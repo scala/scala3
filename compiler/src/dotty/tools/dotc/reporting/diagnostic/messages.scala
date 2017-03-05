@@ -691,19 +691,6 @@ object messages {
     }
   }
 
-  case class TypeParamsTypeExpected(mods: untpd.Modifiers, identifier: TermName)(implicit ctx: Context)
-  extends Message(TypeParamsTypeExpectedID) {
-    val kind = "Syntax"
-    val msg = hl"""Expected ${"type"} keyword for type parameter $identifier"""
-    val explanation =
-      hl"""|This happens when you add modifiers like ${"private"} or ${"protected"}
-           |to your type parameter definition without adding the ${"type"} keyword.
-           |
-           |Add ${"type"} to your code, e.g.:
-           |${s"trait A[${mods.flags} type $identifier]"}
-           |"""
-  }
-
   case class IdentifierExpected(identifier: String)(implicit ctx: Context)
   extends Message(IdentifierExpectedID) {
     val kind = "Syntax"
@@ -1138,7 +1125,7 @@ object messages {
            |
            |You may want to create an anonymous class extending ${cls.name} with
            |  ${s"class ${cls.name} { }"}
-           |  
+           |
            |or add a companion object with
            |  ${s"object ${cls.name} extends ${cls.name}"}
            |

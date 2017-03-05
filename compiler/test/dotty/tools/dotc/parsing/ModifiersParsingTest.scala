@@ -95,9 +95,6 @@ class ModifiersParsingTest {
 
     source = "class A[T]"
     assert(source.firstTypeParam.modifiers == List())
-
-    source = "class A[type T]"
-    assert(source.firstTypeParam.modifiers == List(Mod.Type()))
   }
 
   @Test def typeDef = {
