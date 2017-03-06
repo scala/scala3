@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package config
 
+import java.io.File
+
 import PathResolver.Defaults
 import rewrite.Rewrites
 
@@ -111,7 +113,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "-project",
     "project title",
     "The name of the project",
-    sys.props("user.dir").split(sys.props("file.separator")).last
+    sys.props("user.dir").split(File.separatorChar).last
   )
 
   val wikiSyntax = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc")
