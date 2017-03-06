@@ -48,13 +48,12 @@ div.index-wrapper {
     }
 
     div.index-wrapper {
-        position: absolute;
         top: 0;
-        width: 50%; /** 6 column width */
+        width: 60%;
     }
 
     div#content-wrapper.toggled div#content-body {
-        left: 50%; /** 6 columns width offset */
+        left: 60%;
     }
 
     div#content-wrapper.toggled div.index-wrapper {
@@ -134,7 +133,7 @@ div#content-body {
     background-color: #f4f3f4;
     border-left: 1px solid #e0e0e0;
     box-shadow: -3px 0 5px -2px rgba(0,0,0,0.14);
-    padding: 10px;
+    padding: 1px;
     position: relative;
     min-height: 100vh;
 }
@@ -147,9 +146,9 @@ button#menu-toggle {
     background: rgba(250,250,250,0.4) none;
     border: 1px solid transparent;
     color: #837f84;
-    margin: -8px 0 0 -72px;
+    margin: 2px 0 0 -72px;
     padding: 9px 10px;
-    position: absolute;
+    position: fixed;
 }
 
 button#menu-toggle:hover {
@@ -180,15 +179,13 @@ div#content-wrapper.toggled button#menu-toggle {
 }
 
 div#content-wrapper.toggled button#menu-toggle {
-    margin: -8px 0 0 -28px;
-    position: fixed;
+    margin: 2px 0 0 -28px;
 }
 
 @media screen and (max-width: 767px) {
 
     div#content-wrapper button#menu-toggle {
-        margin: -8px 0 0 -28px;
-        position: fixed;
+        margin: 2px 0 0 -28px;
     }
 
     div#content-wrapper button#menu-toggle span,
