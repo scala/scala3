@@ -33,9 +33,12 @@ layout: main
         </ul>
     </div>
     <div id="content-body">
-        <div id="menu-toggle" onclick="toggleMenu()">
-            <i class="fa fa-bars" aria-hidden="true"></i>
-        </div>
+        <button type="button" id="menu-toggle" onclick="toggleMenu()" aria-expanded="false">
+            <span class="sr-only" aria-hidden="true">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
         {{ content }}
     </div>
 </div>
