@@ -18,7 +18,9 @@ div#content-wrapper {
             transition: all .25s ease-out;
 }
 
-div#content-wrapper.toggled { }
+div#content-wrapper.toggled {
+    padding-left: 0;
+}
 
 div.index-wrapper {
     background-color: #fafafa;
@@ -137,11 +139,15 @@ div#content-body {
     min-height: 100vh;
 }
 
+div#content-wrapper.toggled div#content-body {
+    padding-left: 30px;
+}
+
 button#menu-toggle {
     background: rgba(250,250,250,0.4) none;
     border: 1px solid transparent;
     color: #837f84;
-    margin: -8px 0 0 -70px;
+    margin: -8px 0 0 -72px;
     padding: 9px 10px;
     position: absolute;
 }
@@ -164,6 +170,18 @@ button#menu-toggle span.icon-bar {
     margin: 3px 0;
     width: 22px;
     height: 2px;
+}
+
+div#content-wrapper button#menu-toggle,
+div#content-wrapper.toggled button#menu-toggle {
+    -webkit-transition: all .25s ease-out;
+         -o-transition: all .25s ease-out;
+            transition: all .25s ease-out;
+}
+
+div#content-wrapper.toggled button#menu-toggle {
+    margin: -8px 0 0 -28px;
+    position: fixed;
 }
 
 @media screen and (max-width: 767px) {
