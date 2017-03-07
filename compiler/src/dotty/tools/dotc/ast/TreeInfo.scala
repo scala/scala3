@@ -31,11 +31,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    *   Does tree contain an initialization part when seen as a member of a class or trait?
    */
   def defKind(tree: Tree): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ => EmptyFlags
+    case EmptyTree | _: Import =>
+      NoInitsInterface
+    case tree: TypeDef =>
+      if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef =>
+      if (tree.unforcedRhs == EmptyTree && tree.vparamss.forall(_.forall(_.unforcedRhs == EmptyTree))) NoInitsInterface else NoInits
+    case tree: ValDef =>
+      if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ =>
+      EmptyFlags
   }
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
