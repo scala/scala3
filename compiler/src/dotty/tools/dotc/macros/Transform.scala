@@ -12,7 +12,7 @@ import StdNames._
 import Flags._
 import typer.ErrorReporting._
 import Constants._
-import config.Printers.{ macros => debug }
+import config.Printers.{macros => debug}
 
 /** Transform macros definitions
  *
@@ -27,10 +27,11 @@ import config.Printers.{ macros => debug }
  *  to:
  *
  *    class main {
- *      <macro> def f[T](a: A)(b: B): C = null
+ *      <macro> def f[T](a: A)(b: B): C = ???
  *    }
  *
  *    object main$inline {
+ *      @static
  *      def f(prefix: scala.meta.Term)(T: scala.meta.Type)(a: scala.meta.Term)(b: scala.meta.Term): scala.meta.Tree = body
  *    }
  */
@@ -53,12 +54,13 @@ private[macros] object Transform {
     val isAnnotMacroDef = isAnnotMacro(tmpl)
     val moduleName = tree.name + INLINE_SUFFIX
     val implObj = createImplObject(moduleName, macros, isAnnotMacroDef)
+    val implCls = TypeDef(moduleName.toTypeName, Template(emptyConstructor, Nil, EmptyValDef, Nil)).withPos(tree.pos) // required by @static
 
     val treeNew = cpy.TypeDef(tree)(rhs = newTemplate(tmpl, macros))
 
     debug.println(i"macro definition: $tree transformed to { $treeNew; \n ${implObj} }")
 
-    Thicket(List(treeNew, implObj))
+    Thicket(List(treeNew, implObj, implCls))
   }
 
   /** Transform macros definitions inside object definitions (see the note above)
@@ -69,12 +71,13 @@ private[macros] object Transform {
 
     val moduleName = tree.name + nme.MODULE_SUFFIX.toString + INLINE_SUFFIX
     val implObj = createImplObject(moduleName, macros, false)
+    val implCls = TypeDef(moduleName.toTypeName, Template(emptyConstructor, Nil, EmptyValDef, Nil)).withPos(tree.pos) // required by @static
 
     val treeNew = cpy.ModuleDef(tree)(impl = newTemplate(tree.impl, macros), name = tree.name)
 
     debug.println(i"macro definition: $tree transformed to { $treeNew; \n ${implObj} }")
 
-    Thicket(List(treeNew, implObj))
+    Thicket(List(treeNew, implObj, implCls))
   }
 
   /** Does the template extend `StaticAnnotation`?
@@ -123,6 +126,7 @@ private[macros] object Transform {
    *
    *  will be implemented by
    *
+   *    @static
    *    def f(prefix: scala.meta.Term)
    *         (T: scala.meta.Type)
    *         (a: scala.meta.Term)(b: scala.meta.Term): scala.meta.Tree = body
@@ -164,7 +168,9 @@ private[macros] object Transform {
     }
 
     val body = mapper.transform(rhs)
-    DefDef(defn.name, Nil, params, treeType, body).withFlags(Synthetic)
+    val static = Apply(Select(New(ref(ctx.definitions.ScalaStaticAnnotType).withPos(defn.pos)), nme.CONSTRUCTOR), Nil)
+    val mods = EmptyModifiers.withAddedAnnotation(static).withFlags(Synthetic)
+    DefDef(defn.name, Nil, params, treeType, body).withMods(mods)
   }
 
   /** create object A$inline to hold all macros implementations for class A */

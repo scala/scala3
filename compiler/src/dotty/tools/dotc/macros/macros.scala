@@ -116,10 +116,11 @@ package object macros {
    *  to:
    *
    *    class main {
-   *      <macro> def f[T](a: A)(b: B): C = null
+   *      <macro> def f[T](a: A)(b: B): C = ???
    *    }
    *
    *    object main$inline {
+   *      @static
    *      def f(prefix: scala.meta.Term)(T: scala.meta.Type)(a: scala.meta.Term)(b: scala.meta.Term): scala.meta.Tree = body
    *    }
    */
