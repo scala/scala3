@@ -712,8 +712,11 @@ object Trees {
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
     override def withPos(pos: Position): this.type = {
-      val newTrees = trees.map(_.withPos(pos))
-      new Thicket[T](newTrees).asInstanceOf[this.type]
+      val newTrees = trees.mapConserve(_.withPos(pos))
+      if (trees eq newTrees)
+        this
+      else
+        new Thicket[T](newTrees).asInstanceOf[this.type]
     }
     override def pos = (NoPosition /: trees) ((pos, t) => pos union t.pos)
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
