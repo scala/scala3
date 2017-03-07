@@ -66,7 +66,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
 }
 
 object Selectable {
-  implicit def reflectiveSelectable(receiver: Any): scala.Selectable = receiver match {
+  implicit def reflectiveSelectable(receiver: Any): Selectable = receiver match {
     case receiver: scala.Selectable => receiver
     case _                          => new Selectable(receiver)
   }

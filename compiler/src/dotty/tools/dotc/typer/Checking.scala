@@ -501,10 +501,22 @@ trait Checking {
   /** Check that a non-implicit parameter making up the first parameter section of an
    *  implicit conversion is not a singleton type.
    */
-  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
+  def checkImplicitConversion(sym: Symbol, vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
     case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
       if (vparam.tpt.tpe.isInstanceOf[SingletonType])
         ctx.error(s"implicit conversion may not have a parameter of singleton type", vparam.tpt.pos)
+      if (!ctx.isAfterTyper && sym.owner.isClass && !sym.is(AccessFlags)) {
+        val fromTpe = vparam.tpt.tpe
+        val toTpe = sym.info.finalResultType
+        val fromClasses = fromTpe.classSymbols
+        val toClasses = toTpe.classSymbols
+        def isLocal(cls: ClassSymbol) =
+          ctx.owner.topLevelClass.associatedFile == cls.associatedFile
+        if (!fromClasses.exists(isLocal) && !toClasses.forall(isLocal))
+          ctx.errorOrMigrationWarning(
+              em"""implicit conversion must be defined in same compilation unit as its source ${fromClasses.mkString(" or ")}
+                  |or its target ${toClasses.mkString(" and ")}""", sym.pos)
+      }
     case _ =>
   }
 
@@ -633,7 +645,7 @@ trait NoChecking extends Checking {
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
-  override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
+  override def checkImplicitConversion(sym: Symbol, vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()

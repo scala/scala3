@@ -1,8 +1,9 @@
 import scala.language.implicitConversions
 
+case class Str(str: String)
 object A {
   object B {
-    implicit def int2string(x: Int): String = "["+x.toString+"]"
+    implicit def int2string(x: Int): Str = Str("["+x.toString+"]")
   }
 }
 
@@ -12,8 +13,8 @@ class C(x: String) {
   }
 
   object Inner {
-    val s: String = x
-    implicit def Inner2String(x: Inner): String = s
+    val s: Str = Str(x)
+    implicit def Inner2Str(x: Inner): Str = s
   }
 }
 
@@ -21,9 +22,9 @@ object Test extends dotty.runtime.LegacyApp {
   import A.B._
   val c = new C("OK")
   val i = new c.Inner
-  val s: String = i
+  val s: Str = i
   Console.println(s)
-  Console.println(2: String)
+  Console.println(2: Str)
 }
 
 object TestPriority {

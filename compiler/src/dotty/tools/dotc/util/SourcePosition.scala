@@ -51,6 +51,21 @@ extends interfaces.SourcePosition {
     else s"(no source file, offset = ${pos.point})"
 }
 
+object SourcePosition {
+  import core.Contexts.Context
+  import ast.tpd.{Tree, sourceFile, enclosingInlineds}
+
+  implicit def apply(pos: Position)(implicit ctx: Context): SourcePosition = {
+    def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
+      case inlinedCall :: rest =>
+        sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
+      case empty =>
+        ctx.source.atPos(pos)
+    }
+    recur(enclosingInlineds, pos)
+  }
+}
+
 /** A sentinel for a non-existing source position */
 @sharable object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
   override def toString = "?"

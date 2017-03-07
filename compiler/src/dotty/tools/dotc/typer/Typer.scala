@@ -1219,7 +1219,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
-    if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
+    if (sym is Implicit) checkImplicitConversion(sym, vparamss1)
     var tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx
