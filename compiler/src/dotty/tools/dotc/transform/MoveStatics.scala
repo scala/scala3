@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.{Flags, Names}
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.TreeTransforms.{MiniPhaseTransform, TransformerInfo}
@@ -19,6 +20,8 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
   import tpd._
   override def phaseName = "moveStatic"
 
+  // This phase moves methods around(in infortransform) so it may need to make other methods public
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ExpandPrivate])
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists) {
