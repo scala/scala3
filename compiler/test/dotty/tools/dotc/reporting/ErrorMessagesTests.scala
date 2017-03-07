@@ -227,11 +227,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(1, messages)
-      val OverloadedMethodNeedsResultType(tree) :: Nil = messages
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
       assertEquals("foo", tree.show)
     }
 
-  @Test @Ignore def recursiveMethodNeedsReturnType =
+  @Test def recursiveMethodNeedsReturnType =
     checkMessagesAfter("frontend") {
       """
         |class Scope() {
@@ -244,7 +244,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val defn = ictx.definitions
 
       assertMessageCount(1, messages)
-      val RecursiveMethodNeedsResultType(tree) :: Nil = messages
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
       assertEquals("i", tree.show)
     }
 

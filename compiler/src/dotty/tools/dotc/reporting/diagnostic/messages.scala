@@ -1162,23 +1162,18 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
-  extends Message(OverloadedMethodNeedsResultTypeID) {
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded method ${tree} needs result type"""
+    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
     val explanation =
-      hl"""|${tree} is overloaded and at least one definition of it calls another.
-           |You need to specify the calling method's return type.
-         """.stripMargin
-  }
-
-  case class RecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
-  extends Message(RecursiveMethodNeedsResultTypeID) {
-    val kind = "Syntax"
-    val msg = hl"""recursive method ${tree} needs result type"""
-    val explanation =
-      hl"""|The definition of `${tree.name}` is recursive and you need to specify its type.
-         """.stripMargin
+      hl"""Case 1: ${tree} is overloaded
+          |If there are multiple methods named `${tree.name}` and at least one definition of
+          |it calls another, you need to specify the calling method's return type.
+          |
+          |Case 2: ${tree} is recursive
+          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |""".stripMargin
   }
 
   case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
@@ -1186,8 +1181,8 @@ object messages {
     val kind = "Syntax"
     val msg = hl"""recursive value ${tree.name} needs type"""
     val explanation =
-      hl"""|The definition of `${tree.name}` is recursive and you need to specify its type.
-         """.stripMargin
+      hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
+          |""".stripMargin
   }
 
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
