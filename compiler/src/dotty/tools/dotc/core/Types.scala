@@ -1680,7 +1680,10 @@ object Types {
           }
         else newLikeThis(prefix)
       }
-      else newLikeThis(prefix)
+      else prefix match {
+        case _: WildcardType => WildcardType
+        case _ => newLikeThis(prefix)
+      }
 
     /** Create a NamedType of the same kind as this type, but with a new prefix.
      */

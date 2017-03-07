@@ -111,12 +111,6 @@ abstract class Constraint extends Showable {
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
 
-  /** Narrow one of the bounds of type parameter `param`
-   *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-   *  that `param >: bound`.
-   */
-  def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This
-
   /** Is entry associated with `pt` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
