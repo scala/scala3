@@ -350,7 +350,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case tp: NamedType =>
         val sym = tp.symbol
         // Normalize package prefix to avoid instability of representation
-        val prefix = if (sym.isClass && sym.owner.is(Package))
+        val prefix = if (sym.owner.is(Package))
           sym.owner.thisType
         else
           tp.prefix
@@ -358,7 +358,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case TypeApplications.AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
-            if (lo.eq(defn.NothingType) && hi.eq(defn.AnyType))
+            if (lo.isDirectRef(defn.NothingClass) && hi.isDirectRef(defn.AnyClass))
               Constants.emptyType
             else {
               val name = "_"
