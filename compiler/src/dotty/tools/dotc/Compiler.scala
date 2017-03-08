@@ -94,6 +94,7 @@ class Compiler {
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
+           new PhantomVals,         // Remove ValDefs of phantom type
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
       List(new MoveStatics,         // Move static methods to companion classes
