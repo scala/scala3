@@ -11,7 +11,9 @@ object Test extends dotty.runtime.LegacyApp {
   val maxKey = 50
   val maxValue = 50
 
-  def testSet[A <% Ordered[A]](set: SortedSet[A], list: List[A]): Unit = {
+  implicit def convertIfView[A](x: A)(implicit view: A => Ordered[A]): Ordered[A] = view(x)
+
+  def testSet[A: Ordering](set: SortedSet[A], list: List[A]): Unit = {
     val distinctSorted = list.distinct.sorted
     assertEquals("Set size wasn't the same as list sze", set.size, distinctSorted.size)
 
@@ -24,7 +26,7 @@ object Test extends dotty.runtime.LegacyApp {
     }
   }
 
-  def testMap[A <% Ordered[A], B](map: SortedMap[A, B], list: List[(A, B)]): Unit = {
+  def testMap[A: Ordering, B](map: SortedMap[A, B], list: List[(A, B)]): Unit = {
     val distinctSorted = distinctByKey(list).sortBy(_._1)
     assertEquals("Map size wasn't the same as list sze", map.size, distinctSorted.size)
 

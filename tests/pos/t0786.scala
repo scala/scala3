@@ -15,7 +15,7 @@ object ImplicitProblem {
     def eval = f(nullval[T]).eval + 1
   }
 
-  def depth[T](n: T)(implicit ev: T => Rep[T]) = n.eval
+  def depth[T](n: T)(implicit ev: T => Rep[T]) = ev(n).eval
 
   def main(args: Array[String]): Unit = {
     println(depth(nullval[M[Int]]))  // (1) this works

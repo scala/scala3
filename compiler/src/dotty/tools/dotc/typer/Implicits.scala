@@ -86,35 +86,25 @@ object Implicits {
             // However, Predef.$conforms is not eligible, because it is a no-op.
             //
             // In principle, it would be cleanest if only implicit methods qualified
-            // as implicit conversions. The reasons for deviating are as follows:
-            // Keeping Function1: It's still used quite often (for instance, view
-            // bounds map to implicits of function types) and there is no feasible workaround.
-            // One tempting workaround would be to add a global def
-            //
-            //    implicit def convertIfFuntion1[A, B](x: A)(implicit ev: A => B): B = ev(a)
-            //
-            // But that would throw out the baby with the bathwater. Now, every subtype of
-            // function gives again rise to an implicit conversion. So it's better to just accept
-            // function types in their dual roles.
-            //
-            // The reason for the treatment of <:< and conforms is similar. We could
-            // avoid the clause by having a standard conversion like this in Predef:
+            // as implicit conversions. We could achieve that by having standard conversions like
+            // this in Predef:
             //
             //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
+            //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConverter[A, B]): B = ev(a)
             //
-            // But that would slow down implicit search a lot, because this conversion is
-            // eligible for all pairs of types, and therefore is tried a lot. So we
-            // emulate the existence of a such a conversion directly in the search.
+            // (Once `<:<` inherits from `ImplicitConverter` we only need the 2nd one.)
+            // But clauses like this currently slow down implicit search a lot, because
+            // they are eligible for all pairs of types, and therefore are tried too often.
+            // We emulate instead these conversions directly in the search.
             // The reason for leaving out `Predef_conforms` is that we know it adds
             // nothing since it only relates subtype with supertype.
             //
             // We keep the old behavior under -language:Scala2.
-            val isFunction =
-              if (ctx.scala2Mode) tpw.derivesFrom(defn.FunctionClass(1))
-              else tpw.isRef(defn.FunctionClass(1))
+            val isFunctionInS2 = ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1))
+            val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
             val isConforms =
               tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
-            !(isFunction || isConforms)
+            !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
