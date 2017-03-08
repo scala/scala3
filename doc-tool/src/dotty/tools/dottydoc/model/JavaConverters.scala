@@ -4,12 +4,11 @@ package model
 import comment._
 import references._
 
-import _root_.java.util.HashMap
 import _root_.java.util.LinkedList
 
 object JavaConverters {
   import scala.collection.JavaConverters._
-  import _root_.java.util.{ Optional => JOptional, Map => JMap }
+  import _root_.java.util.{ Map => JMap }
 
   implicit class OptStr(val opt: Option[String]) extends AnyVal {
     def asJava = opt.getOrElse(null)
@@ -41,160 +40,6 @@ object JavaConverters {
       "groupNames"              -> cmt.groupNames.asJava,
       "groupPrio"               -> cmt.groupPrio.asJava,
       "hideImplicitConversions" -> cmt.hideImplicitConversions.asJava
-    ).asJava
-  }
-
-  implicit class JavaPackage(val ent: Package) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"     -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name"     -> ent.name,
-      "path"     -> ent.path.asJava,
-      "members"  -> ent.members.map(_.asJava()).asJava,
-      "children"  -> ent.children.map(_.asJava()).asJava,
-      "comment"  -> ent.comment.map(_.asJava).asJava,
-      "superTypes" -> ent.superTypes,
-      "hasVisibleMembers" -> ent.hasVisibleMembers,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "signature" -> ent.signature
-    ) ++ extras).asJava
-  }
-
-  implicit class JavaCaseClass(val ent: CaseClass) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind" -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name" -> ent.name,
-      "members" -> ent.members.map(_.asJava()).asJava,
-      "modifiers" -> ent.modifiers.asJava,
-      "path" -> ent.path.asJava,
-      "typeParams" -> ent.typeParams.asJava,
-      "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment" -> ent.comment.map(_.asJava).asJava,
-      "constructors" -> ent.constructors.map(_.map(_.asJava).asJava).asJava,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava,
-      "signature" -> ent.signature
-    ) ++ extras).asJava
-  }
-
-  implicit class JavaClass(val ent: Class) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"       -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name"       -> ent.name,
-      "members"    -> ent.members.map(_.asJava()).asJava,
-      "modifiers"  -> ent.modifiers.asJava,
-      "path"       -> ent.path.asJava,
-      "typeParams" -> ent.typeParams.asJava,
-      "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava,
-      "constructors" -> ent.constructors.map(_.map(_.asJava).asJava).asJava,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava,
-      "signature" -> ent.signature
-    ) ++ extras).asJava
-  }
-
-  implicit class JavaTrait(val ent: Trait) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"       -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name"       -> ent.name,
-      "members"    -> ent.members.map(_.asJava()).asJava,
-      "modifiers"  -> ent.modifiers.asJava,
-      "path"       -> ent.path.asJava,
-      "typeParams" -> ent.typeParams.asJava,
-      "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava,
-      "signature" -> ent.signature
-    ) ++ extras).asJava
-  }
-
-  implicit class JavaObject(val ent: Object) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = (Map(
-      "kind"       -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name"       -> ent.name,
-      "members"    -> ent.members.map(_.asJava()).asJava,
-      "modifiers"  -> ent.modifiers.asJava,
-      "path"       -> ent.path.asJava,
-      "superTypes" -> ent.superTypes.map(_.asJava).asJava,
-      "comment"    -> ent.comment.map(_.asJava).asJava,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "hasVisibleMembers" -> ent.hasVisibleMembers,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "hasCompanion" -> ent.hasCompanion,
-      "companionPath" -> ent.companionPath.asJava,
-      "signature" -> ent.signature
-    ) ++ extras).asJava
-  }
-
-  implicit class JavaDef(val ent: Def) extends AnyVal {
-    def asJava: JMap[String, _] = Map(
-      "kind"                -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name"                -> ent.name,
-      "modifiers"           -> ent.modifiers.asJava,
-      "path"                -> ent.path.asJava,
-      "returnValue"         -> ent.returnValue.asJava,
-      "typeParams"          -> ent.typeParams.asJava,
-      "paramLists"          -> ent.paramLists.map(_.asJava).asJava,
-      "comment"             -> ent.comment.map(_.asJava).asJava,
-      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "signature" -> ent.signature
-    ).asJava
-  }
-
-  implicit class JavaVal(val ent: Val) extends AnyVal {
-    def asJava: JMap[String, _] = Map(
-      "kind" -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "name" -> ent.name,
-      "modifiers" -> ent.modifiers.asJava,
-      "path" -> ent.path.asJava,
-      "returnValue" -> ent.returnValue.asJava,
-      "comment" -> ent.comment.map(_.asJava).asJava,
-      "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "signature" -> ent.signature
-    ).asJava
-  }
-
-  implicit class JavaTypeAlias(val ent: TypeAlias) extends AnyVal {
-    def asJava: JMap[String, _] = Map(
-      "kind" -> ent.kind,
-      "annotations" -> ent.annotations.asJava,
-      "modifiers" -> ent.modifiers.asJava,
-      "name" -> ent.name,
-      "path" -> ent.path.asJava,
-      "alias" -> ent.alias.map(_.asJava).asJava,
-      "typeParams" -> ent.typeParams.asJava,
-      "comment" -> ent.comment.map(_.asJava).asJava,
-      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
-      "isPrivate" -> ent.isPrivate,
-      "isProtected" -> ent.isProtected,
-      "signature" -> ent.signature
     ).asJava
   }
 
@@ -298,16 +143,88 @@ object JavaConverters {
     def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = parseEntity(ent, extras)
   }
 
-  private def parseEntity(ent: Entity, extras: Map[String, _]): JMap[String, _] = ent match {
-    case ent: Package   => ent.asJava(extras)
-    case ent: CaseClass => ent.asJava(extras)
-    case ent: Class     => ent.asJava(extras)
-    case ent: Trait     => ent.asJava(extras)
-    case ent: Object    => ent.asJava(extras)
-    case ent: Def       => ent.asJava
-    case ent: Val       => ent.asJava
-    case ent: TypeAlias => ent.asJava
-    case _              => Map.empty.asJava
+  private def parseEntity(ent: Entity, extras: Map[String, _]): JMap[String, _] = {
+    val entity = Map(
+      "kind"     -> ent.kind,
+      "annotations" -> ent.annotations.asJava,
+      "name"     -> ent.name,
+      "path"     -> ent.path.asJava,
+      "children"  -> ent.children.map(_.asJava()).asJava,
+      "comment"  -> ent.comment.map(_.asJava).asJava,
+      "hasShortenedDocstring" -> ent.hasShortenedDocstring,
+      "signature" -> ent.signature
+    )
+    val members = ent match {
+      case ent: Members => Map(
+        "members"  -> ent.members.map(_.asJava()).asJava,
+        "hasVisibleMembers" -> ent.hasVisibleMembers
+      )
+      case _ => Map.empty
+    }
+    val superTypes = ent match {
+      case ent: SuperTypes => Map(
+        "superTypes" -> ent.superTypes.map(_.asJava).asJava
+      )
+      case _ => Map.empty
+    }
+    val modifiers = ent match {
+      case ent: Modifiers => Map(
+        "modifiers" -> ent.modifiers.asJava,
+        "isPrivate" -> ent.isPrivate,
+        "isProtected" -> ent.isProtected
+      )
+      case _ => Map.empty
+    }
+    val typeParams = ent match {
+      case ent: TypeParams => Map(
+        "typeParams" -> ent.typeParams.asJava
+      )
+      case _ => Map.empty
+    }
+    val constructors = ent match {
+      case ent: Constructors => Map(
+        "constructors" -> ent.constructors.map(_.map(_.asJava).asJava).asJava
+      )
+      case _ => Map.empty
+    }
+    val companion = ent match {
+      case ent: Companion => Map(
+        "hasCompanion" -> ent.hasCompanion,
+        "companionPath" -> ent.companionPath.asJava
+      )
+      case _ => Map.empty
+    }
+    val returnValue = ent match {
+      case ent: ReturnValue => Map(
+        "returnValue"         -> ent.returnValue.asJava
+      )
+      case _ => Map.empty
+    }
+    val implicitlyAddedEntity = ent match {
+      case ent: ImplicitlyAddedEntity => Map(
+        "implicitlyAddedFrom" -> ent.implicitlyAddedFrom.map(_.asJava).asJava
+      )
+      case _ => Map.empty
+    }
+    val typeAlias : Map[String, _] = ent match {
+      case ent: TypeAlias => Map(
+        "alias" -> ent.alias.map(_.asJava).asJava
+      )
+      case _ => Map.empty
+    }
+    val trt = ent match {
+      case ent: Trait => Map(
+        "traitParams"          -> ent.traitParams.map(_.asJava).asJava
+      )
+      case _ => Map.empty
+    }
+    val df = ent match {
+      case ent: Def => Map(
+        "paramLists"          -> ent.paramLists.map(_.asJava).asJava
+      )
+      case _ => Map.empty
+    }
+      (entity ++ members ++ superTypes ++ modifiers ++ typeParams ++ constructors ++ companion ++ returnValue ++ implicitlyAddedEntity ++ typeAlias ++ trt ++ df).asJava
   }
 
   implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
