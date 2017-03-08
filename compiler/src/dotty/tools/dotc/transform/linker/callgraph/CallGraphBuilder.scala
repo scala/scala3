@@ -310,10 +310,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       tp.widen.appliedTo(targs).widen
 
     def preciseSelectCall(tp: Type, sym: Symbol): TermRef = {
-      val selectByName = tp.select(sym.name)
-      val denot = selectByName.asInstanceOf[TermRef].denot
-      val call = denot.suchThat(x => x == sym || x.overriddenSymbol(sym.owner.asClass) == sym).symbol
-      assert(call.exists)
+      def selectCall(tp1: Type) = {
+        val selectByName = tp1.select(sym.name).asInstanceOf[TermRef]
+        if (selectByName.symbol.exists && tp.classSymbol == selectByName.symbol.owner) selectByName.symbol
+        else selectByName.denot.suchThat(x => x == sym || x.overriddenSymbol(sym.owner.asClass) == sym).symbol
+      }
+      val call = selectCall(tp).orElse(if (tp.givenSelfType.exists) selectCall(tp.givenSelfType) else NoSymbol)
+      assert(call.exists, (tp, sym))
       tp.select(call).asInstanceOf[TermRef]
     }
 
