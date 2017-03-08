@@ -107,8 +107,14 @@ object Implicits {
             // emulate the existence of a such a conversion directly in the search.
             // The reason for leaving out `Predef_conforms` is that we know it adds
             // nothing since it only relates subtype with supertype.
-            !tpw.isRef(defn.FunctionClass(1)) &&
-            (!tpw.derivesFrom(defn.Predef_Conforms) || ref.symbol == defn.Predef_conforms)
+            //
+            // We keep the old behavior under -language:Scala2.
+            val isFunction =
+              if (ctx.scala2Mode) tpw.derivesFrom(defn.FunctionClass(1))
+              else tpw.isRef(defn.FunctionClass(1))
+            val isConforms =
+              tpw.derivesFrom(defn.Predef_Conforms) || ref.symbol == defn.Predef_conforms
+            !(isFunction || isConforms)
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
