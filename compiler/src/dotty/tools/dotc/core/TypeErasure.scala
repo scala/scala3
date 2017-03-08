@@ -246,10 +246,14 @@ object TypeErasure {
           val cls2 = tp2.classSymbol
           def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
             case bc :: bcs1 =>
-              if (cls2.derivesFrom(bc))
-                if (!bc.is(Trait) && bc != defn.AnyClass) bc
-                else loop(bcs1, if (bestSoFar.derivesFrom(bc)) bestSoFar else bc)
-              else
+              if (cls2.derivesFrom(bc)) {
+                val newBest = if (bestSoFar.derivesFrom(bc)) bestSoFar else bc
+
+                if (!bc.is(Trait) && bc != defn.AnyClass)
+                  newBest
+                else
+                  loop(bcs1, newBest)
+              } else
                 loop(bcs1, bestSoFar)
             case nil =>
               bestSoFar
