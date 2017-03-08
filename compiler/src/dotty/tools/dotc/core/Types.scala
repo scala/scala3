@@ -1276,7 +1276,10 @@ object Types {
      *  except for TypeRefs where the upper bound is returned, and HKApplys,
      *  where the upper bound of the constructor is re-applied to the arguments.
      */
-    def superType(implicit ctx: Context): Type = underlying
+    def superType(implicit ctx: Context): Type = underlying match {
+      case TypeBounds(_, hi) => hi
+      case st => st
+    }
   }
 
   // Every type has to inherit one of the following four abstract type classes.,
@@ -1762,11 +1765,6 @@ object Types {
     type ThisType = TypeRef
 
     override def underlying(implicit ctx: Context): Type = info
-
-    override def superType(implicit ctx: Context): Type = info match {
-      case TypeBounds(_, hi) => hi
-      case _ => info
-    }
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {

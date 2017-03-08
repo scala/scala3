@@ -239,7 +239,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         case tp1: RecType =>
           tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: TypeProxy if !isClassRef(tp1) =>
-          orDominator(tp1.superType.bounds.hi | tp2)
+          orDominator(tp1.superType | tp2)
         case _ =>
           tp2 match {
             case tp2: RecType =>
