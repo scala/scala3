@@ -392,7 +392,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       case t if calleeSymbol.isConstructor =>
 
-        val constructedType = appliedToTargs(callee.call).resultType
+        val constructedType = appliedToTargs(callee.call).finalResultType
         val fixNoPrefix = if (constructedType.normalizedPrefix eq NoPrefix) {
           @tailrec def getPrefix(currentPrefix: Type): Type = {
             if (currentPrefix.classSymbol.exists) currentPrefix
