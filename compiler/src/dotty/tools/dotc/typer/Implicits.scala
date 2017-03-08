@@ -113,7 +113,7 @@ object Implicits {
               if (ctx.scala2Mode) tpw.derivesFrom(defn.FunctionClass(1))
               else tpw.isRef(defn.FunctionClass(1))
             val isConforms =
-              tpw.derivesFrom(defn.Predef_Conforms) || ref.symbol == defn.Predef_conforms
+              tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
             !(isFunction || isConforms)
         }
 
