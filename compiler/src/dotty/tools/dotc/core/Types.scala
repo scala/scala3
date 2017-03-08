@@ -1273,8 +1273,9 @@ object Types {
     def underlying(implicit ctx: Context): Type
 
     /** The closest supertype of this type. This is the same as `underlying`,
-     *  except for TypeRefs where the upper bound is returned, and HKApplys,
-     *  where the upper bound of the constructor is re-applied to the arguments.
+     *  except that
+     *    - instead of a TyperBounds type it returns its upper bound, and
+     *    - for HKApplys it returns the upper bound of the constructor re-applied to the arguments.
      */
     def superType(implicit ctx: Context): Type = underlying match {
       case TypeBounds(_, hi) => hi
