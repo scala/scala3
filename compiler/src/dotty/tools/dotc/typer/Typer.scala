@@ -1314,6 +1314,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+    cls.setNoInitsFlags((NoInitsInterface /: body1)((fs, stat) => fs & defKind(stat)))
 
     // Expand comments and type usecases
     cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)

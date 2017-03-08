@@ -158,7 +158,7 @@ object SymDenotations {
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
     /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
-    final def setApplicableFlags(flags: FlagSet): Unit = {
+    final def setNoInitsFlags(flags: FlagSet): Unit = {
       val mask = if (myFlags.is(Trait)) NoInitsInterface else NoInits
       setFlag(flags & mask)
     }
