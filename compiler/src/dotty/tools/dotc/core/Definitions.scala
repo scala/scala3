@@ -299,6 +299,8 @@ class Definitions {
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 
+    lazy val Predef_ConformsR = ScalaPredefModule.requiredClass("$less$colon$less").typeRef
+    def Predef_Conforms(implicit ctx: Context) = Predef_ConformsR.symbol
     lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
     def Predef_conforms(implicit ctx: Context) = Predef_conformsR.symbol
     lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef("classOf")

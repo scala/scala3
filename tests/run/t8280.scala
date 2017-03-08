@@ -37,7 +37,8 @@ object Moop1 {
     implicit object f1 extends (Int => String) { def apply(x: Int): String = "Int" }
     implicit val f2: Long => String = _ => "Long"
 
-    println(5: String)
+    //println(5: String)
+      // This picked f1 before, but is now disallowed since subtypes of functions are no longer implicit conversions
   }
 }
 

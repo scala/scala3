@@ -82,11 +82,33 @@ object Implicits {
           case tpw: TermRef =>
             false // can't discard overloaded refs
           case tpw =>
-            //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
-            //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            !tpw.derivesFrom(defn.FunctionClass(1)) ||
-            ref.symbol == defn.Predef_conforms //
-              // as an implicit conversion, Predef.$conforms is a no-op, so exclude it
+            // Only direct instances of Function1 and direct or indirect instances of <:< are eligible as views.
+            // However, Predef.$conforms is not eligible, because it is a no-op.
+            //
+            // In principle, it would be cleanest if only implicit methods qualified
+            // as implicit conversions. The reasons for deviating are as follows:
+            // Keeping Function1: It's still used quite often (for instance, view
+            // bounds map to implicits of function types) and there is no feasible workaround.
+            // One tempting workaround would be to add a global def
+            //
+            //    implicit def convertIfFuntion1[A, B](x: A)(implicit ev: A => B): B = ev(a)
+            //
+            // But that would throw out the baby with the bathwater. Now, every subtype of
+            // function gives again rise to an implicit conversion. So it's better to just accept
+            // function types in their dual roles.
+            //
+            // The reason for the treatment of <:< and conforms is similar. We could
+            // avoid the clause by having a standard conversion like this in Predef:
+            //
+            //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
+            //
+            // But that would slow down implicit search a lot, because this conversion is
+            // eligible for all pairs of types, and therefore is tried a lot. So we
+            // emulate the existence of a such a conversion directly in the search.
+            // The reason for leaving out `Predef_conforms` is that we know it adds
+            // nothing since it only relates subtype with supertype.
+            !tpw.isRef(defn.FunctionClass(1)) &&
+            (!tpw.derivesFrom(defn.Predef_Conforms) || ref.symbol == defn.Predef_conforms)
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {

@@ -1,6 +1,9 @@
 trait DeliteDSL {
   abstract class <~<[-From, +To] extends (From => To)
+
   implicit def trivial[A]: A <~< A = new (A <~< A) {def apply(x: A) = x}
+  implicit def convert_<-<[A, B](x: A)(implicit ev: A <~< B): B = ev(x)
+
 
   trait Forcible[T]
   object Forcible {
