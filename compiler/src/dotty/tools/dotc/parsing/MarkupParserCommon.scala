@@ -9,7 +9,7 @@ package dotty.tools.dotc
 package parsing
 
 import Utility._
-import scala.reflect.internal.Chars.SU
+import util.Chars.SU
 
 
 

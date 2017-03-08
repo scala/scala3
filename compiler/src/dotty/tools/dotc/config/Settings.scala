@@ -3,7 +3,6 @@ package config
 
 import collection.mutable.{ ArrayBuffer }
 import scala.util.{ Try, Success, Failure }
-import scala.reflect.internal.util.StringOps
 import reflect.ClassTag
 import core.Contexts._
 // import annotation.unchecked

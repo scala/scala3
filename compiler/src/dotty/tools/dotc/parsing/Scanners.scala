@@ -6,7 +6,7 @@ import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
-import scala.reflect.internal.Chars._
+import util.Chars._
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable

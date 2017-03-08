@@ -10,7 +10,6 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
-import scala.reflect.api.{ Universe => ApiUniverse }
 
 object Definitions {
 

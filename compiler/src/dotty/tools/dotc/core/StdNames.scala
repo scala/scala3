@@ -7,7 +7,7 @@ import scala.annotation.switch
 import Names._
 import Symbols._
 import Contexts._
-import Decorators.StringDecorator
+import Decorators.PreNamedString
 import util.NameTransformer
 import scala.collection.breakOut
 

@@ -19,7 +19,7 @@ import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
 import PickleBuffer._
-import scala.reflect.internal.pickling.PickleFormat._
+import PickleFormat._
 import Decorators._
 import TypeApplications._
 import classfile.ClassfileParser

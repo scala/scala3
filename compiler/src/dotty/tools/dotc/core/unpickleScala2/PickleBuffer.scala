@@ -193,24 +193,7 @@ object PickleBuffer {
   private type FlagMap = Array[Array[Long]]
 
   private val (scalaTermFlagMap, scalaTypeFlagMap) = {
-    import scala.reflect.internal.Flags._
-
-    // The following vals are copy-pasted from reflect.internal.Flags.
-    // They are unfortunately private there, so we cannot get at them directly.
-    // Using the public method pickledToRawFlags instead looks unattractive
-    // because of performance.
-    val IMPLICIT_PKL   = (1 << 0)
-    val FINAL_PKL      = (1 << 1)
-    val PRIVATE_PKL    = (1 << 2)
-    val PROTECTED_PKL  = (1 << 3)
-    val SEALED_PKL     = (1 << 4)
-    val OVERRIDE_PKL   = (1 << 5)
-    val CASE_PKL       = (1 << 6)
-    val ABSTRACT_PKL   = (1 << 7)
-    val DEFERRED_PKL   = (1 << 8)
-    val METHOD_PKL     = (1 << 9)
-    val MODULE_PKL     = (1 << 10)
-    val INTERFACE_PKL  = (1 << 11)
+    import Scala2Flags._
 
     val corr = Map(
       PROTECTED_PKL -> Protected,

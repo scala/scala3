@@ -30,8 +30,6 @@ import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 
-import scala.reflect.internal.util.Collections
-
 /** This transform eliminates patterns. Right now it's a dummy.
  *  Awaiting the real pattern matcher.
  *  elimRepeated is required
@@ -166,7 +164,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
     }
 
     def emitValDefs: List[ValDef] = {
-      Collections.map2(lhs, rhs)((symbol, tree) => ValDef(symbol.asTerm, tree.ensureConforms(symbol.info)))
+      (lhs, rhs).zipped.map((symbol, tree) => ValDef(symbol.asTerm, tree.ensureConforms(symbol.info)))
     }
   }
   object NoRebindings extends Rebindings(Nil, Nil)
@@ -609,7 +607,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
             // only store binders actually used
             val (subPatBindersStored, subPatRefsStored) = stored.filter{case (b, _) => usedBinders(b)}.unzip
 
-            Block(Collections.map2(subPatBindersStored.toList, subPatRefsStored.toList)((bind, ref) => {
+            Block((subPatBindersStored.toList, subPatRefsStored.toList).zipped.map((bind, ref) => {
               // required in case original pattern had a more precise type
               // eg case s@"foo" =>  would be otherwise translated to s with type String instead of String("foo")
               def refTpeWiden = ref.tpe.widen

@@ -7,7 +7,6 @@ import util.SourcePosition
 import core.Contexts._
 import Reporter._
 import java.io.PrintWriter
-import scala.reflect.internal.util._
 import diagnostic.{ Message, MessageContainer, NoExplanation }
 import diagnostic.messages._
 
