@@ -103,13 +103,20 @@ import Decorators._
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisTransform)
         if (isWildcardArg(rhs)) rhs = EmptyTree
         val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
-        val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field))(ctx.withOwner(sym), info))
+        val isUnitField = tree.tpt.tpe.widenDealias =:= defn.BoxedUnitType
+        val getterRhs =
+          if (isUnitField) ref(defn.BoxedUnit_UNIT)
+          else transformFollowingDeep(ref(field))(ctx.withOwner(sym), info)
+        val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         field.setFlag(Mutable) // necessary for vals mixed in from Scala2 traits
-        val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-        cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
+        if (tree.vparamss.head.head.tpt.tpe =:= defn.BoxedUnitType) tree
+        else {
+          val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
+          cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym), info))
+        }
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
                 // neither getters nor setters

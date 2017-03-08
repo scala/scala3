@@ -9,8 +9,8 @@ import dotty.tools.dotc.core.Types.Type
  *
  *  - Parameters/arguments are erased to BoxedUnit. The next step will remove the parameters
  *    from the method definitions and calls (implemented in branch implement-phantom-types-part-2).
- *  - Definitions of `def`, `val`, `lazy val` and `var` returning a phantom type to return a BoxedUnit. The next step
- *    is to erase the fields for phantom types (implemented in branch implement-phantom-types-part-3)
+ *  - Definitions of `def`, `val`, `lazy val` and `var` returning a phantom type to return a BoxedUnit. Where fields
+ *    with BoxedUnit type are not memoized (see transform/Memoize.scala).
  *  - Calls to Phantom.assume become calls to BoxedUnit. Intended to be optimized away by local optimizations.
  *
  *  BoxedUnit is used as it fits perfectly and homogeneously in all locations where phantoms can be found.
