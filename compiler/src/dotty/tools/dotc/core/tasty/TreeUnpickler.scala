@@ -768,7 +768,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
         }
         else EmptyValDef
       setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setApplicableFlags(fork.indexStats(end))
+      cls.setNoInitsFlags(fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
       def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =

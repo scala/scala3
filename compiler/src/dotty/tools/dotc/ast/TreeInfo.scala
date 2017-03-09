@@ -26,23 +26,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait enclosing this statement can have as flags.
-   *   Does tree contain an initialization part when seen as a member of a class or trait?
-   */
-  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import =>
-      NoInitsInterface
-    case tree: TypeDef =>
-      if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef =>
-      if (tree.unforcedRhs == EmptyTree && tree.vparamss.forall(_.forall(_.unforcedRhs == EmptyTree))) NoInitsInterface else NoInits
-    case tree: ValDef =>
-      if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ =>
-      EmptyFlags
-  }
-
   def isOpAssign(tree: Tree) = unsplice(tree) match {
     case Apply(fn, _ :: _) =>
       unsplice(fn) match {
@@ -588,6 +571,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     accum(Nil, root)
   }
 
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait enclosing this statement can have as flags.
+   */
+  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
+  }
 
   /** The top level classes in this tree, including only those module classes that
    *  are not a linked class of some other class in the result.

@@ -818,8 +818,6 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.setApplicableFlags(
-        (NoInitsInterface /: impl.body)((fs, stat) => fs & defKind(stat)))
       cls.info = avoidPrivateLeaks(cls, cls.pos)
     }
   }
