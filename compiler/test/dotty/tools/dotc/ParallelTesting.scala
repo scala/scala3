@@ -33,6 +33,29 @@ trait ParallelTesting {
   }
 
   private def compile(files: Array[JFile], flags: Array[String]): (Array[JFile], List[MessageContainer]) = {
+
+    def findJarFromRuntime(partialName: String) = {
+      val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
+      urls.find(_.contains(partialName)).getOrElse {
+        throw new java.io.FileNotFoundException(
+          s"""Unable to locate $partialName on classpath:\n${urls.toList.mkString("\n")}"""
+        )
+      }
+    }
+
+    def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
+      val scalaLib = findJarFromRuntime("scala-library")
+      val fullArgs = Array(
+        "javac",
+        "-classpath",
+        s".:$scalaLib"
+      ) ++ flags.takeRight(2) ++ fs
+
+      assert(Runtime.getRuntime.exec(fullArgs).waitFor() == 0, s"java compilation failed for ${fs.mkString(", ")}")
+    }
+
+    compileWithJavac(files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath))
+
     val reporter = new DaftReporter(suppress = false)
     driver.process(flags ++ files.map(_.getAbsolutePath), reporter = reporter)
     files -> reporter.errors
