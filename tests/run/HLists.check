@@ -1,0 +1,8 @@
+1
+A
+true
+true
+HCons(1,HCons(A,HCons(true,HNil)))
+1
+A
+true

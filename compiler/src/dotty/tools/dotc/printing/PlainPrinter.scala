@@ -4,6 +4,7 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
+import TypeApplications.AppliedType
 import StdNames.{nme, tpnme}
 import ast.Trees._, ast._
 import typer.Implicits._
@@ -119,10 +120,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   /** The longest sequence of refinement types, starting at given type
-   *  and following parents.
+   *  and following parents, but stopping at applied types.
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
+      case AppliedType(_, _) => Nil
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
       case _ => Nil
     })

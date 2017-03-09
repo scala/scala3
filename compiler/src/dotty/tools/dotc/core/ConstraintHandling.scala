@@ -44,6 +44,13 @@ trait ConstraintHandling {
     try op finally alwaysFluid = saved
   }
 
+  /** If set, align arguments `S1`, `S2`when taking the glb
+   *  `T1 { X = S1 } & T2 { X = S2 }` of a constraint upper bound for some type parameter.
+   *  Aligning means computing `S1 =:= S2` which may change the current constraint.
+   *  See note in TypeComparer#distributeAnd.
+   */
+  protected var homogenizeArgs = false
+
   /** We are currently comparing polytypes. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
@@ -64,13 +71,28 @@ trait ConstraintHandling {
       }
       if (Config.checkConstraintsSeparated)
         assert(!occursIn(bound), s"$param occurs in $bound")
-      val c1 = constraint.narrowBound(param, bound, isUpper)
+      val newBound = narrowedBound(param, bound, isUpper)
+      val c1 = constraint.updateEntry(param, newBound)
       (c1 eq constraint) || {
         constraint = c1
         val TypeBounds(lo, hi) = constraint.entry(param)
         isSubType(lo, hi)
       }
     }
+
+  /** Narrow one of the bounds of type parameter `param`
+   *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
+   *  that `param >: bound`.
+   */
+  def narrowedBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): TypeBounds = {
+    val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+    val saved = homogenizeArgs
+    homogenizeArgs = Config.alignArgsInAnd
+    try
+      if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
+      else oldBounds.derivedTypeBounds(lo | bound, hi)
+    finally homogenizeArgs = saved
+  }
 
   protected def addUpperBound(param: PolyParam, bound: Type): Boolean = {
     def description = i"constraint $param <: $bound to\n$constraint"
