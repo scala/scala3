@@ -52,21 +52,13 @@ class DeadCodeElimination extends MiniPhaseTransform {
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    if (!doTransform) {
-      tree
-    } else {
-      val sym = tree.symbol
-      def isPotentiallyReachable = {
-        callGraph.isReachableMethod(sym) || sym.is(Label) || sym.isConstructor || keepAsNew(sym) ||
-          (sym.isSetter && callGraph.isReachableMethod(sym.getter))
-      }
-
-      if (isPotentiallyReachable || sym.hasAnnotation(doNotDCEAnnotation)) {
-        tree
-      } else {
-        tpd.cpy.DefDef(tree)(rhs = exception)
-      }
+    val sym = tree.symbol
+    def isPotentiallyReachable = {
+      callGraph.isReachableMethod(sym) || sym.is(Label) || sym.isConstructor || keepAsNew(sym) ||
+        (sym.isSetter && callGraph.isReachableMethod(sym.getter))
     }
+    if (!doTransform || isPotentiallyReachable || sym.hasAnnotation(doNotDCEAnnotation)) tree
+    else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
   private def keepAsNew(sym: Symbol)(implicit ctx: Context): Boolean =

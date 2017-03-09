@@ -109,7 +109,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val casts = this.casts.items
     val classOfs = this.classOfs.items
     val outerMethods = this.outerMethods.toSet
-    CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
+    new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
   private def addReachableType(x: TypeWithContext, from: CallInfoWithContext): Unit = {
@@ -146,7 +146,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addCast(from: Type, to: Type) = {
     if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
-      val newCast = Cast(from, to)
+      val newCast = new Cast(from, to)
       for (tp <- reachableTypes.items) {
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
           casts += newCast

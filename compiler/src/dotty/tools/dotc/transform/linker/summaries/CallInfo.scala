@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types.{TermRef, Type}
 class CallInfo(val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type],
     val source: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
-  override def equals(obj: scala.Any): Boolean = obj match {
+  override def equals(obj: Any): Boolean = obj match {
     case obj: CallInfo =>
       call == obj.call && targs == obj.targs && argumentsPassed == obj.argumentsPassed && source == obj.source
     case _ => false

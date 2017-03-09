@@ -3,17 +3,14 @@ package dotty.tools.dotc.transform.linker.callgraph
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.{MethodicType, Type}
 
-case class Cast(from: Type, to: Type)(implicit ctx: Context) {
+class Cast(val from: Type, val to: Type)(implicit ctx: Context) {
 
   assertNonMethodic("from", from.widenDealias)
   assertNonMethodic("to", to.widenDealias)
 
-  override def equals(other: Any): Boolean = {
-    other match {
-      case Cast(a, b) =>
-        a =:= from && b =:= to
-      case _ => false
-    }
+  override def equals(other: Any): Boolean = other match {
+    case other: Cast => other.from =:= from && other.to =:= to
+    case _ => false
   }
 
   override def hashCode(): Int =

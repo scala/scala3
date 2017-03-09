@@ -9,7 +9,7 @@ object OuterTargs {
   lazy val empty = new OuterTargs(Map.empty)
 }
 
-final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
+final class OuterTargs(val mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
 
   def nonEmpty: Boolean = mp.nonEmpty
 
@@ -36,6 +36,8 @@ final case class OuterTargs(mp: Map[Symbol, Map[Name, Type]]) extends AnyVal {
   def combine(environment: OuterTargs)(implicit ctx: Context): OuterTargs = {
     val subst = new SubstituteByParentMap(environment)
     val newMap = mp.map(x => (x._1, x._2.map(x => (x._1, subst.apply(x._2)))))
-    OuterTargs(newMap)
+    new OuterTargs(newMap)
   }
+
+  override def toString: String = s"OuterTargs($mp)"
 }
