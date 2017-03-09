@@ -640,12 +640,26 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =
         methPart(fun1).tpe match {
           case funRef: TermRef =>
-            val app =
-              if (proto.allArgTypesAreCurrent())
-                new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-              else
-                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
-            convertNewGenericArray(ConstFold(app.result))
+            if (ctx.macrosEnabled && macros.isQuasiquote(funRef.termSymbol, tree))
+              typed(macros.expandQuasiquote(tree, isTerm = true), pt)
+            else {
+              val app =
+                if (proto.allArgTypesAreCurrent())
+                  new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+                else
+                  new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
+              val treeTpd = convertNewGenericArray(ConstFold(app.result))
+
+              // expand def macros after type checking
+              // Note: macros that expand to functions cannot be immediately applied.
+              // This is a practical constraint, as currying is also disallowed for macros
+              if (macros.isDefMacro(fun1.symbol) && !pt.isInstanceOf[ApplyingProto]) {
+                if (ctx.macrosEnabled)
+                  typed(macros.expandDefMacro(treeTpd), pt)
+                else
+                  errorTree(treeTpd, s"can't expand the macro ${fun1.symbol.show}, make sure `Eden` is in -classpath")
+              } else treeTpd
+            }
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -861,6 +875,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
 
     unapplyFn.tpe.widen match {
+      case tp if ctx.macrosEnabled && macros.isQuasiquote(unapplyFn.symbol, tree) =>
+        typed(macros.expandQuasiquote(tree, isTerm = false), selType)
       case mt: MethodType if mt.paramTypes.length == 1 =>
         val unapplyArgType = mt.paramTypes.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
@@ -1434,4 +1450,3 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
 }
-

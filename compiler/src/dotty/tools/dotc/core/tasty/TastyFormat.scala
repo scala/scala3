@@ -261,6 +261,7 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val INSUPERCALL = 31
   final val STABLE = 32
+  final val MACRO = 33
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -385,6 +386,7 @@ object TastyFormat {
        | DEFAULTparameterized
        | INSUPERCALL
        | STABLE
+       | MACRO
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -440,6 +442,7 @@ object TastyFormat {
     case ARTIFACT => "ARTIFACT"
     case MUTABLE => "MUTABLE"
     case LABEL => "LABEL"
+    case MACRO => "MACRO"
     case FIELDaccessor => "FIELDaccessor"
     case CASEaccessor => "CASEaccessor"
     case COVARIANT => "COVARIANT"
