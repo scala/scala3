@@ -34,6 +34,8 @@ import scala.language.{postfixOps, implicitConversions}
 // static Attributes.Name   SPECIFICATION_VERSION
 
 class Jar(file: File) extends Iterable[JarEntry] {
+  import Jar.enrichManifest
+
   def this(jfile: JFile) = this(File(jfile))
   def this(path: String) = this(File(path))
 
@@ -133,6 +135,8 @@ object Jar {
     def apply(manifest: JManifest): WManifest = new WManifest(manifest)
     implicit def unenrichManifest(x: WManifest): JManifest = x.underlying
   }
+  implicit def enrichManifest(m: JManifest): WManifest = WManifest(m)
+
   class WManifest(manifest: JManifest) {
     for ((k, v) <- initialMainAttrs)
       this(k) = v

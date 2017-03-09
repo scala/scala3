@@ -30,7 +30,6 @@ package object io {
   type JManifest = java.util.jar.Manifest
   type JFile = java.io.File
 
-  implicit def enrichManifest(m: JManifest): Jar.WManifest = Jar.WManifest(m)
   private lazy val daemonThreadPool = DaemonThreadFactory.newPool()
 
   def runnable(body: => Unit): Runnable       = new Runnable { override def run() = body }

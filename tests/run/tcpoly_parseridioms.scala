@@ -90,9 +90,9 @@ trait ParserIdioms extends Parsers with Idioms {
     def pure[a](x: a): Parser[a] = success(x)
   }
 
-  implicit def parserIdiomFun[s, t](fun: s=>t): IdiomaticFunction[Parser, ParserIdiom.type, s, t] =
+  protected implicit def parserIdiomFun[s, t](fun: s=>t): IdiomaticFunction[Parser, ParserIdiom.type, s, t] =
     new IdiomaticFunction[Parser, ParserIdiom.type, s, t](ParserIdiom, fun)
-  implicit def parserIdiomTgt[s](tgt: s): IdiomaticTarget[Parser, ParserIdiom.type, s] =
+  protected implicit def parserIdiomTgt[s](tgt: s): IdiomaticTarget[Parser, ParserIdiom.type, s] =
     new IdiomaticTarget[Parser, ParserIdiom.type, s](ParserIdiom, tgt)
 
   trait Expr
@@ -103,8 +103,8 @@ trait ParserIdioms extends Parsers with Idioms {
   // TODO: how can parserIdiom(curry2(_)) be omitted?
   def expr: Parser[Expr] = parserIdiomFun(curry2(Plus)) <| num <> num |>
 
-  implicit def curry2[s,t,u](fun: (s, t)=>u)(a: s)(b: t): u = fun(a, b)
-  implicit def curry3[r,s,t,u](fun: (r,s, t)=>u)(a: r)(b: s)(c: t): u = fun(a, b, c)
+  protected implicit def curry2[s,t,u](fun: (s, t)=>u)(a: s)(b: t): u = fun(a, b)
+  protected implicit def curry3[r,s,t,u](fun: (r,s, t)=>u)(a: r)(b: s)(c: t): u = fun(a, b, c)
 }
 
 object Test extends ParserIdioms with App {

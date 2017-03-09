@@ -118,7 +118,7 @@ object desugar {
         vparamss = (setterParam :: Nil) :: Nil,
         tpt = TypeTree(defn.UnitType),
         rhs = setterRhs
-      ).withMods((mods | Accessor) &~ CaseAccessor) // rhs gets filled in later, when field is generated and getter has parameters
+      ).withMods((mods | Accessor) &~ (CaseAccessor | Implicit)) // rhs gets filled in later, when field is generated and getter has parameters
       Thicket(vdef, setter)
     }
     else vdef

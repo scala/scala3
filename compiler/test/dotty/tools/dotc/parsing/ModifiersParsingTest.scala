@@ -16,7 +16,7 @@ import core.Flags
 object ModifiersParsingTest {
   implicit val ctx: Context = (new ContextBase).initialCtx
 
-  implicit def parse(code: String): Tree = {
+  private implicit def parse(code: String): Tree = {
     val (_, stats) = new Parser(new SourceFile("<meta>", code.toCharArray)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }

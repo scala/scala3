@@ -15,6 +15,7 @@ import scala.reflect.internal.util.WeakHashSet
 import scala.reflect.io.{AbstractFile, Directory, PlainDirectory}
 import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.core._
 import Periods._
 import SymDenotations._
@@ -481,13 +482,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
 
 
-  implicit def positionHelper(a: Position): PositionHelper = new PositionHelper {
+  implicit class positionHelper(a: Position) extends PositionHelper {
     def isDefined: Boolean = a.exists
-    def line: Int = sourcePos(a).line + 1
+    def line: Int = SourcePosition(a).line + 1
     def finalPosition: Position = a
   }
 
-  implicit def constantHelper(a: Constant): ConstantHelper = new ConstantHelper {
+  implicit class constantHelper(a: Constant) extends ConstantHelper {
     def booleanValue: Boolean = a.booleanValue
     def longValue: Long = a.longValue
     def byteValue: Byte = a.byteValue
@@ -503,8 +504,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def charValue: Char = a.charValue
   }
 
-
-  implicit def treeHelper(a: Tree): TreeHelper = new TreeHelper {
+  implicit class treeHelper(a: Tree) extends TreeHelper {
     def symbol: Symbol = a.symbol
 
     def pos: Position = a.pos
@@ -517,7 +517,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def annotHelper(a: Annotation): AnnotationHelper = new AnnotationHelper {
+  implicit class annotHelper(a: Annotation) extends AnnotationHelper {
     def atp: Type = a.tree.tpe
 
     def assocs: List[(Name, Tree)] = assocsFromApply(a.tree)
@@ -538,7 +538,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def nameHelper(n: Name): NameHelper = new NameHelper {
+  implicit class nameHelper(n: Name) extends NameHelper {
     def toTypeName: Name = n.toTypeName
     def isTypeName: Boolean = n.isTypeName
     def toTermName: Name = n.toTermName
@@ -551,7 +551,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
+  implicit class symHelper(sym: Symbol) extends SymbolHelper {
     // names
     def fullName(sep: Char): String = sym.showFullName
     def fullName: String = sym.showFullName
@@ -778,7 +778,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
 
-  implicit def typeHelper(tp: Type): TypeHelper = new TypeHelper {
+  implicit class typeHelper(tp: Type) extends TypeHelper {
     def member(string: Name): Symbol = tp.member(string.toTermName).symbol
 
     def isFinalType: Boolean = tp.typeSymbol is Flags.Final //in scalac checks for type parameters. Why? Aren't they gone by backend?
