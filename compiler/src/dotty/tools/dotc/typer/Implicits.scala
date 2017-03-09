@@ -82,11 +82,29 @@ object Implicits {
           case tpw: TermRef =>
             false // can't discard overloaded refs
           case tpw =>
-            //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
-            //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            !tpw.derivesFrom(defn.FunctionClass(1)) ||
-            ref.symbol == defn.Predef_conforms //
-              // as an implicit conversion, Predef.$conforms is a no-op, so exclude it
+            // Only direct instances of Function1 and direct or indirect instances of <:< are eligible as views.
+            // However, Predef.$conforms is not eligible, because it is a no-op.
+            //
+            // In principle, it would be cleanest if only implicit methods qualified
+            // as implicit conversions. We could achieve that by having standard conversions like
+            // this in Predef:
+            //
+            //    implicit def convertIfConforms[A, B](x: A)(implicit ev: A <:< B): B = ev(a)
+            //    implicit def convertIfConverter[A, B](x: A)(implicit ev: ImplicitConverter[A, B]): B = ev(a)
+            //
+            // (Once `<:<` inherits from `ImplicitConverter` we only need the 2nd one.)
+            // But clauses like this currently slow down implicit search a lot, because
+            // they are eligible for all pairs of types, and therefore are tried too often.
+            // We emulate instead these conversions directly in the search.
+            // The reason for leaving out `Predef_conforms` is that we know it adds
+            // nothing since it only relates subtype with supertype.
+            //
+            // We keep the old behavior under -language:Scala2.
+            val isFunctionInS2 = ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1))
+            val isImplicitConverter = tpw.derivesFrom(defn.Predef_ImplicitConverter)
+            val isConforms =
+              tpw.derivesFrom(defn.Predef_Conforms) && ref.symbol != defn.Predef_conforms
+            !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {

@@ -37,7 +37,8 @@ object Moop1 {
     implicit object f1 extends (Int => String) { def apply(x: Int): String = "Int" }
     implicit val f2: Long => String = _ => "Long"
 
-    println(5: String)
+    //println(5: String)
+      // This picked f1 before, but is now disallowed since subtypes of functions are no longer implicit conversions
   }
 }
 
@@ -73,14 +74,14 @@ object Moop3 {
       // Dotty deviation. This fails for Dotty with ambiguity error for similar reasons as ob1.
   }
   object ob2 {
-    implicit val f1: Int => String  = _ => "Int"
+    implicit val f1: ImplicitConverter[Int, String]  = _ => "Int"
     implicit def f2(x: Long): String = "Long"
 
     println(5: String)
   }
   object ob3 {
-    implicit val f1: Int => String  = _ => "Int"
-    implicit val f2: Long => String = _ => "Long"
+    implicit val f1: ImplicitConverter[Int, String]  = _ => "Int"
+    implicit val f2: ImplicitConverter[Long, String] = _ => "Long"
 
     println(5: String)
   }
