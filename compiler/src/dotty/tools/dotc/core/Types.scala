@@ -19,6 +19,7 @@ import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleMap}
 import reporting.diagnostic.Message
+import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -3853,7 +3854,7 @@ object Types {
 
   class CyclicReference private (val denot: SymDenotation)
     extends TypeError(s"cyclic reference involving $denot") {
-    def show(implicit ctx: Context) = s"cyclic reference involving ${denot.show}"
+    def toMessage(implicit ctx: Context) = CyclicReferenceInvolving(denot)
   }
 
   object CyclicReference {

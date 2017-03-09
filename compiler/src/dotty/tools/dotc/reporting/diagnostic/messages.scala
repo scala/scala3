@@ -18,6 +18,7 @@ import dotc.parsing.Tokens
 import printing.Highlighting._
 import printing.Formatting
 import ErrorMessageID._
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 
 object messages {
 
@@ -1134,7 +1135,7 @@ object messages {
   }
 
   case class AnnotatedPrimaryConstructorRequiresModifierOrThis(cls: Name)(implicit ctx: Context)
-    extends Message(AnnotatedPrimaryConstructorRequiresModifierOrThisID) {
+  extends Message(AnnotatedPrimaryConstructorRequiresModifierOrThisID) {
     val kind = "Syntax"
     val msg = hl"""${"private"}, ${"protected"}, or ${"this"} expected for annotated primary constructor"""
     val explanation =
@@ -1147,4 +1148,48 @@ object messages {
            |                           ^^^^
            |""".stripMargin
   }
+
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val explanation =
+      hl"""Case 1: ${tree} is overloaded
+          |If there are multiple methods named `${tree.name}` and at least one definition of
+          |it calls another, you need to specify the calling method's return type.
+          |
+          |Case 2: ${tree} is recursive
+          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |""".stripMargin
+  }
+
+  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  extends Message(RecursiveValueNeedsResultTypeID) {
+    val kind = "Syntax"
+    val msg = hl"""recursive value ${tree.name} needs type"""
+    val explanation =
+      hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
+          |""".stripMargin
+  }
+
+  case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
+  extends Message(CyclicReferenceInvolvingID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving $denot"""
+    val explanation =
+      hl"""|$denot is declared as part of a cycle which makes it impossible for the
+           |compiler to decide upon ${denot.name}'s type.
+           |""".stripMargin
+  }
+
+  case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
+  extends Message(CyclicReferenceInvolvingImplicitID) {
+    val kind = "Syntax"
+    val msg = hl"""cyclic reference involving implicit $cycleSym"""
+    val explanation =
+      hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
+           |To avoid this error, give `${cycleSym.name}` an explicit type.
+           |""".stripMargin
+  }
+
 }

@@ -6,7 +6,7 @@ import core.Contexts.Context
 import diagnostic.messages._
 import dotty.tools.dotc.parsing.Tokens
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Ignore, Test}
 
 class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
@@ -212,4 +212,97 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val AnnotatedPrimaryConstructorRequiresModifierOrThis(cls) :: Nil = messages
       assertEquals("AnotherClass", cls.show)
     }
+
+  @Test def overloadedMethodNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  def foo(i: Int) = foo(i.toString)
+        |  def foo(s: String) = s
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("foo", tree.show)
+    }
+
+  @Test def recursiveMethodNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  def i = i + 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
+      assertEquals("i", tree.show)
+    }
+
+  @Test def recursiveValueNeedsReturnType =
+    checkMessagesAfter("frontend") {
+      """
+        |class Scope() {
+        |  lazy val i = i + 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val RecursiveValueNeedsResultType(tree) :: Nil = messages
+      assertEquals("i", tree.show)
+    }
+
+  @Test def cyclicReferenceInvolving =
+    checkMessagesAfter("frontend") {
+      """
+        |class A {
+        |  val x: T = ???
+        |  type T <: x.type // error: cyclic reference involving value x
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CyclicReferenceInvolving(denot) :: Nil = messages
+      assertEquals("value x", denot.show)
+    }
+
+  @Test def cyclicReferenceInvolvingImplicit =
+    checkMessagesAfter("frontend") {
+      """
+        |object implicitDefs {
+        |  def foo(implicit x: String) = 1
+        |  def bar() = {
+        |    implicit val x = foo
+        |    x
+        |  }
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      val defn = ictx.definitions
+
+      assertMessageCount(1, messages)
+      val CyclicReferenceInvolvingImplicit(tree) :: Nil = messages
+      assertEquals("x", tree.name.show)
+    }
+
+
 }
