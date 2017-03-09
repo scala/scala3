@@ -58,14 +58,19 @@ class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMet
     lazy val megamorphicCalls = morphisms - 1 - 2
 
     def log()(implicit ctx: Context): Unit = {
-      ctx.log(s"\t Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations")
-      ctx.log(s"\t mono: ${monomorphicCalls.size}, bi: ${bimorphicCalls.size}, mega: ${megamorphicCalls.map(_._2.size).sum}")
-      ctx.log(s"\t Found ${outerMethods.size} not defined calls: ${outerMethods.map(_.showFullName)}")
-      ctx.log(s"\t Reachable classes: ${reachableClasses.mkString(", ")}")
-      ctx.log(s"\t Reachable methods: ${reachableDefs.map(x => if (x.is(Flags.Module)) x else x.owner.name + "." + x.name).mkString(", ")}")
-      ctx.log(s"\t Reachable method classes: ${classesWithReachableMethods.mkString(", ")}")
-      ctx.log(s"\t Reachable specs: ${reachableSpecs.mkString(", ")}")
-      ctx.log(s"\t Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}")
+      ctx.log(
+        s"""
+           |Call graph info:
+           |  Found: ${classesWithReachableMethods.size} classes with reachable methods, ${reachableClasses.size} reachable classes, ${reachableDefs.size} reachable methods, ${reachableSpecs.size} specializations
+           |    mono: ${monomorphicCalls.size}, bi: ${bimorphicCalls.size}, mega: ${megamorphicCalls.map(_._2.size).sum}
+           |  Found ${outerMethods.size} not defined calls: ${outerMethods.map(_.showFullName)}
+           |  Reachable classes: ${reachableClasses.map(_.showFullName).mkString(", ")}
+           |  Reachable methods: ${reachableDefs.map(_.showFullName).mkString(", ")}
+           |  Classes with reachable methods: ${classesWithReachableMethods.map(_.showFullName).mkString(", ")}
+           |  Reachable specs: ${reachableSpecs.toList.sortBy(-_._2.size).map(x => (x._1.showFullName, x._2.map(_.show))).mkString(", ")}
+           |  Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}
+         """.stripMargin
+      )
     }
 
   }

@@ -126,7 +126,7 @@ class BuildCallGraph extends Phase {
       val mode = CallGraphBuilder.AnalyseArgs
       val specLimit = 15
 
-      ctx.log(s"\n\t\t\tType & Arg flow analisys")
+      ctx.log(s"\n\t\t\tType & Arg flow analysis")
 
       val callGraph = buildCallGraph(mode, specLimit)
       this.callGraph = callGraph
