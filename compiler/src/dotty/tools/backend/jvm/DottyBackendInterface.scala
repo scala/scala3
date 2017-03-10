@@ -531,7 +531,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     tree match {
       case Apply(fun, args) =>
         fun.tpe.widen match {
-          case MethodType(names, _) =>
+          case MethodType(names) =>
             names zip args
         }
     }

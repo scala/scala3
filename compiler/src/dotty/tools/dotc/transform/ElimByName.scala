@@ -92,8 +92,8 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
         arg
     }
 
-    val MethodType(_, formals) = tree.fun.tpe.widen
-    val args1 = tree.args.zipWithConserve(formals)(transformArg)
+    val mt @ MethodType(_) = tree.fun.tpe.widen
+    val args1 = tree.args.zipWithConserve(mt.paramTypes)(transformArg)
     cpy.Apply(tree)(tree.fun, args1)
   }
 

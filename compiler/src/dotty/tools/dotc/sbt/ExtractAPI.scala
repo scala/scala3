@@ -284,7 +284,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case pt: PolyType =>
         assert(start == 0)
         paramLists(pt.resultType)
-      case mt @ MethodType(pnames, ptypes) =>
+      case mt @ MethodTpe(pnames, ptypes, restpe) =>
         // TODO: We shouldn't have to work so hard to find the default parameters
         // of a method, Dotty should expose a convenience method for that, see #1143
         val defaults =
@@ -300,7 +300,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
           new api.MethodParameter(pname.toString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))
-        new api.ParameterList(params.toArray, mt.isImplicit) :: paramLists(mt.resultType, params.length)
+        new api.ParameterList(params.toArray, mt.isImplicit) :: paramLists(restpe, params.length)
       case _ =>
         Nil
     }

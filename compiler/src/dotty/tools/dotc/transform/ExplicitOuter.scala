@@ -328,9 +328,9 @@ object ExplicitOuter {
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
       if (hasOuterParam(cls)) {
-        val mt @ MethodType(pnames, ptypes) = tp
+        val mt @ MethodTpe(pnames, ptypes, restpe) = tp
         mt.derivedMethodType(
-          nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, mt.resultType)
+          nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, restpe)
       } else tp
 
     /** If function in an apply node is a constructor that needs to be passed an
@@ -389,7 +389,7 @@ object ExplicitOuter {
     /** The outer parameter definition of a constructor if it needs one */
     def paramDefs(constr: Symbol): List[ValDef] =
       if (constr.isConstructor && hasOuterParam(constr.owner.asClass)) {
-        val MethodType(outerName :: _, outerType :: _) = constr.info
+        val MethodTpe(outerName :: _, outerType :: _, _) = constr.info
         val outerSym = ctx.newSymbol(constr, outerName, Param, outerType)
         ValDef(outerSym) :: Nil
       }

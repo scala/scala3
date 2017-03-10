@@ -198,8 +198,8 @@ class ClassfileParser(
          */
         def stripOuterParamFromConstructor() = innerClasses.get(currentClassName) match {
           case Some(entry) if !isStatic(entry.jflags) =>
-            val mt @ MethodType(paramnames, paramtypes) = denot.info
-            denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
+            val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
+            denot.info = mt.derivedMethodType(paramNames.tail, paramTypes.tail, resultType)
           case _ =>
         }
 
@@ -207,9 +207,9 @@ class ClassfileParser(
          *  and make constructor type polymorphic in the type parameters of the class
          */
         def normalizeConstructorInfo() = {
-          val mt @ MethodType(paramnames, paramtypes) = denot.info
+          val mt @ MethodType(paramNames) = denot.info
           val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
-          denot.info = mt.derivedMethodType(paramnames, paramtypes, rt)
+          denot.info = mt.derivedMethodType(paramNames, mt.paramTypes, rt)
           addConstructorTypeParams(denot)
         }
 

@@ -55,8 +55,8 @@ object Scala2Unpickler {
    *  to `RepeatedParamClass` types.
    */
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
-    case tp @ MethodType(paramNames, paramTypes) =>
-      val lastArg = paramTypes.last
+    case tp: MethodType =>
+      val lastArg = tp.paramTypes.last
       assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
       val elemtp = elemtp0 match {
@@ -66,8 +66,8 @@ object Scala2Unpickler {
           elemtp0
       }
       tp.derivedMethodType(
-        paramNames,
-        paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
+        tp.paramNames,
+        tp.paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
     case tp: PolyType =>
       tp.derivedPolyType(tp.paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))

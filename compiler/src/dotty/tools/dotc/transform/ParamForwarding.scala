@@ -27,7 +27,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
       val (superArgs, superParamNames) = impl.parents match {
         case superCall @ Apply(fn, args) :: _ =>
           fn.tpe.widen match {
-            case MethodType(paramNames, _) => (args, paramNames)
+            case MethodType(paramNames) => (args, paramNames)
             case _ => (Nil, Nil)
           }
         case _ => (Nil, Nil)

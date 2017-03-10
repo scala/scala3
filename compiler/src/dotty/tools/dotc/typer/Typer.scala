@@ -672,8 +672,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       // this can type the greatest set of admissible closures.
       (pt.dealias.argTypesLo.init, pt.dealias.argTypesHi.last)
     case SAMType(meth) =>
-      val mt @ MethodType(_, paramTypes) = meth.info
-      (paramTypes, mt.resultType)
+      val MethodTpe(_, formals, restpe) = meth.info
+      (formals, restpe)
     case _ =>
       (List.range(0, defaultArity) map alwaysWildcardType, WildcardType)
   }
@@ -1287,10 +1287,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo match {
       case cinfo: PolyType =>
         maybeCall(ref, psym, cinfo.resultType)
-      case cinfo @ MethodType(Nil, _) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
+      case cinfo @ MethodType(Nil) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
         val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
         typedExpr(untpd.TypedSplice(icall))(superCtx)
-      case cinfo @ MethodType(Nil, _) if !cinfo.resultType.isInstanceOf[MethodType] =>
+      case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
         if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.

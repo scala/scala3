@@ -1263,7 +1263,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
         def sizeFits(alt: TermRef, tp: Type): Boolean = tp match {
           case tp: PolyType => sizeFits(alt, tp.resultType)
-          case MethodType(_, ptypes) =>
+          case tp: MethodType =>
+            val ptypes = tp.paramTypes
             val numParams = ptypes.length
             def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
             def hasDefault = alt.symbol.hasDefaultParams
