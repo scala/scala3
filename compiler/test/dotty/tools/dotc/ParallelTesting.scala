@@ -11,8 +11,86 @@ import reporting.diagnostic.MessageContainer
 import interfaces.Diagnostic.ERROR
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths }
+import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
+import scala.util.control.NonFatal
 
 trait ParallelTesting {
+
+  private abstract class CompileRun(targetDirs: List[JFile], fromDir: String, flags: Array[String]) {
+    val totalTargets = targetDirs.length
+
+    private[this] var _errors =  0
+    def errors: Int = synchronized { _errors }
+
+    private[this] var _targetsCompiled = 0
+    private def targetsCompiled: Int = synchronized { _targetsCompiled }
+
+    protected final def completeCompilation(newErrors: Int) = synchronized {
+      _targetsCompiled += 1
+      _errors += newErrors
+    }
+
+    private def statusRunner: Runnable = new Runnable {
+      def run(): Unit = {
+        val start = System.currentTimeMillis
+        var tCompiled = targetsCompiled
+        while (tCompiled < totalTargets) {
+          val timestamp = (System.currentTimeMillis - start) / 1000
+          val progress = (tCompiled.toDouble / totalTargets * 40).toInt
+          print(
+            s"Compiling tests in $fromDir [" +
+            ("=" * (math.max(progress - 1, 0))) +
+            (if (progress > 0) ">" else "") +
+            (" " * (39 - progress)) +
+            s"] $tCompiled/$totalTargets, ${timestamp}s, errors: $errors\r"
+          )
+          Thread.sleep(50)
+          tCompiled = targetsCompiled
+        }
+        // println, otherwise no newline and cursor at start of line
+        println(
+          s"Compiled tests in $fromDir " +
+          s"[========================================] $totalTargets/$totalTargets, " +
+          s"${(System.currentTimeMillis - start) / 1000}s, errors: $errors  "
+        )
+      }
+    }
+
+    protected def compilationRunnable(dir: JFile): Runnable
+
+    private[ParallelTesting] def execute(): this.type = {
+      assert(_targetsCompiled == 0, "not allowed to re-use a `CompileRun`")
+      val pool = JExecutors.newWorkStealingPool()
+      pool.submit(statusRunner)
+
+      targetDirs.foreach { dir =>
+        pool.submit(compilationRunnable(dir))
+      }
+
+      pool.shutdown()
+      pool.awaitTermination(10, TimeUnit.MINUTES)
+      this
+    }
+  }
+
+  private final class PosCompileRun(targetDirs: List[JFile], fromDir: String, flags: Array[String])
+  extends CompileRun(targetDirs, fromDir, flags) {
+    protected def compilationRunnable(dir: JFile): Runnable = new Runnable {
+      def run(): Unit =
+        try {
+          val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
+          val errors = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), false)
+          completeCompilation(errors.length)
+        }
+        catch {
+          case NonFatal(e) => {
+            System.err.println(s"\n${e.getMessage}\n")
+            completeCompilation(1)
+            throw e
+          }
+        }
+    }
+  }
 
   private val driver = new Driver {
     override def newCompiler(implicit ctx: Context) = new Compiler
@@ -32,7 +110,7 @@ trait ParallelTesting {
     }
   }
 
-  private def compile(files: Array[JFile], flags: Array[String]): (Array[JFile], List[MessageContainer]) = {
+  private def compile(files: Array[JFile], flags: Array[String], suppressErrors: Boolean): List[MessageContainer] = {
 
     def findJarFromRuntime(partialName: String) = {
       val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
@@ -56,12 +134,20 @@ trait ParallelTesting {
 
     compileWithJavac(files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath))
 
-    val reporter = new DaftReporter(suppress = false)
+    val reporter = new DaftReporter(suppress = suppressErrors)
     driver.process(flags ++ files.map(_.getAbsolutePath), reporter = reporter)
-    files -> reporter.errors
+    reporter.errors
   }
 
-  def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): Unit = {
+
+  class CompilationTest(targetDirs: List[JFile], fromDir: String, flags: Array[String]) {
+    def pos: Unit = {
+      val run = new PosCompileRun(targetDirs, fromDir, flags).execute()
+      assert(run.errors == 0, s"Expected no errors when compiling $fromDir")
+    }
+  }
+
+  def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     // each calling method gets its own unique output directory, in which we
     // place the dir being compiled:
     val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
@@ -102,28 +188,7 @@ trait ParallelTesting {
     // Directories in which to compile all containing files with `flags`:
     val dirsToCompile = files.map(toCompilerDirFromFile) ++ dirs.map(toCompilerDirFromDir)
 
-    // Progress bar setup
-    val numberOfTargets = dirsToCompile.length
-    var targetsCompiled = 0
-    val start = System.currentTimeMillis
-    var errors = 0
-
-    dirsToCompile.map { dir =>
-      val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
-      targetsCompiled += 1
-      val timestamp = (System.currentTimeMillis - start) / 1000
-      val progress = (targetsCompiled.toDouble / numberOfTargets * 40).toInt
-      print(
-        s"Compiling tests in $f [" +
-        ("=" * (math.max(progress - 1, 0))) +
-        (if (progress > 0) ">" else "") +
-        (" " * (39 - progress)) +
-        s"] $targetsCompiled/$numberOfTargets, ${timestamp}s, errors: $errors\r"
-      )
-      val (_, newErrors ) = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath))
-      errors += newErrors.length
-    }
-    println(s"Compiled tests in $f [========================================] $targetsCompiled/$numberOfTargets, ${(System.currentTimeMillis - start) / 1000}s, errors: $errors  ")
-
+    // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
+    new CompilationTest(dirsToCompile, f, flags)
   }
 }
