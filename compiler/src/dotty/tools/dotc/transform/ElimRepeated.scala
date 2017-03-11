@@ -95,8 +95,8 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     assert(ctx.phase == thisTransformer)
     def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
-        addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
-     else
+      addVarArgsBridge(tree)
+    else
       tree
   }
 
@@ -120,6 +120,11 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .appliedToArgs(vrefs :+ TreeGen.wrapArray(varArgRef, elemtp))
         .appliedToArgss(vrefss1)
     })
+
+    // Drop the override flag on the user-written method, only the added bridge
+    // is a real override.
+    original.copySymDenotation(initFlags = original.flags &~ Override).installAfter(thisTransformer)
+
     Thicket(ddef, bridgeDef)
   }
 
