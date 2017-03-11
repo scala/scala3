@@ -37,6 +37,7 @@ object Reporter {
       val problems = reporter.get.problems
       println(problems.toList)
       assert(problems.size == 2)
+      assert(problems.forall(_.position.offset.isDefined))
       assert(problems.count(_.severity == Severity.Error) == 1) // not found: er1,
       assert(problems.count(_.severity == Severity.Warn) == 1)  // `with' as a type operator has been deprecated; use `&' instead,
     })
