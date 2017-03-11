@@ -487,7 +487,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
         case tp1 @ MethodType(_, formals1) =>
-          (tp1.signature consistentParams tp2.signature) &&
+          val potentialMatch =
+            tp1.signature.consistentParams(tp2.signature) ||
+            tp1.isJava != tp2.isJava
+              // Overriding Java and non-Java methods might differ in their signature:
+              // Java maps Array[T] to Array[Object], Scala maps it to Object. See #1747.
+          potentialMatch &&
             matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
             (tp1.isImplicit == tp2.isImplicit) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
@@ -1482,7 +1487,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def isSubType(tp1: Type, tp2: Type) =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass}" else ""}${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (Config.verboseExplainSubtype) s" ${tp1.getClass} ${tp2.getClass} ${tp1.signature} ${tp2.signature}" else ""}${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2)
     }
 
