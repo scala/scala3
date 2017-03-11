@@ -2478,19 +2478,31 @@ object Types {
         case _: ExprType => tp
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
+      def integrate(tp: Type, mt: MethodType) =
+        tp.subst(params, (0 until params.length).toList.map(MethodParam(mt, _)))
       def paramInfo(param: Symbol): Type = {
         val paramType = translateRepeated(param.info)
         if (param.is(Inline)) translateInline(paramType) else paramType
       }
-      def transformResult(mt: MethodType) =
-        resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
-      apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)
+      apply(params.map(_.name.asTermName))(
+        mt => params.map(param => integrate(paramInfo(param), mt)),
+        mt => integrate(resultType, mt))
+    }
+
+    def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
+      if (Config.checkMethodTypes)
+        for ((paramType, idx) <- mt.paramTypes.zipWithIndex)
+          paramType.foreachPart {
+            case MethodParam(`mt`, j) => assert(j < idx, mt)
+            case _ =>
+          }
+      mt
     }
   }
 
   object MethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      unique(new CachedMethodType(paramNames)(paramTypesExp, resultTypeExp))
+      checkValid(unique(new CachedMethodType(paramNames)(paramTypesExp, resultTypeExp)))
 
     private type DependencyStatus = Byte
     private final val Unknown: DependencyStatus = 0   // not yet computed
@@ -2508,7 +2520,7 @@ object Types {
 
   object ImplicitMethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      unique(new ImplicitMethodType(paramNames)(paramTypesExp, resultTypeExp))
+      checkValid(unique(new ImplicitMethodType(paramNames)(paramTypesExp, resultTypeExp)))
   }
 
   /** A ternary extractor for MethodType */
