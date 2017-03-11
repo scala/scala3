@@ -92,6 +92,44 @@ trait ParallelTesting {
     }
   }
 
+  private final class NegCompileRun(targetDirs: List[JFile], fromDir: String, flags: Array[String])
+  extends CompileRun(targetDirs, fromDir, flags) {
+    private[this] var _failed = false
+    private[this] def fail(): Unit = _failed = true
+
+    def didFail: Boolean = _failed
+
+    protected def compilationRunnable(dir: JFile): Runnable = new Runnable {
+      def run(): Unit =
+        try {
+          val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
+
+          val expectedErrors = dir.listFiles.filter(_.getName.endsWith(".scala")).foldLeft(0) { (acc, file) =>
+            acc + Source.fromFile(file).sliding("// error".length).count(_.mkString == "// error")
+          }
+
+          val errors = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), true)
+          val actualErrors = errors.length
+
+          if (expectedErrors != actualErrors) {
+            System.err.println {
+              s"\nWrong number of errors encountered when compiling $dir, expected: $expectedErrors, actual: $actualErrors\n"
+            }
+            fail()
+          }
+
+          completeCompilation(actualErrors)
+        }
+        catch {
+          case NonFatal(e) => {
+            System.err.println(s"\n${e.getMessage}\n")
+            completeCompilation(1)
+            throw e
+          }
+        }
+    }
+  }
+
   private val driver = new Driver {
     override def newCompiler(implicit ctx: Context) = new Compiler
   }
@@ -103,9 +141,9 @@ trait ParallelTesting {
     def errors = _errors
 
     override def doReport(m: MessageContainer)(implicit ctx: Context) = {
-      if (!suppress && m.level == ERROR) {
+      if (m.level == ERROR) {
         _errors = m :: _errors
-        System.err.println(messageAndPos(m.contained, m.pos, diagnosticLevel(m)))
+        if (!suppress) System.err.println(messageAndPos(m.contained, m.pos, diagnosticLevel(m)))
       }
     }
   }
@@ -145,6 +183,11 @@ trait ParallelTesting {
       val run = new PosCompileRun(targetDirs, fromDir, flags).execute()
       assert(run.errors == 0, s"Expected no errors when compiling $fromDir")
     }
+
+    def neg: Unit = assert(
+      !(new NegCompileRun(targetDirs, fromDir, flags).execute().didFail),
+      s"Wrong number of errors encountered when compiling $fromDir"
+    )
   }
 
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
