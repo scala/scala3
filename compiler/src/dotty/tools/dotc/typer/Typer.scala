@@ -642,12 +642,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val leaks = escapingRefs(tree, localSyms)
     if (leaks.isEmpty) tree
-    else if (isFullyDefined(pt, ForceDegree.none)) ascribeType(tree, pt)
     else if (!forcedDefined) {
       fullyDefinedType(tree.tpe, "block", tree.pos)
-      val tree1 = ascribeType(tree, avoid(tree.tpe, localSyms))
-      ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
-    } else
+      val avoidingType = avoid(tree.tpe, localSyms)
+      if (isFullyDefined(pt, ForceDegree.none) && !(avoidingType <:< pt))
+        ascribeType(tree, pt)
+      else {
+        val tree1 = ascribeType(tree, avoidingType)
+        ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
+      }
+    } else if (isFullyDefined(pt, ForceDegree.none))
+      ascribeType(tree, pt)
+    else
       errorTree(tree,
           em"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
