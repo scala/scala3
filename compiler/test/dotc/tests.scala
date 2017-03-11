@@ -355,7 +355,6 @@ class tests extends CompilerTest {
 
   @Test def tasty_dotc_util = compileDir(dotcDir, "util", testPickling)
   @Test def tasty_tools_io = compileDir(toolsDir, "io", testPickling)
-  @Test def tasty_tests = compileDir(testsDir, "tasty", testPickling)
 
   @Test def tasty_bootstrap = {
     val logging = if (false) List("-Ylog-classpath", "-verbose") else Nil
