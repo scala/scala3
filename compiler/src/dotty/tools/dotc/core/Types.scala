@@ -2331,7 +2331,7 @@ object Types {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, name) =>
               tp.info match {
-                case TypeAlias(alias) if depStatus(pre) == TrueDeps => apply(alias)
+                case TypeAlias(alias) if depStatus(NoDeps, pre) == TrueDeps => apply(alias)
                 case _ => mapOver(tp)
               }
             case _ =>
@@ -2343,8 +2343,9 @@ object Types {
       else resType
 
     var myDependencyStatus: DependencyStatus = Unknown
+    var myParamDependencyStatus: DependencyStatus = Unknown
 
-    private def depStatus(tp: Type)(implicit ctx: Context): DependencyStatus = {
+    private def depStatus(initial: DependencyStatus, tp: Type)(implicit ctx: Context): DependencyStatus = {
       def combine(x: DependencyStatus, y: DependencyStatus) = {
         val status = (x & StatusMask) max (y & StatusMask)
         val provisional = (x | y) & Provisional
@@ -2368,7 +2369,7 @@ object Types {
               case _ => foldOver(status, tp)
             }
       }
-      depStatusAcc(NoDeps, tp)
+      depStatusAcc(initial, tp)
     }
 
     /** The dependency status of this method. Some examples:
@@ -2382,8 +2383,22 @@ object Types {
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
-        val result = depStatus(resType)
+        val result = depStatus(NoDeps, resType)
         if ((result & Provisional) == 0) myDependencyStatus = result
+        (result & StatusMask).toByte
+      }
+    }
+
+    /** The parameter dependency status of this method. Analogous to `dependencyStatus`,
+     *  but tracking dependencies in same parameter list.
+     */
+    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus = {
+      if (myParamDependencyStatus != Unknown) myParamDependencyStatus
+      else {
+        val result =
+          if (paramTypes.isEmpty) NoDeps
+          else (NoDeps /: paramTypes.tail)(depStatus(_, _))
+        if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
     }
@@ -2392,6 +2407,11 @@ object Types {
      *  which cannot be eliminated by de-aliasing?
      */
     def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
+
+    /** Does one of the parameter types contain references to earlier parameters
+     *  of this method type which cannot be eliminated by de-aliasing?
+     */
+    def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
