@@ -206,6 +206,16 @@ object DottyBuild extends Build {
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val dottyCompilerSettings = Seq(
+
+      // necessary evil: dottydoc currently needs to be included in the dotty
+      // project, for sbt integration
+      unmanagedResourceDirectories in Compile := Seq((resourceDirectory in Compile).value),
+      unmanagedResourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "resources",
+      unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
+      unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "src",
+      unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
+      unmanagedSourceDirectories in Test += baseDirectory.value / ".." / "doc-tool" / "test",
+
       // set system in/out for repl
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
@@ -447,17 +457,6 @@ object DottyBuild extends Build {
     settings(dottyCompilerSettings).
     settings(
       overrideScalaVersionSetting,
-
-      // necessary evil: dottydoc currently needs to be included in the dotty
-      // project, for sbt integration
-      // FIXME: note part of dottyCompilerSettings because the doc-tool does not
-      // compile with dotty
-      unmanagedResourceDirectories in Compile := Seq((resourceDirectory in Compile).value),
-      unmanagedResourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "resources",
-      unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
-      unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "doc-tool" / "src",
-      unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
-      unmanagedSourceDirectories in Test += baseDirectory.value / ".." / "doc-tool" / "test",
 
       // Disable scaladoc generation, it's way too slow and we'll replace it
       // by dottydoc anyway. We still publish an empty -javadoc.jar to make
