@@ -4,3 +4,9 @@ object Bug {
   def foo(x: Int)(y: C)(z: y.T): Unit = {}
   foo(3)(new C { type T = String })("hello")
 }
+object Bug2 {
+  class C { type T }
+  class D extends C { type T = String }
+  def foo(x: Int)(y: C)(z: y.T): Unit = {}
+  foo(3)(new D {})("hello")
+}
