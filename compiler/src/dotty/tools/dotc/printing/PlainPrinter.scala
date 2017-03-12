@@ -483,7 +483,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else
             Text()
 
-        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ node.pos.toString
+        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (node.pos.toString provided ctx.settings.Yprintpos.value)
       case _ =>
         tree.fallbackToText(this)
     }
