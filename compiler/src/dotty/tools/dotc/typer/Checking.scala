@@ -441,7 +441,6 @@ object Checking {
           case List(param) =>
             if (param.is(Mutable))
               ctx.error("value class parameter must not be a var", param.pos)
-
           case _ =>
             ctx.error("value class needs to have exactly one val parameter", clazz.pos)
         }
@@ -625,6 +624,24 @@ trait Checking {
       case _ =>
     }
   }
+
+  /** Check that method parameter types do not reference their own parameter
+   *  or later parameters in the same parameter section.
+   */
+  def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = vparams match {
+    case vparam :: vparams1 =>
+      val check = new TreeTraverser {
+        def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+          case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+            ctx.error("illegal forward reference to method parameter", id.pos)
+          case _ =>
+            traverseChildren(tree)
+        }
+      }
+      check.traverse(vparam.tpt)
+      checkNoForwardDependencies(vparams1)
+    case Nil =>
+  }
 }
 
 trait NoChecking extends Checking {
@@ -642,4 +659,5 @@ trait NoChecking extends Checking {
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
+  override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
 }
