@@ -90,14 +90,12 @@ object ProtoTypes {
    *
    *       [ ].name: proto
    */
-  abstract case class SelectionProto(val name: Name, val memberProto: Type, val compat: Compatibility)
+  abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
-        val mbr =
-          if (tp1.widen.classSymbol.isLinkedWith(ctx.owner.enclosingClass)) tp1.member(name)
-          else tp1.nonPrivateMember(name)
+        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
           compat.normalizedCompatible(m.info, memberProto)
@@ -112,11 +110,11 @@ object ProtoTypes {
 
     def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context) =
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
-      else SelectionProto(name, memberProto, compat)
+      else SelectionProto(name, memberProto, compat, privateOK)
 
     override def equals(that: Any): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat)
+        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
       case _ =>
         false
     }
@@ -126,14 +124,18 @@ object ProtoTypes {
 
     override def deepenProto(implicit ctx: Context) = derivedSelectionProto(name, memberProto.deepenProto, compat)
 
-    override def computeHash = addDelta(doHash(name, memberProto), if (compat eq NoViewsAllowed) 1 else 0)
+    override def computeHash = {
+      val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
+      addDelta(doHash(name, memberProto), delta)
+    }
   }
 
-  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility) extends SelectionProto(name, memberProto, compat)
+  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
+  extends SelectionProto(name, memberProto, compat, privateOK)
 
   object SelectionProto {
-    def apply(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
-      val selproto = new CachedSelectionProto(name, memberProto, compat)
+    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(implicit ctx: Context): SelectionProto = {
+      val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
       if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
   }
@@ -145,7 +147,7 @@ object ProtoTypes {
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp => SelectionProto(name, IgnoredProto(tp), typer)
+      case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -156,10 +158,10 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed)
+  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
 
   /** A prototype for selections in pattern constructors */
-  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed)
+  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
   trait ApplyingProto extends ProtoType
 

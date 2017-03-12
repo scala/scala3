@@ -516,8 +516,13 @@ trait Implicits { self: Typer =>
         || (from.tpe isRef defn.NullClass)
         || !(ctx.mode is Mode.ImplicitsEnabled)
         || (from.tpe eq NoPrefix)) NoImplicitMatches
-    else
-      try inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
+    else {
+      def adjust(to: Type) = to.stripTypeVar.widenExpr match {
+        case SelectionProto(name, memberProto, compat, true) =>
+          SelectionProto(name, memberProto, compat, privateOK = false)
+        case tp => tp
+      }
+      try inferImplicit(adjust(to), from, from.pos)
       catch {
         case ex: AssertionError =>
           implicits.println(s"view $from ==> $to")
@@ -525,6 +530,7 @@ trait Implicits { self: Typer =>
           implicits.println(TypeComparer.explained(implicit ctx => from.tpe <:< to))
           throw ex
       }
+    }
   }
 
   /** Find an implicit argument for parameter `formal`.

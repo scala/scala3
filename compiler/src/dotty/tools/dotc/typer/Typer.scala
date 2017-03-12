@@ -1714,7 +1714,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) =>
-        val qualProto = SelectionProto(name, pt, NoViewsAllowed)
+        val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither { implicit ctx =>
           val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
           if ((qual eq qual1) || ctx.reporter.hasErrors) None
