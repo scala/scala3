@@ -766,6 +766,9 @@ class RefChecks extends MiniPhase { thisTransformer =>
 
   override def phaseName: String = "refchecks"
 
+  // Needs to run after ElimRepeated for override checks involving varargs methods
+  override def runsAfter = Set(classOf[ElimRepeated])
+
   val treeTransform = new Transform(NoLevelInfo)
 
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {

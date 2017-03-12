@@ -48,9 +48,9 @@ class Compiler {
       List(new Pickler),            // Generate TASTY info
       List(new FirstTransform,      // Some transformations to put trees into a canonical form
            new CheckReentrant),     // Internal use only: Check that compiled program has no data races involving global vars
-      List(new RefChecks,           // Various checks mostly related to abstract members and overriding
-           new CheckStatic,         // Check restrictions that apply to @static members
+      List(new CheckStatic,         // Check restrictions that apply to @static members
            new ElimRepeated,        // Rewrite vararg parameters and arguments
+           new RefChecks,           // Various checks mostly related to abstract members and overriding
            new NormalizeFlags,      // Rewrite some definition flags
            new ExtensionMethods,    // Expand methods of value classes with extension methods
            new ExpandSAMs,          // Expand single abstract method closures to anonymous classes

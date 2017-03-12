@@ -32,7 +32,20 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)
 
+
+  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+    super.transform(ref) match {
+      case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
+        // This method won't override the corresponding Java method at the end of this phase,
+        // only the bridge added by `addVarArgsBridge` will.
+        ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
+      case ref1 =>
+        ref1
+    }
+
   override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym is Method
+
+  private def overridesJava(sym: Symbol)(implicit ctx: Context) = sym.allOverriddenSymbols.exists(_ is JavaDefined)
 
   private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
     case tp @ MethodType(paramNames, paramTypes) =>
@@ -93,10 +106,9 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     assert(ctx.phase == thisTransformer)
-    def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
-    if (tree.symbol.info.isVarArgsMethod && overridesJava)
-        addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
-     else
+    if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
+      addVarArgsBridge(tree)
+    else
       tree
   }
 
@@ -120,6 +132,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .appliedToArgs(vrefs :+ TreeGen.wrapArray(varArgRef, elemtp))
         .appliedToArgss(vrefss1)
     })
+
     Thicket(ddef, bridgeDef)
   }
 
