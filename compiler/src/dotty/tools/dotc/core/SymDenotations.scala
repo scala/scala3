@@ -957,6 +957,10 @@ object SymDenotations {
       else
         companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
 
+    /** Is this symbol the same or a linked class of `sym`? */
+    final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean =
+      (symbol eq sym) || (linkedClass eq sym)
+
     /** If this is a class, the module class of its companion object.
      *  If this is a module class, its companion class.
      *  NoSymbol otherwise.
