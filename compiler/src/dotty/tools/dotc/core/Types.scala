@@ -3546,6 +3546,13 @@ object Types {
     def apply(tp: Type) = tp
   }
 
+  /** A type map that approximates NoTypes by upper or lower known bounds depending on
+   *  variance.
+   *
+   *  if variance > 0 : approximate by upper bound
+   *     variance < 0 : approximate by lower bound
+   *     variance = 0 : propagate NoType to next outer level
+   */
   abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
     def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType) =
       if (variance == 0) NoType

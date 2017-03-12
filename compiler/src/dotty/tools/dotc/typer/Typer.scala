@@ -625,14 +625,17 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     block.tpe namedPartsWith (tp => locals.contains(tp.symbol))
   }
 
-  /** Check that expression's type can be expressed without references to locally defined
-   *  symbols. The following two remedies are tried before giving up:
-   *  1. If the expected type of the expression is fully defined, pick it as the
-   *     type of the result expressed by adding a type ascription.
-   *  2. If (1) fails, force all type variables so that the block's type is
-   *     fully defined and try again.
+  /** Ensure that an expression's type can be expressed without references to locally defined
+   *  symbols. This is done by adding a type ascription of a widened type that does
+   *  not refer to the locally defined symbols. The widened type is computed using
+   *  `TyperAssigner#avoid`. However, if the expected type is fully defined and not
+   *  a supertype of the widened type, we ascribe with the expected type instead.
+   *
+   *  There's a special case having to do with anonymous classes. Sometimes the
+   *  expected type of a block is the anonymous class defined inside it. In that
+   *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol], forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) =>
         val expr1 = ascribeType(expr, pt)
@@ -640,16 +643,18 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case _ =>
         Typed(tree, TypeTree(pt.simplified))
     }
-    val leaks = escapingRefs(tree, localSyms)
-    if (leaks.isEmpty) tree
-    else if (isFullyDefined(pt, ForceDegree.none)) ascribeType(tree, pt)
-    else if (!forcedDefined) {
+    def noLeaks(t: Tree): Boolean = escapingRefs(t, localSyms).isEmpty
+    if (noLeaks(tree)) tree
+    else {
       fullyDefinedType(tree.tpe, "block", tree.pos)
-      val tree1 = ascribeType(tree, avoid(tree.tpe, localSyms))
-      ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
-    } else
-      errorTree(tree,
-          em"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
+      var avoidingType = avoid(tree.tpe, localSyms)
+      val ptDefined = isFullyDefined(pt, ForceDegree.none)
+      if (ptDefined && !(avoidingType <:< pt)) avoidingType = pt
+      val tree1 = ascribeType(tree, avoidingType)
+      assert(ptDefined || noLeaks(tree1), // `ptDefined` needed because of special case of anonymous classes
+          i"leak: ${escapingRefs(tree1, localSyms).toList}%, % in $tree1")
+      tree1
+    }
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
