@@ -279,8 +279,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
             case METHODtype =>
               val (names, paramReader) = readNamesSkipParams
               val result = MethodType(names.map(_.toTermName))(
-                mt => paramReader.readParamTypes[Type](end), // !!!
-                mt => registeringType(mt, readType()))
+                mt => registeringType(mt, paramReader.readParamTypes[Type](end)),
+                mt => readType())
               goto(end)
               result
             case PARAMtype =>
