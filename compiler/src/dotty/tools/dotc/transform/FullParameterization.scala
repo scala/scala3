@@ -105,8 +105,9 @@ trait FullParameterization {
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
-      MethodType(nme.SELF :: Nil, firstArgType :: Nil)(mt =>
-        mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
+      MethodType(nme.SELF :: Nil)(
+          mt => firstArgType :: Nil,
+          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */

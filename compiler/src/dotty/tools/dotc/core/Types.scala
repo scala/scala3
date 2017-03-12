@@ -2470,12 +2470,10 @@ object Types {
 
   abstract class MethodTypeCompanion {
     def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
-    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      apply(paramNames)(_ => paramTypes, resultTypeExp)
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
-      apply(paramNames, paramTypes)(_ => resultType)
+      apply(paramNames)(_ => paramTypes, _ => resultType)
     def apply(paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
+      apply(nme.syntheticParamNames(paramTypes.length))(_ => paramTypes, resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
 
