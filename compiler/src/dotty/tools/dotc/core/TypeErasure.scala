@@ -215,13 +215,13 @@ object TypeErasure {
   }
 
   /** The erased least upper bound is computed as follows
-   *  - if both argument are arrays of objects, an array of the lub of the element types
+   *  - if both argument are arrays of objects, an array of the erased lub of the element types
    *  - if both arguments are arrays of same primitives, an array of this primitive
    *  - if one argument is array of primitives and the other is array of objects, Object
    *  - if one argument is an array, Object
    *  - otherwise a common superclass or trait S of the argument classes, with the
    *    following two properties:
-   *      S is minimal: no other common superclass or trait derives from S]
+   *      S is minimal: no other common superclass or trait derives from S
    *      S is last   : in the linearization of the first argument type `tp1`
    *                    there are no minimal common superclasses or traits that
    *                    come after S.

@@ -95,7 +95,9 @@ object ProtoTypes {
 
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
-        val mbr = tp1.member(name)
+        val mbr =
+          if (tp1.widen.classSymbol.isLinkedWith(ctx.owner.enclosingClass)) tp1.member(name)
+          else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
           compat.normalizedCompatible(m.info, memberProto)
