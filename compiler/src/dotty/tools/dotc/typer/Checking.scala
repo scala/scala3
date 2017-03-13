@@ -357,7 +357,7 @@ object Checking {
    */
   def checkNoPrivateLeaks(sym: Symbol, pos: Position)(implicit ctx: Context): Type = {
     class NotPrivate extends TypeMap {
-      var errors: List[String] = Nil
+      var errors: List[() => String] = Nil
 
       def accessBoundary(sym: Symbol): Symbol =
         if (sym.is(Private) || !sym.owner.isClass) sym.owner
@@ -384,7 +384,7 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}" :: errors
+                (() => em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}") :: errors
               tp
             }
             else mapOver(tp)
@@ -408,7 +408,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(ctx.errorOrMigrationWarning(_, pos))
+    notPrivate.errors.foreach(error => ctx.errorOrMigrationWarning(error(), pos))
     info
   }
 
