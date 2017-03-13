@@ -20,9 +20,6 @@ class MoveStatics extends MiniPhaseTransform with SymTransformer { thisTransform
   import tpd._
   override def phaseName = "moveStatic"
 
-  // This phase moves methods around(in infortransform) so it may need to make other methods public
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ExpandPrivate])
-
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists) {
       sym.owner.asClass.delete(sym.symbol)
