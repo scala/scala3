@@ -1080,6 +1080,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
             else
               (arg, WildcardType)
+          if (tpt1.symbol.isClass)
+            tparam match {
+              case tparam: Symbol =>
+                // This is needed to get the test `compileParSetSubset` to work
+                tparam.ensureCompleted()
+              case _ =>
+            }
           typed(desugaredArg, argPt)
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
