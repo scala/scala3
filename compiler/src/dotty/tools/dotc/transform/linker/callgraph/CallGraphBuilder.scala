@@ -127,7 +127,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val tp = substitution(x)
 
     val ctp = tp match {
-      case t: ClosureType => new TypeWithContext(t, t.outerTargs ++ parentRefinements(t))
+      case t: ClosureType => new TypeWithContext(t, parentRefinements(t))
       case _ => new TypeWithContext(tp, parentRefinements(tp))
     }
 
@@ -287,7 +287,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case x: ClosureType =>
         val utpe =  propagateTargs(x.underlying, isConstructor = true)
         val outer = parentRefinements(utpe) ++ outerTargs
-        val closureT = new ClosureType(x.meth, utpe, x.implementedMethod, outer)
+        val closureT = new ClosureType(x.meth, utpe, x.implementedMethod)
         addReachableType(new TypeWithContext(closureT, outer), caller)
         closureT
       case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
@@ -328,7 +328,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs)(someCaller, someCallee) :: Nil
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
           val methodSym = t.meth.meth.symbol.asTerm
-          CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs ++ t.outerTargs)(someCaller, someCallee) :: Nil
+          CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs)(someCaller, someCallee) :: Nil
         case AndType(tp1, tp2) =>
           dispatchCalls(tp1).toSet.intersect(dispatchCalls(tp2).toSet)
         case _ =>

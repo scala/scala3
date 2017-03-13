@@ -49,7 +49,7 @@ class SubstituteByParentMap(substMap: OuterTargs)(implicit ctx1: Context) extend
         if (tmp ne t.info) termTypeIfNeed(tmp)
         else mapOver(t)
       case tp: ClosureType =>
-        new ClosureType(tp.meth, apply(tp.underlying), tp.implementedMethod, tp.outerTargs)
+        new ClosureType(tp.meth, apply(tp.underlying), tp.implementedMethod)
       case _ => mapOver(tp)
     }
     assert(!(tp.isInstanceOf[TypeType] ^ res.isInstanceOf[TypeType]), (tp, res))

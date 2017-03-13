@@ -315,7 +315,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         @tailrec def argType(x: Tree): Type = skipBlocks(x) match {
           case exp: Closure =>
             val SAMType(e) = exp.tpe
-            new ClosureType(exp, x.tpe, e.symbol, OuterTargs.empty)
+            new ClosureType(exp, x.tpe, e.symbol)
           case Select(New(tp), _) => new PreciseType(tp.tpe)
           case Apply(Select(New(tp), _), args) => new PreciseType(tp.tpe)
           case Apply(TypeApply(Select(New(tp), _), targs), args) => new PreciseType(tp.tpe)
@@ -535,7 +535,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
     override def transformClosure(tree: tpd.Closure)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       if (curMethodSummary ne null) {
-        curMethodSummary.addDefinedClosure(new ClosureType(tree, tree.tpe, tree.meth.symbol, OuterTargs.empty))
+        curMethodSummary.addDefinedClosure(new ClosureType(tree, tree.tpe, tree.meth.symbol))
       }
       tree
     }
