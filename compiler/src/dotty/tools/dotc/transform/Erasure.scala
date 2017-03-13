@@ -594,14 +594,19 @@ object Erasure extends TypeTestsCasts{
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val stats1 = Trees.flatten(super.typedStats(stats, exprOwner))
-      if (ctx.owner.isClass) stats1 ::: addBridges(stats, stats1)(ctx) else stats1
+      if (ctx.owner.isClass) {
+        val newBridges = addBridges(stats, stats1)(ctx)
+        val keptStats = stats1.filter(x => !newBridges.exists(_.symbol == x.symbol))
+        keptStats ::: newBridges.filter(!_.isEmpty)
+      }
+      else stats1
     }
 
     // this implementation doesn't check for bridge clashes with value types!
     def addBridges(oldStats: List[untpd.Tree], newStats: List[tpd.Tree])(implicit ctx: Context): List[tpd.Tree] = {
       val beforeCtx = ctx.withPhase(ctx.erasurePhase)
       def traverse(after: List[Tree], before: List[untpd.Tree],
-                   emittedBridges: ListBuffer[tpd.DefDef] = ListBuffer[tpd.DefDef]()): List[tpd.DefDef] = {
+                   emittedBridges: ListBuffer[tpd.Tree] = ListBuffer[tpd.Tree]()): List[tpd.Tree] = {
         after match {
           case Nil => emittedBridges.toList
           case (member: DefDef) :: newTail =>
@@ -629,7 +634,7 @@ object Erasure extends TypeTestsCasts{
                         sym =>
                           (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
                       }.orElse(
-                        emittedBridges.find(stat => (stat.name == bridge.name) && stat.tpe.widen =:= bridge.info.widen)
+                        emittedBridges.find(stat => stat.isDef && (stat.asInstanceOf[DefDef].name == bridge.name) && stat.tpe.widen =:= bridge.info.widen)
                           .map(_.symbol))
                       clash match {
                         case Some(cl) =>
@@ -642,7 +647,18 @@ object Erasure extends TypeTestsCasts{
                   }
 
                   val bridgeImplementations = minimalSet.map {
-                    sym => makeBridgeDef(member, sym)(ctx)
+                    sym =>
+                      if (member.symbol.is(Flags.Deferred)) {
+                        if (!sym.is(Flags.Deferred)) {
+                          // sometimes we need to forward an abstract method in a subclass to a non-abstract method in parent.
+                          // see https://github.com/lampepfl/dotty/issues/2072 for illustrations
+                          sym.transformAfter(ctx.erasurePhase.asInstanceOf[Erasure],
+                            x => if (x.is(Flags.Deferred)) x.copySymDenotation(initFlags = x.flags.&~(Flags.Deferred)) else x
+                          )
+                          makeBridgeDef(newSymbol.owner, sym, newSymbol)(ctx)
+                        }
+                        else EmptyTree
+                      } else makeBridgeDef(newSymbol.owner, newSymbol, sym)(ctx)
                   }
                   emittedBridges ++= bridgeImplementations
                 } catch {
@@ -665,15 +681,13 @@ object Erasure extends TypeTestsCasts{
 
     /** Create a bridge DefDef which overrides a parent method.
      *
-     *  @param newDef     The DefDef which needs bridging because its signature
+     *  @param newDefSym     The DefDef which needs bridging because its signature
      *                    does not match the parent method signature
      *  @param parentSym  A symbol corresponding to the parent method to override
      *  @return           A new DefDef whose signature matches the parent method
      *                    and whose body only contains a call to newDef
      */
-    def makeBridgeDef(newDef: tpd.DefDef, parentSym: Symbol)(implicit ctx: Context): tpd.DefDef = {
-      val newDefSym = newDef.symbol
-      val currentClass = newDefSym.owner.asClass
+    def makeBridgeDef(currentClass: Symbol, newDefSym: Symbol, parentSym: Symbol)(implicit ctx: Context): tpd.DefDef = {
 
       def error(reason: String) = {
         assert(false, s"failure creating bridge from ${newDefSym} to ${parentSym}, reason: $reason")
@@ -681,12 +695,20 @@ object Erasure extends TypeTestsCasts{
       }
       var excluded = NoBridgeFlags
       if (!newDefSym.is(Flags.Protected)) excluded |= Flags.Protected // needed to avoid "weaker access" assertion failures in expandPrivate
-      val bridge = ctx.newSymbol(currentClass,
-        parentSym.name, parentSym.flags &~ excluded | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
-      bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
+      val bridge =
+        if (newDefSym.owner == currentClass) {
+          // we are forwarding a method in a superclass to a implementation in a subclass
+          val s = ctx.newSymbol(currentClass,
+            parentSym.name, parentSym.flags &~ excluded | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
+          s.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
+          s
+        } else {
+          // we are forwarding a method defined in a subclass to an implementation in a superclass
+          parentSym.asTerm
+        }
       ctx.debuglog(s"generating bridge from ${newDefSym} to $bridge")
 
-      val sel: Tree = This(currentClass).select(newDefSym.termRef)
+      val sel: Tree = This(currentClass.asClass).select(newDefSym.termRef)
 
       val resultType = parentSym.info.widen.resultType
 
