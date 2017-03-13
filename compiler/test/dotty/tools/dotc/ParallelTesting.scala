@@ -272,7 +272,6 @@ trait ParallelTesting {
   }
 
   private def requirements(f: String, sourceDir: JFile, outDir: String): Unit = {
-    require(f.contains("/tests"), "only allowed to run integration tests from `tests` dir using this method")
     require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`")
     require(outDir.last == '/', "please specify an `outDir` with a trailing slash")
   }
@@ -282,6 +281,22 @@ trait ParallelTesting {
       if (f.isDirectory) (f :: dirs, files)
       else (dirs, f :: files)
     }
+
+  def compileFileInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+    // each calling method gets its own unique output directory, in which we
+    // place the dir being compiled:
+    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
+    val outDir = outDirectory + callingMethod + "/"
+    val sourceFile = new JFile(f)
+    val parent = sourceFile.getParentFile
+    require(
+      sourceFile.exists && !sourceFile.isDirectory &&
+      (parent ne null) && parent.exists && parent.isDirectory,
+      s"Source file: $f, didn't exist"
+    )
+
+    new CompilationTest(toCompilerDirFromFile(sourceFile, parent, outDir) :: Nil, f, flags)
+  }
 
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     // each calling method gets its own unique output directory, in which we
