@@ -5,9 +5,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.linker.callgraph.CallGraphBuilder._
 import dotty.tools.dotc.transform.linker.summaries.{AbstractCallInfo, CallInfo}
-import dotty.tools.dotc.transform.linker.types.ClosureType
 
 import scala.collection.mutable
 
@@ -213,9 +211,9 @@ object GraphVisualization {
   private val slash = '"'
 
   private def htmlFormattedStringLabel(str: String): String =
-    str.replace("\n", "<br>")
+    str.replace("\n", "<br>").replace("'", "\"")
 
-  private def escape(s: String) = s.replace("\\", "\\\\").replace("\"","\\\"")
+  private def escape(s: String) = s.replace("\\", "\\\\")
 
   private def fullNameSeparated(symbol: Symbol)(separator: String)(implicit ctx: Context): Name = {
     var sep = separator
