@@ -13,6 +13,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
 import scala.util.control.NonFatal
+import java.util.HashMap
 
 trait ParallelTesting {
 
@@ -49,8 +50,8 @@ trait ParallelTesting {
         }
         // println, otherwise no newline and cursor at start of line
         println(
-          s"Compiled tests in $fromDir " +
-          s"[========================================] $totalTargets/$totalTargets, " +
+          s"Compiled tests in $fromDir  " +
+          s"[=======================================] $totalTargets/$totalTargets, " +
           s"${(System.currentTimeMillis - start) / 1000}s, errors: $errors  "
         )
       }
@@ -79,8 +80,8 @@ trait ParallelTesting {
       def run(): Unit =
         try {
           val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
-          val errors = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), false)
-          completeCompilation(errors.length)
+          val reporter = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), false)
+          completeCompilation(reporter.errorCount)
         }
         catch {
           case NonFatal(e) => {
@@ -104,16 +105,73 @@ trait ParallelTesting {
         try {
           val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
 
-          val expectedErrors = dir.listFiles.filter(_.getName.endsWith(".scala")).foldLeft(0) { (acc, file) =>
-            acc + Source.fromFile(file).sliding("// error".length).count(_.mkString == "// error")
+          // In neg-tests we allow two types of error annotations,
+          // "nopos-error" which doesn't care about position and "error" which
+          // has to be annotated on the correct line number.
+          //
+          // We collect these in a map `"file:row" -> numberOfErrors`, for
+          // nopos errors we save them in `"file" -> numberOfNoPosErrors`
+          val errorMap = new HashMap[String, Integer]()
+          var expectedErrors = 0
+          dir.listFiles.filter(_.getName.endsWith(".scala")).foreach { file =>
+            Source.fromFile(file).getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+              val errors = line.sliding("// error".length).count(_.mkString == "// error")
+              if (errors > 0)
+                errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
+
+              val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
+              if (noposErrors > 0)
+                errorMap.put(file.getAbsolutePath, noposErrors)
+
+              expectedErrors += noposErrors + errors
+            }
           }
 
-          val errors = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), true)
-          val actualErrors = errors.length
+          val reporter = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), true)
+          val actualErrors = reporter.errorCount
 
           if (expectedErrors != actualErrors) {
             System.err.println {
               s"\nWrong number of errors encountered when compiling $dir, expected: $expectedErrors, actual: $actualErrors\n"
+            }
+            fail()
+          }
+          else if (
+            // Here we check that there is a correpsonding error reported for
+            // each annotation
+            !reporter.errors.forall { error =>
+              val fileName = error.pos.source.file.toString
+              val fileAndRow = s"$fileName:${error.pos.line}"
+
+              val rowErrors = errorMap.get(fileAndRow)
+              lazy val noposErrors = errorMap.get(fileName)
+
+              if (rowErrors ne null) {
+                if (rowErrors == 1) errorMap.remove(fileAndRow)
+                else errorMap.put(fileAndRow, rowErrors - 1)
+                true
+              }
+              else if (noposErrors ne null) {
+                if (noposErrors == 1) errorMap.remove(fileName)
+                else errorMap.put(fileName, noposErrors - 1)
+                true
+              }
+              else {
+                System.err.println {
+                  s"Error reported in ${error.pos}, but no annotation found"
+                }
+                false
+              }
+            }
+          ) {
+            System.err.println {
+              s"\nErrors found on incorrect row numbers when compiling $dir"
+            }
+            fail()
+          }
+          else if (!errorMap.isEmpty) {
+            System.err.println {
+              s"\nError annotation(s) have {<error position>=<unreported error>}: $errorMap"
             }
             fail()
           }
@@ -148,7 +206,7 @@ trait ParallelTesting {
     }
   }
 
-  private def compile(files: Array[JFile], flags: Array[String], suppressErrors: Boolean): List[MessageContainer] = {
+  private def compile(files: Array[JFile], flags: Array[String], suppressErrors: Boolean): DaftReporter = {
 
     def findJarFromRuntime(partialName: String) = {
       val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
@@ -174,7 +232,7 @@ trait ParallelTesting {
 
     val reporter = new DaftReporter(suppress = suppressErrors)
     driver.process(flags ++ files.map(_.getAbsolutePath), reporter = reporter)
-    reporter.errors
+    reporter
   }
 
 
@@ -190,48 +248,75 @@ trait ParallelTesting {
     )
   }
 
+  private def toCompilerDirFromDir(d: JFile, sourceDir: JFile, outDir: String): JFile = {
+    val targetDir = new JFile(outDir + s"${sourceDir.getName}/${d.getName}")
+    // create if not exists
+    targetDir.mkdirs()
+    d.listFiles.foreach(copyToDir(targetDir, _))
+    targetDir
+  }
+
+  private def toCompilerDirFromFile(file: JFile, sourceDir: JFile, outDir: String): JFile = {
+    val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
+    val targetDir = new JFile(outDir + s"${sourceDir.getName}/$uniqueSubdir")
+    // create if not exists
+    targetDir.mkdirs()
+    // copy file to dir:
+    copyToDir(targetDir, file)
+    targetDir
+  }
+
+  private def copyToDir(dir: JFile, file: JFile): Unit = {
+    val target = Paths.get(dir.getAbsolutePath, file.getName)
+    Files.copy(file.toPath, target, REPLACE_EXISTING).toFile
+  }
+
+  private def requirements(f: String, sourceDir: JFile, outDir: String): Unit = {
+    require(f.contains("/tests"), "only allowed to run integration tests from `tests` dir using this method")
+    require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`")
+    require(outDir.last == '/', "please specify an `outDir` with a trailing slash")
+  }
+
+  private def compilationTargets(sourceDir: JFile): (List[JFile], List[JFile]) =
+    sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
+      if (f.isDirectory) (f :: dirs, files)
+      else (dirs, f :: files)
+    }
+
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     // each calling method gets its own unique output directory, in which we
     // place the dir being compiled:
     val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
     val outDir = outDirectory + callingMethod + "/"
+    val sourceDir = new JFile(f)
+    requirements(f, sourceDir, outDir)
 
-    val dir = new JFile(f)
-    require(f.contains("/tests"), "only allowed to run integration tests from `tests` dir using this method")
-    require(dir.isDirectory && dir.exists, "passed non-directory to `compileFilesInDir`")
-    require(outDir.last == '/', "please specify an `outDir` with a trailing slash")
-
-    def toCompilerDirFromDir(d: JFile): JFile = {
-      val targetDir = new JFile(outDir + s"${dir.getName}/${d.getName}")
-      // create if not exists
-      targetDir.mkdirs()
-      d.listFiles.foreach(copyToDir(targetDir, _))
-      targetDir
-    }
-    def toCompilerDirFromFile(file: JFile): JFile = {
-      val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
-      val targetDir = new JFile(outDir + s"${dir.getName}/$uniqueSubdir")
-      // create if not exists
-      targetDir.mkdirs()
-      // copy file to dir:
-      copyToDir(targetDir, file)
-      targetDir
-    }
-    def copyToDir(dir: JFile, file: JFile): Unit = {
-      val target = Paths.get(dir.getAbsolutePath, file.getName)
-      Files.copy(file.toPath, target, REPLACE_EXISTING).toFile
-    }
-
-    val (dirs, files) =
-      dir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
-        if (f.isDirectory) (f :: dirs, files)
-        else (dirs, f :: files)
-      }
+    val (dirs, files) = compilationTargets(sourceDir)
 
     // Directories in which to compile all containing files with `flags`:
-    val dirsToCompile = files.map(toCompilerDirFromFile) ++ dirs.map(toCompilerDirFromDir)
+    val dirsToCompile =
+      files.map(toCompilerDirFromFile(_, sourceDir, outDir)) ++
+      dirs.map(toCompilerDirFromDir(_, sourceDir, outDir))
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(dirsToCompile, f, flags)
+  }
+
+  def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+    // each calling method gets its own unique output directory, in which we
+    // place the dir being compiled:
+    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
+    val outDir = outDirectory + callingMethod + "/"
+    val sourceDir = new JFile(f)
+    requirements(f, sourceDir, outDir)
+
+    val (_, files) = compilationTargets(sourceDir)
+
+    // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
+    new CompilationTest(
+      files.map(toCompilerDirFromFile(_, sourceDir, outDir)),
+      f,
+      flags
+    )
   }
 }
