@@ -238,7 +238,7 @@ object ProtoTypes {
     }
 
     /** The type of the argument `arg`.
-     *  @pre `arg` ahs been typed before
+     *  @pre `arg` has been typed before
      */
     def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
       myTypedArg(arg).tpe
