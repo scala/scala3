@@ -96,23 +96,30 @@ trait TypeTestsCasts {
         /** Transform isInstanceOf OrType
          *
          *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
          *
          *  The transform happens before erasure of `argType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `argType`.
          */
-        def transformOrTypeTest(qual: Tree, argType: Type): Tree = argType.dealias match {
+        def transformTypeTest(qual: Tree, argType: Type): Tree = argType.dealias match {
           case OrType(tp1, tp2) =>
             evalOnce(qual) { fun =>
-              transformOrTypeTest(fun, tp1)
-                .select(nme.OR)
-                .appliedTo(transformOrTypeTest(fun, tp2))
+              transformTypeTest(fun, tp1)
+                .select(defn.Boolean_||)
+                .appliedTo(transformTypeTest(fun, tp2))
+            }
+          case AndType(tp1, tp2) =>
+            evalOnce(qual) { fun =>
+              transformTypeTest(fun, tp1)
+                .select(defn.Boolean_&&)
+                .appliedTo(transformTypeTest(fun, tp2))
             }
           case _ =>
             transformIsInstanceOf(qual, erasure(argType))
         }
 
         if (sym eq defn.Any_isInstanceOf)
-          transformOrTypeTest(qual, tree.args.head.tpe)
+          transformTypeTest(qual, tree.args.head.tpe)
         else if (sym eq defn.Any_asInstanceOf)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
