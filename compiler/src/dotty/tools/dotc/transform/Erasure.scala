@@ -652,7 +652,11 @@ object Erasure extends TypeTestsCasts{
                         if (!sym.is(Flags.Deferred)) {
                           // sometimes we need to forward an abstract method in a subclass to a non-abstract method in parent.
                           // see https://github.com/lampepfl/dotty/issues/2072 for illustrations
-                          sym.transformAfter(ctx.erasurePhase.asInstanceOf[Erasure],
+
+                          val d = member.symbol.copySymDenotation(initFlags = member.symbol.flags.&~(Flags.Deferred))
+                          d.installAfter(ctx.erasurePhase.asInstanceOf[Erasure])
+                          // Dark magic. Don't look here. 
+                          d.transformAfter(ctx.erasurePhase.asInstanceOf[Erasure],
                             x => if (x.is(Flags.Deferred)) x.copySymDenotation(initFlags = x.flags.&~(Flags.Deferred)) else x
                           )
                           makeBridgeDef(newSymbol.owner, sym, newSymbol)(ctx)
