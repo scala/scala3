@@ -352,12 +352,12 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       }
 
     private def liftedInfo(local: Symbol)(implicit ctx: Context): Type = local.info match {
-      case mt @ MethodType(pnames, ptypes) =>
+      case MethodTpe(pnames, ptypes, restpe) =>
         val ps = proxies(local)
         MethodType(
           ps.map(_.name.asTermName) ++ pnames,
           ps.map(_.info) ++ ptypes,
-          mt.resultType)
+          restpe)
       case info => info
     }
 

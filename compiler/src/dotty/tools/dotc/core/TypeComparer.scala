@@ -484,11 +484,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       either(isSubType(tp1, tp21), isSubType(tp1, tp22)) || fourthTry(tp1, tp2)
-    case tp2 @ MethodType(_, formals2) =>
+    case tp2: MethodType =>
       def compareMethod = tp1 match {
-        case tp1 @ MethodType(_, formals1) =>
+        case tp1: MethodType =>
           (tp1.signature consistentParams tp2.signature) &&
-            matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
             (tp1.isImplicit == tp2.isImplicit) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -503,7 +503,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         // as members of the same type. And it seems most logical to take
         // ()T <:< => T, since everything one can do with a => T one can
         // also do with a ()T by automatic () insertion.
-        case tp1 @ MethodType(Nil, _) => isSubType(tp1.resultType, restpe2)
+        case tp1 @ MethodType(Nil) => isSubType(tp1.resultType, restpe2)
         case _ => isSubType(tp1.widenExpr, restpe2)
       }
       compareExpr

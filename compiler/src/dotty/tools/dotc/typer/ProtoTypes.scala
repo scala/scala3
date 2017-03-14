@@ -237,6 +237,12 @@ object ProtoTypes {
       typer.adapt(targ, formal, arg)
     }
 
+    /** The type of the argument `arg`.
+     *  @pre `arg` has been typed before
+     */
+    def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
+      myTypedArg(arg).tpe
+
     private var myTupled: Type = NoType
 
     /** The same proto-type but with all arguments combined in a single tuple */

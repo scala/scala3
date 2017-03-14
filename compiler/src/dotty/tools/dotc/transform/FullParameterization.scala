@@ -105,8 +105,9 @@ trait FullParameterization {
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
-      MethodType(nme.SELF :: Nil, firstArgType :: Nil)(mt =>
-        mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
+      MethodType(nme.SELF :: Nil)(
+          mt => firstArgType :: Nil,
+          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
@@ -252,10 +253,10 @@ object FullParameterization {
   def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
     case info: PolyType =>
       memberSignature(info.resultType)
-    case info @ MethodType(nme.SELF :: Nil, _) =>
-      info.resultType.ensureMethodic.signature
-    case info @ MethodType(nme.SELF :: otherNames, thisType :: otherTypes) =>
-      info.derivedMethodType(otherNames, otherTypes, info.resultType).signature
+    case MethodTpe(nme.SELF :: Nil, _, restpe) =>
+      restpe.ensureMethodic.signature
+    case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
+      info.derivedMethodType(otherNames, otherTypes, restpe).signature
     case _ =>
       Signature.NotAMethod
   }

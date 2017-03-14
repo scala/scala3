@@ -48,8 +48,8 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
   private def overridesJava(sym: Symbol)(implicit ctx: Context) = sym.allOverriddenSymbols.exists(_ is JavaDefined)
 
   private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
-    case tp @ MethodType(paramNames, paramTypes) =>
-      val resultType1 = elimRepeated(tp.resultType)
+    case tp @ MethodTpe(paramNames, paramTypes, resultType) =>
+      val resultType1 = elimRepeated(resultType)
       val paramTypes1 =
         if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
           val last = paramTypes.last.underlyingIfRepeated(tp.isJava)

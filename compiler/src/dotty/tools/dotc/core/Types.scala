@@ -217,14 +217,14 @@ object Types {
      */
     def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
       case tp: PolyType => tp.resultType.isVarArgsMethod
-      case MethodType(_, paramTypes) => paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
+      case mt: MethodType => mt.paramTypes.nonEmpty && mt.paramTypes.last.isRepeatedParam
       case _ => false
     }
 
     /** Is this the type of a method with a leading empty parameter list?
      */
     def isNullaryMethod(implicit ctx: Context): Boolean = this match {
-      case MethodType(Nil, _) => true
+      case MethodType(Nil) => true
       case tp: PolyType => tp.resultType.isNullaryMethod
       case _ => false
     }
@@ -732,7 +732,7 @@ object Types {
      */
     final def overrides(that: Type)(implicit ctx: Context) = {
       def result(tp: Type): Type = tp match {
-        case ExprType(_) | MethodType(Nil, _) => tp.resultType
+        case ExprType(_) | MethodType(Nil) => tp.resultType
         case _ => tp
       }
       (this frozen_<:< that) || {
@@ -1218,8 +1218,8 @@ object Types {
      *                   when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
-        val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
+      case mt: MethodType if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
+        val formals1 = if (dropLast == 0) mt.paramTypes else mt.paramTypes dropRight dropLast
         defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType, mt.isImplicit && !ctx.erasedTypes)
     }
@@ -2312,14 +2312,16 @@ object Types {
 
   trait MethodOrPoly extends MethodicType
 
-  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
-      (resultTypeExp: MethodType => Type)
+  abstract case class MethodType(paramNames: List[TermName])(
+      paramTypesExp: MethodType => List[Type],
+      resultTypeExp: MethodType => Type)
     extends CachedGroundType with BindingType with TermType with MethodOrPoly with NarrowCached { thisMethodType =>
     import MethodType._
 
     def isJava = false
     def isImplicit = false
 
+    val paramTypes = paramTypesExp(this)
     private[core] val resType = resultTypeExp(this)
     assert(resType.exists)
 
@@ -2329,7 +2331,7 @@ object Types {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, name) =>
               tp.info match {
-                case TypeAlias(alias) if depStatus(pre) == TrueDeps => apply(alias)
+                case TypeAlias(alias) if depStatus(NoDeps, pre) == TrueDeps => apply(alias)
                 case _ => mapOver(tp)
               }
             case _ =>
@@ -2341,8 +2343,9 @@ object Types {
       else resType
 
     var myDependencyStatus: DependencyStatus = Unknown
+    var myParamDependencyStatus: DependencyStatus = Unknown
 
-    private def depStatus(tp: Type)(implicit ctx: Context): DependencyStatus = {
+    private def depStatus(initial: DependencyStatus, tp: Type)(implicit ctx: Context): DependencyStatus = {
       def combine(x: DependencyStatus, y: DependencyStatus) = {
         val status = (x & StatusMask) max (y & StatusMask)
         val provisional = (x | y) & Provisional
@@ -2366,7 +2369,7 @@ object Types {
               case _ => foldOver(status, tp)
             }
       }
-      depStatusAcc(NoDeps, tp)
+      depStatusAcc(initial, tp)
     }
 
     /** The dependency status of this method. Some examples:
@@ -2380,8 +2383,22 @@ object Types {
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
-        val result = depStatus(resType)
+        val result = depStatus(NoDeps, resType)
         if ((result & Provisional) == 0) myDependencyStatus = result
+        (result & StatusMask).toByte
+      }
+    }
+
+    /** The parameter dependency status of this method. Analogous to `dependencyStatus`,
+     *  but tracking dependencies in same parameter list.
+     */
+    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus = {
+      if (myParamDependencyStatus != Unknown) myParamDependencyStatus
+      else {
+        val result =
+          if (paramTypes.isEmpty) NoDeps
+          else (NoDeps /: paramTypes.tail)(depStatus(_, _))
+        if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
     }
@@ -2391,6 +2408,11 @@ object Types {
      */
     def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
 
+    /** Does one of the parameter types contain references to earlier parameters
+     *  of this method type which cannot be eliminated by de-aliasing?
+     */
+    def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
+
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 
@@ -2399,10 +2421,11 @@ object Types {
                           resType: Type = this.resType)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (resType eq this.resType)) this
       else {
+        val paramTypesFn = (x: MethodType) => paramTypes.map(_.subst(this, x))
         val resTypeFn = (x: MethodType) => resType.subst(this, x)
-        if (isJava) JavaMethodType(paramNames, paramTypes)(resTypeFn)
-        else if (isImplicit) ImplicitMethodType(paramNames, paramTypes)(resTypeFn)
-        else MethodType(paramNames, paramTypes)(resTypeFn)
+        if (isJava) JavaMethodType(paramNames)(paramTypesFn, resTypeFn)
+        else if (isImplicit) ImplicitMethodType(paramNames)(paramTypesFn, resTypeFn)
+        else MethodType(paramNames)(paramTypesFn, resTypeFn)
       }
 
     def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
@@ -2424,21 +2447,21 @@ object Types {
     override def toString = s"$prefixString($paramNames, $paramTypes, $resType)"
   }
 
-  final class CachedMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+  final class CachedMethodType(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
+    extends MethodType(paramNames)(paramTypesExp, resultTypeExp) {
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[CachedMethodType]
   }
 
-  final class JavaMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+  final class JavaMethodType(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
+    extends MethodType(paramNames)(paramTypesExp, resultTypeExp) {
     override def isJava = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[JavaMethodType]
     override def computeHash = addDelta(super.computeHash, 1)
     override protected def prefixString = "JavaMethodType"
   }
 
-  final class ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+  final class ImplicitMethodType(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)
+    extends MethodType(paramNames)(paramTypesExp, resultTypeExp) {
     override def isImplicit = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[ImplicitMethodType]
     override def computeHash = addDelta(super.computeHash, 2)
@@ -2446,11 +2469,11 @@ object Types {
   }
 
   abstract class MethodTypeCompanion {
-    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
+    def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
-      apply(paramNames, paramTypes)(_ => resultType)
+      apply(paramNames)(_ => paramTypes, _ => resultType)
     def apply(paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
+      apply(nme.syntheticParamNames(paramTypes.length))(_ => paramTypes, resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
 
@@ -2473,19 +2496,31 @@ object Types {
         case _: ExprType => tp
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
+      def integrate(tp: Type, mt: MethodType) =
+        tp.subst(params, (0 until params.length).toList.map(MethodParam(mt, _)))
       def paramInfo(param: Symbol): Type = {
         val paramType = translateRepeated(param.info)
         if (param.is(Inline)) translateInline(paramType) else paramType
       }
-      def transformResult(mt: MethodType) =
-        resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
-      apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)
+      apply(params.map(_.name.asTermName))(
+        mt => params.map(param => integrate(paramInfo(param), mt)),
+        mt => integrate(resultType, mt))
+    }
+
+    def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
+      if (Config.checkMethodTypes)
+        for ((paramType, idx) <- mt.paramTypes.zipWithIndex)
+          paramType.foreachPart {
+            case MethodParam(`mt`, j) => assert(j < idx, mt)
+            case _ =>
+          }
+      mt
     }
   }
 
   object MethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
-      unique(new CachedMethodType(paramNames, paramTypes)(resultTypeExp))
+    def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      checkValid(unique(new CachedMethodType(paramNames)(paramTypesExp, resultTypeExp)))
 
     private type DependencyStatus = Byte
     private final val Unknown: DependencyStatus = 0   // not yet computed
@@ -2497,13 +2532,19 @@ object Types {
   }
 
   object JavaMethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
-      unique(new JavaMethodType(paramNames, paramTypes)(resultTypeExp))
+    def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      unique(new JavaMethodType(paramNames)(paramTypesExp, resultTypeExp))
   }
 
   object ImplicitMethodType extends MethodTypeCompanion {
-    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
-      unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
+    def apply(paramNames: List[TermName])(paramTypesExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      checkValid(unique(new ImplicitMethodType(paramNames)(paramTypesExp, resultTypeExp)))
+  }
+
+  /** A ternary extractor for MethodType */
+  object MethodTpe {
+    def unapply(mt: MethodType)(implicit ctx: Context) =
+      Some((mt.paramNames, mt.paramTypes, mt.resultType))
   }
 
   /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
@@ -2546,11 +2587,6 @@ object Types {
       case _: MethodType => true
       case _ => false
     }
-
-    /** Is this polytype a higher-kinded type lambda as opposed to a polymorphic?
-     *  method type? Only type lambdas get created with variances, that's how we can tell.
-     */
-    def isTypeLambda: Boolean = variances.nonEmpty
 
     /** PolyParam references to all type parameters of this type */
     lazy val paramRefs: List[PolyParam] = paramNames.indices.toList.map(PolyParam(this, _))
@@ -2928,20 +2964,8 @@ object Types {
      *  instantiation can be a singleton type only if the upper bound
      *  is also a singleton type.
      */
-    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
-      val inst = ctx.typeComparer.instanceType(origin, fromBelow)
-      if (ctx.typerState.isGlobalCommittable)
-        inst match {
-          case inst: PolyParam =>
-            assert(inst.binder.isTypeLambda, i"bad inst $this := $inst, constr = ${ctx.typerState.constraint}")
-              // If this fails, you might want to turn on Config.debugCheckConstraintsClosed
-              // to help find the root of the problem.
-              // Note: Parameters of type lambdas are excluded from the assertion because
-              // they might arise from ill-kinded code. See #1652
-          case _ =>
-        }
-      instantiateWith(inst)
-    }
+    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
+      instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
@@ -3660,9 +3684,9 @@ object Types {
           this(y, hi)
         }
 
-      case tp @ MethodType(pnames, ptypes) =>
+      case tp: MethodType =>
         variance = -variance
-        val y = foldOver(x, ptypes)
+        val y = foldOver(x, tp.paramTypes)
         variance = -variance
         this(y, tp.resultType)
 

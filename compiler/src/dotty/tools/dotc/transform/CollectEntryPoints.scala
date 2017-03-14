@@ -64,7 +64,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
     val hasApproximate = possibles exists {
       m =>
         m.info match {
-          case MethodType(_, p :: Nil) =>
+          case MethodTpe(_, p :: Nil, _) =>
             p.typeSymbol == defn.ArrayClass
           case _ => false
         }
@@ -87,8 +87,8 @@ class CollectEntryPoints extends MiniPhaseTransform {
             m.symbol.info match {
               case t: PolyType =>
                 fail("main methods cannot be generic.")
-              case t@MethodType(paramNames, paramTypes) =>
-                if (t.resultType :: paramTypes exists (_.typeSymbol.isAbstractType))
+              case t: MethodType =>
+                if (t.resultType :: t.paramTypes exists (_.typeSymbol.isAbstractType))
                   fail("main methods cannot refer to type parameters or abstract types.", m.symbol.pos)
                 else
                   javaPlatform.isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)

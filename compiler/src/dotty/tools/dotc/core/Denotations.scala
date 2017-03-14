@@ -308,13 +308,13 @@ object Denotations {
               case tp2: TypeBounds if tp2 contains tp1 => tp1
               case _ => mergeConflict(tp1, tp2)
             }
-          case tp1 @ MethodType(names1, formals1) if isTerm =>
+          case tp1: MethodType if isTerm =>
             tp2 match {
-              case tp2 @ MethodType(names2, formals2) if ctx.typeComparer.matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+              case tp2: MethodType if ctx.typeComparer.matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
                 tp1.isImplicit == tp2.isImplicit =>
                 tp1.derivedMethodType(
-                  mergeNames(names1, names2, nme.syntheticParamName),
-                  formals1,
+                  mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
+                  tp1.paramTypes,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _ =>
                 mergeConflict(tp1, tp2)
@@ -471,14 +471,14 @@ object Denotations {
             case tp2: TypeBounds if tp2 contains tp1 => tp2
             case _ => mergeConflict(tp1, tp2)
           }
-        case tp1 @ MethodType(names1, formals1) =>
+        case tp1: MethodType =>
           tp2 match {
-            case tp2 @ MethodType(names2, formals2)
-            if ctx.typeComparer.matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+            case tp2: MethodType
+            if ctx.typeComparer.matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
               tp1.isImplicit == tp2.isImplicit =>
               tp1.derivedMethodType(
-                mergeNames(names1, names2, nme.syntheticParamName),
-                formals1, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+                mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
+                tp1.paramTypes, tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2)
           }

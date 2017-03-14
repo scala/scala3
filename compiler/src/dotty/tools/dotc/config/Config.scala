@@ -88,6 +88,10 @@ object Config {
    */
   final val checkHKApplications = false
 
+  /** If this flag is set, method types are checked for valid parameter references
+   */
+  final val checkMethodTypes = false
+
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
 

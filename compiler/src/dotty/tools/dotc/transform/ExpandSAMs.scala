@@ -53,7 +53,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
     val applyRhs: Tree = applyDef.rhs
     val applyFn = applyDef.symbol.asTerm
 
-    val MethodType(paramNames, paramTypes) = applyFn.info
+    val MethodTpe(paramNames, paramTypes, _) = applyFn.info
     val isDefinedAtFn = applyFn.copy(
         name  = nme.isDefinedAt,
         flags = Synthetic | Method,
