@@ -28,6 +28,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   import CallGraphBuilder._
   import tpd._
 
+  private var iteration = 0
+
   private val entryPoints = mutable.HashMap.empty[CallInfoWithContext, Int]
   private val reachableTypes = new WorkList[TypeWithContext]()
   private val reachableMethods = new WorkList[CallInfoWithContext]()
@@ -51,12 +53,12 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     reachableMethods += call
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
-    addReachableType(self, null)
+    addReachableType(self)
   }
 
   /** Builds the call graph based on the current reachable items, mainly entry points. */
   def build(): Unit = {
-    ctx.log(s"\t Building call graph with ${reachableMethods.newItems.size} entry points")
+    ctx.log(s"Building call graph with ${reachableMethods.newItems.size} entry points")
     @tailrec def buildLoop(): Unit = {
       if (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
         reachableMethods.clearNewItems()
@@ -67,9 +69,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         processCallSites(reachableMethods.items, reachableTypes.items)
 
         val newReachableTypes = reachableTypes.newItems
-        ctx.log(s"\t Found ${newReachableTypes.size} new instantiated types")
+        iteration += 1
+        ctx.log(s"Graph building iteration $iteration")
+        ctx.log(s"Found ${newReachableTypes.size} new instantiated types")
         val newClassOfs = classOfs.newItems
-        ctx.log(s"\t Found ${newClassOfs.size} new classOfs ")
+        ctx.log(s"Found ${newClassOfs.size} new classOfs")
         newReachableTypes.foreach { x =>
           val clas = x.tp match {
             case t: ClosureType =>
@@ -93,7 +97,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
         // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
-        ctx.log(s"\t Found ${newReachableMethods.size} new call sites")
+        ctx.log(s"Found ${newReachableMethods.size} new call sites")
         buildLoop()
       }
     }
@@ -112,7 +116,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
-  private def addReachableType(x: TypeWithContext, from: CallInfoWithContext): Unit = {
+  private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
       reachableTypes += x
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
@@ -131,7 +135,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case _ => new TypeWithContext(tp, parentRefinements(tp))
     }
 
-    addReachableType(ctp, from)
+    addReachableType(ctp)
   }
 
   private def getTypesByMemberName(x: Name): Set[TypeWithContext] = {
@@ -156,21 +160,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
   }
 
-  private def registerParentModules(tp: Type, from: CallInfoWithContext): Unit = {
-    @tailrec def register(tp1: Type): Unit = {
-      if ((tp1 ne NoType) && (tp1 ne NoPrefix)) {
-        if (tp1.widen ne tp1) registerParentModules(tp1.widen, from)
-        if (tp1.dealias ne tp1) registerParentModules(tp1.dealias, from)
-        if (tp1.termSymbol.is(Module)) {
-          addReachableType(new TypeWithContext(tp1.widenDealias, parentRefinements(tp1.widenDealias)), from)
-        } else if (tp1.typeSymbol.is(Module, butNot = Package)) {
-          val t = ref(tp1.typeSymbol).tpe
-          addReachableType(new TypeWithContext(t, parentRefinements(t)), from)
-        }
-        register(tp1.normalizedPrefix)
+  private val registeredTypes = mutable.Set.empty[Type]
+  private def registerParentModules(tp: Type): Unit = {
+    if ((tp ne NoType) && (tp ne NoPrefix) && !registeredTypes.contains(tp)) {
+      if (tp.widen ne tp) registerParentModules(tp.widen)
+      if (tp.dealias ne tp) registerParentModules(tp.dealias)
+      if (tp.termSymbol.is(Module)) {
+        addReachableType(new TypeWithContext(tp.widenDealias, parentRefinements(tp.widenDealias)))
+      } else if (tp.typeSymbol.is(Module, butNot = Package)) {
+        val t = ref(tp.typeSymbol).tpe
+        addReachableType(new TypeWithContext(t, parentRefinements(t)))
       }
+      registeredTypes += tp
+      registerParentModules(tp.normalizedPrefix): @tailrec
     }
-    register(tp)
   }
 
   private def parentRefinements(tp: Type)(implicit ctx: Context): OuterTargs = {
@@ -195,7 +198,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     lazy val someCallee = Some(callee)
 
     val receiver = callee.call.normalizedPrefix
-    registerParentModules(receiver, caller)
+    registerParentModules(receiver)
 
     val calleeSymbol = callee.call.termSymbol.asTerm
     val callerSymbol = caller.call.termSymbol
@@ -288,7 +291,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val utpe =  propagateTargs(x.underlying, isConstructor = true)
         val outer = parentRefinements(utpe) ++ outerTargs
         val closureT = new ClosureType(x.meth, utpe, x.implementedMethod)
-        addReachableType(new TypeWithContext(closureT, outer), caller)
+        addReachableType(new TypeWithContext(closureT, outer))
         closureT
       case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
         val id = caller.call.termSymbol.info.paramNamess.flatten.indexWhere(_ == x.symbol.name)
@@ -421,7 +424,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         } else constructedType
 
         val tpe =  propagateTargs(fixNoPrefix, isConstructor = true)
-        addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs), caller)
+        addReachableType(new TypeWithContext(tpe, parentRefinements(tpe) ++ outerTargs))
 
         val call = {
           if (callerSymbol.isConstructor && callerSymbol.owner == calleeSymbol.owner)
@@ -504,7 +507,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       collectedSummaries.get(method.callSymbol) match {
         case Some(summary) =>
-          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info)), method))
+          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info))))
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach { callSite =>
@@ -544,7 +547,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case returnType: HKApply => new JavaAllocatedType(substituteOuterTargs(returnType.tycon.appliedTo(method.targs)))
       case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
     }
-    addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty), method)
+    addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty))
 
     def allPotentialCallsFor(argType: Type): Set[CallInfo] = {
       if (defn.isPrimitiveClass(argType.classSymbol)) {
