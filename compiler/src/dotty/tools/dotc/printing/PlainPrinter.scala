@@ -176,10 +176,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: PolyType =>
-        def paramText(variance: Int, name: Name, bounds: TypeBounds): Text =
-          varianceString(variance) ~ name.toString ~ toText(bounds)
+        def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
-          "[" ~ Text((tp.variances, tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
+          "[" ~ Text((tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
           "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
@@ -209,7 +208,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def polyParamNameString(name: TypeName): String = name.toString
 
-  protected def polyParamNameString(param: PolyParam): String = polyParamNameString(param.binder.paramNames(param.paramNum))
+  protected def polyParamNameString(param: PolyParam): String = 
+    polyParamNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
    *  the decoded original name.

@@ -196,6 +196,31 @@ object NameOps {
         if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
         else likeTyped(ctx.freshName(name ++ NameTransformer.NAME_JOIN_STRING)))
 
+    /** Name with variance prefix: `+` for covariant, `-` for contravariant */
+    def withVariance(v: Int): N =
+      if (hasVariance) dropVariance.withVariance(v)
+      else v match {
+        case -1 => likeTyped('-' +: name)
+        case  1 => likeTyped('+' +: name)
+        case  0 => name
+      }
+
+    /** Does name have a `+`/`-` variance prefix? */
+    def hasVariance: Boolean =
+      name.nonEmpty && name.head == '+' || name.head == '-'
+
+    /** Drop variance prefix if name has one */
+    def dropVariance: N = if (hasVariance) likeTyped(name.tail) else name
+
+    /** The variance as implied by the variance prefix, or 0 if there is
+     *  no variance prefix.
+     */
+    def variance = name.head match {
+      case '-' => -1
+      case '+' => 1
+      case _ => 0
+    }
+
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether
      *  the following separator char is '.' or '#'.  The last segment
@@ -270,7 +295,6 @@ object NameOps {
         catch { case _: NumberFormatException => -1 }
       else -1
     }
-
 
     /** The number of hops specified in an outer-select name */
     def outerSelectHops: Int = {

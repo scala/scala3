@@ -850,5 +850,4 @@ object StdNames {
   val tpnme = new ScalaTypeNames
   val jnme = new JavaTermNames
   val jtpnme = new JavaTypeNames
-
 }

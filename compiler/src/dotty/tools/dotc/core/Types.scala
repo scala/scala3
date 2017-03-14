@@ -2572,8 +2572,20 @@ object Types {
     }
   }
 
-  /** A type lambda of the form `[v_0 X_0, ..., v_n X_n] => T` */
-  class PolyType(val paramNames: List[TypeName], val variances: List[Int])(
+  /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
+   *  This is used both as a type of a polymorphic method and as a type of
+   *  a higher-kidned type parameter. Variances are encoded in parameter
+   *  names. A name starting with `+` designates a covariant parameter,
+   *  a name starting with `-` designates a contravariant parameter,
+   *  and every other name designates a non-variant parameter.
+   *
+   *  @param  paramNames      The names `X_0`, ..., `X_n`
+   *  @param  paramBoundsExp  A function that, given the polytype itself, returns the
+   *                          parameter bounds `B_1`, ..., `B_n`
+   *  @param  resultTypeExp   A function that, given the polytype itself, returns the
+   *                          result type `T`.
+   */
+  class PolyType(val paramNames: List[TypeName])(
       paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
   extends CachedProxyType with BindingType with MethodOrPoly {
 
@@ -2611,7 +2623,7 @@ object Types {
       paramBounds.mapConserve(_.substParams(this, argTypes).bounds)
 
     def newLikeThis(paramNames: List[TypeName], paramBounds: List[TypeBounds], resType: Type)(implicit ctx: Context): PolyType =
-      PolyType.apply(paramNames, variances)(
+      PolyType.apply(paramNames)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => resType.subst(this, x))
 
@@ -2644,7 +2656,7 @@ object Types {
             case t => mapOver(t)
           }
         }
-        PolyType(paramNames ++ that.paramNames, variances ++ that.variances)(
+        PolyType(paramNames ++ that.paramNames)(
           x => this.paramBounds.mapConserve(_.subst(this, x).bounds) ++
                that.paramBounds.mapConserve(shift(_).subst(that, x).bounds),
           x => shift(that.resultType).subst(that, x).subst(this, x))
@@ -2664,28 +2676,27 @@ object Types {
       case other: PolyType =>
         other.paramNames == this.paramNames &&
         other.paramBounds == this.paramBounds &&
-        other.resType == this.resType &&
-        other.variances == this.variances
+        other.resType == this.resType
       case _ => false
     }
 
-    override def toString = s"PolyType($variances, $paramNames, $paramBounds, $resType)"
+    override def toString = s"PolyType($paramNames, $paramBounds, $resType)"
 
-    override def computeHash = doHash(variances ::: paramNames, resType, paramBounds)
+    override def computeHash = doHash(paramNames, resType, paramBounds)
   }
 
   object PolyType {
-    def apply(paramNames: List[TypeName], variances: List[Int])(
+    def apply(paramNames: List[TypeName])(
         paramBoundsExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
-      unique(new PolyType(paramNames, variances)(paramBoundsExp, resultTypeExp))
+      unique(new PolyType(paramNames)(paramBoundsExp, resultTypeExp))
     }
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
-      apply(tpnme.syntheticTypeParamNames(n), List.fill(n)(0))(
+      apply(tpnme.syntheticTypeParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
@@ -2698,7 +2709,7 @@ object Types {
     def paramBounds(implicit ctx: Context): TypeBounds = tl.paramBounds(n)
     def paramBoundsAsSeenFrom(pre: Type)(implicit ctx: Context): TypeBounds = paramBounds
     def paramBoundsOrCompleter(implicit ctx: Context): Type = paramBounds
-    def paramVariance(implicit ctx: Context): Int = tl.variances(n)
+    def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
     def toArg: Type = PolyParam(tl, n)
     def paramRef(implicit ctx: Context): Type = PolyParam(tl, n)
   }

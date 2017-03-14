@@ -242,6 +242,12 @@ object desugar {
    *     class C { type v C$T; type v T = C$T }
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
+    val name =
+      if (tdef.name.hasVariance && tdef.mods.is(Param)) {
+        ctx.error(em"type parameter name may not start with `+' or `-'", tdef.pos)
+        ("$" + tdef.name).toTypeName
+      }
+      else tdef.name
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
