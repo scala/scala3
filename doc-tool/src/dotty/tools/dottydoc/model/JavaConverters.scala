@@ -4,11 +4,11 @@ package model
 import comment._
 import references._
 
-import _root_.java.util.LinkedList
+import java.util.LinkedList
 
 object JavaConverters {
   import scala.collection.JavaConverters._
-  import _root_.java.util.{ Map => JMap }
+  import java.util.{ Map => JMap }
 
   implicit class OptStr(val opt: Option[String]) extends AnyVal {
     def asJava = opt.getOrElse(null)
@@ -20,32 +20,32 @@ object JavaConverters {
 
   implicit class JavaComment(val cmt: Comment) extends AnyVal {
     def asJava: JMap[String, _] = Map(
-      "body"                    -> cmt.body,
-      "short"                   -> cmt.short,
-      "authors"                 -> cmt.authors.asJava,
-      "see"                     -> cmt.see.asJava,
-      "result"                  -> cmt.result.asJava,
-      "throws"                  -> cmt.throws.asJava,
-      "valueParams"             -> cmt.valueParams.asJava,
-      "typeParams"              -> cmt.typeParams.asJava,
-      "version"                 -> cmt.version.asJava,
-      "since"                   -> cmt.since.asJava,
-      "todo"                    -> cmt.todo.asJava,
-      "deprecated"              -> cmt.deprecated.asJava,
-      "note"                    -> cmt.note.asJava,
-      "example"                 -> cmt.example.asJava,
-      "constructor"             -> cmt.constructor.asJava,
-      "group"                   -> cmt.group.asJava,
-      "groupDesc"               -> cmt.groupDesc.asJava,
-      "groupNames"              -> cmt.groupNames.asJava,
-      "groupPrio"               -> cmt.groupPrio.asJava,
+      "body" -> cmt.body,
+      "short" -> cmt.short,
+      "authors" -> cmt.authors.asJava,
+      "see" -> cmt.see.asJava,
+      "result" -> cmt.result.asJava,
+      "throws" -> cmt.throws.asJava,
+      "valueParams" -> cmt.valueParams.asJava,
+      "typeParams" -> cmt.typeParams.asJava,
+      "version" -> cmt.version.asJava,
+      "since" -> cmt.since.asJava,
+      "todo" -> cmt.todo.asJava,
+      "deprecated" -> cmt.deprecated.asJava,
+      "note" -> cmt.note.asJava,
+      "example" -> cmt.example.asJava,
+      "constructor" -> cmt.constructor.asJava,
+      "group" -> cmt.group.asJava,
+      "groupDesc" -> cmt.groupDesc.asJava,
+      "groupNames" -> cmt.groupNames.asJava,
+      "groupPrio" -> cmt.groupPrio.asJava,
       "hideImplicitConversions" -> cmt.hideImplicitConversions.asJava
     ).asJava
   }
 
   implicit class JavaParamList(val pl: ParamList) extends AnyVal {
     def asJava: JMap[String, _] = Map(
-      "list"       -> pl.list.map(_.asJava).asJava,
+      "list" -> pl.list.map(_.asJava).asJava,
       "isImplicit" -> pl.isImplicit
     ).asJava
   }
@@ -53,23 +53,23 @@ object JavaConverters {
   implicit class JavaReference(val ref: Reference) extends AnyVal {
     def asJava: JMap[String, _] = ref match {
       case TypeReference(title, tpeLink, paramLinks) => Map(
-        "kind"       -> "TypeReference",
-        "title"      -> title,
-        "tpeLink"    -> tpeLink.asJava,
+        "kind" -> "TypeReference",
+        "title" -> title,
+        "tpeLink" -> tpeLink.asJava,
         "paramLinks" -> paramLinks.map(_.asJava).asJava,
-        "scala"      -> ref
+        "scala" -> ref
       ).asJava
 
       case OrTypeReference(left, right) => Map(
-        "kind"  -> "OrTypeReference",
-        "left"  -> left.asJava,
+        "kind" -> "OrTypeReference",
+        "left" -> left.asJava,
         "right" -> right.asJava,
         "scala" -> ref
       ).asJava
 
       case AndTypeReference(left, right) => Map(
-        "kind"  -> "AndTypeReference",
-        "left"  -> left.asJava,
+        "kind" -> "AndTypeReference",
+        "left" -> left.asJava,
         "right" -> right.asJava,
         "scala" -> ref
       ).asJava
@@ -88,23 +88,23 @@ object JavaConverters {
       ).asJava
 
       case BoundsReference(low, high) => Map(
-        "kind"  -> "BoundsReference",
-        "low"   -> low.asJava,
+        "kind" -> "BoundsReference",
+        "low" -> low.asJava,
         "hight" -> high.asJava,
         "scala" -> ref
       ).asJava
 
       case NamedReference(title, ref, isByName, isRepeated) => Map(
-        "kind"       -> "NamedReference",
-        "title"      -> title,
-        "ref"        -> ref.asJava,
-        "isByName"   -> isByName,
+        "kind" -> "NamedReference",
+        "title" -> title,
+        "ref" -> ref.asJava,
+        "isByName" -> isByName,
         "isRepeated" -> isRepeated,
-        "scala"      -> ref
+        "scala" -> ref
       ).asJava
 
       case ConstantReference(title) => Map(
-        "kind"  -> "ConstantReference",
+        "kind" -> "ConstantReference",
         "title" -> title,
         "scala" -> ref
       ).asJava
@@ -117,22 +117,22 @@ object JavaConverters {
   implicit class JavaMaterializableLink(val link: MaterializableLink) extends AnyVal {
     def asJava: JMap[String, _] = link match {
       case UnsetLink(title, query) => Map(
-        "kind"  -> "UnsetLink",
+        "kind" -> "UnsetLink",
         "title" -> title,
         "query" -> query,
         "scala" -> link
       ).asJava
 
       case MaterializedLink(title, target) => Map(
-        "kind"   -> "MaterializedLink",
-        "title"  -> title,
+        "kind" -> "MaterializedLink",
+        "title" -> title,
         "target" -> target,
         "scala" -> link
       ).asJava
 
       case NoLink(title, target) => Map(
-        "kind"   -> "NoLink",
-        "title"  -> title,
+        "kind" -> "NoLink",
+        "title" -> title,
         "target" -> target,
         "scala" -> link
       ).asJava
@@ -140,23 +140,23 @@ object JavaConverters {
   }
 
   implicit class JavaEntity(val ent: Entity) extends AnyVal {
-    def asJava(extras: Map[String, _] = Map.empty): JMap[String, _] = parseEntity(ent, extras)
+    def asJava(): JMap[String, _] = parseEntity(ent)
   }
 
-  private def parseEntity(ent: Entity, extras: Map[String, _]): JMap[String, _] = {
+  private def parseEntity(ent: Entity): JMap[String, _] = {
     val entity = Map(
-      "kind"     -> ent.kind,
+      "kind" -> ent.kind,
       "annotations" -> ent.annotations.asJava,
-      "name"     -> ent.name,
-      "path"     -> ent.path.asJava,
-      "children"  -> ent.children.map(_.asJava()).asJava,
-      "comment"  -> ent.comment.map(_.asJava).asJava,
+      "name" -> ent.name,
+      "path" -> ent.path.asJava,
+      "children" -> ent.children.map(_.asJava()).asJava,
+      "comment" -> ent.comment.map(_.asJava).asJava,
       "hasShortenedDocstring" -> ent.hasShortenedDocstring,
       "signature" -> ent.signature
     )
     val members = ent match {
       case ent: Members => Map(
-        "members"  -> ent.members.map(_.asJava()).asJava,
+        "members" -> ent.members.map(_.asJava()).asJava,
         "hasVisibleMembers" -> ent.hasVisibleMembers
       )
       case _ => Map.empty
@@ -196,7 +196,7 @@ object JavaConverters {
     }
     val returnValue = ent match {
       case ent: ReturnValue => Map(
-        "returnValue"         -> ent.returnValue.asJava
+        "returnValue" -> ent.returnValue.asJava
       )
       case _ => Map.empty
     }
@@ -214,17 +214,31 @@ object JavaConverters {
     }
     val trt = ent match {
       case ent: Trait => Map(
-        "traitParams"          -> ent.traitParams.map(_.asJava).asJava
+        "traitParams" -> ent.traitParams.map(_.asJava).asJava
       )
       case _ => Map.empty
     }
     val df = ent match {
       case ent: Def => Map(
-        "paramLists"          -> ent.paramLists.map(_.asJava).asJava
+        "paramLists" -> ent.paramLists.map(_.asJava).asJava
       )
       case _ => Map.empty
     }
-      (entity ++ members ++ superTypes ++ modifiers ++ typeParams ++ constructors ++ companion ++ returnValue ++ implicitlyAddedEntity ++ typeAlias ++ trt ++ df).asJava
+
+    {
+      entity ++
+      members ++
+      superTypes ++
+      modifiers ++
+      typeParams ++
+      constructors ++
+      companion ++
+      returnValue ++
+      implicitlyAddedEntity ++
+      typeAlias ++
+      trt ++
+      df
+    }.asJava
   }
 
   implicit class JavaMap(val map: collection.Map[String, Package]) extends AnyVal {
