@@ -2,8 +2,15 @@ import cbt._
 import java.io._
 import java.nio.file._
 
-class Build(val context: Context) extends BootstrappedCompiler{
-  private def cwd = new File(context.args.head)
+class Build(val context: Context) extends Shared{
+  override def dependencies = Seq(test)
+  def suffix = "root"
+  override def projectDirectory = dottyHome
+}
+
+class Launcher(val context: Context) extends BootstrappedCompiler{
+  //override def 
+  private def cwd = context.args.headOption.map(new File(_)).getOrElse{ System.err.println(""); System.exit(0); ??? }
   private def args = context.args.drop(1)
   override def sources = args.map(f => cwd ++ ("/"++f))
   override def compileTarget = cwd
@@ -78,19 +85,37 @@ class Interfaces(val context: Context) extends Shared with PackageDotty{
 
 class Library(val context: Context) extends Shared{
   def suffix = "library"
-  override def dependencies: Seq[Dependency] = dottyLibraryMavenDependencies
+  override def dependencies: Seq[Dependency] = Resolver(mavenCentral).bind(
+    MavenDependency("org.scala-lang","scala-reflect","2.11.5")
+  )
 }
 class LibraryBootstrapped(context: Context) extends Library(context) with NonBootstrappedCompiler{
-  override def dependencies: Seq[Dependency] = dottyLibraryMavenDependencies
+  override def dependencies: Seq[Dependency] = (
+    //Seq( library ) //, interfaces )
+    //++
+    Resolver(mavenCentral).bind(
+      MavenDependency("org.scala-lang","scala-reflect","2.11.5")
+      //"me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a",
+      //"com.typesafe.sbt" % "sbt-interface" % "0.13.13"
+    )
+  )
+  //override def dependencies: Seq[Dependency] = dottyLibraryMavenDependencies
 }
 
 class Compiler(val context: Context) extends Shared{
   def suffix = "compiler"
-  override def dependencies = Seq( library, interfaces ) ++ dottyCompilerMavenDependencies
+  override def dependencies = (
+    Seq( library, interfaces )
+    ++
+    Resolver(mavenCentral).bind(
+      "me.d-d" % "scala-compiler" % "2.11.5-20170111-125332-40bdc7b65a",
+      "com.typesafe.sbt" % "sbt-interface" % "0.13.13"
+    )
+  )
 }
 class CompilerBootstrapped(context: Context) extends Compiler(context) with NonBootstrappedCompiler{
   // FIXME: using the bootstrapped library here fails with ClassNotFoundException: scala.Product0$class
-  override def dependencies = Seq( libraryBootstrapped, interfaces ) ++ dottyCompilerMavenDependencies
+  override def dependencies = Seq( libraryBootstrapped, interfaces )// ++ dottyCompilerMavenDependencies
 }
 
 class CompilerBootstrappedTest(val context: Context) extends BootstrappedCompiler{
