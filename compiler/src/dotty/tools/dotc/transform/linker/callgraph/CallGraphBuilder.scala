@@ -314,7 +314,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     def preciseSelectCall(tp: Type, sym: Symbol): TermRef = {
       def selectCall(tp1: Type) = {
-        if (sym.is(Private)) sym
+        if (sym.is(Private) || tp.typeSymbol == sym.owner) sym
         else {
           val selectByName = tp1.nonPrivateMember(sym.name)
           selectByName.suchThat(x => x == sym || x.overriddenSymbol(sym.owner.asClass) == sym).symbol
