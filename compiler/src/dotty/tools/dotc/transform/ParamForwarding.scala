@@ -46,7 +46,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
          * }
          */
         val candidate = sym.owner.asClass.superClass
-          .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = Mutable)).symbol
+          .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = (Mutable | Final))).symbol
         if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
         else if (candidate is Method) inheritedAccessor(candidate)
         else NoSymbol
@@ -63,7 +63,10 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                 val alias = inheritedAccessor(sym)
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
-                    sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
+                    // A private method cannot have the same name as an inherited non-private one,
+                    // so the forwarder should have the same access flags as the alias.
+                    val flags = (sym.flags &~ Private) | (alias.flags & AccessFlags) | Override | Method | Stable
+                    sym.copySymDenotation(initFlags = flags, info = sym.info.ensureMethodic)
                       .installAfter(thisTransformer)
                     val superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
