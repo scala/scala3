@@ -29,15 +29,16 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
 
     val position =
       if (cont.pos.exists) {
-        val src = cont.pos.source
+        val pos = cont.pos
+        val src = pos.source
         new Position {
           val sourceFile: Maybe[java.io.File] = maybe(Option(src.file.file))
           val sourcePath: Maybe[String] = maybe(Option(src.file.path))
-          val line: Maybe[Integer] = Maybe.just(cont.pos.line)
-          val lineContent: String = cont.pos.lineContent
-          val offset: Maybe[Integer] = Maybe.just(cont.pos.point)
-          val pointer: Maybe[Integer] = Maybe.just(cont.pos.point)
-          val pointerSpace: Maybe[String] = Maybe.just(" " * cont.pos.point)
+          val line: Maybe[Integer] = Maybe.just(pos.line)
+          val lineContent: String = pos.lineContent
+          val offset: Maybe[Integer] = Maybe.just(pos.point)
+          val pointer: Maybe[Integer] = Maybe.just(pos.point)
+          val pointerSpace: Maybe[String] = Maybe.just(" " * pos.point)
         }
       } else
         noPosition
