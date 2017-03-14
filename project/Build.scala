@@ -281,8 +281,11 @@ object DottyBuild extends Build {
       libraryDependencies ++= partestDeps.value,
       libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-                                  "com.novocode" % "junit-interface" % "0.11" % "test",
-                                  "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
+                                  "com.novocode" % "junit-interface" % "0.11" % "test"),
+
+      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
+      libraryDependencies += "org.scala-sbt" % "interface" % sbtVersion.value,
+
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
@@ -428,7 +431,7 @@ object DottyBuild extends Build {
             // FIXME: should go away when xml literal parsing is removed
             path.contains("scala-xml") ||
             // needed for the xsbti interface
-            path.contains("sbt-interface")
+            path.contains("org.scala-sbt/interface/")
         } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
@@ -552,9 +555,9 @@ object DottyBuild extends Build {
       },
       publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
       description := "sbt compiler bridge for Dotty",
-      resolvers += Resolver.typesafeIvyRepo("releases"),
+      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
       libraryDependencies ++= Seq(
-        "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
+        "org.scala-sbt" % "interface" % sbtVersion.value,
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
