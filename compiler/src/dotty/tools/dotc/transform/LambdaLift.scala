@@ -333,7 +333,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       } while (changedLiftedOwner)
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
-      if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
+      if (sym.is(Param) && !sym.is(Synthetic))
+        sym.name
+      else if (sym.isAnonymousFunction && sym.owner.is(Method, butNot = Label))
         (sym.name ++ NJ ++ sym.owner.name).freshened
       else sym.name.freshened
 
