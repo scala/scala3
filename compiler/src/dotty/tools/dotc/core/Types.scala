@@ -2574,7 +2574,7 @@ object Types {
 
   /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
    *  This is used both as a type of a polymorphic method and as a type of
-   *  a higher-kidned type parameter. Variances are encoded in parameter
+   *  a higher-kinded type parameter. Variances are encoded in parameter
    *  names. A name starting with `+` designates a covariant parameter,
    *  a name starting with `-` designates a contravariant parameter,
    *  and every other name designates a non-variant parameter.
