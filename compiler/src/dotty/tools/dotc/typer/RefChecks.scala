@@ -739,11 +739,7 @@ import RefChecks._
  *
  *  2. It warns about references to symbols labeled deprecated or migration.
 
- *  3. It performs the following transformations:
- *
- *  - if (true) A else B  --> A
- *    if (false) A else B --> B
- *  - macro definitions are eliminated.
+ *  3. It eliminates macro definitions.
  *
  *  4. It makes members not private where necessary. The following members
  *  cannot be private in the Java model:
@@ -835,12 +831,6 @@ class RefChecks extends MiniPhase { thisTransformer =>
       }
       tree
     }
-
-    override def transformIf(tree: If)(implicit ctx: Context, info: TransformerInfo) =
-      tree.cond.tpe match {
-        case ConstantType(value) => if (value.booleanValue) tree.thenp else tree.elsep
-        case _ => tree
-      }
 
     override def transformNew(tree: New)(implicit ctx: Context, info: TransformerInfo) = {
       currentLevel.enterReference(tree.tpe.typeSymbol, tree.pos)
