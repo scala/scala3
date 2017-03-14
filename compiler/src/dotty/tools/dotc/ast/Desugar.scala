@@ -242,20 +242,20 @@ object desugar {
    *     class C { type v C$T; type v T = C$T }
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
-    val name =
+    val checkedName =
       if (tdef.name.hasVariance && tdef.mods.is(Param)) {
         ctx.error(em"type parameter name may not start with `+' or `-'", tdef.pos)
         ("$" + tdef.name).toTypeName
       }
       else tdef.name
     if (tdef.mods is PrivateLocalParam) {
-      val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
+      val tparam = cpy.TypeDef(tdef)(name = checkedName.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
-      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
+      val alias = cpy.TypeDef(tdef)(name = checkedName, rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
     }
-    else tdef
+    else cpy.TypeDef(tdef)(name = checkedName)
   }
 
   @sharable private val synthetic = Modifiers(Synthetic)
