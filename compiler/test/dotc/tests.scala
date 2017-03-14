@@ -225,6 +225,10 @@ class tests extends CompilerTest {
         |../scala-scala/src/library/scala/collection/generic/GenSeqFactory.scala""".stripMargin)
   @Test def compileIndexedSeq = compileLine("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala")
   @Test def compileParSetLike = compileLine("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala")
+  @Test def compileParSetSubset = compileLine(
+      """../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala
+        |../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala
+        |../scala-scala/src/library/scala/collection/mutable/SetLike.scala""".stripMargin)(scala2mode ++ defaultOptions)
 
   @Test def dotty = {
     dottyBootedLib
