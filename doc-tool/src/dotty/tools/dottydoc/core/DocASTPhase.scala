@@ -94,10 +94,7 @@ class DocASTPhase extends Phase {
           NonEntity
         else {
           val tparams = t.rhs.tpe match {
-            case tp: PolyType => tp.paramRefs.zip(tp.variances).map { case (tp, variance) =>
-              val varianceSym = if (variance == 1) "+" else if (variance == -1) "-" else ""
-              varianceSym + tp.paramName.show
-            }
+            case tp: PolyType => tp.paramNames.map(_.show)
             case _ => Nil
           }
           TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe), tparams)
