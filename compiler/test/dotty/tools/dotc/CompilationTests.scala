@@ -6,13 +6,36 @@ import org.junit.Test
 import java.io.{ File => JFile }
 
 class CompilationTests extends ParallelTesting {
-  import CompilationTests.{ defaultOutputDir, defaultOptions }
+  import CompilationTests.{ defaultOutputDir, defaultOptions, picklingOptions }
+
+  // Positive tests ------------------------------------------------------------
 
   @Test def compilePos =
     compileFilesInDir("../tests/pos", defaultOptions).pos
 
+  // Negative tests ------------------------------------------------------------
+
   @Test def compileNeg =
     compileShallowFilesInDir("../tests/neg", defaultOptions).neg
+
+  // Run tests -----------------------------------------------------------------
+
+  @Test def runArraycopy =
+    compileFile("../tests/run/arraycopy.scala", defaultOptions).run
+
+  @Test def runAll =
+    compileFilesInDir("../tests/run", defaultOptions).run
+
+  // Pickling Tests ------------------------------------------------------------
+
+  @Test def testPickling =
+    compileFilesInDir("../tests/pickling", picklingOptions).pos
+
+  @Test def testPicklingAst =
+    compileFilesInDir("../compiler/src/dotty/tools/dotc/ast", picklingOptions).pos
+
+  @Test def testPicklingInf =
+    compileFile("../tests/pos/pickleinf.scala", picklingOptions).pos
 }
 
 object CompilationTests {
@@ -58,4 +81,13 @@ object CompilationTests {
   private val yCheckOptions = Array("-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef")
 
   val defaultOptions = noCheckOptions ++ checkOptions ++ yCheckOptions ++ classPath
+  val allowDeepSubtypes = defaultOptions diff Array("-Yno-deep-subtypes")
+  val allowDoubleBindings = defaultOptions diff Array("-Yno-double-bindings")
+
+  val picklingOptions = defaultOptions ++ Array(
+    "-Xprint-types",
+    "-Ytest-pickler",
+    "-Ystop-after:pickler",
+    "-Yprintpos"
+  )
 }

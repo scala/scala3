@@ -9,6 +9,7 @@ import core.Contexts._
 import reporting.{ Reporter, UniqueMessagePositions, HideNonSensicalMessages, MessageRendering }
 import reporting.diagnostic.MessageContainer
 import interfaces.Diagnostic.ERROR
+import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
@@ -30,6 +31,10 @@ trait ParallelTesting {
       _targetsCompiled += 1
       _errors += newErrors
     }
+
+    private[this] var _failed = false
+    final protected[this] def fail(): Unit = synchronized { _failed = true }
+    def didFail: Boolean = _failed
 
     private def statusRunner: Runnable = new Runnable {
       def run(): Unit = {
@@ -85,6 +90,9 @@ trait ParallelTesting {
         }
         catch {
           case NonFatal(e) => {
+            // if an exception is thrown during compilation, the complete test
+            // run should fail
+            fail()
             System.err.println(s"\n${e.getMessage}\n")
             completeCompilation(1)
             throw e
@@ -93,13 +101,77 @@ trait ParallelTesting {
     }
   }
 
+  private final class RunCompileRun(targetDirs: List[JFile], fromDir: String, flags: Array[String])
+  extends CompileRun(targetDirs, fromDir, flags) {
+    private def verifyOutput(checkFile: JFile, dir: JFile) = try {
+        // Do classloading magic and running here:
+        import java.net.{ URL, URLClassLoader }
+        import java.io.ByteArrayOutputStream
+        val ucl = new URLClassLoader(Array(dir.toURI.toURL))
+        val cls = ucl.loadClass("Test")
+        val meth = cls.getMethod("main", classOf[Array[String]])
+
+        val printStream = new ByteArrayOutputStream
+        Console.withOut(printStream) {
+          meth.invoke(null, Array("jvm")) // partest passes at least "jvm" as an arg
+        }
+
+        val outputLines = printStream.toString("utf-8").lines.toArray
+        val checkLines = Source.fromFile(checkFile).getLines.toArray
+
+        def linesMatch =
+          outputLines
+          .zip(checkLines)
+          .forall { case (x, y) => x == y }
+
+        if (outputLines.length != checkLines.length || !linesMatch) {
+          System.err.println {
+            s"\nOutput from run test '$dir' did not match expected, output:\n${outputLines.mkString("\n")}"
+          }
+          fail()
+        }
+    }
+    catch {
+      case _: NoSuchMethodException =>
+        System.err.println(s"\ntest in '$dir' did not contain a main method")
+        fail()
+
+      case _: ClassNotFoundException =>
+        System.err.println(s"\ntest in '$dir' did was not contained within a `Test` object")
+        fail()
+
+      case _: InvocationTargetException =>
+        System.err.println(s"\nTest in '$dir' might be using args(X) where X > 0")
+        fail()
+    }
+
+    protected def compilationRunnable(dir: JFile): Runnable = new Runnable {
+      def run(): Unit =
+        try {
+          val sourceFiles = dir.listFiles.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
+          val checkFile = dir.listFiles.find(_.getName.endsWith(".check"))
+          val reporter = compile(sourceFiles, flags ++ Array("-d", dir.getAbsolutePath), false)
+          completeCompilation(reporter.errorCount)
+
+          if (reporter.errorCount == 0 && checkFile.isDefined) verifyOutput(checkFile.get, dir)
+          else if (reporter.errorCount > 0) {
+            System.err.println(s"\nCompilation failed for: '$dir'")
+            fail()
+          }
+        }
+        catch {
+          case NonFatal(e) => {
+            System.err.println(s"\n$e\n${e.getMessage}")
+            completeCompilation(1)
+            fail()
+            throw e
+          }
+        }
+    }
+  }
+
   private final class NegCompileRun(targetDirs: List[JFile], fromDir: String, flags: Array[String])
   extends CompileRun(targetDirs, fromDir, flags) {
-    private[this] var _failed = false
-    private[this] def fail(): Unit = _failed = true
-
-    def didFail: Boolean = _failed
-
     protected def compilationRunnable(dir: JFile): Runnable = new Runnable {
       def run(): Unit =
         try {
@@ -188,10 +260,6 @@ trait ParallelTesting {
     }
   }
 
-  private val driver = new Driver {
-    override def newCompiler(implicit ctx: Context) = new Compiler
-  }
-
   private class DaftReporter(suppress: Boolean)
   extends Reporter with UniqueMessagePositions with HideNonSensicalMessages
   with MessageRendering {
@@ -206,7 +274,13 @@ trait ParallelTesting {
     }
   }
 
-  private def compile(files: Array[JFile], flags: Array[String], suppressErrors: Boolean): DaftReporter = {
+  private def compile(files0: Array[JFile], flags: Array[String], suppressErrors: Boolean): DaftReporter = {
+
+    def flattenFiles(f: JFile): Array[JFile] =
+      if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
+      else Array(f)
+
+    val files: Array[JFile] = files0.flatMap(flattenFiles)
 
     def findJarFromRuntime(partialName: String) = {
       val urls = ClassLoader.getSystemClassLoader.asInstanceOf[java.net.URLClassLoader].getURLs.map(_.getFile.toString)
@@ -231,10 +305,10 @@ trait ParallelTesting {
     compileWithJavac(files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath))
 
     val reporter = new DaftReporter(suppress = suppressErrors)
+    val driver = new Driver { def newCompiler(implicit ctx: Context) = new Compiler }
     driver.process(flags ++ files.map(_.getAbsolutePath), reporter = reporter)
     reporter
   }
-
 
   class CompilationTest(targetDirs: List[JFile], fromDir: String, flags: Array[String]) {
     def pos: Unit = {
@@ -245,6 +319,11 @@ trait ParallelTesting {
     def neg: Unit = assert(
       !(new NegCompileRun(targetDirs, fromDir, flags).execute().didFail),
       s"Wrong number of errors encountered when compiling $fromDir"
+    )
+
+    def run: Unit = assert(
+      !(new RunCompileRun(targetDirs, fromDir, flags).execute().didFail),
+      s"Run tests failed for test $fromDir"
     )
   }
 
@@ -257,13 +336,19 @@ trait ParallelTesting {
   }
 
   private def toCompilerDirFromFile(file: JFile, sourceDir: JFile, outDir: String): JFile = {
-    val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
-    val targetDir = new JFile(outDir + s"${sourceDir.getName}/$uniqueSubdir")
-    // create if not exists
-    targetDir.mkdirs()
-    // copy file to dir:
-    copyToDir(targetDir, file)
-    targetDir
+      val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
+      val targetDir = new JFile(outDir + s"${sourceDir.getName}/$uniqueSubdir")
+      if (file.getName.endsWith(".java") || file.getName.endsWith(".scala")) {
+        // create if not exists
+        targetDir.mkdirs()
+        // copy file to dir:
+        copyToDir(targetDir, file)
+
+        // copy checkfile if it exists
+        val checkFile = new JFile(file.getAbsolutePath.substring(0, file.getAbsolutePath.lastIndexOf('.')) + ".check")
+        if (checkFile.exists) copyToDir(targetDir, checkFile)
+      }
+      targetDir
   }
 
   private def copyToDir(dir: JFile, file: JFile): Unit = {
@@ -279,10 +364,11 @@ trait ParallelTesting {
   private def compilationTargets(sourceDir: JFile): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
       if (f.isDirectory) (f :: dirs, files)
+      else if (f.getName.endsWith(".check")) (dirs, files)
       else (dirs, f :: files)
     }
 
-  def compileFileInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+  def compileFile(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     // each calling method gets its own unique output directory, in which we
     // place the dir being compiled:
     val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
