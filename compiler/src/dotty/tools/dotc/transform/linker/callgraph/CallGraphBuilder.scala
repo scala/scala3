@@ -66,7 +66,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         casts.clearNewItems()
         classOfs.clearNewItems()
 
-        processCallSites(reachableMethods.items, reachableTypes.items)
+        processCallSites()
 
         val newReachableTypes = reachableTypes.newItems
         iteration += 1
@@ -192,7 +192,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }.apply(OuterTargs.empty, tp)
   }
 
-  private def instantiateCallSite(caller: CallInfoWithContext, rec: Type, callee: CallInfo, types: Traversable[TypeWithContext]): Traversable[CallInfoWithContext] = {
+  private def instantiateCallSite(caller: CallInfoWithContext, rec: Type, callee: CallInfo): Traversable[CallInfoWithContext] = {
 
     lazy val someCaller = Some(caller)
     lazy val someCallee = Some(callee)
@@ -501,8 +501,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
   }
 
-  private def processCallSites(callSites: immutable.Set[CallInfoWithContext], instantiatedTypes: immutable.Set[TypeWithContext]): Unit = {
-    for (method <- callSites) {
+  private def processCallSites(): Unit = {
+    for (method <- reachableMethods.items) {
       // Find new call sites
 
       collectedSummaries.get(method.callSymbol) match {
@@ -511,7 +511,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
           summary.methodsCalled.foreach {
             case (receiver, theseCallSites) => theseCallSites.foreach { callSite =>
-              val instantiatedCalls = instantiateCallSite(method, receiver, callSite, instantiatedTypes)
+              val instantiatedCalls = instantiateCallSite(method, receiver, callSite)
               reachableMethods ++= instantiatedCalls
               method.addOutEdges(callSite, instantiatedCalls)
             }
@@ -521,13 +521,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           if (withJavaCallGraph && !method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
             // Add all possible calls from java to object passed as parameters.
             outerMethods += method.callSymbol
-            processCallsFromJava(method, instantiatedTypes)
+            processCallsFromJava(method)
           }
       }
     }
   }
 
-  private def processCallsFromJava(method: CallInfoWithContext, instantiatedTypes: immutable.Set[TypeWithContext]): Unit = {
+  private def processCallsFromJava(method: CallInfoWithContext): Unit = {
 
     val tParamNames = method.call.widenDealias.typeParams.map(_.paramName)
     val newOuterTargs = method.outerTargs.addAll(method.callSymbol, tParamNames, method.targs)
@@ -608,7 +608,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       potentialCall <- allPotentialCallsFor(rec)
       if method.getOutEdges(potentialCall).isEmpty
     } {
-      val instantiatedCalls = instantiateCallSite(method, rec, potentialCall, instantiatedTypes)
+      val instantiatedCalls = instantiateCallSite(method, rec, potentialCall)
       val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
       reachableMethods ++= instantiatedCallsToDefinedMethods
       method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)

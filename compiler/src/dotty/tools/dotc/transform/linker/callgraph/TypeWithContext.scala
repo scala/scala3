@@ -9,8 +9,7 @@ class TypeWithContext(val tp: Type, val outerTargs: OuterTargs) {
     case _ => false
   }
 
-  override def hashCode(): Int =
-    java.util.Objects.hash(tp, outerTargs.mp)
+  override def hashCode(): Int = tp.hashCode() // ^ outerTargs.mp.hashCode()
 
   override def toString: String = s"TypeWithContext($tp, $outerTargs)"
 }
