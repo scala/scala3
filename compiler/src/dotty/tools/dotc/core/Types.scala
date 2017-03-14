@@ -3328,6 +3328,8 @@ object Types {
         zeroParamClass(tp.underlying)
       case tp: TypeVar =>
         zeroParamClass(tp.underlying)
+      case tp: HKApply =>
+        zeroParamClass(tp.superType)
       case _ =>
         NoType
     }
