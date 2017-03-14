@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
-import dotty.tools.dotc.util.WorkList
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
@@ -31,11 +30,12 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private var iteration = 0
 
   private val entryPoints = mutable.HashMap.empty[CallInfoWithContext, Int]
-  private val reachableTypes = new WorkList[TypeWithContext]()
-  private val reachableMethods = new WorkList[CallInfoWithContext]()
-  private val outerMethods = mutable.Set[Symbol]()
-  private val classOfs = new WorkList[Symbol]()
-  private val casts = new WorkList[Cast]()
+  private var reachableTypes = immutable.Set.empty[TypeWithContext]
+  private var reachableMethods = immutable.Set.empty[CallInfoWithContext]
+  private var outerMethods = immutable.Set.empty[Symbol]
+  private var classOfs = immutable.Set.empty[Symbol]
+  private var casts = immutable.Set.empty[Cast]
+  private var newCastsFound: Boolean = false
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
@@ -50,7 +50,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
     val call = CallInfoWithContext(tpe, targs, args, OuterTargs.empty)(None, None)
     entryPoints(call) = entryPointId
-    reachableMethods += call
+    reachableMethods = reachableMethods + call
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
     addReachableType(self)
@@ -58,46 +58,32 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   /** Builds the call graph based on the current reachable items, mainly entry points. */
   def build(): Unit = {
-    ctx.log(s"Building call graph with ${reachableMethods.newItems.size} entry points")
+    ctx.log(s"Building call graph with ${reachableMethods.size} entry points")
+    var newReachableMethods = reachableMethods.size
+    var newReachableTypes = reachableTypes.size
     @tailrec def buildLoop(): Unit = {
-      if (reachableMethods.hasNewItems || reachableTypes.hasNewItems || casts.hasNewItems) {
-        reachableMethods.clearNewItems()
-        reachableTypes.clearNewItems()
-        casts.clearNewItems()
-        classOfs.clearNewItems()
+      if (newReachableMethods != 0 || newReachableTypes != 0 || newCastsFound) {
+        newCastsFound = false
+
+        val classOfsLastSize = classOfs.size
+        val reachableMethodsLastSize = reachableMethods.size
+        val reachableTypesLastSize = reachableTypes.size
 
         processCallSites()
 
-        val newReachableTypes = reachableTypes.newItems
-        iteration += 1
-        ctx.log(s"Graph building iteration $iteration")
-        ctx.log(s"Found ${newReachableTypes.size} new instantiated types")
-        val newClassOfs = classOfs.newItems
-        ctx.log(s"Found ${newClassOfs.size} new classOfs")
-        newReachableTypes.foreach { x =>
-          val clas = x.tp match {
-            case t: ClosureType =>
-              t.u.classSymbol.asClass
-            case t: JavaAllocatedType =>
-              t.underlying.widenDealias.classSymbol.asClass
-            case _ => x.tp.classSymbol.asClass
-          }
-          if (!clas.is(JavaDefined) && clas.is(Module)) {
-            val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
-            val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
-            reachableMethods ++= fields.map {
-              fieldSym =>
-                CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs)(parent, None)
-            }
-          }
-        }
+        newReachableMethods = reachableMethods.size - reachableMethodsLastSize
+        newReachableTypes = reachableTypes.size - reachableTypesLastSize
 
-        val newReachableMethods = reachableMethods.newItems
+        iteration += 1
+        ctx.log(
+          s"""Graph building iteration $iteration
+             |Found $newReachableTypes new instantiated types
+             |Found ${classOfs.size - classOfsLastSize} new classOfs
+             |Found $newReachableMethods new call sites""".stripMargin)
 
         // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
         // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
-        ctx.log(s"Found ${newReachableMethods.size} new call sites")
         buildLoop()
       }
     }
@@ -108,20 +94,32 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph = {
     val entryPoints = this.entryPoints.toMap
-    val reachableMethods = this.reachableMethods.items
-    val reachableTypes = this.reachableTypes.items
-    val casts = this.casts.items
-    val classOfs = this.classOfs.items
-    val outerMethods = this.outerMethods.toSet
+    val reachableMethods = this.reachableMethods
+    val reachableTypes = this.reachableTypes
+    val casts = this.casts
+    val classOfs = this.classOfs
+    val outerMethods = this.outerMethods
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
-      reachableTypes += x
+      reachableTypes = reachableTypes + x
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
         typesByMemberNameCache.put(name, x :: typesByMemberNameCache.get(name))
+      }
+      val clas = x.tp match {
+        case t: ClosureType => t.u.classSymbol.asClass
+        case t: JavaAllocatedType => t.underlying.widenDealias.classSymbol.asClass
+        case _ => x.tp.classSymbol.asClass
+      }
+      if (!clas.is(JavaDefined) && clas.is(Module)) {
+        val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
+        val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
+        fields.foreach { fieldSym =>
+          reachableMethods += CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs)(parent, None)
+        }
       }
     }
   }
@@ -142,7 +140,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val ret1 = typesByMemberNameCache.get(x)
     if (ret1 eq null) {
       // not yet computed
-      val upd = reachableTypes.itemsIterator.filter(tp => tp.tp.member(x).exists).toList
+      val upd = reachableTypes.iterator.filter(tp => tp.tp.member(x).exists).toList
       typesByMemberNameCache.put(x, upd)
       upd
     } else ret1
@@ -151,10 +149,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private def addCast(from: Type, to: Type) = {
     if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
       val newCast = new Cast(from, to)
-      for (tp <- reachableTypes.items) {
+      for (tp <- reachableTypes) {
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
-          casts += newCast
-          castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
+          if (!casts.contains(newCast)) {
+            casts = casts + newCast
+            newCastsFound = true
+            castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
+          }
         }
       }
     }
@@ -386,7 +387,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     receiver match {
       case _ if calleeSymbol == defn.Predef_classOf =>
-        classOfs += callee.targs.head.classSymbol
+        classOfs = classOfs + callee.targs.head.classSymbol
         Nil
       case _ if calleeSymbol == ctx.definitions.throwMethod =>
         Nil
@@ -504,7 +505,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def processCallSites(): Unit = {
-    for (method <- reachableMethods.items) {
+    for (method <- reachableMethods) {
       // Find new call sites
 
       collectedSummaries.get(method.callSymbol) match {
@@ -520,9 +521,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
-          if (withJavaCallGraph && !method.call.termSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
+          if (withJavaCallGraph && !method.callSymbol.is(Module | Package) &&
+              !outerMethods.contains(method.callSymbol) &&
+              !method.parent.exists(_.isOnJavaAllocatedType)) {
             // Add all possible calls from java to object passed as parameters.
-            outerMethods += method.callSymbol
+            outerMethods = outerMethods + method.callSymbol
             processCallsFromJava(method)
           }
       }
