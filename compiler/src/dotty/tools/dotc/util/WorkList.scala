@@ -33,6 +33,8 @@ class WorkList[A] {
   /** Return the set of new items added to the work list */
   def items: immutable.Set[A] = currentReachableItems.toSet
 
+  def itemsIterator: Iterator[A] = currentReachableItems.toIterator
+
   /** Returns true if the work list contains the element */
   def contains(x: A): Boolean = currentReachableItems.contains(x)
 }

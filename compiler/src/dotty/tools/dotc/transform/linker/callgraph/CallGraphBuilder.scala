@@ -37,7 +37,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val classOfs = new WorkList[Symbol]()
   private val casts = new WorkList[Cast]()
 
-  private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, Set[TypeWithContext]]()
+  private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
@@ -121,7 +121,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       reachableTypes += x
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
-        typesByMemberNameCache.put(name, typesByMemberNameCache.get(name) + x)
+        typesByMemberNameCache.put(name, x :: typesByMemberNameCache.get(name))
       }
     }
   }
@@ -138,11 +138,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     addReachableType(ctp)
   }
 
-  private def getTypesByMemberName(x: Name): Set[TypeWithContext] = {
+  private def getTypesByMemberName(x: Name): List[TypeWithContext] = {
     val ret1 = typesByMemberNameCache.get(x)
     if (ret1 eq null) {
       // not yet computed
-      val upd = reachableTypes.items.filter(tp => tp.tp.member(x).exists)
+      val upd = reachableTypes.itemsIterator.filter(tp => tp.tp.member(x).exists).toList
       typesByMemberNameCache.put(x, upd)
       upd
     } else ret1
@@ -325,6 +325,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       tp.select(call).asInstanceOf[TermRef]
     }
 
+    lazy val typesByMemberName = getTypesByMemberName(calleeSymbol.name)
+
     def dispatchCalls(receiverType: Type): Traversable[CallInfoWithContext] = {
       receiverType match {
         case t: PreciseType =>
@@ -344,7 +346,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
           val direct = {
             for {
-              tp <- getTypesByMemberName(calleeSymbol.name)
+              tp <- typesByMemberName
               if filterTypes(tp.tp, receiverTypeWiden)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
@@ -362,7 +364,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
             }
             for {
-              tp <- getTypesByMemberName(calleeSymbol.name)
+              tp <- typesByMemberName
               cast <- castsCache.getOrElse(tp, Iterator.empty)
               if filterTypes(tp.tp, cast.from) && filterTypes(cast.to, receiverType) && filterCast(cast)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
