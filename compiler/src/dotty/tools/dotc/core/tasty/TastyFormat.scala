@@ -151,7 +151,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
-                  POLYtype       Length result_Type NamesTypes      // variance encoded in front of name: +/-/=
+                  POLYtype       Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
@@ -546,8 +546,4 @@ object TastyFormat {
     case POLYtype | METHODtype => -1
     case _ => 0
   }
-
-  /** Map between variances and name prefixes */
-  val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
-  val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
 }

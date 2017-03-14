@@ -152,7 +152,7 @@ class Definitions {
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
     val tparamBounds = tparamNames map (_ => TypeBounds.empty)
-    val ptype = PolyType(tparamNames, tparamNames.map(alwaysZero))(_ => tparamBounds, resultTypeFn)
+    val ptype = PolyType(tparamNames)(_ => tparamBounds, resultTypeFn)
     enterMethod(cls, name, ptype, flags)
   }
 

@@ -268,10 +268,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               registerSym(start, sym)
               TypeRef.withFixedSym(NoPrefix, sym.name, sym)
             case POLYtype =>
-              val (rawNames, paramReader) = readNamesSkipParams
-              val (variances, paramNames) = rawNames
-                .map(name => (prefixToVariance(name.head), name.tail.toTypeName)).unzip
-              val result = PolyType(paramNames, variances)(
+              val (paramNames, paramReader) = readNamesSkipParams
+              val result = PolyType(paramNames.map(_.toTypeName))(
                 pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
                 pt => readType())
               goto(end)

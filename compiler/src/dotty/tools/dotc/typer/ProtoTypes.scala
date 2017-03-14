@@ -401,7 +401,7 @@ object ProtoTypes {
 
   /** Create a new polyparam that represents a dependent method parameter singleton */
   def newDepPolyParam(tp: Type)(implicit ctx: Context): PolyParam = {
-    val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil, 0 :: Nil)(
+    val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil)(
         pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
         pt => defn.AnyType)
     ctx.typeComparer.addToConstraint(poly, Nil)
