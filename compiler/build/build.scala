@@ -38,20 +38,25 @@ trait Shared extends BaseBuild{
   override def defaultScalaVersion = "2.11.5"
 
   def suffix: String
-  def name: String = "dotty-"+suffix
+  override def name: String = "dotty-"+suffix
   override def projectDirectory = dottyHome ++ ("/"++suffix)
 
   def dottyHome = lib.realpath(context.workingDirectory ++ "/..") // <- make sure to override this whenever that's not true
   def compilerDirectory = dottyHome ++ "/compiler"
   def libraryDirectory = dottyHome ++ "/library"
+  override def scalacOptions = super.scalacOptions ++ Seq(
+    "-language:implicitConversions",
+    "-language:higherKinds",
+    "-language:existentials"
+  )
 
   // sub-projects
-  def interfaces = new Interfaces
-  def compiler = new Compiler
-  def library = new Library
-  def libraryBootstrapped = new LibraryBootstrapped
-  def compilerBootstrapped = new CompilerBootstrapped
-  override def test = new CompilerBootstrappedTest
+  def interfaces = new Interfaces(context)
+  def compiler = new Compiler(context)
+  def library = new Library(context)
+  def libraryBootstrapped = new LibraryBootstrapped(context)
+  def compilerBootstrapped = new CompilerBootstrapped(context)
+  override def test = new CompilerBootstrappedTest(context)
 
   // copy dependencies from maven ;), this way we propagate them from the sbt build
   def dottyLibraryMavenDependencies  = Resolver(mavenCentral).bindOne( Dotty.libraryOnMaven(dottyVersion) ).dependencies
@@ -66,29 +71,29 @@ trait Shared extends BaseBuild{
   }
 }
 
-class Interfaces(implicit val context: Context) extends Shared with PackageDotty{
+class Interfaces(val context: Context) extends Shared with PackageDotty{
   def suffix = "interfaces"
   override def dependencies = Seq()
 }
 
-class Library(implicit val context: Context) extends Shared{
+class Library(val context: Context) extends Shared{
   def suffix = "library"
   override def dependencies: Seq[Dependency] = dottyLibraryMavenDependencies
 }
-class LibraryBootstrapped(implicit context: Context) extends Library with NonBootstrappedCompiler{
+class LibraryBootstrapped(context: Context) extends Library(context) with NonBootstrappedCompiler{
   override def dependencies: Seq[Dependency] = dottyLibraryMavenDependencies
 }
 
-class Compiler(implicit val context: Context) extends Shared{
+class Compiler(val context: Context) extends Shared{
   def suffix = "compiler"
   override def dependencies = Seq( library, interfaces ) ++ dottyCompilerMavenDependencies
 }
-class CompilerBootstrapped(implicit ontext: Context) extends Compiler with NonBootstrappedCompiler{
+class CompilerBootstrapped(context: Context) extends Compiler(context) with NonBootstrappedCompiler{
   // FIXME: using the bootstrapped library here fails with ClassNotFoundException: scala.Product0$class
   override def dependencies = Seq( libraryBootstrapped, interfaces ) ++ dottyCompilerMavenDependencies
 }
 
-class CompilerBootstrappedTest(implicit val context: Context) extends BootstrappedCompiler{
+class CompilerBootstrappedTest(val context: Context) extends BootstrappedCompiler{
   def suffix = "compiler"
   override def projectDirectory = compilerDirectory ++ "/test"
   override def sources = Seq(
@@ -115,7 +120,7 @@ class CompilerBootstrappedTest(implicit val context: Context) extends Bootstrapp
     System.setProperty("dotty.tests.classes.interfaces",interfaces.jar.get.toString)
 
     // trying to run the JUnit tests currently still fails with a bunch of exceptions
-    runMain( "org.junit.runner.JUnitCore", "dotc.tests" )
+    runMain( "org.junit.runner.JUnitCore", Seq("dotc.tests") )
     // runMain( "dotty.partest.DPConsoleRunner", "-dottyJars 1 " + dotty.build.asInstanceOf[PackageJars].jar.get.toString )
   }
 }

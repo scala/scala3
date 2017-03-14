@@ -2,27 +2,24 @@ package dotty
 
 /** Jars used when compiling test, normally set from the sbt build */
 object Jars {
-  /** Dotty library Jar */
-  val dottyLib: String = sys.env.get("DOTTY_LIB")
-    .getOrElse(Properties.dottyLib)
+  private def envPropOrError( environmentVariable: String, systemProperty: String ): String = {
+    sys.env.get(environmentVariable) orElse
+      sys.props.get(systemProperty) getOrElse (
+        throw new RuntimeException(s"Please define either $environmentVariable or $systemProperty")
+      )
+  }
 
-  /** Dotty Compiler Jar */
-  val dottyCompiler: String = sys.env.get("DOTTY_COMPILER")
-    .getOrElse(Properties.dottyCompiler)
-
-  /** Dotty Interfaces Jar */
-  val dottyInterfaces: String = sys.env.get("DOTTY_INTERFACE")
-    .getOrElse(Properties.dottyInterfaces)
+  def dottyLib: String = envPropOrError("DOTTY_LIB","dotty.tests.classes.library")
+  def dottyCompiler: String = envPropOrError("DOTTY_COMPILER","dotty.tests.classes.compiler")
+  def dottyInterfaces: String = envPropOrError("DOTTY_INTERFACE","dotty.tests.classes.interfaces")
 
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
     .map(_.split(":").toList).getOrElse(Properties.dottyExtras)
 
-  /** Dotty REPL dependencies */
-  val dottyReplDeps: List[String] = dottyLib :: dottyExtras
+  def dottyReplDeps: List[String] = dottyLib :: dottyExtras
 
-  /** Dotty test dependencies */
-  val dottyTestDeps: List[String] =
+  def dottyTestDeps: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
 
   /** Gets the scala 2.* library at runtime, note that doing this is unsafe
