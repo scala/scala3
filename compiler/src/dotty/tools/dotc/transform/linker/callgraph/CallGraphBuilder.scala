@@ -35,7 +35,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private var outerMethods = immutable.Set.empty[Symbol]
   private var classOfs = immutable.Set.empty[Symbol]
   private var casts = immutable.Set.empty[Cast]
-  private var newCastsFound: Boolean = false
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
@@ -50,7 +49,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
     val call = CallInfoWithContext(tpe, targs, args, OuterTargs.empty)(None, None)
     entryPoints(call) = entryPointId
-    reachableMethods = reachableMethods + call
+    addReachableMethod(call)
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
     addReachableType(self)
@@ -58,34 +57,37 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   /** Builds the call graph based on the current reachable items, mainly entry points. */
   def build(): Unit = {
-    ctx.log(s"Building call graph with ${reachableMethods.size} entry points")
-    var newReachableMethods = reachableMethods.size
-    var newReachableTypes = reachableTypes.size
+    ctx.log(s"Building call graph with ${entryPoints.values.toSet.size} entry points")
+    val startTime = System.currentTimeMillis()
     @tailrec def buildLoop(): Unit = {
-      if (newReachableMethods != 0 || newReachableTypes != 0 || newCastsFound) {
-        newCastsFound = false
+      val loopStartTime = System.currentTimeMillis()
 
-        val classOfsLastSize = classOfs.size
-        val reachableMethodsLastSize = reachableMethods.size
-        val reachableTypesLastSize = reachableTypes.size
+      val reachableMethodsLastSize = reachableMethods.size
+      val reachableTypesLastSize = reachableTypes.size
+      val classOfsLastSize = classOfs.size
 
-        processCallSites()
+      processCallSites()
 
-        newReachableMethods = reachableMethods.size - reachableMethodsLastSize
-        newReachableTypes = reachableTypes.size - reachableTypesLastSize
+      val newReachableMethods = reachableMethods.size - reachableMethodsLastSize
+      val newReachableTypes = reachableTypes.size - reachableTypesLastSize
+      val newClassOfs = classOfs.size - classOfsLastSize
 
-        iteration += 1
-        ctx.log(
-          s"""Graph building iteration $iteration
-             |Found $newReachableTypes new instantiated types
-             |Found ${classOfs.size - classOfsLastSize} new classOfs
-             |Found $newReachableMethods new call sites""".stripMargin)
+      iteration += 1
+      val loopEndTime = System.currentTimeMillis()
+      val loopTime = loopEndTime - loopStartTime
+      val totalTime = loopEndTime - startTime
+      ctx.log(
+        s"""Graph building iteration $iteration
+           |Iteration in ${loopTime/1000.0} seconds out of ${totalTime/1000.0} seconds (${loopTime.toDouble/totalTime})
+           |Found $newReachableTypes new instantiated types
+           |Found ${classOfs.size - classOfsLastSize} new classOfs
+           |Found $newReachableMethods new call sites""".stripMargin)
 
-        // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
-        // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
+      // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
+      // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
+      if (newReachableMethods != 0 || newReachableTypes != 0 || newClassOfs != 0)
         buildLoop()
-      }
     }
 
     buildLoop()
@@ -102,8 +104,12 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
+  private val sizesCache = new mutable.HashMap[Symbol, Int]()
+
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
+      val substed = new SubstituteByParentMap(x.outerTargs).apply(x.tp)
+      substed.classSymbols.foreach(x => sizesCache(x) = sizesCache.getOrElse(x, 0) + 1)
       reachableTypes = reachableTypes + x
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
@@ -118,10 +124,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val fields = clas.classInfo.decls.filter(x => !x.is(Method) && !x.isType)
         val parent = Some(CallInfoWithContext(x.tp.select(clas.primaryConstructor).asInstanceOf[TermRef], x.tp.baseArgInfos(clas), Nil, x.outerTargs)(None, None))
         fields.foreach { fieldSym =>
-          reachableMethods += CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs)(parent, None)
+          addReachableMethod(CallInfoWithContext(x.tp.select(fieldSym).asInstanceOf[TermRef], Nil, Nil, x.outerTargs)(parent, None))
         }
       }
     }
+  }
+
+  private def addReachableMethod(method: CallInfoWithContext): Unit = {
+    reachableMethods += method
   }
 
   private def addReachableClosure(x: ClosureType, from: CallInfoWithContext): Unit = {
@@ -153,7 +163,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
           if (!casts.contains(newCast)) {
             casts = casts + newCast
-            newCastsFound = true
             castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
           }
         }
@@ -193,12 +202,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }.apply(OuterTargs.empty, tp)
   }
 
-  private def instantiateCallSite(caller: CallInfoWithContext, rec: Type, callee: CallInfo): Traversable[CallInfoWithContext] = {
+  val lastInstatitation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
+  private def instantiateCallSite(caller: CallInfoWithContext, callee: CallInfo): Traversable[CallInfoWithContext] = {
 
     lazy val someCaller = Some(caller)
     lazy val someCallee = Some(callee)
 
     val receiver = callee.call.normalizedPrefix
+
     registerParentModules(receiver)
 
     val calleeSymbol = callee.call.termSymbol.asTerm
@@ -505,35 +516,62 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def processCallSites(): Unit = {
+    def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
+
     for (method <- reachableMethods) {
+      lazy val crcMap = lastInstatitation.getOrElseUpdate(method, mutable.Map.empty)
       // Find new call sites
+
+      def needsCallSiteInstantiation(callSite: CallInfo): Boolean = {
+        val receiver = callSite.call.normalizedPrefix
+        val recomputedCRC = computeCRC(receiver)
+        val needsInstantiation = recomputedCRC != crcMap.getOrElse(callSite, -1)
+        if (needsInstantiation)
+          crcMap(callSite) = recomputedCRC
+        needsInstantiation
+      }
 
       collectedSummaries.get(method.callSymbol) match {
         case Some(summary) =>
           summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info))))
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
-          summary.methodsCalled.foreach {
-            case (receiver, theseCallSites) => theseCallSites.foreach { callSite =>
-              val instantiatedCalls = instantiateCallSite(method, receiver, callSite)
-              reachableMethods ++= instantiatedCalls
-              method.addOutEdges(callSite, instantiatedCalls)
-            }
+
+          for {
+            methodCalled <- summary.methodsCalled
+            callSite <- methodCalled._2
+            if needsCallSiteInstantiation(callSite)
+          } {
+            val instantiatedCalls = instantiateCallSite(method, callSite)
+            instantiatedCalls.foreach(addReachableMethod)
+            method.addOutEdges(callSite, instantiatedCalls)
           }
 
         case None =>
           if (withJavaCallGraph && !method.callSymbol.is(Module | Package) &&
               !outerMethods.contains(method.callSymbol) &&
               !method.parent.exists(_.isOnJavaAllocatedType)) {
+
             // Add all possible calls from java to object passed as parameters.
             outerMethods = outerMethods + method.callSymbol
-            processCallsFromJava(method)
+
+            addReachableJavaReturnType(method)
+
+            for {
+              rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
+              potentialCall <- allPotentialCallsFor(rec)
+              if needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty
+            } {
+              val instantiatedCalls = instantiateCallSite(method, potentialCall)
+              val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
+              instantiatedCallsToDefinedMethods.foreach(addReachableMethod)
+              method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)
+            }
           }
       }
     }
   }
 
-  private def processCallsFromJava(method: CallInfoWithContext): Unit = {
-
+  private def addReachableJavaReturnType(method: CallInfoWithContext): Unit = {
     val tParamNames = method.call.widenDealias.typeParams.map(_.paramName)
     val newOuterTargs = method.outerTargs.addAll(method.callSymbol, tParamNames, method.targs)
 
@@ -553,70 +591,59 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case returnType => new JavaAllocatedType(substituteOuterTargs(returnType))
     }
     addReachableType(new TypeWithContext(javaAllocatedType, OuterTargs.empty))
+  }
 
-    def allPotentialCallsFor(argType: Type): Set[CallInfo] = {
-      if (defn.isPrimitiveClass(argType.classSymbol)) {
-        Set.empty
-      } else {
-        def potentialCall(decl: Symbol): Option[CallInfo] = {
-          def paramTypes = decl.info.paramTypess.flatten
-          val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
-          val targs = call.widenDealias match {
-            case call: PolyType =>
-              def erasedBounds(tp: TypeBounds): Type = tp.hi match {
-                case RefinedType(parent, refinedName, refinedInfo: TypeBounds) =>
-                  RefinedType(parent, refinedName, TypeAlias(erasedBounds(refinedInfo)))
-                case t => t
-              }
-              call.paramBounds.map(erasedBounds)
+  private def allPotentialCallsFor(argType: Type): Set[CallInfo] = {
+    if (defn.isPrimitiveClass(argType.classSymbol)) {
+      Set.empty
+    } else {
+      def potentialCall(decl: Symbol): Option[CallInfo] = {
+        def paramTypes = decl.info.paramTypess.flatten
+        val call = new TermRefWithFixedSym(argType, decl.name.asTermName, decl.asTerm)
+        val targs = call.widenDealias match {
+          case call: PolyType =>
+            def erasedBounds(tp: TypeBounds): Type = tp.hi match {
+              case RefinedType(parent, refinedName, refinedInfo: TypeBounds) =>
+                RefinedType(parent, refinedName, TypeAlias(erasedBounds(refinedInfo)))
+              case t => t
+            }
+            call.paramBounds.map(erasedBounds)
 
-            case _ => Nil
-          }
-
-          def isDefinedInJavaClass(sym: Symbol) =
-            sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
-
-          val definedInJavaClass: Boolean =
-            isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
-
-          argType match {
-            case argType: PreciseType =>
-              if (!definedInJavaClass) None
-              else Some(CallInfo(call, targs, paramTypes))
-
-            case _ =>
-              val argTypeWiden = argType.widenDealias
-              lazy val sym = argTypeWiden.classSymbol.requiredMethod(decl.name, paramTypes)
-              if (paramTypes.exists(_.typeSymbol.isTypeParam)) {
-                // println(s"Ignoring `${decl.name}` in java call graph construction because type parameters are not suported yet")
-                None
-              } else if (!argTypeWiden.member(decl.name).exists || !definedInJavaClass || (isDefinedInJavaClass(decl) && sym.isEffectivelyFinal)) None
-              else Some(CallInfo(TermRef(argType, sym), targs, paramTypes))
-
-          }
+          case _ => Nil
         }
 
-        def allDecls(argType: Type) =
-          (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
+        def isDefinedInJavaClass(sym: Symbol) =
+          sym.owner == defn.AnyClass || sym.owner.is(JavaDefined)
 
-        for {
-          decl <- allDecls(argType)
-          if decl.isTerm && !decl.isConstructor && decl.name != nme.COMPANION_MODULE_METHOD
-          if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
-          callInfo <- potentialCall(decl)
-        } yield callInfo
+        val definedInJavaClass: Boolean =
+          isDefinedInJavaClass(decl) || decl.allOverriddenSymbols.exists(isDefinedInJavaClass)
+
+        argType match {
+          case argType: PreciseType =>
+            if (!definedInJavaClass) None
+            else Some(CallInfo(call, targs, paramTypes))
+
+          case _ =>
+            val argTypeWiden = argType.widenDealias
+            lazy val sym = argTypeWiden.classSymbol.requiredMethod(decl.name, paramTypes)
+            if (paramTypes.exists(_.typeSymbol.isTypeParam)) {
+              // println(s"Ignoring `${decl.name}` in java call graph construction because type parameters are not suported yet")
+              None
+            } else if (!argTypeWiden.member(decl.name).exists || !definedInJavaClass || (isDefinedInJavaClass(decl) && sym.isEffectivelyFinal)) None
+            else Some(CallInfo(TermRef(argType, sym), targs, paramTypes))
+
+        }
       }
-    }
 
-    for {
-      rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
-      potentialCall <- allPotentialCallsFor(rec)
-      if method.getOutEdges(potentialCall).isEmpty
-    } {
-      val instantiatedCalls = instantiateCallSite(method, rec, potentialCall)
-      val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
-      reachableMethods ++= instantiatedCallsToDefinedMethods
-      method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)
+      def allDecls(argType: Type) =
+        (argType.decls ++ argType.parents.flatMap(_.decls)).toSet
+
+      for {
+        decl <- allDecls(argType)
+        if decl.isTerm && !decl.isConstructor && decl.name != nme.COMPANION_MODULE_METHOD
+        if decl.name != nme.isInstanceOf_ && decl.name != nme.asInstanceOf_ && decl.name != nme.synchronized_
+        callInfo <- potentialCall(decl)
+      } yield callInfo
     }
   }
 
