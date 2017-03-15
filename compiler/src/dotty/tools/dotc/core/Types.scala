@@ -106,7 +106,7 @@ object Types {
     final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[PolyType]
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
-    final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
+    @tailrec final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
       case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
@@ -154,16 +154,16 @@ object Types {
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
     final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = {
-      def loop(tp: Type) = tp match {
+      def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls) else tp.superType.derivesFrom(cls)
+          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType): @tailrec
         case tp: TypeProxy =>
-          tp.underlying.derivesFrom(cls)
+          loop(tp.underlying): @tailrec
         case tp: AndType =>
-          tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
+          loop(tp.tp1) || loop(tp.tp2): @tailrec
         case tp: OrType =>
-          tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+          loop(tp.tp1) && loop(tp.tp2): @tailrec
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -189,7 +189,7 @@ object Types {
     final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
-    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+    @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case AnnotatedType(tp, annot) => (annot matches cls) || (tp hasAnnotation cls)
       case _ => false
     }
@@ -278,7 +278,7 @@ object Types {
 // ----- Associated symbols ----------------------------------------------
 
     /** The type symbol associated with the type */
-    final def typeSymbol(implicit ctx: Context): Symbol = this match {
+    @tailrec final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.cls
 //    case ThisType(cls) => cls // needed?
@@ -293,16 +293,16 @@ object Types {
      */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
       case ConstantType(constant) =>
-        constant.tpe.classSymbol
+        constant.tpe.classSymbol: @tailrec
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        if (sym.isClass) sym else tp.superType.classSymbol: @tailrec
       case tp: ClassInfo =>
         tp.cls
       case tp: SingletonType =>
         NoSymbol
       case tp: TypeProxy =>
-        tp.underlying.classSymbol
+        tp.underlying.classSymbol: @tailrec
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -326,9 +326,9 @@ object Types {
         tp.cls :: Nil
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols
+        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols: @tailrec
       case tp: TypeProxy =>
-        tp.underlying.classSymbols
+        tp.underlying.classSymbols: @tailrec
       case AndType(l, r) =>
         l.classSymbols union r.classSymbols
       case OrType(l, r) =>
@@ -338,7 +338,7 @@ object Types {
     }
 
     /** The term symbol associated with the type */
-    final def termSymbol(implicit ctx: Context): Symbol = this match {
+    @tailrec final def termSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TermRef => tp.symbol
       case tp: TypeProxy => tp.underlying.termSymbol
       case _ => NoSymbol
@@ -369,11 +369,11 @@ object Types {
      *  Defined by ClassInfo, inherited by type proxies.
      *  Empty scope for all other types.
      */
-    final def decls(implicit ctx: Context): Scope = this match {
+    @tailrec final def decls(implicit ctx: Context): Scope = this match {
       case tp: ClassInfo =>
         tp.decls
       case tp: TypeProxy =>
-        tp.underlying.decls
+        tp.underlying.decls: @tailrec
       case _ =>
         EmptyScope
     }
@@ -395,7 +395,7 @@ object Types {
      *  name, as seen from prefix type `pre`. Declarations that have a flag
      *  in `excluded` are omitted.
      */
-    final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
+    @tailrec final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
         tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
@@ -615,7 +615,7 @@ object Types {
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: TypeProxy =>
-        tp.underlying.memberNames(keepOnly, pre)
+        tp.underlying.memberNames(keepOnly, pre): @tailrec
       case tp: AndType =>
         tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
@@ -822,7 +822,7 @@ object Types {
      *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
-    final def widen(implicit ctx: Context): Type = widenSingleton match {
+    @tailrec final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
       case tp => tp
     }
@@ -830,7 +830,7 @@ object Types {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
+    @tailrec final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
@@ -838,7 +838,7 @@ object Types {
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
      */
-    final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
+    @tailrec final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
       case _ => this
     }
@@ -852,7 +852,7 @@ object Types {
     }
 
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
-    final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
+    @tailrec final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
       case _ => this
@@ -875,20 +875,20 @@ object Types {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias(keepAnnots)
+          case TypeAlias(tp) => tp.dealias(keepAnnots): @tailrec
           case _ => tp
         }
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias(keepAnnots) else tp
+        if (tp1.exists) tp1.dealias(keepAnnots): @tailrec else tp
       case tp: AnnotatedType =>
         val tp1 = tp.tpe.dealias(keepAnnots)
         if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias(keepAnnots)
+        tp.ref.dealias(keepAnnots): @tailrec
       case app @ HKApply(tycon, args) =>
         val tycon1 = tycon.dealias(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
         else this
       case _ => this
     }
@@ -908,7 +908,7 @@ object Types {
       dealias(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
-    final def widenDealias(implicit ctx: Context): Type = {
+    @tailrec final def widenDealias(implicit ctx: Context): Type = {
       val res = this.widen.dealias
       if (res eq this) res else res.widenDealias
     }
@@ -991,7 +991,7 @@ object Types {
      *  (*) normalizes means: follow instantiated typevars and aliases.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type): Type = pre.stripTypeVar match {
+      @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           pre.refinedInfo match {
             case TypeAlias(alias) =>
@@ -999,14 +999,14 @@ object Types {
             case _ => loop(pre.parent)
           }
         case pre: RecType =>
-          val candidate = loop(pre.parent)
+          val candidate = pre.parent.lookupRefined(name)
           if (candidate.exists && !pre.isReferredToBy(candidate)) {
             //println(s"lookupRefined ${this.toString} . $name, pre: $pre ---> $candidate / ${candidate.toString}")
             candidate
           }
           else NoType
         case SkolemType(tp) =>
-          tp.lookupRefined(name)
+          loop(tp)
         case pre: WildcardType =>
           WildcardType
         case pre: TypeRef =>
@@ -1046,7 +1046,7 @@ object Types {
      *  Inherited by all other type proxies.
      *  `NoType` for all other types.
      */
-    final def normalizedPrefix(implicit ctx: Context): Type = this match {
+    @tailrec final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
         if (tp.symbol.info.isAlias) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
@@ -1102,14 +1102,14 @@ object Types {
 
 
     /** The parameter types in the first parameter section of a generic type or MethodType, Empty list for others */
-    final def firstParamTypes(implicit ctx: Context): List[Type] = this match {
+    @tailrec final def firstParamTypes(implicit ctx: Context): List[Type] = this match {
       case mt: MethodType => mt.paramTypes
       case pt: PolyType => pt.resultType.firstParamTypes
       case _ => Nil
     }
 
     /** Is this either not a method at all, or a parameterless method? */
-    final def isParameterless(implicit ctx: Context): Boolean = this match {
+    @tailrec final def isParameterless(implicit ctx: Context): Boolean = this match {
       case mt: MethodType => false
       case pt: PolyType => pt.resultType.isParameterless
       case _ => true
@@ -2101,7 +2101,7 @@ object Types {
   }
 
   object RefinedType {
-    def make(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): Type =
+    @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): Type =
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infos.head), names.tail, infos.tail)
 
@@ -3709,7 +3709,7 @@ object Types {
         this(x, prefix)
 
       case tp @ HKApply(tycon, args) =>
-        def foldArgs(x: T, tparams: List[TypeParamInfo], args: List[Type]): T =
+        @tailrec def foldArgs(x: T, tparams: List[TypeParamInfo], args: List[Type]): T =
           if (args.isEmpty) {
             assert(tparams.isEmpty)
             x
@@ -3752,7 +3752,7 @@ object Types {
       case _ => x
     }
 
-    final def foldOver(x: T, ts: List[Type]): T = ts match {
+    @tailrec final def foldOver(x: T, ts: List[Type]): T = ts match {
       case t :: ts1 => foldOver(apply(x, t), ts1)
       case nil => x
     }

@@ -244,7 +244,7 @@ object CollectionStrawMan6 extends LowPriority {
      *  collection type.
      */
     override def drop(n: Int): C[A @uncheckedVariance] = { // sound bcs of VarianceNote
-      def loop(n: Int, s: Iterable[A]): C[A] =
+      @tailrec def loop(n: Int, s: Iterable[A]): C[A] =
         if (n <= 0) s.asInstanceOf[C[A]]
            // implicit contract to guarantee success of asInstanceOf:
            //   (1) coll is of type C[A]

@@ -10,6 +10,7 @@ import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
 import Definitions.MaxImplementedFunctionArity
+import scala.annotation.tailrec
 
 /** Erased types are:
  *
@@ -244,7 +245,7 @@ object TypeErasure {
         case JavaArrayType(_) => defn.ObjectType
         case _ =>
           val cls2 = tp2.classSymbol
-          def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
+          @tailrec def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
             case bc :: bcs1 =>
               if (cls2.derivesFrom(bc)) {
                 val newBest = if (bestSoFar.derivesFrom(bc)) bestSoFar else bc

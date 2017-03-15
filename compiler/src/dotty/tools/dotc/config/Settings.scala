@@ -5,6 +5,7 @@ import collection.mutable.{ ArrayBuffer }
 import scala.util.{ Try, Success, Failure }
 import reflect.ClassTag
 import core.Contexts._
+import scala.annotation.tailrec
 // import annotation.unchecked
   // Dotty deviation: Imports take precedence over definitions in enclosing package
   // (Note that @unchecked is in scala, not annotation, so annotation.unchecked gives
@@ -216,7 +217,7 @@ object Settings {
         case "--" :: args =>
           checkDependencies(stateWithArgs(skipped ++ args))
         case x :: _ if x startsWith "-" =>
-          def loop(settings: List[Setting[_]]): ArgsSummary = settings match {
+          @tailrec def loop(settings: List[Setting[_]]): ArgsSummary = settings match {
             case setting :: settings1 =>
               val state1 = setting.tryToSet(state)
               if (state1 ne state) processArguments(state1, processAll, skipped)
