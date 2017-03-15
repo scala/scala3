@@ -37,9 +37,6 @@ tests/partest-generated/
 tests/locks/
 /test-classes/
 
-# Used in tests
-scala-scala
-
 # Ignore output files but keep the directory
 out/
 build/

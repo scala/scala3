@@ -1,0 +1,4 @@
+[submodule "scala-scala"]
+	path = scala-scala
+	url = https://github.com/DarkDimius/scala.git
+	branch = dotty-library
