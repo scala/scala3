@@ -129,7 +129,7 @@ class Compiler {
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, ctx.typerState.reporter, isCommittable = true))
       .setFreshNames(new FreshNameCreator.Default)
-  ctx.initialize()(start) // re-initialize the base context with start
+    ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
