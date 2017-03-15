@@ -28,7 +28,7 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       }
 
     val position =
-      if (cont.pos.exists) {
+      if (false && cont.pos.exists) { // Disabled because it duplicates the information printed by Dotty
         val pos = cont.pos
         val src = pos.source
         new Position {
