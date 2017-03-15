@@ -1585,11 +1585,12 @@ object Types {
 
     protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation =
       if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
-      else {
-        val d = lastDenotation
-        // Never go from a non-private denotation to a private one
-        if (d == null || d.symbol.is(Private)) prefix.member(name)
-        else prefix.nonPrivateMember(name)
+      else lastDenotation match {
+        case d: SymDenotation if !d.is(Private) =>
+          // We shouldn't go from a non-private denotation to a private one
+          prefix.nonPrivateMember(name)
+        case _ =>
+          prefix.member(name)
       }
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
