@@ -727,8 +727,8 @@ object Types {
 
     /** Is this type a legal type for a member that overrides another
      *  member of type `that`? This is the same as `<:<`, except that
-     *  the types ()T and => T are identified, and T is seen as overriding
-     *  either type.
+     *  the types `()T`, `=> T` and `T` are seen as overriding
+     *  each other.
      */
     final def overrides(that: Type)(implicit ctx: Context) = {
       def result(tp: Type): Type = tp match {
@@ -737,7 +737,8 @@ object Types {
       }
       (this frozen_<:< that) || {
         val rthat = result(that)
-        (rthat ne that) && (result(this) frozen_<:< rthat)
+        val rthis = result(this)
+        (rthat.ne(that) || rthis.ne(this)) && (rthis frozen_<:< rthat)
       }
     }
 
