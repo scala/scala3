@@ -1,17 +1,19 @@
-package test.transform
+package dotty
+package tools
+package dotc
+package transform
 
 import java.io._
 
 import scala.io.Source._
 import scala.reflect.io.Directory
 import org.junit.Test
-import dotty.tools.dotc.Main
-import dotty.tools.dotc.reporting.TestReporter
+import reporting.TestReporter
 
 class PatmatExhaustivityTest {
   val testsDir = "../tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat") ++ (new dotc.tests).classPath
+  val options = List("-color:never", "-Ystop-after:splitter", "-Ycheck-all-patmat") ++ CompilationTests.classPath
 
   private def compileFile(file: File) = {
     val stringBuffer = new StringWriter()

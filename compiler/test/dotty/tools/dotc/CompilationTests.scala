@@ -53,6 +53,18 @@ class CompilationTests extends ParallelTesting {
   @Test def compileIndexedSeqPos: Unit =
     compileFile("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions).pos
 
+  @Test def compileParSetLikePos: Unit =
+    compileFile("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions).pos
+
+  @Test def compileParSetSubsetPos: Unit = compileList(
+    List(
+     "../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+     "../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala",
+     "../scala-scala/src/library/scala/collection/mutable/SetLike.scala"
+    ),
+    scala2Mode
+  ).pos
+
   @Test def compileAstPos: Unit =
     compileDir("../compiler/src/dotty/tools/dotc/ast", defaultOptions).pos
 
