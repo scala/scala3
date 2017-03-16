@@ -183,7 +183,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case tp: PolyParam =>
-        polyParamNameString(tp) ~ polyHash(tp.binder)
+        polyParamNameString(tp) ~ lambdaHash(tp.binder)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case HKApply(tycon, args) =>
@@ -217,7 +217,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
   /** If -uniqid is set, the hashcode of the polytype, after a # */
-  protected def polyHash(pt: PolyType): Text =
+  protected def lambdaHash(pt: LambdaType[_, _]): Text =
     if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
