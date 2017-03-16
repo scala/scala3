@@ -39,6 +39,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
+  private val sizesCache = new mutable.HashMap[Symbol, Int]()
+
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
     val tpe = ref(s).tpe.asInstanceOf[TermRef]
     val targsSize = tpe.widen match {
@@ -59,14 +61,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   def build(): Unit = {
     ctx.log(s"Building call graph with ${entryPoints.values.toSet.size} entry points")
     val startTime = System.currentTimeMillis()
-    @tailrec def buildLoop(): Unit = {
+    @tailrec def buildLoop(processAllCallSites: Boolean): Unit = {
       val loopStartTime = System.currentTimeMillis()
 
       val reachableMethodsLastSize = reachableMethods.size
       val reachableTypesLastSize = reachableTypes.size
       val classOfsLastSize = classOfs.size
 
-      processCallSites()
+      processCallSites(processAllCallSites)
 
       val newReachableMethods = reachableMethods.size - reachableMethodsLastSize
       val newReachableTypes = reachableTypes.size - reachableTypesLastSize
@@ -77,7 +79,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val loopTime = loopEndTime - loopStartTime
       val totalTime = loopEndTime - startTime
       ctx.log(
-        s"""Graph building iteration $iteration
+        s"""Graph building iteration $iteration  ${if (processAllCallSites) "[processed all call sites]" else ""}
            |Iteration in ${loopTime/1000.0} seconds out of ${totalTime/1000.0} seconds (${loopTime.toDouble/totalTime})
            |Found $newReachableTypes new instantiated types
            |Found ${classOfs.size - classOfsLastSize} new classOfs
@@ -87,10 +89,12 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
       if (newReachableMethods != 0 || newReachableTypes != 0 || newClassOfs != 0)
-        buildLoop()
+        buildLoop(false)
+      else if (!processAllCallSites)
+        buildLoop(true)
     }
 
-    buildLoop()
+    buildLoop(false)
   }
 
   /** Packages the current call graph into a CallGraph */
@@ -104,7 +108,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     new CallGraph(entryPoints, reachableMethods, reachableTypes, casts, classOfs, outerMethods, mode, specLimit)
   }
 
-  private val sizesCache = new mutable.HashMap[Symbol, Int]()
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
@@ -521,7 +524,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }
   }
 
-  private def processCallSites(): Unit = {
+  private def processCallSites(processAllCallSites: Boolean): Unit = {
+    // TODO currently sizesCache must be missing some of the changes. If this is fixed processAllCallSites would not be needed.
     def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
 
     for (method <- reachableMethods) {
@@ -534,7 +538,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val needsInstantiation = recomputedCRC != crcMap.getOrElse(callSite, -1)
         if (needsInstantiation)
           crcMap(callSite) = recomputedCRC
-        needsInstantiation
+        processAllCallSites || needsInstantiation
       }
 
       collectedSummaries.get(method.callSymbol) match {
