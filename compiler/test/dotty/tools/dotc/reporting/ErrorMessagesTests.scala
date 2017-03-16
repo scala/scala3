@@ -304,5 +304,29 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("x", tree.name.show)
     }
 
+  @Test def superQualMustBeParent =
+    checkMessagesAfter("frontend") {
+      """
+        |class A {
+        |  def foo(): Unit = ()
+        |}
+        |
+        |class B {
+        |}
+        |
+        |class C extends A {
+        |  super[B].foo
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val defn = ictx.definitions
 
+        assertMessageCount(1, messages)
+        val SuperQualMustBeParent(qual, cls) :: Nil = messages
+
+        assertEquals("B", qual.show)
+        assertEquals("class C", cls.show)
+      }
 }
