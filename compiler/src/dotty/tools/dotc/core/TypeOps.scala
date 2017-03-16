@@ -282,7 +282,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def harmonizeUnion(tp: Type): Type = tp match {
     case tp: OrType =>
-      joinIfScala2(typeComparer.fluidly(tp.tp1 | tp.tp2))
+      joinIfScala2(ctx.typeComparer.lub(harmonizeUnion(tp.tp1), harmonizeUnion(tp.tp2), canConstrain = true))
     case tp @ AndType(tp1, tp2) =>
       tp derived_& (harmonizeUnion(tp1), harmonizeUnion(tp2))
     case tp: RefinedType =>
