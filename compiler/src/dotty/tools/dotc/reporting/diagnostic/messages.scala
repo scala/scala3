@@ -1192,4 +1192,21 @@ object messages {
            |""".stripMargin
   }
 
+  case class SuperQualMustBeParent(qual: untpd.Ident, cls: Symbols.ClassSymbol)(implicit ctx: Context)
+  extends Message(SuperQualMustBeParentID) {
+
+    val msg = hl"""|$qual does not name a parent of $cls"""
+
+    val kind = "Reference"
+
+    private val parents: Seq[String] = (cls.info.parents map (_.name.show)).sorted
+
+    val explanation =
+      hl"""|When a qualifier ${"T"} is used in a ${"super"} prefix of the form ${"C.super[T]"},
+           |${"T"} must be a parent type of ${"C"}.
+           |
+           |In this case, the parents of $cls are:
+           |${parents.mkString("  - ", "\n  - ", "")}
+           |""".stripMargin
+  }
 }

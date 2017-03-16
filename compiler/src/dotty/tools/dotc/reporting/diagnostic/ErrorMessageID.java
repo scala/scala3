@@ -55,6 +55,7 @@ public enum ErrorMessageID {
     RecursiveValueNeedsResultTypeID,
     CyclicReferenceInvolvingID,
     CyclicReferenceInvolvingImplicitID,
+    SuperQualMustBeParentID,
     ;
 
     public int errorNumber() {

@@ -298,7 +298,7 @@ trait TypeAssigner {
       case p :: Nil =>
         p
       case Nil =>
-        errorType(em"$mix does not name a parent class of $cls", tree.pos)
+        errorType(SuperQualMustBeParent(mix, cls), tree.pos)
       case p :: q :: _ =>
         errorType("ambiguous parent class qualifier", tree.pos)
     }
