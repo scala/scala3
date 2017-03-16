@@ -2324,14 +2324,16 @@ object Types {
    *    Proxy (hk)  |   HKTermLambda    |   HKTypeLambda
    *    Ground (*)  |   MethodType			|   PolyType
    */
-  trait LambdaType[N <: Name, PInfo <: Type] extends BindingType with MethodOrPoly {
-    type This <: LambdaType[N, PInfo]
+  trait LambdaType[PInfo <: Type] extends BindingType with MethodOrPoly { self =>
+    type ThisName <: Name
+    type This <: LambdaType[PInfo]
 
-    def paramNames: List[N]
+    def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
     def resType: Type
-    def newLikeThis(paramNames: List[N], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): LambdaType[N, PInfo]
-    def newParamRef(n: Int): ParamRef[N, This]
+    def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)
+        (implicit ctx: Context): LambdaType[PInfo] { type ThisName = self.ThisName }
+    def newParamRef(n: Int): ParamRef[This]
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2341,20 +2343,20 @@ object Types {
     final def isTypeLambda = paramNames.head.isTypeName
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    lazy val paramRefs: List[ParamRef[N, This]] = paramNames.indices.toList.map(newParamRef)
+    lazy val paramRefs: List[ParamRef[This]] = paramNames.indices.toList.map(newParamRef)
 
     def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isDependent) resultType.substParams(this, argTypes)
       else resultType
 
-    def derivedLambdaType(paramNames: List[N] = this.paramNames,
+    def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
                           resType: Type = this.resType)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
     override def equals(that: Any) = that match {
-      case that: LambdaType[_, _] =>
+      case that: LambdaType[_] =>
         this.paramNames == that.paramNames &&
         this.paramInfos == that.paramInfos &&
         this.resType == that.resType
@@ -2363,8 +2365,9 @@ object Types {
     }
   }
 
-  trait LambdaOverTerms extends LambdaType[TermName, Type] { thisLambdaType =>
+  trait LambdaOverTerms extends LambdaType[Type] { thisLambdaType =>
     import LambdaOverTerms._
+    type ThisName = TermName
     type This = LambdaOverTerms
 
     def paramNames: List[TermName]
@@ -2530,17 +2533,20 @@ object Types {
     override protected def prefixString = "ImplicitMethodType"
   }
 
-  abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType[N, PInfo]] {
-    def apply(paramNames: List[TermName])(paramInfosExp: LT => List[PInfo], resultTypeExp: LT => Type)(implicit ctx: Context): LT
-    def apply(paramNames: List[TermName], paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
+  abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType[PInfo]] {
+    def apply(paramNames: List[N])(paramInfosExp: LT => List[PInfo], resultTypeExp: LT => Type)(implicit ctx: Context): LT
+    def syntheticParamNames(n: Int): List[N]
+    def apply(paramNames: List[N], paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
       apply(paramNames)(_ => paramInfos, _ => resultType)
     def apply(paramInfos: List[PInfo])(resultTypeExp: LT => Type)(implicit ctx: Context): LT =
-      apply(nme.syntheticParamNames(paramInfos.length))(_ => paramInfos, resultTypeExp)
+      apply(syntheticParamNames(paramInfos.length))(_ => paramInfos, resultTypeExp)
     def apply(paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
-      apply(nme.syntheticParamNames(paramInfos.length), paramInfos, resultType)
+      apply(syntheticParamNames(paramInfos.length), paramInfos, resultType)
   }
 
   abstract class MethodTypeCompanion extends LambdaTypeCompanion[TermName, Type, MethodType] {
+    def syntheticParamNames(n: Int): List[TermName] = nme.syntheticParamNames(n)
+
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters.
      */
@@ -2584,6 +2590,7 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion {
+
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp)))
   }
@@ -2639,8 +2646,9 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends CachedProxyType with LambdaType[TypeName, TypeBounds] {
+  extends CachedProxyType with LambdaType[TypeBounds] {
 
+    type ThisName = TypeName
     type This = PolyType
 
     /** The bounds of the type parameters */
@@ -2852,7 +2860,7 @@ object Types {
     def paramName: Name
   }
 
-  abstract case class ParamRef[N <: Name, LT <: LambdaType[N, _ <: Type]]
+  abstract case class ParamRef[LT <: LambdaType[_ <: Type]]
       (binder: LT, paramNum: Int) extends ParamType {
     type BT = LT
 
@@ -2869,7 +2877,7 @@ object Types {
      *     - !fromBelow and param >:> bound
      */
     def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
-      case bound: ParamRef[_, _] => bound == this
+      case bound: ParamRef[_] => bound == this
       case bound: AndOrType =>
         def occ1 = occursIn(bound.tp1, fromBelow)
         def occ2 = occursIn(bound.tp2, fromBelow)
@@ -2879,7 +2887,7 @@ object Types {
 
     override def computeHash = doHash(paramNum, binder.identityHash)
     override def equals(that: Any) = that match {
-      case that: ParamRef[_, _] =>
+      case that: ParamRef[_] =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
       case _ =>
         false
@@ -2893,7 +2901,7 @@ object Types {
   }
 
   class TermParamRef(binder: LambdaOverTerms, paramNum: Int)
-  extends ParamRef[TermName, LambdaOverTerms](binder, paramNum) with SingletonType {
+  extends ParamRef[LambdaOverTerms](binder, paramNum) with SingletonType {
     def copyBoundType(bt: BT) = new TermParamRef(bt, paramNum)
   }
 
@@ -2905,7 +2913,7 @@ object Types {
   }
 
   class TypeParamRef(binder: LambdaOverTypes, paramNum: Int)
-  extends ParamRef[TypeName, LambdaOverTypes](binder, paramNum) {
+  extends ParamRef[LambdaOverTypes](binder, paramNum) {
     def copyBoundType(bt: BT) = new TypeParamRef(bt, paramNum)
   }
 
@@ -3861,7 +3869,7 @@ object Types {
             apply(x, tp.tref)
           case tp: ConstantType =>
             apply(x, tp.underlying)
-          case tp: ParamRef[_, _] =>
+          case tp: ParamRef[_] =>
             apply(x, tp.underlying)
           case tp: PolyParam =>
             apply(x, tp.underlying)

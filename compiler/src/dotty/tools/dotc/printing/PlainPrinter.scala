@@ -217,7 +217,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
   /** If -uniqid is set, the hashcode of the polytype, after a # */
-  protected def lambdaHash(pt: LambdaType[_, _]): Text =
+  protected def lambdaHash(pt: LambdaType[_]): Text =
     if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
