@@ -356,11 +356,17 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             case t => t
           }
 
+          def denotMatch(tp: TypeWithContext, p: Symbol) = {
+            val d1 = p.asSeenFrom(tp.tp)
+            val d2 = calleeSymbol.asSeenFrom(tp.tp)
+            (d1 eq d2) || d1.matches(d2)
+          }
+
           val direct = {
             for {
               tp <- typesByMemberName
               if filterTypes(tp.tp, receiverTypeWiden)
-              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.asSeenFrom(tp.tp).matches(calleeSymbol.asSeenFrom(tp.tp)))
+              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
               if alt.exists
             } yield {
               CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs)(someCaller, someCallee)
