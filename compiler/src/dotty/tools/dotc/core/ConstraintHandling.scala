@@ -303,7 +303,7 @@ trait ConstraintHandling {
   /** The current bounds of type parameter `param` */
   final def bounds(param: PolyParam): TypeBounds = {
     val e = constraint.entry(param)
-    if (e.exists) e.bounds else param.binder.paramBounds(param.paramNum)
+    if (e.exists) e.bounds else param.binder.paramInfos(param.paramNum)
   }
 
   /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
@@ -362,7 +362,7 @@ trait ConstraintHandling {
             def apply(t: Type): Type = t match {
               case t @ PolyParam(pt: PolyType, n) if comparedPolyTypes contains pt =>
                 val effectiveVariance = if (fromBelow) -variance else variance
-                val bounds = pt.paramBounds(n)
+                val bounds = pt.paramInfos(n)
                 if (effectiveVariance > 0) bounds.lo
                 else if (effectiveVariance < 0) bounds.hi
                 else NoType

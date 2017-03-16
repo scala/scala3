@@ -170,7 +170,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def paramText(name: TermName, tp: Type) = toText(name) ~ ": " ~ toText(tp)
         changePrec(GlobalPrec) {
           (if (tp.isImplicit) "(implicit " else "(") ~
-            Text((tp.paramNames, tp.paramTypes).zipped map paramText, ", ") ~
+            Text((tp.paramNames, tp.paramInfos).zipped map paramText, ", ") ~
           ")" ~ toText(tp.resultType)
         }
       case tp: ExprType =>
@@ -178,7 +178,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
-          "[" ~ Text((tp.paramNames, tp.paramBounds).zipped.map(paramText), ", ") ~
+          "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
           "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }

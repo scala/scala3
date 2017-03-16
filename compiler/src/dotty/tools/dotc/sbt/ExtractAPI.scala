@@ -312,7 +312,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val tparams = sym.info match {
       case pt: PolyType =>
-        (pt.paramNames, pt.paramBounds).zipped.map((pname, pbounds) =>
+        (pt.paramNames, pt.paramInfos).zipped.map((pname, pbounds) =>
           apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
       case _ =>
         Nil

@@ -488,7 +488,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       def compareMethod = tp1 match {
         case tp1: MethodType =>
           (tp1.signature consistentParams tp2.signature) &&
-            matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+            matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
             (tp1.isImplicit == tp2.isImplicit) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -1021,7 +1021,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: MethodType =>
           // implicitness is ignored when matching
-          matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+          matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
@@ -1067,7 +1067,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  have the same bounds (after renaming one set to the other)?
    */
   def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
-    (poly1.paramBounds corresponds poly2.paramBounds)((b1, b2) =>
+    (poly1.paramInfos corresponds poly2.paramInfos)((b1, b2) =>
       isSameType(b1, b2.subst(poly2, poly1)))
 
   // Type equality =:=
@@ -1284,7 +1284,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
-        paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
+        paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
           tl.lifted(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.lifted(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
@@ -1392,8 +1392,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case tp2: MethodType =>
           def asGoodParams(formals1: List[Type], formals2: List[Type]) =
             (formals2 corresponds formals1)(isSubTypeWhenFrozen)
-          asGoodParams(tp1.paramTypes, tp2.paramTypes) &&
-          (!asGoodParams(tp2.paramTypes, tp1.paramTypes) ||
+          asGoodParams(tp1.paramInfos, tp2.paramInfos) &&
+          (!asGoodParams(tp2.paramInfos, tp1.paramInfos) ||
            isAsGood(tp1.resultType, tp2.resultType))
         case _ =>
           false

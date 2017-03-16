@@ -80,7 +80,7 @@ object Variances {
     case tp: RecType =>
       varianceInType(tp.parent)(tparam)
     case tp: MethodType =>
-      flip(varianceInTypes(tp.paramTypes)(tparam)) & varianceInType(tp.resultType)(tparam)
+      flip(varianceInTypes(tp.paramInfos)(tparam)) & varianceInType(tp.resultType)(tparam)
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
     case tp @ HKApply(tycon, args) =>
@@ -95,7 +95,7 @@ object Variances {
         }
       varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
     case tp: PolyType =>
-      flip(varianceInTypes(tp.paramBounds)(tparam)) & varianceInType(tp.resultType)(tparam)
+      flip(varianceInTypes(tp.paramInfos)(tparam)) & varianceInType(tp.resultType)(tparam)
     case AnnotatedType(tp, annot) =>
       varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
     case tp: AndOrType =>

@@ -389,7 +389,7 @@ object ProtoTypes {
       }
 
     val added =
-      if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramBounds, pt.resultType)
+      if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
@@ -415,7 +415,7 @@ object ProtoTypes {
     if (mt.isDependent) {
       def replacement(tp: Type) =
         if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepPolyParam(tp)
-      mt.resultType.substParams(mt, mt.paramTypes.map(replacement))
+      mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
     }
     else mt.resultType
 
@@ -444,10 +444,10 @@ object ProtoTypes {
           val rt = normalize(mt.resultType, pt)
           pt match {
             case pt: IgnoredProto  => mt
-            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
-              val ft = defn.FunctionOf(mt.paramTypes, rt)
-              if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+              val ft = defn.FunctionOf(mt.paramInfos, rt)
+              if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
           }
         }
       case et: ExprType => et.resultType
@@ -475,7 +475,7 @@ object ProtoTypes {
           WildcardType(wildApprox(bounds, theMap, seen).bounds)
         else if (seen.contains(tp)) WildcardType
         else WildcardType(wildApprox(bounds, theMap, seen + tp).bounds)
-      def unconstrainedApprox = wildApproxBounds(poly.paramBounds(pnum))
+      def unconstrainedApprox = wildApproxBounds(poly.paramInfos(pnum))
       def approxPoly =
         if (ctx.mode.is(Mode.TypevarsMissContext)) unconstrainedApprox
         else
@@ -486,7 +486,7 @@ object ProtoTypes {
           }
       approxPoly
     case ParamRef(mt, pnum) =>
-      WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum), theMap, seen)))
+      WildcardType(TypeBounds.upper(wildApprox(mt.paramInfos(pnum), theMap, seen)))
     case tp: TypeVar =>
       wildApprox(tp.underlying, theMap, seen)
     case tp @ HKApply(tycon, args) =>

@@ -369,7 +369,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           PolyType(
             (tparams, hkParams).zipped.map((tparam, hkparam) =>
               tparam.paramName.withVariance(hkparam.paramVariance)))(
-            tl => arg.paramBounds.map(_.subst(arg, tl).bounds),
+            tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
         case arg @ TypeAlias(alias) =>

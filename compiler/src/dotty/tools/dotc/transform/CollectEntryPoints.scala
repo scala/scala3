@@ -88,7 +88,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
               case t: PolyType =>
                 fail("main methods cannot be generic.")
               case t: MethodType =>
-                if (t.resultType :: t.paramTypes exists (_.typeSymbol.isAbstractType))
+                if (t.resultType :: t.paramInfos exists (_.typeSymbol.isAbstractType))
                   fail("main methods cannot refer to type parameters or abstract types.", m.symbol.pos)
                 else
                   javaPlatform.isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)

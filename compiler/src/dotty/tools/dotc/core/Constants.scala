@@ -174,7 +174,7 @@ object Constants {
             case TypeBounds(lo, hi) =>
               if (hi.classSymbol.isPrimitiveValueClass) hi //constrain further with high bound
               else classBound(lo)
-            case NoType => classBound(param.binder.paramBounds(param.paramNum).lo)
+            case NoType => classBound(param.binder.paramInfos(param.paramNum).lo)
             case inst => classBound(inst)
           }
         case pt => pt

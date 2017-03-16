@@ -55,7 +55,7 @@ object Checking {
    *  are handled by method checkBounds in FirstTransform
    */
   def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
-    checkBounds(args, poly.paramBounds, _.substParams(poly, _))
+    checkBounds(args, poly.paramInfos, _.substParams(poly, _))
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds

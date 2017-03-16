@@ -107,7 +107,7 @@ object ErrorReporting {
         case tp: PolyType =>
           tp.derivedPolyType(resType = dropJavaMethod(tp.resultType))
         case tp: JavaMethodType =>
-          MethodType(tp.paramNames, tp.paramTypes, dropJavaMethod(tp.resultType))
+          MethodType(tp.paramNames, tp.paramInfos, dropJavaMethod(tp.resultType))
         case tp => tp
       }
       val found1 = dropJavaMethod(found)

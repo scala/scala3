@@ -22,7 +22,7 @@ trait ParamInfo {
 
   /** The info of the type parameter as seen from a prefix type.
    *  For type parameter symbols, this is the `memberInfo` as seen from `prefix`.
-   *  For type lambda parameters, it's the same as `paramBounds` as
+   *  For type lambda parameters, it's the same as `paramInfos` as
    *  `asSeenFrom` has already been applied to the whole type lambda.
    */
   def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type

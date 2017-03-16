@@ -157,7 +157,7 @@ object Inferencing {
         case Apply(fn, _) =>
           fn.tpe.widen match {
             case mtp: MethodType =>
-              val (occ, nocc) = toTest.partition(tvar => mtp.paramTypes.exists(tvar.occursIn))
+              val (occ, nocc) = toTest.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
               occurring(fn, nocc, occ ::: acc)
             case _ =>
               occurring(fn, toTest, acc)
@@ -178,7 +178,7 @@ object Inferencing {
    */
   private def instDirection(param: PolyParam)(implicit ctx: Context): Int = {
     val constrained = ctx.typerState.constraint.fullBounds(param)
-    val original = param.binder.paramBounds(param.paramNum)
+    val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
     val approxBelow =
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0

@@ -124,7 +124,7 @@ trait FullParameterization {
       case info: PolyType =>
         PolyType(info.paramNames ++ ctnames)(
           pt =>
-            (info.paramBounds.map(mapClassParams(_, pt).bounds) ++
+            (info.paramInfos.map(mapClassParams(_, pt).bounds) ++
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
@@ -233,7 +233,7 @@ trait FullParameterization {
       fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
-      val args = (originalDef.vparamss, fun.tpe.paramTypess).zipped.map((vparams, paramTypes) =>
+      val args = (originalDef.vparamss, fun.tpe.paramInfoss).zipped.map((vparams, paramTypes) =>
         (vparams, paramTypes).zipped.map((vparam, paramType) => {
           assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
           ref(vparam.symbol).ensureConforms(paramType)

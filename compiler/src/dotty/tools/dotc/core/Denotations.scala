@@ -213,7 +213,7 @@ object Denotations {
 
     def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(x=>
-        (x is Method) && x.info.paramTypess == List(argTypes)
+        (x is Method) && x.info.paramInfoss == List(argTypes)
       ).asTerm
     def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
       requiredMethod(name, argTypes).termRef
@@ -310,11 +310,11 @@ object Denotations {
             }
           case tp1: MethodType if isTerm =>
             tp2 match {
-              case tp2: MethodType if ctx.typeComparer.matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+              case tp2: MethodType if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
                 tp1.isImplicit == tp2.isImplicit =>
                 tp1.derivedMethodType(
                   mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
-                  tp1.paramTypes,
+                  tp1.paramInfos,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _ =>
                 mergeConflict(tp1, tp2)
@@ -324,7 +324,7 @@ object Denotations {
               case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
                 tp1.derivedPolyType(
                   mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-                  tp1.paramBounds,
+                  tp1.paramInfos,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _: MethodicType =>
                 mergeConflict(tp1, tp2)
@@ -474,11 +474,11 @@ object Denotations {
         case tp1: MethodType =>
           tp2 match {
             case tp2: MethodType
-            if ctx.typeComparer.matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+            if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
               tp1.isImplicit == tp2.isImplicit =>
               tp1.derivedMethodType(
                 mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
-                tp1.paramTypes, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+                tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2)
           }
@@ -487,7 +487,7 @@ object Denotations {
             case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
               tp1.derivedPolyType(
                 mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-                tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+                tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2)
           }

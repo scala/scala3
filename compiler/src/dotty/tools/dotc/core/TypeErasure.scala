@@ -55,7 +55,7 @@ object TypeErasure {
     case ThisType(tref) =>
       isErasedType(tref)
     case tp: MethodType =>
-      tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
+      tp.paramInfos.forall(isErasedType) && isErasedType(tp.resultType)
     case tp @ ClassInfo(pre, _, parents, decls, _) =>
       isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
     case NoType | NoPrefix | WildcardType | _: ErrorType | SuperType(_, _) =>
@@ -186,7 +186,7 @@ object TypeErasure {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
           MethodType(Nil, defn.BoxedUnitType)
-        else if (sym.isAnonymousFunction && einfo.paramTypes.length > MaxImplementedFunctionArity)
+        else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
         else
           einfo
@@ -382,10 +382,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val formals = tp.paramTypes.mapConserve(paramErasure)
+      val formals = tp.paramInfos.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
-          tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramTypes, rt.resultType)
+          tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
         case rt =>
           tp.derivedMethodType(tp.paramNames, formals, rt)
       }

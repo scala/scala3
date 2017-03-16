@@ -108,7 +108,7 @@ object Inliner {
 
             // Add qualifier type as leading method argument to argument `tp`
             def addQualType(tp: Type): Type = tp match {
-              case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramBounds, addQualType(tp.resultType))
+              case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
               case tp: ExprType => addQualType(tp.resultType)
               case tp => MethodType(qualType :: Nil, tp)
             }
@@ -327,7 +327,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
-      (tp.paramNames, tp.paramTypes, argss.head).zipped.foreach { (name, paramtp, arg) =>
+      (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         def isByName = paramtp.dealias.isInstanceOf[ExprType]
         paramBinding(name) = arg.tpe.stripAnnots.stripTypeVar match {
           case argtpe: SingletonType if isIdempotentExpr(arg) => argtpe

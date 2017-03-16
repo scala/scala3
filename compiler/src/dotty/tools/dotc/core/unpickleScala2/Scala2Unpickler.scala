@@ -56,7 +56,7 @@ object Scala2Unpickler {
    */
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: MethodType =>
-      val lastArg = tp.paramTypes.last
+      val lastArg = tp.paramInfos.last
       assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
       val elemtp = elemtp0 match {
@@ -67,10 +67,10 @@ object Scala2Unpickler {
       }
       tp.derivedMethodType(
         tp.paramNames,
-        tp.paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
+        tp.paramInfos.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
     case tp: PolyType =>
-      tp.derivedPolyType(tp.paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
+      tp.derivedPolyType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
   }
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =

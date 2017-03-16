@@ -60,7 +60,7 @@ object EtaExpansion {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context) =
     methRef.widen match {
       case mt: MethodType =>
-        (args, mt.paramNames, mt.paramTypes).zipped map { (arg, name, tp) =>
+        (args, mt.paramNames, mt.paramInfos).zipped map { (arg, name, tp) =>
           if (tp.isInstanceOf[ExprType]) arg
           else liftArg(defs, arg, if (name contains '$') "" else name.toString + "$")
         }
@@ -135,12 +135,12 @@ object EtaExpansion {
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val paramTypes: List[Tree] =
-      if (mt.paramTypes.length == xarity) mt.paramTypes map (_ => TypeTree())
-      else mt.paramTypes map TypeTree
+      if (mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
+      else mt.paramInfos map TypeTree
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos))
-    if (mt.paramTypes.nonEmpty && mt.paramTypes.last.isRepeatedParam)
+    if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
     mt.resultType match {

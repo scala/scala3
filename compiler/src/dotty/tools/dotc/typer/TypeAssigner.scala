@@ -318,9 +318,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramTypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
+        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else
-          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramTypes.length}, found: ${args.length}", tree.pos)
+          errorType(i"wrong number of arguments for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
@@ -368,7 +368,7 @@ trait TypeAssigner {
             val gaps = gapBuf.toList
             pt.derivedPolyType(
               gaps.map(paramNames),
-              gaps.map(idx => transform(pt.paramBounds(idx)).bounds),
+              gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
               resultType1)
           }
         }

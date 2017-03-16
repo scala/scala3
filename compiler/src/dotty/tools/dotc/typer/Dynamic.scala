@@ -150,7 +150,7 @@ trait Dynamic { self: Typer with Applications =>
                   |Structural types only support methods taking up to ${Definitions.MaxStructuralMethodArity} arguments""")
         else {
           def issueError(msgFn: String => String): Unit = ctx.error(msgFn(""), tree.pos)
-          val ctags = tpe.paramTypes.map(pt =>
+          val ctags = tpe.paramInfos.map(pt =>
             inferImplicitArg(defn.ClassTagType.appliedTo(pt :: Nil), issueError, tree.pos.endPos))
           structuralCall(nme.selectDynamicMethod, ctags).asInstance(tpe.toFunctionType())
         }

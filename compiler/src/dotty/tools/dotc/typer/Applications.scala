@@ -232,7 +232,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           else
             fail(err.typeMismatchMsg(methType.resultType, resultType))
         // match all arguments with corresponding formal parameters
-        matchArgs(orderedArgs, methType.paramTypes, 0)
+        matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
         else fail(s"$methString does not take parameters")
@@ -763,7 +763,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
       case pt: PolyType =>
-        if (typedArgs.length <= pt.paramBounds.length && !isNamed)
+        if (typedArgs.length <= pt.paramInfos.length && !isNamed)
           if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
             val arg = typedArgs.head
             checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
@@ -883,8 +883,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
 
     unapplyFn.tpe.widen match {
-      case mt: MethodType if mt.paramTypes.length == 1 =>
-        val unapplyArgType = mt.paramTypes.head
+      case mt: MethodType if mt.paramInfos.length == 1 =>
+        val unapplyArgType = mt.paramInfos.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         val ownType =
           if (selType <:< unapplyArgType) {
@@ -1056,10 +1056,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case _ => if (tp.isRepeatedParam) tp.argTypesHi.head else tp
         }
         val formals1 =
-          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramTypes map repeatedToSingle
-          else tp1.paramTypes
+          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos map repeatedToSingle
+          else tp1.paramInfos
         isApplicable(alt2, formals1, WildcardType) ||
-        tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
+        tp1.paramInfos.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case tp1: PolyType => // (2)
         val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
@@ -1125,7 +1125,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case mt: ImplicitMethodType =>
         resultTypeApprox(mt)
       case pt: PolyType =>
-        pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
+        pt.derivedPolyType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
       case _ =>
         tp
     }
@@ -1287,7 +1287,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         def sizeFits(alt: TermRef, tp: Type): Boolean = tp match {
           case tp: PolyType => sizeFits(alt, tp.resultType)
           case tp: MethodType =>
-            val ptypes = tp.paramTypes
+            val ptypes = tp.paramInfos
             val numParams = ptypes.length
             def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
             def hasDefault = alt.symbol.hasDefaultParams
@@ -1413,7 +1413,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ =>
     }
     def paramTypes(alt: Type): List[Type] = alt match {
-      case mt: MethodType => mt.paramTypes
+      case mt: MethodType => mt.paramInfos
       case mt: PolyType => paramTypes(mt.resultType)
       case _ => Nil
     }

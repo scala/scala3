@@ -741,8 +741,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         calleeType.widen match {
           case mtpe: MethodType =>
             val pos = params indexWhere (_.name == param.name)
-            if (pos < mtpe.paramTypes.length) {
-              val ptype = mtpe.paramTypes(pos)
+            if (pos < mtpe.paramInfos.length) {
+              val ptype = mtpe.paramInfos(pos)
               if (isFullyDefined(ptype, ForceDegree.noBottom)) return ptype
             }
           case _ =>
@@ -1809,12 +1809,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             errorTree(tree,
               em"""none of the ${err.overloadedAltsStr(altDenots)}
                   |match $expectedStr""")
-          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
+          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
             case pt: FunProto =>
               tryInsertApplyOrImplicit(tree, pt)(noMatches)
             case _ =>
-              if (altDenots exists (_.info.paramTypess == ListOfNil))
+              if (altDenots exists (_.info.paramInfoss == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
               else
                 noMatches
@@ -1886,7 +1886,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, followAlias(pt)) =>
         val tvarsToInstantiate = tvarsInParams(tree)
-        wtp.paramTypes.foreach(instantiateSelected(_, tvarsToInstantiate))
+        wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
         val constr = ctx.typerState.constraint
         def addImplicitArgs(implicit ctx: Context) = {
           val errors = new mutable.ListBuffer[() => String]
@@ -1898,7 +1898,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             for (err <- errors) ctx.error(err(), tree.pos.endPos)
             tree.withType(wtp.resultType)
           }
-          val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
+          val args = (wtp.paramNames, wtp.paramInfos).zipped map { (pname, formal) =>
             def implicitArgError(msg: String => String) =
               errors += (() => msg(em"parameter $pname of $methodStr"))
             if (errors.nonEmpty) EmptyTree
@@ -1941,11 +1941,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               // prioritize method parameter types as parameter types of the eta-expanded closure
               0
             else defn.functionArity(pt)
-          else if (pt eq AnyFunctionProto) wtp.paramTypes.length
+          else if (pt eq AnyFunctionProto) wtp.paramInfos.length
           else -1
         if (arity >= 0 && !tree.symbol.isConstructor)
           typed(etaExpand(tree, wtp, arity), pt)
-        else if (wtp.paramTypes.isEmpty)
+        else if (wtp.paramInfos.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
         else if (wtp.isImplicit)
           err.typeMismatch(tree, pt)

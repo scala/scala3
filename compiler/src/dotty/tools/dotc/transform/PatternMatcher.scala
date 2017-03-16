@@ -1766,7 +1766,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {
       def applyMethodTypes(method: Type): Extractor = {
         val whole = method.finalResultType
 
-        method.paramTypess.head match {
+        method.paramInfoss.head match {
           case init :+ last if last.isRepeatedParam => newExtractor(whole, init, repeatedFromVarargs(last))
           case tps                                  => newExtractor(whole, tps, NoRepeated)
         }
