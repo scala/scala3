@@ -85,7 +85,6 @@ class tests extends CompilerTest {
   val negDir        = testsDir + "neg/"
   val runDir        = testsDir + "run/"
   val newDir        = testsDir + "new/"
-  val replDir       = testsDir + "repl/"
   val javaDir       = testsDir + "pos-java-interop/"
 
   val sourceDir = "./src/"
@@ -173,7 +172,6 @@ class tests extends CompilerTest {
   @Test def pos_utf16 = compileFile(posSpecialDir, "utf16encoded", explicitUTF16)
 
   @Test def new_all = compileFiles(newDir, twice)
-  @Test def repl_all = replFiles(replDir)
 
   @Test def neg_all = compileFiles(negDir, verbose = true, compileSubDirs = false)
   @Test def neg_typedIdents() = compileDir(negDir, "typedIdents")

@@ -5,6 +5,8 @@ package repl
 import core.Contexts.Context
 import collection.mutable
 import java.io.StringWriter
+import dotty.tools.io.{ PlainFile, Directory }
+import org.junit.Test
 
 /** A subclass of REPL used for testing.
  *  It takes a transcript of a REPL session in `script`. The transcript
@@ -61,4 +63,25 @@ class TestREPL(script: String) extends REPL {
       assert(false)
     }
   }
+}
+
+class REPLTests {
+  def replFile(prefix: String, fileName: String): Unit = {
+    val path = s"$prefix$fileName"
+    val f = new PlainFile(path)
+    val repl = new TestREPL(new String(f.toCharArray))
+    repl.process(Array[String]())
+    repl.check()
+  }
+
+  def replFiles(path: String): Unit = {
+    val dir = Directory(path)
+    val fileNames = dir.files.toArray.map(_.jfile.getName).filter(_ endsWith ".check")
+    for (name <- fileNames) {
+      println(s"testing $path$name")
+      replFile(path, name)
+    }
+  }
+
+  @Test def replAll = replFiles("../tests/repl/")
 }
