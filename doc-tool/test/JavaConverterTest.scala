@@ -155,7 +155,8 @@ class JavaConverterTest {
   }
 
   def assertEach[E, C[E] <: Seq[E]](expected: C[E], serialized: Any)(pairwiseAssertion: (E, Any) => Unit): Unit = {
-    val actual = serialized.asInstanceOf[JList[_]].asScala.toList
+    val s = serialized.asInstanceOf[JList[_]]
+    val actual = s.asScala.toList
     assertEquals(expected.length, actual.length)
     for ((exp, act) <- expected zip actual) {
       pairwiseAssertion(exp, act)
