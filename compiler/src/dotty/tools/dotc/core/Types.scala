@@ -1482,7 +1482,7 @@ object Types {
 
     /** A member of `prefix` (disambiguated by `d.signature`) or, if none was found, `d.current`. */
     private def recomputeMember(d: SymDenotation)(implicit ctx: Context): Denotation =
-      asMemberOf(prefix) match {
+      asMemberOf(prefix, allowPrivate = d.is(Private)) match {
         case NoDenotation => d.current
         case newd: SingleDenotation => newd
         case newd =>
@@ -1573,7 +1573,7 @@ object Types {
       TermRef.withSig(prefix, name.asTermName, sig)
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
-      val d = asMemberOf(prefix)
+      val d = asMemberOf(prefix, allowPrivate = true)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
       else { // name has changed; try load in earlier phase and make current
@@ -1583,10 +1583,10 @@ object Types {
       }
     }
 
-    protected def asMemberOf(prefix: Type)(implicit ctx: Context): Denotation =
+    protected def asMemberOf(prefix: Type, allowPrivate: Boolean)(implicit ctx: Context): Denotation =
       if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
+      else if (!allowPrivate) prefix.nonPrivateMember(name)
       else prefix.member(name)
-
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
      *  to an (unbounded) wildcard type.
@@ -1786,7 +1786,7 @@ object Types {
       val candidate = TermRef.withSig(prefix, name, sig)
       if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
         val ownSym = symbol
-        val newd = asMemberOf(prefix)
+        val newd = asMemberOf(prefix, allowPrivate = ownSym.is(Private))
         candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
       }
       else candidate
