@@ -67,8 +67,8 @@ class CallGraph(val entryPoints: Map[CallInfoWithContext, Int], val reachableMet
            |  Reachable classes: ${reachableClasses.map(_.showFullName).mkString(", ")}
            |  Reachable methods: ${reachableDefs.map(_.showFullName).mkString(", ")}
            |  Classes with reachable methods: ${classesWithReachableMethods.map(_.showFullName).mkString(", ")}
-           |  Reachable specs: ${reachableSpecs.toList.sortBy(-_._2.size).map(x => (x._1.showFullName, x._2.map(_.show))).mkString(", ")}
-           |  Primary Constructor specs: ${reachableSpecs.filter(_._1.isPrimaryConstructor).map(x => (x._1.showFullName, x._2))}
+           |  Reachable specs: ${reachableSpecs.toList.filter(_._2.nonEmpty).sortBy(-_._2.size).map(x => (x._1.showFullName, x._2.map(_.show))).mkString(", ")}
+           |  Primary Constructor specs: ${reachableSpecs.filter(x => x._1.isPrimaryConstructor && x._2.nonEmpty).map(x => (x._1.showFullName, x._2))}
          """.stripMargin
       )
     }

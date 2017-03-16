@@ -553,24 +553,25 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
-          if (withJavaCallGraph && !method.callSymbol.is(Module | Package) &&
-              !outerMethods.contains(method.callSymbol) &&
-              !method.parent.exists(_.isOnJavaAllocatedType)) {
+          if (!outerMethods.contains(method.callSymbol)) {
 
-            // Add all possible calls from java to object passed as parameters.
             outerMethods = outerMethods + method.callSymbol
 
-            addReachableJavaReturnType(method)
+            if (withJavaCallGraph && !method.callSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
 
-            for {
-              rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
-              potentialCall <- allPotentialCallsFor(rec)
-              if needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty
-            } {
-              val instantiatedCalls = instantiateCallSite(method, potentialCall)
-              val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
-              instantiatedCallsToDefinedMethods.foreach(addReachableMethod)
-              method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)
+              addReachableJavaReturnType(method)
+
+              // Add all possible calls from java to object passed as parameters.
+              for {
+                rec <- (method.call.normalizedPrefix :: method.argumentsPassed).distinct
+                potentialCall <- allPotentialCallsFor(rec)
+                if needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty
+              } {
+                val instantiatedCalls = instantiateCallSite(method, potentialCall)
+                val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
+                instantiatedCallsToDefinedMethods.foreach(addReachableMethod)
+                method.addOutEdges(potentialCall, instantiatedCallsToDefinedMethods)
+              }
             }
           }
       }
