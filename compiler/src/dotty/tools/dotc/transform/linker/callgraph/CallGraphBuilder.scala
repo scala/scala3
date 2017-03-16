@@ -40,6 +40,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
   private val sizesCache = new mutable.HashMap[Symbol, Int]()
+  private val lastInstantiation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
 
   def pushEntryPoint(s: Symbol, entryPointId: Int): Unit = {
     val tpe = ref(s).tpe.asInstanceOf[TermRef]
@@ -70,9 +71,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       processCallSites(processAllCallSites)
 
-      val newReachableMethods = reachableMethods.size - reachableMethodsLastSize
-      val newReachableTypes = reachableTypes.size - reachableTypesLastSize
-      val newClassOfs = classOfs.size - classOfsLastSize
+      val numNewReachableMethods = reachableMethods.size - reachableMethodsLastSize
+      val numNewReachableTypes = reachableTypes.size - reachableTypesLastSize
+      val numNewClassOfs = classOfs.size - classOfsLastSize
 
       iteration += 1
       val loopEndTime = System.currentTimeMillis()
@@ -81,14 +82,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       ctx.log(
         s"""Graph building iteration $iteration  ${if (processAllCallSites) "[processed all call sites]" else ""}
            |Iteration in ${loopTime/1000.0} seconds out of ${totalTime/1000.0} seconds (${loopTime.toDouble/totalTime})
-           |Found $newReachableTypes new instantiated types
-           |Found ${classOfs.size - classOfsLastSize} new classOfs
-           |Found $newReachableMethods new call sites""".stripMargin)
+           |Found $numNewReachableTypes new instantiated types (${reachableTypes.size})
+           |Found $numNewReachableMethods new call sites (${reachableMethods.size})
+           |Found ${classOfs.size - classOfsLastSize} new classOfs (${classOfs.size})""".stripMargin)
 
       // val outFile =  new java.io.File(ctx.settings.d.value + s"/CallGraph-${reachableMethods.items.size}.html")
       // GraphVisualization.outputGraphVisToFile(this.result(), outFile)
 
-      if (newReachableMethods != 0 || newReachableTypes != 0 || newClassOfs != 0)
+      if (numNewReachableMethods != 0 || numNewReachableTypes != 0 || numNewClassOfs != 0)
         buildLoop(false)
       else if (!processAllCallSites)
         buildLoop(true)
@@ -164,10 +165,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val newCast = new Cast(from, to)
       for (tp <- reachableTypes) {
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
-          if (!casts.contains(newCast)) {
-            casts = casts + newCast
-            castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
-          }
+          casts = casts + newCast
+          castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
         }
       }
     }
@@ -205,7 +204,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     }.apply(OuterTargs.empty, tp)
   }
 
-  val lastInstatitation = mutable.Map.empty[CallInfoWithContext, mutable.Map[CallInfo, Int]]
   private def instantiateCallSite(caller: CallInfoWithContext, callee: CallInfo): Traversable[CallInfoWithContext] = {
 
     lazy val someCaller = Some(caller)
@@ -529,7 +527,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
 
     for (method <- reachableMethods) {
-      lazy val crcMap = lastInstatitation.getOrElseUpdate(method, mutable.Map.empty)
+      lazy val crcMap = lastInstantiation.getOrElseUpdate(method, mutable.Map.empty)
       // Find new call sites
 
       def needsCallSiteInstantiation(callSite: CallInfo): Boolean = {
