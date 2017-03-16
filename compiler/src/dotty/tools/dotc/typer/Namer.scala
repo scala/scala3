@@ -537,7 +537,7 @@ class Namer { typer: Typer =>
           case Thicket(trees) => // companion object always expands to thickets
             trees.map {
               case mcls @ TypeDef(name, impl: Template) if valid(mcls) =>
-                moduleClsDef.get(name) match {
+                (moduleClsDef.get(name): @unchecked) match {
                   case Some((stat1, mcls1@TypeDef(_, impl1: Template))) =>
                     mergeIfSynthetic(stat, mcls, stat1, mcls1)
                     mergeIfSynthetic(stat1, mcls1, stat, mcls)
