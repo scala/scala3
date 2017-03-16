@@ -266,7 +266,7 @@ class TreePickler(pickler: TastyPickler) {
           case TypeBounds(lo, hi) if lo eq hi => pickleNewType(lo, richTypes)
           case _ => assert(false, s"orphan poly parameter: $tpe")
         }
-    case tpe: MethodParam =>
+    case tpe: ParamRef =>
       assert(pickleParamType(tpe), s"orphan method parameter: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)

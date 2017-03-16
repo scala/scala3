@@ -180,7 +180,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           case tpe: PolyType =>
             tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
           case _ =>
-            MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
+            MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, mt.newParamRef(0)))
         }
         accTypeOf(sym.info)
       }
@@ -232,7 +232,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         case tpe: PolyType =>
           tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
         case _ =>
-          MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
+          MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, mt.newParamRef(0)))
       }
       val accType = accTypeOf(sym.info)
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {

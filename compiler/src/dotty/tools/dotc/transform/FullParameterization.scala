@@ -107,7 +107,7 @@ trait FullParameterization {
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
       MethodType(nme.SELF :: Nil)(
           mt => firstArgType :: Nil,
-          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
+          mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */

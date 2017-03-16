@@ -46,7 +46,7 @@ object ErrorReporting {
       errorMsg(ex.toMessage, ctx)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[TypeParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 
   class Errors(implicit ctx: Context) {

@@ -208,7 +208,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def polyParamNameString(name: TypeName): String = name.toString
 
-  protected def polyParamNameString(param: PolyParam): String = 
+  protected def polyParamNameString(param: PolyParam): String =
     polyParamNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
@@ -259,8 +259,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "Super(" ~ toTextGlobal(thistpe) ~ ")"
       case tp @ ConstantType(value) =>
         toText(value)
-      case MethodParam(mt, idx) =>
-        nameString(mt.paramNames(idx))
+      case pref: TermParamRef =>
+        nameString(pref.binder.paramNames(pref.paramNum))
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)

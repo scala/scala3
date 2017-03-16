@@ -497,9 +497,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     new api.Singleton(new api.Path(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
 
-  def apiTypeParameter(tparam: TypeParamInfo): api.TypeParameter =
+  def apiTypeParameter(tparam: ParamInfo): api.TypeParameter =
     apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
-      tparam.paramBounds.lo, tparam.paramBounds.hi)
+      tparam.paramInfo.bounds.lo, tparam.paramInfo.bounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
     new api.TypeParameter(name, Array(), Array(), apiVariance(variance),

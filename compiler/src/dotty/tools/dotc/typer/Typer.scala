@@ -1074,10 +1074,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
           args = args.take(tparams.length)
         }
-        def typedArg(arg: untpd.Tree, tparam: TypeParamInfo) = {
+        def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           val (desugaredArg, argPt) =
             if (ctx.mode is Mode.Pattern)
-              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramBounds)
+              (if (isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)

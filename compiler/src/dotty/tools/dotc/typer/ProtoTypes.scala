@@ -485,7 +485,7 @@ object ProtoTypes {
             case inst               => wildApprox(inst, theMap, seen)
           }
       approxPoly
-    case MethodParam(mt, pnum) =>
+    case ParamRef(mt, pnum) =>
       WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum), theMap, seen)))
     case tp: TypeVar =>
       wildApprox(tp.underlying, theMap, seen)

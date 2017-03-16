@@ -447,7 +447,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           def boundsOK =
             ctx.scala2Mode ||
             tparams1.corresponds(tparams2)((tparam1, tparam2) =>
-              isSubType(tparam2.paramBounds.subst(tp2, tp1), tparam1.paramBounds))
+              isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
           val saved = comparedPolyTypes
           comparedPolyTypes += tp1
           comparedPolyTypes += tp2
@@ -670,7 +670,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
               tycon1b = PolyType(tparams1.map(_.paramName))(
-                tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
+                tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(PolyParam(tl, _))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
@@ -764,7 +764,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams`.
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): Boolean =
+  def isSubArgs(args1: List[Type], args2: List[Type], tparams: List[ParamInfo]): Boolean =
     if (args1.isEmpty) args2.isEmpty
     else args2.nonEmpty && {
       val v = tparams.head.paramVariance
@@ -783,7 +783,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: List[ParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -1276,17 +1276,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     val tparams2 = tp2.typeParams
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
-      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramBoundsAsSeenFrom(tp2))))
+      else original(tp1, tp2.appliedTo(tp2.typeParams.map(_.paramInfoAsSeenFrom(tp2))))
     else if (tparams2.isEmpty)
-      original(tp1.appliedTo(tp1.typeParams.map(_.paramBoundsAsSeenFrom(tp1))), tp2)
+      original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
     else
       PolyType(
         paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
         paramBoundsExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          tl.lifted(tparams1, tparam1.paramBoundsAsSeenFrom(tp1)).bounds &
-          tl.lifted(tparams2, tparam2.paramBoundsAsSeenFrom(tp2)).bounds),
+          tl.lifted(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
+          tl.lifted(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
           original(tl.lifted(tparams1, tp1).appliedTo(tl.paramRefs),
              tl.lifted(tparams2, tp2).appliedTo(tl.paramRefs)))

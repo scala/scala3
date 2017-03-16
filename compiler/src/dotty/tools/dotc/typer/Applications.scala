@@ -395,7 +395,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           def addTyped(arg: Arg, formal: Type): Type => Type = {
             addArg(typedArg(arg, formal), formal)
             if (methodType.isParamDependent)
-              _.substParam(MethodParam(methodType, n), typeOfArg(arg))
+              _.substParam(methodType.newParamRef(n), typeOfArg(arg))
             else
               identity
           }
@@ -1066,7 +1066,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ => // (3)
         tp2 match {
           case tp2: MethodType => true // (3a)
-          case tp2: PolyType if tp2.isPolymorphicMethodType => true // (3a)
+          case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
             val nestedCtx = ctx.fresh.setExploreTyperState
 

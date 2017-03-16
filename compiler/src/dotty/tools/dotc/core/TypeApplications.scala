@@ -47,14 +47,14 @@ object TypeApplications {
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
-  def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
+  def varianceConforms(tparam1: ParamInfo, tparam2: ParamInfo)(implicit ctx: Context): Boolean =
     varianceConforms(tparam1.paramVariance, tparam2.paramVariance)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case of `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
+  def variancesConform(tparams1: List[ParamInfo], tparams2: List[ParamInfo])(implicit ctx: Context): Boolean =
     tparams1.corresponds(tparams2)(varianceConforms)
 
   /** Extractor for
@@ -96,7 +96,7 @@ object TypeApplications {
           refinements = rt :: refinements
           tycon = rt.parent.stripTypeVar
         }
-        def collectArgs(tparams: List[TypeParamInfo],
+        def collectArgs(tparams: List[ParamInfo],
                         refinements: List[RefinedType],
                         argBuf: mutable.ListBuffer[Type]): Option[(Type, List[Type])] = refinements match {
           case Nil if tparams.isEmpty && argBuf.nonEmpty =>
@@ -117,9 +117,9 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
+  def EtaExpandIfHK(tparams: List[ParamInfo], args: List[Type])(implicit ctx: Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramBoundsOrCompleter))
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -209,7 +209,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  with the bounds on its hk args. See `LambdaAbstract`, where these
    *  types get introduced, and see `isBoundedLambda` below for the test.
    */
-  final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: Context): List[ParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
@@ -236,7 +236,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
-  final def hkTypeParams(implicit ctx: Context): List[TypeParamInfo] =
+  final def hkTypeParams(implicit ctx: Context): List[ParamInfo] =
     if (isHK) typeParams else Nil
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
@@ -277,12 +277,12 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *  TODO: Handle parameterized lower bounds
    */
-  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
-    def nameWithVariance(tparam: TypeParamInfo) =
+  def LambdaAbstract(tparams: List[ParamInfo])(implicit ctx: Context): Type = {
+    def nameWithVariance(tparam: ParamInfo) =
       tparam.paramName.withVariance(tparam.paramVariance)
     def expand(tp: Type) =
       PolyType(tparams.map(nameWithVariance))(
-          tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramBounds).bounds),
+          tl => tparams.map(tparam => tl.lifted(tparams, tparam.paramInfo).bounds),
           tl => tl.lifted(tparams, tp))
     if (tparams.isEmpty) self
     else self match {
@@ -393,7 +393,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
     val typParams = self.typeParams
-    def matchParams(t: Type, tparams: List[TypeParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
+    def matchParams(t: Type, tparams: List[ParamInfo], args: List[Type])(implicit ctx: Context): Type = args match {
       case arg :: args1 =>
         try {
           val tparam :: tparams1 = tparams
@@ -478,7 +478,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: TypeParamInfo)(implicit ctx: Context): TypeBounds = self match {
+  final def toBounds(tparam: ParamInfo)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
       self
     case _ =>

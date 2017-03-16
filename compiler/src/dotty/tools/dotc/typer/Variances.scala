@@ -84,7 +84,7 @@ object Variances {
     case ExprType(restpe) =>
       varianceInType(restpe)(tparam)
     case tp @ HKApply(tycon, args) =>
-      def varianceInArgs(v: Variance, args: List[Type], tparams: List[TypeParamInfo]): Variance =
+      def varianceInArgs(v: Variance, args: List[Type], tparams: List[ParamInfo]): Variance =
         args match {
           case arg :: args1 =>
             varianceInArgs(
