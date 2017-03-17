@@ -2397,6 +2397,7 @@ object Types {
 
   abstract class HKLambda extends CachedProxyType with LambdaType {
     final override def computeHash = doHash(paramNames, resType, paramInfos)
+    final override def underlying(implicit ctx: Context) = resType
   }
 
   abstract class StarLambda extends CachedGroundType with LambdaType with TermType {
@@ -2657,6 +2658,30 @@ object Types {
       }
   }
 
+  class HKTypeLambda(val paramNames: List[TypeName])(
+      paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
+  extends HKLambda with TypeLambda {
+    type This = HKTypeLambda
+    def companion = HKTypeLambda
+
+    val paramInfos: List[TypeBounds] = paramInfosExp(this)
+    val resType: Type = resultTypeExp(this)
+
+    assert(resType.isInstanceOf[TermType], this)
+    assert(paramNames.nonEmpty)
+
+    /** The type `[tparams := paramRefs] tp`, where `tparams` can be
+     *  either a list of type parameter symbols or a list of lambda parameters
+     */
+    def lifted(tparams: List[ParamInfo], tp: Type)(implicit ctx: Context): Type =
+      tparams match {
+        case LambdaParam(poly, _) :: _ => tp.subst(poly, this)
+        case tparams: List[Symbol @unchecked] => tp.subst(tparams, paramRefs)
+      }
+
+    protected def prefixString = "HKTypeLambda"
+  }
+
   /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
    *  This is used both as a type of a polymorphic method and as a type of
    *  a higher-kinded type parameter. Variances are encoded in parameter
@@ -2677,16 +2702,11 @@ object Types {
     type This = PolyType
     def companion = PolyType
 
-    /** The bounds of the type parameters */
     val paramInfos: List[TypeBounds] = paramInfosExp(this)
-
-    /** The result type of a PolyType / body of a type lambda */
     val resType: Type = resultTypeExp(this)
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
-
-    override def underlying(implicit ctx: Context) = resType
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
@@ -2716,6 +2736,21 @@ object Types {
       }
 
     protected def prefixString = "PolyType"
+  }
+
+  object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] {
+    def apply(paramNames: List[TypeName])(
+        paramInfosExp: HKTypeLambda => List[TypeBounds],
+        resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda = {
+      unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
+    }
+
+    def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
+      Some((tl.typeParams, tl.resType))
+
+    def any(n: Int)(implicit ctx: Context) =
+      apply(syntheticParamNames(n))(
+        pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
   object PolyType extends TypeLambdaCompanion[PolyType] {
