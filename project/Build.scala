@@ -114,6 +114,13 @@ object Build {
     libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
   )
 
+  lazy val linkBootstrappedSettings = Seq(
+    scalacOptions ++= Seq(
+      "-link-vis",
+      "-Ylog:callGraph"
+    )
+  )
+
   /** Projects -------------------------------------------------------------- */
 
   // Needed because the dotty project aggregates dotty-sbt-bridge but dotty-sbt-bridge
@@ -529,6 +536,7 @@ object Build {
     dependsOn(`dotty-library-bootstrapped`).
     settings(sourceStructure).
     settings(commonBootstrappedSettings).
+    // settings(linkBootstrappedSettings).
     settings(dottyCompilerSettings).
     settings(
       // Used instead of "dependsOn(`dotty-interfaces`)" because the latter breaks sbt somehow
