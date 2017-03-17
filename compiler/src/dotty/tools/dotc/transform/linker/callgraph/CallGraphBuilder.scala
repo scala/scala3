@@ -164,8 +164,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private def addCast(from: Type, to: Type) = {
     if (!(from <:< to) && to.classSymbols.forall(!_.derivesFrom(defn.NothingClass))) {
       val newCast = new Cast(from, to)
+      val classSymbols = from.classSymbols.toSet ++ to.classSymbols
       for (tp <- reachableTypes) {
-        if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
+        if (classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
           casts += newCast
           castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
         }
