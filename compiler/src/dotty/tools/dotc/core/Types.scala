@@ -2335,8 +2335,6 @@ object Types {
     }
   }
 
-  trait MethodOrPoly extends MethodicType
-
   /** The lambda type square:
    *
    *    LambdaType  |   TermLambda      |   TypeLambda
@@ -2344,7 +2342,7 @@ object Types {
    *    HKLambda    |   HKTermLambda    |   HKTypeLambda
    *    StarLambda  |   MethodType	    |   PolyType
    */
-  trait LambdaType extends BindingType with MethodOrPoly { self =>
+  trait LambdaType extends BindingType with MethodicType { self =>
     type ThisName <: Name
     type PInfo <: Type
     type This <: LambdaType{type PInfo = self.PInfo}

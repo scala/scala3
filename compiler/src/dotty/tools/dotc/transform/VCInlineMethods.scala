@@ -86,7 +86,7 @@ class VCInlineMethods extends MiniPhaseTransform with IdentityDenotTransformer {
    *  by a call to the corresponding extension method, otherwise return it as is.
    */
   private def rewireIfNeeded(tree: Tree)(implicit ctx: Context) = tree.tpe.widen match {
-    case tp: MethodOrPoly =>
+    case tp: LambdaType =>
       tree // The rewiring will be handled by a fully-applied parent node
     case _ =>
       if (isMethodWithExtension(tree.symbol))

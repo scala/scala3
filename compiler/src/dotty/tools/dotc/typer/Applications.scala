@@ -1059,7 +1059,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos map repeatedToSingle
           else tp1.paramInfos
         isApplicable(alt2, formals1, WildcardType) ||
-        tp1.paramInfos.isEmpty && tp2.isInstanceOf[MethodOrPoly]
+        tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
