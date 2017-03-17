@@ -155,14 +155,14 @@ extends TyperState(r) {
   }
 
   override def gc()(implicit ctx: Context): Unit = {
-    val toCollect = new mutable.ListBuffer[PolyType]
+    val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
         val inst = instType(tvar)
         if (inst.exists && (tvar.owningState eq this)) {
           tvar.inst = inst
-          val poly = tvar.origin.binder
-          if (constraint.isRemovable(poly)) toCollect += poly
+          val lam = tvar.origin.binder
+          if (constraint.isRemovable(lam)) toCollect += lam
         }
       }
     }

@@ -13,17 +13,17 @@ import config.Printers.constr
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
  *
- *   - PolyType    A constraint constrains the type parameters of a set of PolyTypes
- *   - TypeParamRef   The parameters of the constrained polytypes
- *   - TypeVar     Every constrained parameter might be associated with a TypeVar
- *                 that has the TypeParamRef as origin.
+ *   - TypeLambda    A constraint constrains the type parameters of a set of TypeLambdas
+ *   - TypeParamRef  The parameters of the constrained polytypes
+ *   - TypeVar       Every constrained parameter might be associated with a TypeVar
+ *                   that has the TypeParamRef as origin.
  */
 abstract class Constraint extends Showable {
 
   type This <: Constraint
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: PolyType): Boolean
+  def contains(pt: TypeLambda): Boolean
 
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: TypeParamRef): Boolean
@@ -79,7 +79,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: PolyType, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -115,13 +115,13 @@ abstract class Constraint extends Showable {
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
    */
-  def isRemovable(pt: PolyType): Boolean
+  def isRemovable(pt: TypeLambda): Boolean
 
   /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: PolyType)(implicit ctx: Context): This
+  def remove(pt: TypeLambda)(implicit ctx: Context): This
 
   /** The polytypes constrained by this constraint */
-  def domainPolys: List[PolyType]
+  def domainPolys: List[TypeLambda]
 
   /** The polytype parameters constrained by this constraint */
   def domainParams: List[TypeParamRef]
