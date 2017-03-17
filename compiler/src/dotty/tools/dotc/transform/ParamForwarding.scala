@@ -32,7 +32,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
           }
         case _ => (Nil, Nil)
       }
-      def inheritedAccessor(sym: Symbol): Symbol = {
+      def inheritedAccessor(sym: Symbol)(implicit ctx: Context): Symbol = {
         /**
          * Dmitry: having it have the same name is needed to maintain correctness in presence of subclassing
          * if you would use parent param-name `a` to implement param-field `b`
@@ -60,7 +60,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
               // so avoid param forwarding if parameter is by name. See i1766.scala
               val idx = superArgs.indexWhere(_.symbol == sym)
               if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
-                val alias = inheritedAccessor(sym)
+                val alias = inheritedAccessor(sym)(ctx.withPhase(thisTransformer.next))
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
                     sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
