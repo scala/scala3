@@ -69,6 +69,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val reachableTypesLastSize = reachableTypes.size
       val classOfsLastSize = classOfs.size
 
+      if (processAllCallSites)
+        ctx.log("[processing all call sites]")
+
       processCallSites(processAllCallSites)
 
       val numNewReachableMethods = reachableMethods.size - reachableMethodsLastSize
@@ -80,7 +83,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val loopTime = loopEndTime - loopStartTime
       val totalTime = loopEndTime - startTime
       ctx.log(
-        s"""Graph building iteration $iteration  ${if (processAllCallSites) "[processed all call sites]" else ""}
+        s"""Graph building iteration $iteration
            |Iteration in ${loopTime/1000.0} seconds out of ${totalTime/1000.0} seconds (${loopTime.toDouble/totalTime})
            |Found $numNewReachableTypes new instantiated types (${reachableTypes.size})
            |Found $numNewReachableMethods new call sites (${reachableMethods.size})
@@ -523,6 +526,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def processCallSites(processAllCallSites: Boolean): Unit = {
+    var processed = 0
+    var total = 0
+
     // TODO currently sizesCache must be missing some of the changes. If this is fixed processAllCallSites would not be needed.
     def computeCRC(tp: Type) = tp.classSymbols.iterator.map(x => sizesCache.getOrElse(x, 0)).sum
 
@@ -531,6 +537,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       // Find new call sites
 
       def needsCallSiteInstantiation(callSite: CallInfo): Boolean = {
+        total += 1
         val receiver = callSite.call.normalizedPrefix
         val recomputedCRC = computeCRC(receiver)
         val needsInstantiation = recomputedCRC != crcMap.getOrElse(callSite, -1)
@@ -549,6 +556,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             callSite <- methodCalled._2
             if needsCallSiteInstantiation(callSite)
           } {
+            processed += 1
             val instantiatedCalls = instantiateCallSite(method, callSite)
             instantiatedCalls.foreach(addReachableMethod)
             method.addOutEdges(callSite, instantiatedCalls)
@@ -569,6 +577,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
                 potentialCall <- allPotentialCallsFor(rec)
                 if needsCallSiteInstantiation(potentialCall) && method.getOutEdges(potentialCall).isEmpty
               } {
+                processed += 1
                 val instantiatedCalls = instantiateCallSite(method, potentialCall)
                 val instantiatedCallsToDefinedMethods = instantiatedCalls.filter(x => collectedSummaries.contains(x.callSymbol))
                 instantiatedCallsToDefinedMethods.foreach(addReachableMethod)
@@ -578,6 +587,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
       }
     }
+
+    ctx.log(s"Processed $processed calls out of $total")
   }
 
   private def addReachableJavaReturnType(method: CallInfoWithContext): Unit = {
