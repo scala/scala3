@@ -401,7 +401,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
         toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
-      case PolyTypeTree(tparams, body) =>
+      case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
           tparamsText(tparams) ~ " -> " ~ toText(body)
         }
@@ -451,7 +451,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             (if (tree.hasType && ctx.settings.verbose.value) i"[decls = ${tree.symbol.info.decls}]" else "")
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
-          case PolyTypeTree(tparams, body) =>
+          case LambdaTypeTree(tparams, body) =>
             recur(body, tparamsText(tparams))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))

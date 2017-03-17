@@ -298,7 +298,7 @@ class Namer { typer: Typer =>
         val inSuperCall1 = if (tree.mods is ParamOrAccessor) EmptyFlags else inSuperCall
           // suppress inSuperCall for constructor parameters
         val higherKinded = tree match {
-          case TypeDef(_, PolyTypeTree(_, _)) if isDeferred => HigherKinded
+          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
           case _ => EmptyFlags
         }
 
@@ -795,7 +795,7 @@ class Namer { typer: Typer =>
         myTypeParams = {
           implicit val ctx = nestedCtx
           val tparams = original.rhs match {
-            case PolyTypeTree(tparams, _) => tparams
+            case LambdaTypeTree(tparams, _) => tparams
             case _ => Nil
           }
           completeParams(tparams)
@@ -1169,7 +1169,7 @@ class Namer { typer: Typer =>
 
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
     val rhs = tdef.rhs match {
-      case PolyTypeTree(_, body) => body
+      case LambdaTypeTree(_, body) => body
       case rhs => rhs
     }
     val rhsBodyType = typedAheadType(rhs).tpe

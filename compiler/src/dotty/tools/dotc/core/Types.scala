@@ -103,7 +103,7 @@ object Types {
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
 
     /** Is the is value type or type lambda? */
-    final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[PolyType]
+    final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[TypeLambda]
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     @tailrec final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -541,7 +541,7 @@ object Types {
       }
 
       def goApply(tp: HKApply) = tp.tycon match {
-        case tl: PolyType =>
+        case tl: TypeLambda =>
           go(tl.resType).mapInfo(info =>
             tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
         case _ =>
@@ -1090,14 +1090,14 @@ object Types {
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramInfoss(implicit ctx: Context): List[List[Type]] = this match {
       case mt: MethodType => mt.paramInfos :: mt.resultType.paramInfoss
-      case pt: PolyType => pt.resultType.paramInfoss
+      case pt: TypeLambda => pt.resultType.paramInfoss
       case _ => Nil
     }
 
     /** The parameter names of a PolyType or MethodType, Empty list for others */
     final def paramNamess(implicit ctx: Context): List[List[TermName]] = this match {
       case mt: MethodType => mt.paramNames :: mt.resultType.paramNamess
-      case pt: PolyType => pt.resultType.paramNamess
+      case pt: TypeLambda => pt.resultType.paramNamess
       case _ => Nil
     }
 
@@ -1105,18 +1105,18 @@ object Types {
     /** The parameter types in the first parameter section of a generic type or MethodType, Empty list for others */
     final def firstParamTypes(implicit ctx: Context): List[Type] = this match {
       case mt: MethodType => mt.paramInfos
-      case pt: PolyType => pt.resultType.firstParamTypes
+      case pt: TypeLambda => pt.resultType.firstParamTypes
       case _ => Nil
     }
 
     /** Is this either not a method at all, or a parameterless method? */
     final def isParameterless(implicit ctx: Context): Boolean = this match {
       case mt: MethodType => false
-      case pt: PolyType => pt.resultType.isParameterless
+      case pt: TypeLambda => pt.resultType.isParameterless
       case _ => true
     }
 
-    /** The resultType of a PolyType, MethodType, or ExprType, the type itself for others */
+    /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
 
     /** The final result type of a PolyType, MethodType, or ExprType, after skipping
@@ -1360,7 +1360,7 @@ object Types {
   }
 
   /** A marker trait for types that bind other types that refer to them.
-   *  Instances are: PolyType, MethodType, RefinedType.
+   *  Instances are: LambdaType, RecType.
    */
   trait BindingType extends Type
 
@@ -2804,7 +2804,7 @@ object Types {
     override def superType(implicit ctx: Context): Type = {
       if (ctx.period != validSuper) {
         cachedSuper = tycon match {
-          case tp: PolyType => defn.AnyType
+          case tp: TypeLambda => defn.AnyType
           case tp: TypeVar if !tp.inst.exists =>
             // supertype not stable, since underlying might change
             return tp.underlying.applyIfParameterized(args)
@@ -2830,7 +2830,7 @@ object Types {
 
     def typeParams(implicit ctx: Context): List[ParamInfo] = {
       val tparams = tycon.typeParams
-      if (tparams.isEmpty) PolyType.any(args.length).typeParams else tparams
+      if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
     def derivedAppliedType(tycon: Type, args: List[Type])(implicit ctx: Context): Type =
@@ -2843,7 +2843,7 @@ object Types {
       def check(tycon: Type): Unit = tycon.stripTypeVar match {
         case tycon: TypeRef if !tycon.symbol.isClass =>
         case _: TypeParamRef | _: ErrorType | _: WildcardType =>
-        case _: PolyType =>
+        case _: TypeLambda =>
           assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
           check(tycon.underlying)
@@ -3530,7 +3530,7 @@ object Types {
         case tp: ExprType =>
           derivedExprType(tp, this(tp.resultType))
 
-        case tp: PolyType =>
+        case tp: TypeLambda =>
           def mapOverPoly = {
             variance = -variance
             val bounds1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[TypeBounds]]
@@ -3755,7 +3755,7 @@ object Types {
       case ExprType(restpe) =>
         this(x, restpe)
 
-      case tp: PolyType =>
+      case tp: TypeLambda =>
         variance = -variance
         val y = foldOver(x, tp.paramInfos)
         variance = -variance

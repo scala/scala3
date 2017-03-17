@@ -145,8 +145,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree =
     ta.assignType(untpd.ByNameTypeTree(result), result)
 
-  def PolyTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): PolyTypeTree =
-    ta.assignType(untpd.PolyTypeTree(tparams, body), tparams, body)
+  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree =
+    ta.assignType(untpd.LambdaTypeTree(tparams, body), tparams, body)
 
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)

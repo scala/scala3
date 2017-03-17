@@ -1096,12 +1096,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typedPolyTypeTree(tree: untpd.PolyTypeTree)(implicit ctx: Context): Tree = track("typedPolyTypeTree") {
-    val PolyTypeTree(tparams, body) = tree
+  def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(implicit ctx: Context): Tree = track("typedLambdaTypeTree") {
+    val LambdaTypeTree(tparams, body) = tree
     indexAndAnnotate(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
-    assignType(cpy.PolyTypeTree(tree)(tparams1, body1), tparams1, body1)
+    assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
@@ -1262,10 +1262,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
     val rhs1 = tdef.rhs match {
-      case rhs @ PolyTypeTree(tparams, body) =>
+      case rhs @ LambdaTypeTree(tparams, body) =>
         val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
         val body1 = typedType(body)
-        assignType(cpy.PolyTypeTree(rhs)(tparams1, body1), tparams1, body1)
+        assignType(cpy.LambdaTypeTree(rhs)(tparams1, body1), tparams1, body1)
       case rhs =>
         typedType(rhs)
     }
@@ -1555,7 +1555,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
-          case tree: untpd.PolyTypeTree => typedPolyTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)

@@ -1037,7 +1037,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               val localCtx = localNonClassCtx
               val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
               val body = readTpt()(localCtx)
-              PolyTypeTree(tparams, body)
+              LambdaTypeTree(tparams, body)
             case TYPEBOUNDStpt =>
               TypeBoundsTree(readTpt(), readTpt())
             case _ =>
