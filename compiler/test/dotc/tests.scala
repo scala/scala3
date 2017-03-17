@@ -98,8 +98,8 @@ class tests extends CompilerTest {
   val typerDir  = dotcDir + "typer/"
   val libDir = "../library/src/"
 
-  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
-  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyBootedLib = compileDir(libDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
+  def dottyDependsOnBootedLib = compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ::: defaultOptions)(allowDeepSubtypes) // note the -deep argument
 
   @Before def cleanup(): Unit = {
     // remove class files from stdlib and tests compilation
@@ -354,7 +354,7 @@ class tests extends CompilerTest {
     val logging = if (false) List("-Ylog-classpath", "-verbose") else Nil
     val opt = List("-priorityclasspath", defaultOutputDir) ++ logging
     // first compile dotty
-    compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant") ++ logging)(allowDeepSubtypes)
+    compileDir(dottyDir, ".", List("-deep", "-Ycheck-reentrant", "-strict") ++ logging)(allowDeepSubtypes)
 
     compileDir(libDir, "dotty", "-deep" :: opt)
     compileDir(libDir, "scala", "-deep" :: opt)
