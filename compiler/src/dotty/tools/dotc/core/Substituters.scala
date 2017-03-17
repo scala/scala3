@@ -196,7 +196,7 @@ trait Substituters { this: Context =>
           .mapOver(tp)
     }
 
-  final def substParam(tp: Type, from: ParamType, to: Type, theMap: SubstParamMap): Type =
+  final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap): Type =
     tp match {
       case tp: BoundType =>
         if (tp == from) to else tp
@@ -216,7 +216,7 @@ trait Substituters { this: Context =>
 
   final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap): Type =
     tp match {
-      case tp: ParamType =>
+      case tp: ParamRef =>
         if (tp.binder == from) to(tp.paramNum) else tp
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
@@ -269,7 +269,7 @@ trait Substituters { this: Context =>
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)
   }
 
-  final class SubstParamMap(from: ParamType, to: Type) extends DeepTypeMap {
+  final class SubstParamMap(from: ParamRef, to: Type) extends DeepTypeMap {
     def apply(tp: Type) = substParam(tp, from, to, this)
   }
 

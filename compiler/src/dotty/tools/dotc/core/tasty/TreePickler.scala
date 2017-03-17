@@ -260,14 +260,14 @@ class TreePickler(pickler: TastyPickler) {
       writeByte(METHODtype)
       pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramInfos)
     case tpe: TypeParamRef =>
-      if (!pickleParamType(tpe))
+      if (!pickleParamRef(tpe))
       // TODO figure out why this case arises in e.g. pickling AbstractFileReader.
         ctx.typerState.constraint.entry(tpe) match {
           case TypeBounds(lo, hi) if lo eq hi => pickleNewType(lo, richTypes)
           case _ => assert(false, s"orphan poly parameter: $tpe")
         }
     case tpe: TermParamRef =>
-      assert(pickleParamType(tpe), s"orphan method parameter: $tpe")
+      assert(pickleParamRef(tpe), s"orphan method parameter: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
   }} catch {
@@ -289,7 +289,7 @@ class TreePickler(pickler: TastyPickler) {
       }
     }
 
-  def pickleParamType(tpe: ParamType)(implicit ctx: Context): Boolean = {
+  def pickleParamRef(tpe: ParamRef)(implicit ctx: Context): Boolean = {
     val binder = pickledTypes.get(tpe.binder)
     val pickled = binder != null
     if (pickled) {

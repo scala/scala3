@@ -1199,7 +1199,7 @@ object Types {
       ctx.substRecThis(this, binder, tp, null)
 
     /** Substitute a bound type by some other type */
-    final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
+    final def substParam(from: ParamRef, to: Type)(implicit ctx: Context): Type =
       ctx.substParam(this, from, to, null)
 
     /** Substitute bound types by some other types */
@@ -2411,8 +2411,6 @@ object Types {
     type PInfo = Type
     type This <: TermLambda
 
-    def paramNames: List[TermName]
-
     override def resultType(implicit ctx: Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
         val dealiasMap = new TypeMap {
@@ -2831,7 +2829,7 @@ object Types {
       unique(new CachedHKApply(tycon, args)).checkInst
   }
 
-  // ----- Bound types: MethodParam, TypeParamRef --------------------------
+  // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: Type
@@ -2839,13 +2837,9 @@ object Types {
     def copyBoundType(bt: BT): Type
   }
 
-  abstract class ParamType extends BoundType {
-    def paramNum: Int
-    def paramName: Name
-  }
-
-  abstract class ParamRef extends ParamType {
+  abstract class ParamRef extends BoundType {
     type BT <: LambdaType
+    def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
 
     override def underlying(implicit ctx: Context): Type = {

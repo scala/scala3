@@ -296,7 +296,7 @@ class TreeChecker extends Phase with SymTransformer {
             definedBinders += tp
             mapOver(tp)
             definedBinders -= tp
-          case tp: ParamType =>
+          case tp: ParamRef =>
             assert(definedBinders.contains(tp.binder), s"orphan param: $tp")
           case tp: TypeVar =>
             apply(tp.underlying)

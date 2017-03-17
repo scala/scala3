@@ -460,7 +460,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         new api.Annotated(apiType(tpe), Array(apiAnnotation(annot)))
       case tp: ThisType =>
         apiThis(tp.cls)
-      case tp: ParamType =>
+      case tp: ParamRef =>
         // TODO: Distinguishing parameters based on their names alone is not enough,
         // the binder is also needed (at least for type lambdas).
         new api.ParameterRef(tp.paramName.toString)
