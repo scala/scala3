@@ -2334,7 +2334,7 @@ object Types {
     def resType: Type
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)
         (implicit ctx: Context): LambdaType { type ThisName = self.ThisName; type PInfo = self.PInfo }
-    def newParamRef(n: Int): ParamRef[This]
+    def newParamRef(n: Int): ParamRef
 
     override def resultType(implicit ctx: Context) = resType
 
@@ -2344,7 +2344,7 @@ object Types {
     final def isTypeLambda = paramNames.head.isTypeName
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
-    lazy val paramRefs: List[ParamRef[This]] = paramNames.indices.toList.map(newParamRef)
+    lazy val paramRefs: List[ParamRef] = paramNames.indices.toList.map(newParamRef)
 
     def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isDependent) resultType.substParams(this, argTypes)
@@ -2405,7 +2405,7 @@ object Types {
           if (status == TrueDeps) status
           else
             tp match {
-              case ParamRef(binder, _) if binder eq thisLambdaType => TrueDeps
+              case TermParamRef(`thisLambdaType`, _) => TrueDeps
               case tp: TypeRef =>
                 val status1 = foldOver(status, tp)
                 tp.info match { // follow type alias to avoid dependency
@@ -2462,7 +2462,7 @@ object Types {
      */
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
-    def newParamRef(n: Int) = new TermParamRef(this, n)
+    def newParamRef(n: Int) = TermParamRef(this, n)
   }
 
   object LambdaOverTerms {
@@ -2584,7 +2584,7 @@ object Types {
       if (Config.checkMethodTypes)
         for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
           paramInfo.foreachPart {
-            case ParamRef(binder, j) if binder eq mt => assert(j < idx, mt)
+            case TermParamRef(`mt`, j) => assert(j < idx, mt)
             case _ =>
           }
       mt
@@ -2850,11 +2850,7 @@ object Types {
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: Type
-    def binder: BT
-    // Dotty deviation: copyBoundType was copy, but
-    // dotty generates copy methods always automatically, and therefore
-    // does not accept same-named method definitions in subclasses.
-    // Scala2x, on the other hand, requires them (not sure why!)
+    val binder: BT
     def copyBoundType(bt: BT): Type
   }
 
@@ -2863,11 +2859,9 @@ object Types {
     def paramName: Name
   }
 
-  abstract case class ParamRef[LT <: LambdaType]
-      (binder: LT, paramNum: Int) extends ParamType {
-    type BT = LT
-
-    def paramName = binder.paramNames(paramNum)
+  abstract class ParamRef extends ParamType {
+    type BT <: LambdaType
+    def paramName: binder.ThisName = binder.paramNames(paramNum)
 
     override def underlying(implicit ctx: Context): Type = {
       val infos = binder.paramInfos
@@ -2875,22 +2869,9 @@ object Types {
       else infos(paramNum)
     }
 
-    /** Looking only at the structure of `bound`, is one of the following true?
-     *     - fromBelow and param <:< bound
-     *     - !fromBelow and param >:> bound
-     */
-    def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
-      case bound: ParamRef[_] => bound == this
-      case bound: AndOrType =>
-        def occ1 = occursIn(bound.tp1, fromBelow)
-        def occ2 = occursIn(bound.tp2, fromBelow)
-        if (fromBelow == bound.isAnd) occ1 && occ2 else occ1 || occ2
-      case _ => false
-    }
-
     override def computeHash = doHash(paramNum, binder.identityHash)
     override def equals(that: Any) = that match {
-      case that: ParamRef[_] =>
+      case that: ParamRef =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
       case _ =>
         false
@@ -2903,27 +2884,26 @@ object Types {
       }
   }
 
-  class TermParamRef(binder: LambdaOverTerms, paramNum: Int)
-  extends ParamRef[LambdaOverTerms](binder, paramNum) with SingletonType {
-    def copyBoundType(bt: BT) = new TermParamRef(bt, paramNum)
+  case class TermParamRef(binder: LambdaOverTerms, paramNum: Int) extends ParamRef {
+    type BT = LambdaOverTerms
+    def copyBoundType(bt: BT) = TermParamRef(bt, paramNum)
   }
 
-  object TermParamRef {
-    def apply(binder: LambdaOverTerms, paramNum: Int)(implicit ctx: Context): TermParamRef = {
-      assertUnerased()
-      new TermParamRef(binder, paramNum)
-    }
-  }
+  case class TypeParamRef(binder: LambdaOverTypes, paramNum: Int) extends ParamRef {
+    type BT = LambdaOverTypes
+    def copyBoundType(bt: BT) = TypeParamRef(bt, paramNum)
 
-  class TypeParamRef(binder: LambdaOverTypes, paramNum: Int)
-  extends ParamRef[LambdaOverTypes](binder, paramNum) {
-    def copyBoundType(bt: BT) = new TypeParamRef(bt, paramNum)
-  }
-
-  object TypeParamRef {
-    def apply(binder: LambdaOverTypes, paramNum: Int)(implicit ctx: Context): TypeParamRef = {
-      assertUnerased()
-      new TypeParamRef(binder, paramNum)
+    /** Looking only at the structure of `bound`, is one of the following true?
+     *     - fromBelow and param <:< bound
+     *     - !fromBelow and param >:> bound
+     */
+    def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
+      case bound: ParamRef => bound == this
+      case bound: AndOrType =>
+        def occ1 = occursIn(bound.tp1, fromBelow)
+        def occ2 = occursIn(bound.tp2, fromBelow)
+        if (fromBelow == bound.isAnd) occ1 && occ2 else occ1 || occ2
+      case _ => false
     }
   }
 
@@ -3872,7 +3852,7 @@ object Types {
             apply(x, tp.tref)
           case tp: ConstantType =>
             apply(x, tp.underlying)
-          case tp: ParamRef[_] =>
+          case tp: TermParamRef =>
             apply(x, tp.underlying)
           case tp: PolyParam =>
             apply(x, tp.underlying)
