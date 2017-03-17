@@ -312,7 +312,7 @@ object Denotations {
             tp2 match {
               case tp2: MethodType if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
                 tp1.isImplicit == tp2.isImplicit =>
-                tp1.derivedMethodType(
+                tp1.derivedLambdaType(
                   mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
                   tp1.paramInfos,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
@@ -322,7 +322,7 @@ object Denotations {
           case tp1: PolyType if isTerm =>
             tp2 match {
               case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
-                tp1.derivedPolyType(
+                tp1.derivedLambdaType(
                   mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
                   tp1.paramInfos,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
@@ -476,7 +476,7 @@ object Denotations {
             case tp2: MethodType
             if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
               tp1.isImplicit == tp2.isImplicit =>
-              tp1.derivedMethodType(
+              tp1.derivedLambdaType(
                 mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
                 tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
@@ -485,7 +485,7 @@ object Denotations {
         case tp1: PolyType =>
           tp2 match {
             case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
-              tp1.derivedPolyType(
+              tp1.derivedLambdaType(
                 mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
                 tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>

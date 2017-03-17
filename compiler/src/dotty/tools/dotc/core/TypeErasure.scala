@@ -176,7 +176,7 @@ object TypeErasure {
     val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
-      tp.derivedPolyType(
+      tp.derivedLambdaType(
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
@@ -385,9 +385,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val formals = tp.paramInfos.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
-          tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
+          tp.derivedLambdaType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramInfos, rt.resultType)
         case rt =>
-          tp.derivedMethodType(tp.paramNames, formals, rt)
+          tp.derivedLambdaType(tp.paramNames, formals, rt)
       }
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp

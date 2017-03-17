@@ -46,7 +46,7 @@ class ElimErasedValueType extends MiniPhaseTransform with InfoTransformer {
     case tp: MethodType =>
       val paramTypes = tp.paramInfos.mapConserve(elimEVT)
       val retType = elimEVT(tp.resultType)
-      tp.derivedMethodType(tp.paramNames, paramTypes, retType)
+      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
     case _ =>
       tp
   }

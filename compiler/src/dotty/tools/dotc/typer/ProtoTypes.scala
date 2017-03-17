@@ -444,7 +444,7 @@ object ProtoTypes {
           val rt = normalize(mt.resultType, pt)
           pt match {
             case pt: IgnoredProto  => mt
-            case pt: ApplyingProto => mt.derivedMethodType(mt.paramNames, mt.paramInfos, rt)
+            case pt: ApplyingProto => mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
               if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt

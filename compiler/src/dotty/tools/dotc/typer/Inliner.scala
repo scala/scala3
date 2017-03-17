@@ -108,7 +108,7 @@ object Inliner {
 
             // Add qualifier type as leading method argument to argument `tp`
             def addQualType(tp: Type): Type = tp match {
-              case tp: PolyType => tp.derivedPolyType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
+              case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
               case tp: ExprType => addQualType(tp.resultType)
               case tp => MethodType(qualType :: Nil, tp)
             }

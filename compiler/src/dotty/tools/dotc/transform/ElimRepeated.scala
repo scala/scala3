@@ -55,9 +55,9 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
           val last = paramTypes.last.underlyingIfRepeated(tp.isJava)
           paramTypes.init :+ last
         } else paramTypes
-      tp.derivedMethodType(paramNames, paramTypes1, resultType1)
+      tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
-      tp.derivedPolyType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
     case tp =>
       tp
   }
@@ -139,10 +139,10 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: PolyType =>
-      tp.derivedPolyType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(tp.resultType))
     case tp: MethodType =>
       val inits :+ last = tp.paramInfos
       val last1 = last.underlyingIfRepeated(isJava = true)
-      tp.derivedMethodType(tp.paramNames, inits :+ last1, tp.resultType)
+      tp.derivedLambdaType(tp.paramNames, inits :+ last1, tp.resultType)
   }
 }

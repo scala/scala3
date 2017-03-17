@@ -256,7 +256,7 @@ object FullParameterization {
     case MethodTpe(nme.SELF :: Nil, _, restpe) =>
       restpe.ensureMethodic.signature
     case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
-      info.derivedMethodType(otherNames, otherTypes, restpe).signature
+      info.derivedLambdaType(otherNames, otherTypes, restpe).signature
     case _ =>
       Signature.NotAMethod
   }

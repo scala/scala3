@@ -331,7 +331,7 @@ object ExplicitOuter {
     def addParam(cls: ClassSymbol, tp: Type): Type =
       if (hasOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp
-        mt.derivedMethodType(
+        mt.derivedLambdaType(
           nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, restpe)
       } else tp
 

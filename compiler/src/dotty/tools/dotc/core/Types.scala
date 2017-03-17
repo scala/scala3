@@ -2524,11 +2524,6 @@ object Types {
     override def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramInfos, isJava)
 
-    def derivedMethodType(paramNames: List[TermName] = this.paramNames,
-                          paramInfos: List[Type] = this.paramInfos,
-                          resType: Type = this.resType)(implicit ctx: Context) =
-      derivedLambdaType(paramNames, paramInfos, resType)
-
     protected def prefixString = "MethodType"
   }
 
@@ -2696,11 +2691,6 @@ object Types {
     assert(paramNames.nonEmpty)
 
     override def underlying(implicit ctx: Context) = resType
-
-    def derivedPolyType(paramNames: List[TypeName] = this.paramNames,
-                        paramInfos: List[TypeBounds] = this.paramInfos,
-                        resType: Type = this.resType)(implicit ctx: Context) =
-      derivedLambdaType(paramNames, paramInfos, resType)
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
@@ -3467,12 +3457,11 @@ object Types {
       tp.derivedClassInfo(pre)
     protected def derivedJavaArrayType(tp: JavaArrayType, elemtp: Type): Type =
       tp.derivedJavaArrayType(elemtp)
-    protected def derivedMethodType(tp: MethodType, formals: List[Type], restpe: Type): Type =
-      tp.derivedMethodType(tp.paramNames, formals, restpe)
     protected def derivedExprType(tp: ExprType, restpe: Type): Type =
       tp.derivedExprType(restpe)
-    protected def derivedPolyType(tp: PolyType, pbounds: List[TypeBounds], restpe: Type): Type =
-      tp.derivedPolyType(tp.paramNames, pbounds, restpe)
+    // note: currying needed  because Scala2 does not support param-dependencies
+    protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
+      tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
@@ -3507,7 +3496,7 @@ object Types {
             variance = -variance
             val ptypes1 = tp.paramInfos mapConserve this
             variance = -variance
-            derivedMethodType(tp, ptypes1, this(tp.resultType))
+            derivedLambdaType(tp)(ptypes1, this(tp.resultType))
           }
           mapOverMethod
 
@@ -3519,7 +3508,7 @@ object Types {
             variance = -variance
             val bounds1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[TypeBounds]]
             variance = -variance
-            derivedPolyType(tp, bounds1, this(tp.resultType))
+            derivedLambdaType(tp)(bounds1, this(tp.resultType))
           }
           mapOverPoly
 

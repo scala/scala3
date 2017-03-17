@@ -1125,7 +1125,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case mt: ImplicitMethodType =>
         resultTypeApprox(mt)
       case pt: PolyType =>
-        pt.derivedPolyType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, stripImplicit(pt.resultType))
       case _ =>
         tp
     }

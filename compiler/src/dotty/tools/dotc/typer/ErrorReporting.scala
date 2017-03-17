@@ -105,7 +105,7 @@ object ErrorReporting {
     def whyNoMatchStr(found: Type, expected: Type) = {
       def dropJavaMethod(tp: Type): Type = tp match {
         case tp: PolyType =>
-          tp.derivedPolyType(resType = dropJavaMethod(tp.resultType))
+          tp.derivedLambdaType(resType = dropJavaMethod(tp.resultType))
         case tp: JavaMethodType =>
           MethodType(tp.paramNames, tp.paramInfos, dropJavaMethod(tp.resultType))
         case tp => tp
