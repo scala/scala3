@@ -32,6 +32,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private var entryPoints = immutable.Map.empty[CallInfoWithContext, Int]
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
   private var reachableMethods = immutable.Set.empty[CallInfoWithContext]
+  private var reachableMethodsSymbols = immutable.Set.empty[Symbol]
   private var outerMethods = immutable.Set.empty[Symbol]
   private var classOfs = immutable.Set.empty[Symbol]
 
@@ -142,7 +143,16 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   }
 
   private def addReachableMethod(method: CallInfoWithContext): Unit = {
-    reachableMethods += method
+    if (!reachableMethods.contains(method)) {
+      reachableMethods += method
+      val callSymbol = method.callSymbol
+      if (!reachableMethodsSymbols.contains(callSymbol)) {
+        reachableMethodsSymbols += callSymbol
+        collectedSummaries.get(callSymbol).foreach { summary =>
+          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info))))
+        }
+      }
+    }
   }
 
   private def addReachableClosure(x: ClosureType, from: CallInfoWithContext): Unit = {
@@ -549,7 +559,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       collectedSummaries.get(method.callSymbol) match {
         case Some(summary) =>
-          summary.accessedModules.foreach(x => addReachableType(new TypeWithContext(x.info, parentRefinements(x.info))))
           summary.definedClosures.foreach(x => addReachableClosure(x, method))
 
           for {
