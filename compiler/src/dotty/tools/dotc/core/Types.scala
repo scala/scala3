@@ -2324,15 +2324,16 @@ object Types {
    *    Proxy (hk)  |   HKTermLambda    |   HKTypeLambda
    *    Ground (*)  |   MethodType			|   PolyType
    */
-  trait LambdaType[PInfo <: Type] extends BindingType with MethodOrPoly { self =>
+  trait LambdaType extends BindingType with MethodOrPoly { self =>
     type ThisName <: Name
-    type This <: LambdaType[PInfo]
+    type PInfo <: Type
+    type This <: LambdaType{type PInfo = self.PInfo}
 
     def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
     def resType: Type
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)
-        (implicit ctx: Context): LambdaType[PInfo] { type ThisName = self.ThisName }
+        (implicit ctx: Context): LambdaType { type ThisName = self.ThisName; type PInfo = self.PInfo }
     def newParamRef(n: Int): ParamRef[This]
 
     override def resultType(implicit ctx: Context) = resType
@@ -2356,7 +2357,7 @@ object Types {
       else newLikeThis(paramNames, paramInfos, resType)
 
     override def equals(that: Any) = that match {
-      case that: LambdaType[_] =>
+      case that: LambdaType =>
         this.paramNames == that.paramNames &&
         this.paramInfos == that.paramInfos &&
         this.resType == that.resType
@@ -2365,9 +2366,10 @@ object Types {
     }
   }
 
-  trait LambdaOverTerms extends LambdaType[Type] { thisLambdaType =>
+  trait LambdaOverTerms extends LambdaType { thisLambdaType =>
     import LambdaOverTerms._
     type ThisName = TermName
+    type PInfo = Type
     type This = LambdaOverTerms
 
     def paramNames: List[TermName]
@@ -2533,7 +2535,7 @@ object Types {
     override protected def prefixString = "ImplicitMethodType"
   }
 
-  abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType[PInfo]] {
+  abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def apply(paramNames: List[N])(paramInfosExp: LT => List[PInfo], resultTypeExp: LT => Type)(implicit ctx: Context): LT
     def syntheticParamNames(n: Int): List[N]
     def apply(paramNames: List[N], paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
@@ -2646,9 +2648,10 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends CachedProxyType with LambdaType[TypeBounds] {
+  extends CachedProxyType with LambdaType {
 
     type ThisName = TypeName
+    type PInfo = TypeBounds
     type This = PolyType
 
     /** The bounds of the type parameters */
@@ -2860,7 +2863,7 @@ object Types {
     def paramName: Name
   }
 
-  abstract case class ParamRef[LT <: LambdaType[_ <: Type]]
+  abstract case class ParamRef[LT <: LambdaType]
       (binder: LT, paramNum: Int) extends ParamType {
     type BT = LT
 
