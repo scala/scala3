@@ -15,6 +15,7 @@ import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
+import dotty.tools.dotc.transform.BinaryCompatibility
 
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
 
@@ -98,7 +99,8 @@ class Compiler {
            new CollectSuperCalls,   // Find classes that are called with super
            new DropInlined,         // Drop Inlined nodes, since backend has no use for them
            new MoveStatics,         // Move static methods to companion classes
-           new LabelDefs),          // Converts calls to labels to jumps
+           new LabelDefs,           // Converts calls to labels to jumps
+           new BinaryCompatibility),// Checks @binaryCompatible classes
       List(new GenBCode)            // Generate JVM bytecode
     )
 
