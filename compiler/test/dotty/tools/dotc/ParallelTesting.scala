@@ -14,15 +14,54 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
 import scala.util.control.NonFatal
+import scala.util.Try
 import java.util.HashMap
 
 trait ParallelTesting {
 
-  private case class Target(files: Array[JFile], outDir: JFile) {
+  private sealed trait Target { self =>
+    def outDir: JFile
+    def flags: Array[String]
+
+    def withFlags(newFlags: Array[String]) = self match {
+      case self: ConcurrentCompilationTarget =>
+        self.copy(flags = newFlags)
+      case self: SeparateCompilationTarget =>
+        self.copy(flags = newFlags)
+    }
+  }
+  private final case class ConcurrentCompilationTarget(
+    files: Array[JFile],
+    flags: Array[String],
+    outDir: JFile
+  ) extends Target {
     override def toString() = outDir.toString
   }
+  private final case class SeparateCompilationTarget(
+    dir: JFile,
+    flags: Array[String],
+    outDir: JFile
+  ) extends Target {
 
-  private abstract class CompileRun(targets: List[Target], fromDir: String, flags: Array[String], times: Int) {
+    def compilationUnits: List[Array[JFile]] =
+      dir
+      .listFiles
+      .groupBy { file =>
+        val name = file.getName
+        Try {
+          val potentialNumber = name
+            .substring(0, name.lastIndexOf('.'))
+            .reverse.takeWhile(_ != '_').reverse
+
+          potentialNumber.toInt.toString
+        }
+        .toOption
+        .getOrElse("")
+      }
+      .toList.sortBy(_._1).map(_._2.filter(isCompilable))
+  }
+
+  private abstract class CompileRun(targets: List[Target], times: Int, threadLimit: Option[Int]) {
     val totalTargets = targets.length
 
     private[this] var _errors =  0
@@ -51,20 +90,20 @@ trait ParallelTesting {
             "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] compiling ($tCompiled/$totalTargets, ${timestamp}s) in '$fromDir'\r"
+            s"] compiling ($tCompiled/$totalTargets, ${timestamp}s)\r"
           )
-          Thread.sleep(50)
+          Thread.sleep(100)
           tCompiled = targetsCompiled
         }
         // println, otherwise no newline and cursor at start of line
         println(
           s"[=======================================] compiled ($totalTargets/$totalTargets, " +
-          s"${(System.currentTimeMillis - start) / 1000}s) in '$fromDir' errors: $errors"
+          s"${(System.currentTimeMillis - start) / 1000}s)  "
         )
       }
     }
 
-    protected def compileTry(op: => Unit) =
+    protected def compileTry(op: => Unit): Unit =
       try op catch {
         case NonFatal(e) => {
           // if an exception is thrown during compilation, the complete test
@@ -80,7 +119,11 @@ trait ParallelTesting {
 
     private[ParallelTesting] def execute(): this.type = {
       assert(_targetsCompiled == 0, "not allowed to re-use a `CompileRun`")
-      val pool = JExecutors.newWorkStealingPool()
+      val pool = threadLimit match {
+        case Some(i) => JExecutors.newWorkStealingPool(i)
+        case None => JExecutors.newWorkStealingPool()
+      }
+
       pool.submit(statusRunner)
 
       targets.foreach { target =>
@@ -93,19 +136,35 @@ trait ParallelTesting {
     }
   }
 
-  private final class PosCompileRun(targets: List[Target], fromDir: String, flags: Array[String], times: Int)
-  extends CompileRun(targets, fromDir, flags, times) {
+  @inline private final def isCompilable(f: JFile): Boolean = {
+    val name = f.getName
+    name.endsWith(".scala") || name.endsWith(".java")
+  }
+
+  private final class PosCompileRun(targets: List[Target], times: Int, threadLimit: Option[Int])
+  extends CompileRun(targets, times, threadLimit) {
     protected def compilationRunnable(target: Target): Runnable = new Runnable {
       def run(): Unit = compileTry {
-        val sourceFiles = target.files.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
-        val reporter = compile(sourceFiles, flags, false, times, target.outDir)
-        completeCompilation(reporter.errorCount)
+        target match {
+          case ConcurrentCompilationTarget(files, flags, outDir) => {
+            val sourceFiles = files.filter(isCompilable)
+            val reporter = compile(sourceFiles, flags, false, times, outDir)
+            completeCompilation(reporter.errorCount)
+          }
+
+          case target @ SeparateCompilationTarget(dir, flags, outDir) => {
+            val compilationUnits = target.compilationUnits
+            val reporters = compilationUnits.map(files => compile(files.filter(isCompilable), flags, false, times, outDir))
+            completeCompilation(reporters.foldLeft(0)(_ + _.errorCount))
+          }
+        }
+
       }
     }
   }
 
-  private final class RunCompileRun(targets: List[Target], fromDir: String, flags: Array[String], times: Int)
-  extends CompileRun(targets, fromDir, flags, times) {
+  private final class RunCompileRun(targets: List[Target], times: Int, threadLimit: Option[Int])
+  extends CompileRun(targets, times, threadLimit) {
     private def verifyOutput(checkFile: JFile, dir: JFile) = try {
         // Do classloading magic and running here:
         import java.net.{ URL, URLClassLoader }
@@ -150,13 +209,31 @@ trait ParallelTesting {
 
     protected def compilationRunnable(target: Target): Runnable = new Runnable {
       def run(): Unit = compileTry {
-        val sourceFiles = target.files.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
-        val checkFile = target.files.find(_.getName.endsWith(".check"))
-        val reporter = compile(sourceFiles, flags, false, times, target.outDir)
-        completeCompilation(reporter.errorCount)
+        val (errorCount, hasCheckFile, doVerify) = target match {
+          case ConcurrentCompilationTarget(files, flags, outDir) => {
+            val sourceFiles = files.filter(isCompilable)
+            val checkFile = files.find(_.getName.endsWith(".check"))
+            val reporter = compile(sourceFiles, flags, false, times, outDir)
 
-        if (reporter.errorCount == 0 && checkFile.isDefined) verifyOutput(checkFile.get, target.outDir)
-        else if (reporter.errorCount > 0) {
+            completeCompilation(reporter.errorCount)
+            (reporter.errorCount, checkFile.isDefined, () => verifyOutput(checkFile.get, outDir))
+          }
+
+          case target @ SeparateCompilationTarget(dir, flags, outDir) => {
+            val checkFile = new JFile(dir.getAbsolutePath.reverse.dropWhile(_ == '/').reverse + ".check")
+            val errorCount =
+              target
+                .compilationUnits
+                .map(files => compile(files.filter(isCompilable), flags, false, times, outDir))
+                .foldLeft(0)(_ + _.errorCount)
+
+            completeCompilation(errorCount)
+            (errorCount, checkFile.exists, () => verifyOutput(checkFile, outDir))
+          }
+        }
+
+        if (errorCount == 0 && hasCheckFile) doVerify()
+        else if (errorCount > 0) {
           System.err.println(s"\nCompilation failed for: '$target'")
           fail()
         }
@@ -164,41 +241,40 @@ trait ParallelTesting {
     }
   }
 
-  private final class NegCompileRun(targets: List[Target], fromDir: String, flags: Array[String], times: Int)
-  extends CompileRun(targets, fromDir, flags, times) {
+  private final class NegCompileRun(targets: List[Target], times: Int, threadLimit: Option[Int])
+  extends CompileRun(targets, times, threadLimit) {
     protected def compilationRunnable(target: Target): Runnable = new Runnable {
       def run(): Unit = compileTry {
-        val sourceFiles = target.files.filter(f => f.getName.endsWith(".scala") || f.getName.endsWith(".java"))
-
         // In neg-tests we allow two types of error annotations,
         // "nopos-error" which doesn't care about position and "error" which
         // has to be annotated on the correct line number.
         //
         // We collect these in a map `"file:row" -> numberOfErrors`, for
         // nopos errors we save them in `"file" -> numberOfNoPosErrors`
-        val errorMap = new HashMap[String, Integer]()
-        var expectedErrors = 0
-        target.files.filter(_.getName.endsWith(".scala")).foreach { file =>
-          Source.fromFile(file).getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            val errors = line.sliding("// error".length).count(_.mkString == "// error")
-            if (errors > 0)
-              errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
+        def errorMapAndExpected(files: Array[JFile]): (HashMap[String, Integer], Int) = {
+          val errorMap = new HashMap[String, Integer]()
+          var expectedErrors = 0
+          files.filter(_.getName.endsWith(".scala")).foreach { file =>
+            Source.fromFile(file).getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+              val errors = line.sliding("// error".length).count(_.mkString == "// error")
+              if (errors > 0)
+                errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
 
-            val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
-            if (noposErrors > 0) {
-              val nopos = errorMap.get("nopos")
-              val existing: Integer = if (nopos eq null) 0 else nopos
-              errorMap.put("nopos", noposErrors + existing)
+              val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
+              if (noposErrors > 0) {
+                val nopos = errorMap.get("nopos")
+                val existing: Integer = if (nopos eq null) 0 else nopos
+                errorMap.put("nopos", noposErrors + existing)
+              }
+
+              expectedErrors += noposErrors + errors
             }
-
-            expectedErrors += noposErrors + errors
           }
+
+          (errorMap, expectedErrors)
         }
 
-        val reporter = compile(sourceFiles, flags, true, times, target.outDir)
-        val actualErrors = reporter.errorCount
-
-        def missingAnnotations = !reporter.errors.forall { error =>
+        def getMissingAnnotations(errorMap: HashMap[String, Integer], reporterErrors: List[MessageContainer]) = !reporterErrors.forall { error =>
           val getter = if (error.pos.exists) {
             val fileName = error.pos.source.file.toString
             s"$fileName:${error.pos.line}"
@@ -220,13 +296,33 @@ trait ParallelTesting {
           }
         }
 
+        val (expectedErrors, actualErrors, hasMissingAnnotations, errorMap) = target match {
+          case ConcurrentCompilationTarget(files, flags, outDir) => {
+            val sourceFiles = files.filter(isCompilable)
+            val (errorMap, expectedErrors) = errorMapAndExpected(sourceFiles)
+            val reporter = compile(sourceFiles, flags, true, times, outDir)
+            val actualErrors = reporter.errorCount
+
+            (expectedErrors, actualErrors, () => getMissingAnnotations(errorMap, reporter.errors), errorMap)
+          }
+
+          case target @ SeparateCompilationTarget(dir, flags, outDir) => {
+            val compilationUnits = target.compilationUnits
+            val (errorMap, expectedErrors) = errorMapAndExpected(compilationUnits.toArray.flatten)
+            val reporters = compilationUnits.map(files => compile(files.filter(isCompilable), flags, true, times, outDir))
+            val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
+            val errors = reporters.flatMap(_.errors)
+            (expectedErrors, actualErrors, () => getMissingAnnotations(errorMap, errors), errorMap)
+          }
+        }
+
         if (expectedErrors != actualErrors) {
           System.err.println {
             s"\nWrong number of errors encountered when compiling $target, expected: $expectedErrors, actual: $actualErrors\n"
           }
           fail()
         }
-        else if (missingAnnotations) {
+        else if (hasMissingAnnotations()) {
           System.err.println {
             s"\nErrors found on incorrect row numbers when compiling $target"
           }
@@ -289,6 +385,11 @@ trait ParallelTesting {
       }
     }
 
+    def addOutDir(xs: Array[String]): Array[String] = {
+      val (beforeCp, cp :: cpArg :: rest) = xs.toList.span(_ != "-classpath")
+      (beforeCp ++ (cp :: (cpArg + s":${targetDir.getAbsolutePath}") :: rest)).toArray
+    }
+
     def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
       val scalaLib = findJarFromRuntime("scala-library")
       val fullArgs = Array(
@@ -326,7 +427,7 @@ trait ParallelTesting {
           }
       }
 
-    driver.process(flags ++ files.map(_.getAbsolutePath), reporter = reporter)
+    driver.process(addOutDir(flags) ++ files.map(_.getAbsolutePath), reporter = reporter)
 
     // If the java files failed compilation before, we try again after:
     if (!javaCompiledBefore)
@@ -336,52 +437,62 @@ trait ParallelTesting {
     else reporter
   }
 
-  class CompilationTest private (
-    targets: List[Target],
-    fromDir: String,
-    flags: Array[String],
-    times: Int,
-    shouldDelete: Boolean
+  final class CompilationTest private (
+    private[ParallelTesting] val targets: List[Target],
+    private[ParallelTesting] val times: Int,
+    private[ParallelTesting] val shouldDelete: Boolean,
+    private[ParallelTesting] val threadLimit: Option[Int]
   ) {
-    private[ParallelTesting] def this(target: Target, fromDir: String, flags: Array[String]) =
-      this(List(target), fromDir, flags, 1, true)
+    private[ParallelTesting] def this(target: Target) =
+      this(List(target), 1, true, None)
 
-    private[ParallelTesting] def this(targets: List[Target], fromDir: String, flags: Array[String]) =
-      this(targets, fromDir, flags, 1, true)
+    private[ParallelTesting] def this(targets: List[Target]) =
+      this(targets, 1, true, None)
 
-    def pos: this.type = {
-      val run = new PosCompileRun(targets, fromDir, flags, times).execute()
-      assert(run.errors == 0, s"Expected no errors when compiling $fromDir")
+    def +(other: CompilationTest) = {
+      require(other.times == times, "can't combine tests that are meant to be benchmark compiled")
+      require(other.shouldDelete == shouldDelete, "can't combine tests that differ on deleting output")
+      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit)
+    }
+
+    def pos(): this.type = {
+      val runErrors = new PosCompileRun(targets, times, threadLimit).execute().errors
+      assert(runErrors == 0, s"Expected no errors when compiling")
       if (shouldDelete) targets.foreach(t => delete(t.outDir))
       this
     }
 
-    def neg: this.type = {
+    def neg(): this.type = {
       assert(
-        !(new NegCompileRun(targets, fromDir, flags, times).execute().didFail),
-        s"Wrong number of errors encountered when compiling $fromDir"
+        !(new NegCompileRun(targets, times, threadLimit).execute().didFail),
+        s"Wrong number of errors encountered when compiling"
       )
       if (shouldDelete) targets.foreach(t => delete(t.outDir))
       this
     }
 
-    def run: this.type = {
-      assert(
-        !(new RunCompileRun(targets, fromDir, flags, times).execute().didFail),
-        s"Run tests failed for test $fromDir"
-      )
+    def run(): this.type = {
+      val didFail = new RunCompileRun(targets, times, threadLimit).execute().didFail
+      assert(!didFail, s"Run tests failed")
       if (shouldDelete) targets.foreach(t => delete(t.outDir))
       this
     }
 
     def times(i: Int): CompilationTest =
-      new CompilationTest(targets, fromDir, flags, i, shouldDelete)
+      new CompilationTest(targets, i, shouldDelete, threadLimit)
 
-    def verbose: CompilationTest =
-      new CompilationTest(targets, fromDir, flags ++ Array("-verbose", "-Ylog-classpath"), times, shouldDelete)
+    def verbose: CompilationTest = new CompilationTest(
+      targets.map(t => t.withFlags(t.flags ++ Array("-verbose", "-Ylog-classpath"))),
+      times,
+      shouldDelete,
+      threadLimit
+    )
 
     def keepOutput: CompilationTest =
-      new CompilationTest(targets, fromDir, flags, times, false)
+      new CompilationTest(targets, times, false, threadLimit)
+
+    def limitThreads(i: Int) =
+      new CompilationTest(targets, times, shouldDelete, Some(i))
 
     def delete(): Unit = targets.foreach(t => delete(t.outDir))
 
@@ -441,8 +552,12 @@ trait ParallelTesting {
       s"Source file: $f, didn't exist"
     )
 
-    val target = Target(Array(sourceFile), toCompilerDirFromFile(sourceFile, parent, outDir))
-    new CompilationTest(target, f, flags)
+    val target = ConcurrentCompilationTarget(
+      Array(sourceFile),
+      flags,
+      toCompilerDirFromFile(sourceFile, parent, outDir)
+    )
+    new CompilationTest(target)
   }
 
   def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
@@ -461,8 +576,8 @@ trait ParallelTesting {
     val targetDir = new JFile(outDir)
     targetDir.mkdirs()
 
-    val target = Target(flatten(sourceDir), targetDir)
-    new CompilationTest(target, f, flags)
+    val target = ConcurrentCompilationTarget(flatten(sourceDir), flags, targetDir)
+    new CompilationTest(target)
   }
 
   def compileList(files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
@@ -476,10 +591,10 @@ trait ParallelTesting {
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = Target(files.map(new JFile(_)).toArray, targetDir)
+    val target = ConcurrentCompilationTarget(files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
-    new CompilationTest(target, outDir.toString, flags)
+    new CompilationTest(target)
   }
 
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
@@ -493,11 +608,11 @@ trait ParallelTesting {
     val (dirs, files) = compilationTargets(sourceDir)
 
     val targets =
-      files.map(f => Target(Array(f), toCompilerDirFromFile(f, sourceDir, outDir))) ++
-      dirs.map(dir => Target(dir.listFiles, toCompilerDirFromDir(dir, sourceDir, outDir)))
+      files.map(f => ConcurrentCompilationTarget(Array(f), flags, toCompilerDirFromFile(f, sourceDir, outDir))) ++
+      dirs.map(dir => SeparateCompilationTarget(dir, flags, toCompilerDirFromDir(dir, sourceDir, outDir)))
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
-    new CompilationTest(targets, f, flags)
+    new CompilationTest(targets)
   }
 
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
@@ -511,10 +626,10 @@ trait ParallelTesting {
     val (_, files) = compilationTargets(sourceDir)
 
     val targets = files.map { file =>
-      Target(Array(file), toCompilerDirFromFile(file, sourceDir, outDir))
+      ConcurrentCompilationTarget(Array(file), flags, toCompilerDirFromFile(file, sourceDir, outDir))
     }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
-    new CompilationTest(targets, f, flags)
+    new CompilationTest(targets)
   }
 }
