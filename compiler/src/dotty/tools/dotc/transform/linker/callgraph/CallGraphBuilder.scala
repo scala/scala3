@@ -29,14 +29,15 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private var iteration = 0
 
-  private val entryPoints = mutable.HashMap.empty[CallInfoWithContext, Int]
+  private var entryPoints = immutable.Map.empty[CallInfoWithContext, Int]
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
   private var reachableMethods = immutable.Set.empty[CallInfoWithContext]
   private var outerMethods = immutable.Set.empty[Symbol]
   private var classOfs = immutable.Set.empty[Symbol]
-  private var casts = immutable.Set.empty[Cast]
 
   private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
+
+  private var casts = immutable.Set.empty[Cast]
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
 
   private val sizesCache = new mutable.HashMap[Symbol, Int]()
@@ -51,7 +52,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val targs = (0 until targsSize).map(x => new ErazedType()).toList
     val args = ctx.definitions.ArrayOf(ctx.definitions.StringType) :: Nil
     val call = new CallInfoWithContext(tpe, targs, args, OuterTargs.empty, None, None)
-    entryPoints(call) = entryPointId
+    entryPoints = entryPoints.updated(call, entryPointId)
     addReachableMethod(call)
     val t = ref(s.owner).tpe
     val self = new TypeWithContext(t, parentRefinements(t))
@@ -106,7 +107,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph = {
-    val entryPoints = this.entryPoints.toMap
+    val entryPoints = this.entryPoints
     val reachableMethods = this.reachableMethods
     val reachableTypes = this.reachableTypes
     val casts = this.casts
@@ -147,13 +148,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private def addReachableClosure(x: ClosureType, from: CallInfoWithContext): Unit = {
     val substitution = new SubstituteByParentMap(from.outerTargs)
     val tp = substitution(x)
-
-    val ctp = tp match {
-      case t: ClosureType => new TypeWithContext(t, parentRefinements(t))
-      case _ => new TypeWithContext(tp, parentRefinements(tp))
-    }
-
-    addReachableType(ctp)
+    addReachableType(new TypeWithContext(tp, parentRefinements(tp)))
   }
 
   private def getTypesByMemberName(x: Name): List[TypeWithContext] = {
@@ -171,14 +166,14 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val newCast = new Cast(from, to)
       for (tp <- reachableTypes) {
         if (from.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x))) && to.classSymbols.forall(x => tp.tp.classSymbols.exists(y => y.derivesFrom(x)))) {
-          casts = casts + newCast
+          casts += newCast
           castsCache.getOrElseUpdate(tp, mutable.Set.empty) += newCast
         }
       }
     }
   }
 
-  private val registeredParentModules= mutable.Set.empty[Type]
+  private val registeredParentModules = mutable.Set.empty[Type]
   private def registerParentModules(tp: Type): Unit = {
     if ((tp ne NoType) && (tp ne NoPrefix) && !registeredParentModules.contains(tp)) {
       if (tp.widen ne tp) registerParentModules(tp.widen)
@@ -416,7 +411,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     receiver match {
       case _ if calleeSymbol == defn.Predef_classOf =>
-        classOfs = classOfs + callee.targs.head.classSymbol
+        classOfs += callee.targs.head.classSymbol
       case _ if calleeSymbol == ctx.definitions.throwMethod =>
       case _ if calleeSymbol == ctx.definitions.Any_asInstanceOf =>
         val from = propagateTargs(receiver)
@@ -568,7 +563,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         case None =>
           if (!outerMethods.contains(method.callSymbol)) {
 
-            outerMethods = outerMethods + method.callSymbol
+            outerMethods += method.callSymbol
 
             if (withJavaCallGraph && !method.callSymbol.is(Module | Package) && !method.parent.exists(_.isOnJavaAllocatedType)) {
 
