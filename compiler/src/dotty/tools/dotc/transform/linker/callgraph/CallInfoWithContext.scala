@@ -7,7 +7,7 @@ import dotty.tools.dotc.transform.linker.types.JavaAllocatedType
 
 import scala.collection.mutable
 
-class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type], val outerTargs: OuterTargs)(
+class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argumentsPassed: List[Type], val outerTargs: OuterTargs,
     val parent: Option[CallInfoWithContext], val callee: Option[CallInfo])(implicit ctx: Context) extends AbstractCallInfo {
 
   private val outEdges = mutable.HashMap[CallInfo, List[CallInfoWithContext]]().withDefault(x => Nil)
@@ -48,11 +48,4 @@ class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argument
   override def hashCode(): Int = java.util.Objects.hash(call, targs, argumentsPassed, outerTargs.mp)
 
   override def toString(): String = s"CallInfoWithContext($call, $targs, $argumentsPassed, $outerTargs, $parent, $callee)"
-}
-
-object CallInfoWithContext {
-  def apply(call: TermRef, targs: List[Type], argumentsPassed: List[Type], outerTargs: OuterTargs)(
-      parent: Option[CallInfoWithContext], callee: Option[CallInfo])(implicit ctx: Context) = {
-    new CallInfoWithContext(call, targs, argumentsPassed, outerTargs)(parent, callee)
-  }
 }
