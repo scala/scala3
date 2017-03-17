@@ -131,27 +131,7 @@ object Build {
     settings(
       triggeredMessage in ThisBuild := Watched.clearWhenTriggered,
 
-      addCommandAlias("run", "dotty-compiler/run") ++
-      addCommandAlias(
-        "partest",
-        ";publishLocal" + // Non-bootstrapped dotty needs to be published first
-        ";dotty-compiler-bootstrapped/lockPartestFile" +
-        ";dotty-compiler-bootstrapped/test:test" +
-        ";dotty-compiler-bootstrapped/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-only",
-        ";publishLocal" + // Non-bootstrapped dotty needs to be published first
-        ";dotty-compiler-bootstrapped/lockPartestFile" +
-        ";dotty-compiler-bootstrapped/test:test-only dotc.tests" +
-        ";dotty-compiler-bootstrapped/runPartestRunner"
-      ) ++
-      addCommandAlias(
-        "partest-only-no-bootstrap",
-        ";dotty-compiler/lockPartestFile" +
-        ";dotty-compiler/test:test-only dotc.tests" +
-        ";dotty-compiler/runPartestRunner"
-      )
+      addCommandAlias("run", "dotty-compiler/run")
     ).
     settings(publishing)
 
@@ -276,23 +256,20 @@ object Build {
       com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys.withSource := true,
 
       // get libraries onboard
-      partestDeps := Seq(scalaCompiler,
-                         "org.scala-lang" % "scala-reflect" % scalacVersion,
-                         "org.scala-lang" % "scala-library" % scalacVersion % "test"),
-      libraryDependencies ++= partestDeps.value,
-      libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
-                                  "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-                                  "com.novocode" % "junit-interface" % "0.11" % "test"),
-
       resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
-      libraryDependencies += "org.scala-sbt" % "interface" % sbtVersion.value,
+      libraryDependencies ++= Seq(scalaCompiler,
+                                  "org.scala-sbt" % "interface" % sbtVersion.value,
+                                  "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+                                  "com.novocode" % "junit-interface" % "0.11" % "test",
+                                  "org.scala-lang" % "scala-reflect" % scalacVersion,
+                                  "org.scala-lang" % "scala-library" % scalacVersion % "test"),
 
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
       // For convenience, change the baseDirectory when running the compiler
       baseDirectory in (Compile, run) := baseDirectory.value / "..",
-      // .. but not when running partest
+      // .. but not when running test
       baseDirectory in (Test, run) := baseDirectory.value,
 
       repl := Def.inputTaskDyn {
@@ -343,34 +320,6 @@ object Build {
         TestFrameworks.JUnit, "-a", "-v",
         "--run-listener=dotty.tools.ContextEscapeDetector"
       ),
-      testOptions in Test += Tests.Cleanup({ () => partestLockFile.delete }),
-
-      lockPartestFile := {
-        // When this file is present, running `test` generates the files for
-        // partest. Otherwise it just executes the tests directly.
-        val lockDir = partestLockFile.getParentFile
-        lockDir.mkdirs
-        // Cannot have concurrent partests as they write to the same directory.
-        if (lockDir.list.size > 0)
-          throw new RuntimeException("ERROR: sbt partest: another partest is already running, pid in lock file: " + lockDir.list.toList.mkString(" "))
-        partestLockFile.createNewFile
-        partestLockFile.deleteOnExit
-      },
-      runPartestRunner := Def.inputTaskDyn {
-        // Magic! This is both an input task and a dynamic task. Apparently
-        // command line arguments get passed to the last task in an aliased
-        // sequence (see partest alias below), so this works.
-        val args = Def.spaceDelimited("<arg>").parsed
-        val jars = List(
-          (packageBin in Compile).value.getAbsolutePath,
-          packageAll.value("dotty-library"),
-          packageAll.value("dotty-interfaces")
-        ) ++ getJarPaths(partestDeps.value, ivyPaths.value.ivyHome)
-        val dottyJars  =
-          s"""-dottyJars ${jars.length + 2} dotty.jar dotty-lib.jar ${jars.mkString(" ")}"""
-        // Provide the jars required on the classpath of run tests
-        runTask(Test, "dotty.partest.DPConsoleRunner", dottyJars + " " + args.mkString(" "))
-      }.evaluated,
 
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
@@ -454,7 +403,7 @@ object Build {
           "-Ddotty.tests.classes.compiler=" + pA("dotty-compiler")
         )
 
-        ("-DpartestParentID=" + pid) :: jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
+        jars ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       }
   )
 
@@ -792,26 +741,6 @@ object DottyInjectedPlugin extends AutoPlugin {
        </developers>
      )
    )
-
-  // Partest tasks
-  lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the lock file at ./tests/locks/partest-<pid>.lock")
-  lazy val partestLockFile = new File("." + File.separator + "tests" + File.separator + "locks" + File.separator + s"partest-$pid.lock")
-  def pid = java.lang.Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")(0))
-
-  lazy val runPartestRunner = InputKey[Unit]("runPartestRunner", "Runs partest")
-
-  lazy val partestDeps = SettingKey[Seq[ModuleID]]("partestDeps", "Finds jars for partest dependencies")
-  def getJarPaths(modules: Seq[ModuleID], ivyHome: Option[File]): Seq[String] = ivyHome match {
-    case Some(home) =>
-      modules.map({ module =>
-        val file = Path(home) / Path("cache") /
-          Path(module.organization) / Path(module.name) / Path("jars") /
-          Path(module.name + "-" + module.revision + ".jar")
-        if (!file.isFile) throw new RuntimeException("ERROR: sbt getJarPaths: dependency jar not found: " + file)
-        else file.jfile.getAbsolutePath
-      })
-    case None => throw new RuntimeException("ERROR: sbt getJarPaths: ivyHome not defined")
-  }
 
   // Compile with dotty
   lazy val compileWithDottySettings = {

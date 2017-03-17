@@ -1,8 +1,9 @@
 package dotty.tools
 
 import java.io.File
-
 import scala.io.Source
+import org.junit.Test
+import org.junit.Assert._
 
 object StdLibSources {
 
@@ -59,9 +60,6 @@ object StdLibSources {
 }
 
 class StdLibSources {
-  import org.junit.Test
-  import org.junit.Assert._
-
   @Test def checkWBLists = {
     val stdlibFilesBlackListed = StdLibSources.blacklisted
 

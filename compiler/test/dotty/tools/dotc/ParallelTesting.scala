@@ -11,7 +11,7 @@ import reporting.diagnostic.MessageContainer
 import interfaces.Diagnostic.ERROR
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
 import scala.util.control.NonFatal
 import java.util.HashMap
@@ -343,10 +343,10 @@ trait ParallelTesting {
     times: Int,
     shouldDelete: Boolean
   ) {
-    def this(target: Target, fromDir: String, flags: Array[String]) =
+    private[ParallelTesting] def this(target: Target, fromDir: String, flags: Array[String]) =
       this(List(target), fromDir, flags, 1, true)
 
-    def this(targets: List[Target], fromDir: String, flags: Array[String]) =
+    private[ParallelTesting] def this(targets: List[Target], fromDir: String, flags: Array[String]) =
       this(targets, fromDir, flags, 1, true)
 
     def pos: this.type = {
@@ -389,7 +389,10 @@ trait ParallelTesting {
 
     private def delete(file: JFile): Unit = {
       if (file.isDirectory) file.listFiles.foreach(delete)
-      Files.delete(file.toPath)
+      try Files.delete(file.toPath)
+      catch {
+        case _: NoSuchFileException => // already deleted, everything's fine
+      }
     }
   }
 
