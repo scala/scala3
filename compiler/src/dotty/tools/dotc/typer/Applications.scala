@@ -195,7 +195,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     }
 
     /** The function's type after widening and instantiating polytypes
-     *  with polyparams in constraint set
+     *  with TypeParamRefs in constraint set
      */
     val methType = funType.widen match {
       case funType: MethodType => funType

@@ -57,7 +57,7 @@ object Types {
    *        |              |                +--- TermParamRef
    *        |              |                +----RecThis
    *        |              |                +--- SkolemType
-   *        |              +- PolyParam
+   *        |              +- TypeParamRef
    *        |              +- RefinedOrRecType -+-- RefinedType
    *        |              |                   -+-- RecType
    *        |              +- HKApply
@@ -446,7 +446,7 @@ object Types {
             if mt.paramInfos.isEmpty && (tp.symbol is Stable) => mt.resultType
             case tp1 => tp1
           })
-        case tp: PolyParam =>
+        case tp: TypeParamRef =>
           goParam(tp)
         case tp: RecType =>
           goRec(tp)
@@ -563,7 +563,7 @@ object Types {
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
       }
-      def goParam(tp: PolyParam) = {
+      def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
           case bounds: TypeBounds if bounds ne next =>
@@ -1180,8 +1180,8 @@ object Types {
     final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
       ctx.substDealias(this, from, to, null)
 
-    /** Substitute all types of the form `PolyParam(from, N)` by
-     *  `PolyParam(to, N)`.
+    /** Substitute all types of the form `TypeParamRef(from, N)` by
+     *  `TypeParamRef(to, N)`.
      */
     final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type =
       ctx.subst(this, from, to, null)
@@ -2673,7 +2673,7 @@ object Types {
 
     def isDependent(implicit ctx: Context) = true
     def isParamDependent(implicit ctx: Context) = true
-    def newParamRef(n: Int) = PolyParam(this, n)
+    def newParamRef(n: Int) = TypeParamRef(this, n)
 
     /** Instantiate parameter bounds by substituting parameters with given arguments */
     final def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[Type] =
@@ -2709,7 +2709,7 @@ object Types {
       case that: PolyType =>
         val shift = new TypeMap {
           def apply(t: Type) = t match {
-            case PolyParam(`that`, n) => PolyParam(that, n + paramNames.length)
+            case TypeParamRef(`that`, n) => TypeParamRef(that, n + paramNames.length)
             case t => mapOver(t)
           }
         }
@@ -2742,11 +2742,6 @@ object Types {
     override def computeHash = doHash(paramNames, resType, paramInfos)
   }
 
-  object PolyParam {
-    def apply(pt: PolyType, n: Int) = new TypeParamRef(pt, n)
-    def unapply(poly: PolyParam) = Some(poly.binder, poly.paramNum)
-  }
-
   object PolyType {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: PolyType => List[TypeBounds],
@@ -2772,8 +2767,8 @@ object Types {
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
-    def toArg: Type = PolyParam(tl, n)
-    def paramRef(implicit ctx: Context): Type = PolyParam(tl, n)
+    def toArg: Type = TypeParamRef(tl, n)
+    def paramRef(implicit ctx: Context): Type = TypeParamRef(tl, n)
   }
 
   /** A higher kinded type application `C[T_1, ..., T_n]` */
@@ -2826,7 +2821,7 @@ object Types {
     protected def checkInst(implicit ctx: Context): this.type = {
       def check(tycon: Type): Unit = tycon.stripTypeVar match {
         case tycon: TypeRef if !tycon.symbol.isClass =>
-        case _: PolyParam | _: ErrorType | _: WildcardType =>
+        case _: TypeParamRef | _: ErrorType | _: WildcardType =>
         case _: PolyType =>
           assert(args.exists(_.isInstanceOf[TypeBounds]), s"unreduced type apply: $this")
         case tycon: AnnotatedType =>
@@ -2846,7 +2841,7 @@ object Types {
       unique(new CachedHKApply(tycon, args)).checkInst
   }
 
-  // ----- Bound types: MethodParam, PolyParam --------------------------
+  // ----- Bound types: MethodParam, TypeParamRef --------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: Type
@@ -2906,8 +2901,6 @@ object Types {
       case _ => false
     }
   }
-
-  type PolyParam = TypeParamRef
 
   /** a self-reference to an enclosing recursive type. */
   case class RecThis(binder: RecType) extends BoundType with SingletonType {
@@ -2977,7 +2970,7 @@ object Types {
    *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
    *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
+  final class TypeVar(val origin: TypeParamRef, creatorState: TyperState, val bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
@@ -3854,7 +3847,7 @@ object Types {
             apply(x, tp.underlying)
           case tp: TermParamRef =>
             apply(x, tp.underlying)
-          case tp: PolyParam =>
+          case tp: TypeParamRef =>
             apply(x, tp.underlying)
           case _ =>
             foldOver(x, tp)

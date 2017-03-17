@@ -121,12 +121,12 @@ object ErrorReporting {
     }
 
     def typeMismatchMsg(found: Type, expected: Type, postScript: String = "") = {
-      // replace constrained polyparams and their typevars by their bounds where possible
+      // replace constrained TypeParamRefs and their typevars by their bounds where possible
       object reported extends TypeMap {
         def setVariance(v: Int) = variance = v
         val constraint = ctx.typerState.constraint
         def apply(tp: Type): Type = tp match {
-          case tp: PolyParam =>
+          case tp: TypeParamRef =>
             constraint.entry(tp) match {
               case bounds: TypeBounds =>
                 if (variance < 0) apply(constraint.fullUpperBound(tp))

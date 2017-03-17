@@ -192,7 +192,7 @@ object ProtoTypes {
 
     /** Forget the types of any arguments that have been typed producing a constraint in a
      *  typer state that is not yet committed into the one of the current context `ctx`.
-     *  This is necessary to avoid "orphan" PolyParams that are referred to from
+     *  This is necessary to avoid "orphan" TypeParamRefs that are referred to from
      *  type variables in the typed arguments, but that are not registered in the
      *  current constraint. A test case is pos/t1756.scala.
      *  @return True if all arguments have types (in particular, no types were forgotten).
@@ -385,7 +385,7 @@ object ProtoTypes {
       for (n <- (0 until pt.paramNames.length).toList)
       yield {
         val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(PolyParam(pt, n), state, tt, ctx.owner))
+        tt.withType(new TypeVar(TypeParamRef(pt, n), state, tt, ctx.owner))
       }
 
     val added =
@@ -399,22 +399,22 @@ object ProtoTypes {
   /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
   def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
 
-  /** Create a new polyparam that represents a dependent method parameter singleton */
-  def newDepPolyParam(tp: Type)(implicit ctx: Context): PolyParam = {
+  /** Create a new TypeParamRef that represents a dependent method parameter singleton */
+  def newDepTypeParamRef(tp: Type)(implicit ctx: Context): TypeParamRef = {
     val poly = PolyType(ctx.freshName(nme.DEP_PARAM_PREFIX).toTypeName :: Nil)(
         pt => TypeBounds.upper(AndType(tp, defn.SingletonType)) :: Nil,
         pt => defn.AnyType)
     ctx.typeComparer.addToConstraint(poly, Nil)
-    PolyParam(poly, 0)
+    TypeParamRef(poly, 0)
   }
 
   /** The result type of `mt`, where all references to parameters of `mt` are
-   *  replaced by either wildcards (if typevarsMissContext) or polyparams.
+   *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
   def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
     if (mt.isDependent) {
       def replacement(tp: Type) =
-        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepPolyParam(tp)
+        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepTypeParamRef(tp)
       mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
     }
     else mt.resultType
@@ -458,7 +458,7 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  final def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[PolyParam])(implicit ctx: Context): Type = tp match {
+  final def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
@@ -469,7 +469,7 @@ object ProtoTypes {
           wildApprox(tp.refinedInfo, theMap, seen))
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap, seen))
-    case tp @ PolyParam(poly, pnum) =>
+    case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
         if (bounds.lo.isInstanceOf[NamedType] && bounds.hi.isInstanceOf[NamedType])
           WildcardType(wildApprox(bounds, theMap, seen).bounds)
@@ -532,7 +532,7 @@ object ProtoTypes {
 
   @sharable object AssignProto extends UncachedGroundType with MatchAlways
 
-  private[ProtoTypes] class WildApproxMap(val seen: Set[PolyParam])(implicit ctx: Context) extends TypeMap {
+  private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef])(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = wildApprox(tp, this, seen)
   }
 

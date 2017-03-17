@@ -259,7 +259,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: MethodType if richTypes =>
       writeByte(METHODtype)
       pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramInfos)
-    case tpe: PolyParam =>
+    case tpe: TypeParamRef =>
       if (!pickleParamType(tpe))
       // TODO figure out why this case arises in e.g. pickling AbstractFileReader.
         ctx.typerState.constraint.entry(tpe) match {

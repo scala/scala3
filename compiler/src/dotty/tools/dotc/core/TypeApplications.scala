@@ -163,15 +163,15 @@ object TypeApplications {
   class Reducer(tycon: PolyType, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced = true
-    def hasWildcardArg(p: PolyParam) =
+    def hasWildcardArg(p: TypeParamRef) =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
-    def canReduceWildcard(p: PolyParam) =
+    def canReduceWildcard(p: TypeParamRef) =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def apply(t: Type) = t match {
-      case t @ TypeAlias(p: PolyParam) if hasWildcardArg(p) && canReduceWildcard(p) =>
+      case t @ TypeAlias(p: TypeParamRef) if hasWildcardArg(p) && canReduceWildcard(p) =>
         available -= p.paramNum
         args(p.paramNum)
-      case p: PolyParam if p.binder == tycon =>
+      case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
             if (ctx.mode.is(Mode.AllowLambdaWildcardApply)) { allReplaced = false; p }

@@ -283,7 +283,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               result
             case PARAMtype =>
               readTypeRef() match {
-                case binder: PolyType => PolyParam(binder, readNat())
+                case binder: PolyType => TypeParamRef(binder, readNat())
                 case binder: MethodType => binder.newParamRef(readNat())
               }
             case CLASSconst =>

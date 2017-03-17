@@ -280,7 +280,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       thirdTry(tp1, tp2)
-    case tp1: PolyParam =>
+    case tp1: TypeParamRef =>
       def flagNothingBound = {
         if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
           def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
@@ -289,13 +289,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         true
       }
-      def comparePolyParam =
+      def compareTypeParamRef =
         ctx.mode.is(Mode.TypevarsMissContext) ||
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
           if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
           else thirdTry(tp1, tp2)
         }
-      comparePolyParam
+      compareTypeParamRef
     case tp1: ThisType =>
       val cls1 = tp1.cls
       tp2 match {
@@ -373,8 +373,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
-    case tp2: PolyParam =>
-      def comparePolyParam =
+    case tp2: TypeParamRef =>
+      def compareTypeParamRef =
         (ctx.mode is Mode.TypevarsMissContext) || {
         val alwaysTrue =
           // The following condition is carefully formulated to catch all cases
@@ -391,7 +391,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           else fourthTry(tp1, tp2)
         }
       }
-      comparePolyParam
+      compareTypeParamRef
     case tp2: RefinedType =>
       def compareRefinedSlow: Boolean = {
         val name2 = tp2.refinedName
@@ -618,7 +618,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     def isMatchingApply(tp1: Type): Boolean = tp1 match {
       case HKApply(tycon1, args1) =>
         tycon1.dealias match {
-          case tycon1: PolyParam =>
+          case tycon1: TypeParamRef =>
             (tycon1 == tycon2 ||
              canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
             isSubArgs(args1, args2, tparams)
@@ -646,7 +646,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
      *  and the resulting type application is a supertype of `tp1`,
      *  or fallback to fourthTry.
      */
-    def canInstantiate(tycon2: PolyParam): Boolean = {
+    def canInstantiate(tycon2: TypeParamRef): Boolean = {
 
       /** Let
        *
@@ -672,7 +672,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               tycon1b = PolyType(tparams1.map(_.paramName))(
                 tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
-                        tparams1.indices.toList.map(PolyParam(tl, _))))
+                        tparams1.indices.toList.map(TypeParamRef(tl, _))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
               tryInstantiate(tycon2, tycon1b.ensureHK)) &&
               isSubType(tp1, tycon1b.appliedTo(args2))
@@ -725,7 +725,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         fallback(tycon2bounds.lo)
 
     tycon2 match {
-      case param2: PolyParam =>
+      case param2: TypeParamRef =>
         isMatchingApply(tp1) || {
           if (canConstrain(param2)) canInstantiate(param2)
           else compareLower(bounds(param2), tyconIsTypeRef = false)
@@ -746,7 +746,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    */
   def compareHkApply1(tp1: HKApply, tycon1: Type, args1: List[Type], tp2: Type): Boolean =
     tycon1 match {
-      case param1: PolyParam =>
+      case param1: TypeParamRef =>
         def canInstantiate = tp2 match {
           case AppliedType(tycon2, args2) =>
             tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tycon2.typeParams)
@@ -806,7 +806,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     def fix(tp: Type): Type = tp.stripTypeVar match {
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
-      case tp: PolyParam => fixOrElse(bounds(tp).hi, tp)
+      case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
       case tp: TypeProxy => fixOrElse(tp.underlying, tp)
       case tp: AndOrType => tp.derivedAndOrType(fix(tp.tp1), fix(tp.tp2))
       case tp => tp
@@ -967,7 +967,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
-    case tp: PolyParam if constraint contains tp => true
+    case tp: TypeParamRef if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
 
@@ -978,7 +978,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  type variable with (the corresponding type in) `tp2` instead.
    */
   private def isCappable(tp: Type): Boolean = tp match {
-    case tp: PolyParam => constraint contains tp
+    case tp: TypeParamRef => constraint contains tp
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false
@@ -1424,7 +1424,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def showGoal(tp1: Type, tp2: Type)(implicit ctx: Context) = {
     println(ex"assertion failure for $tp1 <:< $tp2, frozen = $frozenConstraint")
     def explainPoly(tp: Type) = tp match {
-      case tp: PolyParam => ctx.echo(s"polyparam ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeParamRef => ctx.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
       case tp: TypeRef if tp.symbol.exists => ctx.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
       case tp: TypeVar => ctx.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
       case _ => ctx.echo(s"${tp.show} is a ${tp.getClass}")
@@ -1503,7 +1503,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+  override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean): Boolean =
     traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
       super.addConstraint(param, bound, fromBelow)
     }

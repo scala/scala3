@@ -28,7 +28,7 @@ import scala.annotation.tailrec
  *  WildcardType
  *  ErrorType
  *
- *  only for isInstanceOf, asInstanceOf: PolyType, PolyParam, TypeBounds
+ *  only for isInstanceOf, asInstanceOf: PolyType, TypeParamRef, TypeBounds
  *
  */
 object TypeErasure {
@@ -204,7 +204,7 @@ object TypeErasure {
       !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.symbol.is(JavaDefined)
-    case tp: PolyParam =>
+    case tp: TypeParamRef =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
@@ -304,7 +304,7 @@ object TypeErasure {
         case _: ClassInfo => true
         case _ => false
       }
-    case tp: PolyParam => false
+    case tp: TypeParamRef => false
     case tp: TypeProxy => hasStableErasure(tp.superType)
     case tp: AndOrType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case _ => false

@@ -348,7 +348,7 @@ trait TypeAssigner {
             val newIndex = gapBuf.length
             gapBuf += idx
             // Re-index unassigned type arguments that remain after transformation
-            PolyParam(pt, newIndex)
+            TypeParamRef(pt, newIndex)
           }
 
           // Type parameters after naming assignment, conserving paramNames order
@@ -358,7 +358,7 @@ trait TypeAssigner {
 
           val transform = new TypeMap {
             def apply(t: Type) = t match {
-              case PolyParam(`pt`, idx) => normArgs(idx)
+              case TypeParamRef(`pt`, idx) => normArgs(idx)
               case _ => mapOver(t)
             }
           }

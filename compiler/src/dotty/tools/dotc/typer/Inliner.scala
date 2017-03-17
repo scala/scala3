@@ -358,7 +358,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
    *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
    *      references to proxies is done because  we not known a priori what the parameter
-   *      references of a method are (we only know the method's type, but that contains PolyParams
+   *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
    */
   private def registerType(tpe: Type): Unit = tpe match {

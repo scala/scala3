@@ -287,7 +287,7 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
-    /** Check that PolyParams and MethodParams refer to an enclosing type */
+    /** Check that TypeParamRefs and MethodParams refer to an enclosing type */
     def checkNoOrphans(tp: Type)(implicit ctx: Context) = new TypeMap() {
       val definedBinders = mutable.Set[Type]()
       def apply(tp: Type): Type = {

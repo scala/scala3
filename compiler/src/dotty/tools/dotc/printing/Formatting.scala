@@ -107,7 +107,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = AnyRef /*Symbol | PolyParam*/
+  private type Recorded = AnyRef /*Symbol | TypeParamRef*/
 
   private class Seen extends mutable.HashMap[String, List[Recorded]] {
 
@@ -135,8 +135,8 @@ object Formatting {
       if ((sym is ModuleClass) && sym.sourceModule.exists) simpleNameString(sym.sourceModule)
       else seen.record(super.simpleNameString(sym), sym)
 
-    override def polyParamNameString(param: PolyParam): String =
-      seen.record(super.polyParamNameString(param), param)
+    override def TypeParamRefNameString(param: TypeParamRef): String =
+      seen.record(super.TypeParamRefNameString(param), param)
   }
 
   /** Create explanation for single `Recorded` type or symbol */
@@ -161,7 +161,7 @@ object Formatting {
     }
 
     entry match {
-      case param: PolyParam =>
+      case param: TypeParamRef =>
         s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
       case sym: Symbol =>
         s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
@@ -175,7 +175,7 @@ object Formatting {
     */
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
-      case param: PolyParam => ctx.typerState.constraint.contains(param)
+      case param: TypeParamRef => ctx.typerState.constraint.contains(param)
       case _ => false
     }
 

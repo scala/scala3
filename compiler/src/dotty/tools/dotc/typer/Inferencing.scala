@@ -176,7 +176,7 @@ object Inferencing {
    *           -1 (minimize) if constraint is uniformly from below,
    *            0 if unconstrained, or constraint is from below and above.
    */
-  private def instDirection(param: PolyParam)(implicit ctx: Context): Int = {
+  private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
     val constrained = ctx.typerState.constraint.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer

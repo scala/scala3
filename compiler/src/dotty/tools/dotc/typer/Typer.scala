@@ -1871,7 +1871,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case TypeBounds(lo, hi)
         if (lo eq hi) || (hi <:< lo)(ctx.fresh.setExploreTyperState) =>
           inst(lo)
-        case tp: PolyParam =>
+        case tp: TypeParamRef =>
           constraint.typeVarOfParam(tp).orElse(tp)
         case _ => tp
       }

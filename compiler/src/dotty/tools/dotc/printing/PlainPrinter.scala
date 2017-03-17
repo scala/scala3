@@ -182,8 +182,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "]" ~ (" => " provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
-      case tp: PolyParam =>
-        polyParamNameString(tp) ~ lambdaHash(tp.binder)
+      case tp: TypeParamRef =>
+        TypeParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case HKApply(tycon, args) =>
@@ -206,10 +206,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }.close
 
-  protected def polyParamNameString(name: TypeName): String = name.toString
+  protected def TypeParamRefNameString(name: TypeName): String = name.toString
 
-  protected def polyParamNameString(param: PolyParam): String =
-    polyParamNameString(param.binder.paramNames(param.paramNum))
+  protected def TypeParamRefNameString(param: TypeParamRef): String =
+    TypeParamRefNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. Under refined printing,
    *  the decoded original name.

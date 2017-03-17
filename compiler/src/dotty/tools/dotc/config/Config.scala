@@ -40,7 +40,7 @@ object Config {
    *  accesses javac's settings.)
    *
    *  It is recommended to turn this option on only when chasing down
-   *  a PolyParam instantiation error. See comment in Types.TypeVar.instantiate.
+   *  a TypeParamRef instantiation error. See comment in Types.TypeVar.instantiate.
    */
   final val debugCheckConstraintsClosed = false
 
