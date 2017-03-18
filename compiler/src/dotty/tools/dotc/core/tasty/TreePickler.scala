@@ -253,12 +253,12 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
-    case tpe: TypeLambda =>
-      writeByte(POLYtype)
-      pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramInfos)
+    case tpe: HKTypeLambda =>
+      pickleMethodic(TYPELAMBDAtype, tpe)
+    case tpe: PolyType /*if richTypes*/ => //###
+      pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      writeByte(METHODtype)
-      pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramInfos)
+      pickleMethodic(METHODtype, tpe)
     case tpe: TypeParamRef =>
       if (!pickleParamRef(tpe))
       // TODO figure out why this case arises in e.g. pickling AbstractFileReader.
@@ -281,13 +281,15 @@ class TreePickler(pickler: TastyPickler) {
     pickleName(qualifiedName(pkg))
   }
 
-  def pickleMethodic(result: Type, names: List[Name], types: List[Type])(implicit ctx: Context) =
+  def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
+    writeByte(tag)
     withLength {
-      pickleType(result, richTypes = true)
-      (names, types).zipped.foreach { (name, tpe) =>
+      pickleType(tpe.resultType, richTypes = true)
+      (tpe.paramNames, tpe.paramInfos).zipped.foreach { (name, tpe) =>
         pickleName(name); pickleType(tpe)
       }
     }
+  }
 
   def pickleParamRef(tpe: ParamRef)(implicit ctx: Context): Boolean = {
     val binder = pickledTypes.get(tpe.binder)
@@ -554,7 +556,7 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(ANNOTATEDtpt)
           withLength { pickleTree(tree); pickleTree(annot.tree) }
         case LambdaTypeTree(tparams, body) =>
-          writeByte(POLYtpt)
+          writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)

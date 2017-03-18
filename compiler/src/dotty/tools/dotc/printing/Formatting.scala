@@ -31,7 +31,7 @@ object Formatting {
       case arg: Showable =>
         try arg.show
         catch {
-          case NonFatal(ex) => s"[cannot display due to $ex, raw string = $toString]"
+          case NonFatal(ex) if false => s"[cannot display due to $ex, raw string = $toString]"
         }
       case _ => arg.toString
     }

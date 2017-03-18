@@ -151,8 +151,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
-                  POLYtype       Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
+                  POLYtype       Length result_Type NamesTypes
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
+                  TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
                   SHARED                type_ASTRef
   NamesTypes    = NameType*
@@ -345,9 +346,10 @@ object TastyFormat {
   final val ORtpt = 169
   final val METHODtype = 170
   final val POLYtype = 171
-  final val POLYtpt = 172
-  final val PARAMtype = 173
-  final val ANNOTATION = 174
+  final val TYPELAMBDAtype = 172
+  final val LAMBDAtpt = 173
+  final val PARAMtype = 174
+  final val ANNOTATION = 175
 
   final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
@@ -397,7 +399,7 @@ object TastyFormat {
        | SINGLETONtpt
        | REFINEDtpt
        | APPLIEDtpt
-       | POLYtpt
+       | LAMBDAtpt
        | TYPEBOUNDStpt
        | ANNOTATEDtpt
        | ANDtpt
@@ -528,8 +530,9 @@ object TastyFormat {
     case BYNAMEtype => "BYNAMEtype"
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
-    case POLYtpt => "POLYtpt"
     case METHODtype => "METHODtype"
+    case TYPELAMBDAtype => "TYPELAMBDAtype"
+    case LAMBDAtpt => "LAMBDAtpt"
     case PARAMtype => "PARAMtype"
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
@@ -543,7 +546,7 @@ object TastyFormat {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype => 1
     case RENAMED | PARAMtype => 2
-    case POLYtype | METHODtype => -1
+    case POLYtype | METHODtype | TYPELAMBDAtype => -1
     case _ => 0
   }
 }

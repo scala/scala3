@@ -234,6 +234,19 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
           (nameReader.readParamNames(end), paramReader)
         }
 
+        def readMethodic[N <: Name, PInfo <: Type, LT <: LambdaType]
+            (companion: LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
+          val nameReader = fork
+          nameReader.skipTree() // skip result
+          val paramReader = nameReader.fork
+          val paramNames = nameReader.readParamNames(end).map(nameMap)
+          val result = companion(paramNames)(
+                pt => registeringType(pt, paramReader.readParamTypes[PInfo](end)),
+                pt => readType())
+          goto(end)
+          result
+        }
+
         val result =
           (tag: @switch) match {
             case SUPERtype =>
@@ -268,23 +281,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               registerSym(start, sym)
               TypeRef.withFixedSym(NoPrefix, sym.name, sym)
             case POLYtype =>
-              val (paramNames, paramReader) = readNamesSkipParams
-              val result = PolyType(paramNames.map(_.toTypeName))(
-                pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
-                pt => readType())
-              goto(end)
-              result
+              readMethodic(PolyType, _.toTypeName)
             case METHODtype =>
-              val (names, paramReader) = readNamesSkipParams
-              val result = MethodType(names.map(_.toTermName))(
-                mt => registeringType(mt, paramReader.readParamTypes[Type](end)),
-                mt => readType())
-              goto(end)
-              result
+              readMethodic(MethodType, _.toTermName)
+            case TYPELAMBDAtype =>
+              readMethodic(HKTypeLambda, _.toTypeName)
             case PARAMtype =>
               readTypeRef() match {
-                case binder: TypeLambda => binder.newParamRef(readNat())
-                case binder: MethodType => binder.newParamRef(readNat())
+                case binder: LambdaType => binder.newParamRef(readNat())
               }
             case CLASSconst =>
               ConstantType(Constant(readType()))
@@ -410,7 +414,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     }
 
     def isAbstractType(ttag: Int)(implicit ctx: Context): Boolean = nextUnsharedTag match {
-      case POLYtpt =>
+      case LAMBDAtpt =>
         val rdr = fork
         rdr.reader.readByte()  // tag
         rdr.reader.readNat()   // length
@@ -1033,7 +1037,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               OrTypeTree(readTpt(), readTpt())
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
-            case POLYtpt =>
+            case LAMBDAtpt =>
               val localCtx = localNonClassCtx
               val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
               val body = readTpt()(localCtx)
