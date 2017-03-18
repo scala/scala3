@@ -76,7 +76,7 @@ object Checking {
     val orderedArgs = if (hasNamedArg(args)) tparams.map(argNamed) else args
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tycon.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
-      bound.LambdaAbstract(tparams).appliedTo(args)
+      HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
     checkBounds(orderedArgs, bounds, instantiate)
 
     def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {

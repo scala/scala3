@@ -2566,12 +2566,11 @@ object Types {
 
     protected def paramName(param: ParamInfo.Of[N])(implicit ctx: Context): N =
       param.paramName
-    protected def paramInfo(param: ParamInfo.Of[N])(implicit ctx: Context): Type =
-      param.paramInfo
 
-    def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): LT =
-      apply(params.map(paramName))(
-        tl => params.map(param => tl.integrate(params, paramInfo(param)).asInstanceOf[PInfo]),
+    def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type =
+      if (params.isEmpty) resultType
+      else apply(params.map(paramName))(
+        tl => params.map(param => tl.integrate(params, param.paramInfo).asInstanceOf[PInfo]),
         tl => tl.integrate(params, resultType))
   }
 
@@ -2755,6 +2754,25 @@ object Types {
 
     override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
       param.paramName.withVariance(param.paramVariance)
+
+    /** Distributes Lambda inside type bounds. Examples:
+  	 *
+   	 *      type T[X] = U        becomes    type T = [X] -> U
+   	 *      type T[X] <: U       becomes    type T >: Nothign <: ([X] -> U)
+     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     */
+    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
+      def expand(tp: Type) = PolyType.fromParams(params, tp) //###
+      resultType match {
+        case rt: TypeAlias =>
+          rt.derivedTypeAlias(expand(rt.alias))
+        case rt @ TypeBounds(lo, hi) =>
+          rt.derivedTypeBounds(
+            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
+        case rt =>
+          expand(rt)
+      }
+    }
   }
 
   object PolyType extends TypeLambdaCompanion[PolyType] {

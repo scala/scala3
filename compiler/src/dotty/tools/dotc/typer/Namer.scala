@@ -115,7 +115,7 @@ trait NamerContextOps { this: Context =>
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
         make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
       }
-    if (typeParams.nonEmpty) monotpe.LambdaAbstract(typeParams.asInstanceOf[List[TypeSymbol]])
+    if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
     else if (valueParamss.isEmpty) ExprType(monotpe)
     else monotpe
   }
@@ -1151,9 +1151,7 @@ class Namer { typer: Typer =>
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol, tparamSyms: List[TypeSymbol])(implicit ctx: Context): Type = {
-    def abstracted(tp: Type): Type =
-      if (tparamSyms.nonEmpty) tp.LambdaAbstract(tparamSyms) else tp
-
+    def abstracted(tp: Type): Type = HKTypeLambda.fromParams(tparamSyms, tp)
     val dummyInfo = abstracted(TypeBounds.empty)
     sym.info = dummyInfo
       // Temporarily set info of defined type T to ` >: Nothing <: Any.

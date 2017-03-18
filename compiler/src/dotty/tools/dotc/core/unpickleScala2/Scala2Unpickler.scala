@@ -42,13 +42,15 @@ object Scala2Unpickler {
 
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
-    case TempPolyType(tparams, restpe) => restpe.LambdaAbstract(tparams) // PolyType.fromParams(tparams, restpe)
+    case TempPolyType(tparams, restpe) =>
+      (if (tparams.head.owner.isTerm) PolyType else HKTypeLambda)
+        .fromParams(tparams, restpe)
     case tp => tp
   }
 
   def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context) = {
     assert(denot.isConstructor)
-    denot.info = denot.info.LambdaAbstract(denot.owner.typeParams)
+    denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
   /** Convert array parameters denoting a repeated parameter of a Java method

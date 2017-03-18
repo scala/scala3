@@ -272,25 +272,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
   }
 
-  /** Lambda abstract `self` with given type parameters. Examples:
-   *
-   *      type T[X] = U        becomes    type T = [X] -> U
-   *      type T[X] >: L <: U  becomes    type T >: L <: ([X] -> U)
-   */
-  def LambdaAbstract(tparams: List[TypeParamInfo])(implicit ctx: Context): Type = {
-    def expand(tp: Type) = PolyType/*HKTypeLambda*/.fromParams(tparams, tp)
-    if (tparams.isEmpty) self
-    else self match {
-      case self: TypeAlias =>
-        self.derivedTypeAlias(expand(self.alias))
-      case self @ TypeBounds(lo, hi) =>
-        self.derivedTypeBounds(
-          if (lo.isRef(defn.NothingClass)) lo else expand(lo),
-          expand(hi))
-      case _ => expand(self)
-    }
-  }
-
   /** Convert a type constructor `TC` which has type parameters `T1, ..., Tn`
    *  in a context where type parameters `U1,...,Un` are expected to
    *
@@ -303,7 +284,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def EtaExpand(tparams: List[TypeSymbol])(implicit ctx: Context): Type = {
     val tparamsToUse = if (variancesConform(typeParams, tparams)) tparams else typeParamSymbols
-    self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparamsToUse)
+    HKTypeLambda.fromParams(tparamsToUse, self.appliedTo(tparams map (_.typeRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
