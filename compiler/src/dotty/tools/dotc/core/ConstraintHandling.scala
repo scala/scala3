@@ -42,10 +42,10 @@ trait ConstraintHandling {
    */
   protected var homogenizeArgs = false
 
-  /** We are currently comparing polytypes. Used as a flag for
+  /** We are currently comparing type lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
    */
-  protected var comparedPolyTypes: Set[PolyType] = Set.empty
+  protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
   private def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
@@ -306,21 +306,21 @@ trait ConstraintHandling {
     if (e.exists) e.bounds else param.binder.paramInfos(param.paramNum)
   }
 
-  /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
+  /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(pt: PolyType, tvars: List[TypeVar]): Unit =
+  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar]): Unit =
     assert {
-      checkPropagated(i"initialized $pt") {
-        constraint = constraint.add(pt, tvars)
-        pt.paramNames.indices.forall { i =>
-          val param = TypeParamRef(pt, i)
+      checkPropagated(i"initialized $tl") {
+        constraint = constraint.add(tl, tvars)
+        tl.paramNames.indices.forall { i =>
+          val param = TypeParamRef(tl, i)
           val bounds = constraint.nonParamBounds(param)
           val lower = constraint.lower(param)
           val upper = constraint.upper(param)
           if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $pt")
+            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $tl")
           lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
             upper.forall(addOneBound(_, bounds.lo, isUpper = false))
         }
@@ -357,10 +357,10 @@ trait ConstraintHandling {
        *  missing.
        */
       def pruneLambdaParams(tp: Type) =
-        if (comparedPolyTypes.nonEmpty) {
+        if (comparedTypeLambdas.nonEmpty) {
           val approx = new ApproximatingTypeMap {
             def apply(t: Type): Type = t match {
-              case t @ TypeParamRef(pt: PolyType, n) if comparedPolyTypes contains pt =>
+              case t @ TypeParamRef(pt: TypeLambda, n) if comparedTypeLambdas contains pt =>
                 val effectiveVariance = if (fromBelow) -variance else variance
                 val bounds = pt.paramInfos(n)
                 if (effectiveVariance > 0) bounds.lo

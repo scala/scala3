@@ -112,17 +112,17 @@ import OrderingConstraint._
  *  @param boundsMap a map from TypeLambda to arrays.
  *               Each array contains twice the number of entries as there a type parameters
  *               in the TypeLambda. The first half of the array contains the type bounds that constrain the
- *               polytype's type parameters. The second half might contain type variables that
+ *               lambda's type parameters. The second half might contain type variables that
  *               track the corresponding parameters, or is left empty (filled with nulls).
  *               An instantiated type parameter is represented by having its instance type in
  *               the corresponding array entry. The dual use of arrays for poly params
  *               and typevars is to save space and hopefully gain some speed.
  *
  *  @param lowerMap a map from TypeLambdas to arrays. Each array entry corresponds
- *               to a parameter P of the polytype; it contains all constrained parameters
+ *               to a parameter P of the type lambda; it contains all constrained parameters
  *               Q that are known to be smaller than P, i.e. Q <: P.
  *  @param upperMap a map from TypeLambdas to arrays. Each array entry corresponds
- *               to a parameter P of the polytype; it contains all constrained parameters
+ *               to a parameter P of the type lambda; it contains all constrained parameters
  *               Q that are known to be greater than P, i.e. P <: Q.
  */
 class OrderingConstraint(private val boundsMap: ParamBounds,
@@ -456,7 +456,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Exploration --------------------------------------------------------
 
-  def domainPolys: List[TypeLambda] = boundsMap.keys
+  def domainLambdas: List[TypeLambda] = boundsMap.keys
 
   def domainParams: List[TypeParamRef] =
     for {
@@ -584,7 +584,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val uninstVarsText = " uninstVars = " ~
       Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
     val constrainedText =
-      " constrained types = " ~ Text(domainPolys map (_.toText(printer)), ", ")
+      " constrained types = " ~ Text(domainLambdas map (_.toText(printer)), ", ")
     val boundsText =
       " bounds = " ~ {
         val assocs =
@@ -614,8 +614,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case _ =>" := " + tp
     }
     val constrainedText =
-      " constrained types = " + domainPolys.mkString("\n")
-    val boundsText =
+      " constrained types = " + domainLambdas.mkString("\n")
+    val boundsText = domainLambdas
       " bounds = " + {
         val assocs =
           for (param <- domainParams)

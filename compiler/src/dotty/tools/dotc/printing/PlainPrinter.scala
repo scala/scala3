@@ -175,7 +175,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
-      case tp: PolyType =>
+      case tp: TypeLambda =>
         def paramText(name: Name, bounds: TypeBounds): Text = name.toString ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~ Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ") ~
@@ -216,7 +216,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-  /** If -uniqid is set, the hashcode of the polytype, after a # */
+  /** If -uniqid is set, the hashcode of the lambda type, after a # */
   protected def lambdaHash(pt: LambdaType): Text =
     if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
 

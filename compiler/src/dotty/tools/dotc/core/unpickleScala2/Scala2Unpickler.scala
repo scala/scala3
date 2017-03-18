@@ -42,7 +42,7 @@ object Scala2Unpickler {
 
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
-    case TempPolyType(tparams, restpe) => restpe.LambdaAbstract(tparams)
+    case TempPolyType(tparams, restpe) => restpe.LambdaAbstract(tparams) // PolyType.fromParams(tparams, restpe)
     case tp => tp
   }
 
@@ -745,7 +745,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TempClassInfoType(until(end, readTypeRef), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, readSymbolRef)
+        val params = until(end, readSymbolRef).asInstanceOf[List[TermSymbol]]
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)

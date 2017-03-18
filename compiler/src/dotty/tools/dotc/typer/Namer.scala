@@ -113,9 +113,9 @@ trait NamerContextOps { this: Context =>
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params, resultType)
+        make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
       }
-    if (typeParams.nonEmpty) monotpe.LambdaAbstract(typeParams)
+    if (typeParams.nonEmpty) monotpe.LambdaAbstract(typeParams.asInstanceOf[List[TypeSymbol]])
     else if (valueParamss.isEmpty) ExprType(monotpe)
     else monotpe
   }

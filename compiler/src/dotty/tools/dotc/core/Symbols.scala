@@ -513,11 +513,11 @@ object Symbols {
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
-    // ParamInfo methods
+    // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
-    def paramName(implicit ctx: Context) = name.asTypeName
+    def paramName(implicit ctx: Context) = name.asInstanceOf[ThisName]
     def paramInfo(implicit ctx: Context) = denot.info.bounds
-    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
+    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
     def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
     def paramVariance(implicit ctx: Context) = denot.variance
     def paramRef(implicit ctx: Context) = denot.typeRef

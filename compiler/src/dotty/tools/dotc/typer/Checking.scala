@@ -50,12 +50,12 @@ object Checking {
           arg.pos.focus)
   }
 
-  /** Check that type arguments `args` conform to corresponding bounds in `poly`
+  /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkBounds in FirstTransform
    */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
-    checkBounds(args, poly.paramInfos, _.substParams(poly, _))
+  def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(implicit ctx: Context): Unit =
+    checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
   /** Check applied type trees for well-formedness. This means
    *   - all arguments are within their corresponding bounds
@@ -82,7 +82,7 @@ object Checking {
     def checkWildcardHKApply(tp: Type, pos: Position): Unit = tp match {
       case tp @ HKApply(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
         tycon match {
-          case tycon: PolyType =>
+          case tycon: TypeLambda =>
             ctx.errorOrMigrationWarning(
               ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
               pos)

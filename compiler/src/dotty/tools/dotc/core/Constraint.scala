@@ -14,7 +14,7 @@ import config.Printers.constr
  *  over values of the following types:
  *
  *   - TypeLambda    A constraint constrains the type parameters of a set of TypeLambdas
- *   - TypeParamRef  The parameters of the constrained polytypes
+ *   - TypeParamRef  The parameters of the constrained type lambdas
  *   - TypeVar       Every constrained parameter might be associated with a TypeVar
  *                   that has the TypeParamRef as origin.
  */
@@ -120,10 +120,10 @@ abstract class Constraint extends Showable {
   /** A new constraint with all entries coming from `pt` removed. */
   def remove(pt: TypeLambda)(implicit ctx: Context): This
 
-  /** The polytypes constrained by this constraint */
-  def domainPolys: List[TypeLambda]
+  /** The type lambdas constrained by this constraint */
+  def domainLambdas: List[TypeLambda]
 
-  /** The polytype parameters constrained by this constraint */
+  /** The type lambda parameters constrained by this constraint */
   def domainParams: List[TypeParamRef]
 
   /** Check whether predicate holds for all parameters in constraint */

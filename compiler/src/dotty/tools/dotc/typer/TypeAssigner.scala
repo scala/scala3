@@ -460,7 +460,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
-    tree.withType(body.tpe.LambdaAbstract(tparamDefs.map(_.symbol)))
+    tree.withType(body.tpe.LambdaAbstract(tparamDefs.map(_.symbol.asType)))
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

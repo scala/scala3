@@ -253,7 +253,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)
-    case tpe: PolyType =>
+    case tpe: TypeLambda =>
       writeByte(POLYtype)
       pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramInfos)
     case tpe: MethodType if richTypes =>

@@ -1,13 +1,15 @@
 package dotty.tools.dotc.core
 
-import Names.TypeName
+import Names.Name
 import Contexts.Context
-import Types.{Type, TypeBounds}
+import Types.Type
 
 /** A common super trait of Symbol and LambdaParam.
  *  Used to capture the attributes of type parameters which can be implemented as either.
  */
 trait ParamInfo {
+
+  type ThisName <: Name
 
   /** Is this the info of a type parameter? Will return `false` for symbols
    *  that are not type parameters.
@@ -15,7 +17,7 @@ trait ParamInfo {
   def isTypeParam(implicit ctx: Context): Boolean
 
   /** The name of the type parameter */
-  def paramName(implicit ctx: Context): TypeName
+  def paramName(implicit ctx: Context): ThisName
 
   /** The info of the type parameter */
   def paramInfo(implicit ctx: Context): Type
@@ -37,4 +39,8 @@ trait ParamInfo {
 
   /** A type that refers to the parameter */
   def paramRef(implicit ctx: Context): Type
+}
+
+object ParamInfo {
+  type Of[N] = ParamInfo { type ThisName = N }
 }

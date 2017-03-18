@@ -108,8 +108,8 @@ object Implicits {
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
-          case mt: MethodType => !mt.isImplicit
-          case mt: PolyType => discardForValueType(tpw.resultType)
+          case tpw: MethodType => !tpw.isImplicit
+          case tpw: PolyType => discardForValueType(tpw.resultType)
           case _ => false
         }
 
@@ -387,7 +387,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             case _ => arg
           }
           (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
-        case tp: PolyType =>
+        case tp: TypeLambda =>
           apply(tp.resType)
         case _ =>
           mapOver(tp)

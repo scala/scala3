@@ -34,7 +34,7 @@ object Applications {
 
   def extractorMember(tp: Type, name: Name)(implicit ctx: Context) = {
     def isPossibleExtractorType(tp: Type) = tp match {
-      case _: MethodType | _: PolyType => false
+      case _: MethodOrPoly => false
       case _ => true
     }
     tp.member(name).suchThat(d => isPossibleExtractorType(d.info))
@@ -1412,12 +1412,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         recur(altFormals.map(_.tail), args1)
       case _ =>
     }
-    def paramTypes(alt: Type): List[Type] = alt match {
-      case mt: MethodType => mt.paramInfos
-      case mt: PolyType => paramTypes(mt.resultType)
-      case _ => Nil
-    }
-    recur(alts.map(alt => paramTypes(alt.widen)), pt.args)
+    recur(alts.map(_.widen.firstParamTypes), pt.args)
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(implicit ctx: Context): List[T] = {

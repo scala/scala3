@@ -428,9 +428,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2 @ PolyType(tparams2, body2) =>
+    case tp2 @ PolyType(tparams2, body2) =>/*###*/
       def compareHkLambda: Boolean = tp1.stripTypeVar match {
-        case tp1 @ PolyType(tparams1, body1) =>
+        case tp1 @ PolyType(tparams1, body1) =>/*###*/
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -448,14 +448,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             ctx.scala2Mode ||
             tparams1.corresponds(tparams2)((tparam1, tparam2) =>
               isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
-          val saved = comparedPolyTypes
-          comparedPolyTypes += tp1
-          comparedPolyTypes += tp2
+          val saved = comparedTypeLambdas
+          comparedTypeLambdas += tp1
+          comparedTypeLambdas += tp2
           try
             variancesConform(tparams1, tparams2) &&
             boundsOK &&
             isSubType(body1, body2.subst(tp2, tp1))
-          finally comparedPolyTypes = saved
+          finally comparedTypeLambdas = saved
         case _ =>
           if (!tp1.isHK) {
             tp2 match {
@@ -669,8 +669,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = PolyType(tparams1.map(_.paramName))(
-                tl => tparams1.map(tparam => tl.lifted(tparams, tparam.paramInfo).bounds),
+              tycon1b = PolyType(tparams1.map(_.paramName))(/*###*/
+                tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(TypeParamRef(tl, _))))
             (ctx.mode.is(Mode.TypevarsMissContext) ||
@@ -783,7 +783,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[ParamInfo], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -1216,7 +1216,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `&` is distributed inside the type. This holds for
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
-   *  ExprType, MethodType, PolyType). Also, when forming an `&`,
+   *  ExprType, LambdaType). Also, when forming an `&`,
    *  instantiated TypeVars are dereferenced and annotations are stripped.
    *  Finally, refined types with the same refined name are
    *  opportunistically merged.
@@ -1245,7 +1245,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
    *  all types which are not value types (e.g. TypeBounds, ClassInfo,
-   *  ExprType, MethodType, PolyType). Also, when forming an `|`,
+   *  ExprType, LambdaType). Also, when forming an `|`,
    *  instantiated TypeVars are dereferenced and annotations are stripped.
    *
    *  Sometimes, the disjunction of two types cannot be formed because
@@ -1280,16 +1280,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else if (tparams2.isEmpty)
       original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
     else
-      PolyType(
+      PolyType(/*###*/
         paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
         paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
-          tl.lifted(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
-          tl.lifted(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
+          tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
+          tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
-          original(tl.lifted(tparams1, tp1).appliedTo(tl.paramRefs),
-             tl.lifted(tparams2, tp2).appliedTo(tl.paramRefs)))
+          original(tl.integrate(tparams1, tp1).appliedTo(tl.paramRefs),
+             tl.integrate(tparams2, tp2).appliedTo(tl.paramRefs)))
   }
 
   /** Try to distribute `&` inside type, detect and handle conflicts

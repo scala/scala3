@@ -286,7 +286,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiDef(sym: TermSymbol): api.Def = {
     def paramLists(t: Type, start: Int = 0): List[api.ParameterList] = t match {
-      case pt: PolyType =>
+      case pt: TypeLambda =>
         assert(start == 0)
         paramLists(pt.resultType)
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
@@ -311,7 +311,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     }
 
     val tparams = sym.info match {
-      case pt: PolyType =>
+      case pt: TypeLambda =>
         (pt.paramNames, pt.paramInfos).zipped.map((pname, pbounds) =>
           apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
       case _ =>
@@ -385,7 +385,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiTycon = simpleType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
-      case PolyType(tparams, res) =>
+      case PolyType(tparams, res) => /*###*/
         val apiTparams = tparams.map(apiTypeParameter)
         val apiRes = apiType(res)
         new api.Polymorphic(apiRes, apiTparams.toArray)

@@ -120,7 +120,7 @@ object Inliner {
             // Abstract accessed type over local refs
             def abstractQualType(mtpe: Type): Type =
               if (localRefs.isEmpty) mtpe
-              else mtpe.LambdaAbstract(localRefs.map(_.symbol)).asInstanceOf[PolyType].flatten
+              else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe).flatten
 
             val accessorType = abstractQualType(addQualType(dealiasMap(accessedType)))
             val accessor = accessorSymbol(tree, accessorType).asTerm

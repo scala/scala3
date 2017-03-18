@@ -38,7 +38,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
-   *  from within themselves (i.e. RefinedTypes, PolyTypes, MethodTypes).
+   *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
   private val typeAtAddr = new mutable.HashMap[Addr, Type]
 
@@ -283,7 +283,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
               result
             case PARAMtype =>
               readTypeRef() match {
-                case binder: PolyType => TypeParamRef(binder, readNat())
+                case binder: TypeLambda => binder.newParamRef(readNat())
                 case binder: MethodType => binder.newParamRef(readNat())
               }
             case CLASSconst =>

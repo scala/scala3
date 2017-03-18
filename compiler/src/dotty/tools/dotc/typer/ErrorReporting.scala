@@ -74,7 +74,7 @@ object ErrorReporting {
     def anonymousTypeMemberStr(tpe: Type) = {
       val kind = tpe match {
           case _: TypeBounds => "type with bounds"
-          case _: PolyType | _: MethodType => "method"
+          case _: MethodOrPoly => "method"
           case _ => "value of type"
         }
         em"$kind $tpe"
