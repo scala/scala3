@@ -428,9 +428,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2 @ PolyType(tparams2, body2) =>/*###*/
-      def compareHkLambda: Boolean = tp1.stripTypeVar match {
-        case tp1 @ PolyType(tparams1, body1) =>/*###*/
+    case tp2: TypeLambda =>
+      def compareTypeLambda: Boolean = tp1.stripTypeVar match {
+        case tp1: TypeLambda if tp1.isInstanceOf[PolyType] == tp2.isInstanceOf[PolyType] =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -446,15 +446,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
            */
           def boundsOK =
             ctx.scala2Mode ||
-            tparams1.corresponds(tparams2)((tparam1, tparam2) =>
+            tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
               isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
           val saved = comparedTypeLambdas
           comparedTypeLambdas += tp1
           comparedTypeLambdas += tp2
           try
-            variancesConform(tparams1, tparams2) &&
+            variancesConform(tp1.typeParams, tp2.typeParams) &&
             boundsOK &&
-            isSubType(body1, body2.subst(tp2, tp1))
+            isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
           finally comparedTypeLambdas = saved
         case _ =>
           if (!tp1.isHK) {
@@ -466,7 +466,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           }
           fourthTry(tp1, tp2)
       }
-      compareHkLambda
+      compareTypeLambda
     case OrType(tp21, tp22) =>
       // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
       // and analogously for T1 <: T21 | (T221 & T222)
