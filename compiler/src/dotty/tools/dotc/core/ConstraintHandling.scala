@@ -35,15 +35,6 @@ trait ConstraintHandling {
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
-  protected var alwaysFluid = false
-
-  /** Perform `op` in a mode where all attempts to set `frozen` to true are ignored */
-  def fluidly[T](op: => T): T = {
-    val saved = alwaysFluid
-    alwaysFluid = true
-    try op finally alwaysFluid = saved
-  }
-
   /** If set, align arguments `S1`, `S2`when taking the glb
    *  `T1 { X = S1 } & T2 { X = S2 }` of a constraint upper bound for some type parameter.
    *  Aligning means computing `S1 =:= S2` which may change the current constraint.
@@ -156,16 +147,24 @@ trait ConstraintHandling {
     up.forall(addOneBound(_, lo, isUpper = false))
   }
 
+
+  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean): Boolean = {
+    if (whenFrozen)
+      isSubTypeWhenFrozen(tp1, tp2)
+    else
+      isSubType(tp1, tp2)
+  }
+
   final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
-    frozenConstraint = !alwaysFluid
+    frozenConstraint = true
     try isSubType(tp1, tp2)
     finally frozenConstraint = saved
   }
 
   final def isSameTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
-    frozenConstraint = !alwaysFluid
+    frozenConstraint = true
     try isSameType(tp1, tp2)
     finally frozenConstraint = saved
   }

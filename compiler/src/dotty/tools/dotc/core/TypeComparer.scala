@@ -384,7 +384,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           // So if the constraint is not yet frozen, we do the same comparison again
           // with a frozen constraint, which means that we get a chance to do the
           // widening in `fourthTry` before adding to the constraint.
-          if (frozenConstraint || alwaysFluid) isSubType(tp1, bounds(tp2).lo)
+          if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
           else isSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue || {
           if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
@@ -1143,19 +1143,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     ((defn.AnyType: Type) /: tps)(glb)
 
   /** The least upper bound of two types
+   *  @param canConstrain  If true, new constraints might be added to simplify the lub.
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
     else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
     else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
     else {
-      val t1 = mergeIfSuper(tp1, tp2)
+      val t1 = mergeIfSuper(tp1, tp2, canConstrain)
       if (t1.exists) t1
       else {
-        val t2 = mergeIfSuper(tp2, tp1)
+        val t2 = mergeIfSuper(tp2, tp1, canConstrain)
         if (t2.exists) t2
         else {
           val tp1w = tp1.widen
@@ -1169,7 +1170,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((defn.NothingType: Type) /: tps)(lub)
+    ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
@@ -1192,17 +1193,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     }
 
   /** Merge `tp1` into `tp2` if tp1 is a supertype of some |-summand of tp2.
+   *  @param canConstrain  If true, new constraints might be added to make the merge possible.
    */
-  private def mergeIfSuper(tp1: Type, tp2: Type): Type =
-    if (isSubTypeWhenFrozen(tp2, tp1))
-      if (isSubTypeWhenFrozen(tp1, tp2)) tp2 else tp1 // keep existing type if possible
+  private def mergeIfSuper(tp1: Type, tp2: Type, canConstrain: Boolean): Type =
+    if (isSubType(tp2, tp1, whenFrozen = !canConstrain))
+      if (isSubType(tp1, tp2, whenFrozen = !canConstrain)) tp2 else tp1 // keep existing type if possible
     else tp2 match {
       case tp2 @ OrType(tp21, tp22) =>
-        val higher1 = mergeIfSuper(tp1, tp21)
+        val higher1 = mergeIfSuper(tp1, tp21, canConstrain)
         if (higher1 eq tp21) tp2
         else if (higher1.exists) higher1 | tp22
         else {
-          val higher2 = mergeIfSuper(tp1, tp22)
+          val higher2 = mergeIfSuper(tp1, tp22, canConstrain)
           if (higher2 eq tp22) tp2
           else if (higher2.exists) tp21 | higher2
           else NoType
@@ -1491,9 +1493,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.hasMatchingMember(name, tp1, tp2)
     }
 
-  override def lub(tp1: Type, tp2: Type) =
-    traceIndented(s"lub(${show(tp1)}, ${show(tp2)})") {
-      super.lub(tp1, tp2)
+  override def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false) =
+    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain)") {
+      super.lub(tp1, tp2, canConstrain)
     }
 
   override def glb(tp1: Type, tp2: Type) =
