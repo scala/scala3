@@ -2762,7 +2762,7 @@ object Types {
      *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
      */
     override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type) = PolyType.fromParams(params, tp) //###
+      def expand(tp: Type) = super.fromParams(params, tp)
       resultType match {
         case rt: TypeAlias =>
           rt.derivedTypeAlias(expand(rt.alias))
@@ -2788,9 +2788,6 @@ object Types {
     def any(n: Int)(implicit ctx: Context) =
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
-
-    override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
-      param.paramName.withVariance(param.paramVariance) //###
   }
 
   private object DepStatus {

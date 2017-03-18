@@ -255,7 +255,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.underlying)
     case tpe: HKTypeLambda =>
       pickleMethodic(TYPELAMBDAtype, tpe)
-    case tpe: PolyType /*if richTypes*/ => //###
+    case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
       pickleMethodic(METHODtype, tpe)

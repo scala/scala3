@@ -669,7 +669,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           val tparams1 = tparams1a.drop(lengthDiff)
           variancesConform(tparams1, tparams) && {
             if (lengthDiff > 0)
-              tycon1b = PolyType(tparams1.map(_.paramName))(/*###*/
+              tycon1b = HKTypeLambda(tparams1.map(_.paramName))(
                 tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                 tl => tycon1a.appliedTo(args1.take(lengthDiff) ++
                         tparams1.indices.toList.map(TypeParamRef(tl, _))))
@@ -1280,7 +1280,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     else if (tparams2.isEmpty)
       original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
     else
-      PolyType(/*###*/
+      HKTypeLambda(
         paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(

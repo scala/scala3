@@ -369,35 +369,35 @@ object ProtoTypes {
   /** A prototype for type constructors that are followed by a type application */
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
 
-  /** Add all parameters in given polytype `pt` to the constraint's domain.
+  /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
-   *  make a copy of the polytype and add the copy's type parameters instead.
-   *  Return either the original polytype, or the copy, if one was made.
+   *  make a copy of the type lambda and add the copy's type parameters instead.
+   *  Return either the original type lambda, or the copy, if one was made.
    *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
-   *  @return  The added polytype, and the list of created type variables.
+   *  @return  The added type lambda, and the list of created type variables.
    */
-  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeTree]) = {
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     assert(!(ctx.typerState.isCommittable && owningTree.isEmpty),
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
-    def newTypeVars(pt: PolyType): List[TypeTree] =
-      for (n <- (0 until pt.paramNames.length).toList)
+    def newTypeVars(tl: TypeLambda): List[TypeTree] =
+      for (n <- (0 until tl.paramNames.length).toList)
       yield {
         val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(TypeParamRef(pt, n), state, tt, ctx.owner))
+        tt.withType(new TypeVar(TypeParamRef(tl, n), state, tt, ctx.owner))
       }
 
     val added =
-      if (state.constraint contains pt) pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resultType)
-      else pt
+      if (state.constraint contains tl) tl.newLikeThis(tl.paramNames, tl.paramInfos, tl.resultType)
+      else tl
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
 
-  /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
-  def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
+  /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
+  def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda = constrained(tl, EmptyTree)._1
 
   /** Create a new TypeParamRef that represents a dependent method parameter singleton */
   def newDepTypeParamRef(tp: Type)(implicit ctx: Context): TypeParamRef = {

@@ -329,7 +329,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
-      case pt: PolyType =>
+      case pt: TypeLambda =>
         val paramNames = pt.paramNames
         if (hasNamedArg(args)) {
           // Type arguments which are specified by name (immutable after this first loop)

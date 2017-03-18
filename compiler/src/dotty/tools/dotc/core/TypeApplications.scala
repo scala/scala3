@@ -75,7 +75,7 @@ object TypeApplications {
     }
 
     def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ PolyType/*###*/(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.toArg)) => Some(fn)
       case _ => None
     }
   }
@@ -253,7 +253,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def isHK(implicit ctx: Context): Boolean = self.dealias match {
     case self: TypeRef => self.info.isHK
     case self: RefinedType => false
-    case self: TypeLambda => true
+    case self: HKTypeLambda => true
     case self: SingletonType => false
     case self: TypeVar =>
       // Using `origin` instead of `underlying`, as is done for typeParams,
@@ -339,10 +339,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (hkParams.isEmpty) self
     else {
       def adaptArg(arg: Type): Type = arg match {
-        case arg @ PolyType(tparams, body) if /*###*/
+        case arg @ HKTypeLambda(tparams, body) if
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
-          PolyType(/*###*/
+          HKTypeLambda(
             (tparams, hkParams).zipped.map((tparam, hkparam) =>
               tparam.paramName.withVariance(hkparam.paramVariance)))(
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),

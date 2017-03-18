@@ -385,9 +385,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiTycon = simpleType(tycon)
         val apiArgs = args.map(processArg)
         new api.Parameterized(apiTycon, apiArgs.toArray)
-      case PolyType(tparams, res) => /*###*/
-        val apiTparams = tparams.map(apiTypeParameter)
-        val apiRes = apiType(res)
+      case tl: TypeLambda =>
+        val apiTparams = tl.typeParams.map(apiTypeParameter)
+        val apiRes = apiType(tl.resType)
         new api.Polymorphic(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
         val name = rt.refinedName.toString
