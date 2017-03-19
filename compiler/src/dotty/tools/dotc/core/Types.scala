@@ -2393,8 +2393,18 @@ object Types {
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
+    protected def prefixString: String
+    final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
+  }
+
+  abstract class HKLambda extends CachedProxyType with LambdaType {
+    final override def underlying(implicit ctx: Context) = resType
+
+    final override def computeHash = doHash(paramNames, resType, paramInfos)
+
+    // Defined here instead of in LambdaType for efficiency
     final override def equals(that: Any) = that match {
-      case that: LambdaType =>
+      case that: HKLambda =>
         this.paramNames == that.paramNames &&
         this.paramInfos == that.paramInfos &&
         this.resType == that.resType &&
@@ -2402,18 +2412,21 @@ object Types {
       case _ =>
         false
     }
-
-    protected def prefixString: String
-    final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
-  }
-
-  abstract class HKLambda extends CachedProxyType with LambdaType {
-    final override def computeHash = doHash(paramNames, resType, paramInfos)
-    final override def underlying(implicit ctx: Context) = resType
   }
 
   abstract class MethodOrPoly extends CachedGroundType with LambdaType with TermType {
     final override def computeHash = doHash(paramNames, resType, paramInfos)
+
+    // Defined here instead of in LambdaType for efficiency
+    final override def equals(that: Any) = that match {
+      case that: MethodOrPoly =>
+        this.paramNames == that.paramNames &&
+        this.paramInfos == that.paramInfos &&
+        this.resType == that.resType &&
+        (this.companion eq that.companion)
+      case _ =>
+        false
+    }
   }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
@@ -3543,29 +3556,8 @@ object Types {
           variance = -variance
           derivedTypeBounds(tp, lo1, this(tp.hi))
 
-        case tp: LambdaType =>
-          def mapOverLambda = {
-            variance = -variance
-            val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
-            variance = -variance
-            derivedLambdaType(tp)(ptypes1, this(tp.resultType))
-          }
-          mapOverLambda
-
-        case tp: ExprType =>
-          derivedExprType(tp, this(tp.resultType))
-
         case tp: RecType =>
           derivedRecType(tp, this(tp.parent))
-
-        case tp @ SuperType(thistp, supertp) =>
-          derivedSuperType(tp, this(thistp), this(supertp))
-
-        case tp: LazyRef =>
-          LazyRef(() => this(tp.ref))
-
-        case tp: ClassInfo =>
-          mapClassInfo(tp)
 
         case tp: TypeVar =>
           val inst = tp.instanceOpt
@@ -3581,7 +3573,28 @@ object Types {
           derivedAppliedType(tp, this(tp.tycon),
               tp.args.zipWithConserve(tp.typeParams)(mapArg))
 
-        case tp: AndOrType =>
+        case tp: ExprType =>
+          derivedExprType(tp, this(tp.resultType))
+
+        case tp: LambdaType =>
+          def mapOverLambda = {
+            variance = -variance
+            val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
+            variance = -variance
+            derivedLambdaType(tp)(ptypes1, this(tp.resultType))
+          }
+          mapOverLambda
+
+        case tp @ SuperType(thistp, supertp) =>
+          derivedSuperType(tp, this(thistp), this(supertp))
+
+        case tp: LazyRef =>
+          LazyRef(() => this(tp.ref))
+
+        case tp: ClassInfo =>
+          mapClassInfo(tp)
+
+         case tp: AndOrType =>
           derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
 
         case tp: SkolemType =>
@@ -3762,17 +3775,14 @@ object Types {
           this(y, hi)
         }
 
-      case tp: LambdaType =>
-        variance = -variance
-        val y = foldOver(x, tp.paramInfos)
-        variance = -variance
-        this(y, tp.resultType)
+      case tp: RecType =>
+        this(x, tp.parent)
 
       case ExprType(restpe) =>
         this(x, restpe)
 
-      case tp: RecType =>
-        this(x, tp.parent)
+      case tp: TypeVar =>
+        this(x, tp.underlying)
 
       case SuperType(thistp, supertp) =>
         this(this(x, thistp), supertp)
@@ -3797,6 +3807,12 @@ object Types {
           }
         foldArgs(this(x, tycon), tp.typeParams, args)
 
+      case tp: LambdaType =>
+        variance = -variance
+        val y = foldOver(x, tp.paramInfos)
+        variance = -variance
+        this(y, tp.resultType)
+
       case tp: AndOrType =>
         this(this(x, tp.tp1), tp.tp2)
 
@@ -3805,9 +3821,6 @@ object Types {
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)
-
-      case tp: TypeVar =>
-        this(x, tp.underlying)
 
       case tp: WildcardType =>
         this(x, tp.optBounds)
