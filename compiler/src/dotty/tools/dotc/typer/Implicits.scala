@@ -107,9 +107,8 @@ object Implicits {
             !(isFunctionInS2 || isImplicitConverter || isConforms)
         }
 
-        def discardForValueType(tpw: Type): Boolean = tpw match {
+        def discardForValueType(tpw: Type): Boolean = tpw.stripPoly match {
           case tpw: MethodType => !tpw.isImplicit
-          case tpw: PolyType => discardForValueType(tpw.resultType)
           case _ => false
         }
 

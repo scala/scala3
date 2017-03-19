@@ -748,7 +748,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case _ =>
         }
         val ofFun =
-          if (nme.syntheticParamNames(args.length + 1) contains param.name)
+          if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
             i" of expanded function $tree"
           else
             ""
@@ -1285,9 +1285,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
      *  @param psym  Its type symbol
      *  @param cinfo The info of its constructor
      */
-    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo match {
-      case cinfo: PolyType =>
-        maybeCall(ref, psym, cinfo.resultType)
+    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
       case cinfo @ MethodType(Nil) if cinfo.resultType.isInstanceOf[ImplicitMethodType] =>
         val icall = New(ref).select(nme.CONSTRUCTOR).appliedToNone
         typedExpr(untpd.TypedSplice(icall))(superCtx)

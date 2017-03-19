@@ -252,13 +252,12 @@ object Denotations {
       else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}") // flip condition for debugging
     }
 
-    /** Merge two lists of names. If names in corresponding positions match, keep them,
+    /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
      *  otherwise generate new synthetic names.
      */
-    def mergeNames[N <: Name](names1: List[N], names2: List[N], syntheticName: Int => N): List[N] = {
-      for ((name1, name2, idx) <- (names1, names2, 0 until names1.length).zipped)
-        yield if (name1 == name2) name1 else syntheticName(idx)
-    }.toList
+    private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
+      (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
+       yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
     /** Form a denotation by conjoining with denotation `that`.
      *
@@ -308,25 +307,15 @@ object Denotations {
               case tp2: TypeBounds if tp2 contains tp1 => tp1
               case _ => mergeConflict(tp1, tp2)
             }
-          case tp1: MethodType if isTerm =>
+          case tp1: MethodOrPoly =>
             tp2 match {
-              case tp2: MethodType if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
-                tp1.isImplicit == tp2.isImplicit =>
+              case tp2: MethodOrPoly
+              if ctx.typeComparer.matchingParams(tp1, tp2) &&
+                 tp1.isImplicit == tp2.isImplicit =>
                 tp1.derivedLambdaType(
-                  mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
-                  tp1.paramInfos,
+                  mergeParamNames(tp1, tp2), tp1.paramInfos,
                   infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _ =>
-                mergeConflict(tp1, tp2)
-            }
-          case tp1: PolyType if isTerm =>
-            tp2 match {
-              case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
-                tp1.derivedLambdaType(
-                  mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-                  tp1.paramInfos,
-                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-              case _: MethodicType =>
                 mergeConflict(tp1, tp2)
             }
           case _ =>
@@ -471,23 +460,14 @@ object Denotations {
             case tp2: TypeBounds if tp2 contains tp1 => tp2
             case _ => mergeConflict(tp1, tp2)
           }
-        case tp1: MethodType =>
+        case tp1: MethodOrPoly =>
           tp2 match {
-            case tp2: MethodType
-            if ctx.typeComparer.matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
-              tp1.isImplicit == tp2.isImplicit =>
+            case tp2: MethodOrPoly
+            if ctx.typeComparer.matchingParams(tp1, tp2) &&
+               tp1.isImplicit == tp2.isImplicit =>
               tp1.derivedLambdaType(
-                mergeNames(tp1.paramNames, tp2.paramNames, nme.syntheticParamName),
-                tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
-            case _ =>
-              mergeConflict(tp1, tp2)
-          }
-        case tp1: PolyType =>
-          tp2 match {
-            case tp2: PolyType if ctx.typeComparer.matchingTypeParams(tp1, tp2) =>
-              tp1.derivedLambdaType(
-                mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
-                tp1.paramInfos, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+                mergeParamNames(tp1, tp2), tp1.paramInfos,
+                tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2)
           }

@@ -722,9 +722,6 @@ object StdNames {
       case _  => termName("_" + j)
     }
 
-    def syntheticParamNames(num: Int): List[TermName] =
-      (0 until num).map(syntheticParamName)(breakOut)
-
     def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
       LOCALDUMMY_PREFIX ++ clazz.name ++ ">"
 
@@ -746,9 +743,6 @@ object StdNames {
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
     def syntheticTypeParamName(i: Int): TypeName = "X" + i
-
-    def syntheticTypeParamNames(num: Int): List[TypeName] =
-      (0 until num).map(syntheticTypeParamName)(breakOut)
 
     final val Conforms = encode("<:<")
 

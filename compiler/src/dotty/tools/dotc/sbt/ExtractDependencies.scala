@@ -256,9 +256,7 @@ private class ExtractDependenciesCollector(implicit val ctx: Context) extends tp
           traverse(tp.underlying)
         case tp: ConstantType =>
           traverse(tp.underlying)
-        case tp: TermParamRef =>
-          traverse(tp.underlying)
-        case tp: TypeParamRef =>
+        case tp: ParamRef =>
           traverse(tp.underlying)
         case _ =>
           traverseChildren(tp)

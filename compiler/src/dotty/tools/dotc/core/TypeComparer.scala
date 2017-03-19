@@ -428,9 +428,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareRec
     case tp2 @ HKApply(tycon2, args2) =>
       compareHkApply2(tp1, tp2, tycon2, args2)
-    case tp2: TypeLambda =>
+    case tp2: HKTypeLambda =>
       def compareTypeLambda: Boolean = tp1.stripTypeVar match {
-        case tp1: TypeLambda if tp1.isInstanceOf[PolyType] == tp2.isInstanceOf[PolyType] =>
+        case tp1: TypeLambda =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:
@@ -484,12 +484,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case _ =>
       }
       either(isSubType(tp1, tp21), isSubType(tp1, tp22)) || fourthTry(tp1, tp2)
-    case tp2: MethodType =>
+    case tp2: MethodOrPoly =>
       def compareMethod = tp1 match {
-        case tp1: MethodType =>
+        case tp1: MethodOrPoly =>
           (tp1.signature consistentParams tp2.signature) &&
-            matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
-            (tp1.isImplicit == tp2.isImplicit) &&
+            matchingParams(tp1, tp2) &&
+            tp1.isImplicit == tp2.isImplicit &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
@@ -1021,7 +1021,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: MethodType =>
           // implicitness is ignored when matching
-          matchingParams(tp1.paramInfos, tp2.paramInfos, tp1.isJava, tp2.isJava) &&
+          matchingParams(tp1, tp2) &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
@@ -1031,7 +1031,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: PolyType =>
           sameLength(tp1.paramNames, tp2.paramNames) &&
-            matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
+          matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case _ =>
           false
       }
@@ -1047,28 +1047,28 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
   }
 
-  /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
-  def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
-    case formal1 :: rest1 =>
-      formals2 match {
-        case formal2 :: rest2 =>
-          (isSameTypeWhenFrozen(formal1, formal2)
-            || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
-          matchingParams(rest1, rest2, isJava1, isJava2)
-        case nil =>
-          false
-      }
-    case nil =>
-      formals2.isEmpty
-  }
-
-  /** Do generic types `poly1` and `poly2` have type parameters that
-   *  have the same bounds (after renaming one set to the other)?
+  /** Do lambda types `lam1` and `lam2` have parameters that have the same types
+   *  and the same implicit status? (after renaming one set to the other)
    */
-  def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
-    (poly1.paramInfos corresponds poly2.paramInfos)((b1, b2) =>
-      isSameType(b1, b2.subst(poly2, poly1)))
+  def matchingParams(lam1: MethodOrPoly, lam2: MethodOrPoly): Boolean = {
+    /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
+    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
+      case formal1 :: rest1 =>
+        formals2 match {
+          case formal2 :: rest2 =>
+            val formal2a = if (lam2.isParamDependent) formal2.subst(lam2, lam1) else formal2
+            (isSameTypeWhenFrozen(formal1, formal2a)
+            || lam1.isJava && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || lam2.isJava && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+            loop(rest1, rest2)
+          case nil =>
+            false
+        }
+      case nil =>
+        formals2.isEmpty
+    }
+    loop(lam1.paramInfos, lam2.paramInfos)
+  }
 
   // Type equality =:=
 
@@ -1281,7 +1281,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       original(tp1.appliedTo(tp1.typeParams.map(_.paramInfoAsSeenFrom(tp1))), tp2)
     else
       HKTypeLambda(
-        paramNames = (tpnme.syntheticTypeParamNames(tparams1.length), tparams1, tparams2)
+        paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
           .zipped.map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
         paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>

@@ -215,17 +215,15 @@ object Types {
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
-    def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
-      case tp: PolyType => tp.resultType.isVarArgsMethod
+    def isVarArgsMethod(implicit ctx: Context): Boolean = stripPoly match {
       case mt: MethodType => mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam
       case _ => false
     }
 
     /** Is this the type of a method with a leading empty parameter list?
      */
-    def isNullaryMethod(implicit ctx: Context): Boolean = this match {
+    def isNullaryMethod(implicit ctx: Context): Boolean = stripPoly match {
       case MethodType(Nil) => true
-      case tp: PolyType => tp.resultType.isNullaryMethod
       case _ => false
     }
 
@@ -2355,7 +2353,11 @@ object Types {
 
     override def resultType(implicit ctx: Context) = resType
 
+    def isJava: Boolean = false
+    def isImplicit = false
+
     def isDependent(implicit ctx: Context): Boolean
+    def isParamDependent(implicit ctx: Context): Boolean
 
     final def isTermLambda = paramNames.head.isTermName
     final def isTypeLambda = paramNames.head.isTypeName
@@ -2369,7 +2371,7 @@ object Types {
       if (isDependent) resultType.substParams(this, argTypes)
       else resultType
 
-    protected def companion: LambdaTypeCompanion[ThisName, PInfo, This]
+    def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
@@ -2519,11 +2521,6 @@ object Types {
 
     type This = MethodType
 
-    protected def companion: MethodTypeCompanion
-
-    def isJava = false
-    def isImplicit = false
-
     val paramInfos = paramInfosExp(this)
     val resType = resultTypeExp(this)
     assert(resType.exists)
@@ -2554,7 +2551,12 @@ object Types {
   }
 
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
-    def syntheticParamNames(n: Int): List[N]
+    def syntheticParamName(n: Int): N
+
+    @sharable private val memoizedNames = new mutable.HashMap[Int, List[N]]
+    def syntheticParamNames(n: Int): List[N] = synchronized {
+      memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
+    }
 
     def apply(paramNames: List[N])(paramInfosExp: LT => List[PInfo], resultTypeExp: LT => Type)(implicit ctx: Context): LT
     def apply(paramNames: List[N], paramInfos: List[PInfo], resultType: Type)(implicit ctx: Context): LT =
@@ -2576,12 +2578,12 @@ object Types {
 
   abstract class TermLambdaCompanion[LT <: TermLambda]
   extends LambdaTypeCompanion[TermName, Type, LT] {
-    def syntheticParamNames(n: Int) = nme.syntheticParamNames(n)
+    def syntheticParamName(n: Int) = nme.syntheticParamName(n)
   }
 
   abstract class TypeLambdaCompanion[LT <: TypeLambda]
   extends LambdaTypeCompanion[TypeName, TypeBounds, LT] {
-    def syntheticParamNames(n: Int) = tpnme.syntheticTypeParamNames(n)
+    def syntheticParamName(n: Int) = tpnme.syntheticTypeParamName(n)
   }
 
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] {
@@ -2653,6 +2655,7 @@ object Types {
     type This <: TypeLambda
 
     def isDependent(implicit ctx: Context): Boolean = true
+    def isParamDependent(implicit ctx: Context): Boolean = true
 
     def newParamRef(n: Int) = TypeParamRef(this, n)
 
@@ -3422,8 +3425,7 @@ object Types {
   object SAMType {
     def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: ClassInfo =>
-        def zeroParams(tp: Type): Boolean = tp match {
-          case pt: PolyType => zeroParams(pt.resultType)
+        def zeroParams(tp: Type): Boolean = tp.stripPoly match {
           case mt: MethodType => mt.paramInfos.isEmpty && !mt.resultType.isInstanceOf[MethodType]
           case et: ExprType => true
           case _ => false
@@ -3541,26 +3543,17 @@ object Types {
           variance = -variance
           derivedTypeBounds(tp, lo1, this(tp.hi))
 
-        case tp: MethodType =>
-          def mapOverMethod = {
+        case tp: LambdaType =>
+          def mapOverLambda = {
             variance = -variance
-            val ptypes1 = tp.paramInfos mapConserve this
+            val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
             variance = -variance
             derivedLambdaType(tp)(ptypes1, this(tp.resultType))
           }
-          mapOverMethod
+          mapOverLambda
 
         case tp: ExprType =>
           derivedExprType(tp, this(tp.resultType))
-
-        case tp: TypeLambda =>
-          def mapOverPoly = {
-            variance = -variance
-            val bounds1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[TypeBounds]]
-            variance = -variance
-            derivedLambdaType(tp)(bounds1, this(tp.resultType))
-          }
-          mapOverPoly
 
         case tp: RecType =>
           derivedRecType(tp, this(tp.parent))
@@ -3769,7 +3762,7 @@ object Types {
           this(y, hi)
         }
 
-      case tp: MethodType =>
+      case tp: LambdaType =>
         variance = -variance
         val y = foldOver(x, tp.paramInfos)
         variance = -variance
@@ -3777,12 +3770,6 @@ object Types {
 
       case ExprType(restpe) =>
         this(x, restpe)
-
-      case tp: TypeLambda =>
-        variance = -variance
-        val y = foldOver(x, tp.paramInfos)
-        variance = -variance
-        this(y, tp.resultType)
 
       case tp: RecType =>
         this(x, tp.parent)
@@ -3884,9 +3871,7 @@ object Types {
             apply(x, tp.tref)
           case tp: ConstantType =>
             apply(x, tp.underlying)
-          case tp: TermParamRef =>
-            apply(x, tp.underlying)
-          case tp: TypeParamRef =>
+          case tp: ParamRef =>
             apply(x, tp.underlying)
           case _ =>
             foldOver(x, tp)
