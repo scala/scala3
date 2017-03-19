@@ -17,27 +17,34 @@ case class DefaultParams(
 ) {
   import model.JavaConverters._
 
-  def toMap: Map[String, AnyRef] = Map(
-    "docs" -> docs,
+  def toMap: Map[String, AnyRef] = {
+    val base = Map(
+      "docs" -> docs,
 
-    "originalDocs" -> originalDocs,
+      "originalDocs" -> originalDocs,
 
-    "page" -> Map(
-      "url" -> page.url,
-      "date" -> page.date,
-      "path" -> page.path
-    ),
+      "page" -> Map(
+        "url" -> page.url,
+        "date" -> page.date,
+        "path" -> page.path
+      ),
 
-    "site" -> Map(
-      "baseurl" -> site.baseurl,
-      "posts" -> site.posts.map(_.toMap),
-      "project" -> site.projectTitle
-    ).asJava,
+      "site" -> Map(
+        "baseurl" -> site.baseurl,
+        "posts" -> site.posts.map(_.toMap),
+        "project" -> site.projectTitle
+      ).asJava,
 
-    "sidebar" -> sidebar.titles.asJava,
-
-    "entity" -> entity.asJava()
-  )
+      "sidebar" -> sidebar.titles.asJava
+    )
+    val entityMap = entity match {
+      case NonEntity => Map.empty
+      case _ => Map(
+        "entity" -> entity.asJava
+      )
+    }
+    base ++ entityMap
+  }
 
   def withPosts(posts: Array[BlogPost]): DefaultParams =
     copy(site = SiteInfo(site.baseurl, site.projectTitle, posts))
