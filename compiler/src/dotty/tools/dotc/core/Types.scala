@@ -2706,7 +2706,7 @@ object Types {
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-  extends HKLambda with TypeLambda {
+  extends MethodOrPoly with TypeLambda {
 
     type This = PolyType
     def companion = PolyType

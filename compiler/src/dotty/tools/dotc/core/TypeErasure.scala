@@ -389,6 +389,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         case rt =>
           tp.derivedLambdaType(tp.paramNames, formals, rt)
       }
+    case tp: PolyType =>
+      this(tp.resultType)
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp
       else {
@@ -517,6 +519,8 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
+      case tp: PolyType =>
+        sigName(tp.resultType)
       case _: ErrorType | WildcardType =>
         tpnme.WILDCARD
       case tp: WildcardType =>
