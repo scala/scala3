@@ -360,9 +360,9 @@ trait ConstraintHandling {
         if (comparedTypeLambdas.nonEmpty) {
           val approx = new ApproximatingTypeMap {
             def apply(t: Type): Type = t match {
-              case t @ TypeParamRef(pt: TypeLambda, n) if comparedTypeLambdas contains pt =>
+              case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
                 val effectiveVariance = if (fromBelow) -variance else variance
-                val bounds = pt.paramInfos(n)
+                val bounds = tl.paramInfos(n)
                 if (effectiveVariance > 0) bounds.lo
                 else if (effectiveVariance < 0) bounds.hi
                 else NoType

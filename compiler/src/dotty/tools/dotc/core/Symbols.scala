@@ -516,8 +516,8 @@ object Symbols {
     // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
     def paramName(implicit ctx: Context) = name.asInstanceOf[ThisName]
-    def paramInfo(implicit ctx: Context) = denot.info.bounds
-    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this).bounds
+    def paramInfo(implicit ctx: Context) = denot.info
+    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
     def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
     def paramVariance(implicit ctx: Context) = denot.variance
     def paramRef(implicit ctx: Context) = denot.typeRef

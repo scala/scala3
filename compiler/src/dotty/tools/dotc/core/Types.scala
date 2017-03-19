@@ -65,12 +65,13 @@ object Types {
    *        |              +- ExprType
    *        |              +- AnnotatedType
    *        |              +- TypeVar
-   *        |              +- HKLambda --------- PolyType
+   *        |              +- HKTypeLambda
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
-   *                       +- MethodOrPoly ----- MethodType ---+- ImplicitMethodType
-   *                       |                                   +- JavaMethodType
+   *                       +- MethodOrPoly ---+-- PolyType
+   *                                          +-- MethodType ---+- ImplicitMethodType
+   *                       |                                    +- JavaMethodType
    *                       +- ClassInfo
    *                       |
    *                       +- NoType
@@ -2359,8 +2360,8 @@ object Types {
     def isDependent(implicit ctx: Context): Boolean
     def isParamDependent(implicit ctx: Context): Boolean
 
-    final def isTermLambda = paramNames.head.isTermName
-    final def isTypeLambda = paramNames.head.isTypeName
+    final def isTermLambda = isInstanceOf[TermLambda]
+    final def isTypeLambda = isInstanceOf[TypeLambda]
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
     lazy val paramRefs: List[ParamRef] = paramNames.indices.toList.map(newParamRef)

@@ -227,13 +227,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       def readLengthType(): Type = {
         val end = readEnd()
 
-        def readNamesSkipParams: (List[Name], TreeReader) = {
-          val nameReader = fork
-          nameReader.skipTree() // skip result
-          val paramReader = nameReader.fork
-          (nameReader.readParamNames(end), paramReader)
-        }
-
         def readMethodic[N <: Name, PInfo <: Type, LT <: LambdaType]
             (companion: LambdaTypeCompanion[N, PInfo, LT], nameMap: Name => N): LT = {
           val nameReader = fork

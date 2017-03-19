@@ -245,7 +245,7 @@ object desugar {
     if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(name = tdef.name.expandedName(ctx.owner))
         .withMods(tdef.mods &~ PrivateLocal | ExpandedName)
-      val alias = cpy.TypeDef(tdef)(name = tdef.name, rhs = refOfDef(tparam))
+      val alias = cpy.TypeDef(tdef)(rhs = refOfDef(tparam))
         .withMods(tdef.mods & VarianceFlags | PrivateLocalParamAccessor | Synthetic)
       Thicket(tparam, alias)
     }
