@@ -539,7 +539,7 @@ object Types {
       }
 
       def goApply(tp: HKApply) = tp.tycon match {
-        case tl: TypeLambda =>
+        case tl: HKTypeLambda =>
           go(tl.resType).mapInfo(info =>
             tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
         case _ =>
@@ -2830,7 +2830,7 @@ object Types {
     override def superType(implicit ctx: Context): Type = {
       if (ctx.period != validSuper) {
         cachedSuper = tycon match {
-          case tp: TypeLambda => defn.AnyType
+          case tp: HKTypeLambda => defn.AnyType
           case tp: TypeVar if !tp.inst.exists =>
             // supertype not stable, since underlying might change
             return tp.underlying.applyIfParameterized(args)

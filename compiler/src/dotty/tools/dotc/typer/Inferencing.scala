@@ -121,9 +121,9 @@ object Inferencing {
 
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
-    case poly: TypeLambda =>
-      val (poly1, tvars) = constrained(poly, tree)
-      val tree1 = tree.withType(poly1).appliedToTypeTrees(tvars)
+    case tl: TypeLambda =>
+      val (tl1, tvars) = constrained(tl, tree)
+      val tree1 = tree.withType(tl1).appliedToTypeTrees(tvars)
       tree1.tpe <:< pt
       fullyDefinedType(tree1.tpe, "template parent", tree.pos)
       tree1

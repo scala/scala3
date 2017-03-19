@@ -430,7 +430,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       compareHkApply2(tp1, tp2, tycon2, args2)
     case tp2: HKTypeLambda =>
       def compareTypeLambda: Boolean = tp1.stripTypeVar match {
-        case tp1: TypeLambda =>
+        case tp1: HKTypeLambda =>
           /* Don't compare bounds of lambdas under language:Scala2, or t2994 will fail
            * The issue is that, logically, bounds should compare contravariantly,
            * but that would invalidate a pattern exploited in t2994:

@@ -215,7 +215,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     self match {
       case self: ClassInfo =>
         self.cls.typeParams
-      case self: TypeLambda =>
+      case self: HKTypeLambda =>
         self.typeParams
       case self: TypeRef =>
         val tsym = self.symbol
@@ -386,7 +386,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
-      case dealiased: TypeLambda =>
+      case dealiased: HKTypeLambda =>
         def tryReduce =
           if (!args.exists(_.isInstanceOf[TypeBounds])) {
             val followAlias = Config.simplifyApplications && {
@@ -414,6 +414,8 @@ class TypeApplications(val self: Type) extends AnyVal {
               else HKApply(dealiased, args)
           }
         tryReduce
+      case dealiased: PolyType =>
+        dealiased.instantiate(args)
       case dealiased: AndOrType =>
         dealiased.derivedAndOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: TypeAlias =>
