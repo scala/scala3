@@ -79,7 +79,7 @@ object factories {
       case TypeBounds(lo, hi) =>
         BoundsReference(expandTpe(lo), expandTpe(hi))
 
-      case t: PolyParam =>
+      case t: TypeParamRef =>
         typeRef(t.paramName.show, params = params)
 
       case ExprType(tpe) =>
@@ -160,7 +160,7 @@ object factories {
       paramLists(pt.resultType)
 
     case mt: MethodType =>
-      ParamListImpl(mt.paramNames.zip(mt.paramTypes).map { case (name, tpe) =>
+      ParamListImpl(mt.paramNames.zip(mt.paramInfos).map { case (name, tpe) =>
         NamedReference(
           name.decode.toString,
           returnType(tpe),
@@ -169,13 +169,13 @@ object factories {
         )
       }, mt.isImplicit) :: paramLists(mt.resultType)
 
-    case mp: MethodParam =>
+    case mp: TermParamRef =>
       paramLists(mp.underlying)
 
     case annot: AnnotatedType =>
       paramLists(annot.tpe)
 
-    case (_: PolyParam | _: RefinedType | _: TypeRef | _: ThisType |
+    case (_: TypeParamRef | _: RefinedType | _: TypeRef | _: ThisType |
           _: ExprType  | _: OrType      | _: AndType | _: HKApply  |
           _: TermRef   | _: ConstantType) =>
       Nil // return types should not be in the paramlist
