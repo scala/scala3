@@ -154,25 +154,25 @@ class JavaConverterTest {
     assertSerializedCorrectly(pkg, pkg.asJava())
   }
 
-  def assertEach[E, C[E] <: Seq[E]](expected: C[E], serialized: Any)(pairwiseAssertion: (E, Any) => Unit) {
+  def assertEach[E, C[E] <: Seq[E]](expected: C[E], serialized: Any)(pairwiseAssertion: (E, Any) => Unit): Unit = {
     val actual = serialized.asInstanceOf[JList[_]].asScala.toList
     assertEquals(expected.length, actual.length)
     for ((exp, act) <- expected zip actual) {
       pairwiseAssertion(exp, act)
     }
   }
-  def assertSameSeq[T, C[T] <: Seq[T]](expected: C[T], serialized: Any) = {
+  def assertSameSeq[T, C[T] <: Seq[T]](expected: C[T], serialized: Any): Unit = {
     val actual = serialized.asInstanceOf[java.util.List[T]].asScala.toList
     assertEquals(expected, actual);
   }
-  def assertSerializedCorrectly(expected: ParamList, serialized: Any) {
+  def assertSerializedCorrectly(expected: ParamList, serialized: Any): Unit = {
     val actual = serialized.asInstanceOf[JMap[String, _]]
     assertEach(expected.list, actual.get("list")) {(exp, act) =>
       assertSerializedCorrectly(exp, act)
     }
     assertEquals(expected.isImplicit, actual.get("isImplicit"))
   }
-  def assertSerializedCorrectly(expected: Reference, serialized: Any) {
+  def assertSerializedCorrectly(expected: Reference, serialized: Any): Unit = {
     val actual = serialized.asInstanceOf[JMap[String, _]]
     expected match {
       case TypeReference(title, tpeLink, paramLinks) =>
@@ -209,7 +209,7 @@ class JavaConverterTest {
       case EmptyReference =>
     }
   }
-  def assertSerializedCorrectly(expected: MaterializableLink, serialized: Any) {
+  def assertSerializedCorrectly(expected: MaterializableLink, serialized: Any): Unit = {
     val actual = serialized.asInstanceOf[JMap[String, _]]
     expected match {
       case UnsetLink(title, query) =>
@@ -223,7 +223,7 @@ class JavaConverterTest {
         assertEquals(target, actual.get("target"))
     }
   }
-  def assertSerializedCorrectly(expected: Entity, serialized: Any) {
+  def assertSerializedCorrectly(expected: Entity, serialized: Any): Unit = {
     val actual = serialized.asInstanceOf[JMap[String, _]]
     assertEquals(expected.name, actual.get("name"))
     assertEquals(expected.kind, actual.get("kind"))
