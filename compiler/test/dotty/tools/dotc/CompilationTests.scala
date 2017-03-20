@@ -197,23 +197,42 @@ class CompilationTests extends ParallelTesting {
    *  version of Dotty
    */
   @Test def tastyBootstrap: Unit = {
-    def dotty1 =
-      compileDir("../compiler/src/dotty", allowDeepSubtypes.and("-Ycheck-reentrant", "-strict"))
+    val opt = Array(
+      "-classpath",
+      // compile with bootstrapped library on cp:
+      defaultOutputDir + "lib$1/src/:" +
+      // as well as bootstrapped compiler:
+      defaultOutputDir + "dotty1$1/dotty/:" +
+      Jars.dottyInterfaces
+    )
+
     def lib =
-      compileDir("../library/src", defaultOptions)
+      compileDir("../library/src",
+        allowDeepSubtypes.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))
+
+    def dotty1 =
+      compileDir("../compiler/src/dotty", opt)
+
     def dotty2 =
-      compileDir("../compiler/src/dotty", defaultOptions.and("-priorityclasspath", defaultOutputDir))
+      compileShallowFilesInDir("../compiler/src/dotty", opt)
 
-    List(dotty1, lib, dotty2).map(_.keepOutput.pos).foreach(_.delete())
-  }
-
-  @Test def dotty = {
-    def bootedLib =
-      compileDir("../library/src", allowDeepSubtypes.and("-Ycheck-reentrant", "-strict"))
-    def dottyDependsOnBootedLib =
-      compileDir("../compiler/src/dotty", allowDeepSubtypes.and("-Ycheck-reentrant", "-strict"))
-
-    List(bootedLib, dottyDependsOnBootedLib).map(_.keepOutput.pos).foreach(_.delete())
+    {
+      lib.keepOutput :: dotty1.keepOutput :: {
+        dotty2 +
+        compileShallowFilesInDir("../compiler/src/dotty/tools", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/ast", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/config", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/parsing", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/printing", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/repl", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/reporting", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/rewrite", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/transform", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/typer", opt) +
+        compileShallowFilesInDir("../compiler/src/dotty/tools/dotc/util", opt)
+      } :: Nil
+    }.map(_.pos()).foreach(_.delete())
   }
 }
 

@@ -24,13 +24,16 @@ trait ParallelTesting {
     def outDir: JFile
     def flags: Array[String]
 
-    def withFlags(newFlags: Array[String]) = self match {
-      case self: ConcurrentCompilationTarget =>
-        self.copy(flags = newFlags)
-      case self: SeparateCompilationTarget =>
-        self.copy(flags = newFlags)
-    }
+    def withFlags(newFlags: Array[String]) =
+      if (!flags.containsSlice(newFlags)) self match {
+        case self: ConcurrentCompilationTarget =>
+          self.copy(flags = newFlags)
+        case self: SeparateCompilationTarget =>
+          self.copy(flags = newFlags)
+      }
+      else self
   }
+
   private final case class ConcurrentCompilationTarget(
     files: Array[JFile],
     flags: Array[String],
@@ -387,8 +390,12 @@ trait ParallelTesting {
     }
 
     def addOutDir(xs: Array[String]): Array[String] = {
-      val (beforeCp, cp :: cpArg :: rest) = xs.toList.span(_ != "-classpath")
-      (beforeCp ++ (cp :: (cpArg + s":${targetDir.getAbsolutePath}") :: rest)).toArray
+      val (beforeCp, cpAndAfter) = xs.toList.span(_ != "-classpath")
+      if (cpAndAfter.nonEmpty) {
+        val (cp :: cpArg :: rest) = cpAndAfter
+        (beforeCp ++ (cp :: (cpArg + s":${targetDir.getAbsolutePath}") :: rest)).toArray
+      }
+      else (beforeCp ++ ("-classpath" :: targetDir.getAbsolutePath :: Nil)).toArray
     }
 
     def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
@@ -538,7 +545,7 @@ trait ParallelTesting {
     targetDir
   }
 
-  private def requirements(f: String, sourceDir: JFile, outDir: String): Unit = {
+  private def checkRequirements(f: String, sourceDir: JFile, outDir: String): Unit = {
     require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`")
     require(outDir.last == '/', "please specify an `outDir` with a trailing slash")
   }
@@ -593,7 +600,7 @@ trait ParallelTesting {
   def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
-    requirements(f, sourceDir, outDir)
+    checkRequirements(f, sourceDir, outDir)
 
     def flatten(f: JFile): Array[JFile] =
       if (f.isDirectory) f.listFiles.flatMap(flatten)
@@ -624,7 +631,7 @@ trait ParallelTesting {
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
-    requirements(f, sourceDir, outDir)
+    checkRequirements(f, sourceDir, outDir)
 
     val (dirs, files) = compilationTargets(sourceDir)
 
@@ -639,7 +646,7 @@ trait ParallelTesting {
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
-    requirements(f, sourceDir, outDir)
+    checkRequirements(f, sourceDir, outDir)
 
     val (_, files) = compilationTargets(sourceDir)
 
