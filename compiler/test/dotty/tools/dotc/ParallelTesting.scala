@@ -479,6 +479,23 @@ trait ParallelTesting {
       this
     }
 
+    private def copyToDir(dir: JFile, file: JFile): JFile = {
+      val target = Paths.get(dir.getAbsolutePath, file.getName)
+      Files.copy(file.toPath, target, REPLACE_EXISTING)
+      if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
+      target.toFile
+    }
+
+    def copyToTarget(): CompilationTest = new CompilationTest (
+      targets.map {
+        case target @ ConcurrentCompilationTarget(files, _, outDir) =>
+          target.copy(files = files.map(copyToDir(outDir,_)))
+        case target @ SeparateCompilationTarget(dir, _, outDir) =>
+          target.copy(dir = copyToDir(outDir, dir))
+      },
+      times, shouldDelete, threadLimit
+    )
+
     def times(i: Int): CompilationTest =
       new CompilationTest(targets, i, shouldDelete, threadLimit)
 
@@ -519,12 +536,6 @@ trait ParallelTesting {
     val targetDir = new JFile(outDir + s"${sourceDir.getName}/$uniqueSubdir")
     targetDir.mkdirs()
     targetDir
-  }
-
-  private def copyToDir(dir: JFile, file: JFile): Unit = {
-    val target = Paths.get(dir.getAbsolutePath, file.getName)
-    Files.copy(file.toPath, target, REPLACE_EXISTING)
-    if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
   }
 
   private def requirements(f: String, sourceDir: JFile, outDir: String): Unit = {

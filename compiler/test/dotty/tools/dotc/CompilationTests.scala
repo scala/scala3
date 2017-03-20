@@ -20,8 +20,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compilePosMixedFlags: Unit = {
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
-    // this guy sucks, he changes the sourcefile itself:
-    // compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")) +
+    compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("../tests/pos-special/t8146a.scala", allowDeepSubtypes) +
     compileFile("../tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("../tests/pos-special/utf16encoded.scala", explicitUTF16) +
