@@ -20,6 +20,8 @@ import java.util.HashMap
 
 trait ParallelTesting {
 
+  def interactive: Boolean
+
   private sealed trait Target { self =>
     def outDir: JFile
     def flags: Array[String]
@@ -128,7 +130,7 @@ trait ParallelTesting {
         case None => JExecutors.newWorkStealingPool()
       }
 
-      pool.submit(statusRunner)
+      if (interactive) pool.submit(statusRunner)
 
       targets.foreach { target =>
         pool.submit(compilationRunnable(target))

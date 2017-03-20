@@ -4,6 +4,8 @@ import dotty.tools.dotc.ParallelTesting
 
 object comptest extends ParallelTesting {
 
+  def interactive: Boolean = true
+
   implicit val defaultOutputDir: String = "."
 
   val posDir = "./tests/pos/"

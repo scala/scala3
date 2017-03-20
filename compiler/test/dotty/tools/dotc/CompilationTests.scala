@@ -8,6 +8,8 @@ import java.io.{ File => JFile }
 class CompilationTests extends ParallelTesting {
   import CompilationTests._
 
+  def interactive: Boolean = !sys.env.contains("DRONE")
+
   // Positive tests ------------------------------------------------------------
 
   @Test def compilePos: Unit = {
