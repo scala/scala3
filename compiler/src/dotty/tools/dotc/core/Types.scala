@@ -2693,6 +2693,17 @@ object Types {
       }
   }
 
+  /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
+   *  Variances are encoded in parameter names. A name starting with `+`
+   *  designates a covariant parameter, a name starting with `-` designates
+   *  a contravariant parameter, and every other name designates a non-variant parameter.
+   *
+   *  @param  paramNames      The names `X_0`, ..., `X_n`
+   *  @param  paramInfosExp  A function that, given the polytype itself, returns the
+   *                          parameter bounds `B_1`, ..., `B_n`
+   *  @param  resultTypeExp   A function that, given the polytype itself, returns the
+   *                          result type `T`.
+   */
   class HKTypeLambda(val paramNames: List[TypeName])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
@@ -2708,18 +2719,8 @@ object Types {
     protected def prefixString = "HKTypeLambda"
   }
 
-  /** A type lambda of the form `[X_0 B_0, ..., X_n B_n] => T`
-   *  This is used both as a type of a polymorphic method and as a type of
-   *  a higher-kinded type parameter. Variances are encoded in parameter
-   *  names. A name starting with `+` designates a covariant parameter,
-   *  a name starting with `-` designates a contravariant parameter,
-   *  and every other name designates a non-variant parameter.
-   *
-   *  @param  paramNames      The names `X_0`, ..., `X_n`
-   *  @param  paramInfosExp  A function that, given the polytype itself, returns the
-   *                          parameter bounds `B_1`, ..., `B_n`
-   *  @param  resultTypeExp   A function that, given the polytype itself, returns the
-   *                          result type `T`.
+  /** The type of a polymorphic method. It has the same form as HKTypeLambda,
+   *  except it applies to terms and parameters do not have variances.
    */
   class PolyType(val paramNames: List[TypeName])(
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
