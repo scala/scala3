@@ -39,7 +39,7 @@ class CallInfoWithContext(val call: TermRef, val targs: List[Type], val argument
 
   def isOnJavaAllocatedType: Boolean = call.prefix.isInstanceOf[JavaAllocatedType]
 
-  override def equals(obj: scala.Any): Boolean = obj match {
+  override def equals(obj: Any): Boolean = obj match {
     case obj: CallInfoWithContext =>
       call == obj.call && targs == obj.targs && argumentsPassed == obj.argumentsPassed && outerTargs == obj.outerTargs
     case _ => false

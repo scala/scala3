@@ -32,11 +32,13 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   private var entryPoints = immutable.Map.empty[CallInfoWithContext, Int]
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
   private var reachableMethods = immutable.Set.empty[CallInfoWithContext]
+
   private var reachableMethodsSymbols = immutable.Set.empty[Symbol]
   private var outerMethods = immutable.Set.empty[Symbol]
+
   private var classOfs = immutable.Set.empty[Symbol]
 
-  private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[TypeWithContext]]()
+  private val typesByMemberNameCache = new java.util.IdentityHashMap[Name, List[(Int, TypeWithContext)]]()
 
   private var casts = immutable.Set.empty[Cast]
   private val castsCache: mutable.HashMap[TypeWithContext, mutable.Set[Cast]] = mutable.HashMap.empty
@@ -123,9 +125,10 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       val substed = new SubstituteByParentMap(x.outerTargs).apply(x.tp)
       substed.classSymbols.foreach(x => sizesCache(x) = sizesCache.getOrElse(x, 0) + 1)
       reachableTypes += x
+      val deepness = typeDeepness(x.tp)
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
-        typesByMemberNameCache.put(name, x :: typesByMemberNameCache.get(name))
+        typesByMemberNameCache.put(name, (deepness, x) :: typesByMemberNameCache.get(name))
       }
       val clas = x.tp match {
         case t: ClosureType => t.u.classSymbol.asClass
@@ -232,6 +235,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     registerParentModules(receiver)
 
+    lazy val receiverDepth = typeDeepness(receiver)
+
     val calleeSymbol = callee.call.termSymbol.asTerm
     val callerSymbol = caller.call.termSymbol
 
@@ -331,8 +336,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       case x => propagateTargs(x)
     }
 
-    def filterTypes(tp1: Type, tp2: Type): Boolean = {
-      if (mode >= AnalyseTypes) tp1 <:< tp2
+    def filterTypes(tp1: Type, tp2: Type, dtp1: Int, dtp2: Int): Boolean = {
+      if (dtp1 < dtp2) false
+      else if (mode >= AnalyseTypes) tp1 <:< tp2
       else {
         val tp1w = tp1.widenDealias
         val tp2w = tp2.widenDealias
@@ -382,8 +388,8 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
           val direct = {
             for {
-              tp <- getTypesByMemberName(calleeSymbol.name)
-              if filterTypes(tp.tp, receiverTypeWiden)
+              (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
+              if filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
               if alt.exists
             } yield {
@@ -400,9 +406,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               receiverBases.forall(c => targetBases.exists(_.derivesFrom(c)))
             }
             for {
-              tp <- getTypesByMemberName(calleeSymbol.name)
+              (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
               cast <- castsCache.getOrElse(tp, Iterator.empty)
-              if filterTypes(tp.tp, cast.from) && filterTypes(cast.to, receiverType) && filterCast(cast)
+              if filterTypes(tp.tp, cast.from, dtp, typeDeepness(cast.from)) && filterTypes(cast.to, receiverType, typeDeepness(cast.to), receiverDepth) && filterCast(cast)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
             } yield {
@@ -498,9 +504,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val prev = t.widenDealias.classSymbol
         getTypesByMemberName(memberName).foreach {
           x =>
-            val s = x.tp.baseClasses.dropWhile(_ != prev)
+            val s = x._2.tp.baseClasses.dropWhile(_ != prev)
             if (s.nonEmpty) {
-              val parentMethod = ResolveSuper.rebindSuper(x.tp.widenDealias.classSymbol, calleeSymbol).asTerm
+              val parentMethod = ResolveSuper.rebindSuper(x._2.tp.widenDealias.classSymbol, calleeSymbol).asTerm
               // todo: outerTargs are here defined in terms of location of the subclass. Is this correct?
               addCall(new CallInfoWithContext(TermRef.withFixedSym(t, parentMethod.name, parentMethod), targs, args, outerTargs, someCaller, someCallee))
 
@@ -670,6 +676,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         callInfo <- potentialCall(decl)
       } yield callInfo
     }
+  }
+
+  private val clsDeepnessCache = new mutable.HashMap[ClassSymbol, Int]()
+  private def typeDeepness(tp: Type): Int = {
+    def max(it: Iterator[Int]) = if (it.hasNext) it.max else 0
+    def classDeepness(cls: ClassSymbol): Int = {
+      if (clsDeepnessCache.contains(cls)) clsDeepnessCache(cls)
+      else {
+        val deepness = 1 + max(cls.classParents.iterator.map(typeDeepness))
+        clsDeepnessCache.put(cls, deepness)
+        deepness
+      }
+    }
+    max(tp.classSymbols.iterator.map(classDeepness))
   }
 
 }
