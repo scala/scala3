@@ -15,6 +15,7 @@ import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
 import scala.util.control.NonFatal
 import scala.util.Try
+import scala.collection.mutable
 import java.util.HashMap
 
 trait ParallelTesting {
@@ -539,13 +540,31 @@ trait ParallelTesting {
       else (dirs, f :: files)
     }
 
+  private def getCallingMethod(): String = {
+    val seen = mutable.Set.empty[String]
+    Thread.currentThread.getStackTrace
+      .filter { elem =>
+        if (seen.contains(elem.getMethodName)) false
+        else { seen += elem.getMethodName; true }
+      }
+      .take(6).find { elem =>
+        val callingClass = Class.forName(elem.getClassName)
+        classOf[ParallelTesting].isAssignableFrom(callingClass) &&
+        elem.getFileName != "ParallelTesting.scala"
+      }
+      .map(_.getMethodName)
+      .getOrElse {
+        throw new IllegalStateException("Unable to reflectively find calling method")
+      }
+  }
+
   def compileFile(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    // each calling method gets its own unique output directory, in which we
-    // place the dir being compiled:
-    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
-    val outDir = outDirectory + callingMethod + "/"
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
+    val outDir =
+      outDirectory + getCallingMethod + "/" +
+      sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')) + "/"
+
     require(
       sourceFile.exists && !sourceFile.isDirectory &&
       (parent ne null) && parent.exists && parent.isDirectory,
@@ -561,10 +580,7 @@ trait ParallelTesting {
   }
 
   def compileDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    // each calling method gets its own unique output directory, in which we
-    // place the dir being compiled:
-    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
-    val outDir = outDirectory + callingMethod + "/"
+    val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
     requirements(f, sourceDir, outDir)
 
@@ -573,7 +589,7 @@ trait ParallelTesting {
       else Array(f)
 
     // Directories in which to compile all containing files with `flags`:
-    val targetDir = new JFile(outDir)
+    val targetDir = new JFile(outDir + "/" + sourceDir.getName + "/")
     targetDir.mkdirs()
 
     val target = ConcurrentCompilationTarget(flatten(sourceDir), flags, targetDir)
@@ -581,10 +597,7 @@ trait ParallelTesting {
   }
 
   def compileList(files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    // each calling method gets its own unique output directory, in which we
-    // place the dir being compiled:
-    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
-    val outDir = outDirectory + callingMethod + "/"
+    val outDir = outDirectory + getCallingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(outDir)
@@ -598,10 +611,7 @@ trait ParallelTesting {
   }
 
   def compileFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    // each calling method gets its own unique output directory, in which we
-    // place the dir being compiled:
-    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
-    val outDir = outDirectory + callingMethod + "/"
+    val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
     requirements(f, sourceDir, outDir)
 
@@ -616,10 +626,7 @@ trait ParallelTesting {
   }
 
   def compileShallowFilesInDir(f: String, flags: Array[String])(implicit outDirectory: String): CompilationTest = {
-    // each calling method gets its own unique output directory, in which we
-    // place the dir being compiled:
-    val callingMethod = Thread.currentThread.getStackTrace.apply(3).getMethodName
-    val outDir = outDirectory + callingMethod + "/"
+    val outDir = outDirectory + getCallingMethod + "/"
     val sourceDir = new JFile(f)
     requirements(f, sourceDir, outDir)
 
