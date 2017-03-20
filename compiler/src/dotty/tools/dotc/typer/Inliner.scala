@@ -457,16 +457,17 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       case _ => tree
     }}
 
-    // The complete translation maps referenves to this and parameters to
+    val inlineCtx = inlineContext(call)
+    // The complete translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
-    val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)
+    val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
 
     val expansion = inliner(rhs.withPos(call.pos))
     ctx.traceIndented(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
-      val expansion1 = InlineTyper.typed(expansion, pt)(inlineContext(call))
+      val expansion1 = InlineTyper.typed(expansion, pt)(inlineCtx)
 
       /** Does given definition bind a closure that will be inlined? */
       def bindsDeadClosure(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
