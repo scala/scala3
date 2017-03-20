@@ -4,6 +4,8 @@ package transform
 import core._
 import ast.Trees._
 import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._, StdNames._
+import Decorators._
+import config.Printers.typr
 
 /** For all parameter accessors
  *
@@ -48,7 +50,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
         val candidate = sym.owner.asClass.superClass
           .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = Mutable)).symbol
         if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
-        else if (candidate is Method) inheritedAccessor(candidate)
+        else if (candidate.exists) inheritedAccessor(candidate)
         else NoSymbol
       }
       def forwardParamAccessor(stat: Tree): Tree = {
@@ -66,8 +68,12 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                     sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
                       .installAfter(thisTransformer)
                     val superAcc =
-                      Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
-                    DefDef(sym, superAcc.ensureConforms(sym.info.widen))
+                      Super(This(currentClass), tpnme.EMPTY, inConstrCall = false)
+                        .select(alias)
+                    val stpe @ TermRef(_, _) = superAcc.tpe
+                    val superAccShadowed = superAcc.withType(stpe.shadowed)
+                    typr.println(i"adding param forwarder $superAccShadowed")
+                    DefDef(sym, superAccShadowed.ensureConforms(sym.info.widen))
                   }
                   return forwarder(ctx.withPhase(thisTransformer.next))
                 }
