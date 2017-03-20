@@ -10,14 +10,15 @@ class CompilationTests extends ParallelTesting {
 
   // Positive tests ------------------------------------------------------------
 
-  @Test def compilePos: Unit =
-    compileFilesInDir("../tests/pos", defaultOptions).pos
+  @Test def compilePos: Unit = {
+    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileFilesInDir("../tests/pos", defaultOptions)
+  }.pos()
 
   @Test def compilePosScala2: Unit =
     compileFilesInDir("../tests/pos-scala2", scala2Mode).pos()
 
   @Test def compilePosMixedFlags: Unit = {
-    compileList(StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileFile("../tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     // this guy sucks, he changes the sourcefile itself:
     // compileFile("../tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")) +
@@ -25,6 +26,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("../tests/pos-special/utf16encoded.scala", explicitUTF16) +
     compileList(
+      "compileMixed",
       List(
         "../tests/pos/B.scala",
         "../scala-scala/src/library/scala/collection/immutable/Seq.scala",
@@ -40,6 +42,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../scala-scala/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
+      "parSetSubset",
       List(
        "../scala-scala/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
        "../scala-scala/src/library/scala/collection/parallel/mutable/ParSet.scala",
@@ -103,6 +106,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("../tests/pos/extmethods.scala", defaultOptions) +
     compileFile("../tests/pos/companions.scala", defaultOptions) +
     compileList(
+      "testNonCyclic",
       List(
         "../compiler/src/dotty/tools/dotc/CompilationUnit.scala",
         "../compiler/src/dotty/tools/dotc/core/Types.scala",

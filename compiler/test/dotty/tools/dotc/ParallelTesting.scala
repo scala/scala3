@@ -596,7 +596,7 @@ trait ParallelTesting {
     new CompilationTest(target)
   }
 
-  def compileList(files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
+  def compileList(testName: String, files: List[String], flags: Array[String])(implicit outDirectory: String): CompilationTest = {
     val outDir = outDirectory + getCallingMethod + "/" + testName + "/"
 
     // Directories in which to compile all containing files with `flags`:

@@ -12,6 +12,7 @@ object comptest extends ParallelTesting {
 
   def main(args: Array[String]): Unit =
     compileList(
+      "comptest",
       List(
         dotcDir + "tools/dotc/CompilationUnit.scala",
         dotcDir + "tools/dotc/core/Types.scala",
