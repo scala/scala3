@@ -19,7 +19,7 @@ class Bz extends A(42) {
   val theValueInBz = theValue
 }
 
-// C does not contains a field C.theValue$$local, it contains
+// C does not contain a field C.theValue$$local, it contains
 // a getter C.theValue() which only calls super.theValue()
 class C(override val theValue: Int) extends A(theValue)
 
@@ -36,8 +36,8 @@ class NonVal(theValue: Int) extends A(theValue) {
 // X.theValue() which overrides A.theValue()
 class X(override val theValue: Int) extends NonVal(0)
 
-// Y contains a field Y.theValue$$local accessible using the getter
-// Y.theValue() which overrides A.theValue()
+// Y does not contain a field Y.theValue$$local, it contains
+// a getter Y.theValue() which only calls super.theValue()
 class Y(override val theValue: Int) extends NonVal(theValue)
 
 
