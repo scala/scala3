@@ -1719,7 +1719,7 @@ object Types {
      *  under both private and public names, so it could still be found by looking up
      *  the public name.
      */
-    final def shadowed(implicit ctx: Context): NamedType =
+    def shadowed(implicit ctx: Context): NamedType =
       NamedType(prefix, name.shadowedName)
 
     override def equals(that: Any) = that match {
@@ -1782,15 +1782,19 @@ object Types {
       else d.atSignature(sig).checkUnique
     }
 
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
-      val candidate = TermRef.withSig(prefix, name, sig)
+    private def fixDenot(candidate: TermRef, prefix: Type)(implicit ctx: Context): TermRef =
       if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
         val ownSym = symbol
         val newd = asMemberOf(prefix, allowPrivate = ownSym.is(Private))
         candidate.withDenot(newd.suchThat(_.signature == ownSym.signature))
       }
       else candidate
-    }
+
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
+      fixDenot(TermRef.withSig(prefix, name, sig), prefix)
+
+    override def shadowed(implicit ctx: Context): NamedType = 
+      fixDenot(TermRef.withSig(prefix, name.shadowedName, sig), prefix)
 
     override def equals(that: Any) = that match {
       case that: TermRefWithSignature =>
