@@ -67,13 +67,14 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
                   def forwarder(implicit ctx: Context) = {
                     sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
                       .installAfter(thisTransformer)
-                    val superAcc =
-                      Super(This(currentClass), tpnme.EMPTY, inConstrCall = false)
-                        .select(alias)
-                    val stpe @ TermRef(_, _) = superAcc.tpe
-                    val superAccShadowed = superAcc.withType(stpe.shadowed)
-                    typr.println(i"adding param forwarder $superAccShadowed")
-                    DefDef(sym, superAccShadowed.ensureConforms(sym.info.widen))
+                    var superAcc =
+                      Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
+                    if (alias.owner != currentClass.superClass)
+                      // need to use shadowed in order not to accidentally address an
+                      // intervening private forwarder in the superclass
+                      superAcc = superAcc.withType(superAcc.tpe.asInstanceOf[TermRef].shadowed)
+                    typr.println(i"adding param forwarder $superAcc")
+                    DefDef(sym, superAcc.ensureConforms(sym.info.widen))
                   }
                   return forwarder(ctx.withPhase(thisTransformer.next))
                 }
