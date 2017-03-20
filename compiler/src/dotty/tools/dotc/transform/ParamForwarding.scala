@@ -48,7 +48,7 @@ class ParamForwarding(thisTransformer: DenotTransformer) {
         val candidate = sym.owner.asClass.superClass
           .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = Mutable)).symbol
         if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
-        else if (candidate is Method) inheritedAccessor(candidate)
+        else if (candidate.exists) inheritedAccessor(candidate)
         else NoSymbol
       }
       def forwardParamAccessor(stat: Tree): Tree = {
