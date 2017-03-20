@@ -1,6 +1,15 @@
 class B(member: Int) extends SubA(member) {
-  def getMember = member
+  def getBMember = member
 }
+
+class SubA(member: Int) extends A(member) {
+  def getSubAMember = member
+}
+
+class A(val member: Int) {
+  def getAMember = member
+}
+
 
 object Test {
   def printFields(cls: Class[_]) =
