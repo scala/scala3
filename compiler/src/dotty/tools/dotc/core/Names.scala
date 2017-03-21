@@ -10,10 +10,12 @@ import Decorators._
 import Contexts.Context
 import collection.IndexedSeqOptimized
 import collection.generic.CanBuildFrom
-import collection.mutable.{ Builder, StringBuilder }
+import collection.mutable.{ Builder, StringBuilder, AnyRefMap }
 import collection.immutable.WrappedString
 import collection.generic.CanBuildFrom
-import util.DotClass
+import util.{DotClass, SimpleMap}
+import java.util.HashMap
+
 //import annotation.volatile
 
 object Names {
@@ -158,6 +160,64 @@ object Names {
 
     def fromName(name: Name): TermName = name.toTermName
 
+    def info = NameInfo.TermName
+    def underlying: TermName = unsupported("underlying")
+
+    private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
+      SimpleMap.Empty[NameInfo]
+
+    private def getDerived(info: NameInfo): DerivedTermName /* | Null */= derivedNames match {
+      case derivedNames: SimpleMap[NameInfo, DerivedTermName] @unchecked =>
+        derivedNames(info)
+      case derivedNames: HashMap[NameInfo, DerivedTermName] @unchecked =>
+        derivedNames.get(info)
+    }
+
+    private def putDerived(info: NameInfo, name: DerivedTermName): name.type = {
+      derivedNames match {
+        case derivedNames: SimpleMap[NameInfo, DerivedTermName] @unchecked =>
+          if (derivedNames.size < 4)
+            this.derivedNames = derivedNames.updated(info, name)
+          else {
+            val newMap = new HashMap[NameInfo, DerivedTermName]
+            derivedNames.foreachBinding(newMap.put(_, _))
+            newMap.put(info, name)
+            this.derivedNames = newMap
+          }
+        case derivedNames: HashMap[NameInfo, DerivedTermName] @unchecked =>
+          derivedNames.put(info, name)
+      }
+      name
+    }
+
+    /** Return derived name with given `info` and the current
+     *  name as underlying name.
+     */
+    def derived(info: NameInfo): TermName = {
+      def addIt() = synchronized {
+        getDerived(info) match {
+          case null => putDerived(info, new DerivedTermName(this, info))
+          case derivedName => derivedName
+        }
+      }
+
+      val ownKind = this.info.kind
+      if (ownKind > info.kind)
+        underlying.derived(info).derived(this.info)
+      else if (ownKind == info.kind)
+        if (info.oneOfAKind) {
+          assert(info == this.info)
+          this
+        }
+        else addIt()
+      else addIt()
+    }
+
+    def is(kind: NameInfo.Kind): Boolean = {
+      val ownKind = info.kind
+      ownKind == kind || ownKind > kind && underlying.is(kind)
+    }
+
     override def hashCode: Int = start
 
     override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
@@ -167,14 +227,9 @@ object Names {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
   }
 
-  abstract class DerivedName extends Name {
-    def underlying: Name
-    def start = underlying.start
-    override def length = underlying.length
-  }
-
-  class TypeName(val toTermName: TermName) extends DerivedName {
-    def underlying = toTermName
+  class TypeName(val toTermName: TermName) extends Name {
+    def start = toTermName.start
+    override def length = toTermName.length
 
     type ThisName = TypeName
     def isTypeName = true
@@ -189,6 +244,16 @@ object Names {
 
     override protected[this] def newBuilder: Builder[Char, Name] =
       termNameBuilder.mapResult(_.toTypeName)
+  }
+
+  /** A term name that's derived from an `underlying` name and that
+   *  adds `info` to it.
+   */
+  class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
+  extends TermName {
+    def start = underlying.start
+    override def length = underlying.length
+    override def toString = info.mkString(underlying)
   }
 
   // Nametable
