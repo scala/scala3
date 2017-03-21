@@ -122,14 +122,19 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private def addReachableType(x: TypeWithContext): Unit = {
     if (!reachableTypes.contains(x)) {
+
       val substed = new SubstituteByParentMap(x.outerTargs).apply(x.tp)
-      substed.classSymbols.foreach(x => sizesCache(x) = sizesCache.getOrElse(x, 0) + 1)
+      def registerSize(sym: Symbol): Unit = sizesCache(sym) = sizesCache.getOrElse(sym, 0) + 1
+      substed.classSymbols.toSet.flatMap((x: ClassSymbol) => x :: x.classParents.map(_.symbol)).foreach(registerSize)
+
       reachableTypes += x
-      val deepness = typeDeepness(x.tp)
+
+      lazy val deepness = typeDeepness(x.tp)
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
         typesByMemberNameCache.put(name, (deepness, x) :: typesByMemberNameCache.get(name))
       }
+
       val clas = x.tp match {
         case t: ClosureType => t.u.classSymbol.asClass
         case t: JavaAllocatedType => t.underlying.widenDealias.classSymbol.asClass
@@ -164,11 +169,11 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     addReachableType(new TypeWithContext(tp, parentRefinements(tp)))
   }
 
-  private def getTypesByMemberName(x: Name): List[TypeWithContext] = {
+  private def getTypesByMemberName(x: Name): List[(Int, TypeWithContext)] = {
     val ret1 = typesByMemberNameCache.get(x)
     if (ret1 eq null) {
       // not yet computed
-      val upd = reachableTypes.iterator.filter(tp => tp.tp.member(x).exists).toList
+      val upd = reachableTypes.iterator.collect { case tp if tp.tp.member(x).exists => (typeDeepness(tp.tp), tp) }.toList
       typesByMemberNameCache.put(x, upd)
       upd
     } else ret1
