@@ -68,15 +68,14 @@ object GraphVisualization {
 
   def outputGraphVisToFile(callGraph: CallGraph, outFile: java.io.File)(implicit ctx: Context): Unit = {
     val p = new java.io.PrintWriter(outFile)
-    val visHTML = outputGraphVis(callGraph)
     try {
-      p.println(visHTML)
+      outputGraphVis(callGraph, p)
     } finally {
       p.close()
     }
   }
 
-  def outputGraphVis(callGraph: CallGraph)(implicit ctx: Context): String = {
+  private def outputGraphVis(callGraph: CallGraph, pw: java.io.PrintWriter)(implicit ctx: Context): Unit = {
     val reachableMethods = callGraph.reachableMethods
     val reachableTypes = callGraph.reachableTypes
     val outerMethod = callGraph.outerMethods
@@ -169,7 +168,178 @@ object GraphVisualization {
       }
     }
 
-    visHTML(nodes.toMap, edges.toMap)
+    def printNodesJSON(): Unit = {
+      def printNodes(nodes: List[(String, String)]): Unit = nodes match {
+        case n :: ns =>
+          pw.print("'" + n._1 + "': " + n._2)
+          if (ns.nonEmpty)
+            pw.print(",")
+          printNodes(ns)
+        case Nil =>
+      }
+      pw.println("{")
+      printNodes(nodes.toList)
+      pw.println("}")
+    }
+    def printEdgesJSON(): Unit = {
+      def printEdges(edges: List[(String, List[String])]): Unit = edges match {
+        case e :: es =>
+          pw.print("'" + e._1 + "': ")
+          pw.print("[")
+          pw.print(e._2.mkString(","))
+          pw.print("]")
+          if (es.nonEmpty)
+            pw.print(",")
+          printEdges(es)
+        case Nil =>
+      }
+      pw.println("{")
+      printEdges(edges.toList)
+      pw.println("}")
+    }
+
+    pw.println("""
+               |<!doctype html>
+               |<html>
+               |<head>
+               |  <title>Callgraph</title>
+               |
+               |  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js"></script>
+               |  <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css" rel="stylesheet" type="text/css">
+               |  <style type="text/css">
+               |    #mynetwork {
+               |      width: 1080px;
+               |      height: 720px;
+               |      border: 1px solid lightgray;
+               |    }
+               |    p {
+               |      max-width:1000px;
+               |    }
+               |  </style>
+               |</head>
+               |
+               |<body>
+               |<div id="wrapper">
+               |  <div id="mynetwork"></div>
+               |  <div id="loadingBar">
+               |    <div class="outerBorder">
+               |      <div id="text">0%</div>
+               |      <div id="border">
+               |        <div id="bar"></div>
+               |      </div>
+               |    </div>
+               |  </div>
+               |</div>
+               |
+               |
+               |<script type="text/javascript">
+               |  var container = document.getElementById('mynetwork');
+               |  var options = {
+               |    layout: {
+               |      improvedLayout: true
+               |    },
+               |    edges: {
+               |      smooth: true,
+               |      arrows: { to: true }
+               |    },
+               |    interaction: {
+               |      hover: true
+               |    },
+               |    physics: {
+               |      enabled: true,
+               |      solver: 'repulsion',
+               |      maxVelocity: 10,
+               |      minVelocity: 1,
+               |      repulsion: {
+               |        nodeDistance: 400
+               |      }
+               |    }
+               |  };
+               |""".stripMargin)
+
+    pw.print("var nodesMap = ")
+    printNodesJSON()
+
+    pw.print("var edgesMap = ")
+    printEdgesJSON()
+
+    pw.println("""
+               |  var data = {
+               |    nodes: new vis.DataSet([]),
+               |    edges: new vis.DataSet([])
+               |  };
+               |
+               |  var expandNode = function (id) {
+               |    var edgs = edgesMap[id];
+               |    var node = nodesMap[id];
+               |    if (!id.startsWith('entry') && !node.isLeaf) {
+               |      if (node.shape != 'box') {
+               |        node.shape = 'box';
+               |        var edges1 = edgesMap[id];
+               |        for (i in edges1)
+               |          data.edges.add(edges1[i]);
+               |      } else {
+               |        node.shape = undefined;
+               |        var edges1 = edgesMap[id];
+               |        for (i in edges1)
+               |          data.edges.remove(edges1[i]);
+               |      }
+               |      data.nodes.update(nodesMap[id]);
+               |    }
+               |    for (e in edgs) {
+               |      var nodeId = edgs[e].to
+               |      var node = nodesMap[nodeId];
+               |      if (!node.added) {
+               |        if (!edgesMap[nodeId]) {
+               |          node.shape = 'box';
+               |          node.shapeProperties = { borderDashes: [10,5] };
+               |          node.isLeaf = true;
+               |        }
+               |        data.nodes.add(node);
+               |        node.added = true;
+               |      }
+               |    }
+               |  };
+               |
+               |  var doubleClickOnNode = function (id) {
+               |    expandNode(id);
+               |  };
+               |
+               |  for (i in nodesMap) {
+               |    if (i.startsWith('entry')) {
+               |      data.nodes.add(nodesMap[i]);
+               |      data.edges.add(edgesMap[i]);
+               |      expandNode(i);
+               |    }
+               |  }
+               |
+               |  var network = new vis.Network(container, data, options);
+               |   network.on("stabilizationProgress", function(params) {
+               |      var maxWidth = 496;
+               |      var minWidth = 20;
+               |      var widthFactor = params.iterations/params.total;
+               |      var width = Math.max(minWidth,maxWidth * widthFactor);
+               |
+               |      document.getElementById('bar').style.width = width + 'px';
+               |      document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+               |  });
+               |  network.once("stabilizationIterationsDone", function() {
+               |      document.getElementById('text').innerHTML = '100%';
+               |      document.getElementById('bar').style.width = '496px';
+               |      document.getElementById('loadingBar').style.opacity = 0;
+               |      // really clean the dom element
+               |      setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+               |  });
+               |  network.on("doubleClick", function (params) {
+               |      params.event = "[original event]";
+               |      if (params.nodes && params.nodes.length > 0)
+               |        doubleClickOnNode(params.nodes[0]);
+               |  });
+               |</script>
+               |
+               |</body>
+               |</html>
+             """.stripMargin)
   }
 
   private def callSiteLabel(x: CallInfo)(implicit ctx: Context): String = {
@@ -308,148 +478,5 @@ object GraphVisualization {
     paramTypess.iterator.map { paramTypes =>
       paramTypes.map(x => typeName(x)).mkString("(", ",", ")")
     }.mkString("")
-  }
-
-
-  private def visHTML(nodes: Map[String, String], edges: Map[String, List[String]]): String = {
-    val nodesJSON = nodes.iterator.map{ case (key, v) => "'" + key + "': " + v}.mkString("{\n      ", ",\n      ", "\n    }")
-    val edgesJSON = edges.iterator.map{ case (key, ns) => "'" + key + "': " + ns.mkString("[", ",", "]")}.mkString("{\n      ", ",\n      ", "\n    }")
-    s"""
-      |<!doctype html>
-      |<html>
-      |<head>
-      |  <title>Callgraph</title>
-      |
-      |  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.js"></script>
-      |  <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.min.css" rel="stylesheet" type="text/css">
-      |  <style type="text/css">
-      |    #mynetwork {
-      |      width: 1080px;
-      |      height: 720px;
-      |      border: 1px solid lightgray;
-      |    }
-      |    p {
-      |      max-width:1000px;
-      |    }
-      |  </style>
-      |</head>
-      |
-      |<body>
-      |<div id="wrapper">
-      |  <div id="mynetwork"></div>
-      |  <div id="loadingBar">
-      |    <div class="outerBorder">
-      |      <div id="text">0%</div>
-      |      <div id="border">
-      |        <div id="bar"></div>
-      |      </div>
-      |    </div>
-      |  </div>
-      |</div>
-      |
-      |
-      |<script type="text/javascript">
-      |  var container = document.getElementById('mynetwork');
-      |  var options = {
-      |    layout: {
-      |      improvedLayout: true
-      |    },
-      |    edges: {
-      |      smooth: true,
-      |      arrows: { to: true }
-      |    },
-      |    interaction: {
-      |      hover: true
-      |    },
-      |    physics: {
-      |      enabled: true,
-      |      solver: 'repulsion',
-      |      maxVelocity: 10,
-      |      minVelocity: 1,
-      |      repulsion: {
-      |        nodeDistance: 400
-      |      }
-      |    }
-      |  };
-      |
-      |  var nodesMap = $nodesJSON
-      |  var edgesMap = $edgesJSON
-      |
-      |  var data = {
-      |    nodes: new vis.DataSet([]),
-      |    edges: new vis.DataSet([])
-      |  };
-      |
-      |  var expandNode = function (id) {
-      |    var edgs = edgesMap[id];
-      |    var node = nodesMap[id];
-      |    if (!id.startsWith('entry') && !node.isLeaf) {
-      |      if (node.shape != 'box') {
-      |        node.shape = 'box';
-      |        var edges1 = edgesMap[id];
-      |        for (i in edges1)
-      |          data.edges.add(edges1[i]);
-      |      } else {
-      |        node.shape = undefined;
-      |        var edges1 = edgesMap[id];
-      |        for (i in edges1)
-      |          data.edges.remove(edges1[i]);
-      |      }
-      |      data.nodes.update(nodesMap[id]);
-      |    }
-      |    for (e in edgs) {
-      |      var nodeId = edgs[e].to
-      |      var node = nodesMap[nodeId];
-      |      if (!node.added) {
-      |        if (!edgesMap[nodeId]) {
-      |          node.shape = 'box';
-      |          node.shapeProperties = { borderDashes: [10,5] };
-      |          node.isLeaf = true;
-      |        }
-      |        data.nodes.add(node);
-      |        node.added = true;
-      |      }
-      |    }
-      |  };
-      |
-      |  var doubleClickOnNode = function (id) {
-      |    expandNode(id);
-      |  };
-      |
-      |  for (i in nodesMap) {
-      |    if (i.startsWith('entry')) {
-      |      data.nodes.add(nodesMap[i]);
-      |      data.edges.add(edgesMap[i]);
-      |      expandNode(i);
-      |    }
-      |  }
-      |
-      |  var network = new vis.Network(container, data, options);
-      |   network.on("stabilizationProgress", function(params) {
-      |      var maxWidth = 496;
-      |      var minWidth = 20;
-      |      var widthFactor = params.iterations/params.total;
-      |      var width = Math.max(minWidth,maxWidth * widthFactor);
-      |
-      |      document.getElementById('bar').style.width = width + 'px';
-      |      document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
-      |  });
-      |  network.once("stabilizationIterationsDone", function() {
-      |      document.getElementById('text').innerHTML = '100%';
-      |      document.getElementById('bar').style.width = '496px';
-      |      document.getElementById('loadingBar').style.opacity = 0;
-      |      // really clean the dom element
-      |      setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
-      |  });
-      |  network.on("doubleClick", function (params) {
-      |      params.event = "[original event]";
-      |      if (params.nodes && params.nodes.length > 0)
-      |        doubleClickOnNode(params.nodes[0]);
-      |  });
-      |</script>
-      |
-      |</body>
-      |</html>
-    """.stripMargin
   }
 }
