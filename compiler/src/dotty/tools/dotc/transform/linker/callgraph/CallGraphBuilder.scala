@@ -129,7 +129,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
       reachableTypes += x
 
-      lazy val deepness = typeDeepness(x.tp)
+      lazy val deepness = TypeDepth(x.tp)
       val namesInType = x.tp.memberNames(takeAllFilter).filter(typesByMemberNameCache.containsKey)
       for (name <- namesInType) {
         typesByMemberNameCache.put(name, (deepness, x) :: typesByMemberNameCache.get(name))
@@ -173,7 +173,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
     val ret1 = typesByMemberNameCache.get(x)
     if (ret1 eq null) {
       // not yet computed
-      val upd = reachableTypes.iterator.collect { case tp if tp.tp.member(x).exists => (typeDeepness(tp.tp), tp) }.toList
+      val upd = reachableTypes.iterator.collect { case tp if tp.tp.member(x).exists => (TypeDepth(tp.tp), tp) }.toList
       typesByMemberNameCache.put(x, upd)
       upd
     } else ret1
@@ -240,7 +240,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
     registerParentModules(receiver)
 
-    lazy val receiverDepth = typeDeepness(receiver)
+    lazy val receiverDepth = TypeDepth(receiver)
 
     val calleeSymbol = callee.call.termSymbol.asTerm
     val callerSymbol = caller.call.termSymbol
@@ -413,7 +413,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             for {
               (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
               cast <- castsCache.getOrElse(tp, Iterator.empty)
-              if filterTypes(tp.tp, cast.from, dtp, typeDeepness(cast.from)) && filterTypes(cast.to, receiverType, typeDeepness(cast.to), receiverDepth) && filterCast(cast)
+              if filterCast(cast) && filterTypes(tp.tp, cast.from, dtp, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
             } yield {
@@ -681,20 +681,6 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         callInfo <- potentialCall(decl)
       } yield callInfo
     }
-  }
-
-  private val clsDeepnessCache = new mutable.HashMap[ClassSymbol, Int]()
-  private def typeDeepness(tp: Type): Int = {
-    def max(it: Iterator[Int]) = if (it.hasNext) it.max else 0
-    def classDeepness(cls: ClassSymbol): Int = {
-      if (clsDeepnessCache.contains(cls)) clsDeepnessCache(cls)
-      else {
-        val deepness = 1 + max(cls.classParents.iterator.map(typeDeepness))
-        clsDeepnessCache.put(cls, deepness)
-        deepness
-      }
-    }
-    max(tp.classSymbols.iterator.map(classDeepness))
   }
 
 }
