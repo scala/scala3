@@ -114,6 +114,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   private[this] val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLike]
   /** This cache is optional, it avoids recomputing representations */
   private[this] val typeCache = new mutable.HashMap[Type, api.Type]
+  /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
+   *  see the comment in the `RefinedType` case in `computeType`
+   *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
+   */
+  private[this] val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
   private[this] object Constants {
     val emptyStringArray = Array[String]()
@@ -349,7 +354,14 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         Constants.emptyType
       case tp: NamedType =>
         val sym = tp.symbol
-        // Normalize package prefix to avoid instability of representation
+        // A type can sometimes be represented by multiple different NamedTypes
+        // (they will be `=:=` to each other, but not `==`), and the compiler
+        // may choose to use any of these representation, there is no stability
+        // guarantee. We avoid this instability by always normalizing the
+        // prefix: if it's a package, if we didn't do this sbt might conclude
+        // that some API changed when it didn't, leading to overcompilation
+        // (recompiling more things than what is needed for incremental
+        // compilation to be correct).
         val prefix = if (sym.owner.is(Package))
           sym.owner.thisType
         else
@@ -389,15 +401,39 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
             new api.TypeDeclaration(apiType(lo), apiType(hi),
               Array(), name, Constants.public, Constants.emptyModifiers, Array())
         }
-
-        val decl: Array[api.Definition] = rt.refinedInfo match {
+        val decl = rt.refinedInfo match {
           case rinfo: TypeBounds =>
-            Array(typeRefinement(name, rinfo))
+            typeRefinement(name, rinfo)
           case _ =>
             ctx.debuglog(i"sbt-api: skipped structural refinement in $rt")
-            Array()
+            null
         }
-        new api.Structure(strict2lzy(Array(parent)), strict2lzy(decl), strict2lzy(Array()))
+
+        // Aggressive caching for RefinedTypes: `typeCache` is enough as long as two
+        // RefinedType are `==`, but this is only the case when their `refinedInfo`
+        // are `==` and this is not always the case, consider:
+        //
+        //     val foo: { type Bla = a.b.T }
+        //     val bar: { type Bla = a.b.T }
+        //
+        // The sbt API representations of `foo` and `bar` (let's call them `apiFoo`
+        // and `apiBar`) will both be instances of `Structure`. If `typeCache` was
+        // the only cache, then in some cases we would have `apiFoo eq apiBar` and
+        // in other cases we would just have `apiFoo == apiBar` (this happens
+        // because the dotty representation of `a.b.T` is unstable, see the comment
+        // in the `NamedType` case above).
+        //
+        // The fact that we may or may not have `apiFoo eq apiBar` is more than
+        // an optimisation issue: it will determine whether the sbt name hash for
+        // `Bla` contains one or two entries (because sbt `NameHashing` will not
+        // traverse both `apiFoo` and `apiBar` if they are `eq`), therefore the
+        // name hash of `Bla` will be unstable, unless we make sure that
+        // `apiFoo == apiBar` always imply `apiFoo eq apiBar`. This is what
+        // `refinedTypeCache` is for.
+        refinedTypeCache.getOrElseUpdate((parent, decl), {
+          val adecl: Array[api.Definition] = if (decl == null) Array() else Array(decl)
+          new api.Structure(strict2lzy(Array(parent)), strict2lzy(adecl), strict2lzy(Array()))
+        })
       case tp: RecType =>
         apiType(tp.parent)
       case RecThis(recType) =>
