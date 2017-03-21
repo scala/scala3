@@ -163,7 +163,7 @@ object Names {
     def info = NameInfo.TermName
     def underlying: TermName = unsupported("underlying")
 
-    private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
+    @sharable private var derivedNames: AnyRef /* SimpleMap | j.u.HashMap */ =
       SimpleMap.Empty[NameInfo]
 
     private def getDerived(info: NameInfo): DerivedTermName /* | Null */= derivedNames match {
