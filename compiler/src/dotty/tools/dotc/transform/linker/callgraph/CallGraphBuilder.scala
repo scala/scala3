@@ -31,7 +31,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
 
   private var entryPoints = immutable.Map.empty[CallInfoWithContext, Int]
   private var reachableTypes = immutable.Set.empty[TypeWithContext]
-  private var reachableMethods = immutable.Set.empty[CallInfoWithContext]
+  private var reachableMethods = mutable.Set.empty[CallInfoWithContext]
 
   private var reachableMethodsSymbols = immutable.Set.empty[Symbol]
   private var outerMethods = immutable.Set.empty[Symbol]
@@ -111,7 +111,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
   /** Packages the current call graph into a CallGraph */
   def result(): CallGraph = {
     val entryPoints = this.entryPoints
-    val reachableMethods = this.reachableMethods
+    val reachableMethods = this.reachableMethods.toSet
     val reachableTypes = this.reachableTypes
     val casts = this.casts
     val classOfs = this.classOfs
@@ -368,15 +368,20 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       tp.select(call).asInstanceOf[TermRef]
     }
 
-    def dispatchCalls(receiverType: Type): immutable.Set[CallInfoWithContext] = {
+    def dispatchCalls(receiverType: Type, dispatch: CallInfoWithContext => Unit = addCall): Unit = {
       receiverType match {
         case t: PreciseType =>
-          Set(new CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
+          dispatch(new CallInfoWithContext(preciseSelectCall(t.underlying, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
         case t: ClosureType if calleeSymbol.name eq t.implementedMethod.name =>
           val methodSym = t.meth.meth.symbol.asTerm
-          Set(new CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs, someCaller, someCallee))
+          dispatch(new CallInfoWithContext(TermRef.withFixedSym(t.underlying, methodSym.name,  methodSym), targs, t.meth.env.map(_.tpe) ++ args, outerTargs, someCaller, someCallee))
         case AndType(tp1, tp2) =>
-          dispatchCalls(tp1).intersect(dispatchCalls(tp2))
+          val set1 = mutable.Set.empty[CallInfoWithContext]
+          val set2 = mutable.Set.empty[CallInfoWithContext]
+          dispatchCalls(tp1, x => set1.add(x))
+          dispatchCalls(tp2, x => set2.add(x))
+          set1.intersect(set2).foreach(dispatch)
+
         case _ =>
           // without casts
           val receiverTypeWiden = receiverType.widenDealias match {
@@ -391,20 +396,17 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
             (d1 eq d2) || d1.matches(d2)
           }
 
-          val direct = {
-            for {
-              (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
-              if filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)
-              alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
-              if alt.exists
-            } yield {
-              new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee)
-            }
+
+          for {
+            (dtp, tp) <- getTypesByMemberName(calleeSymbol.name)
+            if filterTypes(tp.tp, receiverTypeWiden, dtp, receiverDepth)
+            alt <- tp.tp.member(calleeSymbol.name).altsWith(p => denotMatch(tp, p))
+            if alt.exists
+          } {
+            dispatch(new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
           }
 
-          val casted = if (mode < AnalyseTypes) {
-            Nil
-          } else {
+          if (mode >= AnalyseTypes) {
             def filterCast(cast: Cast) = {
               val receiverBases = receiverType.classSymbols
               val targetBases = cast.to.classSymbols
@@ -416,18 +418,16 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
               if filterCast(cast) && filterTypes(tp.tp, cast.from, dtp, cast.fromDepth) && filterTypes(cast.to, receiverType, cast.toDepth, receiverDepth)
               alt <- tp.tp.member(calleeSymbol.name).altsWith(p => p.matches(calleeSymbol.asSeenFrom(tp.tp)))
               if alt.exists
-            } yield {
+            } {
               // this additionally introduces a cast of result type and argument types
               val uncastedSig = preciseSelectCall(tp.tp, alt.symbol).widen.appliedTo(targs).widen
               val castedSig = preciseSelectCall(receiverType, calleeSymbol).widen.appliedTo(targs).widen
               (uncastedSig.paramTypess.flatten zip castedSig.paramTypess.flatten) foreach (x => addCast(x._2, x._1))
-              addCast(uncastedSig.finalResultType, castedSig.finalResultType)
+              addCast(uncastedSig.finalResultType, castedSig.finalResultType) // FIXME: this is added even in and tpe that are out of the intersection
 
-              new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee)
+              dispatch(new CallInfoWithContext(tp.tp.select(alt.symbol).asInstanceOf[TermRef], targs, args, outerTargs ++ tp.outerTargs, someCaller, someCallee))
             }
           }
-
-          direct.toSet ++ casted
       }
     }
 
@@ -529,21 +529,21 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         val currentThis = getPreciseThis(caller.call.normalizedPrefix, caller.call.termSymbol.owner)
 
         if (!currentThis.derivesFrom(thisType.cls))
-          dispatchCalls(propagateTargs(receiver.widenDealias)).foreach(addCall)
+          dispatchCalls(propagateTargs(receiver.widenDealias))
         else if (calleeSymbol.is(Private))
           addCall(new CallInfoWithContext(TermRef.withFixedSym(currentThis, calleeSymbol.name, calleeSymbol), targs, args, outerTargs, someCaller, someCallee))
         else
-          dispatchCalls(propagateTargs(AndType.apply(currentThis, thisType.tref))).foreach(addCall)
+          dispatchCalls(propagateTargs(AndType.apply(currentThis, thisType.tref)))
 
 
       case _: PreciseType =>
-        dispatchCalls(propagateTargs(receiver)).foreach(addCall)
+        dispatchCalls(propagateTargs(receiver))
       case _: ClosureType =>
-        dispatchCalls(propagateTargs(receiver)).foreach(addCall)
+        dispatchCalls(propagateTargs(receiver))
       case x: TermRef if x.symbol.is(Param) && x.symbol.owner == caller.call.termSymbol =>
-        dispatchCalls(propagateTargs(receiver)).foreach(addCall)
+        dispatchCalls(propagateTargs(receiver))
       case _ =>
-        dispatchCalls(propagateTargs(receiver.widenDealias)).foreach(addCall)
+        dispatchCalls(propagateTargs(receiver.widenDealias))
     }
   }
 
