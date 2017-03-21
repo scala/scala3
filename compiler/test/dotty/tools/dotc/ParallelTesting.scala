@@ -12,7 +12,7 @@ import interfaces.Diagnostic.ERROR
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
-import java.util.concurrent.{ Executors => JExecutors, TimeUnit }
+import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
 import scala.util.control.NonFatal
 import scala.util.Try
 import scala.collection.mutable
@@ -137,7 +137,8 @@ trait ParallelTesting {
       }
 
       pool.shutdown()
-      pool.awaitTermination(10, TimeUnit.MINUTES)
+      if (!pool.awaitTermination(10, TimeUnit.MINUTES))
+        throw new TimeoutException("Compiling targets timed out")
       this
     }
   }
