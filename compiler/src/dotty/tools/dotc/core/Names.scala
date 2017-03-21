@@ -46,10 +46,10 @@ object Names {
     type ThisName <: Name
 
     /** The start index in the character array */
-    val start: Int
+    def start: Int
 
     /** The length of the names */
-    override val length: Int
+    override def length: Int
 
     /** Is this name a type name? */
     def isTypeName: Boolean
@@ -69,23 +69,8 @@ object Names {
     /** This name downcasted to a term name */
     def asTermName: TermName
 
-    /** Create a new name of same kind as this one, in the given
-     *  basis, with `len` characters taken from `cs` starting at `offset`.
-     */
-    def fromChars(cs: Array[Char], offset: Int, len: Int): ThisName
-
-    /** Create new name of same kind as this name and with same
-     *  characters as given `name`.
-     */
-    def fromName(name: Name): ThisName = fromChars(chrs, name.start, name.length)
-
-    /** Create new name of same kind as this name with characters from
-     *  the given string
-     */
-    def fromString(str: String): ThisName = {
-      val cs = str.toCharArray
-      fromChars(cs, 0, cs.length)
-    }
+    /** A name of the same kind as this name and with same characters as given `name` */
+    def fromName(name: Name): ThisName
 
     override def toString =
       if (length == 0) "" else new String(chrs, start, length)
@@ -105,7 +90,7 @@ object Names {
 
     /** Replace \$op_name's by corresponding operator symbols. */
     def decode: Name =
-      if (contains('$')) fromString(NameTransformer.decode(toString))
+      if (contains('$')) fromName(termName(NameTransformer.decode(toString)))
       else this
 
     /** Replace operator symbols by corresponding \$op_name's. */
@@ -115,10 +100,7 @@ object Names {
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
 
-    def ++ (other: String): ThisName = {
-      val s = toString + other
-      fromChars(s.toCharArray, 0, s.length)
-    }
+    def ++ (other: String): ThisName = fromName(termName(toString + other))
 
     def replace(from: Char, to: Char): ThisName = {
       val cs = new Array[Char](length)
@@ -126,7 +108,7 @@ object Names {
       for (i <- 0 until length) {
         if (cs(i) == from) cs(i) = to
       }
-      fromChars(cs, 0, length)
+      fromName(termName(cs, 0, length))
     }
 
     def contains(ch: Char): Boolean = {
@@ -147,18 +129,20 @@ object Names {
     override def apply(index: Int): Char = chrs(start + index)
 
     override def slice(from: Int, until: Int): ThisName =
-      fromChars(chrs, start + from, until - from)
+      fromName(termName(chrs, start + from, until - from))
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
     override def seq = toCollection(this)
   }
 
-  class TermName(val start: Int, val length: Int, @sharable private[Names] var next: TermName) extends Name {
-    // `next` is @sharable because it is only modified in the synchronized block of termName.
+  abstract class TermName extends Name {
     type ThisName = TermName
     def isTypeName = false
     def isTermName = true
+    def toTermName = this
+    def asTypeName = throw new ClassCastException(this + " is not a type name")
+    def asTermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
     @volatile private[this] var _typeName: TypeName = null
@@ -167,22 +151,31 @@ object Names {
       if (_typeName == null)
         synchronized {
           if (_typeName == null)
-            _typeName = new TypeName(start, length, this)
+            _typeName = new TypeName(this)
         }
       _typeName
     }
-    def toTermName = this
-    def asTypeName = throw new ClassCastException(this + " is not a type name")
-    def asTermName = this
+
+    def fromName(name: Name): TermName = name.toTermName
 
     override def hashCode: Int = start
 
     override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
-
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
   }
 
-  class TypeName(val start: Int, val length: Int, val toTermName: TermName) extends Name {
+  class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
+    // `next` is @sharable because it is only modified in the synchronized block of termName.
+  }
+
+  abstract class DerivedName extends Name {
+    def underlying: Name
+    def start = underlying.start
+    override def length = underlying.length
+  }
+
+  class TypeName(val toTermName: TermName) extends DerivedName {
+    def underlying = toTermName
+
     type ThisName = TypeName
     def isTypeName = true
     def isTermName = false
@@ -190,12 +183,12 @@ object Names {
     def asTypeName = this
     def asTermName = throw new ClassCastException(this + " is not a term name")
 
+    def fromName(name: Name): TypeName = name.toTypeName
+
     override def hashCode: Int = -start
 
     override protected[this] def newBuilder: Builder[Char, Name] =
       termNameBuilder.mapResult(_.toTypeName)
-
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
   }
 
   // Nametable
@@ -214,7 +207,7 @@ object Names {
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of termName
-  private var table = new Array[TermName](InitialHashSize)
+  private var table = new Array[SimpleTermName](InitialHashSize)
 
   /** The number of defined names. */
   @sharable // because it's only mutated in synchronized block of termName
@@ -266,7 +259,7 @@ object Names {
     }
 
     /** Rehash chain of names */
-    def rehash(name: TermName): Unit =
+    def rehash(name: SimpleTermName): Unit =
       if (name != null) {
         val oldNext = name.next
         val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
@@ -280,7 +273,7 @@ object Names {
       size += 1
       if (size.toDouble / table.size > fillFactor) {
         val oldTable = table
-        table = new Array[TermName](table.size * 2)
+        table = new Array[SimpleTermName](table.size * 2)
         for (i <- 0 until oldTable.size) rehash(oldTable(i))
       }
     }
@@ -292,7 +285,7 @@ object Names {
         return name
       name = name.next
     }
-    name = new TermName(nc, len, next)
+    name = new SimpleTermName(nc, len, next)
     enterChars()
     table(h) = name
     incTableSize()
@@ -325,10 +318,10 @@ object Names {
   /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
-  /** The term name represented by the empty string */
-  val EmptyTermName = new TermName(-1, 0, null)
+  table(0) = new SimpleTermName(-1, 0, null)
 
-  table(0) = EmptyTermName
+  /** The term name represented by the empty string */
+  val EmptyTermName: TermName = table(0)
 
   /** The type name represented by the empty string */
   val EmptyTypeName = EmptyTermName.toTypeName
@@ -338,14 +331,15 @@ object Names {
   val STATIC_CONSTRUCTOR = termName("<clinit>")
   val EMPTY_PACKAGE = termName("<empty>")
 
-  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)
+  val dontEncode = Set[TermName](CONSTRUCTOR, EMPTY_PACKAGE)
 
   def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)
 
   implicit val nameCanBuildFrom: CanBuildFrom[Name, Char, Name] = new CanBuildFrom[Name, Char, Name] {
     def apply(from: Name): Builder[Char, Name] =
-      StringBuilder.newBuilder.mapResult(s => from.fromChars(s.toCharArray, 0, s.length))
+      StringBuilder.newBuilder.mapResult(s =>
+        from.fromName(termName(s.toCharArray, 0, s.length)))
     def apply(): Builder[Char, Name] = termNameBuilder
   }
 
