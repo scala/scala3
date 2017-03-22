@@ -275,7 +275,7 @@ object Inferencing {
     if (constraint.uninstVars exists qualifies) interpolate()
   }
 
-  /** Instantiate undetermined type variables to that type `tp` is
+  /** Instantiate undetermined type variables so that type `tp` is
    *  maximized and return None. If this is not possible, because a non-variant
    *  typevar is not uniquely determined, return that typevar in a Some.
    */
@@ -302,7 +302,7 @@ object Inferencing {
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
-   *  Note: We intentionally use a relaxed version of variance here,
+   *  Note 1: We intentionally use a relaxed version of variance here,
    *  where the variance does not change under a prefix of a named type
    *  (the strict version makes prefixes invariant). This turns out to be
    *  better for type inference. In a nutshell, if a type variable occurs
@@ -311,6 +311,10 @@ object Inferencing {
    *     (U? >: x.type) # T
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
+   *
+   *  Note 2: Parameters of implicit method types are assumed to be non-variant here.
+   *  This is necessary to prevent them from getting interpolated before an implicit
+   *  parameter search.
    */
   private def variances(tp: Type, include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
     val constraint = ctx.typerState.constraint
@@ -324,6 +328,11 @@ object Inferencing {
           if (v == null) vmap.updated(t, variance)
           else if (v == variance || v == 0) vmap
           else vmap.updated(t, 0)
+        case t: ImplicitMethodType =>
+          val saved = variance
+          variance = 0
+          val vmap1 = try foldOver(vmap, t.paramTypes) finally variance = saved
+          apply(vmap1, t.resultType)
         case _ =>
           foldOver(vmap, t)
       }
