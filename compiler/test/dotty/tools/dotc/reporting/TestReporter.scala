@@ -2,35 +2,61 @@ package dotty.tools
 package dotc
 package reporting
 
+import java.io.{ PrintWriter, File => JFile, FileOutputStream }
+import java.text.SimpleDateFormat
+import java.util.Date
+
 import scala.collection.mutable
+
 import util.SourcePosition
 import core.Contexts._
 import Reporter._
-import java.io.PrintWriter
 import diagnostic.{ Message, MessageContainer, NoExplanation }
 import diagnostic.messages._
+import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 
-class TestReporter(writer: PrintWriter) extends Reporter
-with UniqueMessagePositions with HideNonSensicalMessages {
-
+class TestReporter protected (outWriter: PrintWriter, protected val filePrintln: String => Unit, logLevel: Int) extends Reporter
+with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
   import MessageContainer._
 
-  /** maximal number of error messages to be printed */
-  protected def ErrorLimit = 100
+  protected final val _errorBuf = mutable.ArrayBuffer.empty[MessageContainer]
+  final def errors: Iterator[MessageContainer] = _errorBuf.iterator
 
-  def printPos(pos: SourcePosition): Unit =
+  final def inlineInfo(pos: SourcePosition): String =
     if (pos.exists) {
-      if (pos.outer.exists) {
-        writer.println(s"\ninlined at ${pos.outer}:\n")
-        printPos(pos.outer)
-      }
+      if (pos.outer.exists)
+        s"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)
+      else ""
     }
+    else ""
+
+  final def printSummary(): this.type = {
+    val msg = _summary.toString
+    if (msg.nonEmpty) {
+      outWriter.println(msg)
+      filePrintln(msg)
+    }
+    this
+  }
+
+  private var _summary = new StringBuilder
+  final def echoSummary(msg: String): this.type = {
+    _summary.append(msg)
+    this
+  }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = {
-    val posStr = s"${pos.line + 1}: "
-    writer.println(posStr + msg)
-    printPos(pos)
+  def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+    val msg = messageAndPos(m.contained, m.pos, diagnosticLevel(m))
+    val extraInfo = inlineInfo(m.pos)
+
+    if (m.level >= logLevel) {
+      outWriter.println(msg)
+      if (extraInfo.nonEmpty) outWriter.println(extraInfo)
+    }
+
+    filePrintln(msg)
+    if (extraInfo.nonEmpty) filePrintln(extraInfo)
   }
 
   override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
@@ -41,11 +67,56 @@ with UniqueMessagePositions with HideNonSensicalMessages {
     }
 
     m match {
-      case m: Error =>
-        printMessageAndPos(m.contained.kind + extra, m.pos)
+      case m: Error => {
+        _errorBuf.append(m)
+        printMessageAndPos(m, extra)
+      }
       case w: Warning =>
-        printMessageAndPos(w.contained.kind + extra, w.pos)
+        printMessageAndPos(w, extra)
       case _ =>
+    }
+  }
+}
+
+object TestReporter {
+  private[this] val logWriter = {
+    val df = new SimpleDateFormat("yyyy-MM-dd-HH:mm")
+    val timestamp = df.format(new Date)
+    new PrintWriter(new FileOutputStream(new JFile(s"../tests-$timestamp.log"), true))
+  }
+
+  def parallelReporter(logLevel: Int): TestReporter = new TestReporter(
+    new PrintWriter(Console.err, true),
+    str => logWriter.synchronized {
+      logWriter.println(str)
+      logWriter.flush()
+    },
+    logLevel
+  )
+
+  def reporter(logLevel: Int): TestReporter = new TestReporter(
+    new PrintWriter(Console.err, true),
+    logWriter.println,
+    logLevel
+  )
+
+  def simplifiedReporter(writer: PrintWriter): TestReporter = new TestReporter(
+    writer,
+    logWriter.println,
+    WARNING
+  ) {
+    /** Prints the message with the given position indication in a simplified manner */
+    override def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
+      val msg = s"${m.pos.line + 1}: " + m.contained.kind + extra
+      val extraInfo = inlineInfo(m.pos)
+
+      writer.println(msg)
+      filePrintln(msg)
+
+      if (extraInfo.nonEmpty) {
+        writer.println(extraInfo)
+        filePrintln(extraInfo)
+      }
     }
   }
 }

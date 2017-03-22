@@ -3,20 +3,22 @@ package tools
 package dotc
 
 import java.io.{ File => JFile }
-import scala.io.Source
-
-import core.Contexts._
-import reporting.{ Reporter, UniqueMessagePositions, HideNonSensicalMessages, MessageRendering }
-import reporting.diagnostic.MessageContainer
-import interfaces.Diagnostic.ERROR
+import java.text.SimpleDateFormat
+import java.util.HashMap
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
 import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
+
+import scala.io.Source
 import scala.util.control.NonFatal
 import scala.util.Try
 import scala.collection.mutable
-import java.util.HashMap
+
+import core.Contexts._
+import reporting.{ Reporter, TestReporter }
+import reporting.diagnostic.MessageContainer
+import interfaces.Diagnostic.ERROR
 
 trait ParallelTesting {
 
@@ -281,7 +283,7 @@ trait ParallelTesting {
           (errorMap, expectedErrors)
         }
 
-        def getMissingAnnotations(errorMap: HashMap[String, Integer], reporterErrors: List[MessageContainer]) = !reporterErrors.forall { error =>
+        def getMissingAnnotations(errorMap: HashMap[String, Integer], reporterErrors: Iterator[MessageContainer]) = !reporterErrors.forall { error =>
           val getter = if (error.pos.exists) {
             val fileName = error.pos.source.file.toString
             s"$fileName:${error.pos.line}"
@@ -318,7 +320,7 @@ trait ParallelTesting {
             val (errorMap, expectedErrors) = errorMapAndExpected(compilationUnits.toArray.flatten)
             val reporters = compilationUnits.map(files => compile(files.filter(isCompilable), flags, true, times, outDir))
             val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
-            val errors = reporters.flatMap(_.errors)
+            val errors = reporters.iterator.flatMap(_.errors)
             (expectedErrors, actualErrors, () => getMissingAnnotations(errorMap, errors), errorMap)
           }
         }
@@ -347,33 +349,7 @@ trait ParallelTesting {
     }
   }
 
-  private class DaftReporter(suppress: Boolean)
-  extends Reporter with UniqueMessagePositions with HideNonSensicalMessages
-  with MessageRendering {
-    private var _errors: List[MessageContainer] = Nil
-    def errors = _errors
-
-    private var _summary = new StringBuilder
-    def echoSummary(msg: String): this.type = {
-      _summary.append(msg)
-      this
-    }
-
-    def printSummary(): this.type = {
-      val msg = _summary.toString
-      if (msg.nonEmpty) println(msg)
-      this
-    }
-
-    override def doReport(m: MessageContainer)(implicit ctx: Context) = {
-      if (m.level == ERROR) {
-        _errors = m :: _errors
-        if (!suppress) System.err.println(messageAndPos(m.contained, m.pos, diagnosticLevel(m)))
-      }
-    }
-  }
-
-  private def compile(files0: Array[JFile], flags0: Array[String], suppressErrors: Boolean, times: Int, targetDir: JFile): DaftReporter = {
+  private def compile(files0: Array[JFile], flags0: Array[String], suppressErrors: Boolean, times: Int, targetDir: JFile): TestReporter = {
 
     val flags = flags0 ++ Array("-d", targetDir.getAbsolutePath)
 
@@ -418,7 +394,7 @@ trait ParallelTesting {
     val javaCompiledBefore = compileWithJavac(javaFiles)
 
     // Then we compile the scala files:
-    val reporter = new DaftReporter(suppress = suppressErrors)
+    val reporter = TestReporter.parallelReporter(logLevel = if (suppressErrors) ERROR + 1 else ERROR)
     val driver =
       if (times == 1) new Driver { def newCompiler(implicit ctx: Context) = new Compiler }
       else new Driver {
@@ -428,7 +404,7 @@ trait ParallelTesting {
           (emptyReporter /: (1 to n)) ((_, i) => op(i))
 
         private def echoSummary(rep: Reporter, msg: String)(implicit ctx: Context) =
-          rep.asInstanceOf[DaftReporter].echoSummary(msg)
+          rep.asInstanceOf[TestReporter].echoSummary(msg)
 
         override def doCompile(comp: Compiler, files: List[String])(implicit ctx: Context) =
           ntimes(times) { run =>

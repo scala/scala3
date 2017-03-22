@@ -63,7 +63,7 @@ trait Reporting { this: Context =>
            |This can be achieved by adding the import clause 'import $fqname'
            |or by setting the compiler option -language:$feature.
            |See the Scala docs for value $fqname for a discussion
-           |why the feature $req be explicitly enabled."""
+           |why the feature $req be explicitly enabled.""".stripMargin
       }
     }
 

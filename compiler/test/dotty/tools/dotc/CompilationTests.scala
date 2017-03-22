@@ -249,7 +249,8 @@ object CompilationTests {
   }
 
   val noCheckOptions = Array(
-    "-pagewidth", "120"
+    "-pagewidth", "120",
+    "-color:never"
   )
 
   val checkOptions = Array(

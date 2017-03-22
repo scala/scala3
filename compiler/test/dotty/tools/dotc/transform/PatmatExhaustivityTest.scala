@@ -17,7 +17,7 @@ class PatmatExhaustivityTest {
 
   private def compileFile(file: File) = {
     val stringBuffer = new StringWriter()
-    val reporter = new TestReporter(new PrintWriter(stringBuffer))
+    val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
     try {
       Main.process((file.getPath::options).toArray, reporter, null)
@@ -40,7 +40,7 @@ class PatmatExhaustivityTest {
   /** A single test with multiple files grouped in a folder */
   private def compileDir(file: File) = {
     val stringBuffer = new StringWriter()
-    val reporter = new TestReporter(new PrintWriter(stringBuffer))
+    val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
     val files = Directory(file.getPath).list.toList
       .filter(f => f.extension == "scala" || f.extension == "java" )
