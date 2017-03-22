@@ -227,13 +227,13 @@ object Names {
       !NameInfo.definesNewName(ownKind) && ownKind > kind && underlying.is(kind)
     }
 
-    override def hashCode: Int = start
-
     override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
   }
 
   class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
+    override def hashCode: Int = start
+
     override def toString =
       if (length == 0) "" else new String(chrs, start, length)
 
@@ -256,8 +256,6 @@ object Names {
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
     def without(kind: NameInfo.Kind): TypeName = toTermName.without(kind).toTypeName
     def is(kind: NameInfo.Kind) = toTermName.is(kind)
-
-    override def hashCode: Int = -start
 
     override protected[this] def newBuilder: Builder[Char, Name] =
       termNameBuilder.mapResult(_.toTypeName)
