@@ -89,7 +89,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
-      if (defn.PhantomClasses contains elemClass) elemClass = defn.ObjectClass
+      if (defn.NotRuntimeClasses contains elemClass) elemClass = defn.ObjectClass
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
         .appliedToType(elemType)

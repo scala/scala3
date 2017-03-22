@@ -169,7 +169,16 @@ object Types {
         case _ =>
           false
       }
-      cls == defn.AnyClass || loop(this)
+      loop(this)
+    }
+
+    final def isPhantom(implicit ctx: Context): Boolean = phantomLatticeClass.exists
+
+    final def phantomLatticeClass(implicit ctx: Context): Type = this match {
+      case tp: ClassInfo if tp.classSymbol.owner eq defn.PhantomClass => tp.prefix
+      case tp: TypeProxy => tp.superType.phantomLatticeClass
+      case tp: AndOrType => tp.tp1.phantomLatticeClass
+      case _ => NoType
     }
 
     /** Is this type guaranteed not to have `null` as a value?

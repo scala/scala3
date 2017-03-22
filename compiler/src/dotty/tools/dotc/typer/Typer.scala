@@ -661,6 +661,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt.notApplied)
     val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+    if (thenp1.tpe.isPhantom ^ elsep1.tpe.isPhantom)
+      ctx.error(IfElsePhantom(), tree.pos)
     val thenp2 :: elsep2 :: Nil = harmonize(thenp1 :: elsep1 :: Nil)
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
@@ -681,9 +683,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
     val untpd.Function(args, body) = tree
     if (ctx.mode is Mode.Type) {
-      val funCls = defn.FunctionClass(args.length, tree.isInstanceOf[untpd.ImplicitFunction])
-      typed(cpy.AppliedTypeTree(tree)(
-        untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+      val phantomicity = Phantomicity((args :+ body).map(tr => typed(tr).tpe))
+      val funTpe = defn.FunctionType(phantomicity, tree.isInstanceOf[untpd.ImplicitFunction])
+      typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funTpe), args :+ body), pt)
     }
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
@@ -833,6 +835,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
+        if (sel1.tpe.isPhantom)
+          ctx.error(MatchOnPhantom(), sel1.pos)
         val selType = widenForMatchSelector(
             fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
 
@@ -864,7 +868,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       accu(Set.empty, selType)
     }
 
-    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+    val tpdCases = cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+
+    val phantomBranches = tpdCases.count(_.body.tpe.isPhantom)
+    if (phantomBranches != 0 && phantomBranches != tpdCases.size)
+      ctx.error(MatchPhantom(), tpdCases.head.pos)
+
+    tpdCases
   }
 
   /** Type a case. Overridden in ReTyper, that's why it's separate from
@@ -1091,8 +1101,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
+      val tpt2 = adaptIfPhantomsFunction(tpt1, args1)
       // check that arguments conform to bounds is done in phase PostTyper
-      assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
+      assignType(cpy.AppliedTypeTree(tree)(tpt2, args1), tpt2, args1)
     }
   }
 
@@ -1120,10 +1131,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
-    val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
+    val TypeBoundsTree(lo, hi) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo1, hi1), lo1, hi1)
+
+    val lo2 = if (!lo1.isEmpty) lo1 else typed(untpd.TypeTree(defn.bottomOf(hi1.typeOpt)))
+    val hi2 = if (!hi1.isEmpty) hi1 else typed(untpd.TypeTree(defn.topOf(lo1.typeOpt)))
+
+    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
     if (ctx.mode.is(Mode.Pattern)) {
       // Associate a pattern-bound type symbol with the wildcard.
       // The bounds of the type symbol can be constrained when comparing a pattern type
@@ -1343,6 +1358,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)
     }
+
+    if (!cls.is(Module) && cls.classParents.exists(_.classSymbol eq defn.PhantomClass))
+      ctx.error(PhantomIsInObject(), cdef.pos)
 
     // check value class constraints
     checkDerivedValueClass(cls, body1)
@@ -1648,8 +1666,32 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
+    // todo: retract mode between Type and Pattern?
+
+    /** Check that the are not mixed Any/Phantom.Any types in `&`, `|` and type bounds,
+     *  this includes Phantom.Any of different universes.
+     */
+    def checkedTops(tree: untpd.Tree): Set[Type] = {
+      def checkedTops2(tree1: untpd.Tree, tree2: untpd.Tree, msg: => Message, pos: Position): Set[Type] = {
+        val allTops = checkedTops(tree1) union checkedTops(tree2)
+        if (allTops.size > 1)
+          ctx.error(msg, tree.pos)
+        allTops
+      }
+      tree match {
+        case TypeBoundsTree(lo, hi) =>
+          checkedTops2(lo, hi, PhantomCrossedMixedBounds(lo, hi), tree.pos)
+        case untpd.InfixOp(left, op, right) =>
+          checkedTops2(left, right, PhantomCrossedMixedBounds(left, right), tree.pos)
+        case EmptyTree => Set.empty
+        case _ => Set(defn.topOf(tree.typeOpt))
+      }
+    }
+    checkedTops(tree)
+
     typed(tree, pt)(ctx addMode Mode.Type)
+  }
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
@@ -2103,4 +2145,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
   }
+
+  private def adaptIfPhantomsFunction(tpt: tpd.Tree, args: List[tpd.Tree])(implicit ctx: Context): tpd.Tree = {
+    val sym = tpt.tpe.typeSymbol
+    if (!defn.isFunctionClass(sym) || !args.exists(_.tpe.isPhantom)) tpt
+    else {
+      val phantomicity = Phantomicity(args.map(_.tpe))
+      val phantomFunction = Ident(defn.FunctionType(phantomicity, sym.name.isImplicitFunction))
+      phantomFunction.setPosUnchecked(tpt.pos)
+      typed(phantomFunction, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
+    }
+  }
+
 }

@@ -11,6 +11,7 @@ import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
 import reporting.{Reporter, ConsoleReporter}
 import Phases.Phase
 import transform._
+import transform.phantom._
 import util.FreshNameCreator
 import transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import core.DenotTransformers.DenotTransformer
@@ -73,7 +74,10 @@ class Compiler {
            new AugmentScala2Traits, // Expand traits defined in Scala 2.11 to simulate old-style rewritings
            new ResolveSuper,        // Implement super accessors and add forwarders to trait methods
            new PrimitiveForwarders, // Add forwarders to trait methods that have a mismatch between generic and primitives
-           new ArrayConstructors),  // Intercept creation of (non-generic) arrays and intrinsify.
+           new ArrayConstructors,   // Intercept creation of (non-generic) arrays and intrinsify.
+           new PhantomTermEval),    // Extracts the evaluation of phantom arguments placing them before the call.
+      List(new PhantomTermErasure), // Erases phantom parameters and arguments
+      List(new PhantomTypeErasure), // Erases phantom types to ErasedPhantom
       List(new Erasure),            // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
       List(new ElimErasedValueType, // Expand erased value types to their underlying implmementation types
            new VCElideAllocations,  // Peep-hole optimization to eliminate unnecessary value class allocations
@@ -90,6 +94,7 @@ class Compiler {
       List(new LambdaLift,          // Lifts out nested functions to class scope, storing free variables in environments
                                        // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new ElimStaticThis,      // Replace `this` references to static objects by global identifiers
+           new PhantomVals,         // Remove ValDefs of phantom type
            new Flatten,             // Lift all inner classes to package scope
            new RestoreScopes),      // Repair scopes rendered invalid by moving definitions in prior phases of the group
       List(new MoveStatics,         // Move static methods to companion classes
