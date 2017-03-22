@@ -25,6 +25,8 @@ class ClassfileParser(
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
 
+  //println(s"parsing ${classRoot.name.debugString} ${moduleRoot.name.debugString}")
+
   import ClassfileConstants._
   import ClassfileParser._
 
@@ -91,7 +93,12 @@ class ClassfileParser(
 
     if (currentIsTopLevel) {
       val c = pool.getClassSymbol(nameIdx)
-      if (c != classRoot.symbol) mismatchError(c)
+      if (c != classRoot.symbol) {
+        println(currentClassName.debugString) // TODO: remove
+        println(c.name.debugString)
+        println(classRoot.symbol.name.debugString)
+        mismatchError(c)
+      }
     }
 
     addEnclosingTParams()
