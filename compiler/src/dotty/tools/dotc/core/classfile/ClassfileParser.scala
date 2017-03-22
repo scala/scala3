@@ -931,7 +931,7 @@ class ClassfileParser(
         errorBadIndex(index)
 
       if (internalized(index) == null)
-        internalized(index) = getName(index).replace('/', '.')
+        internalized(index) = getName(index).replace('/', '.').unmangleClassName
 
       internalized(index)
     }
