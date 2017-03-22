@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition }
+import util.{SourceFile, SourcePosition}
 import Tokens._
 import Scanners._
 import MarkupParsers._
@@ -12,7 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import ast.Positioned
+import ast.{Positioned, Trees, untpd}
 import ast.Trees._
 import Decorators._
 import StdNames._
@@ -20,7 +20,8 @@ import util.Positions._
 import Constants._
 import ScriptParsers._
 import Comments._
-import scala.annotation.{tailrec, switch}
+
+import scala.annotation.{switch, tailrec}
 import util.DotClass
 import rewrite.Rewrites.patch
 
@@ -1921,6 +1922,21 @@ object Parsers {
       }
     }
 
+
+
+    private def checkVarArgsRules(vparamss: List[List[untpd.ValDef]]): List[untpd.ValDef] = {
+      def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {
+        case PostfixOp(_, op) if op.name == nme.raw.STAR => true
+        case _ => false
+      }
+
+      vparamss.flatMap { params =>
+        if (params.nonEmpty) {
+          params.init.filter(valDef => isVarArgs(valDef.tpt))
+        } else List()
+      }
+    }
+
     /** DefDef ::= DefSig (`:' Type [`=' Expr] | "=" Expr)
      *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
@@ -1950,6 +1966,10 @@ object Parsers {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
+        val listOfErrors = checkVarArgsRules(vparamss)
+        listOfErrors.foreach { vparam =>
+          syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
+        }
         var tpt = fromWithinReturnType(typedOpt())
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
