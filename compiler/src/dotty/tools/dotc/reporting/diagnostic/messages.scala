@@ -1212,7 +1212,7 @@ object messages {
 
   case class VarArgsParamMustComeLast()(implicit ctx: Context)
     extends Message(IncorrectRepeatedParameterSyntaxID) {
-    override def msg: String = "*-parameter must come last"
+    override def msg: String = "varargs parameter must come last"
 
     override def kind: String = "Syntax"
 
