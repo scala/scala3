@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{SourceFile, SourcePosition}
+import util.{ SourceFile, SourcePosition }
 import Tokens._
 import Scanners._
 import MarkupParsers._
@@ -21,7 +21,7 @@ import Constants._
 import ScriptParsers._
 import Comments._
 
-import scala.annotation.{switch, tailrec}
+import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
 
