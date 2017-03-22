@@ -8,7 +8,6 @@ import Names._
  */
 abstract class NameInfo {
   def kind: NameInfo.Kind
-  def oneOfAKind = true
   def mkString(underlying: TermName): String
 }
 
@@ -18,22 +17,25 @@ object NameInfo {
 
   val TermNameKind = 0
   val QualifiedKind = 1
+  val ModuleClassKind = 2
+
+  def definesNewName(kind: Kind) = kind <= QualifiedKind
 
   /** TermNames have the lowest possible kind */
   val TermName = new NameInfo {
-    def kind = 0
-    def mkString(underlying: TermName) = underlying.toString // will cause an unsupptored exception
+    def kind = TermNameKind
+    def mkString(underlying: TermName) = underlying.toString // will cause an unsupported exception
   }
 
-  case class Qualified(name: TermName) extends NameInfo {
-    def kind = 1
-    override def oneOfAKind = false
-    def mkString(underlying: TermName) = s"$underlying.$name"
+  case class Qualified(name: TermName, separator: String) extends NameInfo {
+    def kind = QualifiedKind
+    def mkString(underlying: TermName) = s"$underlying$separator$name"
+    override def toString = s"Qualified($name, $separator)"
   }
 
   val ModuleClass = new NameInfo {
-    def kind = 10
+    def kind = ModuleClassKind
     def mkString(underlying: TermName) = underlying + "$"
+    override def toString = "ModuleClass"
   }
-
 }

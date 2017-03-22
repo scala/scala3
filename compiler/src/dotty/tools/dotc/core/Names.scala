@@ -74,8 +74,10 @@ object Names {
     /** A name of the same kind as this name and with same characters as given `name` */
     def fromName(name: Name): ThisName
 
-    override def toString =
-      if (length == 0) "" else new String(chrs, start, length)
+    def derived(info: NameInfo): ThisName
+    def without(kind: NameInfo.Kind): ThisName
+    def is(kind: NameInfo.Kind): Boolean
+    def debugString: String
 
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -202,20 +204,27 @@ object Names {
       }
 
       val ownKind = this.info.kind
-      if (ownKind > info.kind)
+      if (NameInfo.definesNewName(info.kind)) addIt()
+      else if (ownKind > info.kind)
         underlying.derived(info).derived(this.info)
-      else if (ownKind == info.kind)
-        if (info.oneOfAKind) {
-          assert(info == this.info)
-          this
-        }
-        else addIt()
+      else if (ownKind == info.kind) {
+        assert(info == this.info)
+        this
+      }
       else addIt()
+    }
+
+    def without(kind: NameInfo.Kind): TermName = {
+      val ownKind = info.kind
+      if (ownKind < kind || NameInfo.definesNewName(ownKind)) this
+      else if (ownKind == kind) underlying.without(kind)
+      else underlying.without(kind).derived(this.info)
     }
 
     def is(kind: NameInfo.Kind): Boolean = {
       val ownKind = info.kind
-      ownKind == kind || ownKind > kind && underlying.is(kind)
+      ownKind == kind ||
+      !NameInfo.definesNewName(ownKind) && ownKind > kind && underlying.is(kind)
     }
 
     override def hashCode: Int = start
@@ -225,6 +234,10 @@ object Names {
 
   class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
+    override def toString =
+      if (length == 0) "" else new String(chrs, start, length)
+
+    def debugString: String = toString
   }
 
   class TypeName(val toTermName: TermName) extends Name {
@@ -240,10 +253,17 @@ object Names {
 
     def fromName(name: Name): TypeName = name.toTypeName
 
+    def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
+    def without(kind: NameInfo.Kind): TypeName = toTermName.without(kind).toTypeName
+    def is(kind: NameInfo.Kind) = toTermName.is(kind)
+
     override def hashCode: Int = -start
 
     override protected[this] def newBuilder: Builder[Char, Name] =
       termNameBuilder.mapResult(_.toTypeName)
+
+    override def toString = toTermName.toString
+    override def debugString = toTermName.debugString + "/T"
   }
 
   /** A term name that's derived from an `underlying` name and that
@@ -254,6 +274,7 @@ object Names {
     def start = underlying.start
     override def length = underlying.length
     override def toString = info.mkString(underlying)
+    override def debugString = s"${underlying.debugString}[$info]"
   }
 
   // Nametable
