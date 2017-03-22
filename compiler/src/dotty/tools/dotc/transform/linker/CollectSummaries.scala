@@ -35,21 +35,24 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
   val treeTransform: Collect = new Collect
 
-  /*
   private val sectionName = "MethodSummaries"
   private val version = 1
 
   private var noSummaryAvailable = Set[Symbol]()
 
-  private var methodSummaries2: List[MethodSummary] = Nil
+  private var loadedMethodSummaries: Map[Symbol, MethodSummary] = Map.empty
 
-  def getSummary(d: Symbol)(implicit ctx: Context): Option[MethodSummary] = {
+  def getLoadedSummary(d: Symbol)(implicit ctx: Context): Option[MethodSummary] = {
     if (noSummaryAvailable(d)) None
-    else methodSummaries.find(_._2.methodDef == d).orElse {
-      val nw = retrieveSummary(d)
-      methodSummaries2 = nw ::: methodSummaries2
-      nw.headOption
-    }.flatten
+    else {
+      if (!loadedMethodSummaries.contains(d)) {
+        val nw = retrieveSummary(d)
+        nw.foreach(ms => loadedMethodSummaries = loadedMethodSummaries.updated(ms.methodDef, ms))
+        if (!loadedMethodSummaries.contains(d))
+          noSummaryAvailable += d
+      }
+      loadedMethodSummaries.get(d)
+    }
   }
 
   private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = {
@@ -118,7 +121,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                           val argsSz = reader.readByte()
                           val argsPassed = for(_ <- 0 until argsSz) yield readSymbolRef.info
                           val source = None // TODO
-                          new CallInfo(t, targs.toList, argsPassed.toList, source)
+                          new CallInfo(t.asInstanceOf[TermRef], targs.toList, argsPassed.toList, source)
                         }
 
                         val calls = for(_ <- 0 until listSz) yield readCallInfo
@@ -158,7 +161,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
         }
     }
   }
-  */
+
 
   override def run(implicit ctx: Context): Unit = {
     if (CollectSummaries.isPhaseRequired)
@@ -544,8 +547,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-  /*
-      for { cls <- ctx.compilationUnit.pickled.keySet} {
+      for { cls <- ctx.compilationUnit.picklers.keySet} {
         def serializeCS(methods: List[MethodSummary], pickler: TastyPickler): Unit = {
           val buf = new TastyBuffer(5000)
           val treePickl = pickler.treePkl
@@ -606,14 +608,12 @@ class CollectSummaries extends MiniPhase { thisTransform =>
           // and will be compressed during bytecode generation by TreePickler.compactify
         }
 
-          val s = methodSummaries.filter(_._2.methodDef.topLevelClass == cls)
+          val s = methodSummaries.filter(_._1.topLevelClass == cls)
 
           // println(s)
 
-          serializeCS(s.values.toList, ctx.compilationUnit.pickled(cls))
-      } */
-
-
+          serializeCS(s.values.toList, ctx.compilationUnit.picklers(cls))
+      }
 
       tree
     }

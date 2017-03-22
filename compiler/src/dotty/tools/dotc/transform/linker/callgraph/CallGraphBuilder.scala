@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, _}
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.ResolveSuper
+import dotty.tools.dotc.transform.linker.CollectSummaries
 import dotty.tools.dotc.transform.linker.summaries._
 import dotty.tools.dotc.transform.linker.types._
 
@@ -582,6 +583,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
           }
 
         case None =>
+
+          // val loadedSummary = ctx.summariesPhase.asInstanceOf[CollectSummaries].getLoadedSummary(method.callSymbol)
+
           if (!outerMethods.contains(method.callSymbol)) {
 
             outerMethods += method.callSymbol

@@ -46,7 +46,7 @@ class TreeUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName, posUnpi
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private var roots: Set[SymDenotation] = null
+  protected var roots: Set[SymDenotation] = Set.empty
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
