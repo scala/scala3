@@ -544,8 +544,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def toTermName: Name = n.toTermName
     def dropModule: Name = n.stripModuleClassSuffix
 
-    def len: Int = n.length
-    def offset: Int = n.start
+    def len: Int = n.toSimpleName.length
+    def offset: Int = n.toSimpleName.start
     def isTermName: Boolean = n.isTermName
     def startsWith(s: String): Boolean = n.startsWith(s)
   }

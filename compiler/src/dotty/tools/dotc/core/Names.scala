@@ -39,19 +39,10 @@ object Names {
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
    */
-  abstract class Name extends DotClass
-    with PreName
-    with collection.immutable.Seq[Char]
-    with IndexedSeqOptimized[Char, Name] {
+  abstract class Name extends DotClass with PreName {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
-
-    /** The start index in the character array */
-    def start: Int
-
-    /** The length of the names */
-    override def length: Int
 
     /** Is this name a type name? */
     def isTypeName: Boolean
@@ -71,6 +62,8 @@ object Names {
     /** This name downcasted to a term name */
     def asTermName: TermName
 
+    def toSimpleName: SimpleTermName = this.asInstanceOf[SimpleTermName]
+
     /** A name of the same kind as this name and with same characters as given `name` */
     def fromName(name: Name): ThisName
 
@@ -80,17 +73,6 @@ object Names {
     def debugString: String
 
     def toText(printer: Printer): Text = printer.toText(this)
-
-    /** Write to UTF8 representation of this name to given character array.
-     *  Start copying to index `to`. Return index of next free byte in array.
-     *  Array must have enough remaining space for all bytes
-     *  (i.e. maximally 3*length bytes).
-     */
-    final def copyUTF8(bs: Array[Byte], offset: Int): Int = {
-      val bytes = Codec.toUTF8(chrs, start, length)
-      scala.compat.Platform.arraycopy(bytes, 0, bs, offset, bytes.length)
-      offset + bytes.length
-    }
 
     /** Replace \$op_name's by corresponding operator symbols. */
     def decode: Name =
@@ -103,41 +85,13 @@ object Names {
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
+    def ++ (other: String): ThisName
 
-    def ++ (other: String): ThisName = fromName(termName(toString + other))
+    def replace(from: Char, to: Char): ThisName = fromName(toSimpleName.replace(from, to))
 
-    def replace(from: Char, to: Char): ThisName = {
-      val cs = new Array[Char](length)
-      Array.copy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
-        if (cs(i) == from) cs(i) = to
-      }
-      fromName(termName(cs, 0, length))
-    }
-
-    def contains(ch: Char): Boolean = {
-      var i = 0
-      while (i < length && chrs(start + i) != ch) i += 1
-      i < length
-    }
-
-    def firstChar = chrs(start)
-
-    // ----- Collections integration -------------------------------------
-
-    override protected[this] def thisCollection: WrappedString = new WrappedString(repr.toString)
-    override protected[this] def toCollection(repr: Name): WrappedString = new WrappedString(repr.toString)
-
-    override protected[this] def newBuilder: Builder[Char, Name] = unsupported("newBuilder")
-
-    override def apply(index: Int): Char = chrs(start + index)
-
-    override def slice(from: Int, until: Int): ThisName =
-      fromName(termName(chrs, start + from, until - from))
+    def contains(ch: Char): Boolean
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
-
-    override def seq = toCollection(this)
   }
 
   abstract class TermName extends Name {
@@ -226,12 +180,30 @@ object Names {
       ownKind == kind ||
       !NameInfo.definesNewName(ownKind) && ownKind > kind && underlying.is(kind)
     }
-
-    override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
   }
 
   class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
+
+    def apply(n: Int) = chrs(start + n)
+
+    def ++ (other: String): ThisName = termName(toString + other)
+
+    def contains(ch: Char): Boolean = {
+      var i = 0
+      while (i < length && chrs(start + i) != ch) i += 1
+      i < length
+    }
+
+    override def replace(from: Char, to: Char): ThisName = {
+      val cs = new Array[Char](length)
+      Array.copy(chrs, start, cs, 0, length)
+      for (i <- 0 until length) {
+        if (cs(i) == from) cs(i) = to
+      }
+      fromName(termName(cs, 0, length))
+    }
+
     override def hashCode: Int = start
 
     override def toString =
@@ -241,8 +213,12 @@ object Names {
   }
 
   class TypeName(val toTermName: TermName) extends Name {
-    def start = toTermName.start
-    override def length = toTermName.length
+
+    override def toSimpleName: SimpleTermName = toTermName.toSimpleName
+
+    def ++ (other: String): ThisName = toTermName.++(other).toTypeName
+
+    def contains(ch: Char): Boolean = toTermName.contains(ch)
 
     type ThisName = TypeName
     def isTypeName = true
@@ -257,9 +233,6 @@ object Names {
     def without(kind: NameInfo.Kind): TypeName = toTermName.without(kind).toTypeName
     def is(kind: NameInfo.Kind) = toTermName.is(kind)
 
-    override protected[this] def newBuilder: Builder[Char, Name] =
-      termNameBuilder.mapResult(_.toTypeName)
-
     override def toString = toTermName.toString
     override def debugString = toTermName.debugString + "/T"
   }
@@ -269,8 +242,8 @@ object Names {
    */
   class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
-    def start = underlying.start
-    override def length = underlying.length
+    def ++ (other: String): ThisName = derived(info ++ other)
+    def contains(ch: Char): Boolean = underlying.contains(ch) || info.contains(ch)
     override def toString = info.mkString(underlying)
     override def debugString = s"${underlying.debugString}[$info]"
   }
@@ -319,7 +292,7 @@ object Names {
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(cs: Array[Char], offset: Int, len: Int): TermName = synchronized {
+  def termName(cs: Array[Char], offset: Int, len: Int): SimpleTermName = synchronized {
     util.Stats.record("termName")
     val h = hashValue(cs, offset, len) & (table.size - 1)
 
@@ -385,7 +358,7 @@ object Names {
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(bs: Array[Byte], offset: Int, len: Int): TermName = {
+  def termName(bs: Array[Byte], offset: Int, len: Int): SimpleTermName = {
     val chars = Codec.fromUTF8(bs, offset, len)
     termName(chars, 0, chars.length)
   }
@@ -397,7 +370,7 @@ object Names {
     termName(bs, offset, len).toTypeName
 
   /** Create a term name from a string, without encoding operators */
-  def termName(s: String): TermName = termName(s.toCharArray, 0, s.length)
+  def termName(s: String): SimpleTermName = termName(s.toCharArray, 0, s.length)
 
   /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
@@ -411,20 +384,31 @@ object Names {
   val EmptyTypeName = EmptyTermName.toTypeName
 
   // can't move CONSTRUCTOR/EMPTY_PACKAGE to `nme` because of bootstrap failures in `encode`.
-  val CONSTRUCTOR = termName("<init>")
-  val STATIC_CONSTRUCTOR = termName("<clinit>")
-  val EMPTY_PACKAGE = termName("<empty>")
+  val CONSTRUCTOR: TermName = termName("<init>")
+  val STATIC_CONSTRUCTOR: TermName = termName("<clinit>")
+  val EMPTY_PACKAGE: TermName = termName("<empty>")
 
   val dontEncode = Set[TermName](CONSTRUCTOR, EMPTY_PACKAGE)
 
   def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)
 
-  implicit val nameCanBuildFrom: CanBuildFrom[Name, Char, Name] = new CanBuildFrom[Name, Char, Name] {
-    def apply(from: Name): Builder[Char, Name] =
-      StringBuilder.newBuilder.mapResult(s =>
-        from.fromName(termName(s.toCharArray, 0, s.length)))
-    def apply(): Builder[Char, Name] = termNameBuilder
+  def typeNameBuilder: Builder[Char, TypeName] =
+    StringBuilder.newBuilder.mapResult(termName(_).toTypeName)
+
+  implicit class nameToSeq(val name: Name) extends IndexedSeqOptimized[Char, Name] {
+    def length = name.toSimpleName.length
+    def apply(n: Int) = name.toSimpleName.apply(n)
+    override protected[this] def newBuilder: Builder[Char, Name] =
+      if (name.isTypeName) typeNameBuilder else termNameBuilder
+
+    def seq: WrappedString = new WrappedString(name.toString)
+    override protected[this] def thisCollection: WrappedString = seq
+    def startsWith(name: Name): Boolean = startsWith(name.toString)
+    def endsWith(name: Name): Boolean = endsWith(name.toString)
+    def indexOfSlice(name: Name): Int = indexOfSlice(name.toString)
+    def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
+    def containsSlice(name: Name): Boolean = containsSlice(name.toString)
   }
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {

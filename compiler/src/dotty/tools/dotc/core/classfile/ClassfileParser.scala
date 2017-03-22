@@ -256,7 +256,7 @@ class ClassfileParser(
     def subName(isDelimiter: Char => Boolean): TermName = {
       val start = index
       while (!isDelimiter(sig(index))) { index += 1 }
-      sig.slice(start, index)
+      sig.slice(start, index).asTermName
     }
     // Warning: sigToType contains nested completers which might be forced in a later run!
     // So local methods need their own ctx parameters.

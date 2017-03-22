@@ -390,7 +390,7 @@ object NameOps {
           // has form <$-separated-trait-name>$_setter_$ `name`_$eq
           val start = name.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
           val end = name.indexOfSlice(SETTER_SUFFIX)
-          name.slice(start, end) ++ LOCAL_SUFFIX
+          (name.slice(start, end) ++ LOCAL_SUFFIX).asTermName
         } else getterName.fieldName
       }
       else name ++ LOCAL_SUFFIX

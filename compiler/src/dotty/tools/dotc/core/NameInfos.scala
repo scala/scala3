@@ -6,9 +6,11 @@ import Names._
 /** Additional info associated with a name. At a minimum its kind and
  *  a way to turn it into a string.
  */
-abstract class NameInfo {
+abstract class NameInfo extends util.DotClass {
   def kind: NameInfo.Kind
   def mkString(underlying: TermName): String
+  def contains(ch: Char): Boolean = false
+  def ++(other: String): NameInfo = unsupported("++")
 }
 
 object NameInfo {
@@ -30,6 +32,8 @@ object NameInfo {
   case class Qualified(name: TermName, separator: String) extends NameInfo {
     def kind = QualifiedKind
     def mkString(underlying: TermName) = s"$underlying$separator$name"
+    override def contains(ch: Char): Boolean = name.contains(ch)
+    override def ++(other: String): NameInfo = Qualified(name ++ other, separator)
     override def toString = s"Qualified($name, $separator)"
   }
 

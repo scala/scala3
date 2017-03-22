@@ -101,7 +101,7 @@ object Scanners {
       target.name = flushBuf(litBuf).toTermName
       target.token = idtoken
       if (idtoken == IDENTIFIER) {
-        val idx = target.name.start
+        val idx = target.name.toSimpleName.start
         target.token = toToken(idx)
       }
     }

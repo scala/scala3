@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import core.Names.TermName
+import core.Names.SimpleTermName
 import collection.mutable
 
 abstract class TastyName
@@ -12,7 +12,7 @@ object TastyName {
 
   case class NameRef(index: Int) extends AnyVal
 
-  case class Simple(name: TermName) extends TastyName
+  case class Simple(name: SimpleTermName) extends TastyName
   case class Qualified(qualified: NameRef, selector: NameRef) extends TastyName
   case class Signed(original: NameRef, params: List[NameRef], result: NameRef) extends TastyName
   case class Expanded(prefix: NameRef, original: NameRef) extends TastyName

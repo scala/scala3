@@ -129,7 +129,7 @@ abstract class TokensCommon {
   final val lastParen = RBRACE
 
   def buildKeywordArray(keywords: TokenSet) = {
-    def start(tok: Token) = tokenString(tok).toTermName.start
+    def start(tok: Token) = tokenString(tok).toTermName.toSimpleName.start
     def sourceKeywords = keywords.toList.filter { (kw: Token) =>
       val ts = tokenString(kw)
       (ts != null) && !ts.contains(' ')

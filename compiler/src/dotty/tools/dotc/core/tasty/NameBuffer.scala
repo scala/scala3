@@ -27,7 +27,7 @@ class NameBuffer extends TastyBuffer(10000) {
   def nameIndex(name: Name): NameRef = {
     val tname =
       if (name.isShadowedName) Shadowed(nameIndex(name.revertShadowed))
-      else Simple(name.toTermName)
+      else Simple(name.toTermName.toSimpleName)
     nameIndex(tname)
   }
 
