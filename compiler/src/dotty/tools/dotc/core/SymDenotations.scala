@@ -433,9 +433,8 @@ object SymDenotations {
       	val fn2 = fullNameSeparated(separator, true)
       	assert(fn1.toString == fn2.toString, s"mismatch, was: $fn1, sem: $fn2")
       	fn2
-      } 
+      }
       else fullNameSeparated(separator, false)
-    }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
     def flatName(implicit ctx: Context): Name = fullNameSeparated("")

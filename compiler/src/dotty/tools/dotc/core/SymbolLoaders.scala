@@ -248,11 +248,8 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
             (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
             .moduleClass.denot.asClass
     }
-    val res =
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
-    println(s"root denots of ${rootDenot.name.debugString} = ${res._1.name.debugString}, ${res._2.name.debugString} / ${rootDenot is ModuleClass}")
-    res
   }
 
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
