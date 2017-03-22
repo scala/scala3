@@ -392,7 +392,7 @@ object SymDenotations {
      *  A separator "" means "flat name"; the real separator in this case is "$" and
      *  enclosing packages do not form part of the name.
      */
-    def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
+    def fullNameSeparated(separator: String, semantic: Boolean)(implicit ctx: Context): Name = {
       var sep = separator
       var stopAtPackage = false
       if (sep.isEmpty) {
@@ -409,10 +409,32 @@ object SymDenotations {
           encl = encl.owner
           sep += "~"
         }
-        if (owner.is(ModuleClass, butNot = Package) && sep == "$") sep = "" // duplicate scalac's behavior: don't write a double '$$' for module class members.
-        val fn = encl.fullNameSeparated(separator) ++ sep ++ name
+        var prefix = encl.fullNameSeparated(separator, semantic)
+        val fn =
+          if (semantic) {
+            if (sep == "$")
+              // duplicate scalac's behavior: don't write a double '$$' for module class members.
+              prefix = prefix.without(NameInfo.ModuleClassKind)
+            prefix.derived(NameInfo.Qualified(name.toTermName, sep))
+          }
+          else {
+            if (owner.is(ModuleClass, butNot = Package) && sep == "$")
+              // duplicate scalac's behavior: don't write a double '$$' for module class members.
+              sep = ""
+            prefix ++ sep ++ name
+          }
         if (isType) fn.toTypeName else fn.toTermName
       }
+    }
+
+    def fullNameSeparated(separator: String)(implicit ctx: Context): Name =
+      if (Config.semanticNames) {
+      	val fn1 = fullNameSeparated(separator, false)
+      	val fn2 = fullNameSeparated(separator, true)
+      	assert(fn1.toString == fn2.toString, s"mismatch, was: $fn1, sem: $fn2")
+      	fn2
+      } 
+      else fullNameSeparated(separator, false)
     }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
@@ -1220,7 +1242,8 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags is (Module, butNot = Package)) assert(name.isModuleClassName, s"module naming inconsistency: $name")
+    if (initFlags is (Module, butNot = Package))
+      assert(name.isModuleClassName, s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]
