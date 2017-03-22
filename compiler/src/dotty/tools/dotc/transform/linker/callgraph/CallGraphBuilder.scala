@@ -309,7 +309,9 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
       else if (calleeSymbol.isProperlyContainedIn(callerSymbol)) {
         parentRefinements(propagateTargs(receiver)) ++ caller.outerTargs ++ tpamsOuter
       } else {
-        parentRefinements(propagateTargs(receiver)) ++ new OuterTargs(caller.outerTargs.mp.filter(x => calleeSymbol.isProperlyContainedIn(x._1)))
+        val t  = parentRefinements(propagateTargs(receiver)) ++ caller.outerTargs
+        val (a, b) = t.mp.partition(x => calleeSymbol.isProperlyContainedIn(x._1))
+        new OuterTargs(a) combine new OuterTargs(b)
       }
 
     // if typearg of callee is a typeparam of caller, propagate typearg from caller to callee
@@ -332,7 +334,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         x
       case x: ClosureType =>
         val utpe =  propagateTargs(x.underlying, isConstructor = true)
-        val outer = parentRefinements(utpe) ++ outerTargs
+        val outer = (parentRefinements(utpe) combine caller.outerTargs) ++ outerTargs
         val closureT = new ClosureType(x.meth, utpe, x.implementedMethod)
         addReachableType(new TypeWithContext(closureT, outer))
         closureT

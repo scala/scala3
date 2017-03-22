@@ -547,6 +547,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
 
     override def transformUnit(tree: tpd.Tree)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+/*
       for { cls <- ctx.compilationUnit.picklers.keySet} {
         def serializeCS(methods: List[MethodSummary], pickler: TastyPickler): Unit = {
           val buf = new TastyBuffer(5000)
@@ -614,7 +615,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
 
           serializeCS(s.values.toList, ctx.compilationUnit.picklers(cls))
       }
-
+      */
       tree
     }
   }

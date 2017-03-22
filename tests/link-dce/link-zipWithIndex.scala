@@ -7,6 +7,8 @@ object Test {
     for ((elem, idx) <- list.zipWithIndex) {
       System.out.println(elem + " " + idx)
     }
+//    val s = list.zip(list)
+//    s.withFilter(_ => true)
   }
 
 }
