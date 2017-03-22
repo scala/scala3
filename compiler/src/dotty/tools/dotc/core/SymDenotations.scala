@@ -415,7 +415,7 @@ object SymDenotations {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.without(NameInfo.ModuleClassKind)
-            prefix.derived(NameInfo.Qualified(name.toTermName, sep))
+            prefix.derived(NameInfo.Qualified(name.toSimpleName, sep))
           }
           else {
             if (owner.is(ModuleClass, butNot = Package) && sep == "$")

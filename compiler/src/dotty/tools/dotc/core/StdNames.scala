@@ -92,7 +92,7 @@ object StdNames {
     val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
     val DEFAULT_GETTER: N             = "$default$"
-    val DEFAULT_GETTER_INIT: N        = NameTransformer.encode("<init>")
+    val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString

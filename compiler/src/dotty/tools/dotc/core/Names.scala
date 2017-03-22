@@ -75,13 +75,10 @@ object Names {
     def toText(printer: Printer): Text = printer.toText(this)
 
     /** Replace \$op_name's by corresponding operator symbols. */
-    def decode: Name =
-      if (contains('$')) fromName(termName(NameTransformer.decode(toString)))
-      else this
+    def decode: Name
 
     /** Replace operator symbols by corresponding \$op_name's. */
-    def encode: Name =
-      if (dontEncode(toTermName)) this else NameTransformer.encode(this)
+    def encode: Name
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
@@ -89,7 +86,8 @@ object Names {
 
     def replace(from: Char, to: Char): ThisName = fromName(toSimpleName.replace(from, to))
 
-    def contains(ch: Char): Boolean
+    def startsWith(str: String): Boolean
+    def startsWith(name: Name): Boolean = startsWith(name.toString)
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
@@ -187,12 +185,18 @@ object Names {
 
     def apply(n: Int) = chrs(start + n)
 
-    def ++ (other: String): ThisName = termName(toString + other)
+    def ++ (other: String): SimpleTermName = termName(toString + other)
 
-    def contains(ch: Char): Boolean = {
+    private def contains(ch: Char): Boolean = {
       var i = 0
       while (i < length && chrs(start + i) != ch) i += 1
       i < length
+    }
+
+    def startsWith(str: String): Boolean = {
+      var i = 0
+      while (i < str.length && i < length && apply(i) == str(i)) i += 1
+      i == str.length
     }
 
     override def replace(from: Char, to: Char): ThisName = {
@@ -203,6 +207,13 @@ object Names {
       }
       fromName(termName(cs, 0, length))
     }
+
+    def encode: SimpleTermName =
+      if (dontEncode(toTermName)) this else NameTransformer.encode(this)
+
+    /** Replace \$op_name's by corresponding operator symbols. */
+    def decode: SimpleTermName =
+      if (contains('$')) termName(NameTransformer.decode(toString)) else this
 
     override def hashCode: Int = start
 
@@ -218,7 +229,10 @@ object Names {
 
     def ++ (other: String): ThisName = toTermName.++(other).toTypeName
 
-    def contains(ch: Char): Boolean = toTermName.contains(ch)
+    def startsWith(str: String): Boolean = toTermName.startsWith(str)
+
+    def encode: Name = toTermName.encode
+    def decode: Name = toTermName.decode
 
     type ThisName = TypeName
     def isTypeName = true
@@ -243,7 +257,9 @@ object Names {
   class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
     def ++ (other: String): ThisName = derived(info ++ other)
-    def contains(ch: Char): Boolean = underlying.contains(ch) || info.contains(ch)
+    def startsWith(str: String): Boolean = underlying.startsWith(str)
+    def encode: Name = underlying.encode.derived(info.map(_.encode))
+    def decode: Name = underlying.decode.derived(info.map(_.decode))
     override def toString = info.mkString(underlying)
     override def debugString = s"${underlying.debugString}[$info]"
   }
@@ -388,7 +404,7 @@ object Names {
   val STATIC_CONSTRUCTOR: TermName = termName("<clinit>")
   val EMPTY_PACKAGE: TermName = termName("<empty>")
 
-  val dontEncode = Set[TermName](CONSTRUCTOR, EMPTY_PACKAGE)
+  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)
 
   def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)
@@ -404,7 +420,6 @@ object Names {
 
     def seq: WrappedString = new WrappedString(name.toString)
     override protected[this] def thisCollection: WrappedString = seq
-    def startsWith(name: Name): Boolean = startsWith(name.toString)
     def endsWith(name: Name): Boolean = endsWith(name.toString)
     def indexOfSlice(name: Name): Int = indexOfSlice(name.toString)
     def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)

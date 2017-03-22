@@ -9,6 +9,7 @@ import Names._
 abstract class NameInfo extends util.DotClass {
   def kind: NameInfo.Kind
   def mkString(underlying: TermName): String
+  def map(f: SimpleTermName => SimpleTermName): NameInfo = this
   def contains(ch: Char): Boolean = false
   def ++(other: String): NameInfo = unsupported("++")
 }
@@ -29,9 +30,10 @@ object NameInfo {
     def mkString(underlying: TermName) = underlying.toString // will cause an unsupported exception
   }
 
-  case class Qualified(name: TermName, separator: String) extends NameInfo {
+  case class Qualified(name: SimpleTermName, separator: String) extends NameInfo {
     def kind = QualifiedKind
     def mkString(underlying: TermName) = s"$underlying$separator$name"
+    override def map(f: SimpleTermName => SimpleTermName): NameInfo = Qualified(f(name), separator)
     override def contains(ch: Char): Boolean = name.contains(ch)
     override def ++(other: String): NameInfo = Qualified(name ++ other, separator)
     override def toString = s"Qualified($name, $separator)"
