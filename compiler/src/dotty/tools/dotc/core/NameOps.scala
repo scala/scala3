@@ -9,6 +9,7 @@ import Decorators.PreNamedString
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
 import Definitions._
+import config.Config
 
 object NameOps {
 
@@ -73,7 +74,9 @@ object NameOps {
     def isTraitSetterName = name containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
-    def isModuleClassName = name endsWith MODULE_SUFFIX
+    def isModuleClassName =
+      if (Config.semanticNames) name.is(NameInfo.ModuleClass.kind)
+      else name endsWith MODULE_SUFFIX
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
@@ -119,14 +122,19 @@ object NameOps {
     }
 
     /** Convert this module name to corresponding module class name */
-    def moduleClassName: TypeName = (name ++ tpnme.MODULE_SUFFIX).toTypeName
+    def moduleClassName: TypeName =
+      if (Config.semanticNames) name.derived(NameInfo.ModuleClass).toTypeName
+      else (name ++ tpnme.MODULE_SUFFIX).toTypeName
 
     /** Convert this module class name to corresponding source module name */
     def sourceModuleName: TermName = stripModuleClassSuffix.toTermName
 
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
-      if (isModuleClassName) name dropRight MODULE_SUFFIX.length else name
+      if (isModuleClassName)
+        if (Config.semanticNames) name.without(NameInfo.ModuleClass.kind)
+        else name dropRight MODULE_SUFFIX.length
+      else name
 
     /** Append a suffix so that this name does not clash with another name in the same scope */
     def avoidClashName: TermName = (name ++ AVOID_CLASH_SUFFIX).toTermName
@@ -194,7 +202,7 @@ object NameOps {
       likeTyped(
         if (name.isModuleClassName) name.stripModuleClassSuffix.freshened.moduleClassName
         else likeTyped(ctx.freshName(name ++ NameTransformer.NAME_JOIN_STRING)))
-
+/*
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
     def withVariance(v: Int): N =
       if (hasVariance) dropVariance.withVariance(v)
@@ -219,6 +227,14 @@ object NameOps {
       case '+' => 1
       case _ => 0
     }
+
+*/
+    def unmangleClassName: N =
+      if (Config.semanticNames)
+        if (name.endsWith(MODULE_SUFFIX))
+          likeTyped(name.dropRight(MODULE_SUFFIX.length).moduleClassName)
+        else name
+      else name
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether

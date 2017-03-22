@@ -39,7 +39,7 @@ class SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -152,7 +152,7 @@ class SymbolLoaders {
 
     def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
       assert(root is PackageClass, root)
-        def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
+      def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
       if (!sourceModule.isCompleted)
@@ -162,7 +162,8 @@ class SymbolLoaders {
           if (!maybeModuleClass(classRep))
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classpath.classes)
-          if (maybeModuleClass(classRep) && !root.unforcedDecls.lookup(classRep.name.toTypeName).exists)
+          if (maybeModuleClass(classRep) &&
+              !root.unforcedDecls.lookup(classRep.name.toTypeName.unmangleClassName).exists)
             initializeFromClassPath(root.symbol, classRep)
       }
       if (!root.isEmptyPackage)
@@ -247,8 +248,11 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
             (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
             .moduleClass.denot.asClass
     }
+    val res =
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
+    println(s"root denots of ${rootDenot.name.debugString} = ${res._1.name.debugString}, ${res._2.name.debugString} / ${rootDenot is ModuleClass}")
+    res
   }
 
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =

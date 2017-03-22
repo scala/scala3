@@ -432,7 +432,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
 
     val name1 = name0.adjustIfModuleClass(flags)
-    val name = if (name1 == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR else name1
+    val name2 = if (name1 == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR else name1
+    val name = if (flags is ModuleClass) name2.unmangleClassName else name2
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
