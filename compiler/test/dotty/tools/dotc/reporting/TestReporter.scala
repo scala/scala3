@@ -15,12 +15,17 @@ import diagnostic.{ Message, MessageContainer, NoExplanation }
 import diagnostic.messages._
 import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 
-class TestReporter protected (outWriter: PrintWriter, protected val filePrintln: String => Unit, logLevel: Int) extends Reporter
-with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
+class TestReporter protected (outWriter: PrintWriter, filePrintln: String => Unit, logLevel: Int)
+extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
   import MessageContainer._
 
   protected final val _errorBuf = mutable.ArrayBuffer.empty[MessageContainer]
   final def errors: Iterator[MessageContainer] = _errorBuf.iterator
+
+  protected final val _messageBuf = mutable.ArrayBuffer.empty[String]
+
+  final def flushToFile(): Unit =
+    _messageBuf.iterator.foreach(filePrintln)
 
   final def inlineInfo(pos: SourcePosition): String =
     if (pos.exists) {
@@ -30,20 +35,8 @@ with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
     }
     else ""
 
-  final def printSummary(): this.type = {
-    val msg = _summary.toString
-    if (msg.nonEmpty) {
-      outWriter.println(msg)
-      filePrintln(msg)
-    }
-    this
-  }
-
-  private var _summary = new StringBuilder
-  final def echoSummary(msg: String): this.type = {
-    _summary.append(msg)
-    this
-  }
+  def echo(msg: String) =
+    _messageBuf.append(msg)
 
   /** Prints the message with the given position indication. */
   def printMessageAndPos(m: MessageContainer, extra: String)(implicit ctx: Context): Unit = {
@@ -55,8 +48,8 @@ with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
       if (extraInfo.nonEmpty) outWriter.println(extraInfo)
     }
 
-    filePrintln(msg)
-    if (extraInfo.nonEmpty) filePrintln(extraInfo)
+    _messageBuf.append(msg)
+    if (extraInfo.nonEmpty) _messageBuf.append(extraInfo)
   }
 
   override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = {
@@ -85,9 +78,9 @@ object TestReporter {
     new PrintWriter(new FileOutputStream(new JFile(s"../tests-$timestamp.log"), true))
   }
 
-  def parallelReporter(logLevel: Int): TestReporter = new TestReporter(
+  def parallelReporter(caller: AnyRef, logLevel: Int): TestReporter = new TestReporter(
     new PrintWriter(Console.err, true),
-    str => logWriter.synchronized {
+    str => caller.synchronized {
       logWriter.println(str)
       logWriter.flush()
     },
@@ -111,11 +104,11 @@ object TestReporter {
       val extraInfo = inlineInfo(m.pos)
 
       writer.println(msg)
-      filePrintln(msg)
+      _messageBuf.append(msg)
 
       if (extraInfo.nonEmpty) {
         writer.println(extraInfo)
-        filePrintln(extraInfo)
+        _messageBuf.append(extraInfo)
       }
     }
   }
