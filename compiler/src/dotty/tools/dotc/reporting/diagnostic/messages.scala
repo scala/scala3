@@ -1209,4 +1209,16 @@ object messages {
            |${parents.mkString("  - ", "\n  - ", "")}
            |""".stripMargin
   }
+
+  case class VarArgsParamMustComeLast()(implicit ctx: Context)
+    extends Message(IncorrectRepeatedParameterSyntaxID) {
+    override def msg: String = "varargs parameter must come last"
+
+    override def kind: String = "Syntax"
+
+    override def explanation: String =
+      hl"""|The varargs field must be the last field in the method signature.
+           |Attempting to define a field in a method signature after a varargs field is an error.
+           |""".stripMargin
+  }
 }

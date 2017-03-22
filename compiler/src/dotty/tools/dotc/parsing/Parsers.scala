@@ -12,7 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import ast.Positioned
+import ast.{Positioned, Trees, untpd}
 import ast.Trees._
 import Decorators._
 import StdNames._
@@ -20,6 +20,7 @@ import util.Positions._
 import Constants._
 import ScriptParsers._
 import Comments._
+
 import scala.annotation.{tailrec, switch}
 import util.DotClass
 import rewrite.Rewrites.patch
@@ -1800,6 +1801,10 @@ object Parsers {
           case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), start)
         }
       }
+      val listOfErrors = checkVarArgsRules(result)
+      listOfErrors.foreach { vparam =>
+        syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
+      }
       result
     }
 
@@ -1918,6 +1923,21 @@ object Parsers {
           ValDef(name, tpt, rhs).withMods(mods).setComment(docstring)
         } case _ =>
           PatDef(mods, lhs, tpt, rhs)
+      }
+    }
+
+
+
+    private def checkVarArgsRules(vparamss: List[List[untpd.ValDef]]): List[untpd.ValDef] = {
+      def isVarArgs(tpt: Trees.Tree[Untyped]): Boolean = tpt match {
+        case PostfixOp(_, op) if op.name == nme.raw.STAR => true
+        case _ => false
+      }
+
+      vparamss.flatMap { params =>
+        if (params.nonEmpty) {
+          params.init.filter(valDef => isVarArgs(valDef.tpt))
+        } else List()
       }
     }
 
