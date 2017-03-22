@@ -1801,6 +1801,10 @@ object Parsers {
           case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), start)
         }
       }
+      val listOfErrors = checkVarArgsRules(result)
+      listOfErrors.foreach { vparam =>
+        syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
+      }
       result
     }
 
@@ -1966,10 +1970,6 @@ object Parsers {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
-        val listOfErrors = checkVarArgsRules(vparamss)
-        listOfErrors.foreach { vparam =>
-          syntaxError(VarArgsParamMustComeLast(), vparam.tpt.pos)
-        }
         var tpt = fromWithinReturnType(typedOpt())
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
