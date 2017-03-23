@@ -12,6 +12,8 @@ import sbt.Package.ManifestAttributes
 
 object DottyBuild extends Build {
 
+  projectChecks()
+
   val scalacVersion = "2.11.5" // Do not rename, this is grepped in bin/common.
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -902,5 +904,16 @@ object DottyInjectedPlugin extends AutoPlugin {
         sbt.inc.Analysis.Empty
       }
     ))
+  }
+
+  private def projectChecks(): Unit = {
+    val scalaScala = new File("scala-scala")
+    if (!scalaScala.exists()) {
+      println(
+        s"""[WARNING] Missing `dotty/scala-scala` library
+           |You can clone the library with:
+           |  > git clone -b dotty-library https://github.com/DarkDimius/scala.git ${scalaScala.getAbsolutePath}
+        """.stripMargin)
+    }
   }
 }
