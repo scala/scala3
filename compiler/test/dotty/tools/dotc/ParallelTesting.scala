@@ -29,14 +29,16 @@ trait ParallelTesting {
     def outDir: JFile
     def flags: Array[String]
 
-    def withFlags(newFlags: Array[String]) =
+    def withFlags(newFlags0: String*) = {
+      val newFlags = newFlags0.toArray
       if (!flags.containsSlice(newFlags)) self match {
         case self: ConcurrentCompilationTarget =>
-          self.copy(flags = newFlags)
+          self.copy(flags = flags ++ newFlags)
         case self: SeparateCompilationTarget =>
-          self.copy(flags = newFlags)
+          self.copy(flags = flags ++ newFlags)
       }
       else self
+    }
 
     def buildInstructions(errors: Int, warnings: Int): String = {
       val sb = new StringBuilder
@@ -114,7 +116,7 @@ trait ParallelTesting {
       .toList.sortBy(_._1).map(_._2.filter(isCompilable))
   }
 
-  private abstract class Test(targets: List[Target], times: Int, threadLimit: Option[Int]) {
+  private abstract class Test(targets: List[Target], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean) {
 
     /** Actual compilation run logic, the test behaviour is defined here */
     protected def compilationRunnable(target: Target): Runnable
@@ -153,6 +155,9 @@ trait ParallelTesting {
           addFailedCompilationTarget(dir.getAbsolutePath)
           fail()
       }
+
+    protected def echo(msg: String): Unit =
+      if (!suppressAllOutput) System.err.println(msg)
 
     private def statusRunner: Runnable = new Runnable {
       def run(): Unit = {
@@ -235,7 +240,8 @@ trait ParallelTesting {
       val javaCompiledBefore = compileWithJavac(javaFiles)
 
       // Then we compile the scala files:
-      val reporter = TestReporter.parallelReporter(this, logLevel = if (suppressErrors) ERROR + 1 else ERROR)
+      val reporter = TestReporter.parallelReporter(this, logLevel =
+        if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
       val driver =
         if (times == 1) new Driver { def newCompiler(implicit ctx: Context) = new Compiler }
         else new Driver {
@@ -270,7 +276,7 @@ trait ParallelTesting {
         case None => JExecutors.newWorkStealingPool()
       }
 
-      if (interactive) pool.submit(statusRunner)
+      if (interactive && !suppressAllOutput) pool.submit(statusRunner)
 
       targets.foreach { target =>
         pool.submit(compilationRunnable(target))
@@ -281,15 +287,15 @@ trait ParallelTesting {
         throw new TimeoutException("Compiling targets timed out")
 
       if (didFail) {
-        System.err.println {
+        echo {
           """|
              |================================================================================
              |Test Report
              |================================================================================
              |Failing tests:""".stripMargin
         }
-        failedCompilationTargets.toArray.sorted.foreach(System.err.println)
-        failureInstructions.iterator.foreach(System.err.println)
+        failedCompilationTargets.toArray.sorted.foreach(echo)
+        failureInstructions.iterator.foreach(echo)
       }
 
       this
@@ -301,8 +307,8 @@ trait ParallelTesting {
     name.endsWith(".scala") || name.endsWith(".java")
   }
 
-  private final class PosTest(targets: List[Target], times: Int, threadLimit: Option[Int])
-  extends Test(targets, times, threadLimit) {
+  private final class PosTest(targets: List[Target], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  extends Test(targets, times, threadLimit, suppressAllOutput) {
     protected def compilationRunnable(target: Target): Runnable = new Runnable {
       def run(): Unit = compileTry {
         target match {
@@ -345,8 +351,8 @@ trait ParallelTesting {
     }
   }
 
-  private final class RunTest(targets: List[Target], times: Int, threadLimit: Option[Int])
-  extends Test(targets, times, threadLimit) {
+  private final class RunTest(targets: List[Target], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  extends Test(targets, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(checkFile: JFile, dir: JFile, target: Target, warnings: Int) = try {
         // Do classloading magic and running here:
         import java.net.{ URL, URLClassLoader }
@@ -374,7 +380,7 @@ trait ParallelTesting {
             DiffUtil.mkColoredCodeDiff(exp, act, true)
           }.mkString("\n")
           val msg = s"\nOutput from run test '$checkFile' did not match expected, output:\n$diff\n"
-          System.err.println(msg)
+          echo(msg)
           addFailureInstruction(msg)
 
           // Print build instructions to file and summary:
@@ -387,15 +393,15 @@ trait ParallelTesting {
     }
     catch {
       case _: NoSuchMethodException =>
-        System.err.println(s"\ntest in '$dir' did not contain a main method")
+        echo(s"\ntest in '$dir' did not contain a main method")
         fail()
 
       case _: ClassNotFoundException =>
-        System.err.println(s"\ntest in '$dir' did was not contained within a `Test` object")
+        echo(s"\ntest in '$dir' did was not contained within a `Test` object")
         fail()
 
       case _: InvocationTargetException =>
-        System.err.println(s"\nTest in '$dir' might be using args(X) where X > 0")
+        echo(s"\nTest in '$dir' might be using args(X) where X > 0")
         fail()
     }
 
@@ -454,7 +460,7 @@ trait ParallelTesting {
 
         if (errorCount == 0 && hasCheckFile) doVerify()
         else if (errorCount > 0) {
-          System.err.println(s"\nCompilation failed for: '$target'")
+          echo(s"\nCompilation failed for: '$target'")
           val buildInstr = target.buildInstructions(errorCount, warningCount)
           addFailureInstruction(buildInstr)
           failTarget(target)
@@ -463,8 +469,8 @@ trait ParallelTesting {
     }
   }
 
-  private final class NegTest(targets: List[Target], times: Int, threadLimit: Option[Int])
-  extends Test(targets, times, threadLimit) {
+  private final class NegTest(targets: List[Target], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)
+  extends Test(targets, times, threadLimit, suppressAllOutput) {
     protected def compilationRunnable(target: Target): Runnable = new Runnable {
       def run(): Unit = compileTry {
         // In neg-tests we allow two types of error annotations,
@@ -511,7 +517,7 @@ trait ParallelTesting {
             true
           }
           else {
-            System.err.println {
+            echo {
               s"Error reported in ${error.pos.source}, but no annotation found"
             }
             false
@@ -539,19 +545,19 @@ trait ParallelTesting {
         }
 
         if (expectedErrors != actualErrors) {
-          System.err.println {
+          echo {
             s"\nWrong number of errors encountered when compiling $target, expected: $expectedErrors, actual: $actualErrors\n"
           }
           failTarget(target)
         }
         else if (hasMissingAnnotations()) {
-          System.err.println {
+          echo {
             s"\nErrors found on incorrect row numbers when compiling $target"
           }
           failTarget(target)
         }
         else if (!errorMap.isEmpty) {
-          System.err.println {
+          echo {
             s"\nError annotation(s) have {<error position>=<unreported error>}: $errorMap"
           }
           failTarget(target)
@@ -566,39 +572,64 @@ trait ParallelTesting {
     private[ParallelTesting] val targets: List[Target],
     private[ParallelTesting] val times: Int,
     private[ParallelTesting] val shouldDelete: Boolean,
-    private[ParallelTesting] val threadLimit: Option[Int]
+    private[ParallelTesting] val threadLimit: Option[Int],
+    private[ParallelTesting] val shouldFail: Boolean
   ) {
+    import org.junit.Assert.fail
+
     private[ParallelTesting] def this(target: Target) =
-      this(List(target), 1, true, None)
+      this(List(target), 1, true, None, false)
 
     private[ParallelTesting] def this(targets: List[Target]) =
-      this(targets, 1, true, None)
+      this(targets, 1, true, None, false)
 
     def +(other: CompilationTest) = {
       require(other.times == times, "can't combine tests that are meant to be benchmark compiled")
       require(other.shouldDelete == shouldDelete, "can't combine tests that differ on deleting output")
-      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit)
+      require(other.shouldFail == shouldFail, "can't combine tests that have different expectations on outcome")
+      new CompilationTest(targets ++ other.targets, times, shouldDelete, threadLimit, shouldFail)
     }
 
     def pos(): this.type = {
-      val runErrors = new PosTest(targets, times, threadLimit).execute().errors
-      assert(runErrors == 0, s"Expected no errors when compiling")
-      if (shouldDelete) targets.foreach(t => delete(t.outDir))
-      this
+      val test = new PosTest(targets, times, threadLimit, shouldFail).execute()
+
+      if (!shouldFail && test.didFail) {
+        fail(s"Expected no errors when compiling, but found: ${test.errors}")
+      }
+      else if (shouldFail && !test.didFail) {
+        fail("Pos test should have failed, but didn't")
+      }
+
+      cleanup()
     }
 
     def neg(): this.type = {
-      assert(
-        !(new NegTest(targets, times, threadLimit).execute().didFail),
-        s"Wrong number of errors encountered when compiling"
-      )
-      if (shouldDelete) targets.foreach(t => delete(t.outDir))
-      this
+      val test = new NegTest(targets, times, threadLimit, shouldFail).execute()
+
+      if (!shouldFail && test.didFail) {
+        fail("Neg test shouldn't have failed, but did")
+      }
+      else if (shouldFail && !test.didFail) {
+        fail("Neg test should have failed, but did not")
+      }
+
+      cleanup()
     }
 
     def run(): this.type = {
-      val didFail = new RunTest(targets, times, threadLimit).execute().didFail
-      assert(!didFail, s"Run tests failed")
+      val test = new RunTest(targets, times, threadLimit, shouldFail).execute()
+
+      if (!shouldFail && test.didFail) {
+        fail("Run test failed, but should not")
+      }
+      else if (shouldFail && !test.didFail) {
+        fail("Run test should have failed, but did not")
+      }
+
+      cleanup()
+    }
+
+    private def cleanup(): this.type = {
       if (shouldDelete) targets.foreach(t => delete(t.outDir))
       this
     }
@@ -617,24 +648,25 @@ trait ParallelTesting {
         case target @ SeparateCompilationTarget(dir, _, outDir) =>
           target.copy(dir = copyToDir(outDir, dir))
       },
-      times, shouldDelete, threadLimit
+      times, shouldDelete, threadLimit, shouldFail
     )
 
     def times(i: Int): CompilationTest =
-      new CompilationTest(targets, i, shouldDelete, threadLimit)
+      new CompilationTest(targets, i, shouldDelete, threadLimit, shouldFail)
 
     def verbose: CompilationTest = new CompilationTest(
-      targets.map(t => t.withFlags(t.flags ++ Array("-verbose", "-Ylog-classpath"))),
-      times,
-      shouldDelete,
-      threadLimit
+      targets.map(t => t.withFlags("-verbose", "-Ylog-classpath")),
+      times, shouldDelete, threadLimit, shouldFail
     )
 
     def keepOutput: CompilationTest =
-      new CompilationTest(targets, times, false, threadLimit)
+      new CompilationTest(targets, times, false, threadLimit, shouldFail)
 
-    def limitThreads(i: Int) =
-      new CompilationTest(targets, times, shouldDelete, Some(i))
+    def limitThreads(i: Int): CompilationTest =
+      new CompilationTest(targets, times, shouldDelete, Some(i), shouldFail)
+
+    def expectFailure: CompilationTest =
+      new CompilationTest(targets, times, shouldDelete, threadLimit, true)
 
     def delete(): Unit = targets.foreach(t => delete(t.outDir))
 
