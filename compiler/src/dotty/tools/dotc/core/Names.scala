@@ -62,10 +62,13 @@ object Names {
     /** This name downcasted to a term name */
     def asTermName: TermName
 
-    def toSimpleName: SimpleTermName = this.asInstanceOf[SimpleTermName]
+    def isSimple: Boolean
+    def asSimpleName: SimpleTermName
+    def toSimpleName: SimpleTermName
+    def mapSimpleCore(f: SimpleTermName => Name): ThisName
 
     /** A name of the same kind as this name and with same characters as given `name` */
-    def fromName(name: Name): ThisName
+    def likeKinded(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
     def without(kind: NameInfo.Kind): ThisName
@@ -84,10 +87,14 @@ object Names {
     def ++ (other: Name): ThisName = ++ (other.toString)
     def ++ (other: String): ThisName
 
-    def replace(from: Char, to: Char): ThisName = fromName(toSimpleName.replace(from, to))
+    def replace(from: Char, to: Char): ThisName = likeKinded(asSimpleName.replace(from, to))
 
+    def isEmpty: Boolean
     def startsWith(str: String): Boolean
     def startsWith(name: Name): Boolean = startsWith(name.toString)
+    def endsWith(str: String): Boolean
+    def endsWith(name: Name): Boolean = endsWith(name.toString)
+
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
@@ -112,7 +119,7 @@ object Names {
       _typeName
     }
 
-    def fromName(name: Name): TermName = name.toTermName
+    def likeKinded(name: Name): TermName = name.toTermName
 
     def info = NameInfo.TermName
     def underlying: TermName = unsupported("underlying")
@@ -178,6 +185,9 @@ object Names {
       ownKind == kind ||
       !NameInfo.definesNewName(ownKind) && ownKind > kind && underlying.is(kind)
     }
+
+    override def hashCode = System.identityHashCode(this)
+    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
   }
 
   class SimpleTermName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleTermName) extends TermName {
@@ -193,10 +203,18 @@ object Names {
       i < length
     }
 
+    def isEmpty = length == 0
+
     def startsWith(str: String): Boolean = {
       var i = 0
       while (i < str.length && i < length && apply(i) == str(i)) i += 1
       i == str.length
+    }
+
+    def endsWith(str: String): Boolean = {
+      var i = 1
+      while (i <= str.length && i <= length && apply(length - i) == str(str.length - i)) i += 1
+      i > str.length
     }
 
     override def replace(from: Char, to: Char): ThisName = {
@@ -205,8 +223,13 @@ object Names {
       for (i <- 0 until length) {
         if (cs(i) == from) cs(i) = to
       }
-      fromName(termName(cs, 0, length))
+      likeKinded(termName(cs, 0, length))
     }
+
+    def isSimple = true
+    def asSimpleName = this
+    def toSimpleName = this
+    def mapSimpleCore(f: SimpleTermName => Name): TermName = likeKinded(f(this))
 
     def encode: SimpleTermName =
       if (dontEncode(toTermName)) this else NameTransformer.encode(this)
@@ -225,14 +248,14 @@ object Names {
 
   class TypeName(val toTermName: TermName) extends Name {
 
-    override def toSimpleName: SimpleTermName = toTermName.toSimpleName
-
     def ++ (other: String): ThisName = toTermName.++(other).toTypeName
 
+    def isEmpty = toTermName.isEmpty
     def startsWith(str: String): Boolean = toTermName.startsWith(str)
+    def endsWith(str: String): Boolean = toTermName.endsWith(str)
 
-    def encode: Name = toTermName.encode
-    def decode: Name = toTermName.decode
+    def encode: Name = toTermName.encode.toTypeName
+    def decode: Name = toTermName.decode.toTypeName
 
     type ThisName = TypeName
     def isTypeName = true
@@ -241,7 +264,12 @@ object Names {
     def asTypeName = this
     def asTermName = throw new ClassCastException(this + " is not a term name")
 
-    def fromName(name: Name): TypeName = name.toTypeName
+    def isSimple = toTermName.isSimple
+    def asSimpleName = toTermName.asSimpleName
+    def toSimpleName = toTermName.toSimpleName
+    def mapSimpleCore(f: SimpleTermName => Name): TypeName = toTermName.mapSimpleCore(f).toTypeName
+
+    def likeKinded(name: Name): TypeName = name.toTypeName
 
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
     def without(kind: NameInfo.Kind): TypeName = toTermName.without(kind).toTypeName
@@ -254,14 +282,21 @@ object Names {
   /** A term name that's derived from an `underlying` name and that
    *  adds `info` to it.
    */
-  class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
+  case class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
     def ++ (other: String): ThisName = derived(info ++ other)
+    def isEmpty = false
     def startsWith(str: String): Boolean = underlying.startsWith(str)
+    def endsWith(str: String): Boolean = info.satisfies(_.endsWith(str))
     def encode: Name = underlying.encode.derived(info.map(_.encode))
     def decode: Name = underlying.decode.derived(info.map(_.decode))
     override def toString = info.mkString(underlying)
     override def debugString = s"${underlying.debugString}[$info]"
+
+    def isSimple = false
+    def asSimpleName = throw new UnsupportedOperationException(s"$debugString is not a simple name")
+    def toSimpleName = termName(toString)
+    def mapSimpleCore(f: SimpleTermName => Name) = underlying.mapSimpleCore(f).derived(info)
   }
 
   // Nametable
@@ -413,8 +448,8 @@ object Names {
     StringBuilder.newBuilder.mapResult(termName(_).toTypeName)
 
   implicit class nameToSeq(val name: Name) extends IndexedSeqOptimized[Char, Name] {
-    def length = name.toSimpleName.length
-    def apply(n: Int) = name.toSimpleName.apply(n)
+    def length = name.asSimpleName.length
+    def apply(n: Int) = name.asSimpleName.apply(n)
     override protected[this] def newBuilder: Builder[Char, Name] =
       if (name.isTypeName) typeNameBuilder else termNameBuilder
 

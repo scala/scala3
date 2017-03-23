@@ -4,7 +4,7 @@ package core
 package tasty
 
 import collection.mutable
-import Names.{Name, chrs}
+import Names.{Name, chrs, DerivedTermName, SimpleTermName}
 import Decorators._, NameOps._
 import TastyBuffer._
 import scala.io.Codec
@@ -24,21 +24,31 @@ class NameBuffer extends TastyBuffer(10000) {
       nameRefs(name) = ref
       ref
   }
-  def nameIndex(name: Name): NameRef = {
-    val tname =
-      if (name.isShadowedName) Shadowed(nameIndex(name.revertShadowed))
-      else Simple(name.toTermName.toSimpleName)
+
+  def nameIndex(name: Name, toTasty: SimpleTermName => TastyName): NameRef = {
+    val tname = name.toTermName match {
+      case DerivedTermName(name1, NameInfo.ModuleClass) =>
+        ModuleClass(nameIndex(name1, toTasty))
+      case DerivedTermName(prefix, NameInfo.Qualified(selector, ".")) =>
+        Qualified(nameIndex(prefix, toTasty), nameIndex(selector))
+      case name1 =>
+        if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))
+        else toTasty(name1.asSimpleName)
+    }
     nameIndex(tname)
   }
+
+  def nameIndex(name: Name): NameRef = nameIndex(name, Simple)
 
   def nameIndex(str: String): NameRef = nameIndex(str.toTermName)
 
   def fullNameIndex(name: Name): NameRef = {
-    val pos = name.lastIndexOf('.')
-    if (pos > 0)
-      nameIndex(Qualified(fullNameIndex(name.take(pos)), nameIndex(name.drop(pos + 1))))
-    else
-      nameIndex(name)
+    def split(name: SimpleTermName): TastyName = {
+      val pos = name.lastIndexOf('.')
+      if (pos <= 0) Simple(name)
+      else Qualified(fullNameIndex(name.take(pos)), nameIndex(name.drop(pos + 1)))
+    }
+    nameIndex(name, split)
   }
 
   private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {

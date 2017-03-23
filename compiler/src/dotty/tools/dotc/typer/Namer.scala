@@ -281,7 +281,7 @@ class Namer { typer: Typer =>
 
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val name = checkNoConflict(tree.name.encode).asTypeName
+        val name = checkNoConflict(tree.name.encode).toTypeName
         val flags = checkFlags(tree.mods.flags &~ Implicit)
         val cls = recordSym(ctx.newClassSymbol(
           ctx.owner, name, flags | inSuperCall,

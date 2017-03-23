@@ -70,8 +70,8 @@ object NameOps {
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
-    def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
-    def isTraitSetterName = name containsSlice TRAIT_SETTER_SEPARATOR
+    def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
+    def isTraitSetterName = name.toSimpleName containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName =
@@ -80,7 +80,7 @@ object NameOps {
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
-    def isShadowedName = name.length > 0 && name.head == '(' && name.startsWith(nme.SHADOWED)
+    def isShadowedName = name.startsWith(nme.SHADOWED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
@@ -162,7 +162,7 @@ object NameOps {
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
-      name.fromName(prefix ++ separator ++ name).asInstanceOf[N]
+      name.likeKinded(prefix ++ separator ++ name).asInstanceOf[N]
 
     def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
 
@@ -230,7 +230,7 @@ object NameOps {
 
 */
     def unmangleClassName: N =
-      if (Config.semanticNames)
+      if (Config.semanticNames && name.isSimple && name.isTypeName)
         if (name.endsWith(MODULE_SUFFIX))
           likeTyped(name.dropRight(MODULE_SUFFIX.length).moduleClassName)
         else name
@@ -353,7 +353,7 @@ object NameOps {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => typeToTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => typeToTag(x._1))
 
-      name.fromName(name ++ nme.specializedTypeNames.prefix ++
+      name.likeKinded(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }

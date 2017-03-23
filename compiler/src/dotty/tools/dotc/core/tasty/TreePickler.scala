@@ -576,7 +576,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def qualifiedName(sym: Symbol)(implicit ctx: Context): TastyName =
-    if (sym.isRoot || sym.owner.isRoot) TastyName.Simple(sym.name.toTermName.toSimpleName)
+    if (sym.isRoot || sym.owner.isRoot) TastyName.Simple(sym.name.toTermName.asSimpleName)
     else TastyName.Qualified(nameIndex(qualifiedName(sym.owner)), nameIndex(sym.name))
 
   def pickleModifiers(sym: Symbol)(implicit ctx: Context): Unit = {

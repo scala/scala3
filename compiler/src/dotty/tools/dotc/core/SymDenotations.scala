@@ -392,7 +392,7 @@ object SymDenotations {
      *  A separator "" means "flat name"; the real separator in this case is "$" and
      *  enclosing packages do not form part of the name.
      */
-    def fullNameSeparated(separator: String, semantic: Boolean)(implicit ctx: Context): Name = {
+    def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
       var sep = separator
       var stopAtPackage = false
       if (sep.isEmpty) {
@@ -409,13 +409,13 @@ object SymDenotations {
           encl = encl.owner
           sep += "~"
         }
-        var prefix = encl.fullNameSeparated(separator, semantic)
+        var prefix = encl.fullNameSeparated(separator)
         val fn =
-          if (semantic) {
+          if (Config.semanticNames) {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.without(NameInfo.ModuleClassKind)
-            prefix.derived(NameInfo.Qualified(name.toSimpleName, sep))
+            name.mapSimpleCore(sn => prefix.derived(NameInfo.Qualified(sn, sep)))
           }
           else {
             if (owner.is(ModuleClass, butNot = Package) && sep == "$")
@@ -426,15 +426,6 @@ object SymDenotations {
         if (isType) fn.toTypeName else fn.toTermName
       }
     }
-
-    def fullNameSeparated(separator: String)(implicit ctx: Context): Name =
-      if (Config.semanticNames) {
-      	val fn1 = fullNameSeparated(separator, false)
-      	val fn2 = fullNameSeparated(separator, true)
-      	assert(fn1.toString == fn2.toString, s"mismatch, was: $fn1, sem: $fn2")
-      	fn2
-      }
-      else fullNameSeparated(separator, false)
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
     def flatName(implicit ctx: Context): Name = fullNameSeparated("")
