@@ -605,6 +605,25 @@ class Namer { typer: Typer =>
           case EmptyTree =>
         }
       }
+
+      // If a top-level object has no companion class in the current run, we
+      // enter a dummy companion class symbol (`denot.isAbsent` returns true) in
+      // scope. This ensures that we never use a companion from a previous run
+      // or from the classpath. See tests/pos/false-companion for an
+      // example where this matters.
+      if (ctx.owner.is(PackageClass)) {
+        for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
+          val moduleSym = ctx.denotNamed(moduleName.encode).symbol
+          if (moduleSym.isDefinedInCurrentRun) {
+            val className = moduleName.stripModuleClassSuffix.toTypeName
+            val classSym = ctx.denotNamed(className.encode).symbol
+            if (!classSym.isDefinedInCurrentRun) {
+              val absentClassSymbol = ctx.newClassSymbol(ctx.owner, className, EmptyFlags, _ => NoType)
+              enterSymbol(absentClassSymbol)
+            }
+          }
+        }
+      }
     }
 
     stats.foreach(expand)
