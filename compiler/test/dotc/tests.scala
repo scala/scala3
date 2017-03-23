@@ -80,7 +80,9 @@ class tests extends CompilerTest {
   val stdlibMode    = List("-migration", "-Yno-inline", "-language:Scala2")
   val linkStdlibMode = "-Ylink-stdlib" :: stdlibMode
 
-  val linkDCE = List("-link-dce", "-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph")
+  val linkDCEcommon = List("-link-java-conservative", "-link-vis", "-Ylink-dce-checks", "-Ylog:callGraph")
+  val linkDCE = "-link-dce" :: linkDCEcommon
+  val linkDCEaggressive = "-link-dce-aggressive" :: linkDCEcommon
 
   val testsDir      = "../tests/"
   val posDir        = testsDir + "pos/"
@@ -243,6 +245,7 @@ class tests extends CompilerTest {
 
   // Test callgraph DCE
   @Test def link_dce_all = runFiles(linkDCEDir, linkDCE)
+  @Test def link_dce_agressive_all = runFiles(linkDCEDir, linkDCEaggressive)
 
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all(): Unit =

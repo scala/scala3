@@ -23,6 +23,7 @@ object Test {
     throw new Exception("Expected DCE")
   } catch {
     case dce: dotty.runtime.DeadCodeEliminated =>
+    case _: java.lang.NoSuchMethodError => // agressive DCE
   }
 
   @internal.link.AssertNotReachable

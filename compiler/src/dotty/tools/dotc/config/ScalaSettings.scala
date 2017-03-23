@@ -42,6 +42,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
 
   val linkDCE = BooleanSetting("-link-dce", "Enable dead code elimination.")
+  val linkDCEAggressive = BooleanSetting("-link-dce-aggressive", "Enable aggressive dead code elimination.")
   val linkVis = BooleanSetting("-link-vis", "Output the visual representation of the call graph.")
   val linkJavaConservative = BooleanSetting("-link-java-conservative", "Compute call graph for java methods.")
 
