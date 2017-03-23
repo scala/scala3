@@ -65,13 +65,12 @@ object Names {
     def isSimple: Boolean
     def asSimpleName: SimpleTermName
     def toSimpleName: SimpleTermName
-    def mapSimpleCore(f: SimpleTermName => Name): ThisName
+    def rewrite(f: PartialFunction[Name, Name]): ThisName
 
     /** A name of the same kind as this name and with same characters as given `name` */
     def likeKinded(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
-    def select(name: SimpleTermName, sep: String) = derived(NameInfo.Qualified(name, sep))
     def exclude(kind: NameInfo.Kind): ThisName
     def is(kind: NameInfo.Kind): Boolean
     def debugString: String
@@ -99,6 +98,8 @@ object Names {
     def startsWith(name: Name): Boolean = startsWith(name.toString)
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
     def endsWith(name: Name): Boolean = endsWith(name.toString)
+    def lastIndexOfSlice(str: String): Int = lastPart.toString.lastIndexOfSlice(str)
+    def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
@@ -231,7 +232,7 @@ object Names {
     def isSimple = true
     def asSimpleName = this
     def toSimpleName = this
-    def mapSimpleCore(f: SimpleTermName => Name): TermName = likeKinded(f(this))
+    def rewrite(f: PartialFunction[Name, Name]): ThisName = likeKinded(f(this))
 
     def encode: SimpleTermName =
       if (dontEncode(toTermName)) this else NameTransformer.encode(this)
@@ -272,7 +273,7 @@ object Names {
     def isSimple = toTermName.isSimple
     def asSimpleName = toTermName.asSimpleName
     def toSimpleName = toTermName.toSimpleName
-    def mapSimpleCore(f: SimpleTermName => Name): TypeName = toTermName.mapSimpleCore(f).toTypeName
+    def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
 
     def likeKinded(name: Name): TypeName = name.toTypeName
 
@@ -292,16 +293,13 @@ object Names {
     def isEmpty = false
     def encode: Name = underlying.encode.derived(info.map(_.encode))
     def decode: Name = underlying.decode.derived(info.map(_.decode))
-    def firstPart = info match {
-      case NameInfo.Qualified(name, _) => name
-      case _ => underlying.firstPart
-    }
+    def firstPart = underlying.firstPart
     def lastPart = info match {
-      case NameInfo.Qualified(name, _) => name
+      case qual: NameInfo.Qualified => qual.name
       case _ => underlying.lastPart
     }
     def ++ (other: String): ThisName = info match {
-      case NameInfo.Qualified(name, sep) => underlying.select(name ++ other, sep)
+      case qual: NameInfo.Qualified => underlying.derived(qual.map(_ ++ other))
       case _ => (underlying ++ other).derived(info)
     }
     override def toString = info.mkString(underlying)
@@ -310,7 +308,13 @@ object Names {
     def isSimple = false
     def asSimpleName = throw new UnsupportedOperationException(s"$debugString is not a simple name")
     def toSimpleName = termName(toString)
-    def mapSimpleCore(f: SimpleTermName => Name) = underlying.mapSimpleCore(f).derived(info)
+
+    def rewrite(f: PartialFunction[Name, Name]): ThisName =
+      if (f.isDefinedAt(this)) likeKinded(f(this))
+      else info match {
+        case qual: NameInfo.Qualified => this
+        case _ => underlying.rewrite(f).derived(info)
+      }
   }
 
   // Nametable
@@ -470,7 +474,6 @@ object Names {
     def seq: WrappedString = new WrappedString(name.toString)
     override protected[this] def thisCollection: WrappedString = seq
     def indexOfSlice(name: Name): Int = indexOfSlice(name.toString)
-    def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
     def containsSlice(name: Name): Boolean = containsSlice(name.toString)
   }
 

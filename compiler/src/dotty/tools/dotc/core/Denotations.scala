@@ -1190,8 +1190,10 @@ object Denotations {
           recur(path.toTermName, n => wrap(n.toTypeName))
         case DerivedTermName(prefix, NameInfo.ModuleClass) =>
           recur(prefix, n => wrap(n.derived(NameInfo.ModuleClass)))
-        case DerivedTermName(prefix, NameInfo.Qualified(selector, ".")) =>
+        case DerivedTermName(prefix, NameInfo.Select(selector)) =>
           select(recur(prefix), wrap(selector))
+        case DerivedTermName(prefix, qual: NameInfo.Qualified) =>
+          recur(prefix, n => wrap(n ++ qual.separator ++ qual.name))
         case path: SimpleTermName =>
           def recurSimple(len: Int, wrap: Name => Name): Denotation = {
             val point = path.lastIndexOf('.', len - 1)

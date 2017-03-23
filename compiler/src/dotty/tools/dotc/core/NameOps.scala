@@ -162,30 +162,46 @@ object NameOps {
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
-      name.likeKinded(prefix ++ separator ++ name).asInstanceOf[N]
+      likeTyped(
+        if (Config.semanticNames)
+          prefix.derived(NameInfo.qualifier(separator.toString)(name.asSimpleName))
+        else prefix ++ separator ++ name)
 
     def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
 
-    /** Revert the expanded name. Note: This currently gives incorrect results
+    /** Revert the expanded name.
+     *  Note: This currently gives incorrect results
      *  if the normal name contains `nme.EXPAND_SEPARATOR`, i.e. two consecutive '$'
      *  signs. This can happen for instance if a super accessor is paired with
      *  an encoded name, e.g. super$$plus$eq. See #765.
      */
-    def unexpandedName: N = {
-      var idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+    def unexpandedName: N = likeTyped {
+      if (Config.semanticNames)
+        name.rewrite {
+          case DerivedTermName(_, NameInfo.Expand(unexp)) => unexp
+        }
+      else {
+        var idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
 
-      // Hack to make super accessors from traits work. They would otherwise fail because of #765
-      // TODO: drop this once we have more robust name handling
-      if (idx > FalseSuperLength && name.slice(idx - FalseSuperLength, idx) == FalseSuper)
-        idx -= FalseSuper.length
+        // Hack to make super accessors from traits work. They would otherwise fail because of #765
+        // TODO: drop this once we have more robust name handling
+        if (idx > FalseSuperLength && name.slice(idx - FalseSuperLength, idx) == FalseSuper)
+          idx -= FalseSuper.length
 
-      if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
+        if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length))
+      }
     }
 
-    def expandedPrefix: N = {
-      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
-      assert(idx >= 0)
-      name.take(idx).asInstanceOf[N]
+    def expandedPrefix: N = likeTyped {
+      if (Config.semanticNames)
+        name.rewrite {
+          case DerivedTermName(prefix, NameInfo.Expand(_)) => prefix
+        }
+      else {
+        val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+        assert(idx >= 0)
+        name.take(idx)
+      }
     }
 
     def shadowedName: N = likeTyped(nme.SHADOWED ++ name)

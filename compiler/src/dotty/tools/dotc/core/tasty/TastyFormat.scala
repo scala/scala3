@@ -222,12 +222,13 @@ object TastyFormat {
 
   final val UTF8 = 1
   final val QUALIFIED = 2
-  final val SIGNED = 3
+  final val FLATTENED = 3
   final val EXPANDED = 4
-  final val OBJECTCLASS = 5
-  final val SUPERACCESSOR = 6
-  final val DEFAULTGETTER = 7
-  final val SHADOWED = 8
+  final val SIGNED = 5
+  final val OBJECTCLASS = 6
+  final val SUPERACCESSOR = 7
+  final val DEFAULTGETTER = 8
+  final val SHADOWED = 9
 
   // AST tags
 

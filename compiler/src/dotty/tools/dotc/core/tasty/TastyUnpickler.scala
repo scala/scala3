@@ -45,13 +45,15 @@ class TastyUnpickler(reader: TastyReader) {
         Simple(termName(bytes, start.index, length))
       case QUALIFIED =>
         Qualified(readNameRef(), readNameRef())
+      case FLATTENED =>
+        Flattened(readNameRef(), readNameRef())
+      case EXPANDED =>
+        Expanded(readNameRef(), readNameRef())
       case SIGNED =>
         val original = readNameRef()
         val result = readNameRef()
         val params = until(end)(readNameRef())
         Signed(original, params, result)
-      case EXPANDED =>
-        Expanded(readNameRef(), readNameRef())
       case OBJECTCLASS =>
         ModuleClass(readNameRef())
       case SUPERACCESSOR =>

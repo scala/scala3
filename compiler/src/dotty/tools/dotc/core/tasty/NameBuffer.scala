@@ -29,8 +29,13 @@ class NameBuffer extends TastyBuffer(10000) {
     val tname = name.toTermName match {
       case DerivedTermName(name1, NameInfo.ModuleClass) =>
         ModuleClass(nameIndex(name1, toTasty))
-      case DerivedTermName(prefix, NameInfo.Qualified(selector, ".")) =>
-        Qualified(nameIndex(prefix, toTasty), nameIndex(selector))
+      case DerivedTermName(prefix, qual: NameInfo.Qualified) =>
+        val tcon: (NameRef, NameRef) => TastyName = qual match {
+          case _: NameInfo.Select => Qualified
+          case _: NameInfo.Flatten => Flattened
+          case _: NameInfo.Expand => Expanded
+        }
+        tcon(nameIndex(prefix, toTasty), nameIndex(qual.name))
       case name1 =>
         if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))
         else toTasty(name1.asSimpleName)
@@ -72,14 +77,17 @@ class NameBuffer extends TastyBuffer(10000) {
     case Qualified(qualified, selector) =>
       writeByte(QUALIFIED)
       withLength { writeNameRef(qualified); writeNameRef(selector) }
+    case Flattened(qualified, selector) =>
+      writeByte(FLATTENED)
+      withLength { writeNameRef(qualified); writeNameRef(selector) }
+    case Expanded(prefix, original) =>
+      writeByte(EXPANDED)
+      withLength { writeNameRef(prefix); writeNameRef(original) }
     case Signed(original, params, result) =>
       writeByte(SIGNED)
       withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
           if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
-    case Expanded(prefix, original) =>
-      writeByte(EXPANDED)
-      withLength { writeNameRef(prefix); writeNameRef(original) }
     case ModuleClass(module) =>
       writeByte(OBJECTCLASS)
       withLength { writeNameRef(module) }

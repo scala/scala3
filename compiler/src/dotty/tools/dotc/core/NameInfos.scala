@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Names._
+import StdNames._
 
 /** Additional info associated with a name. At a minimum its kind and
  *  a way to turn it into a string.
@@ -20,6 +21,12 @@ object NameInfo {
   val QualifiedKind = 1
   val ModuleClassKind = 2
 
+  val qualifier: Map[String, SimpleTermName => Qualified] =
+    Map("."  -> Select,
+        "$"  -> Flatten,
+        str.EXPAND_SEPARATOR -> Expand,
+        str.TRAIT_SETTER_SEPARATOR -> TraitSetter)
+
   def definesNewName(kind: Kind) = kind <= QualifiedKind
 
   /** TermNames have the lowest possible kind */
@@ -28,11 +35,35 @@ object NameInfo {
     def mkString(underlying: TermName) = underlying.toString // will cause an unsupported exception
   }
 
-  case class Qualified(name: SimpleTermName, separator: String) extends NameInfo {
+  trait Qualified extends NameInfo {
+    def name: SimpleTermName
+    def separator: String
+    def newLikeThis(name: SimpleTermName): Qualified // TODO: should use copy instead after bootstrap
+
     def kind = QualifiedKind
+    override def map(f: SimpleTermName => SimpleTermName): NameInfo = newLikeThis(f(name))
     def mkString(underlying: TermName) = s"$underlying$separator$name"
-    override def map(f: SimpleTermName => SimpleTermName): NameInfo = Qualified(f(name), separator)
-    override def toString = s"Qualified($name, $separator)"
+    override def toString = s"$getClass($name)"
+  }
+
+  case class Select(val name: SimpleTermName) extends Qualified {
+    def separator = "."
+    def newLikeThis(name: SimpleTermName) = Select(name)
+  }
+
+  case class Flatten(val name: SimpleTermName) extends Qualified {
+    def separator = "$"
+    def newLikeThis(name: SimpleTermName) = Flatten(name)
+  }
+
+  case class Expand(val name: SimpleTermName) extends Qualified {
+    def separator = str.EXPAND_SEPARATOR
+    def newLikeThis(name: SimpleTermName) = Expand(name)
+  }
+
+  case class TraitSetter(val name: SimpleTermName) extends Qualified {
+    def separator = nme.TRAIT_SETTER_SEPARATOR.toString
+    def newLikeThis(name: SimpleTermName) = TraitSetter(name)
   }
 
   val ModuleClass = new NameInfo {

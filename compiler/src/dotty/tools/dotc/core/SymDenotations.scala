@@ -411,11 +411,13 @@ object SymDenotations {
         }
         var prefix = encl.fullNameSeparated(separator)
         val fn =
-          if (Config.semanticNames) {
+          if (Config.semanticNames && NameInfo.qualifier.contains(sep)) {
             if (sep == "$")
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.exclude(NameInfo.ModuleClassKind)
-            name.mapSimpleCore(prefix.select(_, sep))
+            name rewrite {
+              case n: SimpleTermName => prefix.derived(NameInfo.qualifier(sep)(n))
+            }
           }
           else {
             if (owner.is(ModuleClass, butNot = Package) && sep == "$")

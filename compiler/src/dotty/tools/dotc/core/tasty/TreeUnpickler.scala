@@ -15,6 +15,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
+import config.Config
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -76,14 +77,24 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
 
   def toTermName(tname: TastyName): TermName = tname match {
     case Simple(name) => name
-    case Qualified(qual, name) => toTermName(qual) ++ "." ++ toTermName(name)
+    case Qualified(qual, name) =>
+      if (Config.semanticNames) qualTermName(qual, name, ".")
+      else toTermName(qual) ++ "." ++ toTermName(name)
+    case Flattened(qual, name) =>
+      if (Config.semanticNames) qualTermName(qual, name, "$")
+      else toTermName(qual) ++ "$" ++ toTermName(name)
+    case Expanded(prefix, original) =>
+      if (Config.semanticNames) qualTermName(prefix, original, str.EXPAND_SEPARATOR)
+      else toTermName(original).expandedName(toTermName(prefix))
     case Signed(original, params, result) => toTermName(original)
     case Shadowed(original) => toTermName(original).shadowedName
-    case Expanded(prefix, original) => toTermName(original).expandedName(toTermName(prefix))
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => toTermName(accessed).superName
     case DefaultGetter(meth, num) => ???
   }
+
+  private def qualTermName(qual: NameRef, name: NameRef, sep: String) =
+    toTermName(qual).derived(NameInfo.qualifier(sep)(toTermName(name).asSimpleName))
 
   def toTermName(ref: NameRef): TermName = toTermName(tastyName(ref))
   def toTypeName(ref: NameRef): TypeName = toTermName(ref).toTypeName

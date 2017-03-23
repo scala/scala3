@@ -15,6 +15,11 @@ object StdNames {
 
 /** Base strings from which synthetic names are derived. */
 
+  object str {
+    val EXPAND_SEPARATOR         = "$$"
+    val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
+  }
+
   abstract class DefinedNames[N <: Name] {
     protected implicit def fromString(s: String): N
     protected def fromName(name: Name): N = fromString(name.toString)
@@ -99,7 +104,7 @@ object StdNames {
     val EVIDENCE_PARAM_PREFIX: N      = "evidence$"
     val DEP_PARAM_PREFIX              = "<param>"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
-    val EXPAND_SEPARATOR: N           = "$$"
+    val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
     val INLINE_ACCESSOR_PREFIX        = "$inlineAccessor$"
@@ -129,7 +134,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
-    val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
+    val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
     val DIRECT_SUFFIX: N              = "$direct"
     val LAZY_IMPLICIT_PREFIX: N       = "$lazy_implicit$"
     val DOLLAR_VALUES: N              = "$values"
