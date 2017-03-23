@@ -132,7 +132,7 @@ object NameOps {
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
       if (isModuleClassName)
-        if (Config.semanticNames) name.without(NameInfo.ModuleClass.kind)
+        if (Config.semanticNames) name.exclude(NameInfo.ModuleClass.kind)
         else name dropRight MODULE_SUFFIX.length
       else name
 

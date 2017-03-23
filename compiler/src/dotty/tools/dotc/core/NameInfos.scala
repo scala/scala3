@@ -10,8 +10,6 @@ abstract class NameInfo extends util.DotClass {
   def kind: NameInfo.Kind
   def mkString(underlying: TermName): String
   def map(f: SimpleTermName => SimpleTermName): NameInfo = this
-  def satisfies(p: SimpleTermName => Boolean): Boolean = false
-  def ++(other: String): NameInfo = unsupported("++")
 }
 
 object NameInfo {
@@ -34,8 +32,6 @@ object NameInfo {
     def kind = QualifiedKind
     def mkString(underlying: TermName) = s"$underlying$separator$name"
     override def map(f: SimpleTermName => SimpleTermName): NameInfo = Qualified(f(name), separator)
-    override def satisfies(p: SimpleTermName => Boolean): Boolean = p(name)
-    override def ++(other: String): NameInfo = Qualified(name ++ other, separator)
     override def toString = s"Qualified($name, $separator)"
   }
 

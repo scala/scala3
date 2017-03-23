@@ -71,7 +71,8 @@ object Names {
     def likeKinded(name: Name): ThisName
 
     def derived(info: NameInfo): ThisName
-    def without(kind: NameInfo.Kind): ThisName
+    def select(name: SimpleTermName, sep: String) = derived(NameInfo.Qualified(name, sep))
+    def exclude(kind: NameInfo.Kind): ThisName
     def is(kind: NameInfo.Kind): Boolean
     def debugString: String
 
@@ -83,6 +84,9 @@ object Names {
     /** Replace operator symbols by corresponding \$op_name's. */
     def encode: Name
 
+    def firstPart: TermName
+    def lastPart: TermName
+
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
     def ++ (other: String): ThisName
@@ -90,11 +94,11 @@ object Names {
     def replace(from: Char, to: Char): ThisName = likeKinded(asSimpleName.replace(from, to))
 
     def isEmpty: Boolean
-    def startsWith(str: String): Boolean
-    def startsWith(name: Name): Boolean = startsWith(name.toString)
-    def endsWith(str: String): Boolean
-    def endsWith(name: Name): Boolean = endsWith(name.toString)
 
+    def startsWith(str: String): Boolean = firstPart.startsWith(str)
+    def startsWith(name: Name): Boolean = startsWith(name.toString)
+    def endsWith(str: String): Boolean = lastPart.endsWith(str)
+    def endsWith(name: Name): Boolean = endsWith(name.toString)
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
@@ -151,33 +155,31 @@ object Names {
       name
     }
 
+    private def add(info: NameInfo): TermName = synchronized {
+      getDerived(info) match {
+        case null        => putDerived(info, new DerivedTermName(this, info))
+        case derivedName => derivedName
+      }
+    }
+
     /** Return derived name with given `info` and the current
      *  name as underlying name.
      */
     def derived(info: NameInfo): TermName = {
-      def addIt() = synchronized {
-        getDerived(info) match {
-          case null => putDerived(info, new DerivedTermName(this, info))
-          case derivedName => derivedName
-        }
-      }
-
       val ownKind = this.info.kind
-      if (NameInfo.definesNewName(info.kind)) addIt()
-      else if (ownKind > info.kind)
-        underlying.derived(info).derived(this.info)
-      else if (ownKind == info.kind) {
+      if (ownKind < info.kind || NameInfo.definesNewName(info.kind)) add(info)
+      else if (ownKind > info.kind) underlying.derived(info).add(this.info)
+      else {
         assert(info == this.info)
         this
       }
-      else addIt()
     }
 
-    def without(kind: NameInfo.Kind): TermName = {
-      val ownKind = info.kind
+    def exclude(kind: NameInfo.Kind): TermName = {
+      val ownKind = this.info.kind
       if (ownKind < kind || NameInfo.definesNewName(ownKind)) this
-      else if (ownKind == kind) underlying.without(kind)
-      else underlying.without(kind).derived(this.info)
+      else if (ownKind > kind) underlying.exclude(kind).add(this.info)
+      else underlying
     }
 
     def is(kind: NameInfo.Kind): Boolean = {
@@ -205,13 +207,13 @@ object Names {
 
     def isEmpty = length == 0
 
-    def startsWith(str: String): Boolean = {
+    override def startsWith(str: String): Boolean = {
       var i = 0
       while (i < str.length && i < length && apply(i) == str(i)) i += 1
       i == str.length
     }
 
-    def endsWith(str: String): Boolean = {
+    override def endsWith(str: String): Boolean = {
       var i = 1
       while (i <= str.length && i <= length && apply(length - i) == str(str.length - i)) i += 1
       i > str.length
@@ -238,6 +240,9 @@ object Names {
     def decode: SimpleTermName =
       if (contains('$')) termName(NameTransformer.decode(toString)) else this
 
+    def firstPart = this
+    def lastPart = this
+
     override def hashCode: Int = start
 
     override def toString =
@@ -251,11 +256,11 @@ object Names {
     def ++ (other: String): ThisName = toTermName.++(other).toTypeName
 
     def isEmpty = toTermName.isEmpty
-    def startsWith(str: String): Boolean = toTermName.startsWith(str)
-    def endsWith(str: String): Boolean = toTermName.endsWith(str)
 
-    def encode: Name = toTermName.encode.toTypeName
-    def decode: Name = toTermName.decode.toTypeName
+    def encode   = toTermName.encode.toTypeName
+    def decode   = toTermName.decode.toTypeName
+    def firstPart = toTermName.firstPart
+    def lastPart = toTermName.lastPart
 
     type ThisName = TypeName
     def isTypeName = true
@@ -272,7 +277,7 @@ object Names {
     def likeKinded(name: Name): TypeName = name.toTypeName
 
     def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
-    def without(kind: NameInfo.Kind): TypeName = toTermName.without(kind).toTypeName
+    def exclude(kind: NameInfo.Kind): TypeName = toTermName.exclude(kind).toTypeName
     def is(kind: NameInfo.Kind) = toTermName.is(kind)
 
     override def toString = toTermName.toString
@@ -284,12 +289,21 @@ object Names {
    */
   case class DerivedTermName(override val underlying: TermName, override val info: NameInfo)
   extends TermName {
-    def ++ (other: String): ThisName = derived(info ++ other)
     def isEmpty = false
-    def startsWith(str: String): Boolean = underlying.startsWith(str)
-    def endsWith(str: String): Boolean = info.satisfies(_.endsWith(str))
     def encode: Name = underlying.encode.derived(info.map(_.encode))
     def decode: Name = underlying.decode.derived(info.map(_.decode))
+    def firstPart = info match {
+      case NameInfo.Qualified(name, _) => name
+      case _ => underlying.firstPart
+    }
+    def lastPart = info match {
+      case NameInfo.Qualified(name, _) => name
+      case _ => underlying.lastPart
+    }
+    def ++ (other: String): ThisName = info match {
+      case NameInfo.Qualified(name, sep) => underlying.select(name ++ other, sep)
+      case _ => (underlying ++ other).derived(info)
+    }
     override def toString = info.mkString(underlying)
     override def debugString = s"${underlying.debugString}[$info]"
 
@@ -455,7 +469,6 @@ object Names {
 
     def seq: WrappedString = new WrappedString(name.toString)
     override protected[this] def thisCollection: WrappedString = seq
-    def endsWith(name: Name): Boolean = endsWith(name.toString)
     def indexOfSlice(name: Name): Int = indexOfSlice(name.toString)
     def lastIndexOfSlice(name: Name): Int = lastIndexOfSlice(name.toString)
     def containsSlice(name: Name): Boolean = containsSlice(name.toString)
