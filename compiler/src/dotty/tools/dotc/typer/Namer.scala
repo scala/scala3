@@ -570,8 +570,8 @@ class Namer { typer: Typer =>
 
     /** Create links between companion object and companion class */
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
-      val claz = ctx.denotNamed(classTree.name.encode).symbol
-      val modl = ctx.denotNamed(moduleTree.name.encode).symbol
+      val claz = ctx.effectiveScope.lookup(classTree.name.encode)
+      val modl = ctx.effectiveScope.lookup(moduleTree.name.encode)
       ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
       ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
     }
@@ -613,10 +613,10 @@ class Namer { typer: Typer =>
       // example where this matters.
       if (ctx.owner.is(PackageClass)) {
         for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
-          val moduleSym = ctx.denotNamed(moduleName.encode).symbol
+          val moduleSym = ctx.effectiveScope.lookup(moduleName.encode)
           if (moduleSym.isDefinedInCurrentRun) {
             val className = moduleName.stripModuleClassSuffix.toTypeName
-            val classSym = ctx.denotNamed(className.encode).symbol
+            val classSym = ctx.effectiveScope.lookup(className.encode)
             if (!classSym.isDefinedInCurrentRun) {
               val absentClassSymbol = ctx.newClassSymbol(ctx.owner, className, EmptyFlags, _ => NoType)
               enterSymbol(absentClassSymbol)
