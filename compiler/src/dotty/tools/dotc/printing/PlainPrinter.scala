@@ -97,11 +97,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     || (sym.name == nme.PACKAGE)               // package
   )
 
-  def nameString(name: Name): String = name.toString + {
-    if (ctx.settings.debugNames.value)
-      if (name.isTypeName) "/T" else "/V"
-    else ""
-  }
+  def nameString(name: Name): String = name.toString
 
   def toText(name: Name): Text = Str(nameString(name))
 

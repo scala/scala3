@@ -38,6 +38,8 @@ class NameBuffer extends TastyBuffer(10000) {
         tcon(nameIndex(prefix, toTasty), nameIndex(qual.name))
       case DerivedTermName(prefix, NameInfo.DefaultGetter(num)) =>
         DefaultGetter(nameIndex(prefix, toTasty), num)
+      case DerivedTermName(prefix, NameInfo.Variant(sign)) =>
+        Variant(nameIndex(prefix, toTasty), sign)
       case name1 =>
         if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))
         else toTasty(name1.asSimpleName)
@@ -102,6 +104,9 @@ class NameBuffer extends TastyBuffer(10000) {
     case Shadowed(original) =>
       writeByte(SHADOWED)
       withLength { writeNameRef(original) }
+    case Variant(original, sign) =>
+      writeByte(VARIANT)
+      withLength { writeNameRef(original); writeNat(sign + 1) }
   }
 
   override def assemble(): Unit = {

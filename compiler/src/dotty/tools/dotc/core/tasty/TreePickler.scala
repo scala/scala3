@@ -13,6 +13,7 @@ import NameOps._
 import StdNames.nme
 import TastyBuffer._
 import TypeApplications._
+import config.Config
 
 class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer

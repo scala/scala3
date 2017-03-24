@@ -482,8 +482,9 @@ object Names {
   val CONSTRUCTOR: TermName = termName("<init>")
   val STATIC_CONSTRUCTOR: TermName = termName("<clinit>")
   val EMPTY_PACKAGE: TermName = termName("<empty>")
+  val REFINEMENT: TermName = termName("<refinement>")
 
-  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)
+  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE, REFINEMENT)
 
   def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)

@@ -229,6 +229,7 @@ object TastyFormat {
   final val SUPERACCESSOR = 7
   final val DEFAULTGETTER = 8
   final val SHADOWED = 9
+  final val VARIANT = 10
 
   // AST tags
 
@@ -412,11 +413,14 @@ object TastyFormat {
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
-    case SIGNED => "SIGNED"
+    case FLATTENED => "FLATTENED"
     case EXPANDED => "EXPANDED"
+    case SIGNED => "SIGNED"
     case OBJECTCLASS => "OBJECTCLASS"
     case SUPERACCESSOR => "SUPERACCESSOR"
     case DEFAULTGETTER => "DEFAULTGETTER"
+    case SHADOWED => "SHADOWED"
+    case VARIANT => "VARIANT"
   }
 
   def astTagToString(tag: Int): String = tag match {

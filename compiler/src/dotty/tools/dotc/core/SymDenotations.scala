@@ -393,21 +393,18 @@ object SymDenotations {
      *  enclosing packages do not form part of the name.
      */
     def fullNameSeparated(separator: String)(implicit ctx: Context): Name = {
-      var sep = separator
-      var stopAtPackage = false
-      if (sep.isEmpty) {
-        sep = "$"
-        stopAtPackage = true
-      }
+      val stopAtPackage = separator.isEmpty
+      val sep = if (stopAtPackage) "$" else separator
       if (symbol == NoSymbol ||
           owner == NoSymbol ||
           owner.isEffectiveRoot ||
           stopAtPackage && owner.is(PackageClass)) name
       else {
+        var filler = ""
         var encl = owner
         while (!encl.isClass && !encl.isPackageObject) {
           encl = encl.owner
-          sep += "~"
+          filler += "~"
         }
         var prefix = encl.fullNameSeparated(separator)
         val fn =
@@ -416,14 +413,17 @@ object SymDenotations {
               // duplicate scalac's behavior: don't write a double '$$' for module class members.
               prefix = prefix.exclude(NameInfo.ModuleClassKind)
             name rewrite {
-              case n: SimpleTermName => prefix.derived(NameInfo.qualifier(sep)(n))
+              case n: SimpleTermName =>
+                val n1 = if (filler.isEmpty) n else termName(filler ++ n)
+                prefix.derived(NameInfo.qualifier(sep)(n1))
             }
           }
           else {
-            if (owner.is(ModuleClass, butNot = Package) && sep == "$")
-              // duplicate scalac's behavior: don't write a double '$$' for module class members.
-              sep = ""
-            prefix ++ sep ++ name
+            val sep1 =
+              if (owner.is(ModuleClass, butNot = Package) && sep == "$") ""
+              else sep
+            // duplicate scalac's behavior: don't write a double '$$' for module class members.
+            prefix ++ sep1 ++ name
           }
         if (isType) fn.toTypeName else fn.toTermName
       }

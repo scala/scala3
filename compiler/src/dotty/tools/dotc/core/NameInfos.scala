@@ -20,8 +20,9 @@ object NameInfo {
 
   val TermNameKind = 0
   val QualifiedKind = 1
-  val ModuleClassKind = 2
   val DefaultGetterKind = 3
+  val VariantKind = 4
+  val ModuleClassKind = 10
 
   val qualifier: Map[String, SimpleTermName => Qualified] =
     Map("."  -> Select,
@@ -81,9 +82,18 @@ object NameInfo {
     }
   }
 
+  case class Variant(val num: Int) extends Numbered {
+    def kind = VariantKind
+    def mkString(underlying: TermName) = varianceToPrefix(num).toString + underlying
+  }
+
   val ModuleClass = new NameInfo {
     def kind = ModuleClassKind
     def mkString(underlying: TermName) = underlying + "$"
     override def toString = "ModuleClass"
   }
+
+  /** Map between variances and name prefixes */
+  val varianceToPrefix = Map(-1 -> '-', 0 -> '=', 1 -> '+')
+  val prefixToVariance = Map('-' -> -1, '=' -> 0, '+' -> 1)
 }
