@@ -55,7 +55,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
     }
   }
 
-  private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = {
+  private def retrieveSummary(claz: Symbol)(implicit ctx: Context): List[MethodSummary] = Nil /* {
     val topDenot = claz.topLevelClass.denot.asSymDenotation
     topDenot match {
       case clsd: ClassDenotation =>
@@ -93,6 +93,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
                 }
 
                 val tastySection = unpickler.unpickler.unpickle(new STreeSectionUnpickler).get
+                tastySection.enterTopLevel(roots = Set.empty)
                 val treeReader = tastySection.asInstanceOf[STreeUnpickler].getStartReader.get
 
                 val unp = new TastyUnpickler.SectionUnpickler[List[MethodSummary]](sectionName) {
@@ -160,7 +161,7 @@ class CollectSummaries extends MiniPhase { thisTransform =>
             }
         }
     }
-  }
+  } */
 
 
   override def run(implicit ctx: Context): Unit = {
