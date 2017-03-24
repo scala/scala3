@@ -90,7 +90,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
     case Shadowed(original) => toTermName(original).shadowedName
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => toTermName(accessed).superName
-    case DefaultGetter(meth, num) => ???
+    case DefaultGetter(meth, num) => toTermName(meth).defaultGetterName(num)
   }
 
   private def qualTermName(qual: NameRef, name: NameRef, sep: String) =

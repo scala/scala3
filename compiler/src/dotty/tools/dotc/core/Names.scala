@@ -66,6 +66,9 @@ object Names {
     def asSimpleName: SimpleTermName
     def toSimpleName: SimpleTermName
     def rewrite(f: PartialFunction[Name, Name]): ThisName
+    def collect[T](f: PartialFunction[Name, T]): Option[T]
+    def mapLast(f: SimpleTermName => SimpleTermName): ThisName
+    def mapParts(f: SimpleTermName => SimpleTermName): ThisName
 
     /** A name of the same kind as this name and with same characters as given `name` */
     def likeKinded(name: Name): ThisName
@@ -88,9 +91,8 @@ object Names {
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
-    def ++ (other: String): ThisName
-
-    def replace(from: Char, to: Char): ThisName = likeKinded(asSimpleName.replace(from, to))
+    def ++ (other: String): ThisName = mapLast(n => termName(n.toString + other))
+    def replace(from: Char, to: Char): ThisName = mapParts(_.replace(from, to))
 
     def isEmpty: Boolean
 
@@ -198,8 +200,6 @@ object Names {
 
     def apply(n: Int) = chrs(start + n)
 
-    def ++ (other: String): SimpleTermName = termName(toString + other)
-
     private def contains(ch: Char): Boolean = {
       var i = 0
       while (i < length && chrs(start + i) != ch) i += 1
@@ -220,19 +220,29 @@ object Names {
       i > str.length
     }
 
-    override def replace(from: Char, to: Char): ThisName = {
+    override def replace(from: Char, to: Char): SimpleTermName = {
       val cs = new Array[Char](length)
       Array.copy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
         if (cs(i) == from) cs(i) = to
       }
-      likeKinded(termName(cs, 0, length))
+      termName(cs, 0, length)
     }
 
     def isSimple = true
     def asSimpleName = this
     def toSimpleName = this
-    def rewrite(f: PartialFunction[Name, Name]): ThisName = likeKinded(f(this))
+    def rewrite(f: PartialFunction[Name, Name]): ThisName =
+      if (f.isDefinedAt(this)) likeKinded(f(this)) else this
+    def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
+    def mapLast(f: SimpleTermName => SimpleTermName) = f(this)
+    def mapParts(f: SimpleTermName => SimpleTermName) = f(this)
+
+    /*def exists(p: Char => Boolean): Boolean = {
+      var i = 0
+      while (i < length && !p(chrs(start + i))) i += 1
+      i < length
+    }*/
 
     def encode: SimpleTermName =
       if (dontEncode(toTermName)) this else NameTransformer.encode(this)
@@ -254,8 +264,6 @@ object Names {
 
   class TypeName(val toTermName: TermName) extends Name {
 
-    def ++ (other: String): ThisName = toTermName.++(other).toTypeName
-
     def isEmpty = toTermName.isEmpty
 
     def encode   = toTermName.encode.toTypeName
@@ -274,6 +282,9 @@ object Names {
     def asSimpleName = toTermName.asSimpleName
     def toSimpleName = toTermName.toSimpleName
     def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
+    def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
+    def mapLast(f: SimpleTermName => SimpleTermName) = toTermName.mapLast(f).toTypeName
+    def mapParts(f: SimpleTermName => SimpleTermName) = toTermName.mapParts(f).toTypeName
 
     def likeKinded(name: Name): TypeName = name.toTypeName
 
@@ -298,10 +309,6 @@ object Names {
       case qual: NameInfo.Qualified => qual.name
       case _ => underlying.lastPart
     }
-    def ++ (other: String): ThisName = info match {
-      case qual: NameInfo.Qualified => underlying.derived(qual.map(_ ++ other))
-      case _ => (underlying ++ other).derived(info)
-    }
     override def toString = info.mkString(underlying)
     override def debugString = s"${underlying.debugString}[$info]"
 
@@ -314,6 +321,25 @@ object Names {
       else info match {
         case qual: NameInfo.Qualified => this
         case _ => underlying.rewrite(f).derived(info)
+      }
+
+    def collect[T](f: PartialFunction[Name, T]): Option[T] =
+      if (f.isDefinedAt(this)) Some(f(this))
+      else info match {
+        case qual: NameInfo.Qualified => None
+        case _ => underlying.collect(f)
+      }
+
+    def mapLast(f: SimpleTermName => SimpleTermName): ThisName =
+      info match {
+        case qual: NameInfo.Qualified => underlying.derived(qual.map(f))
+        case _ => underlying.mapLast(f).derived(info)
+      }
+
+    def mapParts(f: SimpleTermName => SimpleTermName): ThisName =
+      info match {
+        case qual: NameInfo.Qualified => underlying.mapParts(f).derived(qual.map(f))
+        case _ => underlying.mapParts(f).derived(info)
       }
   }
 
@@ -478,23 +504,54 @@ object Names {
   }
 
   implicit val NameOrdering: Ordering[Name] = new Ordering[Name] {
+    private def compareInfos(x: NameInfo, y: NameInfo): Int =
+      if (x.kind != y.kind) x.kind - y.kind
+      else x match {
+        case x: NameInfo.Qualified =>
+          y match {
+            case y: NameInfo.Qualified =>
+              val s = x.separator.compareTo(y.separator)
+              if (s == 0) compareSimpleNames(x.name, y.name) else s
+          }
+        case x: NameInfo.Numbered =>
+          y match {
+            case y: NameInfo.Numbered =>
+              x.num - y.num
+          }
+        case _ =>
+          assert(x == y)
+          0
+      }
+    private def compareSimpleNames(x: SimpleTermName, y: SimpleTermName): Int = {
+      val until = x.length min y.length
+      var i = 0
+      while (i < until && x(i) == y(i)) i = i + 1
+      if (i < until) {
+        if (x(i) < y(i)) -1
+        else /*(x(i) > y(i))*/ 1
+      } else {
+        x.length - y.length
+      }
+    }
+    private def compareTermNames(x: TermName, y: TermName): Int = x match {
+      case x: SimpleTermName =>
+        y match {
+          case y: SimpleTermName => compareSimpleNames(x, y)
+          case _ => -1
+        }
+      case DerivedTermName(xPre, xInfo) =>
+        y match {
+          case DerivedTermName(yPre, yInfo) =>
+            val s = compareInfos(xInfo, yInfo)
+            if (s == 0) compareTermNames(xPre, yPre) else s
+          case _ => 1
+        }
+    }
     def compare(x: Name, y: Name): Int = {
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
       else if (x eq y) 0
-      else {
-        val until = x.length min y.length
-        var i = 0
-
-        while (i < until && x(i) == y(i)) i = i + 1
-
-        if (i < until) {
-          if (x(i) < y(i)) -1
-          else /*(x(i) > y(i))*/ 1
-        } else {
-          x.length - y.length
-        }
-      }
+      else compareTermNames(x.toTermName, y.toTermName)
     }
   }
 }

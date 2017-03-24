@@ -18,6 +18,7 @@ import util.Positions._
 import Names._
 import collection.mutable
 import ResolveSuper._
+import config.Config
 
 /** This phase adds super accessors and method overrides where
  *  linearization differs from Java's rule for default methods in interfaces.
@@ -95,10 +96,12 @@ object ResolveSuper {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
     val unexpandedAccName =
-      if (acc.is(ExpandedName))  // Cannot use unexpandedName because of #765. t2183.scala would fail if we did.
-        acc.name
-          .drop(acc.name.indexOfSlice(nme.EXPAND_SEPARATOR ++ nme.SUPER_PREFIX))
-          .drop(nme.EXPAND_SEPARATOR.length)
+      if (acc.is(ExpandedName))
+        if (Config.semanticNames) acc.name.unexpandedName
+        else // Cannot use unexpandedName because of #765. t2183.scala would fail if we did.
+          acc.name
+           .drop(acc.name.indexOfSlice(nme.EXPAND_SEPARATOR ++ nme.SUPER_PREFIX))
+           .drop(nme.EXPAND_SEPARATOR.length)
       else acc.name
     val SuperAccessorName(memberName) = unexpandedAccName: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
     ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")

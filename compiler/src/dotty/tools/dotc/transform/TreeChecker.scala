@@ -50,10 +50,10 @@ class TreeChecker extends Phase with SymTransformer {
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
 
   def isValidJVMName(name: Name) =
-      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
+      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/')
 
   def isValidJVMMethodName(name: Name) =
-      !name.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
+      !name.toString.exists(c => c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   def printError(str: String)(implicit ctx: Context) = {
     ctx.echo(Console.RED + "[error] " + Console.WHITE  + str)

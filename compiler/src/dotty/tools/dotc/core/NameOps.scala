@@ -102,8 +102,10 @@ object NameOps {
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
-      case _ =>
+      case name: SimpleTermName =>
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+      case _ =>
+        false
     }
 
     /** If the name ends with $nn where nn are
@@ -164,7 +166,8 @@ object NameOps {
     def expandedName(prefix: Name, separator: Name = nme.EXPAND_SEPARATOR): N =
       likeTyped(
         if (Config.semanticNames)
-          prefix.derived(NameInfo.qualifier(separator.toString)(name.asSimpleName))
+          prefix.derived(NameInfo.qualifier(separator.toString)(name.toSimpleName))
+            // note: expanded name may itself be expanded. For example, look at javap of scala.App.initCode
         else prefix ++ separator ++ name)
 
     def expandedName(prefix: Name): N = expandedName(prefix, nme.EXPAND_SEPARATOR)
@@ -247,7 +250,7 @@ object NameOps {
 */
     def unmangleClassName: N =
       if (Config.semanticNames && name.isSimple && name.isTypeName)
-        if (name.endsWith(MODULE_SUFFIX))
+        if (name.endsWith(MODULE_SUFFIX) && !tpnme.falseModuleClassNames.contains(name.asTypeName))
           likeTyped(name.dropRight(MODULE_SUFFIX.length).moduleClassName)
         else name
       else name
@@ -404,44 +407,60 @@ object NameOps {
       if (name.isSetterName) {
         if (name.isTraitSetterName) {
           // has form <$-separated-trait-name>$_setter_$ `name`_$eq
-          val start = name.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
-          val end = name.indexOfSlice(SETTER_SUFFIX)
-          (name.slice(start, end) ++ LOCAL_SUFFIX).asTermName
+          val start = name.lastPart.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
+          val end = name.lastPart.indexOfSlice(SETTER_SUFFIX)
+          name.mapLast(n => (n.slice(start, end) ++ LOCAL_SUFFIX).asSimpleName)
         } else getterName.fieldName
       }
-      else name ++ LOCAL_SUFFIX
+      else name.mapLast(n => (n ++ LOCAL_SUFFIX).asSimpleName)
 
     private def setterToGetter: TermName = {
       assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
-      name.take(name.length - SETTER_SUFFIX.length).asTermName
+      name.mapLast(n => n.take(n.length - SETTER_SUFFIX.length).asSimpleName)
     }
 
     def fieldToGetter: TermName = {
       assert(name.isFieldName)
-      name.take(name.length - LOCAL_SUFFIX.length).asTermName
+      name.mapLast(n => n.take(n.length - LOCAL_SUFFIX.length).asSimpleName)
     }
 
     /** Nominally, name$default$N, encoded for <init>
      *  @param  Post the parameters position.
      *  @note Default getter name suffixes start at 1, so `pos` has to be adjusted by +1
      */
-    def defaultGetterName(pos: Int): TermName = {
-      val prefix = if (name.isConstructorName) DEFAULT_GETTER_INIT else name
-      prefix ++ DEFAULT_GETTER ++ (pos + 1).toString
-    }
+    def defaultGetterName(pos: Int): TermName =
+      if (Config.semanticNames) name.derived(NameInfo.DefaultGetter(pos))
+      else {
+        val prefix = if (name.isConstructorName) DEFAULT_GETTER_INIT else name
+        prefix ++ DEFAULT_GETTER ++ (pos + 1).toString
+      }
 
     /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */
-    def defaultGetterToMethod: TermName = {
-      val p = name.indexOfSlice(DEFAULT_GETTER)
-      if (p >= 0) {
-        val q = name.take(p).asTermName
-        // i.e., if (q.decoded == CONSTRUCTOR.toString) CONSTRUCTOR else q
-        if (q == DEFAULT_GETTER_INIT) CONSTRUCTOR else q
-      } else name
+    def defaultGetterToMethod: TermName =
+      if (Config.semanticNames)
+        name rewrite {
+          case DerivedTermName(methName, NameInfo.DefaultGetter(_)) => methName
+        }
+      else mangledDefaultGetterToMethod
+
+    def mangledDefaultGetterToMethod: TermName = {
+        val p = name.indexOfSlice(DEFAULT_GETTER)
+        if (p >= 0) {
+          val q = name.take(p).asTermName
+          // i.e., if (q.decoded == CONSTRUCTOR.toString) CONSTRUCTOR else q
+          if (q == DEFAULT_GETTER_INIT) CONSTRUCTOR else q
+        } else name
     }
 
     /** If this is a default getter, its index (starting from 0), else -1 */
-    def defaultGetterIndex: Int = {
+    def defaultGetterIndex: Int =
+      if (Config.semanticNames)
+        name collect {
+          case DerivedTermName(methName, NameInfo.DefaultGetter(num)) => num
+        } getOrElse -1
+      else mangledDefaultGetterIndex
+
+    def mangledDefaultGetterIndex: Int = {
       var i = name.length
       while (i > 0 && name(i - 1).isDigit) i -= 1
       if (i > 0 && i < name.length && name.take(i).endsWith(DEFAULT_GETTER))
@@ -529,6 +548,14 @@ object NameOps {
     }
 
     def inlineAccessorName = nme.INLINE_ACCESSOR_PREFIX ++ name ++ "$"
+
+    def unmangleMethodName: TermName =
+      if (Config.semanticNames && name.isSimple) {
+        val idx = name.mangledDefaultGetterIndex
+        if (idx >= 0) name.mangledDefaultGetterToMethod.defaultGetterName(idx)
+        else name
+      }
+      else name
   }
 
   private final val FalseSuper = "$$super".toTermName

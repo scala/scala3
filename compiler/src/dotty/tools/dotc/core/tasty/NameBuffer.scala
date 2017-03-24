@@ -36,6 +36,8 @@ class NameBuffer extends TastyBuffer(10000) {
           case _: NameInfo.Expand => Expanded
         }
         tcon(nameIndex(prefix, toTasty), nameIndex(qual.name))
+      case DerivedTermName(prefix, NameInfo.DefaultGetter(num)) =>
+        DefaultGetter(nameIndex(prefix, toTasty), num)
       case name1 =>
         if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))
         else toTasty(name1.asSimpleName)

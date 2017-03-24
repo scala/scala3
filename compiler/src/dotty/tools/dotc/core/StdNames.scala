@@ -546,6 +546,11 @@ object StdNames {
     val synthSwitch: N          = "$synthSwitch"
     val _scope: N               = "$scope"
 
+    val nothingClass: N         = "Nothing$"
+    val nullClass: N            = "Null$"
+    
+    val falseModuleClassNames = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
+
     // unencoded operators
     object raw {
       final val AMP  : N  = "&"

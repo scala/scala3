@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Names._
+import NameOps._
 import StdNames._
 
 /** Additional info associated with a name. At a minimum its kind and
@@ -20,6 +21,7 @@ object NameInfo {
   val TermNameKind = 0
   val QualifiedKind = 1
   val ModuleClassKind = 2
+  val DefaultGetterKind = 3
 
   val qualifier: Map[String, SimpleTermName => Qualified] =
     Map("."  -> Select,
@@ -43,7 +45,7 @@ object NameInfo {
     def kind = QualifiedKind
     override def map(f: SimpleTermName => SimpleTermName): NameInfo = newLikeThis(f(name))
     def mkString(underlying: TermName) = s"$underlying$separator$name"
-    override def toString = s"$getClass($name)"
+    override def toString = s"${getClass.getSimpleName}($name)"
   }
 
   case class Select(val name: SimpleTermName) extends Qualified {
@@ -64,6 +66,19 @@ object NameInfo {
   case class TraitSetter(val name: SimpleTermName) extends Qualified {
     def separator = nme.TRAIT_SETTER_SEPARATOR.toString
     def newLikeThis(name: SimpleTermName) = TraitSetter(name)
+  }
+
+  trait Numbered extends NameInfo {
+    def num: Int
+    override def toString = s"${getClass.getSimpleName}($num)"
+  }
+
+  case class DefaultGetter(val num: Int) extends Numbered {
+    def kind = DefaultGetterKind
+    def mkString(underlying: TermName) = {
+      val prefix = if (underlying.isConstructorName) nme.DEFAULT_GETTER_INIT else underlying
+      prefix.toString + nme.DEFAULT_GETTER + (num + 1)
+    }
   }
 
   val ModuleClass = new NameInfo {
