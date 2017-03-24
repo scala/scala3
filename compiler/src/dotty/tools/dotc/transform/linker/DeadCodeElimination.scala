@@ -6,12 +6,10 @@ import scala.language.postfixOps
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.core.Types.ClassInfo
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeTransforms._
 import dotty.tools.dotc.transform.linker.callgraph.CallGraph
@@ -21,7 +19,7 @@ object DeadCodeElimination {
     ctx.settings.linkDCE.value || ctx.settings.linkDCEAggressive.value
 }
 
-class DeadCodeElimination extends MiniPhaseTransform with InfoTransformer {
+class DeadCodeElimination extends MiniPhaseTransform {
   import tpd._
 
   def phaseName: String = "dce"
@@ -35,6 +33,9 @@ class DeadCodeElimination extends MiniPhaseTransform with InfoTransformer {
   private var doNotDCEAnnotation: ClassSymbol = _
   private var aggressive: Boolean = _
 
+  // TODO: Should this set be removed after Ycheck?
+  private var aggressivelyDCEd: Set[Symbol] = _
+
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
     if (DeadCodeElimination.isPhaseRequired) {
       buildCallGraphPhase = ctx.phaseOfClass(classOf[BuildCallGraph]).asInstanceOf[BuildCallGraph]
@@ -42,6 +43,7 @@ class DeadCodeElimination extends MiniPhaseTransform with InfoTransformer {
       exception = Throw(New(ctx.requiredClassRef("dotty.runtime.DeadCodeEliminated"), Nil))
       doNotDCEAnnotation = ctx.requiredClassRef("scala.annotation.internal.link.DoNotDeadCodeEliminate").symbol.asClass
       aggressive = ctx.settings.linkDCEAggressive.value
+      aggressivelyDCEd = if (aggressive) Set.empty else null
       doTransform = true
     } else {
       doTransform = false
@@ -61,29 +63,25 @@ class DeadCodeElimination extends MiniPhaseTransform with InfoTransformer {
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
     if (!doTransform || doNotEliminate(sym)) tree
-    else if (aggressive && !doNotEliminateAggressive(sym)) EmptyTree
-    else tpd.cpy.DefDef(tree)(rhs = exception)
+    else if (aggressive && !doNotEliminateAggressive(sym)) {
+      aggressivelyDCEd += sym
+      EmptyTree
+    } else tpd.cpy.DefDef(tree)(rhs = exception)
   }
 
-  override def transformInfo(tp: Types.Type, sym: Symbol)(implicit ctx: Context): Types.Type = {
-    if (!doTransform || !aggressive) tp
-    else {
-      tp match {
-        case tp: ClassInfo =>
-          val newDecls = tp.decls.filteredScope(x => doNotEliminate(x) || doNotEliminateAggressive(x))
-          ClassInfo(tp.prefix, tp.cls, tp.classParents, newDecls, tp.selfInfo)
-        case _ => tp
-      }
-    }
+  def wasAggressivelyDCEd(x: Symbol): Boolean = {
+    aggressivelyDCEd != null && aggressivelyDCEd.contains(x)
   }
 
-  def doNotEliminate(sym: Symbol)(implicit ctx: Context): Boolean = {
+  private def doNotEliminate(sym: Symbol)(implicit ctx: Context): Boolean = {
     callGraph.isReachableMethod(sym) || sym.is(Label) || sym.isConstructor || keepAsNew(sym) ||
       (sym.isSetter && callGraph.isReachableMethod(sym.getter)) || sym.hasAnnotation(doNotDCEAnnotation)
   }
 
-  def doNotEliminateAggressive(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.is(Synthetic) || sym.isType || sym.owner.is(Trait) || callGraph.outerMethods(sym)
+  private def doNotEliminateAggressive(sym: Symbol)(implicit ctx: Context): Boolean = {
+    (sym.allOverriddenSymbols.nonEmpty && sym.allOverriddenSymbols.forall(_.is(Deferred))) ||
+      sym.owner.fullName.toString.contains("Predef") ||
+      sym.is(Implicit) || sym.is(Synthetic) || sym.owner.is(Trait)
   }
 
   private def keepAsNew(sym: Symbol)(implicit ctx: Context): Boolean =

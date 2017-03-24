@@ -250,6 +250,9 @@ class tests extends CompilerTest {
   // Test callgraph DCE on code that use DCEed stdlib
   @Test def link_dce_stdlib_all(): Unit =
     runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCE, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
+ @org.junit.Ignore
+ @Test def link_dce_aggressive_stdlib_all(): Unit =
+    runFiles(linkDCEWithStdlibDir, linkStdlibMode ::: linkDCEaggressive, stdlibFiles = linkDCEStdlibFiles)(noCheckOptions ++ checkOptions ++ classPath)
 
   @Test def dotty = {
     dottyBootedLib
