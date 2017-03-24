@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import xsbti.api.SourceAPI
 import xsbti.DependencyContext._
 
-class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCallback
+class TestCallback(override val nameHashing: Boolean, override val includeSynthToNameHashing: Boolean) extends AnalysisCallback
 {
 	val sourceDependencies = new ArrayBuffer[(File, File, DependencyContext)]
 	val binaryDependencies = new ArrayBuffer[(File, String, File, DependencyContext)]

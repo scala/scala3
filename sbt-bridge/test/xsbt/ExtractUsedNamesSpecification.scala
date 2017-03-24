@@ -75,12 +75,51 @@ class ExtractUsedNamesSpecification extends Specification {
 			|}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
+
     // DOTTY TODO: "Int" is not actually used, but we collect it because
     // it's the inferred return type so it appears in a TypeTree
     // We could avoid this by checking if the untyped tree has a return type
     // but is it worth it? Revisit this after https://github.com/sbt/sbt/issues/1104
     // has landed.
     val expectedNames = standardNames ++ Set("A", "a", "$eq", "Int")
+    usedNames === expectedNames
+  }
+
+  "extract names in the types of trees" in {
+    val src1 = """|class X0
+                  |class X1 extends X0
+                  |class Y
+                  |class A {
+                  |  type T >: X1 <: X0
+                  |}
+                  |class M
+                  |class N
+                  |class P0
+                  |class P1 extends P0
+                  |object B {
+                  |  type S = Y
+                  |  val lista: List[A] = ???
+                  |  val at: A#T = ???
+                  |  val as: S = ???
+                  |  def foo(m: M): N = ???
+                  |  def bar[Param >: P1 <: P0](p: Param): Param = ???
+                  |}""".stripMargin
+    val src2 = """|object Test {
+                  |  val x = B.lista
+                  |  val y = B.at
+                  |  val z = B.as
+                  |  B.foo(???)
+                  |  B.bar(???)
+                  |}""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
+    val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
+    val expectedNames = standardNames ++ Set("Test", "Test$", "B", "B$",
+      "Predef", "Predef$", "$qmark$qmark$qmark", "Nothing",
+      "lista", "List", "A",
+      "at", "T", "X1", "X0",
+      "as", "S", "Y",
+      "foo", "M", "N",
+      "bar", "P1", "P0")
     usedNames === expectedNames
   }
 

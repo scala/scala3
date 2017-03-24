@@ -10,7 +10,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
 
-object DottyBuild extends Build {
+object Build {
 
   val scalacVersion = "2.11.5" // Do not rename, this is grepped in bin/common.
 
@@ -59,26 +59,25 @@ object DottyBuild extends Build {
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
-  override def settings: Seq[Setting[_]] = {
-    super.settings ++ Seq(
-      scalaVersion in Global := scalacVersion,
-      version in Global := dottyVersion,
-      organization in Global := dottyOrganization,
-      organizationName in Global := "LAMP/EPFL",
-      organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
-      homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+  // Used in build.sbt
+  val thisBuildSettings = Seq(
+    scalaVersion in Global := scalacVersion,
+    version in Global := dottyVersion,
+    organization in Global := dottyOrganization,
+    organizationName in Global := "LAMP/EPFL",
+    organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
+    homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
 
-      // scalac options
-      scalacOptions in Global ++= Seq(
-        "-feature",
-        "-deprecation",
-        "-encoding", "UTF8",
-        "-language:existentials,higherKinds,implicitConversions"
-      ),
+    // scalac options
+    scalacOptions in Global ++= Seq(
+      "-feature",
+      "-deprecation",
+      "-encoding", "UTF8",
+      "-language:existentials,higherKinds,implicitConversions"
+    ),
 
-      javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    )
-  }
+    javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
+  )
 
   /** Enforce 2.11.5. Do not let it be upgraded by dependencies. */
   private val overrideScalaVersionSetting =
@@ -124,7 +123,7 @@ object DottyBuild extends Build {
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef,
-      `scala-library`, `scala-compiler`, `scala-reflect`, `scalap`).
+      `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -281,8 +280,11 @@ object DottyBuild extends Build {
       libraryDependencies ++= partestDeps.value,
       libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                   "org.scala-lang.modules" %% "scala-partest" % "1.0.11" % "test",
-                                  "com.novocode" % "junit-interface" % "0.11" % "test",
-                                  "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value),
+                                  "com.novocode" % "junit-interface" % "0.11" % "test"),
+
+      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:interface
+      libraryDependencies += "org.scala-sbt" % "interface" % sbtVersion.value,
+
       // enable improved incremental compilation algorithm
       incOptions := incOptions.value.withNameHashing(true),
 
@@ -428,7 +430,7 @@ object DottyBuild extends Build {
             // FIXME: should go away when xml literal parsing is removed
             path.contains("scala-xml") ||
             // needed for the xsbti interface
-            path.contains("sbt-interface")
+            path.contains("org.scala-sbt/interface/")
         } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
@@ -552,9 +554,9 @@ object DottyBuild extends Build {
       },
       publishLocal := (publishLocal.dependsOn(cleanSbtBridge)).value,
       description := "sbt compiler bridge for Dotty",
-      resolvers += Resolver.typesafeIvyRepo("releases"),
+      resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt stuff
       libraryDependencies ++= Seq(
-        "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
+        "org.scala-sbt" % "interface" % sbtVersion.value,
         "org.scala-sbt" % "api" % sbtVersion.value % "test",
         "org.specs2" %% "specs2" % "2.3.11" % "test"
       ),
@@ -725,7 +727,7 @@ object DottyInjectedPlugin extends AutoPlugin {
       libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
     ).
     settings(publishing)
-  lazy val `scalap` = project.
+  lazy val scalap = project.
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
