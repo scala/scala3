@@ -334,7 +334,7 @@ class CallGraphBuilder(collectedSummaries: Map[Symbol, MethodSummary], mode: Int
         x
       case x: ClosureType =>
         val utpe =  propagateTargs(x.underlying, isConstructor = true)
-        val outer = (parentRefinements(utpe) combine caller.outerTargs) ++ outerTargs
+        val outer = parentRefinements(utpe) ++ caller.outerTargs
         val closureT = new ClosureType(x.meth, utpe, x.implementedMethod)
         addReachableType(new TypeWithContext(closureT, outer))
         closureT
