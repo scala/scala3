@@ -10,7 +10,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Package.ManifestAttributes
 
-object DottyBuild extends Build {
+object Build {
 
   val scalacVersion = "2.11.5" // Do not rename, this is grepped in bin/common.
 
@@ -59,26 +59,25 @@ object DottyBuild extends Build {
   // Shorthand for compiling a docs site
   lazy val dottydoc = inputKey[Unit]("run dottydoc")
 
-  override def settings: Seq[Setting[_]] = {
-    super.settings ++ Seq(
-      scalaVersion in Global := scalacVersion,
-      version in Global := dottyVersion,
-      organization in Global := dottyOrganization,
-      organizationName in Global := "LAMP/EPFL",
-      organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
-      homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+  // Used in build.sbt
+  val thisBuildSettings = Seq(
+    scalaVersion in Global := scalacVersion,
+    version in Global := dottyVersion,
+    organization in Global := dottyOrganization,
+    organizationName in Global := "LAMP/EPFL",
+    organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
+    homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
 
-      // scalac options
-      scalacOptions in Global ++= Seq(
-        "-feature",
-        "-deprecation",
-        "-encoding", "UTF8",
-        "-language:existentials,higherKinds,implicitConversions"
-      ),
+    // scalac options
+    scalacOptions in Global ++= Seq(
+      "-feature",
+      "-deprecation",
+      "-encoding", "UTF8",
+      "-language:existentials,higherKinds,implicitConversions"
+    ),
 
-      javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
-    )
-  }
+    javacOptions in Global ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
+  )
 
   /** Enforce 2.11.5. Do not let it be upgraded by dependencies. */
   private val overrideScalaVersionSetting =
@@ -124,7 +123,7 @@ object DottyBuild extends Build {
   lazy val dotty = project.in(file(".")).
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     aggregate(`dotty-interfaces`, `dotty-library`, `dotty-compiler`, `dotty-doc`, dottySbtBridgeRef,
-      `scala-library`, `scala-compiler`, `scala-reflect`, `scalap`).
+      `scala-library`, `scala-compiler`, `scala-reflect`, scalap).
     dependsOn(`dotty-compiler`).
     dependsOn(`dotty-library`).
     settings(
@@ -728,7 +727,7 @@ object DottyInjectedPlugin extends AutoPlugin {
       libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
     ).
     settings(publishing)
-  lazy val `scalap` = project.
+  lazy val scalap = project.
     settings(
       crossPaths := false,
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalaVersion.value)
