@@ -38,3 +38,6 @@ matrix:
     - ;publishLocal;dotty-bootstrapped/test
     - partest-only-no-bootstrap --show-diff --verbose
     - partest-only --show-diff --verbose
+    - ;publishLocal;dotty-sbt-bridge/scripted source-dependencies/*1of3
+    - ;publishLocal;dotty-sbt-bridge/scripted source-dependencies/*2of3
+    - ;publishLocal;dotty-sbt-bridge/scripted source-dependencies/*3of3
