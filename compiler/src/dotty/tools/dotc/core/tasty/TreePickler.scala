@@ -60,19 +60,24 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   private def pickleName(sym: Symbol)(implicit ctx: Context): Unit = {
-    def encodeSuper(name: Name): TastyName.NameRef =
-      if (sym is Flags.SuperAccessor) {
-        val SuperAccessorName(n) = name
-        nameIndex(TastyName.SuperAccessor(nameIndex(n)))
-      }
-      else nameIndex(name)
     val nameRef =
-      if (sym is Flags.ExpandedName)
-        nameIndex(
-          TastyName.Expanded(
-            nameIndex(sym.name.expandedPrefix),
-            encodeSuper(sym.name.unexpandedName)))
-      else encodeSuper(sym.name)
+      if (Config.semanticNames) {
+        if (sym is Flags.ExpandedName) assert(sym.name.is(NameInfo.QualifiedKind))
+        nameIndex(sym.name)
+      }
+      else {
+        def encodeSuper(name: Name): TastyName.NameRef =
+          if (sym is Flags.SuperAccessor) {
+            val SuperAccessorName(n) = name
+            nameIndex(TastyName.SuperAccessor(nameIndex(n)))
+          } else nameIndex(name)
+        if (sym is Flags.ExpandedName)
+          nameIndex(
+            TastyName.Expanded(
+              nameIndex(sym.name.expandedPrefix),
+              encodeSuper(sym.name.unexpandedName)))
+        else encodeSuper(sym.name)
+      }
     writeNat(nameRef.index)
   }
 

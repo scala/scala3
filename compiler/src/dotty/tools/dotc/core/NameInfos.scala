@@ -22,6 +22,8 @@ object NameInfo {
   val QualifiedKind = 1
   val DefaultGetterKind = 3
   val VariantKind = 4
+  val SuperAccessorKind = 5
+  val InitializerKind = 6
   val ModuleClassKind = 10
 
   val qualifier: Map[String, SimpleTermName => Qualified] =
@@ -85,6 +87,20 @@ object NameInfo {
   case class Variant(val num: Int) extends Numbered {
     def kind = VariantKind
     def mkString(underlying: TermName) = varianceToPrefix(num).toString + underlying
+  }
+
+  val SuperAccessor = new NameInfo {
+    def kind = SuperAccessorKind
+    def mkString(underlying: TermName) =
+      underlying.mapLast(n => (nme.SUPER_PREFIX ++ n).asSimpleName).toString
+    override def toString = "SuperAccessor"
+  }
+
+  val Initializer = new NameInfo {
+    def kind = InitializerKind
+    def mkString(underlying: TermName) =
+      underlying.mapLast(n => (nme.INITIALIZER_PREFIX ++ n).asSimpleName).toString
+    override def toString = "Initializer"
   }
 
   val ModuleClass = new NameInfo {

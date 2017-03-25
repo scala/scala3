@@ -29,6 +29,8 @@ class NameBuffer extends TastyBuffer(10000) {
     val tname = name.toTermName match {
       case DerivedTermName(name1, NameInfo.ModuleClass) =>
         ModuleClass(nameIndex(name1, toTasty))
+      case DerivedTermName(name1, NameInfo.SuperAccessor) =>
+        SuperAccessor(nameIndex(name1, toTasty))
       case DerivedTermName(prefix, qual: NameInfo.Qualified) =>
         val tcon: (NameRef, NameRef) => TastyName = qual match {
           case _: NameInfo.Select => Qualified

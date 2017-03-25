@@ -420,10 +420,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     // symbols that were pickled with Pickler.writeSymInfo
     val nameref = readNat()
-    val name0 = at(nameref, readName)
+    var name = at(nameref, readName)
     val owner = readSymbolRef()
 
-    var flags = unpickleScalaFlags(readLongNat(), name0.isTypeName)
+    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
     if (flags is DefaultParameter) {
       // DefaultParameterized flag now on method, not parameter
       //assert(flags is Param, s"$name0 in $owner")
@@ -431,12 +431,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       owner.setFlag(DefaultParameterized)
     }
 
-    val name1 = name0.adjustIfModuleClass(flags)
-    val name2 = if (name1 == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR else name1
-    val name =
-      if (flags is ModuleClass) name2.unmangleClassName
-      else if (flags is Method) name2.asTermName.unmangleMethodName
-      else name2
+    name = name.adjustIfModuleClass(flags)
+    if (flags is Method) {
+      name =
+        if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
+        else name.asTermName.unmangleMethodName
+    }
+    if (flags is ExpandedName) name = name.unmangleExpandedName
+    if (flags is SuperAccessor) name = name.asTermName.unmangleSuperName
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)

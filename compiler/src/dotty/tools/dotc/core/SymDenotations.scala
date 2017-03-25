@@ -377,10 +377,8 @@ object SymDenotations {
         // might have been moved from different origins into the same class
 
     /** The name with which the denoting symbol was created */
-    final def originalName(implicit ctx: Context) = {
-      val d = initial
-      if (d is ExpandedName) d.name.unexpandedName else d.name // !!!DEBUG, was: effectiveName
-    }
+    final def originalName(implicit ctx: Context) =
+      initial.effectiveName
 
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` strings.
