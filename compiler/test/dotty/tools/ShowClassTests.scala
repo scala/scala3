@@ -65,7 +65,7 @@ class ShowClassTests extends DottyTest {
       debug_println(s"blacklisted package: $path")
     else {
       for (
-        sym <- pkg.info.decls if sym.owner == pkg.moduleClass && !(sym.name contains '$')
+        sym <- pkg.info.decls if sym.owner == pkg.moduleClass && !(sym.name.toString contains '$')
       ) {
         debug_println(s"showing $sym in ${pkg.fullName}")
         if (sym is PackageVal) showPackage(sym.asTerm)
