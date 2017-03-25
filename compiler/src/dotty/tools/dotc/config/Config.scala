@@ -10,7 +10,7 @@ object Config {
 
   final val checkCacheMembersNamed = false
 
-  final val semanticNames = false
+  final val semanticNames = true
 
   /** When updating a constraint bound, check that the constrained parameter
    *  does not appear at the top-level of either of its bounds.
