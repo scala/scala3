@@ -465,7 +465,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, posUnpickle
       val (givenFlags, annots, privateWithin) = readModifiers(end)
       def nameFlags(tname: TastyName): FlagSet = tname match {
         case TastyName.Expanded(_, original) => ExpandedName | nameFlags(tastyName(original))
-        case TastyName.SuperAccessor(_) => Flags.SuperAccessor
+        case TastyName.SuperAccessor(original) => Flags.SuperAccessor | nameFlags(tastyName(original))
         case _ => EmptyFlags
       }
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
