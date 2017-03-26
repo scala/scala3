@@ -441,7 +441,7 @@ object NameOps {
         if (name.isTraitSetterName) {
           if (Config.semanticNames) {
             val DerivedTermName(_, NameInfo.TraitSetter(original)) = name
-            original ++ LOCAL_SUFFIX
+            original.fieldName
           }
           else {
             // has form <$-separated-trait-name>$_setter_$ `name`_$eq
