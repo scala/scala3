@@ -82,7 +82,9 @@ object NameOps {
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name.toSimpleName containsSlice INTERPRETER_IMPORT_WRAPPER
-    def isTraitSetterName = name.toSimpleName containsSlice TRAIT_SETTER_SEPARATOR
+    def isTraitSetterName =
+      if (Config.semanticNames) name.is(NameInfo.TraitSetterKind)
+      else name containsSlice TRAIT_SETTER_SEPARATOR
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName =
@@ -437,10 +439,16 @@ object NameOps {
     def fieldName: TermName =
       if (name.isSetterName) {
         if (name.isTraitSetterName) {
-          // has form <$-separated-trait-name>$_setter_$ `name`_$eq
-          val start = name.lastPart.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
-          val end = name.lastPart.indexOfSlice(SETTER_SUFFIX)
-          name.mapLast(n => (n.slice(start, end) ++ LOCAL_SUFFIX).asSimpleName)
+          if (Config.semanticNames) {
+            val DerivedTermName(_, NameInfo.TraitSetter(original)) = name
+            original ++ LOCAL_SUFFIX
+          }
+          else {
+            // has form <$-separated-trait-name>$_setter_$ `name`_$eq
+            val start = name.indexOfSlice(TRAIT_SETTER_SEPARATOR) + TRAIT_SETTER_SEPARATOR.length
+            val end = name.indexOfSlice(SETTER_SUFFIX)
+            (name.slice(start, end) ++ LOCAL_SUFFIX).asTermName
+          }
         } else getterName.fieldName
       }
       else name.mapLast(n => (n ++ LOCAL_SUFFIX).asSimpleName)

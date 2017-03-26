@@ -62,7 +62,7 @@ class TreePickler(pickler: TastyPickler) {
   private def pickleName(sym: Symbol)(implicit ctx: Context): Unit = {
     val nameRef =
       if (Config.semanticNames) {
-        if (sym is Flags.ExpandedName) assert(sym.name.is(NameInfo.QualifiedKind))
+        if (sym is Flags.ExpandedName) assert(sym.name.is(NameInfo.ExpandKind))
         nameIndex(sym.name)
       }
       else {

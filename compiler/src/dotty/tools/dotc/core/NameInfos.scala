@@ -19,11 +19,14 @@ object NameInfo {
   type Kind = Int
 
   val TermNameKind = 0
-  val QualifiedKind = 1
-  val DefaultGetterKind = 3
-  val VariantKind = 4
-  val SuperAccessorKind = 5
-  val InitializerKind = 6
+  val SelectKind = 1
+  val FlattenKind = 2
+  val ExpandKind = 3
+  val TraitSetterKind = 4
+  val DefaultGetterKind = 5
+  val VariantKind = 6
+  val SuperAccessorKind = 7
+  val InitializerKind = 8
   val ModuleClassKind = 10
 
   val qualifier: Map[String, SimpleTermName => Qualified] =
@@ -32,7 +35,7 @@ object NameInfo {
         str.EXPAND_SEPARATOR -> Expand,
         str.TRAIT_SETTER_SEPARATOR -> TraitSetter)
 
-  def definesNewName(kind: Kind) = kind <= QualifiedKind
+  def definesNewName(kind: Kind) = kind <= TraitSetterKind
 
   /** TermNames have the lowest possible kind */
   val TermName = new NameInfo {
@@ -41,32 +44,36 @@ object NameInfo {
   }
 
   trait Qualified extends NameInfo {
+    def kind: Kind
     def name: SimpleTermName
     def separator: String
     def newLikeThis(name: SimpleTermName): Qualified // TODO: should use copy instead after bootstrap
 
-    def kind = QualifiedKind
     override def map(f: SimpleTermName => SimpleTermName): NameInfo = newLikeThis(f(name))
     def mkString(underlying: TermName) = s"$underlying$separator$name"
     override def toString = s"${getClass.getSimpleName}($name)"
   }
 
   case class Select(val name: SimpleTermName) extends Qualified {
+    def kind = SelectKind
     def separator = "."
     def newLikeThis(name: SimpleTermName) = Select(name)
   }
 
   case class Flatten(val name: SimpleTermName) extends Qualified {
+    def kind = FlattenKind
     def separator = "$"
     def newLikeThis(name: SimpleTermName) = Flatten(name)
   }
 
   case class Expand(val name: SimpleTermName) extends Qualified {
+    def kind = ExpandKind
     def separator = str.EXPAND_SEPARATOR
     def newLikeThis(name: SimpleTermName) = Expand(name)
   }
 
   case class TraitSetter(val name: SimpleTermName) extends Qualified {
+    def kind = TraitSetterKind
     def separator = nme.TRAIT_SETTER_SEPARATOR.toString
     def newLikeThis(name: SimpleTermName) = TraitSetter(name)
   }
