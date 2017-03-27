@@ -6,6 +6,7 @@ import NameOps._
 import StdNames._
 import util.DotClass
 import tasty.TastyFormat._
+import Decorators._
 
 object NameExtractors {
 
@@ -43,7 +44,8 @@ object NameExtractors {
   }
 
   class PrefixNameExtractor(tag: Int, prefix: String, infoString: String) extends ClassifiedNameExtractor(tag, infoString) {
-    def mkString(underlying: TermName, info: ThisInfo) = prefix ++ underlying
+    def mkString(underlying: TermName, info: ThisInfo) =
+      underlying.mapLast(n => termName(prefix + n)).toString
   }
 
   class SuffixNameExtractor(tag: Int, suffix: String, infoString: String) extends ClassifiedNameExtractor(tag, infoString) {
