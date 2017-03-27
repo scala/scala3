@@ -7,8 +7,11 @@ import StdNames._
 import util.DotClass
 import tasty.TastyFormat._
 import Decorators._
+import collection.mutable
 
 object NameExtractors {
+
+  private val extractors = new mutable.HashMap[Int, ClassifiedNameExtractor]
 
   abstract class NameInfo extends DotClass {
     def tag: Int
@@ -41,6 +44,7 @@ object NameExtractors {
       case DerivedTermName(underlying, `info`) => Some(underlying)
       case _ => None
     }
+    extractors(tag) = this
   }
 
   class PrefixNameExtractor(tag: Int, prefix: String, infoString: String) extends ClassifiedNameExtractor(tag, infoString) {
@@ -73,8 +77,8 @@ object NameExtractors {
   }
 
   object AnyQualifiedName {
-    def unapply(name: DerivedTermName): Option[(TermName, QualifiedNameExtractor # QualInfo)] = name match {
-      case DerivedTermName(qual, info: QualifiedNameExtractor # QualInfo) =>
+    def unapply(name: DerivedTermName): Option[(TermName, QualifiedInfo)] = name match {
+      case DerivedTermName(qual, info: QualifiedInfo) =>
         Some((name.underlying, info))
       case _ => None
     }
@@ -142,6 +146,8 @@ object NameExtractors {
   }
 
   def definesNewName(tag: Int) = tag <= TraitSetterName.tag
+
+  def extractorOfTag(tag: Int) = extractors(tag)
 
   val separatorToQualified: Map[String, QualifiedNameExtractor] =
     Map("." -> QualifiedName,

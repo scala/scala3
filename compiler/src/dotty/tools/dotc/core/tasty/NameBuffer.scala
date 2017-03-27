@@ -58,26 +58,18 @@ class NameBuffer extends TastyBuffer(10000) {
           else Codec.toUTF8(chrs, name.start, name.length)
         writeNat(bytes.length)
         writeBytes(bytes, bytes.length)
-      case QualifiedName(qualified, selector) =>
-        withLength { writeNameRef(qualified); writeNameRef(selector) }
-      case FlattenedName(qualified, selector) =>
-        withLength { writeNameRef(qualified); writeNameRef(selector) }
-      case ExpandedName(prefix, original) =>
-        withLength { writeNameRef(prefix); writeNameRef(original) }
+      case AnyQualifiedName(prefix, info) =>
+        withLength { writeNameRef(prefix); writeNameRef(info.name) }
       case SignedName(original, Signature(params, result)) =>
         withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
           if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
-      case ModuleClassName(module) =>
-        withLength { writeNameRef(module) }
-      case SuperAccessorName(accessed) =>
-        withLength { writeNameRef(accessed) }
       case DefaultGetterName(method, paramNumber) =>
         withLength { writeNameRef(method); writeNat(paramNumber) }
-      case ShadowedName(original) =>
-        withLength { writeNameRef(original) }
       case VariantName(original, sign) =>
         withLength { writeNameRef(original); writeNat(sign + 1) }
+      case DerivedTermName(original, info) =>
+        withLength { writeNameRef(original) }
     }
   }
 

@@ -55,6 +55,10 @@ class TastyUnpickler(reader: TastyReader) {
         FlattenedName(readName(), readName().asSimpleName)
       case EXPANDED =>
         ExpandedName(readName(), readName().asSimpleName)
+      case DEFAULTGETTER =>
+        DefaultGetterName(readName(), readNat())
+      case VARIANT =>
+        VariantName(readName(), readNat() - 1)
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName
@@ -62,16 +66,8 @@ class TastyUnpickler(reader: TastyReader) {
         var sig = Signature(params, result)
         if (sig == Signature.NotAMethod) sig = Signature.NotAMethod
         SignedName(original, sig)
-      case OBJECTCLASS =>
-        ModuleClassName(readName())
-      case SUPERACCESSOR =>
-        SuperAccessorName(readName())
-      case DEFAULTGETTER =>
-        DefaultGetterName(readName(), readNat())
-      case SHADOWED =>
-        ShadowedName(readName())
-      case VARIANT =>
-        VariantName(readName(), readNat() - 1)
+      case _ =>
+        extractorOfTag(tag)(readName())
     }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result
