@@ -20,6 +20,7 @@ object StdNames {
     val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
     val SUPER_PREFIX             = "super$"
     val INITIALIZER_PREFIX       = "initial$"
+    val SHADOWED_PREFIX          = "(shadowed)"
   }
 
   abstract class DefinedNames[N <: Name] {

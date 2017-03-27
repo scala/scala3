@@ -4,63 +4,38 @@ package core
 package tasty
 
 import collection.mutable
-import Names.{Name, chrs, SimpleTermName}
+import Names.{Name, chrs, SimpleTermName, DerivedTermName}
 import NameOps.NameDecorator
 import NameExtractors._
 import Decorators._
 import TastyBuffer._
 import scala.io.Codec
-import TastyName._
 import TastyFormat._
 
 class NameBuffer extends TastyBuffer(10000) {
   import NameBuffer._
 
-  private val nameRefs = new mutable.LinkedHashMap[TastyName, NameRef]
+  private val nameRefs = new mutable.LinkedHashMap[Name, NameRef]
 
-  def nameIndex(name: TastyName): NameRef = nameRefs.get(name) match {
-    case Some(ref) =>
-      ref
-    case None =>
-      val ref = NameRef(nameRefs.size)
-      nameRefs(name) = ref
-      ref
-  }
-
-  def nameIndex(name: Name, toTasty: SimpleTermName => TastyName): NameRef = {
-    val tname = name.toTermName match {
-      case ModuleClassName(name1) =>
-        ModuleClass(nameIndex(name1, toTasty))
-      case SuperAccessorName(name1) =>
-        SuperAccessor(nameIndex(name1, toTasty))
-      case QualifiedName(prefix, selector) =>
-        Qualified(nameIndex(prefix, toTasty), nameIndex(selector))
-      case FlattenedName(prefix, selector) =>
-        Flattened(nameIndex(prefix, toTasty), nameIndex(selector))
-      case XpandedName(prefix, selector) =>
-        Expanded(nameIndex(prefix, toTasty), nameIndex(selector))
-      case DefaultGetterName(prefix, num) =>
-        DefaultGetter(nameIndex(prefix, toTasty), num)
-      case VariantName(prefix, sign) =>
-        Variant(nameIndex(prefix, toTasty), sign)
-      case name1 =>
-        if (name1.isShadowedName) Shadowed(nameIndex(name1.revertShadowed, toTasty))
-        else toTasty(name1.asSimpleName)
-    }
-    nameIndex(tname)
-  }
-
-  def nameIndex(name: Name): NameRef = nameIndex(name, Simple)
-
-  def nameIndex(str: String): NameRef = nameIndex(str.toTermName)
-
-  def fullNameIndex(name: Name): NameRef = {
-    def split(name: SimpleTermName): TastyName = {
-      val pos = name.lastIndexOf('.')
-      if (pos <= 0) Simple(name)
-      else Qualified(fullNameIndex(name.take(pos)), nameIndex(name.drop(pos + 1)))
-    }
-    nameIndex(name, split)
+  def nameIndex(name: Name): NameRef = {
+    val name1 = name.toTermName
+    nameRefs.get(name1) match {
+      case Some(ref) =>
+        ref
+      case None =>
+        name1 match {
+          case SignedName(original, Signature(params, result)) =>
+            nameIndex(original); nameIndex(result); params.foreach(nameIndex)
+          case AnyQualifiedName(prefix, info) =>
+            nameIndex(prefix); nameIndex(info.name)
+          case DerivedTermName(prefix, _) =>
+            nameIndex(prefix)
+          case _ =>
+        }
+        val ref = NameRef(nameRefs.size)
+        nameRefs(name1) = ref
+        ref
+      }
   }
 
   private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {
@@ -71,43 +46,44 @@ class NameBuffer extends TastyBuffer(10000) {
     putNat(lengthAddr, length, lengthWidth)
   }
 
-  def writeNameRef(ref: NameRef) = writeNat(ref.index)
+  def writeNameRef(ref: NameRef): Unit = writeNat(ref.index)
+  def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
-  def pickleName(name: TastyName): Unit = name match {
-    case Simple(name) =>
+  def pickleNameContents(name: Name): Unit = name.toTermName match {
+    case name: SimpleTermName =>
       val bytes =
         if (name.length == 0) new Array[Byte](0)
         else Codec.toUTF8(chrs, name.start, name.length)
       writeByte(UTF8)
       writeNat(bytes.length)
       writeBytes(bytes, bytes.length)
-    case Qualified(qualified, selector) =>
+    case QualifiedName(qualified, selector) =>
       writeByte(QUALIFIED)
       withLength { writeNameRef(qualified); writeNameRef(selector) }
-    case Flattened(qualified, selector) =>
+    case FlattenedName(qualified, selector) =>
       writeByte(FLATTENED)
       withLength { writeNameRef(qualified); writeNameRef(selector) }
-    case Expanded(prefix, original) =>
+    case XpandedName(prefix, original) =>
       writeByte(EXPANDED)
       withLength { writeNameRef(prefix); writeNameRef(original) }
-    case Signed(original, params, result) =>
+    case SignedName(original, Signature(params, result)) =>
       writeByte(SIGNED)
       withLength(
           { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
           if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
-    case ModuleClass(module) =>
+    case ModuleClassName(module) =>
       writeByte(OBJECTCLASS)
       withLength { writeNameRef(module) }
-    case SuperAccessor(accessed) =>
+    case SuperAccessorName(accessed) =>
       writeByte(SUPERACCESSOR)
       withLength { writeNameRef(accessed) }
-    case DefaultGetter(method, paramNumber) =>
+    case DefaultGetterName(method, paramNumber) =>
       writeByte(DEFAULTGETTER)
       withLength { writeNameRef(method); writeNat(paramNumber) }
-    case Shadowed(original) =>
+    case ShadowedName(original) =>
       writeByte(SHADOWED)
       withLength { writeNameRef(original) }
-    case Variant(original, sign) =>
+    case VariantName(original, sign) =>
       writeByte(VARIANT)
       withLength { writeNameRef(original); writeNat(sign + 1) }
   }
@@ -117,7 +93,7 @@ class NameBuffer extends TastyBuffer(10000) {
     for ((name, ref) <- nameRefs) {
       assert(ref.index == i)
       i += 1
-      pickleName(name)
+      pickleNameContents(name)
     }
   }
 }
