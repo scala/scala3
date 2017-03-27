@@ -81,7 +81,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
           val deferredOrPrivate = if (clazz is Trait) Deferred else Private
           val acc = ctx.newSymbol(
-              clazz, superName, SuperAccessor | Artifact | Method | deferredOrPrivate,
+              clazz, superName, Artifact | Method | deferredOrPrivate,
               superInfo, coord = sym.coord).enteredAfter(thisTransformer)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))

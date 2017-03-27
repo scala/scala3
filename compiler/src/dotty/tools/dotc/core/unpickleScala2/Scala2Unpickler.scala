@@ -18,6 +18,7 @@ import printing.Printer
 import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
+import transform.SymUtils._
 import PickleBuffer._
 import PickleFormat._
 import Decorators._
@@ -441,7 +442,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       name = name.unmangleExpandedName
       flags = flags &~ Scala2ExpandedName
     }
-    if (flags is SuperAccessor) name = name.asTermName.unmangleSuperName
+    if (flags is Scala2SuperAccessor) {
+      name = name.asTermName.unmangleSuperName
+      flags = flags &~ Scala2SuperAccessor
+    }
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
@@ -555,9 +559,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               else tp1
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
-              assert(!(denot is SuperAccessor), denot)
+              assert(!denot.isSuperAccessor, denot)
             } else {
-              assert(denot is (SuperAccessor | ParamAccessor), denot)
+              assert(denot.is(ParamAccessor) || denot.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = { // !!! DEBUG
                 ctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
                   denot.info matches denot.owner.thisType.memberInfo(alt)

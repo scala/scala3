@@ -38,7 +38,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
           tree
         case tpe =>
-          val Seq(samDenot) = tpe.abstractTermMembers.filter(!_.symbol.is(SuperAccessor))
+          val Seq(samDenot) = tpe.abstractTermMembers.filter(!_.symbol.isSuperAccessor)
           cpy.Block(tree)(stats,
               AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }

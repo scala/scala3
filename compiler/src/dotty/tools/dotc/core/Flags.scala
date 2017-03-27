@@ -311,12 +311,12 @@ object Flags {
   final val CaseAccessorOrBaseTypeArg = CaseAccessor.toCommonFlags
 
   /** A super accessor */
-  final val SuperAccessor = termFlag(26, "<superaccessor>")
+  final val Scala2SuperAccessor = termFlag(26, "<superaccessor>")
 
   /** An unpickled Scala 2.x class */
   final val Scala2x = typeFlag(26, "<scala-2.x>")
 
-  final val SuperAccessorOrScala2x = SuperAccessor.toCommonFlags
+  final val SuperAccessorOrScala2x = Scala2x.toCommonFlags
 
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")

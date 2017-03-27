@@ -8,6 +8,7 @@ import SymDenotations._
 import Contexts._
 import Flags._
 import StdNames._
+import SymUtils._
 
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
@@ -24,7 +25,7 @@ object ValueClasses {
     d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
-      !d.is(SuperAccessor) &&
+      !d.isSuperAccessor &&
       !d.is(Macro)
 
   /** The member that of a derived value class that unboxes it. */

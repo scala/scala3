@@ -60,7 +60,7 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
     import ops._
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
-      for (superAcc <- mixin.info.decls.filter(_ is SuperAccessor).toList)
+      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor).toList)
         yield polyDefDef(implementation(superAcc.asTerm), forwarder(rebindSuper(cls, superAcc)))
 
     def methodOverrides(mixin: ClassSymbol): List[Tree] =
@@ -74,7 +74,7 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
     val meth = ddef.symbol.asTerm
-    if (meth.is(SuperAccessor, butNot = Deferred)) {
+    if (meth.isSuperAccessor && !meth.is(Deferred)) {
       assert(ddef.rhs.isEmpty)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisTransform)

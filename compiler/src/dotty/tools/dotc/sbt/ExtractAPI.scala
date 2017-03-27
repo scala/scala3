@@ -7,6 +7,7 @@ import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
+import transform.SymUtils._
 
 import dotty.tools.io.Path
 import java.io.PrintWriter
@@ -539,7 +540,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val abs = sym.is(Abstract) || sym.is(Deferred) || absOver
     val over = sym.is(Override) || absOver
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
-      sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.is(SuperAccessor))
+      sym.is(Implicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
 
   def apiAnnotations(s: Symbol): List[api.Annotation] = {

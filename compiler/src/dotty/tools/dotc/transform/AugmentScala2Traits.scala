@@ -92,7 +92,7 @@ class AugmentScala2Traits extends MiniPhaseTransform with IdentityDenotTransform
             traitSetter(sym.asTerm).enteredAfter(thisTransform)
         if ((sym.is(PrivateAccessor) && !sym.name.is(ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
-          || sym.is(SuperAccessor)) // scala2 superaccessors are pickled as private, but are compiled as public expanded
+          || sym.isSuperAccessor) // scala2 superaccessors are pickled as private, but are compiled as public expanded
           sym.ensureNotPrivate.installAfter(thisTransform)
       }
       ctx.log(i"Scala2x trait decls of $mixin = ${mixin.info.decls.toList.map(_.showDcl)}%\n %")

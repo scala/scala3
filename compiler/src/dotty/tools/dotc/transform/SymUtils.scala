@@ -55,6 +55,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isAliasPreferred(implicit ctx: Context) =
     self.is(AliasPreferred) || self.name.is(ExpandedName)
 
+  def isSuperAccessor(implicit ctx: Context) = self.name.is(SuperAccessorName)
+
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self

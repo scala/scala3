@@ -224,7 +224,7 @@ object PickleBuffer {
       DEFAULTPARAM -> (DefaultParameterized, Trait),
       BRIDGE -> Bridge,
       ACCESSOR -> Accessor,
-      SUPERACCESSOR -> SuperAccessor,
+      SUPERACCESSOR -> Scala2SuperAccessor,
       PARAMACCESSOR -> ParamAccessor,
       MODULEVAR -> Scala2ModuleVar,
       LAZY -> Lazy,
